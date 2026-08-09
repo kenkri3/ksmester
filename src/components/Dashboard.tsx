@@ -617,7 +617,7 @@ export default function Dashboard({ isDemo = false, onOpenPortal }: { isDemo?: b
                   className="hidden md:flex items-center gap-3 px-4 py-2 bg-white border border-neutral-200 rounded-xl text-sm font-bold text-neutral-400 hover:border-emerald-500 hover:text-emerald-600 transition-all shadow-sm min-w-[300px]"
                 >
                   <Search size={16} />
-                  <span>Søk i hele systemet...</span>
+                  <span>{t('search_system_placeholder', 'Søk i hele systemet...')}</span>
                   <div className="ml-auto flex items-center gap-1 px-1.5 py-0.5 bg-neutral-100 border border-neutral-200 rounded text-[10px] text-neutral-400">
                     <Command size={10} /> K
                   </div>

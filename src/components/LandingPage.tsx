@@ -127,7 +127,7 @@ export default function LandingPage({
                   : "text-neutral-400 hover:text-white hover:bg-white/10"
               )}
             >
-              Hovedside
+              {t('nav_home', 'Hovedside')}
             </button>
 
             <button 
@@ -140,7 +140,7 @@ export default function LandingPage({
               )}
             >
               <Sparkles size={14} className="text-emerald-400" />
-              Mester-hjernen
+              {t('nav_ai', 'Mester-hjernen')}
             </button>
 
             <button 
@@ -153,7 +153,7 @@ export default function LandingPage({
               )}
             >
               <ShieldCheck size={14} className="text-emerald-400" />
-              HMS-system
+              {t('nav_hms', 'HMS-system')}
             </button>
 
             <button 
@@ -166,7 +166,7 @@ export default function LandingPage({
               )}
             >
               <FileCheck size={14} className="text-emerald-400" />
-              FDV
+              {t('nav_fdv', 'FDV')}
             </button>
 
             <button 
@@ -178,7 +178,7 @@ export default function LandingPage({
                   : "text-neutral-400 hover:text-white hover:bg-white/10"
               )}
             >
-              Priser
+              {t('nav_pricing', 'Priser')}
             </button>
           </div>
 

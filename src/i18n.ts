@@ -3,8 +3,8 @@ import { initReactI18next } from 'react-i18next';
 import LanguageDetector from 'i18next-browser-languagedetector';
 
 const resources = {
-  no: {
-    translation: {
+  "no": {
+    "translation": {
       "quick_actions": "Hurtighandlinger",
       "new_sja": "Ny SJA",
       "log_deviation": "Logg Avvik",
@@ -398,11 +398,25 @@ const resources = {
       "sja_reports": "SJA-rapporter",
       "risks": "Risikoer",
       "measures": "Tiltak",
-      "equipment": "Utstyr"
+      "equipment": "Utstyr",
+      "search_system_placeholder": "Søk i prosjekter, SJA, avvik...",
+      "ai_report_analysis": "AI Analyserer...",
+      "building_application": "Byggesøknad",
+      "apprentice_module": "Lærlingmodul",
+      "inventory_module": "Materialer & Lager",
+      "vehicle_module": "Kjørebok & Biler",
+      "contract_module": "Kontrakter & Tilbud",
+      "customer_portal": "Kundeportal",
+      "hms_handbook": "HMS-Håndbok",
+      "view_all": "Se alle",
+      "pending": "Venter",
+      "high_risk": "Høy risiko",
+      "medium_risk": "Middels risiko",
+      "low_risk": "Lav risiko"
     }
   },
-  en: {
-    translation: {
+  "en": {
+    "translation": {
       "quick_actions": "Quick Actions",
       "new_sja": "New SJA",
       "log_deviation": "Log Deviation",
@@ -796,11 +810,25 @@ const resources = {
       "sja_reports": "SJA Reports",
       "risks": "Risks",
       "measures": "Measures",
-      "equipment": "Equipment"
+      "equipment": "Equipment",
+      "search_system_placeholder": "Search projects, SJA, deviations...",
+      "ai_report_analysis": "AI Analyzing...",
+      "building_application": "Building Application",
+      "apprentice_module": "Apprentice Module",
+      "inventory_module": "Materials & Inventory",
+      "vehicle_module": "Vehicles & Logbook",
+      "contract_module": "Contracts & Offers",
+      "customer_portal": "Customer Portal",
+      "hms_handbook": "HSE Handbook",
+      "view_all": "View all",
+      "pending": "Pending",
+      "high_risk": "High risk",
+      "medium_risk": "Medium risk",
+      "low_risk": "Low risk"
     }
   },
-  pl: {
-    translation: {
+  "pl": {
+    "translation": {
       "quick_actions": "Szybkie akcje",
       "new_sja": "Nowy SJA",
       "log_deviation": "Zgłoś odchylenie",
@@ -1174,7 +1202,7 @@ const resources = {
       "loading_projects": "Ładowanie projektų...",
       "no_recent_events": "Brak ostatnich zdarzeń",
       "active": "Aktywny",
-      "completed": "Zakończony",
+      "completed": "Ukończono",
       "started": "Rozpoczęty",
       "edit_project": "Edytuj projekt",
       "generate_report": "Generuj raport",
@@ -1187,11 +1215,32 @@ const resources = {
       "sja_reports": "Raporty SJA",
       "risks": "Ryzyka",
       "measures": "Środki",
-      "equipment": "Sprzęt"
+      "equipment": "Sprzęt",
+      "checklist": "Lista kontrolna",
+      "ks_hms": "Jakość i BHP",
+      "phase6_step4_title": "Kompletne przekazanie",
+      "phase6_step4_desc": "Cyfrowe podpisanie i automatyczne przekazanie DTR do klienta.",
+      "phase6_step4_item1": "Automatyczne generowanie DTR",
+      "phase6_step4_item2": "Portal klienta aktywowany",
+      "phase6_step4_item3": "Pakiet gwarancyjny i konserwacyjny",
+      "search_system_placeholder": "Szukaj projektów, SJA, odchyleń...",
+      "ai_report_analysis": "AI Analizuje...",
+      "building_application": "Wniosek budowlany",
+      "apprentice_module": "Moduł praktykantów",
+      "inventory_module": "Materiały i Magazyn",
+      "vehicle_module": "Pojazdy i Trasówka",
+      "contract_module": "Umowy i Oferty",
+      "customer_portal": "Portal Klienta",
+      "hms_handbook": "Podręcznik BHP",
+      "view_all": "Zobacz wszystkie",
+      "pending": "Oczekuje",
+      "high_risk": "Wysokie ryzyko",
+      "medium_risk": "Średnie ryzyko",
+      "low_risk": "Małe ryzyko"
     }
   },
-  lt: {
-    translation: {
+  "lt": {
+    "translation": {
       "welcome": "Sveiki atvykę į KS Mester AI",
       "dashboard": "Valdymo skydas",
       "mobile_app": "Mobilioji programėlė",
@@ -1511,7 +1560,7 @@ const resources = {
       "loading_projects": "Kraunami projektai...",
       "no_recent_events": "Nėra naujausių įvykių",
       "active": "Aktyvus",
-      "completed": "Užbaigtas",
+      "completed": "Atlikta",
       "started": "Pradėtas",
       "edit_project": "Redaguoti projektą",
       "generate_report": "Generuoti ataskaitą",
@@ -1537,7 +1586,69 @@ const resources = {
       "electrician": "Elektrikas",
       "manage_team": "Valdyti komandą",
       "comments": "Komentarai",
-      "attachments": "Priedai"
+      "attachments": "Priedai",
+      "quick_actions": "Greiti veiksmai",
+      "log_deviation": "Registruoti nukrypimą",
+      "take_photo": "Fotografuoti (Kokybė)",
+      "ai_translator": "AI vertėjas",
+      "profile": "Profilis",
+      "notifications": "Pranešimai",
+      "billing": "Atsiskaitymas",
+      "settings": "Nustatymai",
+      "logout": "Atsijungti",
+      "admin": "Administratorius",
+      "full_name": "Pilnas vardas",
+      "phone": "Telefono numeris",
+      "company_logo": "Įmonės logotipas",
+      "logo_desc": "Įkelkite įmonės logotipą pritaikytoms ataskaitoms.",
+      "upload": "Įkelti",
+      "company_name": "Įmonės pavadinimas",
+      "org_number": "Įmonės kodas",
+      "address": "Adresas",
+      "integrations_desc": "Prijunkite savo buhalterines ir specialistų sistemas",
+      "connect": "Prijungti",
+      "notification_settings": "Pranešimų nustatymai",
+      "new_deviations": "Nauji nukrypimai",
+      "deviations_notify": "Gauti pranešimą, kai užregistruojami nauji nukrypimai",
+      "sja_approvals": "SJA patvirtinimai",
+      "sja_notify": "Pranešti, kai reikia SJA patvirtinimo",
+      "weekly_reports": "Savaitinės ataskaitos",
+      "reports_notify": "Automatinė savaitinė apžvalga el. paštu",
+      "current_plan": "Dabartinis planas",
+      "billing_cycle": "Atsiskaitymo ciklas",
+      "manage_billing": "Valdyti prenumeratą",
+      "view_invoices": "Peržiūrėti sąskaitas",
+      "users": "Naudotojai",
+      "storage": "Saugykla",
+      "last_saved": "Paskutinį kartą išsaugota",
+      "saving": "Saugoma...",
+      "saved": "Išsaugota",
+      "save_changes": "Išsaugoti pakeitimus",
+      "project_details": "Projekto detalės",
+      "timeline": "Laiko juosta",
+      "start_date": "Pradžios data",
+      "end_date": "Pabaigos data",
+      "checklist": "Kontrolinis sąrašas",
+      "ks_hms": "Kokybė ir DSS",
+      "phase6_step4_title": "Pilnas perdavimas",
+      "phase6_step4_desc": "Skaitmeninis pasirašymas ir automatinis perdavimas klientui.",
+      "phase6_step4_item1": "Automatinis FDV generavimas",
+      "phase6_step4_item2": "Kliento portalas aktyvuotas",
+      "phase6_step4_item3": "Garantijos ir priežiūros paketas",
+      "search_system_placeholder": "Ieškoti projektų, SJA, nukrypimų...",
+      "ai_report_analysis": "AI Analizuoja...",
+      "building_application": "Statybos leidimas",
+      "apprentice_module": "Mokinių modulis",
+      "inventory_module": "Medžiagos ir Sandėlis",
+      "vehicle_module": "Automobiliai ir Kelionės",
+      "contract_module": "Sutartys ir Pasiūlymai",
+      "customer_portal": "Kliento Portalas",
+      "hms_handbook": "DSS Vadovas",
+      "view_all": "Rodyti visus",
+      "pending": "Laukia",
+      "high_risk": "Didelė rizika",
+      "medium_risk": "Vidutinė rizika",
+      "low_risk": "Maža rizika"
     }
   }
 };
