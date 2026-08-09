@@ -26,6 +26,8 @@ export const reportService = {
       
       Rapporten skal være konsis, profesjonell og fokusert på risiko og fremdrift.
       
+      VIKTIG: Uansett hvilket språk prosjektdata eller avvik er registrert på, SKAL denne lederrapporten ALLTID skrives/genereres på profesjonelt NORSK (Bokmål).
+
       Returner et JSON-objekt med følgende struktur:
       {
         "summary": "En overordnet oppsummering av uken (2-3 setninger)",

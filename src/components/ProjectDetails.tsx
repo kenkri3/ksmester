@@ -319,7 +319,7 @@ export default function ProjectDetails({ project, onBack, onShare, onStartCheckl
 
   const totalBudget = project.budget || projectOffers.reduce((acc, curr) => acc + (curr.totalAmount || 0), 0);
   const totalSpent = project.spent || 0;
-  const totalInvoiced = projectContracts.length > 0 ? totalBudget * 0.6 : 0; // Mock logic for invoicing if not in DB
+  const totalInvoiced = (project as any).invoiced || 0;
 
   return (
     <motion.div 

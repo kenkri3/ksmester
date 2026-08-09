@@ -1,7 +1,8 @@
-import React, { useState } from 'react';
+import React, { useState, useEffect } from 'react';
 import { motion, AnimatePresence } from 'framer-motion';
 import { X, Library, Search, Filter, Download, FileText, Image as ImageIcon, FileCode, Sparkles, RefreshCw, CheckCircle2 } from 'lucide-react';
 import { ProjectDocument } from '../types';
+import { db, collection, query, where, onSnapshot, addDoc, serverTimestamp, handleFirestoreError, OperationType } from '../services/firebase';
 
 interface DocumentationArchiveProps {
   isOpen: boolean;
@@ -14,14 +15,25 @@ const DocumentationArchive: React.FC<DocumentationArchiveProps> = ({ isOpen, onC
   const [activeCategory, setActiveCategory] = useState<'all' | 'fdv' | 'drawing' | 'contract'>('all');
   const [isSyncing, setIsSyncing] = useState(false);
   const [syncSuccess, setSyncSuccess] = useState(false);
+  const [documents, setDocuments] = useState<ProjectDocument[]>([]);
 
-  // Demo data
-  const [documents, setDocuments] = useState<ProjectDocument[]>([
-    { id: 'd1', projectId: 'p1', title: 'FDV - Gipsplater Norgips', type: 'fdv', url: '#', createdAt: '2024-03-01', source: 'nobb', category: 'Vegger' },
-    { id: 'd2', projectId: 'p1', title: 'Tegning - Planløsning 1. etasje', type: 'drawing', url: '#', createdAt: '2024-02-15', source: 'manual', category: 'Arkitekt' },
-    { id: 'd3', projectId: 'p1', title: 'Signert Kontrakt - Bjørklund', type: 'contract', url: '#', createdAt: '2024-03-12', source: 'system', category: 'Juridisk' },
-    { id: 'd4', projectId: 'p1', title: 'FDV - Parkett Boen Eik', type: 'fdv', url: '#', createdAt: '2024-03-05', source: 'nobb', category: 'Gulv' },
-  ]);
+  useEffect(() => {
+    if (!isOpen) return;
+
+    let docsQuery = query(collection(db, 'project_documents'));
+    if (projectId) {
+      docsQuery = query(collection(db, 'project_documents'), where('projectId', '==', projectId));
+    }
+
+    const unsubscribe = onSnapshot(docsQuery, (snapshot) => {
+      const list = snapshot.docs.map(doc => ({ id: doc.id, ...doc.data() } as ProjectDocument));
+      setDocuments(list);
+    }, (err) => {
+      handleFirestoreError(err, OperationType.LIST, 'project_documents');
+    });
+
+    return () => unsubscribe();
+  }, [isOpen, projectId]);
 
   const filteredDocs = documents.filter(doc => {
     const matchesSearch = doc.title.toLowerCase().includes(searchTerm.toLowerCase());
@@ -29,13 +41,11 @@ const DocumentationArchive: React.FC<DocumentationArchiveProps> = ({ isOpen, onC
     return matchesSearch && matchesCategory;
   });
 
-  const handleSyncNOBB = () => {
+  const handleSyncNOBB = async () => {
     setIsSyncing(true);
-    // Simulate NOBB sync
-    setTimeout(() => {
-      const newDoc: ProjectDocument = {
-        id: 'd' + (documents.length + 1),
-        projectId: projectId || 'p1',
+    try {
+      const newDoc = {
+        projectId: projectId || 'generelt',
         title: 'FDV - Isolasjon Rockwool Flexi A-plate',
         type: 'fdv',
         url: '#',
@@ -43,11 +53,14 @@ const DocumentationArchive: React.FC<DocumentationArchiveProps> = ({ isOpen, onC
         source: 'nobb',
         category: 'Isolasjon'
       };
-      setDocuments([newDoc, ...documents]);
+      await addDoc(collection(db, 'project_documents'), newDoc);
       setIsSyncing(false);
       setSyncSuccess(true);
       setTimeout(() => setSyncSuccess(false), 3000);
-    }, 2500);
+    } catch (e) {
+      console.error(e);
+      setIsSyncing(false);
+    }
   };
 
   const getIcon = (type: ProjectDocument['type']) => {

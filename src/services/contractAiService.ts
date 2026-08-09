@@ -18,6 +18,8 @@ export const contractAiService = {
       KONTRAKTSTEKST:
       ${contractText}
       
+      VIKTIG: Uansett hvilket språk kontraktsteksten er skrevet på, SKAL alle analyser, risikoer og anbefalinger ALLTID skrives/genereres på profesjonelt NORSK (Bokmål).
+
       Returner et JSON-array med objekter:
       {
         "risk": "Beskrivelse av risikoen (f.eks. 'Manglende dagmulkt')",

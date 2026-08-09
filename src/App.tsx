@@ -60,8 +60,11 @@ import CookieBanner from './components/CookieBanner';
 import { ErrorBoundary } from './components/ErrorBoundary';
 
 import './i18n';
+import { getStandardLang } from './i18n';
 import { useTranslation } from 'react-i18next';
 import { Globe } from 'lucide-react';
+import { db, doc, getDoc, collection, query, where, getDocs, updateUserProfile } from './services/firebase';
+import { toast } from 'sonner';
 
 export default function App() {
   return (
@@ -87,8 +90,17 @@ function AppContent() {
   const publicViews: View[] = ['landing', 'spec', 'pricing', 'about', 'contact', 'privacy', 'terms', 'offer', 'invite'];
   const isPublicView = publicViews.includes(view);
 
-  const changeLanguage = (lng: string) => {
-    i18n.changeLanguage(lng);
+  const changeLanguage = async (lng: string) => {
+    try {
+      await i18n.changeLanguage(lng);
+      localStorage.setItem('i18nextLng', lng);
+      if (user?.uid) {
+        await updateUserProfile(user.uid, { language: lng });
+      }
+      toast.success(lng === 'no' ? 'Språk endret til Norsk' : lng === 'pl' ? 'Język zmieniony na Polski' : lng === 'lt' ? 'Kalba pakeista į Lietuvių' : 'Language changed to English');
+    } catch (err) {
+      console.error('Error changing language:', err);
+    }
   };
 
   const handleStartDemo = () => {
@@ -96,22 +108,32 @@ function AppContent() {
     setView('dashboard');
   };
 
-  const handleOpenPortal = (projectId: string) => {
-    // In a real app, we'd fetch the project by ID/Code
-    // For the demo, we'll use a mock project if it's a demo code
-    const mockProject: Project = {
-      id: projectId,
-      name: `Prosjekt ${projectId}`,
-      location: 'Oslo, Norge',
-      progress: 45,
-      status: 'active',
-      stage: 'active',
-      lastUpdate: 'I dag',
-      documentationLevel: 60,
-      imageUrl: 'https://picsum.photos/seed/portal/800/600'
-    };
-    setPortalProject(mockProject);
-    setView('customer-portal');
+  const handleOpenPortal = async (projectIdOrCode: string) => {
+    try {
+      // First try fetching by doc ID
+      const docRef = doc(db, 'projects', projectIdOrCode);
+      const docSnap = await getDoc(docRef);
+      if (docSnap.exists()) {
+        setPortalProject({ id: docSnap.id, ...docSnap.data() } as Project);
+        setView('customer-portal');
+        return;
+      }
+
+      // Try searching by projectCode
+      const q = query(collection(db, 'projects'), where('projectCode', '==', projectIdOrCode));
+      const qSnap = await getDocs(q);
+      if (!qSnap.empty) {
+        const foundDoc = qSnap.docs[0];
+        setPortalProject({ id: foundDoc.id, ...foundDoc.data() } as Project);
+        setView('customer-portal');
+        return;
+      }
+
+      toast.error(`Prosjektet med kode/ID "${projectIdOrCode}" ble ikke funnet.`);
+    } catch (error) {
+      console.error("Error opening portal project:", error);
+      toast.error("Kunne ikke hente prosjektet. Vennligst sjekk koden.");
+    }
   };
 
   const handleGoToDashboard = () => {
@@ -232,17 +254,23 @@ function AppContent() {
             {/* Desktop Menu */}
             <div className="hidden md:flex items-center gap-6">
               <div className="flex items-center gap-2 mr-4 border-r border-neutral-200 pr-4">
-                <Globe size={14} className="text-neutral-400" />
-                <select 
-                  onChange={(e) => changeLanguage(e.target.value)}
-                  value={i18n.language}
-                  className="text-xs font-bold bg-transparent border-none focus:ring-0 cursor-pointer uppercase"
-                >
-                  <option value="no">NO</option>
-                  <option value="en">EN</option>
-                  <option value="pl">PL</option>
-                  <option value="lt">LT</option>
-                </select>
+                <div className="flex items-center gap-1.5 px-2.5 py-1 bg-neutral-100/80 hover:bg-neutral-100 rounded-lg border border-neutral-200/80 transition-all">
+                  <Globe size={14} className="text-emerald-600 shrink-0" />
+                  <select 
+                    onChange={(e) => changeLanguage(e.target.value)}
+                    value={getStandardLang(i18n.language)}
+                    className="text-xs font-black bg-transparent border-none focus:ring-0 cursor-pointer uppercase text-neutral-800 pr-1"
+                    title="Bytt klientspråk (Dokumentasjon eksporteres alltid på Norsk)"
+                  >
+                    <option value="no">NO - Norsk</option>
+                    <option value="en">EN - English</option>
+                    <option value="pl">PL - Polski</option>
+                    <option value="lt">LT - Lietuvių</option>
+                  </select>
+                </div>
+                <span className="hidden xl:inline-block text-[9px] font-black uppercase tracking-wider text-emerald-700 bg-emerald-50 px-2 py-0.5 rounded border border-emerald-200/60" title="Alt fagspråk i appen vises på ditt språk. All eksportert dokumentasjon garanteres på Norsk.">
+                  Dokumentasjon: Norsk (NO)
+                </span>
               </div>
 
               <button 
@@ -474,20 +502,23 @@ function AppContent() {
                   </button>
                 </div>
 
-                <div className="flex items-center justify-between px-4 py-3">
+                <div className="flex items-center justify-between px-4 py-3 bg-neutral-50 rounded-xl border border-neutral-100">
                   <div className="flex items-center gap-2">
-                    <Globe size={14} className="text-neutral-400" />
+                    <Globe size={16} className="text-emerald-600" />
                     <select 
                       onChange={(e) => { changeLanguage(e.target.value); setIsMenuOpen(false); }}
-                      value={i18n.language}
-                      className="text-xs font-bold bg-transparent border-none focus:ring-0 cursor-pointer uppercase"
+                      value={getStandardLang(i18n.language)}
+                      className="text-xs font-black bg-transparent border-none focus:ring-0 cursor-pointer uppercase text-neutral-800"
                     >
-                      <option value="no">Norsk</option>
-                      <option value="en">English</option>
-                      <option value="pl">Polski</option>
-                      <option value="lt">Lietuvių</option>
+                      <option value="no">Norsk (NO)</option>
+                      <option value="en">English (EN)</option>
+                      <option value="pl">Polski (PL)</option>
+                      <option value="lt">Lietuvių (LT)</option>
                     </select>
                   </div>
+                  <span className="text-[9px] font-black uppercase text-emerald-700 bg-emerald-100/60 px-2 py-0.5 rounded">
+                    Eksport: Norsk
+                  </span>
                 </div>
               </div>
             </motion.div>

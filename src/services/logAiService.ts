@@ -27,6 +27,8 @@ export const logAiService = {
       VÆRFORHOLD:
       ${weather}
       
+      VIKTIG: Uansett hvilket språk tidsregistreringene eller avvikene er skrevet på, SKAL denne dagsrapporten ALLTID genereres på profesjonelt NORSK (Bokmål).
+
       Returner et JSON-objekt:
       {
         "summary": "En kort oppsummering av dagen (2-3 setninger)",

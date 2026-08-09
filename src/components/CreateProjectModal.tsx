@@ -141,7 +141,7 @@ export default function CreateProjectModal({ isOpen, onClose }: CreateProjectMod
         progress: 0,
         documentationLevel: 0,
         lastUpdate: Timestamp.now(),
-        imageUrl: `https://picsum.photos/seed/${projectId}/800/600`
+        imageUrl: ""
       });
       onClose();
       setFormData({ 

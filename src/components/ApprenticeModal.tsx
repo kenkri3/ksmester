@@ -1,7 +1,8 @@
-import React, { useState } from 'react';
+import React, { useState, useEffect } from 'react';
 import { motion, AnimatePresence } from 'framer-motion';
 import { X, GraduationCap, CheckCircle2, Clock, AlertCircle, BookOpen, MessageSquare, User, TrendingUp } from 'lucide-react';
 import { ApprenticeProfile, ApprenticeGoal } from '../types';
+import { db, collection, onSnapshot, query, orderBy } from '../services/firebase';
 
 interface ApprenticeModalProps {
   isOpen: boolean;
@@ -9,34 +10,23 @@ interface ApprenticeModalProps {
 }
 
 const ApprenticeModal: React.FC<ApprenticeModalProps> = ({ isOpen, onClose }) => {
-  const [selectedApprenticeId, setSelectedApprenticeId] = useState<string | null>('a1');
+  const [selectedApprenticeId, setSelectedApprenticeId] = useState<string | null>(null);
+  const [apprentices, setApprentices] = useState<ApprenticeProfile[]>([]);
 
-  // Demo data
-  const apprentices: ApprenticeProfile[] = [
-    { 
-      id: 'a1', 
-      name: 'Marius Lærling', 
-      mentorId: 'u1', 
-      mentorName: 'Ken Mester', 
-      startDate: '2023-08-15',
-      goals: [
-        { id: 'g1', title: 'Montering av gips', description: 'Lære korrekt montering og skruing av gipsplater.', status: 'completed' },
-        { id: 'g2', title: 'Våtromsnormen', description: 'Forståelse for krav til tettesjikt i våtrom.', status: 'in_progress' },
-        { id: 'g3', title: 'Bruk av nivelleringsutstyr', description: 'Mestre bruk av laser og nivelleringskikkert.', status: 'not_started' },
-      ]
-    },
-    { 
-      id: 'a2', 
-      name: 'Sara Svenn', 
-      mentorId: 'u1', 
-      mentorName: 'Ken Mester', 
-      startDate: '2024-01-10',
-      goals: [
-        { id: 'g4', title: 'HMS på byggeplass', description: 'Gjennomgang av sikkerhetsrutiner.', status: 'completed' },
-        { id: 'g5', title: 'Lese arkitekttegninger', description: 'Tolke og forstå komplekse tegninger.', status: 'in_progress' },
-      ]
-    }
-  ];
+  useEffect(() => {
+    if (!isOpen) return;
+
+    const q = query(collection(db, 'apprentice_profiles'));
+    const unsubscribe = onSnapshot(q, (snapshot) => {
+      const list = snapshot.docs.map(doc => ({ id: doc.id, ...doc.data() } as ApprenticeProfile));
+      setApprentices(list);
+      if (list.length > 0 && !selectedApprenticeId) {
+        setSelectedApprenticeId(list[0].id);
+      }
+    });
+
+    return () => unsubscribe();
+  }, [isOpen]);
 
   const selectedApprentice = apprentices.find(a => a.id === selectedApprenticeId);
 

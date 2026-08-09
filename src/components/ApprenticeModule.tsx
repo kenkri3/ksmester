@@ -1,4 +1,4 @@
-import React, { useState } from 'react';
+import React, { useState, useEffect } from 'react';
 import { useTranslation } from 'react-i18next';
 import { 
   GraduationCap, 
@@ -13,10 +13,14 @@ import {
   TrendingUp,
   FileText,
   Plus,
-  Search
+  Search,
+  X
 } from 'lucide-react';
 import { motion, AnimatePresence } from 'motion/react';
 import { cn } from '@/src/lib/utils';
+import { db, collection, onSnapshot, query, orderBy, addDoc, serverTimestamp } from '../services/firebase';
+import { useAuth } from '../hooks/useAuth';
+import { toast } from 'sonner';
 
 interface KompetanseMaal {
   id: string;
@@ -27,28 +31,56 @@ interface KompetanseMaal {
   lastUpdated?: string;
 }
 
-const KOMPETANSEMAAL: KompetanseMaal[] = [
-  { id: '1', title: 'Planlegge, utføre og dokumentere arbeid i henhold til tegninger', category: 'Planlegging', progress: 85, status: 'in_progress', lastUpdated: '12.03.2024' },
-  { id: '2', title: 'Bruke verktøy og maskiner på en sikker og hensiktsmessig måte', category: 'HMS', progress: 100, status: 'completed', lastUpdated: '05.02.2024' },
-  { id: '3', title: 'Montere bærende konstruksjoner i tre', category: 'Konstruksjon', progress: 45, status: 'in_progress', lastUpdated: '20.03.2024' },
-  { id: '4', title: 'Isolere og tette klimaskjerm', category: 'Konstruksjon', progress: 10, status: 'in_progress', lastUpdated: '18.03.2024' },
-  { id: '5', title: 'Montere vinduer og dører', category: 'Montering', progress: 0, status: 'not_started' },
-  { id: '6', title: 'Utføre innvendig kledning og listverk', category: 'Interiør', progress: 0, status: 'not_started' },
-];
-
 export default function ApprenticeModule() {
   const { t } = useTranslation();
+  const { user } = useAuth();
   const [activeCategory, setActiveCategory] = useState<string>('Alle');
   const [searchQuery, setSearchQuery] = useState('');
+  const [kompetanseMaal, setKompetanseMaal] = useState<KompetanseMaal[]>([]);
+  const [isAddModalOpen, setIsAddModalOpen] = useState(false);
+  const [newTitle, setNewTitle] = useState('');
+  const [newCategory, setNewCategory] = useState('Konstruksjon');
 
-  const categories = ['Alle', ...Array.from(new Set(KOMPETANSEMAAL.map(m => m.category)))];
+  useEffect(() => {
+    const q = query(collection(db, 'apprentice_goals'));
+    const unsubscribe = onSnapshot(q, (snapshot) => {
+      const list = snapshot.docs.map(doc => ({ id: doc.id, ...doc.data() } as KompetanseMaal));
+      setKompetanseMaal(list);
+    });
+    return () => unsubscribe();
+  }, []);
 
-  const filteredMaal = KOMPETANSEMAAL.filter(m => 
+  const handleAddGoal = async (e: React.FormEvent) => {
+    e.preventDefault();
+    if (!newTitle.trim()) return;
+    try {
+      await addDoc(collection(db, 'apprentice_goals'), {
+        title: newTitle,
+        category: newCategory,
+        progress: 0,
+        status: 'not_started',
+        createdAt: serverTimestamp(),
+        authorId: user?.uid || ''
+      });
+      setNewTitle('');
+      setIsAddModalOpen(false);
+      toast.success('Kompetansemål lagt til!');
+    } catch (err) {
+      console.error(err);
+      toast.error('Kunne ikke legge til kompetansemål.');
+    }
+  };
+
+  const categories = ['Alle', ...Array.from(new Set(kompetanseMaal.map(m => m.category)))];
+
+  const filteredMaal = kompetanseMaal.filter(m => 
     (activeCategory === 'Alle' || m.category === activeCategory) &&
     (m.title.toLowerCase().includes(searchQuery.toLowerCase()))
   );
 
-  const totalProgress = Math.round(KOMPETANSEMAAL.reduce((acc, curr) => acc + curr.progress, 0) / KOMPETANSEMAAL.length);
+  const totalProgress = kompetanseMaal.length > 0 
+    ? Math.round(kompetanseMaal.reduce((acc, curr) => acc + (curr.progress || 0), 0) / kompetanseMaal.length)
+    : 0;
 
   return (
     <div className="space-y-8">

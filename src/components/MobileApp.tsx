@@ -30,7 +30,7 @@ import ChecklistModal from './ChecklistModal';
 import ProjectActivityLog from './ProjectActivityLog';
 import { useTranslation } from 'react-i18next';
 import UniversalTranslator from './UniversalTranslator';
-import { db, auth, collection, onSnapshot, addDoc, Timestamp, handleFirestoreError, OperationType, query, orderBy, limit, where, updateDoc, doc, getUserProfile, updateUserProfile, serverTimestamp } from '../services/firebase';
+import { db, auth, collection, onSnapshot, addDoc, Timestamp, handleFirestoreError, OperationType, query, orderBy, limit, where, updateDoc, doc, getUserProfile, updateUserProfile, serverTimestamp, getDocs } from '../services/firebase';
 
 import { weatherService, WeatherData } from '../services/weatherService';
 import { logAiService } from '../services/logAiService';
@@ -143,11 +143,11 @@ export default function MobileApp() {
           // Create a basic profile if it doesn't exist
           const newProfile: UserProfile = {
             id: user.uid,
-            name: user.displayName || 'Anonym',
+            name: user.displayName || user.email?.split('@')[0] || 'Bruker',
             email: user.email || '',
             role: 'worker',
-            companyId: 'demo-company',
-            companyName: 'Demo Entreprenør AS'
+            companyId: '',
+            companyName: ''
           };
           await updateUserProfile(user.uid, newProfile);
           setUserProfile(newProfile);
@@ -284,19 +284,16 @@ export default function MobileApp() {
     if (!selectedProjectId) return;
     setIsAnalyzing(true);
     try {
-      // In a real app, we'd fetch actual time entries and deviations for the day.
-      // For this demo, we'll simulate some data.
       const project = projects.find(p => p.id === selectedProjectId);
       const weather = await weatherService.getWeather(project?.location || 'Oslo');
       
-      const timeEntries = [
-        { userName: 'Ola Nordmann', hours: 7.5, description: 'Gipsing av vegger' },
-        { userName: 'Per Person', hours: 8, description: 'Montering av stenderverk' }
-      ] as any;
-      
-      const deviations = [
-        { title: 'Forsinket leveranse', severity: 'medium' }
-      ] as any;
+      const timesQ = query(collection(db, 'time_registrations'), where('projectId', '==', selectedProjectId));
+      const timesSnap = await getDocs(timesQ);
+      const timeEntries = timesSnap.docs.map(doc => doc.data());
+
+      const devsQ = query(collection(db, 'deviations'), where('projectId', '==', selectedProjectId));
+      const devsSnap = await getDocs(devsQ);
+      const deviations = devsSnap.docs.map(doc => doc.data());
 
       const log = await logAiService.generateDailyLog(timeEntries, deviations, weather.description);
       setDailyLog(log);

@@ -323,23 +323,10 @@ export default function Dashboard({ isDemo = false, onOpenPortal }: { isDemo?: b
   }, []);
 
   useEffect(() => {
-    if (isDemo) {
-      setProjects([
-        { id: 'demo1', name: 'Enebolig Bjørklund', location: 'Oslo', progress: 65, status: 'active', stage: 'active', lastUpdate: 'Nylig', documentationLevel: 85, imageUrl: 'https://picsum.photos/seed/demo1/800/600' },
-        { id: 'demo2', name: 'Leilighetskompleks Solli', location: 'Bergen', progress: 30, status: 'active', stage: 'contract', lastUpdate: 'I går', documentationLevel: 45, imageUrl: 'https://picsum.photos/seed/demo2/800/600' },
-        { id: 'demo3', name: 'Næringsbygg Vika', location: 'Oslo', progress: 95, status: 'completed', stage: 'completion', lastUpdate: 'Forrige uke', documentationLevel: 100, imageUrl: 'https://picsum.photos/seed/demo3/800/600' }
-      ]);
-      setDeviations([
-        { id: 'd1', title: 'Manglende dampsperre i våtrom', severity: 'high', status: 'open', timestamp: '2 timer siden', projectId: 'demo1', project: 'Enebolig Bjørklund', description: 'Dampsperre er ikke montert i henhold til TEK17.', createdAt: new Date().toISOString() },
-        { id: 'd2', title: 'Feil ved rekkverkshøyde', severity: 'medium', status: 'open', timestamp: '5 timer siden', projectId: 'demo2', project: 'Leilighetskompleks Solli', description: 'Rekkverkshøyde er 90cm, kravet er 100cm.', createdAt: new Date().toISOString() }
-      ]);
-      setLoading(false);
-    } else {
-      setProjects(realProjects);
-      setDeviations(realDeviations);
-      setLoading(realLoading);
-    }
-  }, [isDemo, realProjects, realDeviations, realLoading]);
+    setProjects(realProjects);
+    setDeviations(realDeviations);
+    setLoading(realLoading);
+  }, [realProjects, realDeviations, realLoading]);
 
   useEffect(() => {
     if (loading || projects.length === 0) return;

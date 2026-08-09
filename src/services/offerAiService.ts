@@ -26,6 +26,8 @@ export const offerAiService = {
       Prisene skal være realistiske markedspriser i NOK for 2024/2025.
       Sørg for at enhetene er standardiserte (m2, lm, stk, timer, kg).
       
+      VIKTIG: Uansett hvilket språk beskrivelsen er på (polsk, engelsk, litauisk osv.), SKAL alle tilbudsposter og beskrivelser ALLTID skrives/genereres på profesjonelt NORSK (Bokmål).
+
       Returner et JSON-array med objekter:
       {
         "description": "Beskrivelse av posten (f.eks. 'Oppsetting av stenderverk')",

@@ -101,12 +101,12 @@ export const pdfService = {
     doc.text('Detaljer', 20, 55);
 
     const details = [
-      ['Tittel', deviation.title],
+      ['Tittel', (deviation as any).norwegianTitle || deviation.title],
       ['Dato', new Date(deviation.createdAt).toLocaleDateString('no-NO')],
-      ['Alvorlighetsgrad', deviation.severity],
-      ['Status', deviation.status],
-      ['Beskrivelse', deviation.description],
-      ['Tiltak', deviation.action || 'Ikke definert']
+      ['Alvorlighetsgrad', deviation.severity === 'high' ? 'Kritisk' : deviation.severity === 'medium' ? 'Moderat' : 'Lav'],
+      ['Status', deviation.status === 'open' ? 'Åpen' : 'Lukket'],
+      ['Beskrivelse', (deviation as any).norwegianDescription || (deviation as any).norwegianVersion || deviation.description],
+      ['Tiltak', (deviation as any).norwegianAction || deviation.action || 'Ikke definert']
     ];
 
     doc.autoTable({

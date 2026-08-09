@@ -50,6 +50,8 @@ export const fdvService = {
       
       Planen skal følge norske standarder og inkludere spesifikke vedlikeholdsoppgaver og intervaller.
       
+      VIKTIG: Uansett hvilket språk prosjektbeskrivelsen eller materialnavnene er skrevet på, SKAL all FDV-dokumentasjon og instruksjoner ALLTID genereres på profesjonelt NORSK (Bokmål).
+
       Returner et JSON-array med objekter:
       {
         "section": "Navn på bygningsdel/system (f.eks. Tak, Ventilasjon, Våtrom)",

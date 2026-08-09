@@ -1542,12 +1542,28 @@ const resources = {
   }
 };
 
+(resources as any).nb = resources.no;
+(resources as any).nn = resources.no;
+
+export function getStandardLang(lang?: string): string {
+  if (!lang) return 'no';
+  const l = lang.toLowerCase();
+  if (l.startsWith('no') || l.startsWith('nb') || l.startsWith('nn')) return 'no';
+  if (l.startsWith('en')) return 'en';
+  if (l.startsWith('pl')) return 'pl';
+  if (l.startsWith('lt')) return 'lt';
+  return 'no';
+}
+
 i18n
   .use(LanguageDetector)
   .use(initReactI18next)
   .init({
     resources,
     fallbackLng: 'no',
+    supportedLngs: ['no', 'nb', 'nn', 'en', 'pl', 'lt'],
+    nonExplicitSupportedLngs: true,
+    load: 'languageOnly',
     interpolation: {
       escapeValue: false
     }

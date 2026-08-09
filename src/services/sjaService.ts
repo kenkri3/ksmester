@@ -42,6 +42,8 @@ export const sjaService = {
       Foreslå spesifikke risikoelementer knyttet til aktiviteten, og konkrete tiltak for å minimere risiko.
       Inkluder også nødvendig verneutstyr og verktøy.
 
+      VIKTIG PROSESS-KRAV: Uansett hvilket språk arbeidsoppgaven eller inputen er skrevet på (polsk, litauisk, engelsk osv.), SKAL alle felt i SJA-dokumentet ALLTID skrives/genereres på profesjonelt NORSK (Bokmål) i henhold til norsk HMS-lovgivning.
+
       Returner et JSON-objekt med følgende struktur:
       {
         "title": "En passende tittel for SJAen",

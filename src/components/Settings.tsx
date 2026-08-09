@@ -26,6 +26,7 @@ import {
 } from 'lucide-react';
 import { useAuth } from '../hooks/useAuth';
 import { useTranslation } from 'react-i18next';
+import { getStandardLang } from '../i18n';
 import { cn } from '@/src/lib/utils';
 import { db, doc, getDoc, setDoc, handleFirestoreError, OperationType, collection, query, where, getDocs, deleteDoc } from '../services/firebase';
 import InviteModal from './InviteModal';
@@ -424,21 +425,25 @@ export default function Settings() {
                     />
                   </div>
                   <div className="space-y-2">
-                    <label className="text-[10px] font-black uppercase tracking-widest text-neutral-400 ml-1">{t('language', 'Språk')}</label>
+                    <label className="text-[10px] font-black uppercase tracking-widest text-neutral-400 ml-1">{t('language', 'Språk for brukergrensesnitt')}</label>
                     <select 
-                      value={profile.language}
+                      value={getStandardLang(profile.language || i18n.language)}
                       onChange={(e) => {
                         const newLang = e.target.value;
                         updateProfile('language', newLang);
                         i18n.changeLanguage(newLang);
+                        localStorage.setItem('i18nextLng', newLang);
                       }}
                       className="w-full px-4 py-3 bg-neutral-50 border border-neutral-100 rounded-xl text-sm focus:outline-none focus:ring-2 focus:ring-emerald-500/20"
                     >
-                      <option value="no">Norsk</option>
-                      <option value="en">English</option>
-                      <option value="pl">Polski</option>
-                      <option value="lt">Lietuvių</option>
+                      <option value="no">Norsk (NO)</option>
+                      <option value="en">English (EN)</option>
+                      <option value="pl">Polski (PL)</option>
+                      <option value="lt">Lietuvių (LT)</option>
                     </select>
+                    <p className="text-[11px] text-emerald-700 font-medium bg-emerald-50 p-2.5 rounded-lg border border-emerald-100/80">
+                      💡 <strong>Norsk Dokumentasjonsgaranti:</strong> Du ser appen på ditt valgte språk, mens all utgående dokumentasjon (SJA, avvik, tilbud, kontrakt, FDV) automatisk genereres på profesjonelt norsk (Bokmål).
+                    </p>
                   </div>
                 </div>
               </motion.div>

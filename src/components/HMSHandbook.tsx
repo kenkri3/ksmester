@@ -77,42 +77,6 @@ const HMSHandbook: React.FC = () => {
     };
   }, [company]);
 
-  // Seed sample documents if none exist
-  useEffect(() => {
-    const seedSampleDocs = async () => {
-      if (documents.length === 0 && !loading && company) {
-        const samples = [
-          {
-            title: 'Sikkerhetsinstruks for byggeplass',
-            category: 'safety',
-            content: '# Sikkerhetsinstruks\n\nAlle ansatte skal følge disse reglene:\n1. Bruk påbudt verneutstyr.\n2. Hold orden på arbeidsplassen.\n3. Rapporter alle avvik.',
-            version: '1.0',
-            updatedAt: new Date().toISOString(),
-            companyId: company
-          },
-          {
-            title: 'Førstehjelpsrutiner',
-            category: 'first_aid',
-            content: '# Førstehjelp\n\nVed ulykke:\n1. Sikre skadestedet.\n2. Varsle 113.\n3. Gi livreddende førstehjelp.',
-            version: '1.1',
-            updatedAt: new Date().toISOString(),
-            companyId: company
-          }
-        ];
-        
-        for (const sample of samples) {
-          try {
-            await addDoc(collection(db, 'hms_documents'), sample);
-          } catch (e) {
-            console.error("Error seeding HMS docs:", e);
-          }
-        }
-      }
-    };
-
-    seedSampleDocs();
-  }, [documents.length, loading, company]);
-
   const handleSign = async (doc: HMSDocument) => {
     if (!user || !company) return;
     setIsSigning(true);
