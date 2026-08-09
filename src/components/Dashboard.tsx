@@ -89,7 +89,7 @@ import {
 } from 'recharts';
 
 export default function Dashboard({ isDemo = false, onOpenPortal }: { isDemo?: boolean, onOpenPortal?: (project: Project) => void }) {
-  const { t } = useTranslation();
+  const { t, i18n } = useTranslation();
   const { user, companyModules } = useAuth();
   const { projects: realProjects, deviations: realDeviations, stats, loading: realLoading } = useDashboardData();
   const [activeTab, setActiveTab] = useState<'oversikt' | 'prosjekter' | 'tilbud' | 'avvik' | 'ai' | 'finans' | 'laerling' | 'hms'>('oversikt');
@@ -253,43 +253,43 @@ export default function Dashboard({ isDemo = false, onOpenPortal }: { isDemo?: b
   const [projectWeather, setProjectWeather] = useState<Record<string, WeatherData>>({});
   
   const lifecycleStages = [
-    { id: 'offer', label: 'Tilbud', icon: <Calculator size={16} />, color: 'bg-blue-500' },
-    { id: 'contract', label: 'Kontrakt', icon: <FileSignature size={16} />, color: 'bg-indigo-500' },
-    { id: 'active', label: 'Gjennomføring', icon: <HardHat size={16} />, color: 'bg-emerald-500' },
-    { id: 'completion', label: 'Overlevering', icon: <CheckCircle2 size={16} />, color: 'bg-rose-500' },
-    { id: 'archived', label: 'Arkiv', icon: <Library size={16} />, color: 'bg-neutral-500' },
+    { id: 'offer', label: t('phase_offer', 'Tilbud'), icon: <Calculator size={16} />, color: 'bg-blue-500' },
+    { id: 'contract', label: t('phase_contract', 'Kontrakt'), icon: <FileSignature size={16} />, color: 'bg-indigo-500' },
+    { id: 'active', label: t('phase_execution', 'Gjennomføring'), icon: <HardHat size={16} />, color: 'bg-emerald-500' },
+    { id: 'completion', label: t('phase_handover', 'Overlevering'), icon: <CheckCircle2 size={16} />, color: 'bg-rose-500' },
+    { id: 'archived', label: t('phase_archive', 'Arkiv'), icon: <Library size={16} />, color: 'bg-neutral-500' },
   ];
 
   const actionGroups = [
     {
-      title: 'Planlegging & Salg',
+      title: t('group_planning_sales', 'Planlegging & Salg'),
       actions: [
-        { id: 'new_project', label: 'Nytt Prosjekt', icon: <Plus size={18} />, color: 'bg-blue-600', module: 'projects' },
-        { id: 'offers', label: 'Opprett Tilbud', icon: <Calculator size={18} />, color: 'bg-blue-600', module: 'economy' },
-        { id: 'contracts', label: 'Kontrakter', icon: <FileSignature size={18} />, color: 'bg-blue-600', module: 'economy' },
-        { id: 'building_app', label: 'Byggesøknad', icon: <Building2 size={18} />, color: 'bg-blue-600', module: 'building_app' },
+        { id: 'new_project', label: t('new_project', 'Nytt Prosjekt'), icon: <Plus size={18} />, color: 'bg-blue-600', module: 'projects' },
+        { id: 'offers', label: t('create_offer', 'Opprett Tilbud'), icon: <Calculator size={18} />, color: 'bg-blue-600', module: 'economy' },
+        { id: 'contracts', label: t('contracts', 'Kontrakter'), icon: <FileSignature size={18} />, color: 'bg-blue-600', module: 'economy' },
+        { id: 'building_app', label: t('building_application', 'Byggesøknad'), icon: <Building2 size={18} />, color: 'bg-blue-600', module: 'building_app' },
       ]
     },
     {
-      title: 'Daglig Drift',
+      title: t('group_daily_operations', 'Daglig Drift'),
       actions: [
-        { id: 'start_checklist', label: 'KS/HMS Sjekkliste', icon: <ListChecks size={18} />, color: 'bg-emerald-600', module: 'checklists' },
-        { id: 'hms', label: 'HMS & Mannskap', icon: <ShieldCheck size={18} />, color: 'bg-emerald-600', module: 'checklists' },
-        { id: 'log_deviation', label: 'Logg Avvik/RUH', icon: <AlertTriangle size={18} />, color: 'bg-orange-600', module: 'deviations' },
-        { id: 'take_photo', label: 'AI Vision Kontroll', icon: <Camera size={18} />, color: 'bg-rose-600', module: 'ai' },
-        { id: 'apprentice', label: 'Lærlingmodul', icon: <GraduationCap size={18} />, color: 'bg-emerald-600', module: 'apprentice' },
+        { id: 'start_checklist', label: t('ks_hms_checklist', 'KS/HMS Sjekkliste'), icon: <ListChecks size={18} />, color: 'bg-emerald-600', module: 'checklists' },
+        { id: 'hms', label: t('hms_crew', 'HMS & Mannskap'), icon: <ShieldCheck size={18} />, color: 'bg-emerald-600', module: 'checklists' },
+        { id: 'log_deviation', label: t('log_deviation_ruh', 'Logg Avvik/RUH'), icon: <AlertTriangle size={18} />, color: 'bg-orange-600', module: 'deviations' },
+        { id: 'take_photo', label: t('ai_vision_control', 'AI Vision Kontroll'), icon: <Camera size={18} />, color: 'bg-rose-600', module: 'ai' },
+        { id: 'apprentice', label: t('apprentice_module', 'Lærlingmodul'), icon: <GraduationCap size={18} />, color: 'bg-emerald-600', module: 'apprentice' },
       ]
     },
     {
-      title: 'Automatisering & Dokumentasjon',
+      title: t('group_automation_doc', 'Automatisering & Dokumentasjon'),
       actions: [
-        { id: 'ai_analysis', label: 'AI Analyse', icon: <Brain size={18} />, color: 'bg-neutral-900', module: 'ai' },
-        { id: 'library', label: 'FDV Arkiv', icon: <Library size={18} />, color: 'bg-neutral-900', module: 'fdv' },
-        { id: 'integrations', label: 'Integrasjoner', icon: <RefreshCw size={18} />, color: 'bg-neutral-900', module: 'fdv' },
-        { id: 'handover', label: 'Overlevering / FDV', icon: <CheckCircle2 size={18} />, color: 'bg-neutral-900', module: 'fdv' },
-        { id: 'inventory', label: 'Lager & Verktøy', icon: <Package size={18} />, color: 'bg-neutral-900', module: 'inventory' },
-        { id: 'vehicle', label: 'Kjørebok', icon: <Car size={18} />, color: 'bg-neutral-900', module: 'vehicle' },
-        { id: 'time_registration', label: 'Timeføring', icon: <Timer size={18} />, color: 'bg-neutral-900', module: 'time' },
+        { id: 'ai_analysis', label: t('ai_analysis', 'AI Analyse'), icon: <Brain size={18} />, color: 'bg-neutral-900', module: 'ai' },
+        { id: 'library', label: t('fdv_archive', 'FDV Arkiv'), icon: <Library size={18} />, color: 'bg-neutral-900', module: 'fdv' },
+        { id: 'integrations', label: t('integrations', 'Integrasjoner'), icon: <RefreshCw size={18} />, color: 'bg-neutral-900', module: 'fdv' },
+        { id: 'handover', label: t('handover_fdv', 'Overlevering / FDV'), icon: <CheckCircle2 size={18} />, color: 'bg-neutral-900', module: 'fdv' },
+        { id: 'inventory', label: t('inventory_module', 'Lager & Verktøy'), icon: <Package size={18} />, color: 'bg-neutral-900', module: 'inventory' },
+        { id: 'vehicle', label: t('vehicle_module', 'Kjørebok'), icon: <Car size={18} />, color: 'bg-neutral-900', module: 'vehicle' },
+        { id: 'time_registration', label: t('time_registration', 'Timeføring'), icon: <Timer size={18} />, color: 'bg-neutral-900', module: 'time' },
       ]
     }
   ].map(group => ({
@@ -347,7 +347,7 @@ export default function Dashboard({ isDemo = false, onOpenPortal }: { isDemo?: b
         setProjectWeather(weatherMap);
 
         // Generate insights with weather and inventory context
-        const insights = await dashboardAiService.generateInsights(projects, deviations, weatherMap, inventoryItems);
+        const insights = await dashboardAiService.generateInsights(projects, deviations, weatherMap, inventoryItems, i18n.language);
         if (insights && insights.length > 0) {
           setAiInsights(insights);
         }
@@ -738,7 +738,7 @@ export default function Dashboard({ isDemo = false, onOpenPortal }: { isDemo?: b
                 <h2 className="text-xl font-bold tracking-tight">Prosjektflyt</h2>
                 <div className="flex items-center gap-2 text-xs font-bold text-emerald-600 bg-emerald-50 px-3 py-1 rounded-full">
                   <Zap size={14} />
-                  AI-automatisering aktiv
+                  {t('ai_automation_active', 'AI-automatisering aktiv')}
                 </div>
               </div>
               <div className="grid grid-cols-2 sm:grid-cols-3 md:grid-cols-5 gap-4">
@@ -877,7 +877,7 @@ export default function Dashboard({ isDemo = false, onOpenPortal }: { isDemo?: b
                               </div>
                               <div>
                                 <div className="text-sm font-bold">Alt er i rute</div>
-                                <p className="text-xs text-neutral-400 mt-1">AI overvåker prosjektene dine. Ingen kritiske avvik funnet akkurat nå.</p>
+                                <p className="text-xs text-neutral-400 mt-1">{t('ai_monitoring_msg', 'AI overvåker prosjektene dine. Ingen kritiske avvik funnet akkurat nå.')}</p>
                               </div>
                             </div>
                           )}
@@ -950,7 +950,7 @@ export default function Dashboard({ isDemo = false, onOpenPortal }: { isDemo?: b
                                             setIsOfferModalOpen(true);
                                           }}
                                           className="p-1 text-emerald-400 hover:text-emerald-600 hover:bg-emerald-50 rounded-lg transition-all"
-                                          title="Generer Tilbud"
+                                          title={t('generate_offer', 'Generer Tilbud')}
                                         >
                                           <Sparkles size={12} className="sm:w-3.5 sm:h-3.5" />
                                         </button>
@@ -960,7 +960,7 @@ export default function Dashboard({ isDemo = false, onOpenPortal }: { isDemo?: b
                                             handleAnalyzeProject(project);
                                           }}
                                           className="p-1 text-indigo-400 hover:text-indigo-600 hover:bg-indigo-50 rounded-lg transition-all"
-                                          title="AI Prosjektanalyse"
+                                          title={t('ai_project_analysis', 'AI Prosjektanalyse')}
                                         >
                                           <Brain size={12} className="sm:w-3.5 sm:h-3.5" />
                                         </button>
@@ -1016,7 +1016,7 @@ export default function Dashboard({ isDemo = false, onOpenPortal }: { isDemo?: b
                                       className="flex items-center gap-1 text-[8px] sm:text-[10px] font-bold text-blue-600 bg-blue-50 px-1.5 sm:px-2 py-0.5 sm:py-1 rounded-lg hover:bg-blue-100 transition-colors"
                                     >
                                       <FileIcon size={10} className="sm:w-3 sm:h-3" />
-                                      Generer FDV
+                                      {t('generate_fdv', 'Generer FDV')}
                                     </button>
                                   )}
                                   <div className="flex items-center gap-1 text-[8px] sm:text-[10px] font-bold text-neutral-400">
@@ -1041,18 +1041,18 @@ export default function Dashboard({ isDemo = false, onOpenPortal }: { isDemo?: b
                     {/* Material & Inventory Widget */}
                     <div className="bg-white rounded-[2.5rem] border border-neutral-200 p-8 shadow-sm">
                       <div className="flex items-center justify-between mb-6">
-                        <h3 className="text-sm font-black uppercase tracking-widest text-neutral-400">Lager & Materiell</h3>
+                        <h3 className="text-sm font-black uppercase tracking-widest text-neutral-400">{t('inventory_materiell', 'Lager & Materiell')}</h3>
                         <button 
                           onClick={() => setIsInventoryModalOpen(true)}
                           className="text-xs font-bold text-blue-600 hover:underline"
                         >
-                          Se lager
+                          {t('see_inventory', 'Se lager')}
                         </button>
                       </div>
                       <div className="grid grid-cols-2 gap-4">
                         <div className="p-4 bg-blue-50 rounded-2xl border border-blue-100">
                           <div className="text-2xl font-bold text-blue-900">{inventoryStats.total}</div>
-                          <div className="text-[10px] font-black text-blue-600 uppercase tracking-widest mt-1">Artikler i lager</div>
+                          <div className="text-[10px] font-black text-blue-600 uppercase tracking-widest mt-1">{t('articles_in_stock', 'Artikler i lager')}</div>
                         </div>
                         <div className={cn(
                           "p-4 rounded-2xl border transition-all",
@@ -1065,14 +1065,14 @@ export default function Dashboard({ isDemo = false, onOpenPortal }: { isDemo?: b
                           <div className={cn(
                             "text-[10px] font-black uppercase tracking-widest mt-1",
                             inventoryStats.lowStock > 0 ? "text-rose-600" : "text-emerald-600"
-                          )}>Lav beholdning</div>
+                          )}>{t('low_stock', 'Lav beholdning')}</div>
                         </div>
                       </div>
                       <div className="mt-6 space-y-3">
                         <div className="flex items-center justify-between p-3 bg-neutral-50 rounded-xl">
                           <div className="flex items-center gap-3">
                             <Package size={16} className="text-neutral-400" />
-                            <span className="text-xs font-bold">Prosjektmateriell</span>
+                            <span className="text-xs font-bold">{t('project_materiell', 'Prosjektmateriell')}</span>
                           </div>
                           <span className="text-xs font-black text-neutral-900">{materials.length}</span>
                         </div>
@@ -1081,7 +1081,7 @@ export default function Dashboard({ isDemo = false, onOpenPortal }: { isDemo?: b
                           className="w-full py-3 bg-neutral-900 text-white rounded-xl text-[10px] font-black uppercase tracking-widest hover:bg-neutral-800 transition-all flex items-center justify-center gap-2"
                         >
                           <Brain size={14} />
-                          AI Lager-analyse
+                          {t('ai_inventory_analysis', 'AI Lager-analyse')}
                         </button>
                       </div>
                     </div>
@@ -1113,14 +1113,14 @@ export default function Dashboard({ isDemo = false, onOpenPortal }: { isDemo?: b
                         onClick={() => setIsActivityLogModalOpen(true)}
                         className="w-full mt-8 py-3 bg-neutral-50 rounded-xl text-xs font-bold text-neutral-600 hover:bg-neutral-100 transition-colors"
                       >
-                        Se alle logger
+                        {t('see_all_logs', 'Se alle logger')}
                       </button>
                     </div>
 
                     <div className="bg-emerald-600 rounded-[2.5rem] p-8 text-white shadow-lg shadow-emerald-100 relative overflow-hidden">
                       <div className="absolute top-0 right-0 w-32 h-32 bg-white/10 rounded-full -mr-16 -mt-16 blur-2xl"></div>
                       <div className="relative z-10">
-                        <h3 className="font-bold mb-2">AI Kostnadskontroll</h3>
+                        <h3 className="font-bold mb-2">{t('ai_cost_control', 'AI Kostnadskontroll')}</h3>
                         <p className="text-xs text-emerald-100 leading-relaxed mb-6">
                           Vi ser et avvik på materialbruk i Prosjekt Bjørklund. Foreslår å sjekke svinn-loggen.
                         </p>
@@ -1128,7 +1128,7 @@ export default function Dashboard({ isDemo = false, onOpenPortal }: { isDemo?: b
                           onClick={() => setIsDeviationModalOpen(true)}
                           className="w-full bg-white text-emerald-600 py-3 rounded-xl text-xs font-bold hover:bg-emerald-50 transition-colors"
                         >
-                          Analyser avvik
+                          {t('analyze_deviation', 'Analyser avvik')}
                         </button>
                       </div>
                     </div>
@@ -1237,12 +1237,12 @@ export default function Dashboard({ isDemo = false, onOpenPortal }: { isDemo?: b
                 {/* KPI Stats */}
                 <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-4 sm:gap-6">
                   <div className="bg-white p-6 rounded-3xl border border-neutral-200 shadow-sm">
-                    <div className="text-[10px] font-black uppercase tracking-widest text-neutral-400 mb-1">Totalt Antall Tilbud</div>
+                    <div className="text-[10px] font-black uppercase tracking-widest text-neutral-400 mb-1">{t('total_offers', 'Totalt Antall Tilbud')}</div>
                     <div className="text-3xl font-black text-neutral-900">{offers.length}</div>
-                    <div className="text-xs text-neutral-500 font-bold mt-1">Registrert i systemet</div>
+                    <div className="text-xs text-neutral-500 font-bold mt-1">{t('registered_in_system', 'Registrert i systemet')}</div>
                   </div>
                   <div className="bg-white p-6 rounded-3xl border border-neutral-200 shadow-sm">
-                    <div className="text-[10px] font-black uppercase tracking-widest text-amber-600 mb-1">Under Behandling / Utkast</div>
+                    <div className="text-[10px] font-black uppercase tracking-widest text-amber-600 mb-1">{t('in_progress_draft', 'Under Behandling / Utkast')}</div>
                     <div className="text-3xl font-black text-amber-600">
                       {offers.filter(o => o.status === 'draft').length}
                     </div>
@@ -1251,7 +1251,7 @@ export default function Dashboard({ isDemo = false, onOpenPortal }: { isDemo?: b
                     </div>
                   </div>
                   <div className="bg-white p-6 rounded-3xl border border-neutral-200 shadow-sm">
-                    <div className="text-[10px] font-black uppercase tracking-widest text-blue-600 mb-1">Sendt til Kunde</div>
+                    <div className="text-[10px] font-black uppercase tracking-widest text-blue-600 mb-1">{t('sent_to_customer', 'Sendt til Kunde')}</div>
                     <div className="text-3xl font-black text-blue-600">
                       {offers.filter(o => o.status === 'sent').length}
                     </div>
@@ -1260,7 +1260,7 @@ export default function Dashboard({ isDemo = false, onOpenPortal }: { isDemo?: b
                     </div>
                   </div>
                   <div className="bg-white p-6 rounded-3xl border border-neutral-200 shadow-sm">
-                    <div className="text-[10px] font-black uppercase tracking-widest text-emerald-600 mb-1">Godkjent / Vunnet</div>
+                    <div className="text-[10px] font-black uppercase tracking-widest text-emerald-600 mb-1">{t('accepted_won', 'Godkjent / Vunnet')}</div>
                     <div className="text-3xl font-black text-emerald-600">
                       {offers.filter(o => o.status === 'accepted').length}
                     </div>
@@ -1277,7 +1277,7 @@ export default function Dashboard({ isDemo = false, onOpenPortal }: { isDemo?: b
                       <Search size={16} className="absolute left-3.5 top-1/2 -translate-y-1/2 text-neutral-400" />
                       <input 
                         type="text"
-                        placeholder="Søk tilbud, kunde, kode..."
+                        placeholder={t('search_offers_placeholder', 'Søk tilbud, kunde, kode...')}
                         value={offerSearchTerm}
                         onChange={(e) => setOfferSearchTerm(e.target.value)}
                         className="w-full pl-10 pr-4 py-2.5 bg-neutral-50 border border-neutral-200 rounded-2xl text-xs font-bold outline-none focus:ring-2 focus:ring-emerald-500"
@@ -1293,7 +1293,7 @@ export default function Dashboard({ isDemo = false, onOpenPortal }: { isDemo?: b
                             offerStatusFilter === st ? "bg-white text-neutral-900 shadow-sm" : "text-neutral-500 hover:text-neutral-900"
                           )}
                         >
-                          {st === 'alle' ? 'Alle' : st === 'draft' ? 'Utkast' : st === 'sent' ? 'Sendt' : st === 'accepted' ? 'Godkjent' : 'Avslått'}
+                          {st === 'alle' ? t('filter_all', 'Alle') : st === 'draft' ? t('filter_draft', 'Utkast') : st === 'sent' ? t('filter_sent', 'Sendt') : st === 'accepted' ? t('filter_accepted', 'Godkjent') : t('filter_declined', 'Avslått')}
                         </button>
                       ))}
                     </div>
@@ -1307,7 +1307,7 @@ export default function Dashboard({ isDemo = false, onOpenPortal }: { isDemo?: b
                     className="w-full md:w-auto px-6 py-3 bg-emerald-600 hover:bg-emerald-500 text-white rounded-2xl font-bold text-xs sm:text-sm flex items-center justify-center gap-2 shadow-lg shadow-emerald-100 transition-all shrink-0"
                   >
                     <Plus size={18} />
-                    Opprett Nytt Tilbud
+                    {t('create_offer_now', 'Opprett Nytt Tilbud')}
                   </button>
                 </div>
 
@@ -1325,8 +1325,8 @@ export default function Dashboard({ isDemo = false, onOpenPortal }: { isDemo?: b
                     .length === 0 ? (
                     <div className="col-span-full bg-white p-12 rounded-3xl border border-neutral-200 text-center">
                       <Calculator size={48} className="mx-auto text-neutral-300 mb-4" />
-                      <h3 className="text-lg font-bold text-neutral-800">Ingen tilbud funnet</h3>
-                      <p className="text-xs text-neutral-500 mt-1 mb-6">Det er ikke opprettet noen tilbud som passer til valgt filter ennå.</p>
+                      <h3 className="text-lg font-bold text-neutral-800">{t('no_offers_found', 'Ingen tilbud funnet')}</h3>
+                      <p className="text-xs text-neutral-500 mt-1 mb-6">{t('no_offers_desc', 'Det er ikke opprettet noen tilbud som passer til valgt filter ennå.')}</p>
                       <button 
                         onClick={() => {
                           setOfferInitialData(null);
@@ -1334,7 +1334,7 @@ export default function Dashboard({ isDemo = false, onOpenPortal }: { isDemo?: b
                         }}
                         className="px-6 py-3 bg-emerald-600 hover:bg-emerald-500 text-white font-bold text-xs rounded-2xl transition-all"
                       >
-                        + Opprett et tilbud nå
+                        + {t('create_offer_now', 'Opprett Nytt Tilbud')}
                       </button>
                     </div>
                   ) : (
@@ -1358,7 +1358,7 @@ export default function Dashboard({ isDemo = false, onOpenPortal }: { isDemo?: b
                                 offer.status === 'declined' ? "bg-rose-100 text-rose-800" :
                                 "bg-amber-100 text-amber-800"
                               )}>
-                                {offer.status === 'accepted' ? 'Godkjent' : offer.status === 'sent' ? 'Sendt' : offer.status === 'declined' ? 'Avslått' : 'Utkast'}
+                                {offer.status === 'accepted' ? t('filter_accepted', 'Godkjent') : offer.status === 'sent' ? t('filter_sent', 'Sendt') : offer.status === 'declined' ? t('filter_declined', 'Avslått') : t('filter_draft', 'Utkast')}
                               </span>
                               {offer.projectCode && (
                                 <span className="text-[10px] font-bold text-neutral-400 bg-neutral-100 px-2 py-0.5 rounded-lg">
@@ -1372,7 +1372,7 @@ export default function Dashboard({ isDemo = false, onOpenPortal }: { isDemo?: b
                             </h3>
                             <p className="text-xs font-semibold text-neutral-500 mb-4 flex items-center gap-1">
                               <Users size={12} />
-                              Kunde: {offer.clientName}
+                              {t('customer', 'Kunde')}: {offer.clientName}
                             </p>
 
                             {offer.description && (
@@ -1382,14 +1382,14 @@ export default function Dashboard({ isDemo = false, onOpenPortal }: { isDemo?: b
                             )}
 
                             <div className="text-xs text-neutral-400 mb-4 space-y-1">
-                              <div>Poster: {offer.items?.length || 0} stiklinjer</div>
-                              {offer.validUntil && <div>Gyldig til: {offer.validUntil}</div>}
+                              <div>{offer.items?.length || 0} {t('items_count', 'stiklinjer')}</div>
+                              {offer.validUntil && <div>{t('valid_until', 'Gyldig til')}: {offer.validUntil}</div>}
                             </div>
                           </div>
 
                           <div className="pt-4 border-t border-neutral-100 mt-2">
                             <div className="flex items-baseline justify-between mb-4">
-                              <span className="text-[10px] font-black uppercase tracking-widest text-neutral-400">Totalbeløp</span>
+                              <span className="text-[10px] font-black uppercase tracking-widest text-neutral-400">{t('total_amount', 'Totalbeløp')}</span>
                               <span className="text-xl font-black text-emerald-600">{(offer.totalAmount || 0).toLocaleString()} kr</span>
                             </div>
 
@@ -1408,7 +1408,7 @@ export default function Dashboard({ isDemo = false, onOpenPortal }: { isDemo?: b
                                 }}
                                 className="px-3 py-2 bg-neutral-100 hover:bg-neutral-200 text-neutral-800 font-bold text-xs rounded-xl transition-all"
                               >
-                                Vis / Rediger
+                                {t('view_edit', 'Vis / Rediger')}
                               </button>
                               <button 
                                 onClick={() => {
@@ -1418,7 +1418,7 @@ export default function Dashboard({ isDemo = false, onOpenPortal }: { isDemo?: b
                                 }}
                                 className="px-3 py-2 bg-emerald-50 hover:bg-emerald-100 text-emerald-700 font-bold text-xs rounded-xl transition-all flex items-center justify-center gap-1"
                               >
-                                <Copy size={12} /> Kopiér Lenke
+                                <Copy size={12} /> {t('copy_link', 'Kopiér Lenke')}
                               </button>
                             </div>
                           </div>
@@ -1493,10 +1493,10 @@ export default function Dashboard({ isDemo = false, onOpenPortal }: { isDemo?: b
               <div className="space-y-8">
                 <div className="grid grid-cols-1 md:grid-cols-4 gap-6">
                   {[
-                    { label: 'Omsetning (Mnd)', value: '1.2M', trend: '+12%', color: 'text-emerald-600' },
-                    { label: 'Kostnader (Mnd)', value: '850K', trend: '-5%', color: 'text-rose-600' },
-                    { label: 'Resultat (Mnd)', value: '350K', trend: '+18%', color: 'text-blue-600' },
-                    { label: 'Utestående', value: '420K', trend: '5 fakturaer', color: 'text-amber-600' },
+                    { label: t('revenue_mnd', 'Omsetning (Mnd)'), value: '1.2M', trend: '+12%', color: 'text-emerald-600' },
+                    { label: t('costs_mnd', 'Kostnader (Mnd)'), value: '850K', trend: '-5%', color: 'text-rose-600' },
+                    { label: t('profit_mnd', 'Resultat (Mnd)'), value: '350K', trend: '+18%', color: 'text-blue-600' },
+                    { label: t('outstanding', 'Utestående'), value: '420K', trend: '5 fakturaer', color: 'text-amber-600' },
                   ].map((stat, i) => (
                     <div key={i} className="bg-white p-6 rounded-[2rem] border border-neutral-200 shadow-sm">
                       <div className="text-[10px] font-black uppercase tracking-widest text-neutral-400 mb-2">{stat.label}</div>
@@ -1508,7 +1508,7 @@ export default function Dashboard({ isDemo = false, onOpenPortal }: { isDemo?: b
 
                 <div className="grid grid-cols-1 lg:grid-cols-2 gap-8">
                   <div className="bg-white rounded-[2.5rem] border border-neutral-200 p-8 shadow-sm">
-                    <h3 className="font-bold mb-8">Omsetning vs Kostnader</h3>
+                    <h3 className="font-bold mb-8">{t('revenue_vs_costs', 'Omsetning vs Kostnader')}</h3>
                     <div className="h-80 w-full">
                       <ResponsiveContainer width="100%" height="100%">
                         <AreaChart data={[
@@ -1543,7 +1543,7 @@ export default function Dashboard({ isDemo = false, onOpenPortal }: { isDemo?: b
                   </div>
 
                   <div className="bg-white rounded-[2.5rem] border border-neutral-200 p-8 shadow-sm">
-                    <h3 className="font-bold mb-8">Lønnsomhet per Prosjekt</h3>
+                    <h3 className="font-bold mb-8">{t('profitability_per_project', 'Lønnsomhet per Prosjekt')}</h3>
                     <div className="h-80 w-full">
                       <ResponsiveContainer width="100%" height="100%">
                         <BarChart data={[
@@ -1587,11 +1587,11 @@ export default function Dashboard({ isDemo = false, onOpenPortal }: { isDemo?: b
                           <div className="p-2 bg-emerald-500 rounded-lg">
                             <Brain size={24} />
                           </div>
-                          <h2 className="text-2xl font-bold">AI Strategisk Analyse</h2>
+                          <h2 className="text-2xl font-bold">{t('ai_strategic_analysis', 'AI Strategisk Analyse')}</h2>
                         </div>
                         <button className="px-4 py-2 bg-white/10 hover:bg-white/20 rounded-xl text-xs font-bold transition-colors flex items-center gap-2">
                           <RefreshCw size={14} className="animate-spin-slow" />
-                          Oppdater analyse
+                          {t('update_analysis', 'Oppdater analyse')}
                         </button>
                       </div>
                       <p className="text-neutral-400 mb-8 max-w-xl">
@@ -1599,17 +1599,17 @@ export default function Dashboard({ isDemo = false, onOpenPortal }: { isDemo?: b
                       </p>
                       <div className="grid grid-cols-1 sm:grid-cols-3 gap-4">
                         <div className="p-4 bg-white/5 rounded-2xl border border-white/10">
-                          <div className="text-xs font-bold text-emerald-400 uppercase tracking-widest mb-2">Effektivitet</div>
+                          <div className="text-xs font-bold text-emerald-400 uppercase tracking-widest mb-2">{t('efficiency', 'Effektivitet')}</div>
                           <div className="text-3xl font-bold">92%</div>
                           <div className="text-[10px] text-neutral-500 mt-1">+4% fra forrige mnd</div>
                         </div>
                         <div className="p-4 bg-white/5 rounded-2xl border border-white/10">
-                          <div className="text-xs font-bold text-amber-400 uppercase tracking-widest mb-2">Risiko</div>
+                          <div className="text-xs font-bold text-amber-400 uppercase tracking-widest mb-2">{t('risk', 'Risiko')}</div>
                           <div className="text-3xl font-bold">Lav</div>
                           <div className="text-[10px] text-neutral-500 mt-1">Ingen kritiske avvik</div>
                         </div>
                         <div className="p-4 bg-white/5 rounded-2xl border border-white/10">
-                          <div className="text-xs font-bold text-blue-400 uppercase tracking-widest mb-2">Automatisering</div>
+                          <div className="text-xs font-bold text-blue-400 uppercase tracking-widest mb-2">{t('automation', 'Automatisering')}</div>
                           <div className="text-3xl font-bold">65%</div>
                           <div className="text-[10px] text-neutral-500 mt-1">8 oppgaver spart i dag</div>
                         </div>
@@ -1619,8 +1619,8 @@ export default function Dashboard({ isDemo = false, onOpenPortal }: { isDemo?: b
                   
                   <div className="bg-white rounded-[2.5rem] border border-neutral-200 p-8 shadow-sm">
                     <h3 className="font-bold mb-6 flex items-center justify-between">
-                      AI Anbefalinger
-                      <span className="text-[10px] font-black bg-emerald-100 text-emerald-700 px-2 py-0.5 rounded">3 NYE</span>
+                      {t('ai_recommendations', 'AI Anbefalinger')}
+                      <span className="text-[10px] font-black bg-emerald-100 text-emerald-700 px-2 py-0.5 rounded">{t('new_badge', '3 NYE')}</span>
                     </h3>
                     <div className="space-y-4">
                       {[
@@ -1645,11 +1645,11 @@ export default function Dashboard({ isDemo = false, onOpenPortal }: { isDemo?: b
                 <div className="grid grid-cols-1 lg:grid-cols-2 gap-8">
                   <div className="bg-white rounded-[2.5rem] border border-neutral-200 p-8 shadow-sm">
                     <div className="flex items-center justify-between mb-8">
-                      <h3 className="font-bold">Trendanalyse: Avvikstyper</h3>
+                      <h3 className="font-bold">{t('trend_analysis', 'Trendanalyse: Avvikstyper')}</h3>
                       <div className="flex gap-4 text-xs font-bold uppercase tracking-widest text-neutral-400">
-                        <span className="flex items-center gap-2"><div className="w-2 h-2 rounded-full bg-emerald-500" /> Kvalitet</span>
+                        <span className="flex items-center gap-2"><div className="w-2 h-2 rounded-full bg-emerald-500" /> {t('quality', 'Kvalitet')}</span>
                         <span className="flex items-center gap-2"><div className="w-2 h-2 rounded-full bg-amber-500" /> HMS</span>
-                        <span className="flex items-center gap-2"><div className="w-2 h-2 rounded-full bg-blue-500" /> Material</span>
+                        <span className="flex items-center gap-2"><div className="w-2 h-2 rounded-full bg-blue-500" /> {t('materials', 'Materialer')}</span>
                       </div>
                     </div>
                     <div className="h-48 flex items-end gap-3">
@@ -1667,10 +1667,10 @@ export default function Dashboard({ isDemo = false, onOpenPortal }: { isDemo?: b
                       ))}
                     </div>
                     <div className="flex justify-between mt-4 text-[10px] font-bold uppercase tracking-widest text-neutral-400">
-                      <span>Uke 1</span>
-                      <span>Uke 4</span>
-                      <span>Uke 8</span>
-                      <span>Uke 12</span>
+                      <span>{t('week', 'Uke')} 1</span>
+                      <span>{t('week', 'Uke')} 4</span>
+                      <span>{t('week', 'Uke')} 8</span>
+                      <span>{t('week', 'Uke')} 12</span>
                     </div>
                   </div>
 
@@ -1678,20 +1678,20 @@ export default function Dashboard({ isDemo = false, onOpenPortal }: { isDemo?: b
                     <div className="flex items-center justify-between mb-6">
                       <h3 className="font-bold flex items-center gap-2">
                         <Sparkles size={18} className="text-emerald-500" />
-                        Smart Automatisering
+                        {t('smart_automation', 'Smart Automatisering')}
                       </h3>
                       <button 
                         onClick={handleGenerateWeeklyReport}
                         className="text-[10px] font-black uppercase tracking-widest text-emerald-600 hover:underline"
                       >
-                        Generer Leder-rapport
+                        {t('generate_executive_report', 'Generer Leder-rapport')}
                       </button>
                       <button 
                         onClick={handleAnalyzeDeviations}
                         disabled={isReportLoading || deviations.length === 0}
                         className="text-[10px] font-black uppercase tracking-widest text-indigo-600 hover:underline disabled:opacity-50"
                       >
-                        {isReportLoading && reportType === 'deviation_analysis' ? 'Analyserer...' : 'Analyser Avvik (AI)'}
+                        {isReportLoading && reportType === 'deviation_analysis' ? 'Analyserer...' : t('analyze_deviations_ai', 'Analyser Avvik (AI)')}
                       </button>
                     </div>
                     <div className="space-y-4">

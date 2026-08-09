@@ -20,9 +20,12 @@ export const dashboardAiService = {
     projects: Project[], 
     deviations: Deviation[], 
     weatherData?: Record<string, WeatherData>,
-    inventory: InventoryItem[] = []
+    inventory: InventoryItem[] = [],
+    lang: string = 'no'
   ): Promise<DashboardInsight[]> {
     if (projects.length === 0) return [];
+
+    const langName = lang === 'en' ? 'English' : lang === 'pl' ? 'Polish' : lang === 'lt' ? 'Lithuanian' : 'Norwegian';
 
     const weatherContext = weatherData ? `
       VÆRDATA PR PROSJEKT:
@@ -35,10 +38,12 @@ export const dashboardAiService = {
     ` : '';
 
     const prompt = `
-      Du er en AI-rådgiver for en norsk byggmester. 
+      Du er en AI-rådgiver for en byggmester. 
       Analyser følgende prosjektdata, avvik, værforhold og lagerstatus for å gi 4 smarte, handlingsorienterte innsikter.
-      Inkluder minst én PREDRIKTIV analyse (hva som kan skje fremover basert på trender, vær eller lagerbeholdning).
+      Inkluder minst én PREDIKTIV analyse (hva som kan skje fremover basert på trender, vær eller lagerbeholdning).
       
+      VIKTIG: Alt av tittel (title), beskrivelse (description) og knappetekst (action) SKAL genereres på språket: ${langName}.
+
       PROSJEKTER:
       ${JSON.stringify(projects.map(p => ({ id: p.id, name: p.name, stage: p.stage, progress: p.progress, docLevel: p.documentationLevel, location: p.location })))}
       
@@ -51,15 +56,15 @@ export const dashboardAiService = {
       OPPGAVE:
       Identifiser kritiske risikoer, trender, eller muligheter for effektivisering. 
       Fokuser på HMS, TEK17-overholdelse, prosjektfremdrift og lagerstyring.
-      Bruk værdata for å forutse utfordringer (f.eks. stopp i kranarbeid pga vind, eller behov for tildekking pga regn).
-      Bruk lagerdata for å varsle om lav beholdning som kan forsinke prosjekter.
+      Bruk værdata for å forutse utfordringer.
+      Bruk lagerdata for å varsle om lav beholdning.
       
       Returner et JSON-array med objekter:
       {
         "id": "string",
-        "title": "Kort, fengende tittel",
-        "description": "Forklar innsikten og hvorfor den er viktig",
-        "action": "Tekst på handlingsknapp",
+        "title": "Kort tittel på ${langName}",
+        "description": "Innsikt og forklaring på ${langName}",
+        "action": "Tekst på handlingsknapp på ${langName}",
         "actionId": "ID for handlingen (velg fra: 'new_project', 'offers', 'contracts', 'hms', 'log_deviation', 'take_photo', 'library', 'time_registration', 'inventory')",
         "type": "warning" | "info" | "success" | "predictive",
         "icon": "alert" | "zap" | "camera" | "check" | "trending" | "cloud"
