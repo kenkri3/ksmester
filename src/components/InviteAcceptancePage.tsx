@@ -198,11 +198,10 @@ const InviteAcceptancePage: React.FC<InviteAcceptancePageProps> = ({ token }) =>
                 </p>
               </div>
               <button 
-                onClick={login}
-                className="w-full py-4 bg-neutral-900 text-white rounded-2xl font-bold flex items-center justify-center gap-3 hover:bg-neutral-800 transition-all shadow-xl shadow-neutral-100"
+                onClick={() => window.location.href = '/'}
+                className="w-full py-4 bg-emerald-600 text-white rounded-2xl font-bold flex items-center justify-center gap-3 hover:bg-emerald-500 transition-all shadow-xl shadow-emerald-100"
               >
-                <img src="https://www.google.com/favicon.ico" alt="Google" className="w-5 h-5" />
-                Logg inn med Google
+                Gå til innlogging
               </button>
             </div>
           ) : (

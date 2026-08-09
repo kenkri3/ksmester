@@ -279,8 +279,8 @@ async function startServer() {
   // POST /api/auth/login
   app.post("/api/auth/login", async (req, res) => {
     const { email, password } = req.body;
-    if (!email) {
-      return res.status(400).json({ error: "E-post påkrevd." });
+    if (!email || !password) {
+      return res.status(400).json({ error: "Både e-post og passord må fylles ut." });
     }
 
     try {
@@ -292,27 +292,16 @@ async function startServer() {
         userRecord = inMemoryStore.users.find(u => u.email.toLowerCase() === email.toLowerCase());
       }
 
-      if (userRecord && password) {
-        const valid = await bcrypt.compare(password, userRecord.password).catch(() => true);
-        if (!valid && userRecord.password !== password) {
-          return res.status(401).json({ error: "Ugyldig passord." });
-        }
+      if (!userRecord) {
+        return res.status(401).json({ error: "Ugyldig e-post eller passord." });
       }
 
-      // If user is not found, auto create demo user session for instant seamless UX
-      if (!userRecord) {
-        userRecord = {
-          id: "u-" + Math.random().toString(36).substring(2, 9),
-          email: email.toLowerCase(),
-          displayName: email.split("@")[0],
-          role: email.toLowerCase() === "kenkri3@gmail.com" ? "admin" : "worker",
-          trade: "Byggmester",
-          company: "Mester Entreprenør AS",
-          companyId: "comp-001",
-          subscriptionStatus: "active",
-          createdAt: new Date().toISOString()
-        };
-        inMemoryStore.users.push(userRecord);
+      // Validate password against hashed password or plaintext fallback
+      const passwordValid = await bcrypt.compare(password, userRecord.password).catch(() => false);
+      const isPlaintextMatch = userRecord.password === password;
+
+      if (!passwordValid && !isPlaintextMatch) {
+        return res.status(401).json({ error: "Ugyldig e-post eller passord." });
       }
 
       const userObj = {
@@ -320,7 +309,7 @@ async function startServer() {
         uid: userRecord.id,
         email: userRecord.email,
         displayName: userRecord.display_name || userRecord.displayName || userRecord.email.split("@")[0],
-        role: userRecord.role || "admin",
+        role: userRecord.role || "worker",
         trade: userRecord.trade || "Tømrer",
         company: userRecord.company || "Mester Entreprenør AS",
         companyId: userRecord.company_id || userRecord.companyId || "comp-001",

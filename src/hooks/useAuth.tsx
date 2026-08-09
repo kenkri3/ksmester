@@ -63,31 +63,24 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
             id: u.id || u.uid,
             email: u.email,
             displayName: u.displayName || u.email.split('@')[0],
-            role: u.role || 'admin',
+            role: u.role || 'worker',
             trade: u.trade || 'Tømrer',
             company: u.company || 'Mester Entreprenør AS',
             companyId: u.companyId || 'comp-001',
             subscriptionStatus: u.subscriptionStatus || 'active'
           });
-          setRole(u.role || 'admin');
+          setRole(u.role || 'worker');
           setTrade(u.trade || 'Tømrer');
           setCompany(u.company || 'Mester Entreprenør AS');
           setSubscriptionStatus(u.subscriptionStatus || 'active');
         } else {
-          // Check local fallback session
-          const savedFallback = localStorage.getItem('localFallbackAuth');
-          if (savedFallback) {
-            try {
-              const parsed = JSON.parse(savedFallback);
-              setFallbackUser(parsed.email, parsed.name, parsed.company);
-            } catch (e) {
-              setUser(null);
-              setRole(null);
-            }
-          }
+          setUser(null);
+          setRole(null);
         }
       } catch (err) {
         console.warn("Auth check notice:", err);
+        setUser(null);
+        setRole(null);
       } finally {
         setLoading(false);
         setIsAuthReady(true);
@@ -97,101 +90,55 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
     initAuth();
   }, []);
 
-  const setFallbackUser = (emailVal: string, nameVal?: string, companyVal?: string) => {
-    const isOwner = emailVal === 'kenkri3@gmail.com' || emailVal.toLowerCase().includes('admin') || !emailVal;
-    const userObj: User = {
-      uid: 'u-admin-123',
-      id: 'u-admin-123',
-      displayName: nameVal || (emailVal ? emailVal.split('@')[0] : 'Ken (Admin)'),
-      email: emailVal || 'kenkri3@gmail.com',
-      role: isOwner ? 'admin' : 'worker',
-      trade: 'Tømrer',
-      company: companyVal || 'Mester Entreprenør AS',
-      companyId: 'comp-001',
-      subscriptionStatus: 'active'
-    };
-    setUser(userObj);
-    setRole(userObj.role);
-    setCompany(userObj.company!);
-    setTrade(userObj.trade!);
-    setSubscriptionStatus('active');
-    setTrialDaysLeft(null);
-    localStorage.setItem('localFallbackAuth', JSON.stringify({
-      email: userObj.email,
-      name: userObj.displayName,
-      company: userObj.company
-    }));
-  };
-
   const login = async () => {
-    try {
-      const res = await api.login('kenkri3@gmail.com', 'admin123');
-      if (res && res.user) {
-        const u = res.user;
-        setUser({
-          uid: u.id || u.uid,
-          id: u.id || u.uid,
-          email: u.email,
-          displayName: u.displayName,
-          role: u.role,
-          trade: u.trade,
-          company: u.company,
-          companyId: u.companyId,
-          subscriptionStatus: u.subscriptionStatus
-        });
-        setRole(u.role);
-        setCompany(u.company);
-      }
-    } catch (err) {
-      setFallbackUser('kenkri3@gmail.com', 'Ken (Admin)', 'Mester Entreprenør AS');
-    }
+    throw new Error('Vennligst oppgi e-postadresse og passord for å logge inn.');
   };
 
   const loginWithEmail = async (email: string, pass: string) => {
-    try {
-      const res = await api.login(email, pass);
-      if (res && res.user) {
-        const u = res.user;
-        setUser({
-          uid: u.id || u.uid,
-          id: u.id || u.uid,
-          email: u.email,
-          displayName: u.displayName,
-          role: u.role,
-          trade: u.trade,
-          company: u.company,
-          companyId: u.companyId,
-          subscriptionStatus: u.subscriptionStatus
-        });
-        setRole(u.role);
-        setCompany(u.company);
-      }
-    } catch (err) {
-      setFallbackUser(email, email.split('@')[0], 'Mester Entreprenør AS');
+    const res = await api.login(email, pass);
+    if (res && res.user) {
+      const u = res.user;
+      setUser({
+        uid: u.id || u.uid,
+        id: u.id || u.uid,
+        email: u.email,
+        displayName: u.displayName || u.email.split('@')[0],
+        role: u.role || 'worker',
+        trade: u.trade || 'Tømrer',
+        company: u.company || 'Mester Entreprenør AS',
+        companyId: u.companyId || 'comp-001',
+        subscriptionStatus: u.subscriptionStatus || 'active'
+      });
+      setRole(u.role || 'worker');
+      setCompany(u.company || 'Mester Entreprenør AS');
+      setTrade(u.trade || 'Tømrer');
+      setSubscriptionStatus(u.subscriptionStatus || 'active');
+    } else {
+      throw new Error('Kunne ikke logge inn.');
     }
   };
 
   const registerWithEmail = async (email: string, pass: string, name: string, company: string) => {
-    try {
-      const res = await api.register({ email, password: pass, name, company });
-      if (res && res.user) {
-        const u = res.user;
-        setUser({
-          uid: u.id || u.uid,
-          id: u.id || u.uid,
-          email: u.email,
-          displayName: u.displayName,
-          role: u.role,
-          trade: u.trade,
-          company: u.company,
-          companyId: u.companyId,
-          subscriptionStatus: u.subscriptionStatus
-        });
-        setRole(u.role);
-        setCompany(u.company);
-      }
-    } catch (err) {
-      setFallbackUser(email, name, company);
+    const res = await api.register({ email, password: pass, name, company });
+    if (res && res.user) {
+      const u = res.user;
+      setUser({
+        uid: u.id || u.uid,
+        id: u.id || u.uid,
+        email: u.email,
+        displayName: u.displayName || name || u.email.split('@')[0],
+        role: u.role || 'worker',
+        trade: u.trade || 'Tømrer',
+        company: u.company || company,
+        companyId: u.companyId || 'comp-001',
+        subscriptionStatus: u.subscriptionStatus || 'active'
+      });
+      setRole(u.role || 'worker');
+      setCompany(u.company || company);
+      setTrade(u.trade || 'Tømrer');
+      setSubscriptionStatus(u.subscriptionStatus || 'active');
+    } else {
+      throw new Error('Kunne ikke registrere bruker.');
     }
   };
 

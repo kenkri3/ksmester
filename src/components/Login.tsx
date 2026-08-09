@@ -145,18 +145,7 @@ export default function Login({ onBack }: { onBack?: () => void }) {
           )}
 
           {mode === 'login' && (
-            <div className="flex justify-between items-center px-2">
-              <button
-                type="button"
-                onClick={() => {
-                  setEmail('kenkri3@gmail.com');
-                  setPassword('admin123');
-                }}
-                className="text-xs text-neutral-500 font-medium hover:text-emerald-600 transition-colors flex items-center gap-1"
-              >
-                <ShieldCheck size={14} className="text-emerald-600" />
-                Fyll ut admin info
-              </button>
+            <div className="flex justify-end items-center px-2">
               <button 
                 type="button"
                 onClick={() => setMode('forgot')}
@@ -190,42 +179,6 @@ export default function Login({ onBack }: { onBack?: () => void }) {
             )}
           </button>
         </form>
-
-        {mode === 'login' && (
-          <div className="mt-4">
-            <button
-              type="button"
-              onClick={login}
-              disabled={loading || isSubmitting}
-              className="w-full bg-neutral-900 text-white py-3.5 rounded-2xl font-bold flex items-center justify-center gap-2 hover:bg-neutral-800 transition-all active:scale-[0.98] text-sm shadow-md"
-            >
-              <ShieldCheck size={18} className="text-emerald-400" />
-              Logg inn direkte som Administrator
-            </button>
-          </div>
-        )}
-
-        {mode !== 'forgot' && (
-          <>
-            <div className="relative my-8">
-              <div className="absolute inset-0 flex items-center">
-                <div className="w-full border-t border-neutral-100"></div>
-              </div>
-              <div className="relative flex justify-center text-xs uppercase">
-                <span className="bg-white px-4 text-neutral-400 font-bold tracking-widest">{t('or', 'Eller')}</span>
-              </div>
-            </div>
-
-            <button
-              onClick={login}
-              disabled={loading}
-              className="w-full bg-white border border-neutral-200 text-neutral-700 py-4 rounded-2xl font-bold flex items-center justify-center gap-3 hover:bg-neutral-50 transition-all active:scale-[0.98] disabled:opacity-50 group"
-            >
-              <img src="https://www.google.com/favicon.ico" alt="Google" className="w-5 h-5" />
-              {t('login_with_google', 'Logg inn med Google')}
-            </button>
-          </>
-        )}
 
         <p className="mt-8 text-center text-sm text-neutral-500">
           {mode === 'login' ? (
