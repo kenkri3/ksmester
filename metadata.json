@@ -1,10 +1,7 @@
 {
   "name": "Remix KS MesterAI Elite",
   "description": "Det mest avanserte økosystemet for norske håndverksbedrifter. Autonom HMS/KS, AI-drevet SJA og usynlig dokumentasjon. Systemet som tenker mens du bygger.",
-  "requestFramePermissions": [
-    "camera",
-    "microphone"
-  ],
+  "requestFramePermissions": [],
   "majorCapabilities": [
     "MAJOR_CAPABILITY_SERVER_SIDE_GEMINI_API"
   ]
