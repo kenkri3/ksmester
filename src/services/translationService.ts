@@ -1,6 +1,4 @@
-import { GoogleGenAI } from "@google/genai";
-
-const ai = new GoogleGenAI({ apiKey: process.env.GEMINI_API_KEY || '' });
+import { generateAiContent } from "./aiClient";
 
 export interface TranslationResult {
   translatedText: string;
@@ -32,12 +30,9 @@ export const translationService = {
     `;
 
     try {
-      const response = await ai.models.generateContent({
-        model: "gemini-3-flash-preview",
-        contents: prompt,
-        config: {
-          responseMimeType: "application/json"
-        }
+      const response = await generateAiContent({
+        prompt: prompt,
+        responseMimeType: "application/json"
       });
 
       const result = JSON.parse(response.text || '{}');

@@ -1,6 +1,4 @@
-import { GoogleGenAI, Type } from "@google/genai";
-
-const ai = new GoogleGenAI({ apiKey: process.env.GEMINI_API_KEY || '' });
+import { generateAiContent } from "./aiClient";
 
 export interface VisionAnalysisResult {
   elements: string[];
@@ -41,33 +39,31 @@ export const visionService = {
     `;
 
     try {
-      const response = await ai.models.generateContent({
-        model: "gemini-3-flash-preview", 
-        contents: [
+      const response = await generateAiContent({
+        model: "gemini-2.5-flash", 
+        prompt: prompt,
+        images: [
           {
             inlineData: {
               data: base64Image.split(',')[1] || base64Image,
               mimeType: mimeType
             }
-          },
-          { text: prompt }
-        ],
-        config: {
-          responseMimeType: "application/json",
-          responseSchema: {
-            type: Type.OBJECT,
-            properties: {
-              status: { type: Type.STRING, enum: ["approved", "deviation"] },
-              title: { type: Type.STRING },
-              description: { type: Type.STRING },
-              elements: { type: Type.ARRAY, items: { type: Type.STRING } },
-              tips: { type: Type.ARRAY, items: { type: Type.STRING } },
-              nextSteps: { type: Type.ARRAY, items: { type: Type.STRING } },
-              confidence: { type: Type.NUMBER },
-              recommendation: { type: Type.STRING }
-            },
-            required: ["status", "title", "description", "elements", "tips", "nextSteps", "confidence", "recommendation"]
           }
+        ],
+        responseMimeType: "application/json",
+        responseSchema: {
+          type: "OBJECT",
+          properties: {
+            status: { type: "STRING", enum: ["approved", "deviation"] },
+            title: { type: "STRING" },
+            description: { type: "STRING" },
+            elements: { type: "ARRAY", items: { type: "STRING" } },
+            tips: { type: "ARRAY", items: { type: "STRING" } },
+            nextSteps: { type: "ARRAY", items: { type: "STRING" } },
+            confidence: { type: "NUMBER" },
+            recommendation: { type: "STRING" }
+          },
+          required: ["status", "title", "description", "elements", "tips", "nextSteps", "confidence", "recommendation"]
         }
       });
 

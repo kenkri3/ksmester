@@ -1,8 +1,6 @@
-import { GoogleGenAI, Type } from "@google/genai";
+import { generateAiContent } from "./aiClient";
 import { Project, ProjectMaterial } from "../types";
 import { nobbService } from "./nobbService";
-
-const ai = new GoogleGenAI({ apiKey: process.env.GEMINI_API_KEY || '' });
 
 export interface FDVDocument {
   section: string;
@@ -64,24 +62,21 @@ export const fdvService = {
     `;
 
     try {
-      const response = await ai.models.generateContent({
-        model: "gemini-3-flash-preview",
-        contents: prompt,
-        config: {
-          responseMimeType: "application/json",
-          responseSchema: {
-            type: Type.ARRAY,
-            items: {
-              type: Type.OBJECT,
-              properties: {
-                section: { type: Type.STRING },
-                description: { type: Type.STRING },
-                maintenanceInterval: { type: Type.STRING },
-                instructions: { type: Type.ARRAY, items: { type: Type.STRING } },
-                supplierCategory: { type: Type.STRING }
-              },
-              required: ["section", "description", "maintenanceInterval", "instructions", "supplierCategory"]
-            }
+      const response = await generateAiContent({
+        prompt: prompt,
+        responseMimeType: "application/json",
+        responseSchema: {
+          type: "ARRAY",
+          items: {
+            type: "OBJECT",
+            properties: {
+              section: { type: "STRING" },
+              description: { type: "STRING" },
+              maintenanceInterval: { type: "STRING" },
+              instructions: { type: "ARRAY", items: { type: "STRING" } },
+              supplierCategory: { type: "STRING" }
+            },
+            required: ["section", "description", "maintenanceInterval", "instructions", "supplierCategory"]
           }
         }
       });

@@ -1,8 +1,6 @@
-import { GoogleGenAI, Type } from "@google/genai";
+import { generateAiContent } from "./aiClient";
 import { Project, Deviation, ProjectMaterial, InventoryItem } from "../types";
 import { WeatherData } from "./weatherService";
-
-const ai = new GoogleGenAI({ apiKey: process.env.GEMINI_API_KEY || '' });
 
 export interface DashboardInsight {
   id: string;
@@ -70,26 +68,23 @@ export const dashboardAiService = {
     `;
 
     try {
-      const response = await ai.models.generateContent({
-        model: "gemini-3-flash-preview",
-        contents: prompt,
-        config: {
-          responseMimeType: "application/json",
-          responseSchema: {
-            type: Type.ARRAY,
-            items: {
-              type: Type.OBJECT,
-              properties: {
-                id: { type: Type.STRING },
-                title: { type: Type.STRING },
-                description: { type: Type.STRING },
-                action: { type: Type.STRING },
-                actionId: { type: Type.STRING },
-                type: { type: Type.STRING, enum: ["warning", "info", "success", "predictive"] },
-                icon: { type: Type.STRING, enum: ["alert", "zap", "camera", "check", "trending", "cloud"] }
-              },
-              required: ["id", "title", "description", "action", "actionId", "type", "icon"]
-            }
+      const response = await generateAiContent({
+        prompt: prompt,
+        responseMimeType: "application/json",
+        responseSchema: {
+          type: "ARRAY",
+          items: {
+            type: "OBJECT",
+            properties: {
+              id: { type: "STRING" },
+              title: { type: "STRING" },
+              description: { type: "STRING" },
+              action: { type: "STRING" },
+              actionId: { type: "STRING" },
+              type: { type: "STRING", enum: ["warning", "info", "success", "predictive"] },
+              icon: { type: "STRING", enum: ["alert", "zap", "camera", "check", "trending", "cloud"] }
+            },
+            required: ["id", "title", "description", "action", "actionId", "type", "icon"]
           }
         }
       });
@@ -143,41 +138,38 @@ export const dashboardAiService = {
     `;
 
     try {
-      const response = await ai.models.generateContent({
-        model: "gemini-3-flash-preview",
-        contents: prompt,
-        config: {
-          responseMimeType: "application/json",
-          responseSchema: {
-            type: Type.OBJECT,
-            properties: {
-              overallStatus: { type: Type.STRING, enum: ["On Track", "At Risk", "Critical"] },
-              summary: { type: Type.STRING },
-              metrics: {
-                type: Type.OBJECT,
-                properties: {
-                  budgetHealth: { type: Type.STRING },
-                  documentationHealth: { type: Type.NUMBER },
-                  safetyScore: { type: Type.NUMBER }
-                },
-                required: ["budgetHealth", "documentationHealth", "safetyScore"]
+      const response = await generateAiContent({
+        prompt: prompt,
+        responseMimeType: "application/json",
+        responseSchema: {
+          type: "OBJECT",
+          properties: {
+            overallStatus: { type: "STRING", enum: ["On Track", "At Risk", "Critical"] },
+            summary: { type: "STRING" },
+            metrics: {
+              type: "OBJECT",
+              properties: {
+                budgetHealth: { type: "STRING" },
+                documentationHealth: { type: "NUMBER" },
+                safetyScore: { type: "NUMBER" }
               },
-              identifiedRisks: {
-                type: Type.ARRAY,
-                items: {
-                  type: Type.OBJECT,
-                  properties: {
-                    risk: { type: Type.STRING },
-                    impact: { type: Type.STRING },
-                    mitigation: { type: Type.STRING }
-                  },
-                  required: ["risk", "impact", "mitigation"]
-                }
-              },
-              recommendations: { type: Type.ARRAY, items: { type: Type.STRING } }
+              required: ["budgetHealth", "documentationHealth", "safetyScore"]
             },
-            required: ["overallStatus", "summary", "metrics", "identifiedRisks", "recommendations"]
-          }
+            identifiedRisks: {
+              type: "ARRAY",
+              items: {
+                type: "OBJECT",
+                properties: {
+                  risk: { type: "STRING" },
+                  impact: { type: "STRING" },
+                  mitigation: { type: "STRING" }
+                },
+                required: ["risk", "impact", "mitigation"]
+              }
+            },
+            recommendations: { type: "ARRAY", items: { type: "STRING" } }
+          },
+          required: ["overallStatus", "summary", "metrics", "identifiedRisks", "recommendations"]
         }
       });
 

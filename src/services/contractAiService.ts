@@ -1,6 +1,4 @@
-import { GoogleGenAI, Type } from "@google/genai";
-
-const ai = new GoogleGenAI({ apiKey: process.env.GEMINI_API_KEY || '' });
+import { generateAiContent } from "./aiClient";
 
 export interface ContractRisk {
   risk: string;
@@ -30,22 +28,19 @@ export const contractAiService = {
     `;
 
     try {
-      const response = await ai.models.generateContent({
-        model: "gemini-3-flash-preview",
-        contents: prompt,
-        config: {
-          responseMimeType: "application/json",
-          responseSchema: {
-            type: Type.ARRAY,
-            items: {
-              type: Type.OBJECT,
-              properties: {
-                risk: { type: Type.STRING },
-                severity: { type: Type.STRING, enum: ["low", "medium", "high"] },
-                recommendation: { type: Type.STRING }
-              },
-              required: ["risk", "severity", "recommendation"]
-            }
+      const response = await generateAiContent({
+        prompt: prompt,
+        responseMimeType: "application/json",
+        responseSchema: {
+          type: "ARRAY",
+          items: {
+            type: "OBJECT",
+            properties: {
+              risk: { type: "STRING" },
+              severity: { type: "STRING", enum: ["low", "medium", "high"] },
+              recommendation: { type: "STRING" }
+            },
+            required: ["risk", "severity", "recommendation"]
           }
         }
       });
@@ -82,22 +77,19 @@ export const contractAiService = {
     `;
 
     try {
-      const response = await ai.models.generateContent({
-        model: "gemini-3-flash-preview",
-        contents: prompt,
-        config: {
-          responseMimeType: "application/json",
-          responseSchema: {
-            type: Type.ARRAY,
-            items: {
-              type: Type.OBJECT,
-              properties: {
-                risk: { type: Type.STRING },
-                severity: { type: Type.STRING, enum: ["low", "medium", "high"] },
-                recommendation: { type: Type.STRING }
-              },
-              required: ["risk", "severity", "recommendation"]
-            }
+      const response = await generateAiContent({
+        prompt: prompt,
+        responseMimeType: "application/json",
+        responseSchema: {
+          type: "ARRAY",
+          items: {
+            type: "OBJECT",
+            properties: {
+              risk: { type: "STRING" },
+              severity: { type: "STRING", enum: ["low", "medium", "high"] },
+              recommendation: { type: "STRING" }
+            },
+            required: ["risk", "severity", "recommendation"]
           }
         }
       });

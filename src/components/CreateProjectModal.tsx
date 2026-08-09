@@ -4,7 +4,7 @@ import { X, MapPin, HardHat, Loader2, Sparkles, Users, Clock, Package, TrendingU
 import { db, collection, setDoc, doc, OperationType, handleFirestoreError, Timestamp, auth } from '../services/firebase';
 import { useTranslation } from 'react-i18next';
 import { useAuth } from '../hooks/useAuth';
-import { GoogleGenAI } from "@google/genai";
+import { generateAiContent } from '../services/aiClient';
 import { resourceService, ResourceEstimation } from '../services/resourceService';
 import { locationService, AddressInfo } from '../services/locationService';
 import { cn } from '@/src/lib/utils';
@@ -74,10 +74,8 @@ export default function CreateProjectModal({ isOpen, onClose }: CreateProjectMod
     if (!formData.name) return;
     setIsAiGenerating(true);
     try {
-      const ai = new GoogleGenAI({ apiKey: process.env.GEMINI_API_KEY || '' });
-      const response = await ai.models.generateContent({
-        model: "gemini-3-flash-preview",
-        contents: `Som en profesjonell prosjektleder i byggebransjen, skriv en kort og profesjonell prosjektbeskrivelse for et prosjekt med navn: "${formData.name}". 
+      const response = await generateAiContent({
+        prompt: `Som en profesjonell prosjektleder i byggebransjen, skriv en kort og profesjonell prosjektbeskrivelse for et prosjekt med navn: "${formData.name}". 
         Inkluder typiske faser og fokusområder for et slikt prosjekt i Norge. Svar på norsk.`,
       });
       if (response.text) {

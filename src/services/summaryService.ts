@@ -1,7 +1,5 @@
-import { GoogleGenAI } from "@google/genai";
+import { generateAiContent } from "./aiClient";
 import { Project, Deviation } from "../types";
-
-const ai = new GoogleGenAI({ apiKey: process.env.GEMINI_API_KEY || '' });
 
 export const summaryService = {
   async generateProjectSummary(project: Project, activities: any[], deviations: Deviation[]) {
@@ -23,9 +21,8 @@ export const summaryService = {
     `;
 
     try {
-      const response = await ai.models.generateContent({
-        model: "gemini-3-flash-preview",
-        contents: prompt
+      const response = await generateAiContent({
+        prompt: prompt
       });
       return response.text;
     } catch (error) {

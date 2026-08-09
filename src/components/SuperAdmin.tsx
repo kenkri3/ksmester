@@ -33,7 +33,7 @@ import {
   BrainCircuit,
   Copy
 } from 'lucide-react';
-import { GoogleGenAI } from "@google/genai";
+import { generateAiContent } from '../services/aiClient';
 import { db, collection, onSnapshot, query, where, doc, updateDoc, deleteDoc, addDoc, serverTimestamp, handleFirestoreError, OperationType, orderBy } from '../services/firebase';
 import { useAuth } from '../hooks/useAuth';
 import { cn } from '../lib/utils';
@@ -198,10 +198,8 @@ export default function SuperAdmin() {
   const handleAnalyzeLead = async (lead: any) => {
     setIsAnalyzingLead(lead.id);
     try {
-      const ai = new GoogleGenAI({ apiKey: process.env.GEMINI_API_KEY });
-      const response = await ai.models.generateContent({
-        model: "gemini-3-flash-preview",
-        contents: `Analyser denne lead-meldingen fra en potensiell kunde for et KS/HMS-system for byggbransjen:
+      const response = await generateAiContent({
+        prompt: `Analyser denne lead-meldingen fra en potensiell kunde for et KS/HMS-system for byggbransjen:
         Navn: ${lead.name}
         E-post: ${lead.email}
         Melding: ${lead.message}
@@ -211,9 +209,7 @@ export default function SuperAdmin() {
         - summary: En kort oppsummering av hva de trenger.
         - suggestedResponse: Et forslag til et profesjonelt svar.
         - priority: 'low', 'medium' eller 'high'.`,
-        config: {
-          responseMimeType: "application/json"
-        }
+        responseMimeType: "application/json"
       });
 
       const analysis = JSON.parse(response.text || '{}');

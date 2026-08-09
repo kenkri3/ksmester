@@ -1,7 +1,5 @@
-import { GoogleGenAI, Type } from "@google/genai";
+import { generateAiContent } from "./aiClient";
 import { Project } from "../types";
-
-const ai = new GoogleGenAI({ apiKey: process.env.GEMINI_API_KEY || '' });
 
 export interface ResourceEstimation {
   estimatedHours: number;
@@ -44,55 +42,52 @@ export const resourceService = {
     `;
 
     try {
-      const response = await ai.models.generateContent({
-        model: "gemini-3-flash-preview",
-        contents: prompt,
-        config: {
-          responseMimeType: "application/json",
-          responseSchema: {
-            type: Type.OBJECT,
-            properties: {
-              estimatedHours: { type: Type.NUMBER },
-              teamSize: { type: Type.NUMBER },
-              roles: {
-                type: Type.ARRAY,
-                items: {
-                  type: Type.OBJECT,
-                  properties: {
-                    role: { type: Type.STRING },
-                    count: { type: Type.NUMBER },
-                    description: { type: Type.STRING }
-                  },
-                  required: ["role", "count", "description"]
-                }
-              },
-              materials: {
-                type: Type.ARRAY,
-                items: {
-                  type: Type.OBJECT,
-                  properties: {
-                    item: { type: Type.STRING },
-                    quantity: { type: Type.STRING },
-                    estimatedCost: { type: Type.STRING }
-                  },
-                  required: ["item", "quantity", "estimatedCost"]
-                }
-              },
-              timeline: {
-                type: Type.ARRAY,
-                items: {
-                  type: Type.OBJECT,
-                  properties: {
-                    phase: { type: Type.STRING },
-                    duration: { type: Type.STRING },
-                    dependencies: { type: Type.ARRAY, items: { type: Type.STRING } }
-                  },
-                  required: ["phase", "duration", "dependencies"]
-                }
+      const response = await generateAiContent({
+        prompt: prompt,
+        responseMimeType: "application/json",
+        responseSchema: {
+          type: "OBJECT",
+          properties: {
+            estimatedHours: { type: "NUMBER" },
+            teamSize: { type: "NUMBER" },
+            roles: {
+              type: "ARRAY",
+              items: {
+                type: "OBJECT",
+                properties: {
+                  role: { type: "STRING" },
+                  count: { type: "NUMBER" },
+                  description: { type: "STRING" }
+                },
+                required: ["role", "count", "description"]
               }
             },
-            required: ["estimatedHours", "teamSize", "roles", "materials", "timeline"]
-          }
+            materials: {
+              type: "ARRAY",
+              items: {
+                type: "OBJECT",
+                properties: {
+                  item: { type: "STRING" },
+                  quantity: { type: "STRING" },
+                  estimatedCost: { type: "STRING" }
+                },
+                required: ["item", "quantity", "estimatedCost"]
+              }
+            },
+            timeline: {
+              type: "ARRAY",
+              items: {
+                type: "OBJECT",
+                properties: {
+                  phase: { type: "STRING" },
+                  duration: { type: "STRING" },
+                  dependencies: { type: "ARRAY", items: { type: "STRING" } }
+                },
+                required: ["phase", "duration", "dependencies"]
+              }
+            }
+          },
+          required: ["estimatedHours", "teamSize", "roles", "materials", "timeline"]
         }
       });
 

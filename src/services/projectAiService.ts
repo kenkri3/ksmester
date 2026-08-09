@@ -1,4 +1,4 @@
-import { GoogleGenAI, Type } from "@google/genai";
+import { generateAiContent } from "./aiClient";
 import { Project, Deviation, SafetyInspection, CrewMember, ProjectMaterial } from "../types";
 
 export interface ProjectHealthReport {
@@ -24,8 +24,6 @@ export const projectAiService = {
     crew: CrewMember[],
     materials: ProjectMaterial[] = []
   ): Promise<ProjectHealthReport> => {
-    const ai = new GoogleGenAI({ apiKey: process.env.GEMINI_API_KEY });
-    
     const prompt = `
       Du er en erfaren prosjektleder og rådgiver i den norske bygg- og anleggsbransjen.
       Din oppgave er å analysere helsen til et byggeprosjekt basert på dataene nedenfor og gi en detaljert rapport med anbefalinger.
@@ -78,72 +76,69 @@ export const projectAiService = {
     `;
 
     try {
-      const response = await ai.models.generateContent({
-        model: "gemini-3-flash-preview",
-        contents: prompt,
-        config: {
-          responseMimeType: "application/json",
-          responseSchema: {
-            type: Type.OBJECT,
-            properties: {
-              score: { type: Type.NUMBER },
-              status: { type: Type.STRING },
-              summary: { type: Type.STRING },
-              metrics: {
-                type: Type.OBJECT,
-                properties: {
-                  progress: {
-                    type: Type.OBJECT,
-                    properties: {
-                      status: { type: Type.STRING },
-                      detail: { type: Type.STRING }
-                    }
-                  },
-                  budget: {
-                    type: Type.OBJECT,
-                    properties: {
-                      status: { type: Type.STRING },
-                      detail: { type: Type.STRING }
-                    }
-                  },
-                  hms: {
-                    type: Type.OBJECT,
-                    properties: {
-                      status: { type: Type.STRING },
-                      detail: { type: Type.STRING }
-                    }
-                  },
-                  quality: {
-                    type: Type.OBJECT,
-                    properties: {
-                      status: { type: Type.STRING },
-                      detail: { type: Type.STRING }
-                    }
-                  }
-                }
-              },
-              risks: {
-                type: Type.ARRAY,
-                items: {
-                  type: Type.OBJECT,
+      const response = await generateAiContent({
+        prompt: prompt,
+        responseMimeType: "application/json",
+        responseSchema: {
+          type: "OBJECT",
+          properties: {
+            score: { type: "NUMBER" },
+            status: { type: "STRING" },
+            summary: { type: "STRING" },
+            metrics: {
+              type: "OBJECT",
+              properties: {
+                progress: {
+                  type: "OBJECT",
                   properties: {
-                    title: { type: Type.STRING },
-                    severity: { type: Type.STRING },
-                    description: { type: Type.STRING }
+                    status: { type: "STRING" },
+                    detail: { type: "STRING" }
+                  }
+                },
+                budget: {
+                  type: "OBJECT",
+                  properties: {
+                    status: { type: "STRING" },
+                    detail: { type: "STRING" }
+                  }
+                },
+                hms: {
+                  type: "OBJECT",
+                  properties: {
+                    status: { type: "STRING" },
+                    detail: { type: "STRING" }
+                  }
+                },
+                quality: {
+                  type: "OBJECT",
+                  properties: {
+                    status: { type: "STRING" },
+                    detail: { type: "STRING" }
                   }
                 }
-              },
-              recommendations: {
-                type: Type.ARRAY,
-                items: { type: Type.STRING }
-              },
-              nextSteps: {
-                type: Type.ARRAY,
-                items: { type: Type.STRING }
               }
             },
-            required: ["score", "status", "summary", "metrics", "risks", "recommendations", "nextSteps"]
-          }
+            risks: {
+              type: "ARRAY",
+              items: {
+                type: "OBJECT",
+                properties: {
+                  title: { type: "STRING" },
+                  severity: { type: "STRING" },
+                  description: { type: "STRING" }
+                }
+              }
+            },
+            recommendations: {
+              type: "ARRAY",
+              items: { type: "STRING" }
+            },
+            nextSteps: {
+              type: "ARRAY",
+              items: { type: "STRING" }
+            }
+          },
+          required: ["score", "status", "summary", "metrics", "risks", "recommendations", "nextSteps"]
         }
       });
 

@@ -23,7 +23,7 @@ import {
   Cloud
 } from 'lucide-react';
 import { cn } from '@/src/lib/utils';
-import { GoogleGenAI } from "@google/genai";
+import { generateAiContent } from '../services/aiClient';
 import { ImageAnalysisResult, Project as ProjectType, UserProfile, Trade } from '../types';
 import InstallGuide from './InstallGuide';
 import ChecklistModal from './ChecklistModal';
@@ -39,7 +39,6 @@ import { Sparkles, ClipboardList } from 'lucide-react';
 
 // AI Services
 async function analyzeVoice(text: string, uiLanguage: string = 'no', trade?: Trade, weather?: WeatherData) {
-  const ai = new GoogleGenAI({ apiKey: process.env.GEMINI_API_KEY || '' });
   const tradeContext = trade ? `Håndverkeren er en ${trade}. ` : '';
   const weatherContext = weather ? `
     VÆRFORHOLD PÅ PLASSEN:
@@ -48,9 +47,8 @@ async function analyzeVoice(text: string, uiLanguage: string = 'no', trade?: Tra
   ` : '';
 
   try {
-    const response = await ai.models.generateContent({
-      model: "gemini-3-flash-preview",
-      contents: `Du er en ekspert på norsk HMS og SJA (Sikker Jobb Analyse) i henhold til TEK17 og SAK10. 
+    const response = await generateAiContent({
+      prompt: `Du er en ekspert på norsk HMS og SJA (Sikker Jobb Analyse) i henhold til TEK17 og SAK10. 
       ${tradeContext}${weatherContext}Håndverkeren har sagt følgende (kan være på et hvilket som helst europeisk språk): "${text}".
       
       OPPGAVE:
@@ -72,7 +70,7 @@ async function analyzeVoice(text: string, uiLanguage: string = 'no', trade?: Tra
         }
       }
       Svar KUN med JSON.`,
-      config: { responseMimeType: "application/json" }
+      responseMimeType: "application/json"
     });
     return JSON.parse(response.text);
   } catch (e) {
@@ -82,29 +80,23 @@ async function analyzeVoice(text: string, uiLanguage: string = 'no', trade?: Tra
 }
 
 async function analyzeImage(base64Image: string, trade?: Trade): Promise<ImageAnalysisResult | null> {
-  const ai = new GoogleGenAI({ apiKey: process.env.GEMINI_API_KEY || '' });
   const tradeContext = trade ? `Håndverkeren er en ${trade}. ` : '';
   try {
-    const response = await ai.models.generateContent({
-      model: "gemini-2.5-flash-image",
-      contents: {
-        parts: [
-          { inlineData: { data: base64Image.split(',')[1], mimeType: "image/jpeg" } },
-          { text: `Du er en ekspert på byggeteknisk kontroll i Norge (KS/HMS). 
-          ${tradeContext}Analyser dette bildet fra en byggeplass. Identifiser bygningselementer (f.eks. dampsperre, kledning, isolasjon, stenderverk).
-          Vurder om det er utført i henhold til god byggeskikk eller om det er avvik.
-          Svar i JSON-format:
-          {
-            "elements": ["string"],
-            "status": "approved" | "deviation",
-            "description": "string",
-            "confidence": number (0-1),
-            "recommendation": "string"
-          }
-          Svar KUN med JSON.` }
-        ]
-      },
-      config: { responseMimeType: "application/json" }
+    const response = await generateAiContent({
+      prompt: `Du er en ekspert på byggeteknisk kontroll i Norge (KS/HMS). 
+      ${tradeContext}Analyser dette bildet fra en byggeplass. Identifiser bygningselementer (f.eks. dampsperre, kledning, isolasjon, stenderverk).
+      Vurder om det er utført i henhold til god byggeskikk eller om det er avvik.
+      Svar i JSON-format:
+      {
+        "elements": ["string"],
+        "status": "approved" | "deviation",
+        "description": "string",
+        "confidence": number (0-1),
+        "recommendation": "string"
+      }
+      Svar KUN med JSON.`,
+      inlineData: { data: base64Image.split(',')[1], mimeType: "image/jpeg" },
+      responseMimeType: "application/json"
     });
     return JSON.parse(response.text);
   } catch (e) {

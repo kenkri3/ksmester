@@ -8,7 +8,7 @@ import { locationService, AddressInfo } from '../services/locationService';
 import { useTranslation } from 'react-i18next';
 import { useAuth } from '../hooks/useAuth';
 import { cn } from '@/src/lib/utils';
-import { GoogleGenAI, Type } from "@google/genai";
+import { generateAiContent } from '../services/aiClient';
 
 interface CreateDeviationModalProps {
   isOpen: boolean;
@@ -67,23 +67,19 @@ export default function CreateDeviationModal({ isOpen, onClose, projects }: Crea
     if (!formData.description) return;
     setIsAiAnalyzing(true);
     try {
-      const ai = new GoogleGenAI({ apiKey: process.env.GEMINI_API_KEY || '' });
-      const response = await ai.models.generateContent({
-        model: "gemini-3-flash-preview",
-        contents: `Analyser dette avviket fra en byggeplass: "${formData.description}". 
+      const response = await generateAiContent({
+        prompt: `Analyser dette avviket fra en byggeplass: "${formData.description}". 
         Vurder alvorlighetsgrad (low, medium, high) og gi en mer profesjonell beskrivelse og tittel.
         Svar i JSON-format.`,
-        config: {
-          responseMimeType: "application/json",
-          responseSchema: {
-            type: Type.OBJECT,
-            properties: {
-              title: { type: Type.STRING },
-              description: { type: Type.STRING },
-              severity: { type: Type.STRING, enum: ["low", "medium", "high"] }
-            },
-            required: ["title", "description", "severity"]
-          }
+        responseMimeType: "application/json",
+        responseSchema: {
+          type: "OBJECT",
+          properties: {
+            title: { type: "STRING" },
+            description: { type: "STRING" },
+            severity: { type: "STRING", enum: ["low", "medium", "high"] }
+          },
+          required: ["title", "description", "severity"]
         }
       });
       

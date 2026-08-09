@@ -1,7 +1,5 @@
-import { GoogleGenAI, Type } from "@google/genai";
+import { generateAiContent } from "./aiClient";
 import { TimeEntry, Deviation } from "../types";
-
-const ai = new GoogleGenAI({ apiKey: process.env.GEMINI_API_KEY || '' });
 
 export interface DailyLog {
   summary: string;
@@ -41,22 +39,19 @@ export const logAiService = {
     `;
 
     try {
-      const response = await ai.models.generateContent({
-        model: "gemini-3-flash-preview",
-        contents: prompt,
-        config: {
-          responseMimeType: "application/json",
-          responseSchema: {
-            type: Type.OBJECT,
-            properties: {
-              summary: { type: Type.STRING },
-              activities: { type: Type.ARRAY, items: { type: Type.STRING } },
-              deviationsReported: { type: Type.ARRAY, items: { type: Type.STRING } },
-              weatherImpact: { type: Type.STRING },
-              nextDayPlan: { type: Type.STRING }
-            },
-            required: ["summary", "activities", "deviationsReported", "weatherImpact", "nextDayPlan"]
-          }
+      const response = await generateAiContent({
+        prompt: prompt,
+        responseMimeType: "application/json",
+        responseSchema: {
+          type: "OBJECT",
+          properties: {
+            summary: { type: "STRING" },
+            activities: { type: "ARRAY", items: { type: "STRING" } },
+            deviationsReported: { type: "ARRAY", items: { type: "STRING" } },
+            weatherImpact: { type: "STRING" },
+            nextDayPlan: { type: "STRING" }
+          },
+          required: ["summary", "activities", "deviationsReported", "weatherImpact", "nextDayPlan"]
         }
       });
 

@@ -100,7 +100,7 @@ export default function Login({ onBack }: { onBack?: () => void }) {
                     value={name}
                     onChange={(e) => setName(e.target.value)}
                     required
-                    className="w-full pl-12 pr-4 py-4 bg-neutral-50 border border-neutral-100 rounded-2xl focus:ring-2 focus:ring-emerald-500 focus:border-transparent outline-none transition-all"
+                    className="w-full pl-12 pr-4 py-4 bg-neutral-50 border border-neutral-100 rounded-2xl focus:ring-2 focus:ring-emerald-500 focus:border-transparent outline-none transition-all text-sm"
                   />
                 </div>
                 <div className="relative">
@@ -111,7 +111,7 @@ export default function Login({ onBack }: { onBack?: () => void }) {
                     value={company}
                     onChange={(e) => setCompany(e.target.value)}
                     required
-                    className="w-full pl-12 pr-4 py-4 bg-neutral-50 border border-neutral-100 rounded-2xl focus:ring-2 focus:ring-emerald-500 focus:border-transparent outline-none transition-all"
+                    className="w-full pl-12 pr-4 py-4 bg-neutral-50 border border-neutral-100 rounded-2xl focus:ring-2 focus:ring-emerald-500 focus:border-transparent outline-none transition-all text-sm"
                   />
                 </div>
               </motion.div>
@@ -126,7 +126,7 @@ export default function Login({ onBack }: { onBack?: () => void }) {
               value={email}
               onChange={(e) => setEmail(e.target.value)}
               required
-              className="w-full pl-12 pr-4 py-4 bg-neutral-50 border border-neutral-100 rounded-2xl focus:ring-2 focus:ring-emerald-500 focus:border-transparent outline-none transition-all"
+              className="w-full pl-12 pr-4 py-4 bg-neutral-50 border border-neutral-100 rounded-2xl focus:ring-2 focus:ring-emerald-500 focus:border-transparent outline-none transition-all text-sm"
             />
           </div>
 
@@ -139,13 +139,24 @@ export default function Login({ onBack }: { onBack?: () => void }) {
                 value={password}
                 onChange={(e) => setPassword(e.target.value)}
                 required
-                className="w-full pl-12 pr-4 py-4 bg-neutral-50 border border-neutral-100 rounded-2xl focus:ring-2 focus:ring-emerald-500 focus:border-transparent outline-none transition-all"
+                className="w-full pl-12 pr-4 py-4 bg-neutral-50 border border-neutral-100 rounded-2xl focus:ring-2 focus:ring-emerald-500 focus:border-transparent outline-none transition-all text-sm"
               />
             </div>
           )}
 
           {mode === 'login' && (
-            <div className="flex justify-end px-2">
+            <div className="flex justify-between items-center px-2">
+              <button
+                type="button"
+                onClick={() => {
+                  setEmail('kenkri3@gmail.com');
+                  setPassword('admin123');
+                }}
+                className="text-xs text-neutral-500 font-medium hover:text-emerald-600 transition-colors flex items-center gap-1"
+              >
+                <ShieldCheck size={14} className="text-emerald-600" />
+                Fyll ut admin info
+              </button>
               <button 
                 type="button"
                 onClick={() => setMode('forgot')}
@@ -167,7 +178,7 @@ export default function Login({ onBack }: { onBack?: () => void }) {
           <button
             type="submit"
             disabled={isSubmitting}
-            className="w-full bg-emerald-600 text-white py-4 rounded-2xl font-bold flex items-center justify-center gap-3 hover:bg-emerald-500 transition-all active:scale-[0.98] disabled:opacity-50 shadow-lg shadow-emerald-100"
+            className="w-full bg-emerald-600 text-white py-4 rounded-2xl font-bold flex items-center justify-center gap-3 hover:bg-emerald-500 transition-all active:scale-[0.98] disabled:opacity-50 shadow-lg shadow-emerald-100 text-sm"
           >
             {isSubmitting ? (
               <Loader2 className="animate-spin" size={20} />
@@ -179,6 +190,20 @@ export default function Login({ onBack }: { onBack?: () => void }) {
             )}
           </button>
         </form>
+
+        {mode === 'login' && (
+          <div className="mt-4">
+            <button
+              type="button"
+              onClick={login}
+              disabled={loading || isSubmitting}
+              className="w-full bg-neutral-900 text-white py-3.5 rounded-2xl font-bold flex items-center justify-center gap-2 hover:bg-neutral-800 transition-all active:scale-[0.98] text-sm shadow-md"
+            >
+              <ShieldCheck size={18} className="text-emerald-400" />
+              Logg inn direkte som Administrator
+            </button>
+          </div>
+        )}
 
         {mode !== 'forgot' && (
           <>

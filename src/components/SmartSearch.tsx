@@ -1,7 +1,7 @@
 import { useState, useEffect, useRef } from 'react';
 import { motion, AnimatePresence } from 'motion/react';
 import { Search, X, Command, Brain, Building2, AlertTriangle, FileText, ArrowRight, Loader2, Sparkles } from 'lucide-react';
-import { GoogleGenAI, Type } from "@google/genai";
+import { generateAiContent } from '../services/aiClient';
 import { db, collection, getDocs, query, limit } from '../services/firebase';
 import { cn } from '@/src/lib/utils';
 import { useTranslation } from 'react-i18next';
@@ -39,8 +39,6 @@ export default function SmartSearch({ isOpen, onClose, onNavigate }: { isOpen: b
 
     setIsSearching(true);
     try {
-      const ai = new GoogleGenAI({ apiKey: process.env.GEMINI_API_KEY || '' });
-      
       // Fetch some context to help the AI
       const projectsSnap = await getDocs(query(collection(db, 'projects'), limit(20)));
       const projects = projectsSnap.docs.map(doc => {
@@ -79,27 +77,24 @@ export default function SmartSearch({ isOpen, onClose, onNavigate }: { isOpen: b
         }
       `;
 
-      const response = await ai.models.generateContent({
-        model: "gemini-3-flash-preview",
-        contents: [{ text: prompt }],
-        config: {
-          responseMimeType: "application/json",
-          responseSchema: {
-            type: Type.OBJECT,
-            properties: {
-              results: {
-                type: Type.ARRAY,
-                items: {
-                  type: Type.OBJECT,
-                  properties: {
-                    type: { type: Type.STRING, enum: ["project", "deviation", "action", "info"] },
-                    title: { type: Type.STRING },
-                    description: { type: Type.STRING },
-                    id: { type: Type.STRING },
-                    actionType: { type: Type.STRING, enum: ["nav_project", "create_deviation", "start_checklist", "none"] }
-                  },
-                  required: ["type", "title", "description", "actionType"]
-                }
+      const response = await generateAiContent({
+        prompt: prompt,
+        responseMimeType: "application/json",
+        responseSchema: {
+          type: "OBJECT",
+          properties: {
+            results: {
+              type: "ARRAY",
+              items: {
+                type: "OBJECT",
+                properties: {
+                  type: { type: "STRING", enum: ["project", "deviation", "action", "info"] },
+                  title: { type: "STRING" },
+                  description: { type: "STRING" },
+                  id: { type: "STRING" },
+                  actionType: { type: "STRING", enum: ["nav_project", "create_deviation", "start_checklist", "none"] }
+                },
+                required: ["type", "title", "description", "actionType"]
               }
             }
           }

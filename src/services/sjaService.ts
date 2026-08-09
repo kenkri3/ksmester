@@ -1,7 +1,5 @@
-import { GoogleGenAI, Type } from "@google/genai";
+import { generateAiContent } from "./aiClient";
 import { WeatherData } from "./weatherService";
-
-const ai = new GoogleGenAI({ apiKey: process.env.GEMINI_API_KEY || '' });
 
 export interface SJADraft {
   title: string;
@@ -58,37 +56,35 @@ export const sjaService = {
     `;
 
     try {
-      const response = await ai.models.generateContent({
-        model: "gemini-3.1-flash-preview",
-        contents: prompt,
-        config: {
-          responseMimeType: "application/json",
-          responseSchema: {
-            type: Type.OBJECT,
-            properties: {
-              title: { type: Type.STRING },
-              task: { type: Type.STRING },
-              risikoer: {
-                type: Type.ARRAY,
-                items: {
-                  type: Type.OBJECT,
-                  properties: {
-                    aktivitet: { type: Type.STRING },
-                    risiko: { type: Type.STRING },
-                    tiltak: { type: Type.STRING }
-                  },
-                  required: ["aktivitet", "risiko", "tiltak"]
-                }
-              },
-              utstyr: {
-                type: Type.ARRAY,
-                items: { type: Type.STRING }
-              },
-              tek17Reference: { type: Type.STRING },
-              weatherImpact: { type: Type.STRING }
+      const response = await generateAiContent({
+        model: "gemini-2.5-flash",
+        prompt: prompt,
+        responseMimeType: "application/json",
+        responseSchema: {
+          type: "OBJECT",
+          properties: {
+            title: { type: "STRING" },
+            task: { type: "STRING" },
+            risikoer: {
+              type: "ARRAY",
+              items: {
+                type: "OBJECT",
+                properties: {
+                  aktivitet: { type: "STRING" },
+                  risiko: { type: "STRING" },
+                  tiltak: { type: "STRING" }
+                },
+                required: ["aktivitet", "risiko", "tiltak"]
+              }
             },
-            required: ["title", "task", "risikoer", "utstyr", "tek17Reference", "weatherImpact"]
-          }
+            utstyr: {
+              type: "ARRAY",
+              items: { type: "STRING" }
+            },
+            tek17Reference: { type: "STRING" },
+            weatherImpact: { type: "STRING" }
+          },
+          required: ["title", "task", "risikoer", "utstyr", "tek17Reference", "weatherImpact"]
         }
       });
 

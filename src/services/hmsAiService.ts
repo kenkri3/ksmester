@@ -1,7 +1,5 @@
-import { GoogleGenAI } from "@google/genai";
+import { generateAiContent } from "./aiClient";
 import { CrewMember, SafetyInspection, Deviation } from "../types";
-
-const ai = new GoogleGenAI({ apiKey: process.env.GEMINI_API_KEY! });
 
 export const hmsAiService = {
   analyzeRisk: async (crew: CrewMember[], inspections: SafetyInspection[], deviations: Deviation[]) => {
@@ -23,9 +21,8 @@ export const hmsAiService = {
         Hold svaret konsist (maks 150 ord).
       `;
 
-      const response = await ai.models.generateContent({
-        model: "gemini-3-flash-preview",
-        contents: prompt,
+      const response = await generateAiContent({
+        prompt: prompt,
       });
 
       return response.text || "Kunne ikke generere HMS-analyse for øyeblikket.";

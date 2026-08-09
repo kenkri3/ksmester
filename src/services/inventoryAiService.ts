@@ -1,4 +1,4 @@
-import { GoogleGenAI, Type } from "@google/genai";
+import { generateAiContent } from "./aiClient";
 import { InventoryItem } from "../types";
 
 export interface InventoryInsight {
@@ -10,8 +10,6 @@ export interface InventoryInsight {
 
 export const inventoryAiService = {
   analyzeInventory: async (items: InventoryItem[]): Promise<InventoryInsight[]> => {
-    const ai = new GoogleGenAI({ apiKey: process.env.GEMINI_API_KEY });
-    
     const prompt = `
       Du er en smart lagerassistent for et byggefirma. 
       Analyser følgende lagerbeholdning og gi 2-3 smarte innsikter eller prediksjoner.
@@ -37,26 +35,23 @@ export const inventoryAiService = {
     `;
 
     try {
-      const response = await ai.models.generateContent({
-        model: "gemini-3-flash-preview",
-        contents: prompt,
-        config: {
-          responseMimeType: "application/json",
-          responseSchema: {
-            type: Type.OBJECT,
-            properties: {
-              insights: {
-                type: Type.ARRAY,
-                items: {
-                  type: Type.OBJECT,
-                  properties: {
-                    title: { type: Type.STRING },
-                    description: { type: Type.STRING },
-                    severity: { type: Type.STRING, enum: ["low", "medium", "high"] },
-                    action: { type: Type.STRING }
-                  },
-                  required: ["title", "description", "severity"]
-                }
+      const response = await generateAiContent({
+        prompt: prompt,
+        responseMimeType: "application/json",
+        responseSchema: {
+          type: "OBJECT",
+          properties: {
+            insights: {
+              type: "ARRAY",
+              items: {
+                type: "OBJECT",
+                properties: {
+                  title: { type: "STRING" },
+                  description: { type: "STRING" },
+                  severity: { type: "STRING", enum: ["low", "medium", "high"] },
+                  action: { type: "STRING" }
+                },
+                required: ["title", "description", "severity"]
               }
             }
           }

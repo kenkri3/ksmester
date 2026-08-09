@@ -1,7 +1,5 @@
-import { GoogleGenAI, Type } from "@google/genai";
+import { generateAiContent } from "./aiClient";
 import { Project, Deviation } from "../types";
-
-const ai = new GoogleGenAI({ apiKey: process.env.GEMINI_API_KEY || '' });
 
 export interface ExecutiveSummary {
   summary: string;
@@ -40,22 +38,19 @@ export const reportService = {
     `;
 
     try {
-      const response = await ai.models.generateContent({
-        model: "gemini-3-flash-preview",
-        contents: prompt,
-        config: {
-          responseMimeType: "application/json",
-          responseSchema: {
-            type: Type.OBJECT,
-            properties: {
-              summary: { type: Type.STRING },
-              criticalIssues: { type: Type.ARRAY, items: { type: Type.STRING } },
-              financialStatus: { type: Type.STRING },
-              recommendations: { type: Type.ARRAY, items: { type: Type.STRING } },
-              nextWeekFocus: { type: Type.ARRAY, items: { type: Type.STRING } }
-            },
-            required: ["summary", "criticalIssues", "financialStatus", "recommendations", "nextWeekFocus"]
-          }
+      const response = await generateAiContent({
+        prompt: prompt,
+        responseMimeType: "application/json",
+        responseSchema: {
+          type: "OBJECT",
+          properties: {
+            summary: { type: "STRING" },
+            criticalIssues: { type: "ARRAY", items: { type: "STRING" } },
+            financialStatus: { type: "STRING" },
+            recommendations: { type: "ARRAY", items: { type: "STRING" } },
+            nextWeekFocus: { type: "ARRAY", items: { type: "STRING" } }
+          },
+          required: ["summary", "criticalIssues", "financialStatus", "recommendations", "nextWeekFocus"]
         }
       });
 

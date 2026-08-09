@@ -33,6 +33,7 @@ import {
   Bell
 } from 'lucide-react';
 import { cn } from '@/src/lib/utils';
+import { Toaster } from 'sonner';
 import { View, Project, SJAReport, Deviation } from './types';
 import LandingPage from './components/LandingPage';
 import Dashboard from './components/Dashboard';
@@ -306,16 +307,18 @@ function AppContent() {
               >
                 {t('specification')}
               </button>
-              {user?.email === 'kenkri3@gmail.com' && (
+              {user && (user.role === 'admin' || user.email === 'kenkri3@gmail.com') && (
                 <button 
                   onClick={() => setView('super-admin')}
                   className={cn(
-                    "text-sm font-bold transition-colors hover:text-red-600 flex items-center gap-1",
-                    view === 'super-admin' ? "text-red-600" : "text-neutral-600"
+                    "text-xs font-bold transition-all flex items-center gap-1.5 px-3 py-1.5 rounded-lg border",
+                    view === 'super-admin' 
+                      ? "bg-red-600 text-white border-red-600 shadow-sm" 
+                      : "bg-red-50 text-red-700 border-red-200 hover:bg-red-100"
                   )}
                 >
                   <Shield size={14} />
-                  Admin
+                  Admin Control
                 </button>
               )}
               <div className="flex items-center gap-4 ml-4 border-l border-neutral-200 pl-4 shrink-0">
@@ -345,8 +348,15 @@ function AppContent() {
                         </div>
                       )}
                       <div className="hidden lg:block text-left">
-                        <p className="text-xs font-bold leading-none mb-1">{user.displayName}</p>
-                        <p className="text-[10px] text-neutral-500 leading-none">{user.email}</p>
+                        <div className="flex items-center gap-1.5">
+                          <p className="text-xs font-bold leading-none">{user.displayName}</p>
+                          {(user.role === 'admin' || user.email === 'kenkri3@gmail.com') && (
+                            <span className="text-[9px] font-extrabold bg-emerald-100 text-emerald-800 px-1.5 py-0.5 rounded border border-emerald-200 uppercase tracking-wider">
+                              Admin
+                            </span>
+                          )}
+                        </div>
+                        <p className="text-[10px] text-neutral-500 leading-none mt-0.5">{user.email}</p>
                       </div>
                     </div>
                     <button 
@@ -514,7 +524,27 @@ function AppContent() {
             {view === 'mobile' && <MobileApp />}
             {view === 'spec' && <TechnicalSpec />}
             {view === 'settings' && <SettingsPage />}
-            {view === 'super-admin' && <SuperAdmin />}
+            {view === 'super-admin' && (
+              (user?.role === 'admin' || user?.email === 'kenkri3@gmail.com') ? (
+                <SuperAdmin />
+              ) : (
+                <div className="max-w-md mx-auto my-20 p-8 bg-white rounded-3xl shadow-xl border border-red-100 text-center">
+                  <div className="w-16 h-16 bg-red-100 text-red-600 rounded-2xl flex items-center justify-center mx-auto mb-4">
+                    <Shield size={32} />
+                  </div>
+                  <h2 className="text-xl font-bold text-neutral-900 mb-2">Ingen tilgang til Admin</h2>
+                  <p className="text-neutral-500 text-sm mb-6">
+                    Denne modulen krever administrator-rettigheter. Vennligst logg inn med en admin-konto.
+                  </p>
+                  <button 
+                    onClick={() => logout().then(() => setView('dashboard'))} 
+                    className="w-full bg-emerald-600 text-white py-3 rounded-xl font-bold text-sm hover:bg-emerald-500 transition-all shadow-md"
+                  >
+                    Logg inn som Admin
+                  </button>
+                </div>
+              )
+            )}
             {view === 'offer' && offerToken && <OfferPage token={offerToken} />}
             {view === 'invite' && inviteToken && <InviteAcceptancePage token={inviteToken} />}
             {view === 'customer-portal' && portalProject && <CustomerPortal project={portalProject} />}
@@ -540,55 +570,58 @@ function AppContent() {
         </div>
       )}
 
-      {/* Footer */}
-      <footer className="bg-neutral-900 text-neutral-400 py-12 border-t border-neutral-800">
-        <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8">
-          <div className="grid grid-cols-1 md:grid-cols-4 gap-12">
-            <div className="col-span-1 md:col-span-2">
-              <Logo size="md" className="mb-6 text-white" />
-              <p className="max-w-md text-sm leading-relaxed">
-                {t('footer_desc')}
-              </p>
+      {/* Footer - Only rendered when not on landing page since LandingPage has its own dedicated footer */}
+      {view !== 'landing' && (
+        <footer className="bg-neutral-900 text-neutral-400 py-12 border-t border-neutral-800">
+          <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8">
+            <div className="grid grid-cols-1 md:grid-cols-4 gap-12">
+              <div className="col-span-1 md:col-span-2">
+                <Logo size="md" className="mb-6 text-white" />
+                <p className="max-w-md text-sm leading-relaxed">
+                  {t('footer_desc')}
+                </p>
+              </div>
+              <div>
+                <h4 className="text-white font-semibold mb-4">{t('product')}</h4>
+                <ul className="space-y-2 text-sm">
+                  <li><button onClick={() => setView('dashboard')} className="hover:text-white transition-colors">{t('dashboard')}</button></li>
+                  <li><button onClick={() => setView('mobile')} className="hover:text-white transition-colors">{t('mobile_app')}</button></li>
+                  <li><button onClick={() => setView('pricing')} className="hover:text-white transition-colors">{t('pricing')}</button></li>
+                  <li><button className="hover:text-white transition-colors">{t('integrations')}</button></li>
+                </ul>
+              </div>
+              <div>
+                <h4 className="text-white font-semibold mb-4">{t('company')}</h4>
+                <ul className="space-y-2 text-sm">
+                  <li><button onClick={() => setView('about')} className="hover:text-white transition-colors">{t('about_us')}</button></li>
+                  <li><button onClick={() => setView('contact')} className="hover:text-white transition-colors">{t('contact')}</button></li>
+                  <li><button onClick={() => setView('privacy')} className="hover:text-white transition-colors">{t('privacy')}</button></li>
+                  <li><button onClick={() => setView('terms')} className="hover:text-white transition-colors">{t('terms')}</button></li>
+                  <li>
+                    <button 
+                      onClick={() => window.dispatchEvent(new CustomEvent('open_cookie_settings'))} 
+                      className="hover:text-white transition-colors text-emerald-400 font-medium"
+                    >
+                      Informasjonskapsler
+                    </button>
+                  </li>
+                </ul>
+              </div>
             </div>
-            <div>
-              <h4 className="text-white font-semibold mb-4">{t('product')}</h4>
-              <ul className="space-y-2 text-sm">
-                <li><button onClick={() => setView('dashboard')} className="hover:text-white transition-colors">{t('dashboard')}</button></li>
-                <li><button onClick={() => setView('mobile')} className="hover:text-white transition-colors">{t('mobile_app')}</button></li>
-                <li><button onClick={() => setView('pricing')} className="hover:text-white transition-colors">{t('pricing')}</button></li>
-                <li><button className="hover:text-white transition-colors">{t('integrations')}</button></li>
-              </ul>
-            </div>
-            <div>
-              <h4 className="text-white font-semibold mb-4">{t('company')}</h4>
-              <ul className="space-y-2 text-sm">
-                <li><button onClick={() => setView('about')} className="hover:text-white transition-colors">{t('about_us')}</button></li>
-                <li><button onClick={() => setView('contact')} className="hover:text-white transition-colors">{t('contact')}</button></li>
-                <li><button onClick={() => setView('privacy')} className="hover:text-white transition-colors">{t('privacy')}</button></li>
-                <li><button onClick={() => setView('terms')} className="hover:text-white transition-colors">{t('terms')}</button></li>
-                <li>
-                  <button 
-                    onClick={() => window.dispatchEvent(new CustomEvent('open_cookie_settings'))} 
-                    className="hover:text-white transition-colors text-emerald-400 font-medium"
-                  >
-                    Informasjonskapsler
-                  </button>
-                </li>
-              </ul>
+            <div className="mt-12 pt-8 border-t border-neutral-800 flex flex-col md:flex-row justify-between items-center gap-4 text-xs">
+              <p>{t('footer_rights')}</p>
+              <div className="flex gap-6">
+                <span>{t('tek17_compliance')}</span>
+                <span>{t('gdpr_compliance')}</span>
+              </div>
             </div>
           </div>
-          <div className="mt-12 pt-8 border-t border-neutral-800 flex flex-col md:flex-row justify-between items-center gap-4 text-xs">
-            <p>{t('footer_rights')}</p>
-            <div className="flex gap-6">
-              <span>{t('tek17_compliance')}</span>
-              <span>{t('gdpr_compliance')}</span>
-            </div>
-          </div>
-        </div>
-      </footer>
+        </footer>
+      )}
 
       {/* GDPR Cookie Banner */}
       <CookieBanner onOpenPrivacyPolicy={() => setView('privacy')} />
+      <Toaster position="top-right" richColors />
     </div>
   );
 }

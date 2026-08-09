@@ -1,6 +1,4 @@
-import { GoogleGenAI, Type } from "@google/genai";
-
-const ai = new GoogleGenAI({ apiKey: process.env.GEMINI_API_KEY || '' });
+import { generateAiContent } from "./aiClient";
 
 export interface AiTextResponse {
   text: string;
@@ -43,19 +41,16 @@ export const masterAiService = {
     `;
 
     try {
-      const response = await ai.models.generateContent({
-        model: "gemini-3-flash-preview",
-        contents: prompt,
-        config: {
-          responseMimeType: "application/json",
-          responseSchema: {
-            type: Type.OBJECT,
-            properties: {
-              text: { type: Type.STRING },
-              language: { type: Type.STRING }
-            },
-            required: ["text", "language"]
-          }
+      const response = await generateAiContent({
+        prompt,
+        responseMimeType: "application/json",
+        responseSchema: {
+          type: "OBJECT",
+          properties: {
+            text: { type: "STRING" },
+            language: { type: "STRING" }
+          },
+          required: ["text", "language"]
         }
       });
 
@@ -82,12 +77,9 @@ export const masterAiService = {
     `;
 
     try {
-      const response = await ai.models.generateContent({
-        model: "gemini-3-flash-preview",
-        contents: prompt,
-        config: {
-          responseMimeType: "application/json"
-        }
+      const response = await generateAiContent({
+        prompt,
+        responseMimeType: "application/json"
       });
 
       return JSON.parse(response.text || '{}');

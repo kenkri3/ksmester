@@ -33,12 +33,14 @@ import {
   Timer,
   Brain,
   Calendar,
-  Building2
+  Building2,
+  Copy
 } from 'lucide-react';
 import { cn } from '@/src/lib/utils';
-import { Project, Deviation, UserProfile, ProjectMaterial, InventoryItem } from '../types';
+import { Project, Deviation, UserProfile, ProjectMaterial, InventoryItem, Offer } from '../types';
 import { db, auth, collection, onSnapshot, query, orderBy, where, getDocs, OperationType, handleFirestoreError, getUserProfile, updateUserProfile } from '../services/firebase';
 import { useTranslation } from 'react-i18next';
+import { toast } from 'sonner';
 import { dashboardAiService, DashboardInsight } from '../services/dashboardAiService';
 import { TrendingUp as TrendingIcon, Cloud, Sun, CloudRain, CloudSnow, Wind, CloudLightning, FileText as FileIcon, BarChart3 as ChartIcon, Settings2, Sparkles } from 'lucide-react';
 import { weatherService, WeatherData } from '../services/weatherService';
@@ -90,9 +92,12 @@ export default function Dashboard({ isDemo = false, onOpenPortal }: { isDemo?: b
   const { t } = useTranslation();
   const { user, companyModules } = useAuth();
   const { projects: realProjects, deviations: realDeviations, stats, loading: realLoading } = useDashboardData();
-  const [activeTab, setActiveTab] = useState<'oversikt' | 'prosjekter' | 'avvik' | 'ai' | 'finans' | 'laerling' | 'hms'>('oversikt');
+  const [activeTab, setActiveTab] = useState<'oversikt' | 'prosjekter' | 'tilbud' | 'avvik' | 'ai' | 'finans' | 'laerling' | 'hms'>('oversikt');
   const [projects, setProjects] = useState<Project[]>([]);
   const [deviations, setDeviations] = useState<Deviation[]>([]);
+  const [offers, setOffers] = useState<Offer[]>([]);
+  const [offerSearchTerm, setOfferSearchTerm] = useState('');
+  const [offerStatusFilter, setOfferStatusFilter] = useState<string>('alle');
   const [isActivityLogModalOpen, setIsActivityLogModalOpen] = useState(false);
   const [isCreateModalOpen, setIsCreateModalOpen] = useState(false);
   const [isDeviationModalOpen, setIsDeviationModalOpen] = useState(false);
@@ -136,9 +141,15 @@ export default function Dashboard({ isDemo = false, onOpenPortal }: { isDemo?: b
       setMaterials(snapshot.docs.map(doc => doc.data() as ProjectMaterial));
     });
 
+    const unsubOffers = onSnapshot(query(collection(db, 'offers'), orderBy('createdAt', 'desc')), (snapshot) => {
+      const list = snapshot.docs.map(doc => ({ id: doc.id, ...doc.data() } as Offer));
+      setOffers(list);
+    }, (err) => console.error("Offers subscription error:", err));
+
     return () => {
       unsubInventory();
       unsubMaterials();
+      unsubOffers();
     };
   }, []);
   const [projectAnalysis, setProjectAnalysis] = useState<any>(null);
@@ -745,18 +756,30 @@ export default function Dashboard({ isDemo = false, onOpenPortal }: { isDemo?: b
               </div>
               <div className="grid grid-cols-2 sm:grid-cols-3 md:grid-cols-5 gap-4">
                 {lifecycleStages.map((stage, i) => {
-                  const count = projects.filter(p => p.stage === stage.id).length;
+                  const count = stage.id === 'offer' ? (offers.length || projects.filter(p => p.stage === 'offer').length) : projects.filter(p => p.stage === stage.id).length;
                   return (
-                    <div key={stage.id} className="relative group">
-                      <div className="flex flex-col items-center text-center">
+                    <div 
+                      key={stage.id} 
+                      onClick={() => {
+                        if (stage.id === 'offer') {
+                          setActiveTab('tilbud');
+                        } else if (stage.id === 'contract') {
+                          setIsContractModalOpen(true);
+                        } else {
+                          setActiveTab('prosjekter');
+                        }
+                      }}
+                      className="relative group cursor-pointer"
+                    >
+                      <div className="flex flex-col items-center text-center p-3 rounded-2xl hover:bg-neutral-50 transition-all">
                         <div className={cn(
                           "w-12 h-12 rounded-2xl flex items-center justify-center text-white mb-3 shadow-lg transition-transform group-hover:scale-110",
                           stage.color
                         )}>
                           {stage.icon}
                         </div>
-                        <div className="text-xs font-bold mb-1">{stage.label}</div>
-                        <div className="text-[10px] font-black text-neutral-400 uppercase tracking-widest">{count} Prosjekter</div>
+                        <div className="text-xs font-bold mb-1 group-hover:text-emerald-600 transition-colors">{stage.label}</div>
+                        <div className="text-[10px] font-black text-neutral-400 uppercase tracking-widest">{count} {stage.id === 'offer' ? 'Tilbud' : 'Prosjekter'}</div>
                       </div>
                       {i < lifecycleStages.length - 1 && (
                         <div className="hidden md:block absolute top-6 left-[calc(50%+2rem)] w-[calc(100%-4rem)] h-px bg-neutral-100" />
@@ -803,7 +826,7 @@ export default function Dashboard({ isDemo = false, onOpenPortal }: { isDemo?: b
 
             {/* Tabs */}
             <div className="flex items-center gap-6 border-b border-neutral-200 mb-8 overflow-x-auto">
-              {['oversikt', 'prosjekter', 'avvik', 'hms', 'finans', 'laerling', 'ai'].map((tab) => (
+              {['oversikt', 'prosjekter', 'tilbud', 'avvik', 'hms', 'finans', 'laerling', 'ai'].map((tab) => (
                 <button
                   key={tab}
                   onClick={() => setActiveTab(tab as any)}
@@ -812,7 +835,7 @@ export default function Dashboard({ isDemo = false, onOpenPortal }: { isDemo?: b
                     activeTab === tab ? "text-emerald-600" : "text-neutral-400 hover:text-neutral-600"
                   )}
                 >
-                  {tab === 'finans' ? 'Finans' : tab === 'laerling' ? 'Lærling' : tab === 'hms' ? 'HMS' : t(tab === 'ai' ? 'ai_analysis' : tab)}
+                  {tab === 'finans' ? 'Finans' : tab === 'laerling' ? 'Lærling' : tab === 'hms' ? 'HMS' : tab === 'tilbud' ? 'Tilbud & Kalkyle' : t(tab === 'ai' ? 'ai_analysis' : tab)}
                   {activeTab === tab && (
                     <motion.div 
                       layoutId="activeTab"
@@ -1217,6 +1240,203 @@ export default function Dashboard({ isDemo = false, onOpenPortal }: { isDemo?: b
                         </div>
                       </div>
                     ))
+                  )}
+                </div>
+              </div>
+            )}
+
+            {activeTab === 'tilbud' && (
+              <div className="space-y-8">
+                {/* KPI Stats */}
+                <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-4 sm:gap-6">
+                  <div className="bg-white p-6 rounded-3xl border border-neutral-200 shadow-sm">
+                    <div className="text-[10px] font-black uppercase tracking-widest text-neutral-400 mb-1">Totalt Antall Tilbud</div>
+                    <div className="text-3xl font-black text-neutral-900">{offers.length}</div>
+                    <div className="text-xs text-neutral-500 font-bold mt-1">Registrert i systemet</div>
+                  </div>
+                  <div className="bg-white p-6 rounded-3xl border border-neutral-200 shadow-sm">
+                    <div className="text-[10px] font-black uppercase tracking-widest text-amber-600 mb-1">Under Behandling / Utkast</div>
+                    <div className="text-3xl font-black text-amber-600">
+                      {offers.filter(o => o.status === 'draft').length}
+                    </div>
+                    <div className="text-xs text-neutral-500 font-bold mt-1">
+                      Sum: {offers.filter(o => o.status === 'draft').reduce((s, o) => s + (o.totalAmount || 0), 0).toLocaleString()} kr
+                    </div>
+                  </div>
+                  <div className="bg-white p-6 rounded-3xl border border-neutral-200 shadow-sm">
+                    <div className="text-[10px] font-black uppercase tracking-widest text-blue-600 mb-1">Sendt til Kunde</div>
+                    <div className="text-3xl font-black text-blue-600">
+                      {offers.filter(o => o.status === 'sent').length}
+                    </div>
+                    <div className="text-xs text-neutral-500 font-bold mt-1">
+                      Sum: {offers.filter(o => o.status === 'sent').reduce((s, o) => s + (o.totalAmount || 0), 0).toLocaleString()} kr
+                    </div>
+                  </div>
+                  <div className="bg-white p-6 rounded-3xl border border-neutral-200 shadow-sm">
+                    <div className="text-[10px] font-black uppercase tracking-widest text-emerald-600 mb-1">Godkjent / Vunnet</div>
+                    <div className="text-3xl font-black text-emerald-600">
+                      {offers.filter(o => o.status === 'accepted').length}
+                    </div>
+                    <div className="text-xs text-neutral-500 font-bold mt-1">
+                      Sum: {offers.filter(o => o.status === 'accepted').reduce((s, o) => s + (o.totalAmount || 0), 0).toLocaleString()} kr
+                    </div>
+                  </div>
+                </div>
+
+                {/* Filter & Action Bar */}
+                <div className="bg-white p-6 rounded-3xl border border-neutral-200 shadow-sm flex flex-col md:flex-row items-center justify-between gap-4">
+                  <div className="flex flex-col sm:flex-row items-center gap-3 w-full md:w-auto">
+                    <div className="relative w-full sm:w-64">
+                      <Search size={16} className="absolute left-3.5 top-1/2 -translate-y-1/2 text-neutral-400" />
+                      <input 
+                        type="text"
+                        placeholder="Søk tilbud, kunde, kode..."
+                        value={offerSearchTerm}
+                        onChange={(e) => setOfferSearchTerm(e.target.value)}
+                        className="w-full pl-10 pr-4 py-2.5 bg-neutral-50 border border-neutral-200 rounded-2xl text-xs font-bold outline-none focus:ring-2 focus:ring-emerald-500"
+                      />
+                    </div>
+                    <div className="flex items-center gap-1 bg-neutral-100 p-1 rounded-2xl overflow-x-auto w-full sm:w-auto">
+                      {['alle', 'draft', 'sent', 'accepted', 'declined'].map((st) => (
+                        <button
+                          key={st}
+                          onClick={() => setOfferStatusFilter(st)}
+                          className={cn(
+                            "px-3 py-1.5 rounded-xl text-xs font-bold transition-all capitalize whitespace-nowrap",
+                            offerStatusFilter === st ? "bg-white text-neutral-900 shadow-sm" : "text-neutral-500 hover:text-neutral-900"
+                          )}
+                        >
+                          {st === 'alle' ? 'Alle' : st === 'draft' ? 'Utkast' : st === 'sent' ? 'Sendt' : st === 'accepted' ? 'Godkjent' : 'Avslått'}
+                        </button>
+                      ))}
+                    </div>
+                  </div>
+
+                  <button 
+                    onClick={() => {
+                      setOfferInitialData(null);
+                      setIsOfferModalOpen(true);
+                    }}
+                    className="w-full md:w-auto px-6 py-3 bg-emerald-600 hover:bg-emerald-500 text-white rounded-2xl font-bold text-xs sm:text-sm flex items-center justify-center gap-2 shadow-lg shadow-emerald-100 transition-all shrink-0"
+                  >
+                    <Plus size={18} />
+                    Opprett Nytt Tilbud
+                  </button>
+                </div>
+
+                {/* Offers Grid */}
+                <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-6">
+                  {offers
+                    .filter(offer => {
+                      const matchesSearch = !offerSearchTerm ||
+                        (offer.title && offer.title.toLowerCase().includes(offerSearchTerm.toLowerCase())) ||
+                        (offer.clientName && offer.clientName.toLowerCase().includes(offerSearchTerm.toLowerCase())) ||
+                        (offer.projectCode && offer.projectCode.toLowerCase().includes(offerSearchTerm.toLowerCase()));
+                      const matchesStatus = offerStatusFilter === 'alle' || offer.status === offerStatusFilter;
+                      return matchesSearch && matchesStatus;
+                    })
+                    .length === 0 ? (
+                    <div className="col-span-full bg-white p-12 rounded-3xl border border-neutral-200 text-center">
+                      <Calculator size={48} className="mx-auto text-neutral-300 mb-4" />
+                      <h3 className="text-lg font-bold text-neutral-800">Ingen tilbud funnet</h3>
+                      <p className="text-xs text-neutral-500 mt-1 mb-6">Det er ikke opprettet noen tilbud som passer til valgt filter ennå.</p>
+                      <button 
+                        onClick={() => {
+                          setOfferInitialData(null);
+                          setIsOfferModalOpen(true);
+                        }}
+                        className="px-6 py-3 bg-emerald-600 hover:bg-emerald-500 text-white font-bold text-xs rounded-2xl transition-all"
+                      >
+                        + Opprett et tilbud nå
+                      </button>
+                    </div>
+                  ) : (
+                    offers
+                      .filter(offer => {
+                        const matchesSearch = !offerSearchTerm ||
+                          (offer.title && offer.title.toLowerCase().includes(offerSearchTerm.toLowerCase())) ||
+                          (offer.clientName && offer.clientName.toLowerCase().includes(offerSearchTerm.toLowerCase())) ||
+                          (offer.projectCode && offer.projectCode.toLowerCase().includes(offerSearchTerm.toLowerCase()));
+                        const matchesStatus = offerStatusFilter === 'alle' || offer.status === offerStatusFilter;
+                        return matchesSearch && matchesStatus;
+                      })
+                      .map((offer) => (
+                        <div key={offer.id} className="bg-white p-6 rounded-3xl border border-neutral-200 shadow-sm flex flex-col justify-between hover:border-emerald-500 transition-all group">
+                          <div>
+                            <div className="flex items-center justify-between mb-3">
+                              <span className={cn(
+                                "px-3 py-1 rounded-full text-[10px] font-black uppercase tracking-widest",
+                                offer.status === 'accepted' ? "bg-emerald-100 text-emerald-800" :
+                                offer.status === 'sent' ? "bg-blue-100 text-blue-800" :
+                                offer.status === 'declined' ? "bg-rose-100 text-rose-800" :
+                                "bg-amber-100 text-amber-800"
+                              )}>
+                                {offer.status === 'accepted' ? 'Godkjent' : offer.status === 'sent' ? 'Sendt' : offer.status === 'declined' ? 'Avslått' : 'Utkast'}
+                              </span>
+                              {offer.projectCode && (
+                                <span className="text-[10px] font-bold text-neutral-400 bg-neutral-100 px-2 py-0.5 rounded-lg">
+                                  {offer.projectCode}
+                                </span>
+                              )}
+                            </div>
+
+                            <h3 className="text-base font-bold text-neutral-900 group-hover:text-emerald-600 transition-colors line-clamp-1 mb-1">
+                              {offer.title}
+                            </h3>
+                            <p className="text-xs font-semibold text-neutral-500 mb-4 flex items-center gap-1">
+                              <Users size={12} />
+                              Kunde: {offer.clientName}
+                            </p>
+
+                            {offer.description && (
+                              <p className="text-xs text-neutral-600 line-clamp-2 mb-4 bg-neutral-50 p-3 rounded-2xl">
+                                {offer.description}
+                              </p>
+                            )}
+
+                            <div className="text-xs text-neutral-400 mb-4 space-y-1">
+                              <div>Poster: {offer.items?.length || 0} stiklinjer</div>
+                              {offer.validUntil && <div>Gyldig til: {offer.validUntil}</div>}
+                            </div>
+                          </div>
+
+                          <div className="pt-4 border-t border-neutral-100 mt-2">
+                            <div className="flex items-baseline justify-between mb-4">
+                              <span className="text-[10px] font-black uppercase tracking-widest text-neutral-400">Totalbeløp</span>
+                              <span className="text-xl font-black text-emerald-600">{(offer.totalAmount || 0).toLocaleString()} kr</span>
+                            </div>
+
+                            <div className="grid grid-cols-2 gap-2">
+                              <button 
+                                onClick={() => {
+                                  setOfferInitialData({
+                                    projectId: offer.projectId,
+                                    projectCode: offer.projectCode,
+                                    title: offer.title,
+                                    description: offer.description,
+                                    clientName: offer.clientName,
+                                    clientEmail: offer.clientEmail
+                                  });
+                                  setIsOfferModalOpen(true);
+                                }}
+                                className="px-3 py-2 bg-neutral-100 hover:bg-neutral-200 text-neutral-800 font-bold text-xs rounded-xl transition-all"
+                              >
+                                Vis / Rediger
+                              </button>
+                              <button 
+                                onClick={() => {
+                                  const link = `${window.location.origin}/#offer-${offer.id}`;
+                                  navigator.clipboard.writeText(link);
+                                  toast.success("Tilbudslenke kopiert!");
+                                }}
+                                className="px-3 py-2 bg-emerald-50 hover:bg-emerald-100 text-emerald-700 font-bold text-xs rounded-xl transition-all flex items-center justify-center gap-1"
+                              >
+                                <Copy size={12} /> Kopiér Lenke
+                              </button>
+                            </div>
+                          </div>
+                        </div>
+                      ))
                   )}
                 </div>
               </div>

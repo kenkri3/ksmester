@@ -1,6 +1,4 @@
-import { GoogleGenAI, Type } from "@google/genai";
-
-const ai = new GoogleGenAI({ apiKey: process.env.GEMINI_API_KEY || '' });
+import { generateAiContent } from "./aiClient";
 
 export interface GeneratedOfferItem {
   description: string;
@@ -39,23 +37,20 @@ export const offerAiService = {
     `;
 
     try {
-      const response = await ai.models.generateContent({
-        model: "gemini-3-flash-preview",
-        contents: prompt,
-        config: {
-          responseMimeType: "application/json",
-          responseSchema: {
-            type: Type.ARRAY,
-            items: {
-              type: Type.OBJECT,
-              properties: {
-                description: { type: Type.STRING },
-                quantity: { type: Type.NUMBER },
-                unit: { type: Type.STRING },
-                pricePerUnit: { type: Type.NUMBER }
-              },
-              required: ["description", "quantity", "unit", "pricePerUnit"]
-            }
+      const response = await generateAiContent({
+        prompt: prompt,
+        responseMimeType: "application/json",
+        responseSchema: {
+          type: "ARRAY",
+          items: {
+            type: "OBJECT",
+            properties: {
+              description: { type: "STRING" },
+              quantity: { type: "NUMBER" },
+              unit: { type: "STRING" },
+              pricePerUnit: { type: "NUMBER" }
+            },
+            required: ["description", "quantity", "unit", "pricePerUnit"]
           }
         }
       });

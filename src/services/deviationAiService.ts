@@ -1,4 +1,4 @@
-import { GoogleGenAI } from "@google/genai";
+import { generateAiContent } from "./aiClient";
 
 export interface DeviationAnalysis {
   rootCause: string;
@@ -8,19 +8,12 @@ export interface DeviationAnalysis {
 }
 
 class DeviationAiService {
-  private ai: GoogleGenAI;
-
-  constructor() {
-    this.ai = new GoogleGenAI({ apiKey: process.env.GEMINI_API_KEY || '' });
-  }
-
   async analyzeDeviations(deviations: any[]): Promise<DeviationAnalysis> {
     const deviationText = deviations.map(d => `- ${d.title}: ${d.description} (Alvorlighet: ${d.severity})`).join('\n');
 
     try {
-      const response = await this.ai.models.generateContent({
-        model: "gemini-3-flash-preview",
-        contents: `Du er en HMS-ekspert i den norske byggebransjen. Analyser følgende liste over avvik fra byggeplasser og identifiser rotårsaker, trender og gi konkrete anbefalinger for å forhindre gjentakelse.
+      const response = await generateAiContent({
+        prompt: `Du er en HMS-ekspert i den norske byggebransjen. Analyser følgende liste over avvik fra byggeplasser og identifiser rotårsaker, trender og gi konkrete anbefalinger for å forhindre gjentakelse.
         
         AVVIK:
         ${deviationText}
@@ -33,9 +26,7 @@ class DeviationAiService {
           "riskLevel": "low" | "medium" | "high"
         }
         Svar KUN med JSON.`,
-        config: {
-          responseMimeType: "application/json"
-        }
+        responseMimeType: "application/json"
       });
 
       return JSON.parse(response.text);
