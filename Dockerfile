@@ -20,7 +20,7 @@ ENV NODE_ENV=production
 ENV PORT=3000
 
 COPY package*.json ./
-RUN npm ci --only=production
+RUN npm ci --omit=dev
 
 # Copy compiled dist and server output
 COPY --from=builder /app/dist ./dist
