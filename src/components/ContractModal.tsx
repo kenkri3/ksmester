@@ -1,0 +1,504 @@
+import React, { useState, useEffect } from 'react';
+import { motion, AnimatePresence } from 'framer-motion';
+import { X, FileSignature, CheckCircle2, Clock, AlertCircle, Search, Filter, Download, ExternalLink, Plus, Send, Sparkles, ShieldAlert } from 'lucide-react';
+import { Contract } from '../types';
+import { db, auth, handleFirestoreError, OperationType, collection, addDoc, serverTimestamp, onSnapshot, query, orderBy, where } from '../services/firebase';
+import { contractAiService, ContractRisk } from '../services/contractAiService';
+import { masterAiService } from '../services/masterAiService';
+import AiTextAssistant from './AiTextAssistant';
+import { useAuth } from '../hooks/useAuth';
+import { cn } from '../lib/utils';
+
+interface ContractModalProps {
+  isOpen: boolean;
+  onClose: () => void;
+}
+
+const ContractModal: React.FC<ContractModalProps> = ({ isOpen, onClose }) => {
+  const { user, company } = useAuth();
+  const [searchTerm, setSearchTerm] = useState('');
+  const [contracts, setContracts] = useState<Contract[]>([]);
+  const [isLoading, setIsLoading] = useState(true);
+  const [isNewContractOpen, setIsNewContractOpen] = useState(false);
+  const [isSaving, setIsSaving] = useState(false);
+  const [isReviewing, setIsReviewing] = useState(false);
+  const [isComparing, setIsComparing] = useState(false);
+  const [risks, setRisks] = useState<ContractRisk[]>([]);
+  const [comparisonResult, setComparisonResult] = useState<any>(null);
+  const [selectedContractForReview, setSelectedContractForReview] = useState<Contract | null>(null);
+
+  // Form state
+  const [newTitle, setNewTitle] = useState('');
+  const [newProjectCode, setNewProjectCode] = useState('');
+  const [newClientName, setNewClientName] = useState('');
+  const [newClientEmail, setNewClientEmail] = useState('');
+
+  useEffect(() => {
+    if (!isOpen || !user) return;
+
+    if (!company) {
+      setIsLoading(false);
+      return;
+    }
+
+    const q = query(
+      collection(db, 'contracts'), 
+      where('company', '==', company),
+      orderBy('createdAt', 'desc')
+    );
+    const unsubscribe = onSnapshot(q, (snapshot) => {
+      const contractsData = snapshot.docs.map(doc => ({
+        id: doc.id,
+        ...doc.data()
+      })) as Contract[];
+      setContracts(contractsData);
+      setIsLoading(false);
+    }, (error) => {
+      handleFirestoreError(error, OperationType.LIST, 'contracts');
+      setIsLoading(false);
+    });
+
+    return () => unsubscribe();
+  }, [isOpen, user]);
+
+  const handleReviewContract = async (contract: Contract) => {
+    setSelectedContractForReview(contract);
+    setIsReviewing(true);
+    setRisks([]);
+    try {
+      // In a real app, we'd fetch the actual contract text. 
+      // For this demo, we'll simulate it based on the title and client.
+      const simulatedText = `Kontrakt for ${contract.title} mellom ${contract.clientName} og Entreprenør. 
+      Dette er et standardoppdrag for tømrerarbeid. Ingen spesifikke dagmulkter er nevnt. 
+      Betalingsbetingelser er 14 dager netto.`;
+      
+      const analysis = await contractAiService.reviewContract(simulatedText);
+      setRisks(analysis);
+    } catch (error) {
+      console.error("Contract review failed:", error);
+    } finally {
+      setIsReviewing(false);
+    }
+  };
+  const handleCompareWithOffer = async (contract: Contract) => {
+    setIsComparing(true);
+    setComparisonResult(null);
+    try {
+      // In a real app, we'd fetch the actual contract text and the associated offer items.
+      const simulatedContractText = `Kontrakt for ${contract.title}. Pris: 150 000 kr. Oppstart: 01.04.2026.`;
+      const simulatedOfferItems = [
+        { description: 'Arbeid', quantity: 1, unit: 'stk', pricePerUnit: 120000, total: 120000 },
+        { description: 'Materiell', quantity: 1, unit: 'stk', pricePerUnit: 30000, total: 30000 }
+      ];
+      
+      const comparison = await contractAiService.compareContractWithOffer(simulatedContractText, simulatedOfferItems);
+      setComparisonResult(comparison);
+    } catch (error) {
+      console.error("Contract comparison failed:", error);
+    } finally {
+      setIsComparing(false);
+    }
+  };
+
+  const handleCreateContract = async (e: React.FormEvent) => {
+    e.preventDefault();
+    if (!auth.currentUser) return;
+
+    setIsSaving(true);
+    try {
+      const contractData = {
+        title: newTitle,
+        projectCode: newProjectCode,
+        clientName: newClientName,
+        clientEmail: newClientEmail,
+        status: 'draft',
+        authorId: auth.currentUser.uid,
+        company: company || '',
+        createdAt: serverTimestamp(),
+        updatedAt: serverTimestamp(),
+      };
+
+      await addDoc(collection(db, 'contracts'), contractData);
+      setIsNewContractOpen(false);
+      setNewTitle('');
+      setNewProjectCode('');
+      setNewClientName('');
+      setNewClientEmail('');
+    } catch (error) {
+      handleFirestoreError(error, OperationType.CREATE, 'contracts');
+    } finally {
+      setIsSaving(false);
+    }
+  };
+
+  const filteredContracts = contracts.filter(c => 
+    c.title.toLowerCase().includes(searchTerm.toLowerCase()) || 
+    c.clientName.toLowerCase().includes(searchTerm.toLowerCase()) ||
+    c.projectCode?.toLowerCase().includes(searchTerm.toLowerCase())
+  );
+
+  const getStatusBadge = (status: Contract['status']) => {
+    switch (status) {
+      case 'signed':
+        return <span className="flex items-center gap-1 px-2 py-1 bg-emerald-100 text-emerald-700 rounded-full text-[10px] font-bold uppercase tracking-wider"><CheckCircle2 size={10} /> Signert</span>;
+      case 'pending_signature':
+        return <span className="flex items-center gap-1 px-2 py-1 bg-amber-100 text-amber-700 rounded-full text-[10px] font-bold uppercase tracking-wider"><Clock size={10} /> Venter på signering</span>;
+      case 'draft':
+        return <span className="flex items-center gap-1 px-2 py-1 bg-neutral-100 text-neutral-700 rounded-full text-[10px] font-bold uppercase tracking-wider"><AlertCircle size={10} /> Utkast</span>;
+      default:
+        return null;
+    }
+  };
+
+  if (!isOpen) return null;
+
+  return (
+    <div className="fixed inset-0 z-50 flex items-center justify-center p-4 bg-black/60 backdrop-blur-sm">
+      <motion.div 
+        initial={{ opacity: 0, scale: 0.95, y: 20 }}
+        animate={{ opacity: 1, scale: 1, y: 0 }}
+        className="bg-neutral-50 w-full max-w-5xl rounded-[2.5rem] shadow-2xl overflow-hidden flex flex-col max-h-[90vh]"
+      >
+        {/* Header */}
+        <div className="p-8 border-b border-neutral-200 flex items-center justify-between bg-white">
+          <div className="flex items-center gap-4">
+            <div className="w-12 h-12 rounded-2xl bg-indigo-600 flex items-center justify-center text-white shadow-lg shadow-indigo-100">
+              <FileSignature size={24} />
+            </div>
+            <div>
+              <h2 className="text-2xl font-bold tracking-tight">Kontraktshåndtering</h2>
+              <p className="text-neutral-500 text-sm font-medium">Administrer og følg opp dine kontrakter</p>
+            </div>
+          </div>
+          <button onClick={onClose} className="p-2 hover:bg-neutral-100 rounded-xl transition-colors">
+            <X size={24} />
+          </button>
+        </div>
+
+        {/* Content */}
+        <div className="flex-1 overflow-y-auto p-8">
+          <div className="flex flex-col md:flex-row items-center justify-between gap-4 mb-8">
+            <div className="relative w-full md:w-96">
+              <Search className="absolute left-4 top-1/2 -translate-y-1/2 text-neutral-400" size={18} />
+              <input 
+                type="text" 
+                placeholder="Søk i kontrakter..."
+                value={searchTerm}
+                onChange={(e) => setSearchTerm(e.target.value)}
+                className="w-full pl-12 pr-4 py-3 bg-white border border-neutral-200 rounded-2xl focus:ring-2 focus:ring-indigo-500 outline-none font-bold"
+              />
+            </div>
+            <div className="flex items-center gap-3 w-full md:w-auto">
+              <button className="flex-1 md:flex-none flex items-center justify-center gap-2 px-4 py-3 bg-white border border-neutral-200 rounded-2xl text-sm font-bold hover:bg-neutral-50 transition-all">
+                <Filter size={16} />
+                Filter
+              </button>
+              <button 
+                onClick={() => setIsNewContractOpen(true)}
+                className="flex-1 md:flex-none flex items-center justify-center gap-2 px-6 py-3 bg-indigo-600 text-white rounded-2xl text-sm font-bold hover:bg-indigo-500 transition-all shadow-lg shadow-indigo-100"
+              >
+                <Plus size={16} />
+                Ny Kontrakt
+              </button>
+            </div>
+          </div>
+
+          {isLoading ? (
+            <div className="flex flex-col items-center justify-center py-20">
+              <div className="w-12 h-12 border-4 border-indigo-200 border-t-indigo-600 rounded-full animate-spin mb-4" />
+              <p className="text-neutral-500 font-medium">Laster kontrakter...</p>
+            </div>
+          ) : (
+            <div className="bg-white border border-neutral-200 rounded-[2rem] overflow-hidden shadow-sm">
+              <table className="w-full text-left border-collapse">
+                <thead>
+                  <tr className="bg-neutral-50 border-b border-neutral-200">
+                    <th className="px-6 py-4 text-[10px] font-black uppercase tracking-widest text-neutral-400">Kode / Tittel / Kunde</th>
+                    <th className="px-6 py-4 text-[10px] font-black uppercase tracking-widest text-neutral-400">Status</th>
+                    <th className="px-6 py-4 text-[10px] font-black uppercase tracking-widest text-neutral-400">Opprettet</th>
+                    <th className="px-6 py-4 text-[10px] font-black uppercase tracking-widest text-neutral-400 text-right">Handlinger</th>
+                  </tr>
+                </thead>
+                <tbody className="divide-y divide-neutral-100">
+                  {filteredContracts.map((contract) => (
+                    <tr key={contract.id} className="hover:bg-neutral-50 transition-colors">
+                      <td className="px-6 py-4">
+                        <div className="flex items-center gap-2">
+                          {contract.projectCode && (
+                            <span className="px-1.5 py-0.5 bg-neutral-100 text-neutral-500 text-[10px] font-bold rounded uppercase">
+                              {contract.projectCode}
+                            </span>
+                          )}
+                          <div className="font-bold text-neutral-900">{contract.title}</div>
+                        </div>
+                        <div className="text-xs text-neutral-500 font-medium">{contract.clientName}</div>
+                      </td>
+                      <td className="px-6 py-4">
+                        {getStatusBadge(contract.status)}
+                      </td>
+                      <td className="px-6 py-4 text-sm font-bold text-neutral-600">
+                        {(contract.createdAt as any)?.seconds 
+                          ? new Date((contract.createdAt as any).seconds * 1000).toLocaleDateString()
+                          : String(contract.createdAt)}
+                      </td>
+                      <td className="px-6 py-4">
+                        <div className="flex items-center justify-end gap-2">
+                          <button 
+                            onClick={() => {
+                              handleReviewContract(contract);
+                              handleCompareWithOffer(contract);
+                            }}
+                            className="p-2 text-indigo-400 hover:text-indigo-600 hover:bg-indigo-50 rounded-lg transition-all flex items-center gap-1"
+                            title="AI Kontroll & Sammenligning"
+                          >
+                            <Sparkles size={18} />
+                          </button>
+                          <button className="p-2 text-neutral-400 hover:text-indigo-600 hover:bg-indigo-50 rounded-lg transition-all">
+                            <Download size={18} />
+                          </button>
+                          <button className="p-2 text-neutral-400 hover:text-indigo-600 hover:bg-indigo-50 rounded-lg transition-all">
+                            <ExternalLink size={18} />
+                          </button>
+                        </div>
+                      </td>
+                    </tr>
+                  ))}
+                </tbody>
+              </table>
+              {filteredContracts.length === 0 && (
+                <div className="p-12 text-center">
+                  <div className="w-16 h-16 bg-neutral-100 text-neutral-400 rounded-full flex items-center justify-center mx-auto mb-4">
+                    <FileSignature size={32} />
+                  </div>
+                  <h3 className="text-lg font-bold text-neutral-900">Ingen kontrakter funnet</h3>
+                  <p className="text-neutral-500">Prøv et annet søkeord eller opprett en ny kontrakt.</p>
+                </div>
+              )}
+            </div>
+          )}
+        </div>
+
+        {/* New Contract Modal */}
+        <AnimatePresence>
+          {selectedContractForReview && (
+            <div className="fixed inset-0 z-[70] flex items-center justify-center p-4 bg-black/40 backdrop-blur-sm">
+              <motion.div
+                initial={{ opacity: 0, scale: 0.9, y: 20 }}
+                animate={{ opacity: 1, scale: 1, y: 0 }}
+                exit={{ opacity: 0, scale: 0.9, y: 20 }}
+                className="bg-white w-full max-w-2xl rounded-[2.5rem] shadow-2xl overflow-hidden flex flex-col max-h-[80vh]"
+              >
+                <div className="p-8 border-b border-neutral-100 flex items-center justify-between bg-indigo-900 text-white">
+                  <div className="flex items-center gap-3">
+                    <Sparkles size={24} className="text-indigo-400" />
+                    <div>
+                      <h3 className="text-xl font-bold">AI Kontraktskontroll</h3>
+                      <p className="text-xs text-indigo-300">{selectedContractForReview.title}</p>
+                    </div>
+                  </div>
+                  <button onClick={() => setSelectedContractForReview(null)} className="p-2 hover:bg-white/10 rounded-xl transition-colors">
+                    <X size={20} />
+                  </button>
+                </div>
+                
+                <div className="flex-1 overflow-y-auto p-8 space-y-6">
+                  {isReviewing ? (
+                    <div className="flex flex-col items-center justify-center py-20 text-neutral-400">
+                      <div className="w-12 h-12 border-4 border-indigo-200 border-t-indigo-600 rounded-full animate-spin mb-4" />
+                      <p className="font-bold">AI analyserer juridiske risikoer...</p>
+                    </div>
+                  ) : (
+                    <>
+                      <div className="p-4 bg-indigo-50 rounded-2xl border border-indigo-100 flex items-start gap-3">
+                        <ShieldAlert className="text-indigo-600 shrink-0" size={20} />
+                        <p className="text-xs text-indigo-900 font-medium">
+                          Vår AI har skannet kontrakten opp mot NS-standarder og identifisert følgende punkter som bør vurderes.
+                        </p>
+                      </div>
+
+                      <div className="space-y-4">
+                        <h4 className="text-xs font-black uppercase tracking-widest text-neutral-400 ml-1">Risikovurdering</h4>
+                        {risks.map((risk, i) => (
+                          <div key={i} className="p-5 bg-neutral-50 border border-neutral-100 rounded-2xl space-y-3">
+                            <div className="flex items-center justify-between">
+                              <h4 className="font-bold text-sm">{risk.risk}</h4>
+                              <span className={cn(
+                                "px-2 py-0.5 rounded text-[10px] font-black uppercase tracking-widest",
+                                risk.severity === 'high' ? "bg-rose-100 text-rose-700" :
+                                risk.severity === 'medium' ? "bg-amber-100 text-amber-700" :
+                                "bg-blue-100 text-blue-700"
+                              )}>
+                                {risk.severity === 'high' ? 'Høy Risiko' : risk.severity === 'medium' ? 'Middels' : 'Lav'}
+                              </span>
+                            </div>
+                            <p className="text-xs text-neutral-600 leading-relaxed">
+                              <span className="font-bold text-neutral-900">Anbefaling:</span> {risk.recommendation}
+                            </p>
+                          </div>
+                        ))}
+                      </div>
+
+                      {isComparing ? (
+                        <div className="flex flex-col items-center justify-center py-10 text-neutral-400 border-t border-neutral-100 pt-10">
+                          <div className="w-8 h-8 border-3 border-indigo-200 border-t-indigo-600 rounded-full animate-spin mb-3" />
+                          <p className="text-xs font-bold">Sammenligner med tilbud...</p>
+                        </div>
+                      ) : comparisonResult && (
+                        <div className="space-y-4 border-t border-neutral-100 pt-10">
+                          <h4 className="text-xs font-black uppercase tracking-widest text-neutral-400 ml-1">Sammenligning med Tilbud</h4>
+                          <div className="p-5 bg-emerald-50 border border-emerald-100 rounded-2xl space-y-4">
+                            <div className="flex items-center gap-2 text-emerald-700">
+                              <CheckCircle2 size={16} />
+                              <h5 className="font-bold text-sm">Samsvarsanalyse</h5>
+                            </div>
+                            
+                            <div className="space-y-3">
+                              <div>
+                                <p className="text-[10px] font-black uppercase tracking-widest text-emerald-600 mb-1">Samsvarer</p>
+                                <ul className="space-y-1">
+                                  {comparisonResult.matches.map((match: string, i: number) => (
+                                    <li key={i} className="text-xs text-emerald-800 flex items-start gap-2">
+                                      <span className="mt-1 w-1 h-1 bg-emerald-400 rounded-full shrink-0" />
+                                      {match}
+                                    </li>
+                                  ))}
+                                </ul>
+                              </div>
+
+                              {comparisonResult.discrepancies.length > 0 && (
+                                <div>
+                                  <p className="text-[10px] font-black uppercase tracking-widest text-rose-600 mb-1">Avvik Funnet</p>
+                                  <ul className="space-y-1">
+                                    {comparisonResult.discrepancies.map((disc: string, i: number) => (
+                                      <li key={i} className="text-xs text-rose-800 flex items-start gap-2">
+                                        <span className="mt-1 w-1 h-1 bg-rose-400 rounded-full shrink-0" />
+                                        {disc}
+                                      </li>
+                                    ))}
+                                  </ul>
+                                </div>
+                              )}
+
+                              {comparisonResult.missingItems.length > 0 && (
+                                <div>
+                                  <p className="text-[10px] font-black uppercase tracking-widest text-amber-600 mb-1">Mangler i Kontrakt</p>
+                                  <ul className="space-y-1">
+                                    {comparisonResult.missingItems.map((item: string, i: number) => (
+                                      <li key={i} className="text-xs text-amber-800 flex items-start gap-2">
+                                        <span className="mt-1 w-1 h-1 bg-amber-400 rounded-full shrink-0" />
+                                        {item}
+                                      </li>
+                                    ))}
+                                  </ul>
+                                </div>
+                              )}
+                            </div>
+                          </div>
+                        </div>
+                      )}
+                    </>
+                  )}
+                </div>
+
+                <div className="p-8 border-t border-neutral-100 bg-neutral-50 flex justify-end">
+                  <button 
+                    onClick={() => setSelectedContractForReview(null)}
+                    className="px-8 py-3 bg-indigo-600 text-white rounded-xl font-bold hover:bg-indigo-500 transition-all shadow-lg shadow-indigo-100"
+                  >
+                    Forstått
+                  </button>
+                </div>
+              </motion.div>
+            </div>
+          )}
+        </AnimatePresence>
+
+        {/* New Contract Modal */}
+        <AnimatePresence>
+          {isNewContractOpen && (
+            <div className="fixed inset-0 z-[60] flex items-center justify-center p-4 bg-black/40 backdrop-blur-sm">
+              <motion.div
+                initial={{ opacity: 0, scale: 0.9, y: 20 }}
+                animate={{ opacity: 1, scale: 1, y: 0 }}
+                exit={{ opacity: 0, scale: 0.9, y: 20 }}
+                className="bg-white w-full max-w-lg rounded-[2.5rem] shadow-2xl overflow-hidden"
+              >
+                <div className="p-8 border-b border-neutral-100 flex items-center justify-between">
+                  <h3 className="text-xl font-bold">Ny Kontrakt</h3>
+                  <button onClick={() => setIsNewContractOpen(false)} className="p-2 hover:bg-neutral-100 rounded-xl transition-colors">
+                    <X size={20} />
+                  </button>
+                </div>
+                <form onSubmit={handleCreateContract} className="p-8 space-y-6">
+                  <div className="space-y-2">
+                    <div className="flex items-center justify-between">
+                      <label className="text-xs font-black uppercase tracking-widest text-neutral-400 ml-1">Tittel</label>
+                      <AiTextAssistant 
+                        currentText={newTitle} 
+                        onApply={(text) => setNewTitle(text)}
+                        placeholder="Hva er tittelen på kontrakten?"
+                      />
+                    </div>
+                    <input 
+                      required
+                      type="text" 
+                      value={newTitle}
+                      onChange={(e) => setNewTitle(e.target.value)}
+                      placeholder="F.eks. Renovering Bad"
+                      className="w-full p-4 bg-neutral-50 border border-neutral-200 rounded-2xl focus:ring-2 focus:ring-indigo-500 outline-none font-bold"
+                    />
+                  </div>
+                  <div className="space-y-2">
+                    <label className="text-xs font-black uppercase tracking-widest text-neutral-400 ml-1">Prosjektkode (Valgfritt)</label>
+                    <input 
+                      type="text" 
+                      value={newProjectCode}
+                      onChange={(e) => setNewProjectCode(e.target.value)}
+                      placeholder="f.eks. P2024-001"
+                      className="w-full p-4 bg-neutral-50 border border-neutral-200 rounded-2xl focus:ring-2 focus:ring-indigo-500 outline-none font-bold"
+                    />
+                  </div>
+                  <div className="space-y-2">
+                    <label className="text-xs font-black uppercase tracking-widest text-neutral-400 ml-1">Kundenavn</label>
+                    <input 
+                      required
+                      type="text" 
+                      value={newClientName}
+                      onChange={(e) => setNewClientName(e.target.value)}
+                      placeholder="Ola Nordmann"
+                      className="w-full p-4 bg-neutral-50 border border-neutral-200 rounded-2xl focus:ring-2 focus:ring-indigo-500 outline-none font-bold"
+                    />
+                  </div>
+                  <div className="space-y-2">
+                    <label className="text-xs font-black uppercase tracking-widest text-neutral-400 ml-1">Kunde E-post</label>
+                    <input 
+                      type="email" 
+                      value={newClientEmail}
+                      onChange={(e) => setNewClientEmail(e.target.value)}
+                      placeholder="ola@eksempel.no"
+                      className="w-full p-4 bg-neutral-50 border border-neutral-200 rounded-2xl focus:ring-2 focus:ring-indigo-500 outline-none font-bold"
+                    />
+                  </div>
+                  <button
+                    type="submit"
+                    disabled={isSaving}
+                    className="w-full bg-indigo-600 text-white py-4 rounded-2xl font-bold flex items-center justify-center gap-2 hover:bg-indigo-500 transition-all shadow-lg shadow-indigo-100 disabled:opacity-50"
+                  >
+                    {isSaving ? (
+                      <div className="w-5 h-5 border-2 border-white/30 border-t-white rounded-full animate-spin" />
+                    ) : (
+                      <Send size={18} />
+                    )}
+                    {isSaving ? 'Oppretter...' : 'Opprett Kontrakt'}
+                  </button>
+                </form>
+              </motion.div>
+            </div>
+          )}
+        </AnimatePresence>
+      </motion.div>
+    </div>
+  );
+};
+
+export default ContractModal;
