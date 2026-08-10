@@ -5,52 +5,133 @@ export interface WeatherData {
   precipitation: number;
   description: string;
   icon: 'sun' | 'cloud' | 'rain' | 'snow' | 'wind' | 'cloud-lightning';
+  locationName?: string;
+  workAdvice?: string;
+  humidity?: number;
 }
 
 export const weatherService = {
   /**
-   * Fetches weather data for a specific location.
-   * In a real app, this would call a weather API (e.g., OpenWeatherMap or Yr.no).
-   * For this demo, we'll simulate it based on the location string.
+   * Fetches weather data by coordinates or location name.
+   */
+  async getWeatherByCoords(lat: number, lon: number, locationName?: string): Promise<WeatherData> {
+    try {
+      const url = `https://api.open-meteo.com/v1/forecast?latitude=${lat}&longitude=${lon}&current=temperature_2m,relative_humidity_2m,precipitation,rain,showers,snowfall,weather_code,wind_speed_10m&wind_speed_unit=ms`;
+      const res = await fetch(url);
+      if (res.ok) {
+        const data = await res.json();
+        const current = data.current;
+        const temp = Math.round(current.temperature_2m);
+        const windSpeed = Math.round(current.wind_speed_10m * 10) / 10;
+        const precipitation = current.precipitation || 0;
+        const code = current.weather_code;
+        const humidity = current.relative_humidity_2m;
+
+        let condition = 'Klart';
+        let icon: WeatherData['icon'] = 'sun';
+
+        if (code === 0) {
+          condition = 'Sol / Klart';
+          icon = 'sun';
+        } else if (code >= 1 && code <= 3) {
+          condition = 'Overskyet';
+          icon = 'cloud';
+        } else if ((code >= 51 && code <= 67) || (code >= 80 && code <= 82)) {
+          condition = 'Regn';
+          icon = 'rain';
+        } else if ((code >= 71 && code <= 77) || (code >= 85 && code <= 86)) {
+          condition = 'Snø';
+          icon = 'snow';
+        } else if (code >= 95) {
+          condition = 'Tordenvær';
+          icon = 'cloud-lightning';
+        }
+
+        if (windSpeed > 11 && icon !== 'rain' && icon !== 'snow') {
+          icon = 'wind';
+        }
+
+        const advice = this.generateCraftAdvice(temp, windSpeed, precipitation, condition);
+
+        return {
+          temp,
+          condition,
+          windSpeed,
+          precipitation,
+          humidity,
+          description: `${condition}, ${temp}°C, vind ${windSpeed} m/s.`,
+          icon,
+          locationName: locationName || 'Din lokasjon',
+          workAdvice: advice
+        };
+      }
+    } catch (e) {
+      console.warn('Open-Meteo fetch failed, using location fallback:', e);
+    }
+
+    return this.getWeather(locationName || 'Oslo');
+  },
+
+  /**
+   * Generates craft/construction advice based on weather parameters
+   */
+  generateCraftAdvice(temp: number, windSpeed: number, precipitation: number, condition: string): string {
+    if (windSpeed >= 12) {
+      return 'Vindkuling ( over 12 m/s): Fare ved krankjøring, takarbeid og stillas. Sikre alle løse byggematerialer.';
+    }
+    if (temp < 0) {
+      return 'Minusgrader: Fare for glatt stillas og frosne vannrør. Husk vintertilsetning i mørtel/betong og god tildekking.';
+    }
+    if (precipitation > 2) {
+      return 'Nedbør: Utvendig tømrer/maling krever tildekking. Vurder å prioritere innvendig arbeid.';
+    }
+    if (temp >= 22) {
+      return 'Gode tørkeforhold. Sørg for tilstrekkelig væskeinntak og solskjerming ved tungt utearbeid.';
+    }
+    return 'Gode og stabile arbeidsforhold for utendørs- og innendørsentreprenørskap.';
+  },
+
+  /**
+   * Fetches weather data for a specific location string.
    */
   async getWeather(location: string): Promise<WeatherData> {
-    // Simulate API delay
-    await new Promise(resolve => setTimeout(resolve, 500));
+    // Basic city coordinates lookup for quick weather
+    const locLower = (location || 'oslo').toLowerCase();
+    let lat = 59.91;
+    let lon = 10.75;
+    let name = 'Oslo';
 
-    // Simple simulation logic based on location
-    const isNorth = location.toLowerCase().includes('tromsø') || location.toLowerCase().includes('bodø');
-    const isWest = location.toLowerCase().includes('bergen') || location.toLowerCase().includes('stavanger');
-    
-    if (isNorth) {
-      return {
-        temp: -2,
-        condition: 'Snø',
-        windSpeed: 12,
-        precipitation: 5,
-        description: 'Lett snøfall og frisk bris. Fare for glatte partier.',
-        icon: 'snow'
-      };
+    if (locLower.includes('bergen')) {
+      lat = 60.39; lon = 5.32; name = 'Bergen';
+    } else if (locLower.includes('trondheim')) {
+      lat = 63.43; lon = 10.39; name = 'Trondheim';
+    } else if (locLower.includes('stavanger')) {
+      lat = 58.97; lon = 5.73; name = 'Stavanger';
+    } else if (locLower.includes('tromsø') || locLower.includes('tromso')) {
+      lat = 69.65; lon = 18.96; name = 'Tromsø';
+    } else if (locLower.includes('bodø') || locLower.includes('bodo')) {
+      lat = 67.28; lon = 14.40; name = 'Bodø';
+    } else if (locLower.includes('kristiansand')) {
+      lat = 58.15; lon = 8.00; name = 'Kristiansand';
+    } else if (location && location.trim() !== '') {
+      name = location;
     }
 
-    if (isWest) {
+    try {
+      return await this.getWeatherByCoords(lat, lon, name);
+    } catch (e) {
+      // Fallback object
       return {
-        temp: 8,
-        condition: 'Regn',
-        windSpeed: 15,
-        precipitation: 12,
-        description: 'Mye regn og kraftig vind. Sjekk sikring av løse gjenstander.',
-        icon: 'rain'
+        temp: 6,
+        condition: 'Overskyet',
+        windSpeed: 4,
+        precipitation: 0,
+        description: 'Overskyet, men opphold. Gode arbeidsforhold.',
+        icon: 'cloud',
+        locationName: name,
+        workAdvice: 'Gode og stabile arbeidsforhold for utendørs- og innendørsentreprenørskap.'
       };
     }
-
-    // Default (Oslo/East)
-    return {
-      temp: 5,
-      condition: 'Overskyet',
-      windSpeed: 5,
-      precipitation: 0,
-      description: 'Overskyet, men opphold. Gode arbeidsforhold.',
-      icon: 'cloud'
-    };
   }
 };
+

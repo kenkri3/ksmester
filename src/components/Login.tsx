@@ -121,8 +121,8 @@ export default function Login({ onBack }: { onBack?: () => void }) {
           <div className="relative">
             <Mail className="absolute left-4 top-1/2 -translate-y-1/2 text-neutral-400" size={18} />
             <input
-              type="email"
-              placeholder={t('email', 'E-postadresse')}
+              type="text"
+              placeholder={t('email_or_username', 'E-postadresse eller brukernavn')}
               value={email}
               onChange={(e) => setEmail(e.target.value)}
               required

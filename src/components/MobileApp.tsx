@@ -33,6 +33,7 @@ import UniversalTranslator from './UniversalTranslator';
 import { db, auth, collection, onSnapshot, addDoc, Timestamp, handleFirestoreError, OperationType, query, orderBy, limit, where, updateDoc, doc, getUserProfile, updateUserProfile, serverTimestamp, getDocs } from '../services/firebase';
 
 import { weatherService, WeatherData } from '../services/weatherService';
+import WeatherWidget from './WeatherWidget';
 import { logAiService } from '../services/logAiService';
 import { locationService } from '../services/locationService';
 import { Sparkles, ClipboardList } from 'lucide-react';
@@ -438,6 +439,11 @@ export default function MobileApp() {
                     <MapPin size={18} className="text-neutral-400" />
                   </div>
                 </div>
+
+                {/* Weather Widget */}
+                <WeatherWidget 
+                  projectLocation={projects.find(p => p.id === selectedProjectId)?.location || 'Oslo'} 
+                />
 
                 <div className="p-4 bg-emerald-50 rounded-2xl border border-emerald-100">
                   <div className="flex items-center gap-3 mb-2">

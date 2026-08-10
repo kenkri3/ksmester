@@ -16,6 +16,10 @@ const PORT = process.env.PORT ? parseInt(process.env.PORT, 10) : 3000;
 const JWT_SECRET = process.env.JWT_SECRET || "bygg-master-render-secret-key-2026";
 const DATABASE_URL = process.env.DATABASE_URL;
 
+const DEFAULT_ADMIN_EMAIL = (process.env.ADMIN_EMAIL || "kenkri3@gmail.com").toLowerCase();
+const DEFAULT_ADMIN_PASSWORD = process.env.ADMIN_PASSWORD || "Admin2026!Secure";
+const DEFAULT_ADMIN_HASH = bcrypt.hashSync(DEFAULT_ADMIN_PASSWORD, 10);
+
 // Initialize PostgreSQL Pool if DATABASE_URL is available
 let pool: Pool | null = null;
 if (DATABASE_URL) {
@@ -30,8 +34,8 @@ const inMemoryStore: Record<string, any[]> = {
   users: [
     {
       id: "u-admin-123",
-      email: "kenkri3@gmail.com",
-      password: "$2b$10$eA8bI9/xZ6V0g2B1qT0i0eO7GZf8S.uD8M4w4K0a0K0a0K0a0K0a", // hashed 'admin123'
+      email: DEFAULT_ADMIN_EMAIL,
+      password: DEFAULT_ADMIN_HASH,
       displayName: "Ken (Admin)",
       role: "admin",
       trade: "Byggmester",
@@ -156,6 +160,24 @@ async function initDb() {
         created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP
       );
     `);
+
+    // Seed initial admin user if not exists
+    await client.query(`
+      INSERT INTO users (id, email, password, display_name, role, trade, company, company_id, subscription_status)
+      VALUES ($1, $2, $3, $4, $5, $6, $7, $8, $9)
+      ON CONFLICT (email) DO NOTHING
+    `, [
+      "u-admin-123",
+      DEFAULT_ADMIN_EMAIL,
+      DEFAULT_ADMIN_HASH,
+      "Ken (Admin)",
+      "admin",
+      "Byggmester",
+      "Mester Entreprenør AS",
+      "comp-001",
+      "active"
+    ]);
+
     client.release();
     console.log("PostgreSQL database tables initialized successfully.");
   } catch (err) {
@@ -278,30 +300,38 @@ async function startServer() {
 
   // POST /api/auth/login
   app.post("/api/auth/login", async (req, res) => {
-    const { email, password } = req.body;
-    if (!email || !password) {
-      return res.status(400).json({ error: "Både e-post og passord må fylles ut." });
+    const identifier = (req.body.email || req.body.username || "").toLowerCase().trim();
+    const password = req.body.password;
+
+    if (!identifier || !password) {
+      return res.status(400).json({ error: "Både e-post/brukernavn og passord må fylles ut." });
     }
 
     try {
       let userRecord: any = null;
       if (pool) {
-        const rows = await dbQuery("SELECT * FROM users WHERE email = $1", [email.toLowerCase()]);
+        const rows = await dbQuery(
+          "SELECT * FROM users WHERE LOWER(email) = $1 OR LOWER(id) = $1",
+          [identifier]
+        );
         userRecord = rows[0];
       } else {
-        userRecord = inMemoryStore.users.find(u => u.email.toLowerCase() === email.toLowerCase());
+        userRecord = inMemoryStore.users.find(u => 
+          u.email.toLowerCase() === identifier || 
+          (u.id && u.id.toLowerCase() === identifier) ||
+          (u.displayName && u.displayName.toLowerCase() === identifier)
+        );
       }
 
       if (!userRecord) {
-        return res.status(401).json({ error: "Ugyldig e-post eller passord." });
+        return res.status(401).json({ error: "Ugyldig e-post/brukernavn eller passord." });
       }
 
-      // Validate password against hashed password or plaintext fallback
+      // Validate password strictly using bcrypt hash
       const passwordValid = await bcrypt.compare(password, userRecord.password).catch(() => false);
-      const isPlaintextMatch = userRecord.password === password;
 
-      if (!passwordValid && !isPlaintextMatch) {
-        return res.status(401).json({ error: "Ugyldig e-post eller passord." });
+      if (!passwordValid) {
+        return res.status(401).json({ error: "Ugyldig e-post/brukernavn eller passord." });
       }
 
       const userObj = {
