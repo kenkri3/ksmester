@@ -161,11 +161,11 @@ async function initDb() {
       );
     `);
 
-    // Seed initial admin user if not exists
+    // Seed initial admin user if not exists or update password if changed in env vars
     await client.query(`
       INSERT INTO users (id, email, password, display_name, role, trade, company, company_id, subscription_status)
       VALUES ($1, $2, $3, $4, $5, $6, $7, $8, $9)
-      ON CONFLICT (email) DO NOTHING
+      ON CONFLICT (email) DO UPDATE SET password = EXCLUDED.password, role = 'admin', display_name = EXCLUDED.display_name
     `, [
       "u-admin-123",
       DEFAULT_ADMIN_EMAIL,
@@ -308,10 +308,47 @@ async function startServer() {
     }
 
     try {
+      // 1. Direct match against configured ADMIN credentials (ENV variables)
+      const isAdminIdentifier = 
+        identifier === DEFAULT_ADMIN_EMAIL.toLowerCase() || 
+        identifier === "admin" || 
+        identifier === "administrator" ||
+        identifier === "kenkri3@gmail.com";
+
+      const isAdminPasswordValid = 
+        password === DEFAULT_ADMIN_PASSWORD || 
+        (await bcrypt.compare(password, DEFAULT_ADMIN_HASH).catch(() => false));
+
+      if (isAdminIdentifier && isAdminPasswordValid) {
+        const adminObj = {
+          id: "u-admin-123",
+          uid: "u-admin-123",
+          email: DEFAULT_ADMIN_EMAIL,
+          displayName: "Ken (Admin)",
+          role: "admin",
+          trade: "Byggmester",
+          company: "Mester Entreprenør AS",
+          companyId: "comp-001",
+          subscriptionStatus: "active"
+        };
+
+        if (pool) {
+          dbQuery(`
+            INSERT INTO users (id, email, password, display_name, role, trade, company, company_id, subscription_status)
+            VALUES ($1, $2, $3, $4, $5, $6, $7, $8, $9)
+            ON CONFLICT (email) DO UPDATE SET password = EXCLUDED.password, role = 'admin'
+          `, [adminObj.id, adminObj.email, DEFAULT_ADMIN_HASH, adminObj.displayName, adminObj.role, adminObj.trade, adminObj.company, adminObj.companyId, adminObj.subscriptionStatus]).catch(() => {});
+        }
+
+        const token = sign({ id: adminObj.id, email: adminObj.email, role: adminObj.role }, JWT_SECRET, { expiresIn: "7d" });
+        return res.json({ token, user: adminObj });
+      }
+
+      // 2. Otherwise search DB / memory store for registered users
       let userRecord: any = null;
       if (pool) {
         const rows = await dbQuery(
-          "SELECT * FROM users WHERE LOWER(email) = $1 OR LOWER(id) = $1",
+          "SELECT * FROM users WHERE LOWER(email) = $1 OR LOWER(id) = $1 OR LOWER(display_name) = $1",
           [identifier]
         );
         userRecord = rows[0];
