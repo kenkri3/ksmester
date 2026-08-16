@@ -20,7 +20,8 @@ import {
   Download,
   ListChecks,
   GraduationCap,
-  Cloud
+  Cloud,
+  Smartphone
 } from 'lucide-react';
 import { cn } from '@/src/lib/utils';
 import { generateAiContent } from '../services/aiClient';
@@ -446,6 +447,14 @@ export default function MobileApp() {
                 <WeatherWidget 
                   projectLocation={projects.find(p => p.id === selectedProjectId)?.location || 'Oslo'} 
                 />
+
+                <button
+                  onClick={() => setShowInstallGuide(true)}
+                  className="w-full py-2.5 px-3.5 bg-neutral-100/90 hover:bg-emerald-50 text-neutral-800 hover:text-emerald-900 rounded-2xl text-xs font-bold flex items-center justify-between border border-neutral-200 transition-all"
+                >
+                  <span className="flex items-center gap-2"><Smartphone size={15} className="text-emerald-600" /> Legg til snarvei på mobilen</span>
+                  <span className="text-[10px] uppercase font-black text-emerald-800 bg-emerald-100/80 px-2 py-0.5 rounded-full">Offline OK</span>
+                </button>
 
                 <div className="p-4 bg-emerald-50 rounded-2xl border border-emerald-100">
                   <div className="flex items-center gap-3 mb-2">
