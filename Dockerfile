@@ -1,17 +1,14 @@
-# Production Dockerfile for KS Mester AI Elite on Railway / Cloud Run / Render
+# Production Dockerfile for KS Mester AI Elite (Next.js) on Railway / Render / Cloud Run
 FROM node:20-alpine AS builder
 
 WORKDIR /app
 
-# Install dependencies
 COPY package*.json ./
-RUN npm ci
+RUN npm install
 
-# Copy source and build frontend + Express backend
 COPY . .
 RUN npm run build
 
-# Production runner stage
 FROM node:20-alpine AS runner
 
 WORKDIR /app
@@ -20,11 +17,12 @@ ENV NODE_ENV=production
 ENV PORT=3000
 
 COPY package*.json ./
-RUN npm ci --omit=dev
+RUN npm install --omit=dev
 
-# Copy compiled dist containing static build and server.cjs
-COPY --from=builder /app/dist ./dist
+COPY --from=builder /app/.next ./.next
+COPY --from=builder /app/public ./public
+COPY --from=builder /app/package.json ./package.json
 
 EXPOSE 3000
 
-CMD ["node", "dist/server.cjs"]
+CMD ["npm", "start"]
