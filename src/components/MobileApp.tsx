@@ -227,7 +227,9 @@ export default function MobileApp() {
       const events = snapshot.docs.map(doc => ({
         id: doc.id,
         title: `SJA: ${doc.data().title}`,
-        time: doc.data().createdAt?.toDate()?.toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' }) || 'Nå',
+        time: typeof doc.data().createdAt?.toDate === 'function' 
+          ? doc.data().createdAt.toDate().toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' }) 
+          : (doc.data().createdAt ? new Date(doc.data().createdAt).toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' }) : 'Nå'),
         type: 'HMS'
       }));
       setRecentEvents(events);

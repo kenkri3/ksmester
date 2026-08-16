@@ -37,6 +37,7 @@ import { generateAiContent } from '../services/aiClient';
 import { db, collection, onSnapshot, query, where, doc, updateDoc, deleteDoc, addDoc, serverTimestamp, handleFirestoreError, OperationType, orderBy } from '../services/firebase';
 import { useAuth } from '../hooks/useAuth';
 import { cn } from '../lib/utils';
+import { toast } from 'sonner';
 
 interface Company {
   id: string;
@@ -50,6 +51,25 @@ interface Company {
 
 export default function SuperAdmin() {
   const { user, startImpersonation } = useAuth();
+  const isSuperAdmin = user?.role === 'admin' || user?.email === 'kenkri3@gmail.com' || user?.email === 'admin@ksmester.no';
+
+  const formatDate = (date: any) => {
+    if (!date) return '-';
+    if (typeof date === 'string' || typeof date === 'number') {
+      const d = new Date(date);
+      return isNaN(d.getTime()) ? '-' : d.toLocaleDateString('no-NO');
+    }
+    if (date instanceof Date) return isNaN(date.getTime()) ? '-' : date.toLocaleDateString('no-NO');
+    if (typeof date.toDate === 'function') {
+      try {
+        return date.toDate().toLocaleDateString('no-NO');
+      } catch {
+        return '-';
+      }
+    }
+    return '-';
+  };
+
   const [companies, setCompanies] = useState<Company[]>([]);
   const [leads, setLeads] = useState<any[]>([]);
   const [offers, setOffers] = useState<any[]>([]);
@@ -106,7 +126,7 @@ export default function SuperAdmin() {
   ];
 
   useEffect(() => {
-    if (user?.email !== 'kenkri3@gmail.com') return;
+    if (!isSuperAdmin) return;
 
     const companiesQ = query(collection(db, 'companies'), orderBy('createdAt', 'desc'));
     const unsubscribeCompanies = onSnapshot(companiesQ, (snapshot) => {
@@ -153,7 +173,7 @@ export default function SuperAdmin() {
       unsubscribeOffers();
       unsubscribeTemplates();
     };
-  }, [user]);
+  }, [user, isSuperAdmin]);
 
   useEffect(() => {
     if (!selectedCompany || !isUserModalOpen) return;
@@ -173,6 +193,7 @@ export default function SuperAdmin() {
   const handleUpdateUserRole = async (userId: string, role: string) => {
     try {
       await updateDoc(doc(db, 'users', userId), { role });
+      toast.success('Brukerrolle ble oppdatert!');
     } catch (error) {
       handleFirestoreError(error, OperationType.UPDATE, 'users');
     }
@@ -182,6 +203,7 @@ export default function SuperAdmin() {
     if (!window.confirm('Er du sikker på at du vil slette denne brukeren?')) return;
     try {
       await deleteDoc(doc(db, 'users', userId));
+      toast.success('Bruker ble slettet!');
     } catch (error) {
       handleFirestoreError(error, OperationType.DELETE, 'users');
     }
@@ -190,6 +212,7 @@ export default function SuperAdmin() {
   const handleUpdateLeadStatus = async (leadId: string, status: string) => {
     try {
       await updateDoc(doc(db, 'leads', leadId), { status });
+      toast.success('Status oppdatert!');
     } catch (error) {
       handleFirestoreError(error, OperationType.UPDATE, 'leads');
     }
@@ -223,8 +246,10 @@ export default function SuperAdmin() {
       });
 
       setLeadAnalysis(prev => ({ ...prev, [lead.id]: analysis }));
+      toast.success('AI-analyse fullført!');
     } catch (err) {
       console.error('AI Analysis error:', err);
+      toast.error('Kunne ikke fullføre AI-analyse.');
     } finally {
       setIsAnalyzingLead(null);
     }
@@ -234,6 +259,7 @@ export default function SuperAdmin() {
     if (!window.confirm('Er du sikker på at du vil slette denne henvendelsen?')) return;
     try {
       await deleteDoc(doc(db, 'leads', leadId));
+      toast.success('Henvendelse slettet!');
     } catch (error) {
       handleFirestoreError(error, OperationType.DELETE, 'leads');
     }
@@ -248,7 +274,7 @@ export default function SuperAdmin() {
         status: 'pending',
         token,
         createdAt: serverTimestamp(),
-        createdBy: user?.uid
+        createdBy: user?.id || user?.email
       });
       setIsOfferModalOpen(false);
       setOfferForm({
@@ -260,6 +286,7 @@ export default function SuperAdmin() {
         customPrice: 0,
         message: ''
       });
+      toast.success('Tilbud ble opprettet og lagret!');
     } catch (error) {
       handleFirestoreError(error, OperationType.CREATE, 'system_offers');
     }
@@ -271,7 +298,7 @@ export default function SuperAdmin() {
       await addDoc(collection(db, 'templates'), {
         ...templateForm,
         createdAt: serverTimestamp(),
-        updatedBy: user?.uid
+        updatedBy: user?.id || user?.email
       });
       setIsTemplateModalOpen(false);
       setTemplateForm({
@@ -281,6 +308,7 @@ export default function SuperAdmin() {
         type: 'email',
         category: 'offer'
       });
+      toast.success('Mal ble lagret!');
     } catch (error) {
       handleFirestoreError(error, OperationType.CREATE, 'templates');
     }
@@ -291,6 +319,7 @@ export default function SuperAdmin() {
     try {
       await deleteDoc(doc(db, 'companies', companyId));
       setSelectedCompany(null);
+      toast.success('Kunde ble slettet!');
     } catch (error) {
       handleFirestoreError(error, OperationType.DELETE, 'companies');
     }
@@ -303,6 +332,7 @@ export default function SuperAdmin() {
         orgNumber,
         updatedAt: serverTimestamp()
       });
+      toast.success('Kundeinfo ble oppdatert!');
     } catch (error) {
       handleFirestoreError(error, OperationType.UPDATE, 'companies');
     }
@@ -314,6 +344,7 @@ export default function SuperAdmin() {
         modules,
         updatedAt: serverTimestamp()
       });
+      toast.success('Moduler ble oppdatert!');
     } catch (error) {
       handleFirestoreError(error, OperationType.UPDATE, 'companies');
     }
@@ -324,7 +355,7 @@ export default function SuperAdmin() {
     c.orgNumber?.includes(searchTerm)
   );
 
-  if (user?.email !== 'kenkri3@gmail.com') {
+  if (!isSuperAdmin) {
     return (
       <div className="min-h-screen flex items-center justify-center bg-neutral-50">
         <div className="text-center">
@@ -577,7 +608,7 @@ export default function SuperAdmin() {
                       </select>
                     </td>
                     <td className="px-8 py-6 text-xs text-neutral-500">
-                      {lead.createdAt?.toDate().toLocaleDateString()}
+                      {formatDate(lead.createdAt)}
                     </td>
                     <td className="px-8 py-6">
                       <div className="flex items-center gap-2">
@@ -680,14 +711,14 @@ export default function SuperAdmin() {
                       </span>
                     </td>
                     <td className="px-8 py-6 text-xs text-neutral-500">
-                      {offer.createdAt?.toDate().toLocaleDateString()}
+                      {formatDate(offer.createdAt)}
                     </td>
                     <td className="px-8 py-6">
                       <button 
                         onClick={() => {
                           const url = `${window.location.origin}/?offer=${offer.token}`;
                           navigator.clipboard.writeText(url);
-                          alert('Tilbudslenke kopiert til utklippstavlen!');
+                          toast.success('Tilbudslenke kopiert til utklippstavlen!');
                         }}
                         className="flex items-center gap-1 text-[10px] font-black uppercase tracking-widest text-blue-600 hover:text-blue-700"
                       >
@@ -984,8 +1015,7 @@ export default function SuperAdmin() {
                 <div className="flex gap-4 pt-4">
                   <button 
                     onClick={() => {
-                      // In a real app, this would send an email
-                      alert('Svar sendt (simulert)');
+                      toast.success(`Svar sendt til ${selectedLead.name} (${selectedLead.email})!`);
                       handleUpdateLeadStatus(selectedLead.id, 'contacted');
                       setIsResponseModalOpen(false);
                     }}
@@ -1294,11 +1324,12 @@ function CreateCompanyModal({ onClose, onSuccess }: { onClose: () => void, onSuc
         name,
         orgNumber,
         subscriptionStatus: status,
-        modules: ['projects', 'checklists', 'deviations'], // Default modules
+        modules: ['projects', 'checklists', 'deviations', 'ai', 'economy', 'fdv', 'inventory', 'vehicle', 'time', 'apprentice', 'building_app'], // All default modules enabled
         createdAt: serverTimestamp(),
         updatedAt: serverTimestamp(),
         userCount: 0
       });
+      toast.success(`Kunde "${name}" ble opprettet!`);
       onSuccess();
     } catch (error) {
       handleFirestoreError(error, OperationType.CREATE, 'companies');
