@@ -94,5 +94,19 @@ export const notificationService = {
       type: isExpired ? 'error' : 'warning',
       category: 'hms',
     });
+  },
+
+  async sendEmail(to: string, subject: string, text: string, html?: string, type?: string) {
+    try {
+      const res = await fetch('/api/notify/email', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ to, subject, text, html, type })
+      });
+      return await res.json();
+    } catch (err) {
+      console.warn('Failed to dispatch email via API:', err);
+      return null;
+    }
   }
 };
