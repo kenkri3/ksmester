@@ -63,7 +63,7 @@ const HandoverModal: React.FC<HandoverModalProps> = ({ isOpen, onClose, projects
       setStep(2);
     } catch (error) {
       console.error("Error generating FDV:", error);
-      alert("Kunne ikke generere FDV-pakke.");
+      toast.error("Kunne ikke generere FDV-pakke.");
     } finally {
       setIsGenerating(false);
     }

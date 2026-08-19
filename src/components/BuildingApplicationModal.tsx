@@ -2,6 +2,9 @@ import React, { useState } from 'react';
 import { motion, AnimatePresence } from 'framer-motion';
 import { X, Building2, CheckCircle2, Clock, AlertCircle, FileText, Send, Info, ChevronRight } from 'lucide-react';
 
+import { db, collection, addDoc, serverTimestamp } from '../services/firebase';
+import { toast } from 'sonner';
+
 interface BuildingApplicationModalProps {
   isOpen: boolean;
   onClose: () => void;
@@ -25,13 +28,29 @@ const BuildingApplicationModal: React.FC<BuildingApplicationModalProps> = ({ isO
     ));
   };
 
-  const handleSave = () => {
-    setIsSuccess(true);
-    setTimeout(() => {
-      onClose();
-      setIsSuccess(false);
-      setSelectedProjectId('');
-    }, 2000);
+  const handleSave = async () => {
+    try {
+      if (selectedProjectId) {
+        await addDoc(collection(db, 'building_applications'), {
+          projectId: selectedProjectId,
+          appType,
+          checklist,
+          status: 'submitted',
+          updatedAt: serverTimestamp(),
+          createdAt: serverTimestamp()
+        });
+      }
+      setIsSuccess(true);
+      toast.success('Byggesøknad oppdatert og lagret!');
+      setTimeout(() => {
+        onClose();
+        setIsSuccess(false);
+        setSelectedProjectId('');
+      }, 1500);
+    } catch (err) {
+      console.error(err);
+      toast.error('Kunne ikke lagre byggesøknad.');
+    }
   };
 
   if (!isOpen) return null;
