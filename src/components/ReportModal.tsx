@@ -81,6 +81,7 @@ export default function ReportModal({ isOpen, onClose, project, sjaReports, devi
             </div>
             <button 
               onClick={onClose}
+              aria-label="Lukk"
               className="p-1.5 sm:p-2 hover:bg-neutral-100 rounded-full transition-colors"
             >
               <X size={18} className="sm:w-5 sm:h-5" />
