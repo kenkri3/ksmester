@@ -242,7 +242,7 @@ const OfferModal: React.FC<OfferModalProps> = ({ isOpen, onClose, initialData })
               <p className="text-neutral-500 text-[10px] sm:text-sm font-medium truncate">Generer profesjonelle tilbud med AI-kalkyle og automatisk spesifikasjon</p>
             </div>
           </div>
-          <button onClick={onClose} className="p-1.5 sm:p-2 hover:bg-neutral-100 rounded-xl transition-colors">
+          <button onClick={onClose} aria-label="Lukk" className="p-1.5 sm:p-2 hover:bg-neutral-100 rounded-xl transition-colors">
             <X size={18} className="sm:w-6 sm:h-6 text-neutral-500" />
           </button>
         </div>

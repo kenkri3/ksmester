@@ -188,7 +188,7 @@ export default function CreateProjectModal({ isOpen, onClose }: CreateProjectMod
             <div className="p-4 sm:p-8 lg:p-10 flex-1 overflow-y-auto custom-scrollbar">
               <div className="flex justify-between items-center mb-4 sm:mb-8 sticky top-0 bg-white z-10 pb-2">
                 <h2 className="text-lg sm:text-2xl font-bold tracking-tight">{t('new_project_title', 'Opprett nytt prosjekt')}</h2>
-                <button onClick={onClose} className="p-1.5 sm:p-2 hover:bg-neutral-100 rounded-full transition-colors">
+                <button onClick={onClose} aria-label="Lukk" className="p-1.5 sm:p-2 hover:bg-neutral-100 rounded-full transition-colors">
                   <X size={18} className="sm:w-5 sm:h-5" />
                 </button>
               </div>
