@@ -1,5 +1,5 @@
 import React from 'react';
-import { motion } from 'framer-motion';
+import { motion } from 'motion/react';
 import { X, Clock } from 'lucide-react';
 import ProjectActivityLog from './ProjectActivityLog';
 
