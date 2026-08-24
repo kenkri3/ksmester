@@ -1,4 +1,4 @@
-import { useState, useEffect } from 'react';
+import { useState, useEffect, useMemo } from 'react';
 import { motion, AnimatePresence } from 'motion/react';
 import { 
   BarChart3, 
@@ -497,6 +497,57 @@ export default function Dashboard({ isDemo = false, onOpenPortal }: { isDemo?: b
     }
   };
 
+  // Memoized derived data to prevent unnecessary recalculations on re-renders
+  const memoizedOfferStats = useMemo(() => {
+    const draft = offers.filter(o => o.status === 'draft');
+    const sent = offers.filter(o => o.status === 'sent');
+    const accepted = offers.filter(o => o.status === 'accepted');
+
+    return {
+      draft: {
+        count: draft.length,
+        sum: draft.reduce((s, o) => s + (o.totalAmount || 0), 0)
+      },
+      sent: {
+        count: sent.length,
+        sum: sent.reduce((s, o) => s + (o.totalAmount || 0), 0)
+      },
+      accepted: {
+        count: accepted.length,
+        sum: accepted.reduce((s, o) => s + (o.totalAmount || 0), 0)
+      }
+    };
+  }, [offers]);
+
+  const filteredOffersList = useMemo(() => {
+    return offers.filter(offer => {
+      const matchesSearch = !offerSearchTerm ||
+        (offer.title && offer.title.toLowerCase().includes(offerSearchTerm.toLowerCase())) ||
+        (offer.clientName && offer.clientName.toLowerCase().includes(offerSearchTerm.toLowerCase())) ||
+        (offer.projectCode && offer.projectCode.toLowerCase().includes(offerSearchTerm.toLowerCase()));
+      const matchesStatus = offerStatusFilter === 'alle' || offer.status === offerStatusFilter;
+      return matchesSearch && matchesStatus;
+    });
+  }, [offers, offerSearchTerm, offerStatusFilter]);
+
+  const filteredProjectsList = useMemo(() => {
+    return projects.filter(p =>
+      p.name.toLowerCase().includes(projectSearchTerm.toLowerCase()) ||
+      p.projectCode?.toLowerCase().includes(projectSearchTerm.toLowerCase()) ||
+      p.location.toLowerCase().includes(projectSearchTerm.toLowerCase())
+    );
+  }, [projects, projectSearchTerm]);
+
+  const memoizedStageCounts = useMemo(() => {
+    const counts: Record<string, number> = {};
+    projects.forEach(p => {
+      if (p.stage) {
+        counts[p.stage] = (counts[p.stage] || 0) + 1;
+      }
+    });
+    return counts;
+  }, [projects]);
+
   return (
     <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 py-8">
       <AiReportModal 
@@ -743,7 +794,7 @@ export default function Dashboard({ isDemo = false, onOpenPortal }: { isDemo?: b
               </div>
               <div className="grid grid-cols-2 sm:grid-cols-3 md:grid-cols-5 gap-4">
                 {lifecycleStages.map((stage, i) => {
-                  const count = stage.id === 'offer' ? (offers.length || projects.filter(p => p.stage === 'offer').length) : projects.filter(p => p.stage === stage.id).length;
+                  const count = stage.id === 'offer' ? (offers.length || (memoizedStageCounts['offer'] || 0)) : (memoizedStageCounts[stage.id] || 0);
                   return (
                     <div 
                       key={stage.id} 
@@ -1165,7 +1216,7 @@ export default function Dashboard({ isDemo = false, onOpenPortal }: { isDemo?: b
                       <div className="w-10 h-10 border-2 border-emerald-600/30 border-t-emerald-600 rounded-full animate-spin mx-auto mb-4" />
                       <p className="text-sm font-medium">{t('loading_projects', 'Laster prosjekter...')}</p>
                     </div>
-                  ) : projects.length === 0 ? (
+                  ) : filteredProjectsList.length === 0 ? (
                     <div className="p-20 text-center text-neutral-400">
                       <HardHat size={48} className="mx-auto mb-4 opacity-20" />
                       <p className="text-sm font-medium">{t('no_projects', 'Ingen prosjekter funnet.')}</p>
@@ -1177,12 +1228,7 @@ export default function Dashboard({ isDemo = false, onOpenPortal }: { isDemo?: b
                       </button>
                     </div>
                   ) : (
-                    projects
-                      .filter(p => 
-                        p.name.toLowerCase().includes(projectSearchTerm.toLowerCase()) || 
-                        p.projectCode?.toLowerCase().includes(projectSearchTerm.toLowerCase()) ||
-                        p.location.toLowerCase().includes(projectSearchTerm.toLowerCase())
-                      )
+                    filteredProjectsList
                       .map((project) => (
                       <div 
                         key={project.id} 
@@ -1244,28 +1290,28 @@ export default function Dashboard({ isDemo = false, onOpenPortal }: { isDemo?: b
                   <div className="bg-white p-6 rounded-3xl border border-neutral-200 shadow-sm">
                     <div className="text-[10px] font-black uppercase tracking-widest text-amber-600 mb-1">{t('in_progress_draft', 'Under Behandling / Utkast')}</div>
                     <div className="text-3xl font-black text-amber-600">
-                      {offers.filter(o => o.status === 'draft').length}
+                      {memoizedOfferStats.draft.count}
                     </div>
                     <div className="text-xs text-neutral-500 font-bold mt-1">
-                      Sum: {offers.filter(o => o.status === 'draft').reduce((s, o) => s + (o.totalAmount || 0), 0).toLocaleString()} kr
+                      Sum: {memoizedOfferStats.draft.sum.toLocaleString()} kr
                     </div>
                   </div>
                   <div className="bg-white p-6 rounded-3xl border border-neutral-200 shadow-sm">
                     <div className="text-[10px] font-black uppercase tracking-widest text-blue-600 mb-1">{t('sent_to_customer', 'Sendt til Kunde')}</div>
                     <div className="text-3xl font-black text-blue-600">
-                      {offers.filter(o => o.status === 'sent').length}
+                      {memoizedOfferStats.sent.count}
                     </div>
                     <div className="text-xs text-neutral-500 font-bold mt-1">
-                      Sum: {offers.filter(o => o.status === 'sent').reduce((s, o) => s + (o.totalAmount || 0), 0).toLocaleString()} kr
+                      Sum: {memoizedOfferStats.sent.sum.toLocaleString()} kr
                     </div>
                   </div>
                   <div className="bg-white p-6 rounded-3xl border border-neutral-200 shadow-sm">
                     <div className="text-[10px] font-black uppercase tracking-widest text-emerald-600 mb-1">{t('accepted_won', 'Godkjent / Vunnet')}</div>
                     <div className="text-3xl font-black text-emerald-600">
-                      {offers.filter(o => o.status === 'accepted').length}
+                      {memoizedOfferStats.accepted.count}
                     </div>
                     <div className="text-xs text-neutral-500 font-bold mt-1">
-                      Sum: {offers.filter(o => o.status === 'accepted').reduce((s, o) => s + (o.totalAmount || 0), 0).toLocaleString()} kr
+                      Sum: {memoizedOfferStats.accepted.sum.toLocaleString()} kr
                     </div>
                   </div>
                 </div>
@@ -1313,16 +1359,7 @@ export default function Dashboard({ isDemo = false, onOpenPortal }: { isDemo?: b
 
                 {/* Offers Grid */}
                 <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-6">
-                  {offers
-                    .filter(offer => {
-                      const matchesSearch = !offerSearchTerm ||
-                        (offer.title && offer.title.toLowerCase().includes(offerSearchTerm.toLowerCase())) ||
-                        (offer.clientName && offer.clientName.toLowerCase().includes(offerSearchTerm.toLowerCase())) ||
-                        (offer.projectCode && offer.projectCode.toLowerCase().includes(offerSearchTerm.toLowerCase()));
-                      const matchesStatus = offerStatusFilter === 'alle' || offer.status === offerStatusFilter;
-                      return matchesSearch && matchesStatus;
-                    })
-                    .length === 0 ? (
+                  {filteredOffersList.length === 0 ? (
                     <div className="col-span-full bg-white p-12 rounded-3xl border border-neutral-200 text-center">
                       <Calculator size={48} className="mx-auto text-neutral-300 mb-4" />
                       <h3 className="text-lg font-bold text-neutral-800">{t('no_offers_found', 'Ingen tilbud funnet')}</h3>
@@ -1338,15 +1375,7 @@ export default function Dashboard({ isDemo = false, onOpenPortal }: { isDemo?: b
                       </button>
                     </div>
                   ) : (
-                    offers
-                      .filter(offer => {
-                        const matchesSearch = !offerSearchTerm ||
-                          (offer.title && offer.title.toLowerCase().includes(offerSearchTerm.toLowerCase())) ||
-                          (offer.clientName && offer.clientName.toLowerCase().includes(offerSearchTerm.toLowerCase())) ||
-                          (offer.projectCode && offer.projectCode.toLowerCase().includes(offerSearchTerm.toLowerCase()));
-                        const matchesStatus = offerStatusFilter === 'alle' || offer.status === offerStatusFilter;
-                        return matchesSearch && matchesStatus;
-                      })
+                    filteredOffersList
                       .map((offer) => (
                         <div key={offer.id} className="bg-white p-6 rounded-3xl border border-neutral-200 shadow-sm flex flex-col justify-between hover:border-emerald-500 transition-all group">
                           <div>

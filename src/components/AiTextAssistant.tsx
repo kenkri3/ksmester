@@ -1,6 +1,6 @@
 import React, { useState } from 'react';
 import { Sparkles, Languages, Wand2, Check, X, Loader2 } from 'lucide-react';
-import { motion, AnimatePresence } from 'framer-motion';
+import { motion, AnimatePresence } from 'motion/react';
 import { masterAiService } from '../services/masterAiService';
 import { cn } from '../lib/utils';
 

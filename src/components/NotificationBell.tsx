@@ -1,6 +1,6 @@
 import React, { useState } from 'react';
 import { Bell, CheckCircle2, AlertTriangle, Info, X } from 'lucide-react';
-import { motion, AnimatePresence } from 'framer-motion';
+import { motion, AnimatePresence } from 'motion/react';
 import { useNotifications } from '../hooks/useNotifications';
 import { cn } from '@/src/lib/utils';
 import { useTranslation } from 'react-i18next';

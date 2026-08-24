@@ -12,7 +12,7 @@ import {
   Package,
   ArrowRight
 } from 'lucide-react';
-import { motion } from 'framer-motion';
+import { motion } from 'motion/react';
 import { db, collection, query, where, orderBy, limit, onSnapshot, OperationType, handleFirestoreError } from '../services/firebase';
 import { cn } from '@/src/lib/utils';
 

@@ -1,5 +1,5 @@
 import React, { useState, useEffect } from 'react';
-import { motion, AnimatePresence } from 'framer-motion';
+import { motion, AnimatePresence } from 'motion/react';
 import { X, FileSignature, CheckCircle2, Clock, AlertCircle, Search, Filter, Download, ExternalLink, Plus, Send, Sparkles, ShieldAlert } from 'lucide-react';
 import { Contract } from '../types';
 import { db, auth, handleFirestoreError, OperationType, collection, addDoc, serverTimestamp, onSnapshot, query, orderBy, where } from '../services/firebase';

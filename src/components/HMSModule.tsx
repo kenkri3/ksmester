@@ -1,5 +1,5 @@
 import React, { useState, useEffect } from 'react';
-import { motion, AnimatePresence } from 'framer-motion';
+import { motion, AnimatePresence } from 'motion/react';
 import { ShieldCheck, Users, ClipboardCheck, AlertTriangle, FileText, Plus, Search, Filter, ChevronRight, Download, CreditCard, Calendar, CheckCircle2, Loader2, X } from 'lucide-react';
 import { cn } from '@/src/lib/utils';
 import { useTranslation } from 'react-i18next';
