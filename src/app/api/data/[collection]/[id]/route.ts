@@ -11,8 +11,12 @@ export async function PUT(
     const body = await req.json();
     const user = getUserFromRequest(req);
 
+    if (!user) {
+      return NextResponse.json({ error: 'Uautorisert' }, { status: 401 });
+    }
+
     // IDOR / Authorization Check: If authenticated non-admin, verify object tenant ownership
-    if (user && user.role !== 'admin') {
+    if (user.role !== 'admin') {
       const allItems = await getCollectionItems(collection);
       const existing = allItems.find((i: any) => i.id === id);
       if (existing && existing.companyId && user.companyId && existing.companyId !== user.companyId) {
@@ -36,8 +40,12 @@ export async function DELETE(
     const { collection, id } = await params;
     const user = getUserFromRequest(req);
 
+    if (!user) {
+      return NextResponse.json({ error: 'Uautorisert' }, { status: 401 });
+    }
+
     // IDOR / Authorization Check: Verify permission to delete
-    if (user && user.role !== 'admin') {
+    if (user.role !== 'admin') {
       const allItems = await getCollectionItems(collection);
       const existing = allItems.find((i: any) => i.id === id);
       if (existing && existing.companyId && user.companyId && existing.companyId !== user.companyId) {

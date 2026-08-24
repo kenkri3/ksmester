@@ -7,8 +7,17 @@ export async function GET(
   { params }: { params: Promise<{ collection: string }> }
 ) {
   try {
+    const user = getUserFromRequest(req);
+    if (!user) {
+      return NextResponse.json({ error: 'Uautorisert' }, { status: 401 });
+    }
+
     const { collection } = await params;
     let items = await getCollectionItems(collection);
+
+    if (user.role !== 'admin') {
+      items = items.filter((item: any) => item.companyId === user.companyId);
+    }
 
     // Security: Never leak password hashes or sensitive auth secrets
     if (collection === 'users') {
@@ -34,10 +43,15 @@ export async function POST(
     const body = await req.json();
     const user = getUserFromRequest(req);
 
+    if (!user) {
+      return NextResponse.json({ error: 'Uautorisert' }, { status: 401 });
+    }
+
     // Enforce creator/tenant metadata from verified session if authenticated
     const itemData = {
       ...body,
-      ...(user ? { authorId: body.authorId || user.id, companyId: body.companyId || user.companyId } : {})
+      authorId: body.authorId || user.id,
+      companyId: user.role === 'admin' ? (body.companyId || user.companyId) : user.companyId
     };
 
     const item = await saveCollectionItem(collection, itemData);
