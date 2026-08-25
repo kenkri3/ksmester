@@ -1,0 +1,3 @@
+## 2025-03-09 - Ensure Icon-Only Buttons Have Accessible Names
+**Learning:** Many interactive icon-only elements (e.g. `Camera`, `MessageSquare`, and `Plus` in `ApprenticeModule.tsx`, and `X` close buttons across multiple modals) lacked native `aria-label`s and `title` tooltips. This prevents screen readers from understanding their purpose, creating accessibility barriers.
+**Action:** Always add `aria-label` (and often a native `title` for hover tooltips) to any `<button>` containing only an icon (like from `lucide-react`). Make sure to also add keyboard focus states (`focus-visible:ring-2`, etc.) to improve the UX for keyboard navigators.

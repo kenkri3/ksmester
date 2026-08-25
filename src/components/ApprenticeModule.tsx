@@ -211,10 +211,18 @@ export default function ApprenticeModule() {
                     />
                   </div>
                   <div className="flex items-center gap-2">
-                    <button className="p-2 bg-neutral-50 text-neutral-400 hover:text-blue-600 rounded-lg transition-colors">
+                    <button
+                      aria-label="Legg til bilde"
+                      title="Legg til bilde"
+                      className="p-2 bg-neutral-50 text-neutral-400 hover:text-blue-600 rounded-lg transition-colors focus-visible:ring-2 focus-visible:ring-blue-500 focus-visible:outline-none"
+                    >
                       <Camera size={16} />
                     </button>
-                    <button className="p-2 bg-neutral-50 text-neutral-400 hover:text-blue-600 rounded-lg transition-colors">
+                    <button
+                      aria-label="Legg til kommentar"
+                      title="Legg til kommentar"
+                      className="p-2 bg-neutral-50 text-neutral-400 hover:text-blue-600 rounded-lg transition-colors focus-visible:ring-2 focus-visible:ring-blue-500 focus-visible:outline-none"
+                    >
                       <MessageSquare size={16} />
                     </button>
                     <ChevronRight size={16} className="text-neutral-300" />
@@ -236,7 +244,11 @@ export default function ApprenticeModule() {
           <div className="bg-white p-8 rounded-[2.5rem] border border-neutral-200 shadow-sm">
             <h3 className="font-bold mb-6 flex items-center justify-between">
               Siste Loggføringer
-              <button className="p-2 bg-blue-50 text-blue-600 rounded-xl hover:bg-blue-100 transition-colors">
+              <button
+                aria-label="Ny loggføring"
+                title="Ny loggføring"
+                className="p-2 bg-blue-50 text-blue-600 rounded-xl hover:bg-blue-100 transition-colors focus-visible:ring-2 focus-visible:ring-blue-500 focus-visible:outline-none"
+              >
                 <Plus size={16} />
               </button>
             </h3>
