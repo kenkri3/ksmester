@@ -1,4 +1,4 @@
-import React, { useState, useEffect } from 'react';
+import React, { useState, useEffect, useMemo } from 'react';
 import { useTranslation } from 'react-i18next';
 import { 
   GraduationCap, 
@@ -73,10 +73,13 @@ export default function ApprenticeModule() {
 
   const categories = ['Alle', ...Array.from(new Set(kompetanseMaal.map(m => m.category)))];
 
-  const filteredMaal = kompetanseMaal.filter(m => 
-    (activeCategory === 'Alle' || m.category === activeCategory) &&
-    (m.title.toLowerCase().includes(searchQuery.toLowerCase()))
-  );
+  // ⚡ Bolt: Memoize filtered list to prevent unnecessary recalculations on every render.
+  const filteredMaal = useMemo(() => {
+    return kompetanseMaal.filter(m =>
+      (activeCategory === 'Alle' || m.category === activeCategory) &&
+      (m.title.toLowerCase().includes(searchQuery.toLowerCase()))
+    );
+  }, [kompetanseMaal, activeCategory, searchQuery]);
 
   const totalProgress = kompetanseMaal.length > 0 
     ? Math.round(kompetanseMaal.reduce((acc, curr) => acc + (curr.progress || 0), 0) / kompetanseMaal.length)
