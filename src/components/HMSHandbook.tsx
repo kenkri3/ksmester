@@ -1,4 +1,4 @@
-import React, { useState, useEffect } from 'react';
+import React, { useState, useEffect, useMemo } from 'react';
 import { motion, AnimatePresence } from 'motion/react';
 import { 
   FileText, 
@@ -101,11 +101,14 @@ const HMSHandbook: React.FC = () => {
     return signatures.some(s => s.documentId === docId && s.userId === user?.uid);
   };
 
-  const filteredDocs = documents.filter(doc => {
-    const matchesSearch = doc.title.toLowerCase().includes(searchQuery.toLowerCase());
-    const matchesCategory = activeCategory === 'all' || doc.category === activeCategory;
-    return matchesSearch && matchesCategory;
-  });
+  // ⚡ Bolt: Memoize filtered list to prevent unnecessary recalculations on every render.
+  const filteredDocs = useMemo(() => {
+    return documents.filter(doc => {
+      const matchesSearch = doc.title.toLowerCase().includes(searchQuery.toLowerCase());
+      const matchesCategory = activeCategory === 'all' || doc.category === activeCategory;
+      return matchesSearch && matchesCategory;
+    });
+  }, [documents, searchQuery, activeCategory]);
 
   if (loading) {
     return (

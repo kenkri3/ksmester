@@ -1,11 +1,12 @@
 import { NextRequest, NextResponse } from 'next/server';
 import bcrypt from 'bcrypt';
-import { dbQuery, inMemoryStore } from '@/src/lib/server/db';
+import { dbQuery, inMemoryStore, DEFAULT_ADMIN_EMAIL } from '@/src/lib/server/db';
 import { signToken } from '@/src/lib/server/auth';
 
 export async function POST(req: NextRequest) {
   try {
-    const { email, password, name, company, role, trade } = await req.json();
+    // 🛡️ SECURITY FIX: Removed 'role' from destructured fields to prevent Mass Assignment/Privilege Escalation
+    const { email, password, name, company, trade } = await req.json();
 
     if (!email || !password) {
       return NextResponse.json({ error: 'E-post og passord påkrevd.' }, { status: 400 });
@@ -26,11 +27,13 @@ export async function POST(req: NextRequest) {
     const hashedPassword = await bcrypt.hash(password, 10);
     const userId = 'u-' + Math.random().toString(36).substring(2, 9);
     const companyId = 'comp-' + Math.random().toString(36).substring(2, 7);
+
+    // 🛡️ SECURITY FIX: Enforce worker role unless it's the designated admin email
     const userObj = {
       id: userId,
       email: email.toLowerCase(),
       displayName: name || email.split('@')[0],
-      role: role || (email.toLowerCase() === 'kenkri3@gmail.com' ? 'admin' : 'worker'),
+      role: email.toLowerCase() === DEFAULT_ADMIN_EMAIL.toLowerCase() ? 'admin' : 'worker',
       trade: trade || 'Tømrer',
       company: company || 'Mester Entreprenør AS',
       companyId: companyId,
