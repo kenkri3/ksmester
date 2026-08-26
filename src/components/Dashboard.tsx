@@ -795,34 +795,50 @@ export default function Dashboard({ isDemo = false, onOpenPortal }: { isDemo?: b
               <div className="grid grid-cols-2 sm:grid-cols-3 md:grid-cols-5 gap-4">
                 {lifecycleStages.map((stage, i) => {
                   const count = stage.id === 'offer' ? (offers.length || (memoizedStageCounts['offer'] || 0)) : (memoizedStageCounts[stage.id] || 0);
+                  const stageTooltips: Record<string, string> = {
+                    offer: 'Klikk for å opprette tilbud',
+                    contract: 'Klikk for å administrere kontrakter',
+                    active: 'Klikk for å se aktive prosjekter',
+                    completion: 'Klikk for overlevering og FDV',
+                    archived: 'Klikk for dokumentarkiv'
+                  };
+
                   return (
-                    <div 
+                    <button 
                       key={stage.id} 
+                      type="button"
+                      title={stageTooltips[stage.id] || stage.label}
                       onClick={() => {
                         if (stage.id === 'offer') {
-                          setActiveTab('tilbud');
+                          setOfferInitialData(null);
+                          setIsOfferModalOpen(true);
                         } else if (stage.id === 'contract') {
                           setIsContractModalOpen(true);
-                        } else {
+                        } else if (stage.id === 'active') {
                           setActiveTab('prosjekter');
+                        } else if (stage.id === 'completion') {
+                          setIsHandoverModalOpen(true);
+                        } else if (stage.id === 'archived') {
+                          setIsArchiveModalOpen(true);
                         }
                       }}
-                      className="relative group cursor-pointer"
+                      className="relative group cursor-pointer focus:outline-none w-full text-center"
                     >
-                      <div className="flex flex-col items-center text-center p-3 rounded-2xl hover:bg-neutral-50 transition-all">
+                      <div className="flex flex-col items-center text-center p-3 rounded-2xl hover:bg-neutral-50 active:scale-95 transition-all">
                         <div className={cn(
-                          "w-12 h-12 rounded-2xl flex items-center justify-center text-white mb-3 shadow-lg transition-transform group-hover:scale-110",
+                          "w-12 h-12 rounded-2xl flex items-center justify-center text-white mb-3 shadow-lg transition-transform group-hover:scale-110 group-hover:shadow-xl",
                           stage.color
                         )}>
                           {stage.icon}
                         </div>
                         <div className="text-xs font-bold mb-1 group-hover:text-emerald-600 transition-colors">{stage.label}</div>
                         <div className="text-[10px] font-black text-neutral-400 uppercase tracking-widest">{count} {stage.id === 'offer' ? 'Tilbud' : 'Prosjekter'}</div>
+                        <div className="text-[9px] text-emerald-600 font-bold opacity-0 group-hover:opacity-100 transition-opacity mt-0.5">Åpne &rarr;</div>
                       </div>
                       {i < lifecycleStages.length - 1 && (
-                        <div className="hidden md:block absolute top-6 left-[calc(50%+2rem)] w-[calc(100%-4rem)] h-px bg-neutral-100" />
+                        <div className="hidden md:block absolute top-6 left-[calc(50%+2rem)] w-[calc(100%-4rem)] h-px bg-neutral-100 pointer-events-none" />
                       )}
-                    </div>
+                    </button>
                   );
                 })}
               </div>
