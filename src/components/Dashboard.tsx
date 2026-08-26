@@ -91,10 +91,8 @@ import {
 export default function Dashboard({ isDemo = false, onOpenPortal }: { isDemo?: boolean, onOpenPortal?: (project: Project) => void }) {
   const { t, i18n } = useTranslation();
   const { user, companyModules } = useAuth();
-  const { projects: realProjects, deviations: realDeviations, stats, loading: realLoading } = useDashboardData();
+  const { projects, deviations, stats, loading } = useDashboardData();
   const [activeTab, setActiveTab] = useState<'oversikt' | 'prosjekter' | 'tilbud' | 'avvik' | 'ai' | 'finans' | 'laerling' | 'hms'>('oversikt');
-  const [projects, setProjects] = useState<Project[]>([]);
-  const [deviations, setDeviations] = useState<Deviation[]>([]);
   const [offers, setOffers] = useState<Offer[]>([]);
   const [offerSearchTerm, setOfferSearchTerm] = useState('');
   const [offerStatusFilter, setOfferStatusFilter] = useState<string>('alle');
@@ -119,7 +117,6 @@ export default function Dashboard({ isDemo = false, onOpenPortal }: { isDemo?: b
   const [isSmartSearchOpen, setIsSmartSearchOpen] = useState(false);
   const [projectSearchTerm, setProjectSearchTerm] = useState('');
   const [userProfile, setUserProfile] = useState<UserProfile | null>(null);
-  const [loading, setLoading] = useState(true);
   const [selectedProject, setSelectedProject] = useState<Project | null>(null);
   const [deviationAnalysis, setDeviationAnalysis] = useState<DeviationAnalysis | null>(null);
   const [aiInsights, setAiInsights] = useState<DashboardInsight[]>([]);
@@ -321,12 +318,6 @@ export default function Dashboard({ isDemo = false, onOpenPortal }: { isDemo?: b
     });
     return () => unsubscribe();
   }, []);
-
-  useEffect(() => {
-    setProjects(realProjects);
-    setDeviations(realDeviations);
-    setLoading(realLoading);
-  }, [realProjects, realDeviations, realLoading]);
 
   useEffect(() => {
     if (loading || projects.length === 0) return;
