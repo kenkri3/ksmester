@@ -156,7 +156,9 @@ export default function UniversalTranslator({ className, projectId }: { classNam
           <button 
             onClick={handleSend}
             disabled={isTranslating || !input.trim()}
-            className="absolute right-2 top-2 bottom-2 px-4 bg-emerald-600 text-white rounded-xl hover:bg-emerald-700 transition-colors disabled:opacity-50 disabled:cursor-not-allowed"
+            aria-label="Oversett"
+            title="Oversett"
+            className="absolute right-2 top-2 bottom-2 px-4 bg-emerald-600 text-white rounded-xl hover:bg-emerald-700 transition-colors disabled:opacity-50 disabled:cursor-not-allowed focus-visible:ring-2 focus-visible:ring-offset-2 focus-visible:ring-emerald-500 focus-visible:outline-none"
           >
             {isTranslating ? <Loader2 size={18} className="animate-spin" /> : <Send size={18} />}
           </button>
