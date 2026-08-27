@@ -1,4 +1,4 @@
-import { useState, useEffect } from 'react';
+import { useState, useEffect, useMemo } from 'react';
 import { db, collection, query, orderBy, onSnapshot, where, OperationType, handleFirestoreError } from '../services/firebase';
 import { Project, Deviation } from '../types';
 import { useAuth } from './useAuth';
@@ -73,7 +73,9 @@ export function useDashboardData() {
     };
   }, [user, role, company]);
 
-  const stats = {
+  // Memoize stats calculation to avoid repeated O(N) filtering and reducing
+  // on every render of components utilizing this hook. Also ensures a stable object reference.
+  const stats = useMemo(() => ({
     totalProjects: projects.length,
     activeProjects: projects.filter(p => p.stage === 'active').length,
     openDeviations: deviations.filter(d => d.status === 'open').length,
@@ -81,13 +83,17 @@ export function useDashboardData() {
     avgCompliance: projects.length > 0 
       ? Math.round(projects.reduce((acc, p) => acc + (p.documentationLevel || 0), 0) / projects.length)
       : 0
-  };
+  }), [projects, deviations]);
+
+  // Memoize recentDeviations array to provide a stable reference
+  // preventing unnecessary downstream re-renders.
+  const recentDeviations = useMemo(() => deviations.slice(0, 5), [deviations]);
 
   return { 
     projects, 
     deviations, 
     stats,
-    recentDeviations: deviations.slice(0, 5),
+    recentDeviations,
     loading 
   };
 }
