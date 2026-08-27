@@ -1,5 +1,6 @@
 import { db, collection, addDoc, query, where, orderBy, onSnapshot, updateDoc, doc, handleFirestoreError, OperationType, writeBatch, getDocs } from './firebase';
 import { AppNotification } from '../types';
+import { getHeaders } from './api';
 
 const NOTIFICATIONS_COLLECTION = 'notifications';
 
@@ -100,7 +101,7 @@ export const notificationService = {
     try {
       const res = await fetch('/api/notify/email', {
         method: 'POST',
-        headers: { 'Content-Type': 'application/json' },
+        headers: getHeaders(),
         body: JSON.stringify({ to, subject, text, html, type })
       });
       return await res.json();
