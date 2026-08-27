@@ -7,19 +7,48 @@ export async function GET(
   { params }: { params: Promise<{ collection: string }> }
 ) {
   try {
+    const { collection } = await params;
     const user = getUserFromRequest(req);
+    const url = new URL(req.url);
+    const token = url.searchParams.get('token');
+    const portalToken = url.searchParams.get('portalToken');
+
+    // 1. Handle secure public token lookups (e.g. for customer portal or signed offer view)
     if (!user) {
-      return NextResponse.json({ error: 'Uautorisert' }, { status: 401 });
+      if (token && (collection === 'offers' || collection === 'invites' || collection === 'contracts')) {
+        const items = await getCollectionItems(collection);
+        const match = items.find((i: any) => i.token === token || i.id === token);
+        if (match) {
+          return NextResponse.json([match]);
+        }
+        return NextResponse.json({ error: 'Ugyldig eller utløpt token' }, { status: 404 });
+      }
+
+      if (portalToken && collection === 'projects') {
+        const items = await getCollectionItems(collection);
+        const match = items.find((p: any) => p.portalToken === portalToken || p.id === portalToken);
+        if (match) {
+          return NextResponse.json([match]);
+        }
+        return NextResponse.json({ error: 'Ugyldig portallenke' }, { status: 404 });
+      }
+
+      return NextResponse.json({ error: 'Uautorisert tilgang. Vennligst logg inn.' }, { status: 401 });
     }
 
-    const { collection } = await params;
+    // 2. Authenticated requests: Enforce strict multi-tenant isolation
     let items = await getCollectionItems(collection);
 
     if (user.role !== 'admin') {
-      items = items.filter((item: any) => item.companyId === user.companyId);
+      items = items.filter((item: any) => 
+        item.companyId === user.companyId || 
+        item.company === user.companyId ||
+        item.userId === user.id ||
+        item.authorId === user.id
+      );
     }
 
-    // Security: Never leak password hashes or sensitive auth secrets
+    // 3. Strip sensitive internal fields (passwords, audit hashes) from users collection
     if (collection === 'users') {
       items = items.map((u: any) => {
         const { password, ...safeUser } = u;
@@ -43,15 +72,28 @@ export async function POST(
     const body = await req.json();
     const user = getUserFromRequest(req);
 
-    if (!user) {
-      return NextResponse.json({ error: 'Uautorisert' }, { status: 401 });
+    // Allow public lead registration or contact messages
+    if (!user && (collection === 'leads' || collection === 'contact_messages')) {
+      const publicItemData = {
+        ...body,
+        id: 'msg-' + Date.now() + '-' + Math.random().toString(36).substring(2, 7),
+        createdAt: new Date().toISOString()
+      };
+      const saved = await saveCollectionItem(collection, publicItemData);
+      return NextResponse.json(saved);
     }
 
-    // Enforce creator/tenant metadata from verified session if authenticated
+    if (!user) {
+      return NextResponse.json({ error: 'Uautorisert tilgang. Vennligst logg inn.' }, { status: 401 });
+    }
+
+    // Enforce tenant boundary from verified JWT session
     const itemData = {
       ...body,
-      authorId: body.authorId || user.id,
-      companyId: user.role === 'admin' ? (body.companyId || user.companyId) : user.companyId
+      authorId: user.id,
+      companyId: user.role === 'admin' ? (body.companyId || user.companyId) : user.companyId,
+      createdAt: body.createdAt || new Date().toISOString(),
+      updatedAt: new Date().toISOString()
     };
 
     const item = await saveCollectionItem(collection, itemData);

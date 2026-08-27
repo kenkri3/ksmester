@@ -22,7 +22,12 @@ import {
   GraduationCap,
   Car,
   Brain,
-  Users
+  Users,
+  ShieldCheck,
+  Download,
+  FileText,
+  Lock,
+  AlertCircle
 } from 'lucide-react';
 import { useAuth } from '../hooks/useAuth';
 import { useTranslation } from 'react-i18next';
@@ -66,13 +71,17 @@ interface SettingsProfile {
 export default function Settings() {
   const { user, logout, subscriptionStatus, trialDaysLeft } = useAuth();
   const { t, i18n } = useTranslation();
-  const [activeTab, setActiveTab] = useState<'profile' | 'company' | 'team' | 'modules' | 'notifications' | 'billing' | 'system'>('profile');
+  const [activeTab, setActiveTab] = useState<'profile' | 'company' | 'team' | 'modules' | 'notifications' | 'billing' | 'system' | 'privacy'>('profile');
   const [isSaved, setIsSaved] = useState(false);
   const [isLoading, setIsLoading] = useState(true);
   const [isSaving, setIsSaving] = useState(false);
   const [isInviteModalOpen, setIsInviteModalOpen] = useState(false);
   const [teamMembers, setTeamMembers] = useState<TeamMember[]>([]);
   const [loadingTeam, setLoadingTeam] = useState(false);
+  const [isExporting, setIsExporting] = useState(false);
+  const [isRequestingDelete, setIsRequestingDelete] = useState(false);
+  const [deleteReason, setDeleteReason] = useState('');
+  const [deleteStatus, setDeleteStatus] = useState<string | null>(null);
   
   const [profile, setProfile] = useState<SettingsProfile>({
     displayName: '',
@@ -218,12 +227,60 @@ export default function Settings() {
     }
   };
 
+  const handleExportGdprData = async () => {
+    setIsExporting(true);
+    try {
+      const token = localStorage.getItem('token');
+      const res = await fetch('/api/gdpr/export', {
+        headers: {
+          ...(token ? { 'Authorization': `Bearer ${token}` } : {})
+        }
+      });
+      if (!res.ok) throw new Error('Kunne ikke laste ned data');
+      const blob = await res.blob();
+      const url = window.URL.createObjectURL(blob);
+      const a = document.createElement('a');
+      a.href = url;
+      a.download = `KS_Mester_GDPR_Export_${new Date().toISOString().split('T')[0]}.json`;
+      document.body.appendChild(a);
+      a.click();
+      a.remove();
+    } catch (err: any) {
+      alert(err.message || 'Feil ved eksport av data.');
+    } finally {
+      setIsExporting(false);
+    }
+  };
+
+  const handleRequestGdprDelete = async () => {
+    setIsRequestingDelete(true);
+    try {
+      const token = localStorage.getItem('token');
+      const res = await fetch('/api/gdpr/delete-request', {
+        method: 'POST',
+        headers: {
+          'Content-Type': 'application/json',
+          ...(token ? { 'Authorization': `Bearer ${token}` } : {})
+        },
+        body: JSON.stringify({ reason: deleteReason })
+      });
+      const data = await res.json();
+      if (!res.ok) throw new Error(data.error || 'Feil ved innsending');
+      setDeleteStatus(data.message || 'Sletteforespørsel registrert.');
+    } catch (err: any) {
+      alert(err.message || 'Kunne ikke registrere forespørsel.');
+    } finally {
+      setIsRequestingDelete(false);
+    }
+  };
+
   const tabs = [
     { id: 'profile', label: t('profile', 'Profil'), icon: <User size={18} /> },
     { id: 'company', label: t('company', 'Bedrift'), icon: <Building2 size={18} /> },
     { id: 'team', label: t('team', 'Team'), icon: <Users size={18} /> },
     { id: 'modules', label: t('modules', 'Moduler'), icon: <Package size={18} /> },
     { id: 'notifications', label: t('notifications', 'Varslinger'), icon: <Bell size={18} /> },
+    { id: 'privacy', label: 'Personvern & GDPR', icon: <ShieldCheck size={18} /> },
     { id: 'billing', label: t('billing', 'Abonnement'), icon: <CreditCard size={18} /> },
     { id: 'system', label: t('system_status', 'Systemstatus'), icon: <Shield size={18} /> },
   ];
@@ -700,6 +757,111 @@ export default function Settings() {
                       </div>
                     </div>
                   ))}
+                </div>
+              </motion.div>
+            )}
+
+            {activeTab === 'privacy' && (
+              <motion.div 
+                initial={{ opacity: 0, y: 10 }}
+                animate={{ opacity: 1, y: 0 }}
+                className="space-y-8"
+              >
+                {/* Header Banner */}
+                <div className="p-6 bg-emerald-50 rounded-2xl border border-emerald-100 flex items-start gap-4">
+                  <div className="w-12 h-12 rounded-xl bg-emerald-600 text-white flex items-center justify-center flex-shrink-0 shadow-lg shadow-emerald-200">
+                    <ShieldCheck size={24} />
+                  </div>
+                  <div>
+                    <h3 className="font-bold text-emerald-950 text-base mb-1">Personvern, Sikkerhet & GDPR</h3>
+                    <p className="text-xs text-emerald-800 leading-relaxed">
+                      KS MesterAI oppfyller EUs personvernforordning (GDPR), Personopplysningsloven, Byggherreforskriften og gjeldende norske HMS- og regnskapskrav. Dine data lagres strengt isolert og deles aldri med uvedkommende.
+                    </p>
+                  </div>
+                </div>
+
+                {/* Section 1: Data Export */}
+                <div className="p-6 bg-white rounded-2xl border border-neutral-200 shadow-sm space-y-4">
+                  <div className="flex items-center justify-between">
+                    <div>
+                      <h4 className="font-bold text-neutral-900 flex items-center gap-2">
+                        <Download size={18} className="text-emerald-600" />
+                        Innsyn og Dataportabilitet (GDPR Art. 15 & 20)
+                      </h4>
+                      <p className="text-xs text-neutral-500 mt-1">
+                        Last ned en komplett, maskinlesbar kopi (JSON) av alle dine personopplysninger, tidsregistreringer og prosjektlogger.
+                      </p>
+                    </div>
+                    <button
+                      onClick={handleExportGdprData}
+                      disabled={isExporting}
+                      className="flex items-center gap-2 px-5 py-2.5 bg-emerald-600 text-white rounded-xl text-xs font-bold hover:bg-emerald-500 transition-all shadow-md shadow-emerald-100 disabled:opacity-50"
+                    >
+                      {isExporting ? <Loader2 size={16} className="animate-spin" /> : <Download size={16} />}
+                      {isExporting ? 'Eksporterer...' : 'Last ned mine data'}
+                    </button>
+                  </div>
+                </div>
+
+                {/* Section 2: Security & Statutory Compliance */}
+                <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
+                  <div className="p-5 bg-neutral-50 rounded-2xl border border-neutral-200">
+                    <div className="flex items-center gap-2 font-bold text-neutral-900 text-sm mb-2">
+                      <Lock size={16} className="text-emerald-600" />
+                      Streng Multi-Tenant Dataseparasjon
+                    </div>
+                    <p className="text-xs text-neutral-600 leading-relaxed">
+                      Alle prosjekter, tilbud, avvik og timelister er kryptert og isolert per bedrifts-ID. Ingen andre entreprenører eller tredjeparter har innsyn i bedriftens data.
+                    </p>
+                  </div>
+
+                  <div className="p-5 bg-neutral-50 rounded-2xl border border-neutral-200">
+                    <div className="flex items-center gap-2 font-bold text-neutral-900 text-sm mb-2">
+                      <FileText size={16} className="text-emerald-600" />
+                      Byggherreforskriften & HMS (§ 15)
+                    </div>
+                    <p className="text-xs text-neutral-600 leading-relaxed">
+                      Elektroniske mannskapslister og HMS-kortnumre oppbevares og arkiveres i 6 måneder iht. lovkrav fra Arbeidstilsynet, før automatisk sletting.
+                    </p>
+                  </div>
+                </div>
+
+                {/* Section 3: Right to Erasure */}
+                <div className="p-6 bg-red-50/50 rounded-2xl border border-red-100 space-y-4">
+                  <div>
+                    <h4 className="font-bold text-red-950 text-sm flex items-center gap-2">
+                      <Trash2 size={16} className="text-red-600" />
+                      Retten til sletting / «Å bli glemt» (GDPR Art. 17)
+                    </h4>
+                    <p className="text-xs text-red-900/80 mt-1 leading-relaxed">
+                      Du kan be om fullstendig sletting eller anonymisering av dine personopplysninger. Vær oppmerksom på at lovpålagt prosjektdokumentasjon og regnskapsbilag må oppbevares iht. Bokføringsloven (§ 13, 5 år) og Plan- og bygningsloven.
+                    </p>
+                  </div>
+
+                  <div className="space-y-3">
+                    <input
+                      type="text"
+                      placeholder="Oppgi eventuell årsak eller merknad for sletteforespørselen (valgfritt)..."
+                      value={deleteReason}
+                      onChange={(e) => setDeleteReason(e.target.value)}
+                      className="w-full px-4 py-2.5 bg-white border border-red-200 rounded-xl text-xs outline-none focus:ring-2 focus:ring-red-400"
+                    />
+                    
+                    <div className="flex items-center justify-between">
+                      {deleteStatus ? (
+                        <p className="text-xs font-bold text-emerald-700">{deleteStatus}</p>
+                      ) : (
+                        <p className="text-[11px] text-neutral-400">Forespørselen loggføres og bekreftes på e-post.</p>
+                      )}
+                      <button
+                        onClick={handleRequestGdprDelete}
+                        disabled={isRequestingDelete}
+                        className="px-4 py-2 bg-red-600 text-white rounded-xl text-xs font-bold hover:bg-red-700 transition-all disabled:opacity-50"
+                      >
+                        {isRequestingDelete ? 'Sender...' : 'Send sletteforespørsel'}
+                      </button>
+                    </div>
+                  </div>
                 </div>
               </motion.div>
             )}

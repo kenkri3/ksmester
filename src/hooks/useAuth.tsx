@@ -20,7 +20,7 @@ interface AuthContextType {
   loading: boolean;
   login: () => Promise<void>;
   loginWithEmail: (email: string, pass: string) => Promise<void>;
-  registerWithEmail: (email: string, pass: string, name: string, company: string) => Promise<void>;
+  registerWithEmail: (email: string, pass: string, name: string, company: string, gdprConsent?: boolean) => Promise<void>;
   resetPassword: (email: string) => Promise<void>;
   logout: () => Promise<void>;
   isAuthReady: boolean;
@@ -118,8 +118,8 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
     }
   };
 
-  const registerWithEmail = async (email: string, pass: string, name: string, company: string) => {
-    const res = await api.register({ email, password: pass, name, company });
+  const registerWithEmail = async (email: string, pass: string, name: string, company: string, gdprConsent: boolean = true) => {
+    const res = await api.register({ email, password: pass, name, company, gdprConsent });
     if (res && res.user) {
       const u = res.user;
       setUser({
@@ -127,16 +127,16 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
         id: u.id || u.uid,
         email: u.email,
         displayName: u.displayName || name || u.email.split('@')[0],
-        role: u.role || 'worker',
-        trade: u.trade || 'Tømrer',
+        role: u.role || 'leader',
+        trade: u.trade || 'Byggmester',
         company: u.company || company,
-        companyId: u.companyId || 'comp-001',
-        subscriptionStatus: u.subscriptionStatus || 'active'
+        companyId: u.companyId,
+        subscriptionStatus: u.subscriptionStatus || 'trial'
       });
-      setRole(u.role || 'worker');
+      setRole(u.role || 'leader');
       setCompany(u.company || company);
-      setTrade(u.trade || 'Tømrer');
-      setSubscriptionStatus(u.subscriptionStatus || 'active');
+      setTrade(u.trade || 'Byggmester');
+      setSubscriptionStatus(u.subscriptionStatus || 'trial');
     } else {
       throw new Error('Kunne ikke registrere bruker.');
     }

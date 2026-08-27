@@ -1,12 +1,12 @@
 import React, { useState } from 'react';
 import { motion, AnimatePresence } from 'motion/react';
 import Logo from './Logo';
-import { ShieldCheck, LogIn, ArrowLeft, Mail, Lock, User, Building, ArrowRight, Loader2 } from 'lucide-react';
+import { ShieldCheck, LogIn, ArrowLeft, Mail, Lock, User, Building, ArrowRight, Loader2, CheckSquare, Square } from 'lucide-react';
 import { useAuth } from '../hooks/useAuth';
 import { useTranslation } from 'react-i18next';
 
 export default function Login({ onBack }: { onBack?: () => void }) {
-  const { login, loginWithEmail, registerWithEmail, resetPassword, loading } = useAuth();
+  const { loginWithEmail, registerWithEmail, resetPassword, loading } = useAuth();
   const { t } = useTranslation();
   
   const [mode, setMode] = useState<'login' | 'register' | 'forgot'>('login');
@@ -14,6 +14,7 @@ export default function Login({ onBack }: { onBack?: () => void }) {
   const [password, setPassword] = useState('');
   const [name, setName] = useState('');
   const [company, setCompany] = useState('');
+  const [gdprConsent, setGdprConsent] = useState(false);
   const [error, setError] = useState('');
   const [success, setSuccess] = useState('');
   const [isSubmitting, setIsSubmitting] = useState(false);
@@ -22,13 +23,25 @@ export default function Login({ onBack }: { onBack?: () => void }) {
     e.preventDefault();
     setError('');
     setSuccess('');
+
+    if (mode === 'register') {
+      if (password.length < 8) {
+        setError('Passordet må bestå av minst 8 tegn av sikkerhetshensyn.');
+        return;
+      }
+      if (!gdprConsent) {
+        setError('Du må godta personvernerklæringen og brukervilkårene for å opprette en konto.');
+        return;
+      }
+    }
+
     setIsSubmitting(true);
     
     try {
       if (mode === 'login') {
         await loginWithEmail(email, password);
       } else if (mode === 'register') {
-        await registerWithEmail(email, password, name, company);
+        await registerWithEmail(email, password, name, company, gdprConsent);
       } else if (mode === 'forgot') {
         await resetPassword(email);
         setSuccess(t('reset_email_sent', 'E-post for tilbakestilling av passord er sendt. Sjekk innboksen din.'));
@@ -73,11 +86,11 @@ export default function Login({ onBack }: { onBack?: () => void }) {
       >
         <div className="flex flex-col items-center mb-8">
           <Logo size="xl" className="mb-2 text-neutral-900" />
-          <p className="text-neutral-500 text-sm">
+          <p className="text-neutral-500 text-sm text-center">
             {mode === 'login' 
-              ? t('login_desc', 'Velkommen tilbake. Logg inn for å fortsette.') 
+              ? t('login_desc', 'Velkommen tilbake. Logg inn med din bedriftskonto.') 
               : mode === 'register'
-              ? t('register_desc', 'Start din 7-dagers gratis prøveperiode i dag.')
+              ? t('register_desc', 'Opprett bedriftskonto med 7-dagers prøveperiode.')
               : t('forgot_desc', 'Skriv inn din e-postadresse for å tilbakestille passordet.')}
           </p>
         </div>
@@ -96,22 +109,22 @@ export default function Login({ onBack }: { onBack?: () => void }) {
                   <User className="absolute left-4 top-1/2 -translate-y-1/2 text-neutral-400" size={18} />
                   <input
                     type="text"
-                    placeholder={t('full_name', 'Fullt navn')}
+                    placeholder={t('full_name', 'Fullt navn (daglig leder/kontaktperson)')}
                     value={name}
                     onChange={(e) => setName(e.target.value)}
                     required
-                    className="w-full pl-12 pr-4 py-4 bg-neutral-50 border border-neutral-100 rounded-2xl focus:ring-2 focus:ring-emerald-500 focus:border-transparent outline-none transition-all text-sm"
+                    className="w-full pl-12 pr-4 py-3.5 bg-neutral-50 border border-neutral-200 rounded-2xl focus:ring-2 focus:ring-emerald-500 focus:border-transparent outline-none transition-all text-sm"
                   />
                 </div>
                 <div className="relative">
                   <Building className="absolute left-4 top-1/2 -translate-y-1/2 text-neutral-400" size={18} />
                   <input
                     type="text"
-                    placeholder={t('company_name', 'Bedriftsnavn')}
+                    placeholder={t('company_name', 'Bedriftsnavn (Foretak)')}
                     value={company}
                     onChange={(e) => setCompany(e.target.value)}
                     required
-                    className="w-full pl-12 pr-4 py-4 bg-neutral-50 border border-neutral-100 rounded-2xl focus:ring-2 focus:ring-emerald-500 focus:border-transparent outline-none transition-all text-sm"
+                    className="w-full pl-12 pr-4 py-3.5 bg-neutral-50 border border-neutral-200 rounded-2xl focus:ring-2 focus:ring-emerald-500 focus:border-transparent outline-none transition-all text-sm"
                   />
                 </div>
               </motion.div>
@@ -121,12 +134,12 @@ export default function Login({ onBack }: { onBack?: () => void }) {
           <div className="relative">
             <Mail className="absolute left-4 top-1/2 -translate-y-1/2 text-neutral-400" size={18} />
             <input
-              type="text"
-              placeholder={t('email_or_username', 'E-postadresse eller brukernavn')}
+              type="email"
+              placeholder={t('email_or_username', 'E-postadresse')}
               value={email}
               onChange={(e) => setEmail(e.target.value)}
               required
-              className="w-full pl-12 pr-4 py-4 bg-neutral-50 border border-neutral-100 rounded-2xl focus:ring-2 focus:ring-emerald-500 focus:border-transparent outline-none transition-all text-sm"
+              className="w-full pl-12 pr-4 py-3.5 bg-neutral-50 border border-neutral-200 rounded-2xl focus:ring-2 focus:ring-emerald-500 focus:border-transparent outline-none transition-all text-sm"
             />
           </div>
 
@@ -135,12 +148,30 @@ export default function Login({ onBack }: { onBack?: () => void }) {
               <Lock className="absolute left-4 top-1/2 -translate-y-1/2 text-neutral-400" size={18} />
               <input
                 type="password"
-                placeholder={t('password', 'Passord')}
+                placeholder={mode === 'register' ? 'Passord (minst 8 tegn)' : t('password', 'Passord')}
                 value={password}
                 onChange={(e) => setPassword(e.target.value)}
                 required
-                className="w-full pl-12 pr-4 py-4 bg-neutral-50 border border-neutral-100 rounded-2xl focus:ring-2 focus:ring-emerald-500 focus:border-transparent outline-none transition-all text-sm"
+                minLength={mode === 'register' ? 8 : 1}
+                className="w-full pl-12 pr-4 py-3.5 bg-neutral-50 border border-neutral-200 rounded-2xl focus:ring-2 focus:ring-emerald-500 focus:border-transparent outline-none transition-all text-sm"
               />
+            </div>
+          )}
+
+          {mode === 'register' && (
+            <div className="bg-neutral-50 p-4 rounded-2xl border border-neutral-200">
+              <label className="flex items-start gap-3 cursor-pointer select-none text-xs text-neutral-600 leading-relaxed">
+                <input
+                  type="checkbox"
+                  checked={gdprConsent}
+                  onChange={(e) => setGdprConsent(e.target.checked)}
+                  required
+                  className="mt-0.5 rounded border-neutral-300 text-emerald-600 focus:ring-emerald-500"
+                />
+                <span>
+                  Jeg bekrefter at jeg godtar KS MesterAI sine vilkår, databehandleravtale (DPA) og personvernerklæring i samsvar med GDPR og norsk lovgivning.
+                </span>
+              </label>
             </div>
           )}
 
@@ -173,7 +204,7 @@ export default function Login({ onBack }: { onBack?: () => void }) {
               <Loader2 className="animate-spin" size={20} />
             ) : (
               <>
-                {mode === 'login' ? t('login', 'Logg inn') : mode === 'register' ? t('start_trial', 'Start gratis prøveperiode') : t('reset_password', 'Tilbakestill passord')}
+                {mode === 'login' ? t('login', 'Logg inn') : mode === 'register' ? t('start_trial', 'Opprett bedriftskonto') : t('reset_password', 'Tilbakestill passord')}
                 <ArrowRight size={18} />
               </>
             )}
@@ -188,36 +219,21 @@ export default function Login({ onBack }: { onBack?: () => void }) {
                 onClick={() => setMode('register')}
                 className="text-emerald-600 font-bold hover:underline"
               >
-                {t('register_here', 'Registrer deg her')}
+                {t('register_now', 'Registrer bedrift')}
               </button>
             </>
-          ) : mode === 'register' ? (
+          ) : (
             <>
-              {t('have_account', 'Har du allerede konto?')} {' '}
+              {t('already_have_account', 'Har du allerede en konto?')} {' '}
               <button 
                 onClick={() => setMode('login')}
                 className="text-emerald-600 font-bold hover:underline"
               >
-                {t('login_here', 'Logg inn her')}
+                {t('login', 'Logg inn')}
               </button>
             </>
-          ) : (
-            <button 
-              onClick={() => setMode('login')}
-              className="text-emerald-600 font-bold hover:underline"
-            >
-              {t('back_to_login', 'Tilbake til innlogging')}
-            </button>
           )}
         </p>
-
-        <div className="mt-10 pt-8 border-t border-neutral-100 text-center">
-          <p className="text-[10px] text-neutral-400 uppercase tracking-widest font-black mb-4">Stolt samarbeidspartner med</p>
-          <div className="flex justify-center gap-8 opacity-30 grayscale">
-            <img src="https://picsum.photos/seed/logo1/100/40" alt="Partner" className="h-5 object-contain" referrerPolicy="no-referrer" />
-            <img src="https://picsum.photos/seed/logo2/100/40" alt="Partner" className="h-5 object-contain" referrerPolicy="no-referrer" />
-          </div>
-        </div>
       </motion.div>
     </div>
   );

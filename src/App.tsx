@@ -90,7 +90,7 @@ function AppContent() {
   const { t, i18n } = useTranslation();
   const { user, logout, isAuthReady, subscriptionStatus, trialDaysLeft, impersonatedCompanyId, stopImpersonation } = useAuth();
 
-  const publicViews: View[] = ['landing', 'spec', 'pricing', 'about', 'contact', 'privacy', 'terms', 'offer', 'invite'];
+  const publicViews: View[] = ['landing', 'spec', 'pricing', 'about', 'contact', 'privacy', 'terms', 'offer', 'invite', 'customer-portal', 'login'];
   const isPublicView = publicViews.includes(view);
 
   const changeLanguage = async (lng: string) => {
@@ -107,8 +107,12 @@ function AppContent() {
   };
 
   const handleStartDemo = () => {
-    setIsDemo(true);
-    setView('dashboard');
+    if (user) {
+      setView('dashboard');
+    } else {
+      setView('login');
+      toast.info('Vennligst logg inn eller opprett bedriftskonto for å få tilgang.');
+    }
   };
 
   const handleOpenPortal = async (projectIdOrCode: string) => {
@@ -140,8 +144,11 @@ function AppContent() {
   };
 
   const handleGoToDashboard = () => {
-    setIsDemo(false);
-    setView('dashboard');
+    if (user) {
+      setView('dashboard');
+    } else {
+      setView('login');
+    }
   };
 
   // Scroll to top on view change
@@ -538,9 +545,10 @@ function AppContent() {
                 onViewChange={setView}
               />
             )}
+            {view === 'login' && <Login onBack={() => setView('landing')} />}
             {view === 'dashboard' && (
               <Dashboard 
-                isDemo={isDemo} 
+                isDemo={false} 
                 onOpenPortal={(p) => {
                   setPortalProject(p);
                   setView('customer-portal');

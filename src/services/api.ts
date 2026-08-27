@@ -76,14 +76,14 @@ export const api = {
     return data;
   },
 
-  async register(data: { email: string; password?: string; name?: string; company?: string; role?: string; trade?: string }) {
+  async register(data: { email: string; password?: string; name?: string; company?: string; role?: string; trade?: string; gdprConsent?: boolean }) {
     const res = await fetch('/api/auth/register', {
       method: 'POST',
       headers: { 'Content-Type': 'application/json' },
       body: JSON.stringify(data)
     });
     const result = await res.json();
-    if (!result.ok) throw new Error(result.error || 'Registrering feilet');
+    if (!res.ok) throw new Error(result.error || 'Registrering feilet');
     if (result.token) localStorage.setItem('token', result.token);
     return result;
   },

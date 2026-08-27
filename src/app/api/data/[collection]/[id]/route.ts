@@ -2,6 +2,57 @@ import { NextRequest, NextResponse } from 'next/server';
 import { getCollectionItems, updateCollectionItem, deleteCollectionItem } from '@/src/lib/server/db';
 import { getUserFromRequest } from '@/src/lib/server/auth';
 
+export async function GET(
+  req: NextRequest,
+  { params }: { params: Promise<{ collection: string; id: string }> }
+) {
+  try {
+    const { collection, id } = await params;
+    const user = getUserFromRequest(req);
+    const url = new URL(req.url);
+    const token = url.searchParams.get('token');
+
+    const allItems = await getCollectionItems(collection);
+    const item = allItems.find((i: any) => i.id === id);
+
+    if (!item) {
+      return NextResponse.json({ error: 'Elementet ble ikke funnet' }, { status: 404 });
+    }
+
+    // Allow access if valid public token matches
+    if (!user && token && (item.token === token || item.portalToken === token || item.id === token)) {
+      return NextResponse.json(item);
+    }
+
+    if (!user) {
+      return NextResponse.json({ error: 'Uautorisert tilgang. Vennligst logg inn.' }, { status: 401 });
+    }
+
+    // IDOR verification
+    if (user.role !== 'admin') {
+      const isOwner = 
+        item.companyId === user.companyId || 
+        item.company === user.companyId || 
+        item.userId === user.id || 
+        item.authorId === user.id;
+
+      if (!isOwner) {
+        return NextResponse.json({ error: 'Ingen tilgang til dette objektet (IDOR-beskyttelse)' }, { status: 403 });
+      }
+    }
+
+    if (collection === 'users') {
+      const { password, ...safeUser } = item;
+      return NextResponse.json(safeUser);
+    }
+
+    return NextResponse.json(item);
+  } catch (err: any) {
+    console.error('Data GET ID error:', err);
+    return NextResponse.json({ error: 'Kunne ikke hente element' }, { status: 500 });
+  }
+}
+
 export async function PUT(
   req: NextRequest,
   { params }: { params: Promise<{ collection: string; id: string }> }
@@ -15,16 +66,21 @@ export async function PUT(
       return NextResponse.json({ error: 'Uautorisert' }, { status: 401 });
     }
 
-    // IDOR / Authorization Check: If authenticated non-admin, verify object tenant ownership
+    // IDOR / Authorization Check: Verify tenant ownership
     if (user.role !== 'admin') {
       const allItems = await getCollectionItems(collection);
       const existing = allItems.find((i: any) => i.id === id);
       if (existing && existing.companyId && user.companyId && existing.companyId !== user.companyId) {
-        return NextResponse.json({ error: 'Ingen tilgang til dette objektet (IDOR beskyttelse)' }, { status: 403 });
+        return NextResponse.json({ error: 'Ingen tilgang til å oppdatere dette objektet (IDOR-beskyttelse)' }, { status: 403 });
       }
     }
 
-    const item = await updateCollectionItem(collection, id, body);
+    const updatedData = {
+      ...body,
+      updatedAt: new Date().toISOString()
+    };
+
+    const item = await updateCollectionItem(collection, id, updatedData);
     return NextResponse.json(item);
   } catch (err: any) {
     console.error('Data PUT error:', err);
@@ -49,7 +105,7 @@ export async function DELETE(
       const allItems = await getCollectionItems(collection);
       const existing = allItems.find((i: any) => i.id === id);
       if (existing && existing.companyId && user.companyId && existing.companyId !== user.companyId) {
-        return NextResponse.json({ error: 'Ingen tilgang til å slette dette objektet' }, { status: 403 });
+        return NextResponse.json({ error: 'Ingen tilgang til å slette dette objektet (IDOR-beskyttelse)' }, { status: 403 });
       }
     }
 

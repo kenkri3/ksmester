@@ -47,7 +47,7 @@ export interface UserProfile {
   updatedAt?: any;
 }
 
-export type View = 'landing' | 'dashboard' | 'mobile' | 'spec' | 'settings' | 'customer-portal' | 'pricing' | 'about' | 'contact' | 'privacy' | 'terms' | 'super-admin' | 'offer' | 'invite';
+export type View = 'landing' | 'dashboard' | 'mobile' | 'spec' | 'settings' | 'customer-portal' | 'pricing' | 'about' | 'contact' | 'privacy' | 'terms' | 'super-admin' | 'offer' | 'invite' | 'login';
 
 export interface Project {
   id: string;
