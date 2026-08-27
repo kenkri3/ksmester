@@ -1,1 +1,6 @@
 ## 2026-08-25 - [Privilege Escalation via Mass Assignment]\n**Vulnerability:** Registration endpoint extracted 'role' directly from the request JSON and applied it to the new user object, allowing any new user to register as an admin.\n**Learning:** Destructuring request bodies without explicit whitelisting allows users to overwrite sensitive fields.\n**Prevention:** Only extract explicitly allowed fields from user input. For roles or permissions, determine them server-side based on predefined rules or email matching, never directly from user input.
+
+## 2026-08-27 - [Missing Authentication on Email Endpoint]
+**Vulnerability:** The `/api/notify/email` endpoint did not enforce any authentication, allowing any unauthenticated user to trigger email dispatch. This could be exploited as an open email relay for spam or phishing campaigns.
+**Learning:** Never trust the client side (`notificationService.ts`) to be the only layer defining when a sensitive action like email sending is allowed. Server-side endpoints must always independently verify authorization.
+**Prevention:** Ensure that every sensitive server endpoint (e.g. POST, PUT, DELETE, and actions like sending emails/notifications) uses an authentication checker like `getUserFromRequest`.

@@ -1,7 +1,7 @@
 // Clean REST API client with full Offline-First caching & Auto-Sync Engine
 import { toast } from 'sonner';
 
-const getHeaders = () => {
+export const getHeaders = () => {
   const token = typeof window !== 'undefined' ? localStorage.getItem('token') : null;
   return {
     'Content-Type': 'application/json',

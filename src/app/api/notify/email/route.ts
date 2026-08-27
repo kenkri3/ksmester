@@ -1,8 +1,15 @@
 import { NextRequest, NextResponse } from 'next/server';
 import { dbQuery, inMemoryStore } from '@/src/lib/server/db';
+import { getUserFromRequest } from '@/src/lib/server/auth';
 
 export async function POST(req: NextRequest) {
   try {
+    // 🛡️ SECURITY FIX: Added authentication check to prevent unauthorized email sending (Spam/Phishing Relay)
+    const user = getUserFromRequest(req);
+    if (!user) {
+      return NextResponse.json({ error: 'Uautorisert' }, { status: 401 });
+    }
+
     const body = await req.json();
     const { to, subject, html, text, type = 'general', metadata = {} } = body;
 
