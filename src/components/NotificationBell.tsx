@@ -23,6 +23,9 @@ export const NotificationBell: React.FC = () => {
     <div className="relative">
       <button 
         onClick={() => setIsOpen(!isOpen)}
+        aria-expanded={isOpen}
+        aria-label={t('notifications', 'Varslinger')}
+        title={t('notifications', 'Varslinger')}
         className="relative p-2 text-neutral-400 hover:text-neutral-600 hover:bg-neutral-100 rounded-xl transition-all active:scale-95"
       >
         <Bell size={20} />
@@ -99,6 +102,7 @@ export const NotificationBell: React.FC = () => {
                             onClick={() => markAsRead(notification.id)}
                             className="absolute top-4 right-4 w-2 h-2 bg-emerald-500 rounded-full opacity-0 group-hover:opacity-100 transition-opacity"
                             title={t('mark_as_read', 'Marker som lest')}
+                            aria-label={t('mark_as_read', 'Marker som lest')}
                           />
                         )}
                       </div>
