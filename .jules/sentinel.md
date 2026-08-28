@@ -4,3 +4,8 @@
 **Vulnerability:** The `/api/notify/email` endpoint did not enforce any authentication, allowing any unauthenticated user to trigger email dispatch. This could be exploited as an open email relay for spam or phishing campaigns.
 **Learning:** Never trust the client side (`notificationService.ts`) to be the only layer defining when a sensitive action like email sending is allowed. Server-side endpoints must always independently verify authorization.
 **Prevention:** Ensure that every sensitive server endpoint (e.g. POST, PUT, DELETE, and actions like sending emails/notifications) uses an authentication checker like `getUserFromRequest`.
+
+## 2025-03-05 - [Missing Authentication on Third-Party API Endpoints]
+**Vulnerability:** The `/api/ai/generate` and `/api/scrape` endpoints lacked authentication checks, meaning anyone could call them and consume paid API credits (Gemini, Firecrawl) without authorization.
+**Learning:** Endpoints proxying paid or external APIs require identical authentication safeguards to core CRUD endpoints. Relying solely on client-side routing protection exposes the server URLs to direct abuse.
+**Prevention:** Implement `getUserFromRequest()` check on all API routes consuming external resources or paid integrations, enforcing 401 returns on missing/invalid sessions.

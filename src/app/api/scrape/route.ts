@@ -1,7 +1,14 @@
 import { NextRequest, NextResponse } from 'next/server';
 import { GoogleGenAI, Type } from '@google/genai';
+import { getUserFromRequest } from '@/src/lib/server/auth';
 
 export async function POST(req: NextRequest) {
+  // 🛡️ SECURITY FIX: Enforce authentication to prevent unauthorized scraping API usage
+  const user = getUserFromRequest(req);
+  if (!user) {
+    return NextResponse.json({ error: 'Uautorisert' }, { status: 401 });
+  }
+
   const { url } = await req.json();
   const apiKey = process.env.FIRECRAWL_API_KEY;
   const geminiKey = process.env.GEMINI_API_KEY;
