@@ -1,4 +1,4 @@
-import React, { useState, useEffect } from 'react';
+import React, { useState, useEffect, useMemo } from 'react';
 import { motion, AnimatePresence } from 'motion/react';
 import { X, Library, Search, Filter, Download, FileText, Image as ImageIcon, FileCode, Sparkles, RefreshCw, CheckCircle2 } from 'lucide-react';
 import { ProjectDocument } from '../types';
@@ -35,11 +35,14 @@ const DocumentationArchive: React.FC<DocumentationArchiveProps> = ({ isOpen, onC
     return () => unsubscribe();
   }, [isOpen, projectId]);
 
-  const filteredDocs = documents.filter(doc => {
-    const matchesSearch = doc.title.toLowerCase().includes(searchTerm.toLowerCase());
-    const matchesCategory = activeCategory === 'all' || doc.type === activeCategory;
-    return matchesSearch && matchesCategory;
-  });
+  // ⚡ Bolt: Memoize filtered list to prevent unnecessary O(N) recalculations on every render, especially during fast typing in the search input.
+  const filteredDocs = useMemo(() => {
+    return documents.filter(doc => {
+      const matchesSearch = doc.title.toLowerCase().includes(searchTerm.toLowerCase());
+      const matchesCategory = activeCategory === 'all' || doc.type === activeCategory;
+      return matchesSearch && matchesCategory;
+    });
+  }, [documents, searchTerm, activeCategory]);
 
   const handleSyncNOBB = async () => {
     setIsSyncing(true);
