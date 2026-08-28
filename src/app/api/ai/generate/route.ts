@@ -1,7 +1,14 @@
 import { NextRequest, NextResponse } from 'next/server';
 import { GoogleGenAI } from '@google/genai';
+import { getUserFromRequest } from '@/src/lib/server/auth';
 
 export async function POST(req: NextRequest) {
+  // 🛡️ SECURITY FIX: Enforce authentication to prevent unauthorized API credit usage
+  const user = getUserFromRequest(req);
+  if (!user) {
+    return NextResponse.json({ error: 'Uautorisert' }, { status: 401 });
+  }
+
   const apiKey = process.env.GEMINI_API_KEY;
   if (!apiKey) {
     return NextResponse.json({ error: 'GEMINI_API_KEY er ikke konfigurert på serveren.' }, { status: 500 });
