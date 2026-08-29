@@ -1,4 +1,4 @@
-import React, { useState, useEffect } from 'react';
+import React, { useState, useEffect, useMemo } from 'react';
 import { motion, AnimatePresence } from 'motion/react';
 import { X, Package, Search, Plus, Filter, AlertTriangle, FileText, Wrench, ShieldAlert, ChevronRight, Download, History, User, Send, Sparkles, RefreshCw, Brain } from 'lucide-react';
 import { cn } from '../lib/utils';
@@ -89,14 +89,17 @@ const InventoryModal: React.FC<InventoryModalProps> = ({ isOpen, onClose }) => {
     }
   };
 
-  const filteredInventory = inventory.filter(item => {
-    const matchesSearch = item.name.toLowerCase().includes(searchQuery.toLowerCase());
-    if (activeTab === 'maintenance') {
-      return matchesSearch && item.category === 'tool' && (item.needsMaintenance || (item.quantity < 1));
-    }
-    const matchesTab = activeTab === 'all' || item.category === activeTab.slice(0, -1);
-    return matchesSearch && matchesTab;
-  });
+  // ⚡ Bolt: Memoize filteredInventory to prevent expensive O(N) recalculations on every render
+  const filteredInventory = useMemo(() => {
+    return inventory.filter(item => {
+      const matchesSearch = item.name.toLowerCase().includes(searchQuery.toLowerCase());
+      if (activeTab === 'maintenance') {
+        return matchesSearch && item.category === 'tool' && (item.needsMaintenance || (item.quantity < 1));
+      }
+      const matchesTab = activeTab === 'all' || item.category === activeTab.slice(0, -1);
+      return matchesSearch && matchesTab;
+    });
+  }, [inventory, searchQuery, activeTab]);
 
   if (!isOpen) return null;
 
