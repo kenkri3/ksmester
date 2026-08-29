@@ -1,4 +1,4 @@
-import { useState, useEffect } from 'react';
+import { useState, useEffect, useMemo } from 'react';
 import { motion } from 'motion/react';
 import { 
   Users, 
@@ -350,10 +350,13 @@ export default function SuperAdmin() {
     }
   };
 
-  const filteredCompanies = companies.filter(c => 
-    c.name.toLowerCase().includes(searchTerm.toLowerCase()) ||
-    c.orgNumber?.includes(searchTerm)
-  );
+  // ⚡ Bolt: Memoize filteredCompanies to prevent expensive O(N) recalculations on every render
+  const filteredCompanies = useMemo(() => {
+    return companies.filter(c =>
+      c.name.toLowerCase().includes(searchTerm.toLowerCase()) ||
+      c.orgNumber?.includes(searchTerm)
+    );
+  }, [companies, searchTerm]);
 
   if (!isSuperAdmin) {
     return (

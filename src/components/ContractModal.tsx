@@ -1,4 +1,4 @@
-import React, { useState, useEffect } from 'react';
+import React, { useState, useEffect, useMemo } from 'react';
 import { motion, AnimatePresence } from 'motion/react';
 import { X, FileSignature, CheckCircle2, Clock, AlertCircle, Search, Filter, Download, ExternalLink, Plus, Send, Sparkles, ShieldAlert } from 'lucide-react';
 import { Contract } from '../types';
@@ -131,11 +131,14 @@ const ContractModal: React.FC<ContractModalProps> = ({ isOpen, onClose }) => {
     }
   };
 
-  const filteredContracts = contracts.filter(c => 
-    c.title.toLowerCase().includes(searchTerm.toLowerCase()) || 
-    c.clientName.toLowerCase().includes(searchTerm.toLowerCase()) ||
-    c.projectCode?.toLowerCase().includes(searchTerm.toLowerCase())
-  );
+  // ⚡ Bolt: Memoize filteredContracts to prevent expensive O(N) recalculations on every render
+  const filteredContracts = useMemo(() => {
+    return contracts.filter(c =>
+      c.title.toLowerCase().includes(searchTerm.toLowerCase()) ||
+      c.clientName.toLowerCase().includes(searchTerm.toLowerCase()) ||
+      c.projectCode?.toLowerCase().includes(searchTerm.toLowerCase())
+    );
+  }, [contracts, searchTerm]);
 
   const getStatusBadge = (status: Contract['status']) => {
     switch (status) {

@@ -1,4 +1,4 @@
-import React, { useState, useEffect } from 'react';
+import React, { useState, useEffect, useMemo } from 'react';
 import { motion, AnimatePresence } from 'motion/react';
 import { ShieldCheck, Users, ClipboardCheck, AlertTriangle, FileText, Plus, Search, Filter, ChevronRight, Download, CreditCard, Calendar, CheckCircle2, Loader2, X } from 'lucide-react';
 import { cn } from '@/src/lib/utils';
@@ -252,17 +252,20 @@ const HMSModule: React.FC<HMSModuleProps> = ({ projects }) => {
     }
   };
 
-  const filteredCrew = crew.filter(p => {
-    const matchesSearch = p.name.toLowerCase().includes(searchQuery.toLowerCase()) ||
-      p.role.toLowerCase().includes(searchQuery.toLowerCase()) ||
-      p.employer.toLowerCase().includes(searchQuery.toLowerCase());
-    
-    if (searchQuery.toLowerCase() === 'utløpt') {
-      return p.hmsCardExpiry && new Date(p.hmsCardExpiry) < new Date();
-    }
-    
-    return matchesSearch;
-  });
+  // ⚡ Bolt: Memoize filteredCrew to prevent expensive O(N) recalculations on every render
+  const filteredCrew = useMemo(() => {
+    return crew.filter(p => {
+      const matchesSearch = p.name.toLowerCase().includes(searchQuery.toLowerCase()) ||
+        p.role.toLowerCase().includes(searchQuery.toLowerCase()) ||
+        p.employer.toLowerCase().includes(searchQuery.toLowerCase());
+
+      if (searchQuery.toLowerCase() === 'utløpt') {
+        return p.hmsCardExpiry && new Date(p.hmsCardExpiry) < new Date();
+      }
+
+      return matchesSearch;
+    });
+  }, [crew, searchQuery]);
 
   return (
     <div className="space-y-8">

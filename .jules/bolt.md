@@ -9,3 +9,7 @@
 ## 2026-08-27 - Unmemoized derived objects in custom hooks
 **Learning:** Discovered an anti-pattern in `useDashboardData.ts` where derived data structures (`stats` object, `recentDeviations` array) were being computed on every render and returned as unstable object/array references. This forces any component consuming the hook to undergo a re-render cascade, and repeats unnecessary O(N) array filtering calculations.
 **Action:** Always wrap dynamically computed objects or filtered arrays returned by custom hooks in `useMemo` to preserve reference stability and prevent redundant calculations.
+
+## 2023-10-25 - Unmemoized derived list filtering directly in render
+**Learning:** Found an anti-pattern in multiple components (`HMSModule`, `SuperAdmin`, `ContractModal`, `InventoryModal`) where large arrays were being heavily filtered directly inside the render cycle to produce derived lists like `filteredCrew` or `filteredCompanies`. This causes unnecessary array allocations and string matching operations (`.includes`) on every re-render, impacting performance when lists grow or typing in a search box triggers frequent renders.
+**Action:** Always utilize `useMemo` hooks to extract repeated array derivations (`.filter`, mapping logic) out of render functions in large React list components.
