@@ -9,9 +9,14 @@ export const DEFAULT_ADMIN_HASH = bcrypt.hashSync(DEFAULT_ADMIN_PASSWORD, 10);
 
 let pool: Pool | null = null;
 if (DATABASE_URL) {
+  const isInternal = 
+    DATABASE_URL.includes('.railway.internal') || 
+    DATABASE_URL.includes('localhost') || 
+    DATABASE_URL.includes('127.0.0.1');
+
   pool = new Pool({
     connectionString: DATABASE_URL,
-    ssl: process.env.NODE_ENV === 'production' ? { rejectUnauthorized: false } : false
+    ssl: isInternal ? false : (process.env.NODE_ENV === 'production' ? { rejectUnauthorized: false } : false)
   });
 }
 
