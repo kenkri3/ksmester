@@ -9,3 +9,8 @@
 **Vulnerability:** The `/api/ai/generate` and `/api/scrape` endpoints lacked authentication checks, meaning anyone could call them and consume paid API credits (Gemini, Firecrawl) without authorization.
 **Learning:** Endpoints proxying paid or external APIs require identical authentication safeguards to core CRUD endpoints. Relying solely on client-side routing protection exposes the server URLs to direct abuse.
 **Prevention:** Implement `getUserFromRequest()` check on all API routes consuming external resources or paid integrations, enforcing 401 returns on missing/invalid sessions.
+
+## 2025-02-27 - [Unauthenticated External API Proxies]
+**Vulnerability:** External API proxy endpoints (`/api/nobb/*`) were exposed without authentication, allowing anyone to bypass client-side checks and make requests using the server's API key, potentially leading to quota exhaustion and financial impact.
+**Learning:** This is a pattern in this application where server-side routes fetching external data (like Firecrawl, Gemini, and NOBB) are added but authentication checks are missed or forgotten. This allows abuse since the server uses environment variables to authenticate with external services on behalf of the client.
+**Prevention:** Ensure all `/api/*` endpoints that proxy external API calls or perform sensitive operations include an explicit authentication check using `getUserFromRequest` before processing the request.

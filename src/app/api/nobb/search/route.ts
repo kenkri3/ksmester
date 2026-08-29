@@ -1,6 +1,13 @@
 import { NextRequest, NextResponse } from 'next/server';
+import { getUserFromRequest } from '@/src/lib/server/auth';
 
 export async function GET(req: NextRequest) {
+  // 🛡️ SECURITY FIX: Enforce authentication to prevent unauthorized API credit usage
+  const user = getUserFromRequest(req);
+  if (!user) {
+    return NextResponse.json({ error: 'Uautorisert' }, { status: 401 });
+  }
+
   const { searchParams } = new URL(req.url);
   const q = searchParams.get('q') || '';
   const apiKey = process.env.NOBB_API_KEY;
