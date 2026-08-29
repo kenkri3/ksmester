@@ -1212,7 +1212,11 @@ export default function Dashboard({ isDemo = false, onOpenPortal }: { isDemo?: b
                         className="pl-10 pr-4 py-2 bg-neutral-50 border border-neutral-200 rounded-xl text-sm focus:outline-none focus:ring-2 focus:ring-emerald-500/20"
                       />
                     </div>
-                    <button className="p-2 border border-neutral-200 rounded-xl hover:bg-neutral-50 transition-colors">
+                    <button
+                      aria-label={t('filter_projects', 'Filtrer prosjekter')}
+                      title={t('filter_projects', 'Filtrer prosjekter')}
+                      className="p-2 border border-neutral-200 rounded-xl hover:bg-neutral-50 transition-colors focus-visible:ring-2 focus-visible:ring-emerald-500/20 focus-visible:outline-none"
+                    >
                       <Filter size={20} className="text-neutral-500" />
                     </button>
                   </div>
