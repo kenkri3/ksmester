@@ -58,7 +58,7 @@ const ApprenticeModal: React.FC<ApprenticeModalProps> = ({ isOpen, onClose }) =>
               <p className="text-neutral-500 text-sm font-medium">Oppfølging av lærlinger og opplæringsmål</p>
             </div>
           </div>
-          <button onClick={onClose} className="p-2 hover:bg-neutral-100 rounded-xl transition-colors">
+          <button onClick={onClose} aria-label="Lukk" title="Lukk" className="p-2 hover:bg-neutral-100 rounded-xl transition-colors">
             <X size={24} />
           </button>
         </div>

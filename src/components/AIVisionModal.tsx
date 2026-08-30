@@ -158,7 +158,7 @@ export default function AIVisionModal({ isOpen, onClose, projectId: initialProje
                   <p className="text-[8px] sm:text-[10px] text-rose-300 font-bold uppercase tracking-widest mt-0.5 sm:mt-1">Automatisk KS-kontroll</p>
                 </div>
               </div>
-              <button onClick={onClose} className="p-2 hover:bg-white/10 rounded-full transition-colors text-white">
+              <button onClick={onClose} aria-label="Lukk" title="Lukk" className="p-2 hover:bg-white/10 rounded-full transition-colors text-white">
                 <X size={20} className="sm:w-6 sm:h-6" />
               </button>
             </div>
