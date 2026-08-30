@@ -1,10 +1,13 @@
 import { Pool } from 'pg';
 import bcrypt from 'bcrypt';
+import { randomBytes } from 'crypto';
 
 const DATABASE_URL = process.env.DATABASE_URL;
 
+// 🛡️ SECURITY FIX: Replaced hardcoded fallback password with a dynamically generated one.
+// Hardcoded passwords in source code allow attackers to access the default admin account if the environment variable is missing.
 export const DEFAULT_ADMIN_EMAIL = (process.env.ADMIN_EMAIL || 'kenkri3@gmail.com').toLowerCase();
-export const DEFAULT_ADMIN_PASSWORD = process.env.ADMIN_PASSWORD || 'Admin2026!SecurePassword';
+export const DEFAULT_ADMIN_PASSWORD = process.env.ADMIN_PASSWORD || randomBytes(16).toString('hex');
 export const DEFAULT_ADMIN_HASH = bcrypt.hashSync(DEFAULT_ADMIN_PASSWORD, 10);
 
 let pool: Pool | null = null;

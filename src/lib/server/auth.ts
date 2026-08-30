@@ -1,10 +1,12 @@
 import jwtPkg from 'jsonwebtoken';
 import { NextRequest } from 'next/server';
-import { timingSafeEqual } from 'crypto';
+import { timingSafeEqual, randomBytes } from 'crypto';
 
 const { sign, verify } = jwtPkg;
 
-export const JWT_SECRET = process.env.JWT_SECRET || 'bygg-master-render-secret-key-2026';
+// 🛡️ SECURITY FIX: Replaced hardcoded fallback secret with a dynamically generated one.
+// Hardcoded secrets in source code allow attackers to forge valid JWTs if the environment variable is missing.
+export const JWT_SECRET = process.env.JWT_SECRET || randomBytes(32).toString('hex');
 
 export interface TokenPayload {
   id: string;
