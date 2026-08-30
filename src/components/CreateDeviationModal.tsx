@@ -152,7 +152,7 @@ export default function CreateDeviationModal({ isOpen, onClose, projects }: Crea
                   <p className="text-[6px] sm:text-[10px] text-orange-700 font-medium uppercase tracking-wider">HMS & Kvalitetssikring</p>
                 </div>
               </div>
-              <button onClick={onClose} className="p-1.5 sm:p-2 hover:bg-orange-100 rounded-full transition-colors text-orange-900">
+              <button onClick={onClose} aria-label="Lukk" title="Lukk" className="p-1.5 sm:p-2 hover:bg-orange-100 rounded-full transition-colors text-orange-900">
                 <X size={16} className="sm:w-5 sm:h-5" />
               </button>
             </div>

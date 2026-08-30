@@ -30,7 +30,7 @@ const ActivityLogModal: React.FC<ActivityLogModalProps> = ({ isOpen, onClose, pr
               <p className="text-neutral-500 text-sm font-medium">Fullstendig oversikt over hendelser i prosjektet</p>
             </div>
           </div>
-          <button onClick={onClose} className="p-2 hover:bg-neutral-100 rounded-xl transition-colors">
+          <button onClick={onClose} aria-label="Lukk" title="Lukk" className="p-2 hover:bg-neutral-100 rounded-xl transition-colors">
             <X size={24} />
           </button>
         </div>

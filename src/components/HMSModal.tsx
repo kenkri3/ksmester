@@ -31,7 +31,7 @@ const HMSModal: React.FC<HMSModalProps> = ({ isOpen, onClose, projects }) => {
               <p className="text-neutral-500 text-[10px] sm:text-sm font-medium truncate">Administrer mannskapsliste, vernerunder og HMS-kort</p>
             </div>
           </div>
-          <button onClick={onClose} className="p-2 hover:bg-neutral-100 rounded-xl transition-colors shrink-0">
+          <button onClick={onClose} aria-label="Lukk" title="Lukk" className="p-2 hover:bg-neutral-100 rounded-xl transition-colors shrink-0">
             <X size={20} className="sm:w-6 sm:h-6" />
           </button>
         </div>
