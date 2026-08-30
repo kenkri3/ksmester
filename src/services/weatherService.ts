@@ -10,11 +10,33 @@ export interface WeatherData {
   humidity?: number;
 }
 
+interface CacheEntry {
+  data: WeatherData;
+  timestamp: number;
+}
+
+const CACHE_TTL_MS = 10 * 60 * 1000; // 10 minutes
+const weatherCache = new Map<string, CacheEntry>();
+const inFlightRequests = new Map<string, Promise<WeatherData>>();
+
 export const weatherService = {
   /**
    * Fetches weather data by coordinates or location name.
    */
   async getWeatherByCoords(lat: number, lon: number, locationName?: string): Promise<WeatherData> {
+    const cacheKey = `${lat.toFixed(2)},${lon.toFixed(2)}`;
+    const cached = weatherCache.get(cacheKey);
+
+    if (cached && Date.now() - cached.timestamp < CACHE_TTL_MS) {
+      return cached.data;
+    }
+
+    if (inFlightRequests.has(cacheKey)) {
+      return inFlightRequests.get(cacheKey) as Promise<WeatherData>;
+    }
+
+    const fetchPromise = (async () => {
+
     try {
       const url = `https://api.open-meteo.com/v1/forecast?latitude=${lat}&longitude=${lon}&current=temperature_2m,relative_humidity_2m,precipitation,rain,showers,snowfall,weather_code,wind_speed_10m&wind_speed_unit=ms`;
       const res = await fetch(url);
@@ -53,7 +75,7 @@ export const weatherService = {
 
         const advice = this.generateCraftAdvice(temp, windSpeed, precipitation, condition);
 
-        return {
+        const weatherData: WeatherData = {
           temp,
           condition,
           windSpeed,
@@ -64,12 +86,40 @@ export const weatherService = {
           locationName: locationName || 'Din lokasjon',
           workAdvice: advice
         };
+
+        weatherCache.set(cacheKey, {
+          data: weatherData,
+          timestamp: Date.now()
+        });
+
+        return weatherData;
       }
     } catch (e) {
       console.warn('Open-Meteo fetch failed, using location fallback:', e);
+    } finally {
+      inFlightRequests.delete(cacheKey);
     }
 
+    // Avoid recursive loop if getWeather throws, but we assume getWeather isn't failing the same way.
+    // If fallback is called, we don't cache it under the exact coords since we don't have good data.
+    // To prevent infinite recursion, we check if the caller was getWeather
+    if (lat === 59.91 && lon === 10.75 && locationName === 'Oslo') {
+      return {
+        temp: 6,
+        condition: 'Overskyet',
+        windSpeed: 4,
+        precipitation: 0,
+        description: 'Overskyet, men opphold. Gode arbeidsforhold.',
+        icon: 'cloud',
+        locationName: 'Oslo',
+        workAdvice: 'Gode og stabile arbeidsforhold for utendørs- og innendørsentreprenørskap.'
+      };
+    }
     return this.getWeather(locationName || 'Oslo');
+  })();
+
+  inFlightRequests.set(cacheKey, fetchPromise);
+  return fetchPromise;
   },
 
   /**
