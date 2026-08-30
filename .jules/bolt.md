@@ -13,3 +13,7 @@
 ## 2023-10-25 - Unmemoized derived list filtering directly in render
 **Learning:** Found an anti-pattern in multiple components (`HMSModule`, `SuperAdmin`, `ContractModal`, `InventoryModal`) where large arrays were being heavily filtered directly inside the render cycle to produce derived lists like `filteredCrew` or `filteredCompanies`. This causes unnecessary array allocations and string matching operations (`.includes`) on every re-render, impacting performance when lists grow or typing in a search box triggers frequent renders.
 **Action:** Always utilize `useMemo` hooks to extract repeated array derivations (`.filter`, mapping logic) out of render functions in large React list components.
+
+## 2025-05-19 - Added In-Memory Cache to WeatherService
+**Learning:** Found redundant external API calls originating from inside loops (`Promise.all` in `Dashboard.tsx`) calling `weatherService.getWeather`. This resulted in duplicate requests to Open-Meteo for the same coordinates across different projects, causing UI load blocking and unnecessary bandwidth usage.
+**Action:** Always implement memoization or short-lived caching for external stateless API calls (like weather) to bundle concurrent requests and eliminate duplicate sequential requests, particularly when executing within maps or effects.
