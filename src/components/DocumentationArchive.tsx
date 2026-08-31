@@ -95,7 +95,7 @@ const DocumentationArchive: React.FC<DocumentationArchiveProps> = ({ isOpen, onC
               <p className="text-neutral-500 text-sm font-medium">Automatisert dokumenthåndtering med NOBB-integrasjon</p>
             </div>
           </div>
-          <button onClick={onClose} className="p-2 hover:bg-neutral-100 rounded-xl transition-colors">
+          <button onClick={onClose} aria-label="Lukk" title="Lukk" className="p-2 hover:bg-neutral-100 rounded-xl transition-colors">
             <X size={24} />
           </button>
         </div>
