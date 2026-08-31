@@ -20,7 +20,7 @@ export async function GET(
     }
 
     // Allow access if valid public token matches
-    if (!user && token && (item.token === token || item.portalToken === token || item.id === token)) {
+    if (!user && token && (item.token === token || item.portalToken === token)) {
       return NextResponse.json(item);
     }
 
@@ -31,10 +31,10 @@ export async function GET(
     // IDOR verification
     if (user.role !== 'admin') {
       const isOwner = 
-        item.companyId === user.companyId || 
-        item.company === user.companyId || 
-        item.userId === user.id || 
-        item.authorId === user.id;
+        (item.companyId && item.companyId === user.companyId) ||
+        (item.company && item.company === user.companyId) ||
+        (item.userId && item.userId === user.id) ||
+        (item.authorId && item.authorId === user.id);
 
       if (!isOwner) {
         return NextResponse.json({ error: 'Ingen tilgang til dette objektet (IDOR-beskyttelse)' }, { status: 403 });
@@ -70,8 +70,18 @@ export async function PUT(
     if (user.role !== 'admin') {
       const allItems = await getCollectionItems(collection);
       const existing = allItems.find((i: any) => i.id === id);
-      if (existing && existing.companyId && user.companyId && existing.companyId !== user.companyId) {
-        return NextResponse.json({ error: 'Ingen tilgang til å oppdatere dette objektet (IDOR-beskyttelse)' }, { status: 403 });
+      if (existing) {
+        const isOwner =
+          (existing.companyId && existing.companyId === user.companyId) ||
+          (existing.company && existing.company === user.companyId) ||
+          (existing.userId && existing.userId === user.id) ||
+          (existing.authorId && existing.authorId === user.id);
+
+        if (!isOwner) {
+          return NextResponse.json({ error: 'Ingen tilgang til å oppdatere dette objektet (IDOR-beskyttelse)' }, { status: 403 });
+        }
+      } else {
+         return NextResponse.json({ error: 'Elementet ble ikke funnet' }, { status: 404 });
       }
     }
 
@@ -104,8 +114,18 @@ export async function DELETE(
     if (user.role !== 'admin') {
       const allItems = await getCollectionItems(collection);
       const existing = allItems.find((i: any) => i.id === id);
-      if (existing && existing.companyId && user.companyId && existing.companyId !== user.companyId) {
-        return NextResponse.json({ error: 'Ingen tilgang til å slette dette objektet (IDOR-beskyttelse)' }, { status: 403 });
+      if (existing) {
+        const isOwner =
+          (existing.companyId && existing.companyId === user.companyId) ||
+          (existing.company && existing.company === user.companyId) ||
+          (existing.userId && existing.userId === user.id) ||
+          (existing.authorId && existing.authorId === user.id);
+
+        if (!isOwner) {
+          return NextResponse.json({ error: 'Ingen tilgang til å slette dette objektet (IDOR-beskyttelse)' }, { status: 403 });
+        }
+      } else {
+         return NextResponse.json({ error: 'Elementet ble ikke funnet' }, { status: 404 });
       }
     }
 

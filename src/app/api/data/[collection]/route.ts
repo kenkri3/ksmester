@@ -17,7 +17,7 @@ export async function GET(
     if (!user) {
       if (token && (collection === 'offers' || collection === 'invites' || collection === 'contracts')) {
         const items = await getCollectionItems(collection);
-        const match = items.find((i: any) => i.token === token || i.id === token);
+        const match = items.find((i: any) => i.token === token);
         if (match) {
           return NextResponse.json([match]);
         }
@@ -26,7 +26,7 @@ export async function GET(
 
       if (portalToken && collection === 'projects') {
         const items = await getCollectionItems(collection);
-        const match = items.find((p: any) => p.portalToken === portalToken || p.id === portalToken);
+        const match = items.find((p: any) => p.portalToken === portalToken);
         if (match) {
           return NextResponse.json([match]);
         }
@@ -41,10 +41,10 @@ export async function GET(
 
     if (user.role !== 'admin') {
       items = items.filter((item: any) => 
-        item.companyId === user.companyId || 
-        item.company === user.companyId ||
-        item.userId === user.id ||
-        item.authorId === user.id
+        (item.companyId && item.companyId === user.companyId) ||
+        (item.company && item.company === user.companyId) ||
+        (item.userId && item.userId === user.id) ||
+        (item.authorId && item.authorId === user.id)
       );
     }
 
