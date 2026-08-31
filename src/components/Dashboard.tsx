@@ -88,11 +88,32 @@ import {
   Cell
 } from 'recharts';
 
-export default function Dashboard({ isDemo = false, onOpenPortal }: { isDemo?: boolean, onOpenPortal?: (project: Project) => void }) {
+export default function Dashboard({ 
+  isDemo = false, 
+  onOpenPortal,
+  initialTab = 'oversikt',
+  onTabChange
+}: { 
+  isDemo?: boolean, 
+  onOpenPortal?: (project: Project) => void,
+  initialTab?: 'oversikt' | 'prosjekter' | 'tilbud' | 'avvik' | 'ai' | 'finans' | 'laerling' | 'hms',
+  onTabChange?: (tab: string) => void
+}) {
   const { t, i18n } = useTranslation();
   const { user, companyModules } = useAuth();
   const { projects, deviations, stats, loading } = useDashboardData();
-  const [activeTab, setActiveTab] = useState<'oversikt' | 'prosjekter' | 'tilbud' | 'avvik' | 'ai' | 'finans' | 'laerling' | 'hms'>('oversikt');
+  const [activeTab, setActiveTab] = useState<'oversikt' | 'prosjekter' | 'tilbud' | 'avvik' | 'ai' | 'finans' | 'laerling' | 'hms'>(initialTab);
+
+  useEffect(() => {
+    if (initialTab && initialTab !== activeTab) {
+      setActiveTab(initialTab);
+    }
+  }, [initialTab]);
+
+  const handleTabSelect = (tab: any) => {
+    setActiveTab(tab);
+    onTabChange?.(tab);
+  };
   const [offers, setOffers] = useState<Offer[]>([]);
   const [offerSearchTerm, setOfferSearchTerm] = useState('');
   const [offerStatusFilter, setOfferStatusFilter] = useState<string>('alle');
@@ -487,6 +508,16 @@ export default function Dashboard({ isDemo = false, onOpenPortal }: { isDemo?: b
         console.log('Action not implemented:', id);
     }
   };
+
+  useEffect(() => {
+    const handleTrigger = (e: any) => {
+      if (e.detail?.actionId) {
+        handleQuickAction(e.detail.actionId);
+      }
+    };
+    window.addEventListener('trigger_dashboard_action', handleTrigger);
+    return () => window.removeEventListener('trigger_dashboard_action', handleTrigger);
+  }, []);
 
   // Memoized derived data to prevent unnecessary recalculations on re-renders
   const memoizedOfferStats = useMemo(() => {

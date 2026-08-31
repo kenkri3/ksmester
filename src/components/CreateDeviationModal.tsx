@@ -135,14 +135,17 @@ export default function CreateDeviationModal({ isOpen, onClose, projects }: Crea
   return (
     <AnimatePresence>
       {isOpen && (
-        <div className="fixed inset-0 z-50 flex items-center justify-center p-4 bg-black/60 backdrop-blur-sm">
+        <div className="fixed inset-0 z-50 flex items-end sm:items-center justify-center p-0 sm:p-4 bg-black/60 backdrop-blur-sm">
           <motion.div
-            initial={{ opacity: 0, scale: 0.95, y: 20 }}
+            initial={{ opacity: 0, scale: 0.98, y: 20 }}
             animate={{ opacity: 1, scale: 1, y: 0 }}
-            exit={{ opacity: 0, scale: 0.95, y: 20 }}
-            className="bg-white w-full max-w-lg rounded-2xl sm:rounded-[2rem] shadow-2xl overflow-hidden flex flex-col max-h-[calc(100vh-2rem)]"
+            exit={{ opacity: 0, scale: 0.98, y: 20 }}
+            className="bg-white w-full max-w-lg rounded-t-[2.5rem] sm:rounded-[2rem] shadow-2xl overflow-hidden flex flex-col max-h-[92vh] sm:max-h-[calc(100vh-2rem)] pb-[env(safe-area-inset-bottom,0px)]"
           >
-            <div className="p-3 sm:p-8 border-b border-neutral-100 flex justify-between items-center bg-orange-50 shrink-0">
+            {/* Mobile Grab Handle */}
+            <div className="sm:hidden w-12 h-1.5 bg-neutral-300 rounded-full mx-auto mt-3 mb-1" />
+
+            <div className="p-4 sm:p-8 border-b border-neutral-100 flex justify-between items-center bg-orange-50 shrink-0">
               <div className="flex items-center gap-2 sm:gap-3">
                 <div className="p-1.5 sm:p-2 bg-orange-100 text-orange-600 rounded-lg sm:rounded-xl">
                   <AlertTriangle size={16} className="sm:w-6 sm:h-6" />

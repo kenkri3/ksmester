@@ -61,6 +61,8 @@ import InstallGuide from './components/InstallGuide';
 import NetworkStatusBadge from './components/NetworkStatusBadge';
 import CookieBanner from './components/CookieBanner';
 import { ErrorBoundary } from './components/ErrorBoundary';
+import MobileBottomNav from './components/MobileBottomNav';
+import MobileQuickActionSheet from './components/MobileQuickActionSheet';
 
 import './i18n';
 import { getStandardLang } from './i18n';
@@ -81,6 +83,8 @@ export default function App() {
 
 function AppContent() {
   const [view, setView] = useState<View>('landing');
+  const [dashboardTab, setDashboardTab] = useState<'oversikt' | 'prosjekter' | 'tilbud' | 'avvik' | 'ai' | 'finans' | 'laerling' | 'hms'>('oversikt');
+  const [isQuickActionOpen, setIsQuickActionOpen] = useState(false);
   const [offerToken, setOfferToken] = useState<string | null>(null);
   const [inviteToken, setInviteToken] = useState<string | null>(null);
   const [portalProject, setPortalProject] = useState<Project | null>(null);
@@ -89,6 +93,37 @@ function AppContent() {
   const [showInstallGuide, setShowInstallGuide] = useState(false);
   const { t, i18n } = useTranslation();
   const { user, logout, isAuthReady, subscriptionStatus, trialDaysLeft, impersonatedCompanyId, stopImpersonation } = useAuth();
+
+  useEffect(() => {
+    const handleNav = (e: any) => {
+      if (e.detail?.view) setView(e.detail.view);
+    };
+    window.addEventListener('navigate_view', handleNav);
+    return () => window.removeEventListener('navigate_view', handleNav);
+  }, []);
+
+  const handleMobileNavigate = (targetView: string, tab?: string) => {
+    if (tab) {
+      setDashboardTab(tab as any);
+    }
+    setView(targetView as View);
+    window.scrollTo({ top: 0, behavior: 'smooth' });
+  };
+
+  const handleMobileAction = (actionId: string) => {
+    if (actionId === 'voice_sja') {
+      setView('mobile');
+      return;
+    }
+    if (view !== 'dashboard') {
+      setView('dashboard');
+      setTimeout(() => {
+        window.dispatchEvent(new CustomEvent('trigger_dashboard_action', { detail: { actionId } }));
+      }, 150);
+    } else {
+      window.dispatchEvent(new CustomEvent('trigger_dashboard_action', { detail: { actionId } }));
+    }
+  };
 
   const publicViews: View[] = ['landing', 'spec', 'pricing', 'about', 'contact', 'privacy', 'terms', 'offer', 'invite', 'customer-portal', 'login'];
   const isPublicView = publicViews.includes(view);
@@ -529,7 +564,7 @@ function AppContent() {
       </nav>
 
       {/* Main Content */}
-      <main className="pt-16">
+      <main className={cn("pt-16", user ? "pb-24 md:pb-8" : "")}>
         <AnimatePresence mode="wait">
           <motion.div
             key={view}
@@ -549,6 +584,8 @@ function AppContent() {
             {view === 'dashboard' && (
               <Dashboard 
                 isDemo={false} 
+                initialTab={dashboardTab}
+                onTabChange={(tab) => setDashboardTab(tab as any)}
                 onOpenPortal={(p) => {
                   setPortalProject(p);
                   setView('customer-portal');
@@ -590,6 +627,24 @@ function AppContent() {
           </motion.div>
         </AnimatePresence>
       </main>
+
+      {/* Native Mobile Bottom Navigation Dock (Fixed at bottom on phones) */}
+      {user && !['offer', 'invite', 'customer-portal'].includes(view) && (
+        <MobileBottomNav
+          currentView={view}
+          activeTab={dashboardTab}
+          onNavigate={handleMobileNavigate}
+          onOpenQuickActions={() => setIsQuickActionOpen(true)}
+          onOpenMenu={() => setIsMenuOpen(true)}
+        />
+      )}
+
+      {/* Mobile Quick Action Sheet */}
+      <MobileQuickActionSheet
+        isOpen={isQuickActionOpen}
+        onClose={() => setIsQuickActionOpen(false)}
+        onAction={handleMobileAction}
+      />
 
       {/* Install Guide Modal */}
       {showInstallGuide && (

@@ -170,7 +170,7 @@ export default function CreateProjectModal({ isOpen, onClose }: CreateProjectMod
   return (
     <AnimatePresence>
       {isOpen && (
-        <div className="fixed inset-0 z-[60] flex items-center justify-center p-4">
+        <div className="fixed inset-0 z-[60] flex items-end sm:items-center justify-center p-0 sm:p-4">
           <motion.div 
             initial={{ opacity: 0 }}
             animate={{ opacity: 1 }}
@@ -180,11 +180,14 @@ export default function CreateProjectModal({ isOpen, onClose }: CreateProjectMod
           />
           
           <motion.div 
-            initial={{ opacity: 0, scale: 0.95, y: 20 }}
+            initial={{ opacity: 0, scale: 0.98, y: 20 }}
             animate={{ opacity: 1, scale: 1, y: 0 }}
-            exit={{ opacity: 0, scale: 0.95, y: 20 }}
-            className="relative w-full max-w-2xl bg-white rounded-2xl sm:rounded-[2.5rem] shadow-2xl overflow-hidden flex flex-col max-h-[calc(100vh-2rem)]"
+            exit={{ opacity: 0, scale: 0.98, y: 20 }}
+            className="relative w-full max-w-2xl bg-white rounded-t-[2.5rem] sm:rounded-[2.5rem] shadow-2xl overflow-hidden flex flex-col max-h-[92vh] sm:max-h-[calc(100vh-2rem)] pb-[env(safe-area-inset-bottom,0px)]"
           >
+            {/* Mobile Grab Handle */}
+            <div className="sm:hidden w-12 h-1.5 bg-neutral-300 rounded-full mx-auto mt-3 mb-1" />
+
             <div className="p-4 sm:p-8 lg:p-10 flex-1 overflow-y-auto custom-scrollbar">
               <div className="flex justify-between items-center mb-4 sm:mb-8 sticky top-0 bg-white z-10 pb-2">
                 <h2 className="text-lg sm:text-2xl font-bold tracking-tight">{t('new_project_title', 'Opprett nytt prosjekt')}</h2>

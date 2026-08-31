@@ -141,13 +141,16 @@ export default function AIVisionModal({ isOpen, onClose, projectId: initialProje
   return (
     <AnimatePresence>
       {isOpen && (
-        <div className="fixed inset-0 z-50 flex items-center justify-center p-4 bg-black/80 backdrop-blur-md">
+        <div className="fixed inset-0 z-50 flex items-end sm:items-center justify-center p-0 sm:p-4 bg-black/80 backdrop-blur-md">
           <motion.div
-            initial={{ opacity: 0, scale: 0.9, y: 40 }}
+            initial={{ opacity: 0, scale: 0.98, y: 30 }}
             animate={{ opacity: 1, scale: 1, y: 0 }}
-            exit={{ opacity: 0, scale: 0.9, y: 40 }}
-            className="bg-neutral-900 w-full max-w-3xl rounded-2xl sm:rounded-[3rem] shadow-2xl overflow-hidden border border-white/10 flex flex-col max-h-[calc(100vh-2rem)]"
+            exit={{ opacity: 0, scale: 0.98, y: 30 }}
+            className="bg-neutral-900 w-full max-w-3xl rounded-t-[2.5rem] sm:rounded-[3rem] shadow-2xl overflow-hidden border border-white/10 flex flex-col max-h-[92vh] sm:max-h-[calc(100vh-2rem)] pb-[env(safe-area-inset-bottom,0px)]"
           >
+            {/* Mobile Grab Handle */}
+            <div className="sm:hidden w-12 h-1.5 bg-white/20 rounded-full mx-auto mt-3 mb-1" />
+
             <div className="p-4 sm:p-8 border-b border-white/5 flex justify-between items-center bg-gradient-to-r from-rose-900/20 to-indigo-900/20 shrink-0">
               <div className="flex items-center gap-3 sm:gap-4">
                 <div className="p-2 sm:p-3 bg-rose-500 text-white rounded-xl sm:rounded-2xl shadow-lg shadow-rose-500/20">
