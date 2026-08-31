@@ -224,7 +224,7 @@ const HMSHandbook: React.FC = () => {
                   <h3 className="text-xl font-bold">{selectedDoc.title}</h3>
                   <p className="text-xs text-neutral-500 mt-1">Versjon {selectedDoc.version} • Oppdatert {new Date(selectedDoc.updatedAt).toLocaleDateString('no-NO')}</p>
                 </div>
-                <button onClick={() => setSelectedDoc(null)} className="p-2 hover:bg-neutral-200 rounded-full transition-colors">
+                <button onClick={() => setSelectedDoc(null)} aria-label="Lukk" title="Lukk" className="p-2 hover:bg-neutral-200 rounded-full transition-colors">
                   <X size={20} />
                 </button>
               </div>
