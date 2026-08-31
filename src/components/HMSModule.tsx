@@ -267,6 +267,12 @@ const HMSModule: React.FC<HMSModuleProps> = ({ projects }) => {
     });
   }, [crew, searchQuery]);
 
+  // ⚡ Bolt: Memoize expiringCards to avoid duplicated inline filtering
+  const expiringCards = useMemo(() => {
+    const thirtyDaysFromNow = new Date(Date.now() + 30 * 24 * 60 * 60 * 1000);
+    return crew.filter(p => p.hmsCardExpiry && new Date(p.hmsCardExpiry) < thirtyDaysFromNow);
+  }, [crew]);
+
   return (
     <div className="space-y-8">
       {/* Tabs & Actions */}
@@ -520,14 +526,14 @@ const HMSModule: React.FC<HMSModuleProps> = ({ projects }) => {
               <h3 className="font-bold text-rose-900 text-sm sm:text-base">{t('hms_card_alerts', 'HMS-Kort Varsler')}</h3>
             </div>
             <div className="space-y-3 sm:space-y-4">
-              {crew.filter(p => p.hmsCardExpiry && new Date(p.hmsCardExpiry) < new Date(Date.now() + 30 * 24 * 60 * 60 * 1000)).map((person) => (
+              {expiringCards.map((person) => (
                 <div key={person.id} className="p-3 sm:p-4 bg-white rounded-xl sm:rounded-2xl border border-rose-100 shadow-sm">
                   <div className="text-[10px] font-bold text-rose-600 mb-0.5 sm:mb-1">{t('expiring_soon', 'Utløper snart')}</div>
                   <div className="text-xs sm:text-sm font-bold truncate">{person.name}</div>
                   <p className="text-[9px] sm:text-[10px] text-neutral-400 mt-1">Kortet utløper {person.hmsCardExpiry}. Bestill nytt nå.</p>
                 </div>
               ))}
-              {crew.filter(p => p.hmsCardExpiry && new Date(p.hmsCardExpiry) < new Date(Date.now() + 30 * 24 * 60 * 60 * 1000)).length === 0 && (
+              {expiringCards.length === 0 && (
                 <p className="text-[9px] sm:text-[10px] text-neutral-400 italic text-center">{t('no_expiring_cards', 'Ingen utløpende kort de neste 30 dagene.')}</p>
               )}
             </div>
