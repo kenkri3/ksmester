@@ -17,3 +17,7 @@
 ## 2025-05-19 - Added In-Memory Cache to WeatherService
 **Learning:** Found redundant external API calls originating from inside loops (`Promise.all` in `Dashboard.tsx`) calling `weatherService.getWeather`. This resulted in duplicate requests to Open-Meteo for the same coordinates across different projects, causing UI load blocking and unnecessary bandwidth usage.
 **Action:** Always implement memoization or short-lived caching for external stateless API calls (like weather) to bundle concurrent requests and eliminate duplicate sequential requests, particularly when executing within maps or effects.
+
+## 2025-05-18 - Eliminated duplicated O(N) inline array filtering in JSX
+**Learning:** Found an anti-pattern in `HMSModule.tsx` and `HMSHandbook.tsx` where `.filter()` arrays were executed inline multiple times in the render cycle for the exact same condition (e.g. once for `list.filter(...).length === 0` check, then again to render `.map(...)`). As datasets scale up, evaluating conditions and mapping duplicate arrays on every keystroke/render causes unnecessary UI jank.
+**Action:** Extract any inline `.filter` or `.map` logic executing multiple times during render into a single `useMemo` block with appropriate dependencies. This shares the single computation across length checks and iterations.

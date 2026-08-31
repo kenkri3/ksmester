@@ -110,6 +110,12 @@ const HMSHandbook: React.FC = () => {
     });
   }, [documents, searchQuery, activeCategory]);
 
+  // ⚡ Bolt: Memoize filtered signatures for the open modal to avoid duplicated array filtering
+  const documentSignatures = useMemo(() => {
+    if (!showSignees) return [];
+    return signatures.filter(s => s.documentId === showSignees);
+  }, [signatures, showSignees]);
+
   if (loading) {
     return (
       <div className="flex flex-col items-center justify-center py-20 text-neutral-400">
@@ -284,8 +290,8 @@ const HMSHandbook: React.FC = () => {
               </div>
 
               <div className="space-y-3 max-h-[400px] overflow-y-auto pr-2">
-                {signatures.filter(s => s.documentId === showSignees).length > 0 ? (
-                  signatures.filter(s => s.documentId === showSignees).map((sig) => (
+                {documentSignatures.length > 0 ? (
+                  documentSignatures.map((sig) => (
                     <div key={sig.id} className="flex items-center justify-between p-4 bg-neutral-50 rounded-2xl border border-neutral-100">
                       <div className="flex items-center gap-3">
                         <div className="w-8 h-8 rounded-full bg-emerald-100 flex items-center justify-center text-emerald-600">
