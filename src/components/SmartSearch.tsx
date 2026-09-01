@@ -1,6 +1,7 @@
 import { useState, useEffect, useRef } from 'react';
 import { motion, AnimatePresence } from 'motion/react';
 import { Search, X, Command, Brain, Building2, AlertTriangle, FileText, ArrowRight, Loader2, Sparkles } from 'lucide-react';
+import { useDebounce } from '../hooks/useDebounce';
 import { generateAiContent } from '../services/aiClient';
 import { db, collection, getDocs, query, limit } from '../services/firebase';
 import { cn } from '@/src/lib/utils';
@@ -21,6 +22,7 @@ export default function SmartSearch({ isOpen, onClose, onNavigate }: { isOpen: b
   const [isSearching, setIsSearching] = useState(false);
   const [results, setResults] = useState<SmartSearchResult[]>([]);
   const inputRef = useRef<HTMLInputElement>(null);
+  const debouncedQueryText = useDebounce(queryText, 500);
 
   useEffect(() => {
     if (isOpen) {
@@ -30,8 +32,7 @@ export default function SmartSearch({ isOpen, onClose, onNavigate }: { isOpen: b
     }
   }, [isOpen]);
 
-  const handleSearch = async (val: string) => {
-    setQueryText(val);
+  const doSearch = async (val: string) => {
     if (val.length < 2) {
       setResults([]);
       return;
@@ -116,6 +117,24 @@ export default function SmartSearch({ isOpen, onClose, onNavigate }: { isOpen: b
     } finally {
       setIsSearching(false);
     }
+  };
+
+  useEffect(() => {
+    // Only trigger search when the debounced value changes.
+    // We do not want to trigger it if queryText changes until debounce settles.
+    doSearch(debouncedQueryText);
+  }, [debouncedQueryText]);
+
+  const handleSearch = (val: string) => {
+    setQueryText(val);
+  };
+
+  // This is a direct handler for the quick suggestions, bypassing debounce
+  const handleQuickSearch = (val: string) => {
+    setQueryText(val);
+    // Setting queryText will trigger debouncedQueryText after 500ms which triggers doSearch.
+    // If we want immediate feedback, we can call it here, but it would run twice.
+    // Given the debounce is short, we rely on the debounce effect.
   };
 
   return (
@@ -203,7 +222,7 @@ export default function SmartSearch({ isOpen, onClose, onNavigate }: { isOpen: b
                     ].map((suggestion, i) => (
                       <button
                         key={i}
-                        onClick={() => handleSearch(suggestion)}
+                        onClick={() => handleQuickSearch(suggestion)}
                         className="p-2.5 sm:p-3 text-left text-[10px] sm:text-sm text-neutral-400 hover:text-white hover:bg-white/5 rounded-lg sm:rounded-xl transition-all border border-white/5"
                       >
                         {suggestion}

@@ -1,4 +1,4 @@
-import { useState } from 'react';
+import { useState, useEffect } from 'react';
 import { motion, AnimatePresence } from 'motion/react';
 import { X, AlertTriangle, Send, Camera, MapPin, Sparkles, Loader2 } from 'lucide-react';
 import { db, collection, addDoc, serverTimestamp, OperationType, handleFirestoreError, auth } from '../services/firebase';
@@ -9,6 +9,7 @@ import { useTranslation } from 'react-i18next';
 import { useAuth } from '../hooks/useAuth';
 import { cn } from '@/src/lib/utils';
 import { generateAiContent } from '../services/aiClient';
+import { useDebounce } from '../hooks/useDebounce';
 
 interface CreateDeviationModalProps {
   isOpen: boolean;
@@ -34,23 +35,28 @@ export default function CreateDeviationModal({ isOpen, onClose, projects }: Crea
   const [addressSearch, setAddressSearch] = useState('');
   const [addressSuggestions, setAddressSuggestions] = useState<AddressInfo[]>([]);
   const [isSearchingAddress, setIsSearchingAddress] = useState(false);
+  const debouncedAddressSearch = useDebounce(addressSearch, 500);
 
-  const handleAddressSearch = async (query: string) => {
-    setAddressSearch(query);
-    if (query.length < 3) {
-      setAddressSuggestions([]);
-      return;
-    }
-    setIsSearchingAddress(true);
-    try {
-      const results = await locationService.searchAddress(query);
-      setAddressSuggestions(results);
-    } catch (error) {
-      console.error("Address search error:", error);
-    } finally {
-      setIsSearchingAddress(false);
-    }
-  };
+  useEffect(() => {
+    const fetchAddresses = async () => {
+      if (debouncedAddressSearch.length < 3) {
+        setAddressSuggestions([]);
+        setIsSearchingAddress(false);
+        return;
+      }
+      setIsSearchingAddress(true);
+      try {
+        const results = await locationService.searchAddress(debouncedAddressSearch);
+        setAddressSuggestions(results);
+      } catch (error) {
+        console.error("Address search error:", error);
+      } finally {
+        setIsSearchingAddress(false);
+      }
+    };
+
+    fetchAddresses();
+  }, [debouncedAddressSearch]);
 
   const selectAddress = (addr: AddressInfo) => {
     setFormData(prev => ({
@@ -246,8 +252,8 @@ export default function CreateDeviationModal({ isOpen, onClose, projects }: Crea
                     <MapPin className="absolute left-3 sm:left-4 top-1/2 -translate-y-1/2 text-neutral-400 sm:w-[18px] sm:h-[18px]" size={12} />
                     <input 
                       type="text"
-                      value={addressSearch || formData.location}
-                      onChange={(e) => handleAddressSearch(e.target.value)}
+                      value={addressSearch !== '' ? addressSearch : formData.location}
+                      onChange={(e) => setAddressSearch(e.target.value)}
                       className="w-full bg-neutral-50 border border-neutral-200 rounded-lg sm:rounded-2xl py-1.5 sm:py-4 pl-8 sm:pl-12 pr-3 sm:pr-4 text-[9px] sm:text-sm focus:ring-2 focus:ring-orange-500/20 focus:border-orange-500 outline-none transition-all font-bold"
                       placeholder="Søk adresse for GNR/BNR..."
                     />
