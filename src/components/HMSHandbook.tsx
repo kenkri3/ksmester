@@ -284,7 +284,7 @@ const HMSHandbook: React.FC = () => {
                   <h3 className="text-xl font-bold">Signaturer</h3>
                   <p className="text-xs text-neutral-500 mt-1">{documents.find(d => d.id === showSignees)?.title}</p>
                 </div>
-                <button onClick={() => setShowSignees(null)} className="p-2 hover:bg-neutral-100 rounded-full">
+                <button onClick={() => setShowSignees(null)} aria-label="Lukk" title="Lukk" className="p-2 hover:bg-neutral-100 rounded-full">
                   <X size={20} />
                 </button>
               </div>
