@@ -47,9 +47,9 @@ export async function GET(req: NextRequest) {
         }
       } else {
         const userItems = items.filter((item: any) => 
-          item.companyId === user.companyId || 
-          item.userId === user.id || 
-          item.authorId === user.id
+          (item.companyId && item.companyId === user.companyId) ||
+          (item.userId && item.userId === user.id) ||
+          (item.authorId && item.authorId === user.id)
         );
         exportData.companyData[col] = userItems;
       }
