@@ -51,6 +51,7 @@ import { resourceService, ResourceEstimation } from '../services/resourceService
 import AiReportModal from './AiReportModal';
 import { useDashboardData } from '../hooks/useDashboardData';
 import { useAuth } from '../hooks/useAuth';
+import { useDebounce } from '../hooks/useDebounce';
 import UniversalTranslator from './UniversalTranslator';
 import ActivityLogModal from './ActivityLogModal';
 import CreateProjectModal from './CreateProjectModal';
@@ -116,6 +117,7 @@ export default function Dashboard({
   };
   const [offers, setOffers] = useState<Offer[]>([]);
   const [offerSearchTerm, setOfferSearchTerm] = useState('');
+  const debouncedOfferSearch = useDebounce(offerSearchTerm, 300);
   const [offerStatusFilter, setOfferStatusFilter] = useState<string>('alle');
   const [isActivityLogModalOpen, setIsActivityLogModalOpen] = useState(false);
   const [isCreateModalOpen, setIsCreateModalOpen] = useState(false);
@@ -137,6 +139,7 @@ export default function Dashboard({
   const [isHMSModalOpen, setIsHMSModalOpen] = useState(false);
   const [isSmartSearchOpen, setIsSmartSearchOpen] = useState(false);
   const [projectSearchTerm, setProjectSearchTerm] = useState('');
+  const debouncedProjectSearch = useDebounce(projectSearchTerm, 300);
   const [userProfile, setUserProfile] = useState<UserProfile | null>(null);
   const [selectedProject, setSelectedProject] = useState<Project | null>(null);
   const [deviationAnalysis, setDeviationAnalysis] = useState<DeviationAnalysis | null>(null);
@@ -541,24 +544,31 @@ export default function Dashboard({
     };
   }, [offers]);
 
+  // ⚡ Bolt: Debounce search input to reduce recalculations while typing
+  // Move .toLowerCase() outside the filter loop to avoid O(N) redundant string conversions
   const filteredOffersList = useMemo(() => {
+    const searchLower = debouncedOfferSearch.toLowerCase();
     return offers.filter(offer => {
-      const matchesSearch = !offerSearchTerm ||
-        (offer.title && offer.title.toLowerCase().includes(offerSearchTerm.toLowerCase())) ||
-        (offer.clientName && offer.clientName.toLowerCase().includes(offerSearchTerm.toLowerCase())) ||
-        (offer.projectCode && offer.projectCode.toLowerCase().includes(offerSearchTerm.toLowerCase()));
+      const matchesSearch = !searchLower ||
+        (offer.title && offer.title.toLowerCase().includes(searchLower)) ||
+        (offer.clientName && offer.clientName.toLowerCase().includes(searchLower)) ||
+        (offer.projectCode && offer.projectCode.toLowerCase().includes(searchLower));
       const matchesStatus = offerStatusFilter === 'alle' || offer.status === offerStatusFilter;
       return matchesSearch && matchesStatus;
     });
-  }, [offers, offerSearchTerm, offerStatusFilter]);
+  }, [offers, debouncedOfferSearch, offerStatusFilter]);
 
+  // ⚡ Bolt: Debounce search input to prevent rapid list re-renders
+  // Pre-compute .toLowerCase() outside the mapping iteration
   const filteredProjectsList = useMemo(() => {
+    const searchLower = debouncedProjectSearch.toLowerCase();
+    if (!searchLower) return projects;
     return projects.filter(p =>
-      p.name.toLowerCase().includes(projectSearchTerm.toLowerCase()) ||
-      p.projectCode?.toLowerCase().includes(projectSearchTerm.toLowerCase()) ||
-      p.location.toLowerCase().includes(projectSearchTerm.toLowerCase())
+      p.name.toLowerCase().includes(searchLower) ||
+      p.projectCode?.toLowerCase().includes(searchLower) ||
+      p.location.toLowerCase().includes(searchLower)
     );
-  }, [projects, projectSearchTerm]);
+  }, [projects, debouncedProjectSearch]);
 
   const memoizedStageCounts = useMemo(() => {
     const counts: Record<string, number> = {};
