@@ -1,4 +1,4 @@
-import { useState } from 'react';
+import { useState, useEffect } from 'react';
 import { motion, AnimatePresence } from 'motion/react';
 import { X, MapPin, HardHat, Loader2, Sparkles, Users, Clock, Package, TrendingUp } from 'lucide-react';
 import { db, collection, setDoc, doc, OperationType, handleFirestoreError, Timestamp, auth } from '../services/firebase';
@@ -8,6 +8,7 @@ import { generateAiContent } from '../services/aiClient';
 import { resourceService, ResourceEstimation } from '../services/resourceService';
 import { locationService, AddressInfo } from '../services/locationService';
 import { cn } from '@/src/lib/utils';
+import { useDebounce } from '../hooks/useDebounce';
 
 interface CreateProjectModalProps {
   isOpen: boolean;
@@ -41,23 +42,28 @@ export default function CreateProjectModal({ isOpen, onClose }: CreateProjectMod
   const [addressSearch, setAddressSearch] = useState('');
   const [addressSuggestions, setAddressSuggestions] = useState<AddressInfo[]>([]);
   const [isSearchingAddress, setIsSearchingAddress] = useState(false);
+  const debouncedAddressSearch = useDebounce(addressSearch, 500);
 
-  const handleAddressSearch = async (query: string) => {
-    setAddressSearch(query);
-    if (query.length < 3) {
-      setAddressSuggestions([]);
-      return;
-    }
-    setIsSearchingAddress(true);
-    try {
-      const results = await locationService.searchAddress(query);
-      setAddressSuggestions(results);
-    } catch (error) {
-      console.error("Address search error:", error);
-    } finally {
-      setIsSearchingAddress(false);
-    }
-  };
+  useEffect(() => {
+    const fetchAddresses = async () => {
+      if (debouncedAddressSearch.length < 3) {
+        setAddressSuggestions([]);
+        setIsSearchingAddress(false);
+        return;
+      }
+      setIsSearchingAddress(true);
+      try {
+        const results = await locationService.searchAddress(debouncedAddressSearch);
+        setAddressSuggestions(results);
+      } catch (error) {
+        console.error("Address search error:", error);
+      } finally {
+        setIsSearchingAddress(false);
+      }
+    };
+
+    fetchAddresses();
+  }, [debouncedAddressSearch]);
 
   const selectAddress = (addr: AddressInfo) => {
     setFormData(prev => ({
@@ -260,8 +266,8 @@ export default function CreateProjectModal({ isOpen, onClose }: CreateProjectMod
                       <input 
                         required
                         type="text"
-                        value={addressSearch || formData.location}
-                        onChange={(e) => handleAddressSearch(e.target.value)}
+                        value={addressSearch !== '' ? addressSearch : formData.location}
+                        onChange={(e) => setAddressSearch(e.target.value)}
                         className="w-full bg-neutral-50 border border-neutral-200 rounded-lg sm:rounded-2xl py-2.5 sm:py-4 pl-10 sm:pl-12 pr-3 sm:pr-4 text-[10px] sm:text-sm focus:ring-2 focus:ring-emerald-500/20 focus:border-emerald-500 outline-none transition-all"
                         placeholder={t('location_placeholder', 'Søk adresse for å hente GNR/BNR...')}
                       />

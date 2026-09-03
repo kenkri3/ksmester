@@ -21,3 +21,7 @@
 ## 2025-05-18 - Eliminated duplicated O(N) inline array filtering in JSX
 **Learning:** Found an anti-pattern in `HMSModule.tsx` and `HMSHandbook.tsx` where `.filter()` arrays were executed inline multiple times in the render cycle for the exact same condition (e.g. once for `list.filter(...).length === 0` check, then again to render `.map(...)`). As datasets scale up, evaluating conditions and mapping duplicate arrays on every keystroke/render causes unnecessary UI jank.
 **Action:** Extract any inline `.filter` or `.map` logic executing multiple times during render into a single `useMemo` block with appropriate dependencies. This shares the single computation across length checks and iterations.
+
+## 2024-05-18 - [Use Debounce hook]
+**Learning:** React inputs that trigger an async function on change can cause performance issues if not debounced.
+**Action:** When working with async search functions, use a `useDebounce` hook to ensure the function is only executed after a short delay.
