@@ -270,15 +270,16 @@ export default function Dashboard({
   const [isAiLoading, setIsAiLoading] = useState(false);
   const [projectWeather, setProjectWeather] = useState<Record<string, WeatherData>>({});
   
-  const lifecycleStages = [
+  // ⚡ Bolt: Memoize lifecycleStages to prevent object recreation on every render
+  const lifecycleStages = useMemo(() => [
     { id: 'offer', label: t('phase_offer', 'Tilbud'), icon: <Calculator size={16} />, color: 'bg-blue-500' },
     { id: 'contract', label: t('phase_contract', 'Kontrakt'), icon: <FileSignature size={16} />, color: 'bg-indigo-500' },
     { id: 'active', label: t('phase_execution', 'Gjennomføring'), icon: <HardHat size={16} />, color: 'bg-emerald-500' },
     { id: 'completion', label: t('phase_handover', 'Overlevering'), icon: <CheckCircle2 size={16} />, color: 'bg-rose-500' },
     { id: 'archived', label: t('phase_archive', 'Arkiv'), icon: <Library size={16} />, color: 'bg-neutral-500' },
-  ];
+  ], [t]);
 
-  const actionGroups = [
+  const rawActionGroups = useMemo(() => [
     {
       title: t('group_planning_sales', 'Planlegging & Salg'),
       actions: [
@@ -310,10 +311,7 @@ export default function Dashboard({
         { id: 'time_registration', label: t('time_registration', 'Timeføring'), icon: <Timer size={18} />, color: 'bg-neutral-900', module: 'time' },
       ]
     }
-  ].map(group => ({
-    ...group,
-    actions: group.actions.filter(action => !companyModules || companyModules.includes(action.module))
-  })).filter(group => group.actions.length > 0);
+  ], [t]);
 
   useEffect(() => {
     const unsubscribe = auth.onAuthStateChanged(async (user) => {
@@ -400,30 +398,40 @@ export default function Dashboard({
     }
   };
 
-  const isActionVisible = (actionId: string) => {
-    if (!userProfile) return true;
-    if (userProfile.industry === 'general' || !userProfile.industry) return true;
-    
-    // Define which actions are "core" and which are "industry-specific"
-    const coreActions = ['new_project', 'start_checklist', 'hms', 'log_deviation', 'take_photo', 'library', 'time_registration'];
-    
-    // If the user has explicitly ordered modules, check them
-    if (userProfile.modules && userProfile.modules.length > 0) {
-      return userProfile.modules.includes(actionId) || coreActions.includes(actionId);
-    }
-    
-    // Otherwise, filter based on industry defaults
-    const industryDefaults: Record<string, string[]> = {
-      'carpenter': ['offers', 'contracts', 'inventory', 'vehicle', 'apprentice'],
-      'plumber': ['offers', 'contracts', 'inventory', 'vehicle', 'apprentice'],
-      'electrician': ['offers', 'contracts', 'inventory', 'vehicle', 'apprentice'],
-      'mason': ['offers', 'contracts', 'inventory', 'vehicle'],
-      'painter': ['offers', 'contracts', 'inventory'],
+  // ⚡ Bolt: Memoize visible action groups to prevent O(N) array filtering in the render loop on every keystroke/change
+  const visibleActionGroups = useMemo(() => {
+    const isActionVisible = (actionId: string) => {
+      if (!userProfile) return true;
+      if (userProfile.industry === 'general' || !userProfile.industry) return true;
+
+      // Define which actions are "core" and which are "industry-specific"
+      const coreActions = ['new_project', 'start_checklist', 'hms', 'log_deviation', 'take_photo', 'library', 'time_registration'];
+
+      // If the user has explicitly ordered modules, check them
+      if (userProfile.modules && userProfile.modules.length > 0) {
+        return userProfile.modules.includes(actionId) || coreActions.includes(actionId);
+      }
+
+      // Otherwise, filter based on industry defaults
+      const industryDefaults: Record<string, string[]> = {
+        'carpenter': ['offers', 'contracts', 'inventory', 'vehicle', 'apprentice'],
+        'plumber': ['offers', 'contracts', 'inventory', 'vehicle', 'apprentice'],
+        'electrician': ['offers', 'contracts', 'inventory', 'vehicle', 'apprentice'],
+        'mason': ['offers', 'contracts', 'inventory', 'vehicle'],
+        'painter': ['offers', 'contracts', 'inventory'],
+      };
+
+      const allowed = industryDefaults[userProfile.industry] || [];
+      return coreActions.includes(actionId) || allowed.includes(actionId);
     };
 
-    const allowed = industryDefaults[userProfile.industry] || [];
-    return coreActions.includes(actionId) || allowed.includes(actionId);
-  };
+    return rawActionGroups.map(group => ({
+      ...group,
+      actions: group.actions
+        .filter(action => !companyModules || companyModules.includes(action.module))
+        .filter(action => isActionVisible(action.id))
+    })).filter(group => group.actions.length > 0);
+  }, [rawActionGroups, companyModules, userProfile]);
 
   useEffect(() => {
     const handleKeyDown = (e: KeyboardEvent) => {
@@ -867,15 +875,12 @@ export default function Dashboard({
             </div>
 
             <div className="grid grid-cols-1 lg:grid-cols-3 gap-8 mb-12">
-              {actionGroups.map((group, i) => {
-                const visibleActions = group.actions.filter(action => isActionVisible(action.id));
-                if (visibleActions.length === 0) return null;
-
+              {visibleActionGroups.map((group, i) => {
                 return (
                   <div key={i} className="space-y-4">
                     <h3 className="text-xs font-black uppercase tracking-[0.2em] text-neutral-400 ml-2">{group.title}</h3>
                     <div className="grid grid-cols-1 gap-3">
-                      {visibleActions.map((action) => (
+                      {group.actions.map((action) => (
                         <button 
                           key={action.id}
                           onClick={() => handleQuickAction(action.id)}

@@ -25,3 +25,6 @@
 ## 2024-05-18 - [Use Debounce hook]
 **Learning:** React inputs that trigger an async function on change can cause performance issues if not debounced.
 **Action:** When working with async search functions, use a `useDebounce` hook to ensure the function is only executed after a short delay.
+## 2024-05-25 - Moved Action Filtering in Dashboard to useMemo
+**Learning:** `actionGroups` and `lifecycleStages` arrays with complex JSX content and runtime evaluation (like `t()`) were created on every single render in `Dashboard.tsx`. Additionally, `actionGroups` underwent an inline `.filter` inside the render cycle to evaluate `isActionVisible`, causing unnecessary O(N) evaluations across nested structures.
+**Action:** Always wrap large component-level configurations containing JSX/translations in `useMemo`. When applying multiple filters to these structures, bundle them in a derived `useMemo` block instead of splitting the logic between initialization and the JSX render loop.
