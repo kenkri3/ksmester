@@ -18,6 +18,8 @@ import {
 import { motion, AnimatePresence } from 'motion/react';
 import { cn } from '@/src/lib/utils';
 import { Project, Deviation } from '../types';
+import { pdfService } from '../services/pdfService';
+import { toast } from 'sonner';
 
 interface ReportModalProps {
   isOpen: boolean;
@@ -47,6 +49,40 @@ export default function ReportModal({ isOpen, onClose, project, sjaReports, devi
       setExportStep('idle');
       onClose();
     }, 3000);
+  };
+
+  const handleDownloadPDF = async () => {
+    try {
+      toast.info('Genererer FDV- og prosjektrapport som PDF...');
+      await pdfService.generateFDVPDF(project);
+      toast.success('PDF lastet ned!');
+    } catch (error) {
+      console.error('PDF generation error:', error);
+      toast.error('Kunne ikke generere PDF.');
+    }
+  };
+
+  const handleShare = async () => {
+    const portalUrl = `${window.location.origin}/?portal=${project.portalToken || project.id}`;
+    if (typeof navigator !== 'undefined' && navigator.share) {
+      try {
+        await navigator.share({
+          title: `Prosjektrapport: ${project.name}`,
+          text: `Her er oppdatert kvalitetssikringsdokumentasjon for ${project.name}`,
+          url: portalUrl
+        });
+        toast.success('Rapport delt!');
+      } catch (e) {
+        // Avbrutt av bruker
+      }
+    } else if (typeof navigator !== 'undefined' && navigator.clipboard) {
+      try {
+        await navigator.clipboard.writeText(portalUrl);
+        toast.success('Kundeportal-lenke kopiert til utklippstavlen!');
+      } catch {
+        toast.info(`Kundeportal-lenke: ${portalUrl}`);
+      }
+    }
   };
 
   if (!isOpen) return null;
@@ -260,11 +296,17 @@ export default function ReportModal({ isOpen, onClose, project, sjaReports, devi
           {/* Actions */}
           <div className="p-3 sm:p-6 border-t border-neutral-100 bg-white flex flex-col sm:flex-row items-center justify-between gap-2.5 sm:gap-4 shrink-0">
             <div className="flex items-center gap-2 sm:gap-4 w-full sm:w-auto">
-              <button className="flex-1 sm:flex-none flex items-center justify-center gap-1.5 sm:gap-2 px-3 sm:px-6 py-2 sm:py-3 bg-neutral-100 text-neutral-600 rounded-lg sm:rounded-2xl text-[9px] sm:text-sm font-bold hover:bg-neutral-200 transition-all">
+              <button 
+                onClick={handleDownloadPDF}
+                className="flex-1 sm:flex-none flex items-center justify-center gap-1.5 sm:gap-2 px-3 sm:px-6 py-2 sm:py-3 bg-neutral-100 text-neutral-700 rounded-lg sm:rounded-2xl text-[9px] sm:text-sm font-bold hover:bg-neutral-200 transition-all cursor-pointer"
+              >
                 <Download size={12} className="sm:w-[18px] sm:h-[18px]" />
                 <span className="hidden xs:inline">Last ned</span> PDF
               </button>
-              <button className="flex-1 sm:flex-none flex items-center justify-center gap-1.5 sm:gap-2 px-3 sm:px-6 py-2 sm:py-3 bg-neutral-100 text-neutral-600 rounded-lg sm:rounded-2xl text-[9px] sm:text-sm font-bold hover:bg-neutral-200 transition-all">
+              <button 
+                onClick={handleShare}
+                className="flex-1 sm:flex-none flex items-center justify-center gap-1.5 sm:gap-2 px-3 sm:px-6 py-2 sm:py-3 bg-neutral-100 text-neutral-700 rounded-lg sm:rounded-2xl text-[9px] sm:text-sm font-bold hover:bg-neutral-200 transition-all cursor-pointer"
+              >
                 <Share2 size={12} className="sm:w-[18px] sm:h-[18px]" />
                 Del <span className="hidden xs:inline">med kunde</span>
               </button>

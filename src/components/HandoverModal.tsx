@@ -4,6 +4,7 @@ import { X, CheckCircle2, FileText, Send, Sparkles, AlertTriangle, ClipboardChec
 import { Project, ProjectMaterial } from '../types';
 import { db, collection, query, where, getDocs, handleFirestoreError, OperationType, updateDoc, doc, serverTimestamp } from '../services/firebase';
 import { fdvService, FDVDocument } from '../services/fdvService';
+import { pdfService } from '../services/pdfService';
 import { toast } from 'sonner';
 
 interface HandoverModalProps {
@@ -98,6 +99,33 @@ const HandoverModal: React.FC<HandoverModalProps> = ({ isOpen, onClose, projects
       toast.error("Kunne ikke fullføre overleveringen.");
     } finally {
       setIsGenerating(false);
+    }
+  };
+
+  const handleCloseAllDeviations = async () => {
+    try {
+      if (selectedProjectId) {
+        const q = query(collection(db, 'deviations'), where('projectId', '==', selectedProjectId));
+        const snap = await getDocs(q);
+        for (const d of snap.docs) {
+          await updateDoc(doc(db, 'deviations', d.id), { status: 'closed', updatedAt: serverTimestamp() });
+        }
+      }
+      toast.success('Alle åpne avvik er lukket og godkjent for overlevering!');
+    } catch (e) {
+      toast.error('Kunne ikke lukke avvik.');
+    }
+  };
+
+  const handleDownloadFDVPDF = async () => {
+    if (!selectedProject) return;
+    try {
+      toast.info('Genererer FDV-dokumentasjon som PDF...');
+      await pdfService.generateFDVPDF(selectedProject, materials);
+      toast.success('FDV-pakke lastet ned som PDF!');
+    } catch (err) {
+      console.error('PDF error:', err);
+      toast.error('Kunne ikke generere FDV PDF.');
     }
   };
 
@@ -204,7 +232,11 @@ const HandoverModal: React.FC<HandoverModalProps> = ({ isOpen, onClose, projects
                             Sluttfaktura er ikke generert i Tripletex
                           </li>
                         </ul>
-                        <button className="w-full mt-6 py-3 bg-rose-600 text-white rounded-xl text-xs font-bold hover:bg-rose-500 transition-all">
+                        <button 
+                          type="button"
+                          onClick={handleCloseAllDeviations}
+                          className="w-full mt-6 py-3 bg-rose-600 text-white rounded-xl text-xs font-bold hover:bg-rose-500 transition-all cursor-pointer"
+                        >
                           Lukk alle avvik nå
                         </button>
                       </div>
@@ -244,7 +276,12 @@ const HandoverModal: React.FC<HandoverModalProps> = ({ isOpen, onClose, projects
                   <div className="flex items-center justify-between mb-8">
                     <h3 className="text-xl font-bold">Forhåndsvisning: FDV-Pakke</h3>
                     <div className="flex items-center gap-2">
-                      <button className="p-3 text-neutral-400 hover:text-neutral-900 hover:bg-neutral-50 rounded-xl transition-all">
+                      <button 
+                        type="button"
+                        onClick={handleDownloadFDVPDF}
+                        title="Last ned FDV PDF"
+                        className="p-3 text-neutral-400 hover:text-neutral-900 hover:bg-neutral-50 rounded-xl transition-all cursor-pointer"
+                      >
                         <Download size={20} />
                       </button>
                     </div>

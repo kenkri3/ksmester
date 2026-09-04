@@ -1,6 +1,7 @@
-import { useState, useEffect } from 'react';
+import { useState, useEffect, useRef } from 'react';
 import { motion, AnimatePresence } from 'motion/react';
 import { X, AlertTriangle, Send, Camera, MapPin, Sparkles, Loader2 } from 'lucide-react';
+import { toast } from 'sonner';
 import { db, collection, addDoc, serverTimestamp, OperationType, handleFirestoreError, auth } from '../services/firebase';
 import { masterAiService } from '../services/masterAiService';
 import AiTextAssistant from './AiTextAssistant';
@@ -36,6 +37,56 @@ export default function CreateDeviationModal({ isOpen, onClose, projects }: Crea
   const [addressSuggestions, setAddressSuggestions] = useState<AddressInfo[]>([]);
   const [isSearchingAddress, setIsSearchingAddress] = useState(false);
   const debouncedAddressSearch = useDebounce(addressSearch, 500);
+
+  const fileInputRef = useRef<HTMLInputElement>(null);
+  const [photoUrl, setPhotoUrl] = useState<string | null>(null);
+  const [isLocating, setIsLocating] = useState(false);
+
+  const handlePhotoChange = (e: React.ChangeEvent<HTMLInputElement>) => {
+    const file = e.target.files?.[0];
+    if (file) {
+      const reader = new FileReader();
+      reader.onloadend = () => {
+        setPhotoUrl(reader.result as string);
+        toast.success('Bilde lagt til avviket.');
+      };
+      reader.readAsDataURL(file);
+    }
+  };
+
+  const handleGetLocation = () => {
+    if (!navigator.geolocation) {
+      toast.error('Geolokasjon støttes ikke av nettleseren.');
+      return;
+    }
+    setIsLocating(true);
+    toast.info('Henter din GPS-posisjon...');
+    navigator.geolocation.getCurrentPosition(
+      async (pos) => {
+        try {
+          const addr = await locationService.getAddressFromCoords(pos.coords.latitude, pos.coords.longitude);
+          if (addr) {
+            selectAddress(addr);
+            toast.success(`Posisjon funnet: ${addr.fullAddress}`);
+          } else {
+            const locStr = `${pos.coords.latitude.toFixed(5)}, ${pos.coords.longitude.toFixed(5)}`;
+            setFormData(prev => ({ ...prev, location: locStr }));
+            setAddressSearch(locStr);
+            toast.success('GPS-koordinater registrert.');
+          }
+        } catch (e) {
+          toast.error('Kunne ikke slå opp adresse for GPS-posisjon.');
+        } finally {
+          setIsLocating(false);
+        }
+      },
+      (err) => {
+        setIsLocating(false);
+        toast.error('Kunne ikke hente posisjon. Sjekk at posisjonstillatelse er aktivert.');
+      },
+      { timeout: 10000, enableHighAccuracy: true }
+    );
+  };
 
   useEffect(() => {
     const fetchAddresses = async () => {
@@ -126,11 +177,15 @@ export default function CreateDeviationModal({ isOpen, onClose, projects }: Crea
         authorId: auth.currentUser.uid,
         reportedBy: auth.currentUser.displayName || 'System',
         company: userCompany,
+        photoUrl: photoUrl || null,
+        imageUrl: photoUrl || null,
         timestamp: serverTimestamp(),
         createdAt: new Date().toISOString()
       });
+      toast.success('Avviksrapport er opprettet.');
       onClose();
       setFormData({ title: '', projectId: '', description: '', severity: 'medium', location: '', gnr: '', bnr: '' });
+      setPhotoUrl(null);
     } catch (error) {
       handleFirestoreError(error, OperationType.CREATE, 'deviations');
     } finally {
@@ -146,7 +201,7 @@ export default function CreateDeviationModal({ isOpen, onClose, projects }: Crea
             initial={{ opacity: 0, scale: 0.98, y: 20 }}
             animate={{ opacity: 1, scale: 1, y: 0 }}
             exit={{ opacity: 0, scale: 0.98, y: 20 }}
-            className="bg-white w-full max-w-lg rounded-t-[2.5rem] sm:rounded-[2rem] shadow-2xl overflow-hidden flex flex-col max-h-[92vh] sm:max-h-[calc(100vh-2rem)] pb-[env(safe-area-inset-bottom,0px)]"
+            className="bg-white w-full max-w-lg rounded-t-[2.5rem] sm:rounded-[2.5rem] shadow-2xl overflow-hidden flex flex-col max-h-[92vh] sm:max-h-[calc(100vh-2rem)] pb-[env(safe-area-inset-bottom,0px)]"
           >
             {/* Mobile Grab Handle */}
             <div className="sm:hidden w-12 h-1.5 bg-neutral-300 rounded-full mx-auto mt-3 mb-1" />
@@ -306,14 +361,47 @@ export default function CreateDeviationModal({ isOpen, onClose, projects }: Crea
                   </div>
                 </div>
 
+                {/* Hidden camera / file input */}
+                <input 
+                  type="file" 
+                  ref={fileInputRef} 
+                  onChange={handlePhotoChange} 
+                  accept="image/*" 
+                  capture="environment" 
+                  className="hidden" 
+                />
+
+                {photoUrl && (
+                  <div className="relative inline-block my-2 rounded-xl overflow-hidden border border-neutral-200">
+                    <img src={photoUrl} alt="Avviksbilde" className="h-28 w-full max-w-xs object-cover rounded-xl" />
+                    <button 
+                      type="button" 
+                      onClick={() => setPhotoUrl(null)} 
+                      className="absolute top-1.5 right-1.5 p-1 bg-black/70 text-white rounded-full hover:bg-black transition-colors"
+                      title="Fjern bilde"
+                    >
+                      <X size={14} />
+                    </button>
+                  </div>
+                )}
+
                 <div className="flex gap-2 sm:gap-4">
-                  <button type="button" className="flex-1 flex items-center justify-center gap-1 sm:gap-2 py-1.5 sm:py-3 bg-neutral-100 text-neutral-600 rounded-lg sm:rounded-xl text-[6px] sm:text-xs font-bold hover:bg-neutral-200 transition-colors">
-                    <Camera size={10} className="sm:w-4 sm:h-4" />
-                    Legg til bilde
+                  <button 
+                    type="button" 
+                    onClick={() => fileInputRef.current?.click()}
+                    className="flex-1 flex items-center justify-center gap-1 sm:gap-2 py-1.5 sm:py-3 bg-neutral-100 text-neutral-700 rounded-lg sm:rounded-xl text-[8px] sm:text-xs font-bold hover:bg-neutral-200 transition-colors"
+                  >
+                    <Camera size={14} className="text-orange-600 sm:w-4 sm:h-4" />
+                    {photoUrl ? 'Endre bilde' : 'Legg til bilde'}
                   </button>
-                  <button type="button" className="flex-1 flex items-center justify-center gap-1 sm:gap-2 py-1.5 sm:py-3 bg-neutral-100 text-neutral-600 rounded-lg sm:rounded-xl text-[6px] sm:text-xs font-bold hover:bg-neutral-200 transition-colors">
-                    <MapPin size={10} className="sm:w-4 sm:h-4" />
-                    Posisjon
+                  <button 
+                    type="button" 
+                    disabled={isLocating}
+                    onClick={handleGetLocation}
+                    className="flex-1 flex items-center justify-center gap-1 sm:gap-2 py-1.5 sm:py-3 bg-neutral-100 text-neutral-700 rounded-lg sm:rounded-xl text-[8px] sm:text-xs font-bold hover:bg-neutral-200 transition-colors disabled:opacity-50"
+                  >
+                    {isLocating ? <Loader2 size={14} className="animate-spin text-orange-600 sm:w-4 sm:h-4" /> : <MapPin size={14} className="text-orange-600 sm:w-4 sm:h-4" />}
+                    {isLocating ? 'Henter GPS...' : 'Posisjon'}
                   </button>
                 </div>
               </div>
