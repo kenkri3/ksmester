@@ -133,6 +133,8 @@ export default function MobileApp() {
     description: string;
   } | null>(null);
   const fileInputRef = useRef<HTMLInputElement>(null);
+  const apprenticeFileInputRef = useRef<HTMLInputElement>(null);
+  const [apprenticeImage, setApprenticeImage] = useState<string | null>(null);
 
   // Fetch user profile
   useEffect(() => {
@@ -511,13 +513,19 @@ export default function MobileApp() {
                     </div>
                     <span className="text-xs font-bold uppercase tracking-widest">Lærling</span>
                   </button>
-                  <button className="flex flex-col items-center justify-center p-6 bg-white border-2 border-neutral-100 text-neutral-900 rounded-[2rem] gap-3 active:scale-95 transition-all">
+                  <button 
+                    onClick={() => window.dispatchEvent(new CustomEvent('trigger_dashboard_action', { detail: { actionId: 'log_deviation' } }))}
+                    className="flex flex-col items-center justify-center p-6 bg-white border-2 border-neutral-100 text-neutral-900 rounded-[2rem] gap-3 active:scale-95 transition-all cursor-pointer"
+                  >
                     <div className="w-12 h-12 bg-neutral-50 rounded-2xl flex items-center justify-center">
                       <AlertTriangle size={24} className="text-amber-500" />
                     </div>
                     <span className="text-xs font-bold uppercase tracking-widest">{t('deviation')}</span>
                   </button>
-                  <button className="flex flex-col items-center justify-center p-6 bg-white border-2 border-neutral-100 text-neutral-900 rounded-[2rem] gap-3 active:scale-95 transition-all">
+                  <button 
+                    onClick={() => setActiveScreen('voice')}
+                    className="flex flex-col items-center justify-center p-6 bg-white border-2 border-neutral-100 text-neutral-900 rounded-[2rem] gap-3 active:scale-95 transition-all cursor-pointer"
+                  >
                     <div className="w-12 h-12 bg-neutral-50 rounded-2xl flex items-center justify-center">
                       <FileText size={24} className="text-blue-500" />
                     </div>
@@ -969,10 +977,43 @@ export default function MobileApp() {
 
                   <div>
                     <label className="block text-[10px] font-black text-neutral-400 uppercase tracking-widest mb-2">Bildebevis</label>
-                    <button className="w-full aspect-video bg-neutral-50 border-2 border-dashed border-neutral-200 rounded-2xl flex flex-col items-center justify-center gap-2 text-neutral-400 hover:bg-neutral-100 transition-colors">
-                      <Camera size={32} />
-                      <span className="text-xs font-bold">Ta bilde av arbeidet</span>
-                    </button>
+                    <input 
+                      type="file" 
+                      ref={apprenticeFileInputRef} 
+                      accept="image/*" 
+                      capture="environment" 
+                      className="hidden" 
+                      onChange={(e) => {
+                        const f = e.target.files?.[0];
+                        if (f) {
+                          const r = new FileReader();
+                          r.onloadend = () => setApprenticeImage(r.result as string);
+                          r.readAsDataURL(f);
+                        }
+                      }} 
+                    />
+                    {apprenticeImage ? (
+                      <div className="relative aspect-video rounded-2xl overflow-hidden border border-neutral-200">
+                        <img src={apprenticeImage} alt="Arbeidsbevis" className="w-full h-full object-cover" />
+                        <button 
+                          type="button" 
+                          onClick={() => setApprenticeImage(null)} 
+                          className="absolute top-2 right-2 p-1.5 bg-black/60 text-white rounded-full hover:bg-black"
+                          title="Fjern bilde"
+                        >
+                          <X size={16} />
+                        </button>
+                      </div>
+                    ) : (
+                      <button 
+                        type="button" 
+                        onClick={() => apprenticeFileInputRef.current?.click()}
+                        className="w-full aspect-video bg-neutral-50 border-2 border-dashed border-neutral-200 rounded-2xl flex flex-col items-center justify-center gap-2 text-neutral-400 hover:bg-neutral-100 transition-colors cursor-pointer"
+                      >
+                        <Camera size={32} />
+                        <span className="text-xs font-bold">Ta bilde av arbeidet</span>
+                      </button>
+                    )}
                   </div>
 
                   <div>
