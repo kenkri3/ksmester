@@ -1,6 +1,22 @@
 import { jsPDF } from 'jspdf';
 import 'jspdf-autotable';
-import { Project, SJAReport, Deviation, Offer, Contract, ProjectMaterial, ProjectChecklist, NorwegianComplianceStatus, WasteRecord } from '../types';
+import { 
+  Project, 
+  SJAReport, 
+  Deviation, 
+  Offer, 
+  Contract, 
+  ProjectMaterial, 
+  ProjectChecklist, 
+  NorwegianComplianceStatus, 
+  WasteRecord,
+  ChangeOrder,
+  DailyLog,
+  SafetyDataSheet,
+  FinalSettlement,
+  WarrantyInspection,
+  ExtensionOfTimeClaim
+} from '../types';
 
 // Extend jsPDF with autotable
 declare module 'jspdf' {
@@ -850,6 +866,388 @@ export const pdfService = {
     doc.text('All fotodokumentasjon og tilhørende tekniske produktdatablad er eksportert og klare for direkte import til Boligmappa.no.', 20, finalY);
 
     doc.save(`Boligmappa_Dokumentasjon_${project.name.replace(/\s+/g, '_')}_${new Date().toISOString().split('T')[0]}.pdf`);
+  },
+
+  // --- 13. Digital Endringsavtale / Tilleggsordre (NS 8406 / Håndverkertjenesteloven) ---
+  async generateChangeOrderPDF(project: Project, changeOrder: ChangeOrder) {
+    const doc = new jsPDF();
+    const primaryColor = [220, 38, 38]; // amber/red for change order notice
+
+    doc.setFillColor(primaryColor[0], primaryColor[1], primaryColor[2]);
+    doc.rect(0, 0, 210, 40, 'F');
+    doc.setTextColor(255, 255, 255);
+    doc.setFontSize(22);
+    doc.setFont('helvetica', 'bold');
+    doc.text(`ENDRINGSAVTALE #${changeOrder.changeNumber}`, 20, 25);
+    doc.setFontSize(10);
+    doc.setFont('helvetica', 'normal');
+    doc.text('Standard for bygge- og anleggskontrakter (NS 8406 pkt. 19 / Håndverkertjenesteloven § 9)', 20, 33);
+
+    const info = [
+      ['Prosjekt', `${project.name} (${project.projectCode || '-'})`],
+      ['Byggherre / Oppdragsgiver', `${changeOrder.clientName || project.clientName || 'Kunde'}`],
+      ['E-post byggherre', `${changeOrder.clientEmail || project.clientEmail || '-'}`],
+      ['Endringstittel', changeOrder.title],
+      ['Årsak til endring', changeOrder.cause],
+      ['Dato registrert', new Date(changeOrder.createdAt).toLocaleDateString('no-NO')],
+      ['Status', changeOrder.status === 'approved' ? 'GODKJENT OG SIGNERT AV BYGGHERRE' : 'Avventer godkjenning']
+    ];
+
+    doc.autoTable({
+      startY: 50,
+      body: info,
+      theme: 'plain',
+      styles: { cellPadding: 3, fontSize: 9.5 },
+      columnStyles: { 0: { fontStyle: 'bold', width: 55 } }
+    });
+
+    const startY2 = (doc as any).lastAutoTable.finalY + 10;
+    doc.setTextColor(0, 0, 0);
+    doc.setFontSize(12);
+    doc.setFont('helvetica', 'bold');
+    doc.text('Beskrivelse av tilleggsarbeid / endring', 20, startY2);
+
+    doc.setFontSize(10);
+    doc.setFont('helvetica', 'normal');
+    const descLines = doc.splitTextToSize(changeOrder.description, 170);
+    doc.text(descLines, 20, startY2 + 7);
+
+    const startY3 = startY2 + 10 + (descLines.length * 5);
+    const econData = [
+      ['Tilleggssum eks. mva', `${changeOrder.amountExVat.toLocaleString('no-NO')} kr`],
+      ['Merverdiavgift (25% mva)', `${changeOrder.vatAmount.toLocaleString('no-NO')} kr`],
+      ['Total sum ink. mva', `${changeOrder.totalAmount.toLocaleString('no-NO')} kr`],
+      ['Konsekvens for ferdigstillelse', changeOrder.impactDays > 0 ? `+${changeOrder.impactDays} virkedager (fristforlengelse)` : 'Ingen endring i sluttdato']
+    ];
+
+    doc.autoTable({
+      startY: startY3,
+      head: [['Økonomisk oppstilling og fremdrift', 'Verdi']],
+      body: econData,
+      theme: 'striped',
+      headStyles: { fillColor: primaryColor }
+    });
+
+    const finalY = (doc as any).lastAutoTable.finalY + 20;
+    doc.setFontSize(9);
+    doc.text('Ved godkjenning bekrefter partene at endringsarbeidet inngår som et bindende tillegg til opprinnelig kontrakt.', 20, finalY);
+
+    if (changeOrder.signedByClientAt) {
+      doc.setFont('helvetica', 'bold');
+      doc.text(`Digitalt godkjent og signert av ${changeOrder.clientName}: ${new Date(changeOrder.signedByClientAt).toLocaleString('no-NO')}`, 20, finalY + 10);
+    }
+
+    doc.save(`Endringsavtale_${changeOrder.changeNumber}_${project.name.replace(/\s+/g, '_')}.pdf`);
+  },
+
+  // --- 14. Byggedagbok & Mannskapsliste (Byggherreforskriften & NS 8405/8406) ---
+  async generateDailyLogPDF(project: Project, dailyLog: DailyLog) {
+    const doc = new jsPDF();
+    const primaryColor = [2, 132, 199]; // sky-600
+
+    doc.setFillColor(primaryColor[0], primaryColor[1], primaryColor[2]);
+    doc.rect(0, 0, 210, 40, 'F');
+    doc.setTextColor(255, 255, 255);
+    doc.setFontSize(22);
+    doc.setFont('helvetica', 'bold');
+    doc.text('BYGGEDAGBOK', 20, 25);
+    doc.setFontSize(10);
+    doc.setFont('helvetica', 'normal');
+    doc.text(`Dagsrapport iht. Byggherreforskriften § 15 & NS 8405 / NS 8406 | Dato: ${dailyLog.date}`, 20, 33);
+
+    const info = [
+      ['Prosjekt', `${project.name} (${project.projectCode || '-'})`],
+      ['Byggeplass / Lokasjon', project.location || 'Byggeplass'],
+      ['Værforhold (Yr / Open-Meteo)', `${dailyLog.weatherCondition || 'Normalt'} | Temp: ${dailyLog.temperatureMin ?? '-'}°C til ${dailyLog.temperatureMax ?? '-'}°C | Vind: ${dailyLog.windSpeedMax ?? '-'} m/s | Nedbør: ${dailyLog.precipitationMm ?? 0} mm`],
+      ['Håndverksmessige værforhold', dailyLog.workAdvice || 'Gode arbeidsforhold'],
+      ['Arbeidstimer loggført i dag', `${dailyLog.totalHoursWorked} timer (${dailyLog.crewCount} arbeidere til stede)`]
+    ];
+
+    doc.autoTable({
+      startY: 50,
+      body: info,
+      theme: 'plain',
+      styles: { cellPadding: 3, fontSize: 9 },
+      columnStyles: { 0: { fontStyle: 'bold', width: 55 } }
+    });
+
+    const startY2 = (doc as any).lastAutoTable.finalY + 8;
+    doc.setTextColor(0, 0, 0);
+    doc.setFontSize(11);
+    doc.setFont('helvetica', 'bold');
+    doc.text('Mannskapsliste (Byggherreforskriften § 15)', 20, startY2);
+
+    const crewData = (dailyLog.crewMembers || []).map((name, i) => [
+      `#${i + 1}`,
+      name,
+      'Fagarbeider / Tømrer',
+      'På byggeplass'
+    ]);
+
+    doc.autoTable({
+      startY: startY2 + 5,
+      head: [['Nr', 'Navn', 'Rolle / Fag', 'Status']],
+      body: crewData.length > 0 ? crewData : [['1', 'Arbeidslag', 'Fagarbeider', 'På byggeplass']],
+      theme: 'striped',
+      headStyles: { fillColor: primaryColor }
+    });
+
+    const startY3 = (doc as any).lastAutoTable.finalY + 8;
+    doc.setFontSize(11);
+    doc.setFont('helvetica', 'bold');
+    doc.text('Dagens produksjon, sjekklister og kvalitetskontroll', 20, startY3);
+
+    const tasksData = (dailyLog.completedTasks || []).map(t => [t]);
+    doc.autoTable({
+      startY: startY3 + 5,
+      head: [['Utført arbeid og kontrollerte faser']],
+      body: tasksData.length > 0 ? tasksData : [['Ordinær produksjon gjennomført iht. plan.']],
+      theme: 'grid',
+      headStyles: { fillColor: primaryColor }
+    });
+
+    const startY4 = (doc as any).lastAutoTable.finalY + 8;
+    if (dailyLog.deviationsRegistered && dailyLog.deviationsRegistered.length > 0) {
+      doc.setFontSize(11);
+      doc.setFont('helvetica', 'bold');
+      doc.setTextColor(220, 38, 38);
+      doc.text('Registrerte avvik / forhindringer i dag', 20, startY4);
+
+      doc.autoTable({
+        startY: startY4 + 5,
+        head: [['Avvik']],
+        body: dailyLog.deviationsRegistered.map(d => [d]),
+        theme: 'striped',
+        headStyles: { fillColor: [220, 38, 38] }
+      });
+    }
+
+    const finalY = (doc as any).lastAutoTable.finalY + 15;
+    doc.setTextColor(0, 0, 0);
+    doc.setFontSize(9);
+    doc.setFont('helvetica', 'normal');
+    doc.text(`Attestert av byggeleder: ${dailyLog.inspectedBy || 'Byggeleder'} | Automatisk verifisert av KS Mester.`, 20, finalY);
+
+    doc.save(`Byggedagbok_${project.name.replace(/\s+/g, '_')}_${dailyLog.date}.pdf`);
+  },
+
+  // --- 15. Kjemisk Stoffkartotek (Kjemikalieforskriften / Arbeidstilsynet) ---
+  async generateStoffkartotekPDF(project: Project, sheets: SafetyDataSheet[]) {
+    const doc = new jsPDF();
+    const primaryColor = [217, 119, 6]; // amber-600
+
+    doc.setFillColor(primaryColor[0], primaryColor[1], primaryColor[2]);
+    doc.rect(0, 0, 210, 40, 'F');
+    doc.setTextColor(255, 255, 255);
+    doc.setFontSize(20);
+    doc.setFont('helvetica', 'bold');
+    doc.text('KJEMISK STOFFKARTOTEK', 20, 23);
+    doc.setFontSize(9.5);
+    doc.setFont('helvetica', 'normal');
+    doc.text(`Forskrift om utførelse av arbeid kap. 2 | Arbeidstilsynet | Prosjekt: ${project.name}`, 20, 31);
+    doc.text('GIFTINFORMASJONEN DØGNÅPEN VAKTTELEFON: 22 59 13 00', 20, 37);
+
+    const tableRows = sheets.map(s => [
+      s.productName,
+      s.manufacturer,
+      s.dangerSymbols.join(', ') || 'Ingen',
+      s.ppe.join(', ') || 'Standard',
+      s.firstAid.eyes || s.firstAid.skin || 'Skyll med rikelig vann'
+    ]);
+
+    doc.autoTable({
+      startY: 48,
+      head: [['Produkt', 'Leverandør', 'GHS Faresymboler', 'Påbudt verneutstyr (PPE)', 'Førstehjelp ved uhell']],
+      body: tableRows,
+      theme: 'grid',
+      headStyles: { fillColor: primaryColor, fontSize: 8.5 },
+      styles: { fontSize: 8, cellPadding: 3 }
+    });
+
+    const finalY = (doc as any).lastAutoTable.finalY + 15;
+    doc.setTextColor(0, 0, 0);
+    doc.setFontSize(9);
+    doc.setFont('helvetica', 'bold');
+    doc.text('Instruks for byggeplassen:', 20, finalY);
+    doc.setFont('helvetica', 'normal');
+    doc.text('1. Alle arbeidstakere skal ha gjennomgått stoffkartoteket før kjemikalier tas i bruk.', 20, finalY + 6);
+    doc.text('2. Påbudt personlig verneutstyr (PPE) skal alltid benyttes.', 20, finalY + 11);
+    doc.text('3. Dette dokumentet og tilhørende QR-kode skal henge godt synlig i mannskapsbrakke / verktøykasse.', 20, finalY + 16);
+
+    doc.save(`Stoffkartotek_${project.name.replace(/\s+/g, '_')}.pdf`);
+  },
+
+  // --- 16. Formelt Sluttoppgjør (NS 8406 pkt. 26 / Håndverkertjenesteloven) ---
+  async generateFinalSettlementPDF(project: Project, settlement: FinalSettlement) {
+    const doc = new jsPDF();
+    const primaryColor = [15, 23, 42]; // slate-900
+
+    doc.setFillColor(primaryColor[0], primaryColor[1], primaryColor[2]);
+    doc.rect(0, 0, 210, 40, 'F');
+    doc.setTextColor(255, 255, 255);
+    doc.setFontSize(22);
+    doc.setFont('helvetica', 'bold');
+    doc.text('SLUTTOPPGJØR', 20, 25);
+    doc.setFontSize(10);
+    doc.setFont('helvetica', 'normal');
+    doc.text('Sluttoppgjørsavregning iht. Norsk Standard NS 8406 pkt. 26', 20, 33);
+
+    const info = [
+      ['Prosjekt', `${project.name} (${project.projectCode || '-'})`],
+      ['Byggherre', project.clientName || 'Byggherre'],
+      ['Opprinnelig kontraktssum', `${settlement.originalContractAmount.toLocaleString('no-NO')} kr eks. mva`],
+      ['Godkjente endringsordrer / tillegg', `${settlement.approvedChangeOrdersAmount.toLocaleString('no-NO')} kr eks. mva`],
+      ['Total justert entreprisesum', `${settlement.totalOrderAmount.toLocaleString('no-NO')} kr eks. mva`],
+      ['Tidligere fakturert a-konto', `${settlement.invoicedAmount.toLocaleString('no-NO')} kr eks. mva`],
+      ['Innestående garantibeløp (5%)', `${(settlement.retentionGuaranteeAmount || 0).toLocaleString('no-NO')} kr`],
+      ['Netto restbeløp til utbetaling', `${settlement.netSettlementExVat.toLocaleString('no-NO')} kr eks. mva`],
+      ['Merverdiavgift (25%)', `${settlement.vatAmount.toLocaleString('no-NO')} kr`],
+      ['TOTALT SLUTTKRAV INK. MVA', `${settlement.totalSettlementIncVat.toLocaleString('no-NO')} kr`],
+      ['Forfallsdato', settlement.invoiceDueDate],
+      ['Innsigelsesfrist for byggherre', `${settlement.objectionDeadline} (2 mnd. fra mottak)`]
+    ];
+
+    doc.autoTable({
+      startY: 50,
+      body: info,
+      theme: 'striped',
+      headStyles: { fillColor: primaryColor },
+      styles: { cellPadding: 3.5, fontSize: 9.5 },
+      columnStyles: { 0: { fontStyle: 'bold', width: 75 } }
+    });
+
+    const finalY = (doc as any).lastAutoTable.finalY + 15;
+    doc.setTextColor(0, 0, 0);
+    doc.setFontSize(9);
+    doc.setFont('helvetica', 'bold');
+    doc.text('Lovbestemt varsel om preklusjon (NS 8406 pkt. 26.2):', 20, finalY);
+    doc.setFont('helvetica', 'normal');
+    const legalNotice = '«Krav som ikke er medtatt i sluttoppgjøret, taper entreprenøren retten til å gjøre gjeldende. Byggherren har en frist på 2 måneder regnet fra mottakelsen av sluttoppgjøret til å fremme eventuelle innsigelser mot oppgjøret eller motkrav. Innsigelser og krav som ikke er fremsatt innen fristen, tapes.»';
+    const splitLegal = doc.splitTextToSize(legalNotice, 170);
+    doc.text(splitLegal, 20, finalY + 6);
+
+    doc.save(`Sluttoppgjor_${project.name.replace(/\s+/g, '_')}.pdf`);
+  },
+
+  // --- 17. 1-års Befaringsprotokoll (Bustadoppføringslova § 16 / NS 8406) ---
+  async generateWarrantyInspectionPDF(project: Project, inspection: WarrantyInspection) {
+    const doc = new jsPDF();
+    const primaryColor = [13, 148, 136]; // teal-600
+
+    doc.setFillColor(primaryColor[0], primaryColor[1], primaryColor[2]);
+    doc.rect(0, 0, 210, 40, 'F');
+    doc.setTextColor(255, 255, 255);
+    doc.setFontSize(22);
+    doc.setFont('helvetica', 'bold');
+    doc.text('1-ÅRS BEFARINGSPROTOKOLL', 20, 25);
+    doc.setFontSize(10);
+    doc.setFont('helvetica', 'normal');
+    doc.text('Ettårsbefaring iht. Bustadoppføringslova § 16 / NS 8406 pkt. 27', 20, 33);
+
+    const info = [
+      ['Prosjekt', project.name],
+      ['Adresse', project.location || '-'],
+      ['Byggherre / Boligeier', inspection.clientName],
+      ['Overtakelsesdato', inspection.projectCompletedDate],
+      ['Befaringsdato', inspection.scheduledInspectionDate],
+      ['Status', 'Gjennomført uten vesentlige reklamasjoner']
+    ];
+
+    doc.autoTable({
+      startY: 50,
+      body: info,
+      theme: 'plain',
+      styles: { cellPadding: 3.5, fontSize: 9.5 },
+      columnStyles: { 0: { fontStyle: 'bold', width: 60 } }
+    });
+
+    const startY2 = (doc as any).lastAutoTable.finalY + 10;
+    doc.setTextColor(0, 0, 0);
+    doc.setFontSize(12);
+    doc.setFont('helvetica', 'bold');
+    doc.text('Kontrollerte punkter ved 1-årsbefaring', 20, startY2);
+
+    const checklistRows = [
+      ['Overflater og listverk', 'Sjekk for setningssprekker eller unormal svinn', 'Ingen merknader', 'Godkjent'],
+      ['Våtrom og sanitær', 'Kontroll av silikonfuger, sluk og overflatefall', 'Fuger intakte', 'Godkjent'],
+      ['Dører og vinduer', 'Funksjonstest av beslag, låser og pakninger', 'Går lett i karm', 'Godkjent'],
+      ['Ventilasjon og varme', 'Kontroll av luftstrøm og termostater', 'Normal drift', 'Godkjent'],
+      ['Utvendig fasade/tak', 'Kontroll av beslag, takrenner og overganger', 'Tett og stabilt', 'Godkjent']
+    ];
+
+    doc.autoTable({
+      startY: startY2 + 5,
+      head: [['Bygningsdel', 'Kontrollomfang', 'Observasjon', 'Resultat']],
+      body: checklistRows,
+      theme: 'striped',
+      headStyles: { fillColor: primaryColor }
+    });
+
+    const finalY = (doc as any).lastAutoTable.finalY + 25;
+    doc.setFontSize(9.5);
+    doc.text('Byggherre og entreprenør bekrefter at 1-årsbefaring er avholdt i overensstemmelse med kontrakten.', 20, finalY);
+
+    doc.setFont('helvetica', 'bold');
+    doc.text('Signatur Byggherre: _____________________', 20, finalY + 18);
+    doc.text('Signatur Entreprenør: _____________________', 110, finalY + 18);
+
+    doc.save(`1_Aars_Befaring_${project.name.replace(/\s+/g, '_')}.pdf`);
+  },
+
+  // --- 18. Krav om Fristforlengelse (NS 8406 pkt. 19.3) ---
+  async generateExtensionOfTimeClaimPDF(project: Project, claim: ExtensionOfTimeClaim) {
+    const doc = new jsPDF();
+    const primaryColor = [194, 65, 12]; // orange-700
+
+    doc.setFillColor(primaryColor[0], primaryColor[1], primaryColor[2]);
+    doc.rect(0, 0, 210, 40, 'F');
+    doc.setTextColor(255, 255, 255);
+    doc.setFontSize(20);
+    doc.setFont('helvetica', 'bold');
+    doc.text(`KRAV OM FRISTFORLENGELSE #${claim.claimNumber}`, 20, 25);
+    doc.setFontSize(10);
+    doc.setFont('helvetica', 'normal');
+    doc.text('Formelt varsel iht. NS 8406 pkt. 19.3 / Bustadoppføringslova § 11', 20, 33);
+
+    const info = [
+      ['Prosjekt', `${project.name} (${project.projectCode || '-'})`],
+      ['Mottaker (Byggherre)', project.clientName || 'Byggherre'],
+      ['Avsender (Entreprenør)', project.companyName || 'Entreprenør'],
+      ['Dato for varsel', claim.submittedDate],
+      ['Årsak til forsinkelse', claim.cause],
+      ['Krav om fristforlengelse', `${claim.daysClaimed} virkedager`],
+      ['Krav om vederlagsjustering', claim.costImpactClaimed ? `${claim.costImpactClaimed.toLocaleString('no-NO')} kr eks. mva` : 'Ettersendes ved endelig oppmåling']
+    ];
+
+    doc.autoTable({
+      startY: 50,
+      body: info,
+      theme: 'plain',
+      styles: { cellPadding: 3.5, fontSize: 9.5 },
+      columnStyles: { 0: { fontStyle: 'bold', width: 60 } }
+    });
+
+    const startY2 = (doc as any).lastAutoTable.finalY + 10;
+    doc.setTextColor(0, 0, 0);
+    doc.setFontSize(12);
+    doc.setFont('helvetica', 'bold');
+    doc.text('Begrunnelse og rettslig grunnlag', 20, startY2);
+
+    doc.setFontSize(10);
+    doc.setFont('helvetica', 'normal');
+    const desc = doc.splitTextToSize(claim.description, 170);
+    doc.text(desc, 20, startY2 + 7);
+
+    const finalY = startY2 + 15 + (desc.length * 5);
+    doc.setFontSize(9);
+    doc.setFont('helvetica', 'bold');
+    doc.text('Varsel gitt uten ugrunnet opphold:', 20, finalY);
+    doc.setFont('helvetica', 'normal');
+    const notice = 'Dette varselet er fremsatt uten ugrunnet opphold etter at entreprenøren ble oppmerksom på forholdet, i henhold til NS 8406 pkt. 19.3. Byggherren bes bekrefte mottakelsen samt ta stilling til kravet innen rimelig tid.';
+    doc.text(doc.splitTextToSize(notice, 170), 20, finalY + 5);
+
+    doc.save(`Krav_Fristforlengelse_${claim.claimNumber}_${project.name.replace(/\s+/g, '_')}.pdf`);
   }
 };
+
 

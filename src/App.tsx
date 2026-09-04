@@ -54,6 +54,7 @@ import SuperAdmin from './components/SuperAdmin';
 import OfferPage from './components/OfferPage';
 import InviteAcceptancePage from './components/InviteAcceptancePage';
 import PublicOfferFlow from './components/PublicOfferFlow';
+import PublicChangeOrderFlow from './components/PublicChangeOrderFlow';
 import { PricingPage, AboutPage, ContactPage, PrivacyPage, TermsPage } from './components/StaticPages';
 import Logo from './components/Logo';
 import { NotificationBell } from './components/NotificationBell';
@@ -87,6 +88,7 @@ function AppContent() {
   const [dashboardTab, setDashboardTab] = useState<'oversikt' | 'prosjekter' | 'tilbud' | 'avvik' | 'ai' | 'finans' | 'laerling' | 'hms'>('oversikt');
   const [isQuickActionOpen, setIsQuickActionOpen] = useState(false);
   const [offerToken, setOfferToken] = useState<string | null>(null);
+  const [changeOrderToken, setChangeOrderToken] = useState<string | null>(null);
   const [inviteToken, setInviteToken] = useState<string | null>(null);
   const [portalProject, setPortalProject] = useState<Project | null>(null);
   const [isDemo, setIsDemo] = useState(false);
@@ -126,7 +128,7 @@ function AppContent() {
     }
   };
 
-  const publicViews: View[] = ['landing', 'spec', 'pricing', 'about', 'contact', 'privacy', 'terms', 'offer', 'invite', 'customer-portal', 'login', 'public-offer'];
+  const publicViews: View[] = ['landing', 'spec', 'pricing', 'about', 'contact', 'privacy', 'terms', 'offer', 'invite', 'customer-portal', 'login', 'public-offer', 'public-change-order'];
   const isPublicView = publicViews.includes(view);
 
   const changeLanguage = async (lng: string) => {
@@ -213,6 +215,13 @@ function AppContent() {
       setView('public-offer');
     }
 
+    // Customer Change Order direct links (NS 8406 / Håndverkertjenesteloven)
+    const changeOrderParam = params.get('changeOrderToken') || params.get('endring');
+    if (changeOrderParam) {
+      setChangeOrderToken(changeOrderParam);
+      setView('public-change-order');
+    }
+
     const token = params.get('offer');
     if (token) {
       setOfferToken(token);
@@ -234,7 +243,7 @@ function AppContent() {
       handleOpenPortal(portal);
     }
 
-    // Check for path-based tokens (e.g., /invite/token, /tilbud/token, /kontrakt/token, /offer/token, /portal/id)
+    // Check for path-based tokens (e.g., /invite/token, /tilbud/token, /kontrakt/token, /offer/token, /endring/token, /portal/id)
     const pathParts = window.location.pathname.split('/');
     if (pathParts[1] === 'invite' && pathParts[2]) {
       setInviteToken(pathParts[2]);
@@ -243,6 +252,10 @@ function AppContent() {
     if ((pathParts[1] === 'tilbud' || pathParts[1] === 'kontrakt') && pathParts[2]) {
       setOfferToken(pathParts[2]);
       setView('public-offer');
+    }
+    if ((pathParts[1] === 'endring' || pathParts[1] === 'change-order') && pathParts[2]) {
+      setChangeOrderToken(pathParts[2]);
+      setView('public-change-order');
     }
     if (pathParts[1] === 'offer' && pathParts[2]) {
       setOfferToken(pathParts[2]);
@@ -272,6 +285,16 @@ function AppContent() {
         token={offerToken || undefined} 
         onNavigateToPortal={(id) => handleOpenPortal(id)} 
         onBackToApp={() => setView('landing')} 
+      />
+    );
+  }
+
+  // Direct full-screen Customer Change Order flow
+  if (view === 'public-change-order' && changeOrderToken) {
+    return (
+      <PublicChangeOrderFlow 
+        token={changeOrderToken} 
+        onNavigateToPortal={(id) => handleOpenPortal(id)} 
       />
     );
   }

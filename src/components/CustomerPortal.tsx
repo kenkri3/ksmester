@@ -16,14 +16,20 @@ import {
   Check,
   AlertCircle,
   Download,
-  Sparkles
+  Sparkles,
+  FileEdit,
+  Coins,
+  CalendarCheck2
 } from 'lucide-react';
-import { Project, Offer, Contract } from '../types';
+import { Project, Offer, Contract, ChangeOrder, FinalSettlement, WarrantyInspection } from '../types';
 import { db, collection, query, where, getDocs, updateDoc, doc, serverTimestamp, addDoc } from '../services/firebase';
 import { projectService } from '../services/projectService';
 import ProjectActivityLog from './ProjectActivityLog';
 import { summaryService } from '../services/summaryService';
 import { pdfService } from '../services/pdfService';
+import { changeOrderService } from '../services/changeOrderService';
+import { finalSettlementService } from '../services/finalSettlementService';
+import { warrantyInspectionService } from '../services/warrantyInspectionService';
 import { toast } from 'sonner';
 
 interface CustomerPortalProps {
@@ -33,6 +39,9 @@ interface CustomerPortalProps {
 const CustomerPortal: React.FC<CustomerPortalProps> = ({ project }) => {
   const [offer, setOffer] = useState<Offer | null>(null);
   const [contract, setContract] = useState<Contract | null>(null);
+  const [changeOrders, setChangeOrders] = useState<ChangeOrder[]>([]);
+  const [finalSettlement, setFinalSettlement] = useState<FinalSettlement | null>(null);
+  const [warrantyInspection, setWarrantyInspection] = useState<WarrantyInspection | null>(null);
   const [loading, setLoading] = useState(true);
   const [actionLoading, setActionLoading] = useState(false);
 
@@ -61,6 +70,18 @@ const CustomerPortal: React.FC<CustomerPortalProps> = ({ project }) => {
         if (!contractSnap.empty) {
           setContract({ id: contractSnap.docs[0].id, ...contractSnap.docs[0].data() } as Contract);
         }
+
+        // Fetch change orders
+        const coList = await changeOrderService.getProjectChangeOrders(project.id);
+        setChangeOrders(coList);
+
+        // Fetch final settlement if exists
+        const fs = await finalSettlementService.getProjectSettlement(project.id);
+        setFinalSettlement(fs);
+
+        // Fetch warranty inspection if exists
+        const wi = await warrantyInspectionService.getProjectWarranty(project.id);
+        setWarrantyInspection(wi);
       } catch (error) {
         console.error("Error fetching portal data:", error);
       } finally {
@@ -323,6 +344,82 @@ const CustomerPortal: React.FC<CustomerPortalProps> = ({ project }) => {
               </motion.div>
             )}
 
+            {/* Endringsmeldinger & Tilleggsarbeid */}
+            {changeOrders.length > 0 && (
+              <motion.div
+                initial={{ opacity: 0, y: 15 }}
+                animate={{ opacity: 1, y: 0 }}
+                className="bg-white rounded-[2.5rem] p-8 shadow-sm border border-neutral-200 space-y-6"
+              >
+                <div className="flex justify-between items-center">
+                  <div>
+                    <div className="flex items-center gap-2 mb-1">
+                      <span className="p-1.5 bg-amber-500/10 text-amber-600 rounded-lg">
+                        <FileEdit size={16} />
+                      </span>
+                      <span className="text-xs font-black uppercase tracking-widest text-amber-600">
+                        NS 8406 / Håndverkertjenesteloven § 9
+                      </span>
+                    </div>
+                    <h3 className="text-2xl font-black text-neutral-900">Tilleggsarbeid & Endringer</h3>
+                    <p className="text-xs text-neutral-500">
+                      Oversikt over avtalte og ventende tillegg underveis i byggeperioden.
+                    </p>
+                  </div>
+                </div>
+
+                <div className="space-y-3">
+                  {changeOrders.map(order => (
+                    <div
+                      key={order.id}
+                      className="p-5 bg-neutral-50 rounded-2xl border border-neutral-200 flex flex-col sm:flex-row justify-between sm:items-center gap-4"
+                    >
+                      <div>
+                        <div className="flex items-center gap-2">
+                          <span className="px-2 py-0.5 bg-neutral-200 text-neutral-800 text-xs font-black rounded">
+                            #{order.changeNumber}
+                          </span>
+                          <span className="font-bold text-sm text-neutral-900">{order.title}</span>
+                          <span className={`text-[10px] font-black uppercase px-2 py-0.5 rounded-full ${
+                            order.status === 'approved' 
+                              ? 'bg-emerald-100 text-emerald-700' 
+                              : order.status === 'rejected'
+                              ? 'bg-rose-100 text-rose-700'
+                              : 'bg-amber-100 text-amber-700'
+                          }`}>
+                            {order.status === 'approved' ? 'Godkjent' : order.status === 'rejected' ? 'Avvist' : 'Venter på din signatur'}
+                          </span>
+                        </div>
+                        <p className="text-xs text-neutral-500 mt-1 line-clamp-2">{order.description}</p>
+                        <div className="text-[11px] text-neutral-400 mt-1">
+                          Sum: <strong>{order.totalAmount.toLocaleString('no-NO')} kr ink. mva</strong> ({order.amountExVat.toLocaleString('no-NO')} kr eks. mva)
+                          {order.impactDays > 0 && ` • +${order.impactDays} dager forventet forlengelse`}
+                        </div>
+                      </div>
+
+                      <div className="flex items-center gap-2 shrink-0">
+                        {order.status === 'pending_customer' && order.shareUrl && (
+                          <a
+                            href={order.shareUrl}
+                            className="px-4 py-2 bg-amber-500 hover:bg-amber-400 text-neutral-950 font-black rounded-xl text-xs flex items-center gap-1.5 shadow-sm transition-all"
+                          >
+                            <FileSignature size={14} /> Se & Godkjenn
+                          </a>
+                        )}
+                        <button
+                          onClick={() => pdfService.generateChangeOrderPDF(project, order)}
+                          className="p-2.5 bg-white border border-neutral-200 text-neutral-700 hover:bg-neutral-100 rounded-xl text-xs font-bold transition-all"
+                          title="Last ned endringsavtale (PDF)"
+                        >
+                          <Download size={14} />
+                        </button>
+                      </div>
+                    </div>
+                  ))}
+                </div>
+              </motion.div>
+            )}
+
             {project.stage === 'completion' && (
               <motion.div 
                 initial={{ opacity: 0, y: 20 }}
@@ -337,8 +434,50 @@ const CustomerPortal: React.FC<CustomerPortalProps> = ({ project }) => {
                 
                 <h2 className="text-3xl font-black mb-4">Prosjektet er ferdig!</h2>
                 <p className="text-neutral-500 mb-8 max-w-lg">
-                  Vi har nå ferdigstilt arbeidet og utarbeidet all nødvendig FDV-dokumentasjon. Vennligst se gjennom dokumentene nedenfor.
+                  Vi har nå ferdigstilt arbeidet og utarbeidet all nødvendig FDV-dokumentasjon og sluttoppgjør. Vennligst se gjennom dokumentene nedenfor.
                 </p>
+
+                {/* Sluttoppgjør */}
+                {finalSettlement && (
+                  <div className="bg-neutral-50 rounded-3xl p-6 border border-neutral-100 mb-8">
+                    <div className="flex items-center gap-4 mb-4">
+                      <div className="w-12 h-12 bg-slate-900 text-white rounded-2xl flex items-center justify-center">
+                        <Coins size={24} />
+                      </div>
+                      <div>
+                        <div className="font-bold text-neutral-900">Formelt Sluttoppgjør (NS 8406)</div>
+                        <div className="text-xs text-neutral-500">
+                          Opprinnelig kontrakt + godkjente tillegg. Netto til utbetaling: {finalSettlement.totalSettlementIncVat.toLocaleString('no-NO')} kr
+                        </div>
+                      </div>
+                    </div>
+                    <button 
+                      onClick={() => pdfService.generateFinalSettlementPDF(project, finalSettlement)}
+                      className="w-full bg-white border border-neutral-200 py-3.5 rounded-xl font-bold flex items-center justify-center gap-2 hover:bg-neutral-100 transition-all text-neutral-900"
+                    >
+                      <Download size={18} />
+                      Last ned Sluttoppgjør (PDF)
+                    </button>
+                  </div>
+                )}
+
+                {/* 1-års Garanti-inspeksjon */}
+                <div className="bg-teal-50/70 rounded-3xl p-6 border border-teal-100 mb-8">
+                  <div className="flex items-center gap-4 mb-2">
+                    <div className="w-10 h-10 bg-teal-600 text-white rounded-xl flex items-center justify-center">
+                      <CalendarCheck2 size={20} />
+                    </div>
+                    <div>
+                      <div className="font-bold text-teal-950">Lovfestet 1-års Garanti-inspeksjon</div>
+                      <div className="text-xs text-teal-700">
+                        Bustadoppføringslova § 16 / NS 8406 pkt. 27 | Planlagt til: {warrantyInspection?.scheduledInspectionDate || '11 mnd etter ferdigstillelse'}
+                      </div>
+                    </div>
+                  </div>
+                  <p className="text-xs text-teal-800 leading-relaxed mt-2">
+                    Vi kaller deg inn automatisk til en uforpliktende 1-årsbefaring for å sjekke fuger, overflater og installasjoner, og sikre at alt fungerer 100%.
+                  </p>
+                </div>
 
                 <div className="bg-neutral-50 rounded-3xl p-6 border border-neutral-100 mb-8">
                   <div className="flex items-center gap-4 mb-4">

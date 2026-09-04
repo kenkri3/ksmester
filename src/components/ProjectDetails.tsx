@@ -32,7 +32,12 @@ import {
   Download,
   Activity,
   Package,
-  RefreshCw
+  RefreshCw,
+  FileEdit,
+  CloudSun,
+  FlaskConical,
+  Coins,
+  BellRing
 } from 'lucide-react';
 import { motion, AnimatePresence } from 'motion/react';
 import { cn } from '@/src/lib/utils';
@@ -51,6 +56,11 @@ import ProjectActivityLog from './ProjectActivityLog';
 import AIVisionModal from './AIVisionModal';
 import { summaryService } from '../services/summaryService';
 import ComplianceHub from './ComplianceHub';
+import ChangeOrderModal from './ChangeOrderModal';
+import DailyLogModal from './DailyLogModal';
+import StoffkartotekModal from './StoffkartotekModal';
+import FinalSettlementModal from './FinalSettlementModal';
+import { budgetAlertService, BudgetStatus } from '../services/budgetAlertService';
 
 interface ProjectDetailsProps {
   project: Project;
@@ -63,7 +73,7 @@ interface ProjectDetailsProps {
 export default function ProjectDetails({ project, onBack, onShare, onStartChecklist, onHandover }: ProjectDetailsProps) {
   const { t } = useTranslation();
   const { user } = useAuth();
-  const [activeTab, setActiveTab] = useState<'overview' | 'sja' | 'deviations' | 'docs' | 'materials'>('overview');
+  const [activeTab, setActiveTab] = useState<'overview' | 'sja' | 'deviations' | 'docs' | 'materials' | 'change_orders' | 'daily_log' | 'stoffkartotek'>('overview');
   const [sjaReports, setSjaReports] = useState<any[]>([]);
   const [projectDeviations, setProjectDeviations] = useState<Deviation[]>([]);
   const [projectCrew, setProjectCrew] = useState<CrewMember[]>([]);
@@ -79,6 +89,11 @@ export default function ProjectDetails({ project, onBack, onShare, onStartCheckl
   const [isInviteModalOpen, setIsInviteModalOpen] = useState(false);
   const [isOfferModalOpen, setIsOfferModalOpen] = useState(false);
   const [isHealthReportOpen, setIsHealthReportOpen] = useState(false);
+  const [isChangeOrderOpen, setIsChangeOrderOpen] = useState(false);
+  const [isDailyLogOpen, setIsDailyLogOpen] = useState(false);
+  const [isStoffkartotekOpen, setIsStoffkartotekOpen] = useState(false);
+  const [isFinalSettlementOpen, setIsFinalSettlementOpen] = useState(false);
+  const [budgetStatus, setBudgetStatus] = useState<BudgetStatus | null>(null);
 
   const [newDeviation, setNewDeviation] = useState({
     title: '',
@@ -188,6 +203,12 @@ export default function ProjectDetails({ project, onBack, onShare, onStartCheckl
       unsubscribeContracts();
     };
   }, [project.id]);
+
+  useEffect(() => {
+    if (project?.id) {
+      budgetAlertService.checkProjectBudget(project).then(setBudgetStatus).catch(console.warn);
+    }
+  }, [project]);
 
   const handleAddDeviation = async (e: React.FormEvent) => {
     e.preventDefault();
@@ -406,6 +427,40 @@ export default function ProjectDetails({ project, onBack, onShare, onStartCheckl
             <Activity size={16} className="text-emerald-600" />
             AI Helserapport
           </button>
+          <button 
+            onClick={() => setIsChangeOrderOpen(true)}
+            className="flex items-center gap-1.5 sm:gap-2 px-3 sm:px-4 py-2 bg-amber-500/10 text-amber-700 border border-amber-500/20 rounded-xl text-xs sm:text-sm font-bold hover:bg-amber-500/20 transition-all"
+            title="Opprett eller se endringsmeldinger / tilleggsarbeid"
+          >
+            <FileEdit size={16} />
+            Tilleggsarbeid
+          </button>
+          <button 
+            onClick={() => setIsDailyLogOpen(true)}
+            className="flex items-center gap-1.5 sm:gap-2 px-3 sm:px-4 py-2 bg-sky-500/10 text-sky-700 border border-sky-500/20 rounded-xl text-xs sm:text-sm font-bold hover:bg-sky-500/20 transition-all"
+            title="Automatisk byggedagbok med værdata fra Yr"
+          >
+            <CloudSun size={16} />
+            Byggedagbok
+          </button>
+          <button 
+            onClick={() => setIsStoffkartotekOpen(true)}
+            className="flex items-center gap-1.5 sm:gap-2 px-3 sm:px-4 py-2 bg-amber-500/10 text-amber-700 border border-amber-500/20 rounded-xl text-xs sm:text-sm font-bold hover:bg-amber-500/20 transition-all"
+            title="Kjemisk stoffkartotek for byggeplass"
+          >
+            <FlaskConical size={16} />
+            Stoffkartotek
+          </button>
+          {project.stage === 'completion' && (
+            <button 
+              onClick={() => setIsFinalSettlementOpen(true)}
+              className="flex items-center gap-1.5 sm:gap-2 px-3 sm:px-4 py-2 bg-slate-900 text-white rounded-xl text-xs sm:text-sm font-bold hover:bg-slate-800 transition-all shadow-md"
+              title="Formelt sluttoppgjør iht. NS 8406"
+            >
+              <Coins size={16} />
+              Sluttoppgjør
+            </button>
+          )}
           {project.stage === 'completion' && (
             <button 
               onClick={() => onHandover?.(project.id)}
@@ -424,7 +479,34 @@ export default function ProjectDetails({ project, onBack, onShare, onStartCheckl
         </div>
       </div>
 
-      {/* Report Modal */}
+      {/* Modals */}
+      <ChangeOrderModal
+        isOpen={isChangeOrderOpen}
+        onClose={() => setIsChangeOrderOpen(false)}
+        project={project}
+        currentUserId={auth.currentUser?.uid}
+        currentUserName={auth.currentUser?.displayName || 'Byggeleder'}
+      />
+
+      <DailyLogModal
+        isOpen={isDailyLogOpen}
+        onClose={() => setIsDailyLogOpen(false)}
+        project={project}
+        currentUserName={auth.currentUser?.displayName || 'Byggeleder'}
+      />
+
+      <StoffkartotekModal
+        isOpen={isStoffkartotekOpen}
+        onClose={() => setIsStoffkartotekOpen(false)}
+        project={project}
+      />
+
+      <FinalSettlementModal
+        isOpen={isFinalSettlementOpen}
+        onClose={() => setIsFinalSettlementOpen(false)}
+        project={project}
+      />
+
       <ReportModal 
         isOpen={isReportModalOpen}
         onClose={() => setIsReportModalOpen(false)}
@@ -515,6 +597,9 @@ export default function ProjectDetails({ project, onBack, onShare, onStartCheckl
       <div className="flex items-center gap-1 p-1 bg-neutral-100 rounded-2xl max-w-full overflow-x-auto whitespace-nowrap scrollbar-none">
         {[
           { id: 'overview', label: t('overview'), icon: <TrendingUp size={16} /> },
+          { id: 'change_orders', label: 'Tillegg & Endringer', icon: <FileEdit size={16} /> },
+          { id: 'daily_log', label: 'Byggedagbok', icon: <CloudSun size={16} /> },
+          { id: 'stoffkartotek', label: 'Stoffkartotek', icon: <FlaskConical size={16} /> },
           { id: 'sja', label: 'SJA', icon: <ShieldCheck size={16} /> },
           { id: 'deviations', label: t('deviations'), icon: <AlertTriangle size={16} /> },
           { id: 'docs', label: t('documentation'), icon: <FileText size={16} /> },
@@ -541,6 +626,58 @@ export default function ProjectDetails({ project, onBack, onShare, onStartCheckl
         <div className="lg:col-span-2 space-y-8">
           {activeTab === 'overview' && (
             <div className="space-y-8">
+              {/* Budsjettadvarsel ved 80% / 100% overforbruk */}
+              {budgetStatus && (budgetStatus.isWarning80 || budgetStatus.isOverBudget100) && (
+                <div className={cn(
+                  "p-5 rounded-3xl border flex flex-col sm:flex-row items-start sm:items-center justify-between gap-4 shadow-sm",
+                  budgetStatus.isOverBudget100 
+                    ? "bg-rose-50 border-rose-200 text-rose-950" 
+                    : "bg-amber-50 border-amber-200 text-amber-950"
+                )}>
+                  <div className="flex items-center gap-3">
+                    <div className={cn(
+                      "p-3 rounded-2xl text-white shrink-0",
+                      budgetStatus.isOverBudget100 ? "bg-rose-600" : "bg-amber-600"
+                    )}>
+                      <BellRing size={20} />
+                    </div>
+                    <div>
+                      <div className="text-xs font-black uppercase tracking-wider">
+                        {budgetStatus.isOverBudget100 ? 'Kritisk budsjettavvik (>100%)' : 'Budsjettadvarsel (>80%)'}
+                      </div>
+                      <p className="text-xs mt-0.5 max-w-xl text-neutral-700">
+                        {budgetStatus.message}
+                      </p>
+                    </div>
+                  </div>
+                  <div className="flex items-center gap-2 shrink-0">
+                    <button
+                      onClick={() => setIsChangeOrderOpen(true)}
+                      className="px-4 py-2 bg-neutral-900 text-white rounded-xl text-xs font-bold hover:bg-neutral-800 transition-all"
+                    >
+                      + Ny endringsmelding
+                    </button>
+                    <button
+                      onClick={() => pdfService.generateExtensionOfTimeClaimPDF(project, {
+                        id: 'claim_quick',
+                        projectId: project.id,
+                        claimNumber: 1,
+                        cause: 'uforutsett_grunnforhold',
+                        description: `Fristforlengelse kreves pga. uforutsette bygningsmessige forhold som har oversteget opprinnelige budsjettrammer (${budgetStatus.percentUsed}% medgått).`,
+                        daysClaimed: 5,
+                        costImpactClaimed: budgetStatus.spent - budgetStatus.budget,
+                        status: 'submitted',
+                        submittedDate: new Date().toISOString().split('T')[0],
+                        createdAt: new Date().toISOString()
+                      })}
+                      className="px-3 py-2 bg-white border border-neutral-300 rounded-xl text-xs font-bold hover:bg-neutral-50 transition-all text-neutral-800"
+                    >
+                      Krav om fristforlengelse
+                    </button>
+                  </div>
+                </div>
+              )}
+
               {/* Progress Card */}
               <div className="bg-white p-8 rounded-3xl border border-neutral-200 shadow-sm">
                 <div className="flex justify-between items-end mb-6">
@@ -853,6 +990,126 @@ export default function ProjectDetails({ project, onBack, onShare, onStartCheckl
 
           {activeTab === 'materials' && (
             <ProjectMaterials project={project} />
+          )}
+
+          {activeTab === 'change_orders' && (
+            <div className="bg-white p-8 rounded-3xl border border-neutral-200 shadow-sm space-y-6">
+              <div className="flex flex-col sm:flex-row justify-between items-start sm:items-center gap-4">
+                <div>
+                  <div className="flex items-center gap-2 mb-1">
+                    <span className="p-1.5 bg-amber-500/10 text-amber-600 rounded-lg">
+                      <FileEdit size={16} />
+                    </span>
+                    <span className="text-xs font-black uppercase tracking-widest text-amber-600">
+                      NS 8406 / Håndverkertjenesteloven § 9
+                    </span>
+                  </div>
+                  <h3 className="text-xl font-bold text-neutral-900">Endringsmeldinger & Tilleggsarbeid</h3>
+                  <p className="text-xs text-neutral-500">
+                    Sikrer skriftlig avtale, digital signatur og automatisk budsjettsynk.
+                  </p>
+                </div>
+                <button
+                  onClick={() => setIsChangeOrderOpen(true)}
+                  className="px-4 py-2.5 bg-neutral-900 hover:bg-neutral-800 text-white rounded-xl text-xs font-bold flex items-center gap-2 shadow-md transition-all"
+                >
+                  <Plus size={14} /> Opprett / Behandle endring
+                </button>
+              </div>
+
+              <div className="p-4 bg-amber-500/10 border border-amber-500/20 rounded-2xl text-xs text-amber-900 leading-relaxed">
+                <strong>Lovkrav i Norge:</strong> Håndverkertjenesteloven § 9 og NS 8406 pkt. 19 krever at tilleggsarbeid varsles og godkjennes skriftlig for å ha rettmessig krav på vederlag. Ved å bruke digital endringsmelding unngår bedriften tvister og tapte penger.
+              </div>
+
+              <div className="flex justify-center py-6">
+                <button
+                  onClick={() => setIsChangeOrderOpen(true)}
+                  className="px-6 py-3 bg-amber-600 hover:bg-amber-700 text-white rounded-2xl text-xs font-black flex items-center gap-2 shadow-lg shadow-amber-600/20 transition-all cursor-pointer"
+                >
+                  <FileEdit size={16} /> Åpne oversikt over tilleggsavtaler
+                </button>
+              </div>
+            </div>
+          )}
+
+          {activeTab === 'daily_log' && (
+            <div className="bg-white p-8 rounded-3xl border border-neutral-200 shadow-sm space-y-6">
+              <div className="flex flex-col sm:flex-row justify-between items-start sm:items-center gap-4">
+                <div>
+                  <div className="flex items-center gap-2 mb-1">
+                    <span className="p-1.5 bg-sky-500/10 text-sky-600 rounded-lg">
+                      <CloudSun size={16} />
+                    </span>
+                    <span className="text-xs font-black uppercase tracking-widest text-sky-600">
+                      Byggherreforskriften § 15 & NS 8405/8406
+                    </span>
+                  </div>
+                  <h3 className="text-xl font-bold text-neutral-900">Automatisk Byggedagbok</h3>
+                  <p className="text-xs text-neutral-500">
+                    Sanntids værdata fra Yr/Open-Meteo, mannskapsliste og daglig produksjonslogg.
+                  </p>
+                </div>
+                <button
+                  onClick={() => setIsDailyLogOpen(true)}
+                  className="px-4 py-2.5 bg-sky-600 hover:bg-sky-500 text-white rounded-xl text-xs font-bold flex items-center gap-2 shadow-md transition-all"
+                >
+                  <CloudSun size={14} /> Se & Kompiler dagbok
+                </button>
+              </div>
+
+              <div className="p-4 bg-sky-50 border border-sky-200 rounded-2xl text-xs text-sky-950 leading-relaxed">
+                <strong>Hvorfor byggedagbok?</strong> Dokumenterer værforhold, temperatur, vind og nedbør samt hvem som er på byggeplassen. Dette gir entreprenøren juridisk bevis ved krav om fristforlengelse og beskytter mot dagbøter.
+              </div>
+
+              <div className="flex justify-center py-6">
+                <button
+                  onClick={() => setIsDailyLogOpen(true)}
+                  className="px-6 py-3 bg-sky-600 hover:bg-sky-500 text-white rounded-2xl text-xs font-black flex items-center gap-2 shadow-lg shadow-sky-600/20 transition-all cursor-pointer"
+                >
+                  <CloudSun size={16} /> Åpne Byggedagbok-modulen
+                </button>
+              </div>
+            </div>
+          )}
+
+          {activeTab === 'stoffkartotek' && (
+            <div className="bg-white p-8 rounded-3xl border border-neutral-200 shadow-sm space-y-6">
+              <div className="flex flex-col sm:flex-row justify-between items-start sm:items-center gap-4">
+                <div>
+                  <div className="flex items-center gap-2 mb-1">
+                    <span className="p-1.5 bg-amber-500/10 text-amber-600 rounded-lg">
+                      <FlaskConical size={16} />
+                    </span>
+                    <span className="text-xs font-black uppercase tracking-widest text-amber-600">
+                      Forskrift om utførelse av arbeid kap. 2 | Arbeidstilsynet
+                    </span>
+                  </div>
+                  <h3 className="text-xl font-bold text-neutral-900">Kjemisk Stoffkartotek</h3>
+                  <p className="text-xs text-neutral-500">
+                    Sikkerhetsdatablader, verneutstyr og førstehjelp for byggeplassen.
+                  </p>
+                </div>
+                <button
+                  onClick={() => setIsStoffkartotekOpen(true)}
+                  className="px-4 py-2.5 bg-neutral-900 hover:bg-neutral-800 text-white rounded-xl text-xs font-bold flex items-center gap-2 shadow-md transition-all"
+                >
+                  <FlaskConical size={14} /> Åpne stoffkartotek
+                </button>
+              </div>
+
+              <div className="p-4 bg-amber-50 border border-amber-200 rounded-2xl text-xs text-amber-950 leading-relaxed">
+                <strong>Arbeidstilsynets pålegg:</strong> Alle kjemikalier (fugemasse, lim, membran, lakk, sparkel) må ha oppdatert sikkerhetsdatablad på plassen. KS Mester forhåndsutfyller dette automatisk.
+              </div>
+
+              <div className="flex justify-center py-6">
+                <button
+                  onClick={() => setIsStoffkartotekOpen(true)}
+                  className="px-6 py-3 bg-neutral-900 hover:bg-neutral-800 text-white rounded-2xl text-xs font-black flex items-center gap-2 shadow-lg transition-all cursor-pointer"
+                >
+                  <FlaskConical size={16} /> Vis kjemikalier & Sikkerhetsdatablader
+                </button>
+              </div>
+            </div>
           )}
         </div>
 

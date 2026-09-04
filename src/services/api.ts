@@ -133,6 +133,10 @@ export const api = {
     }
   },
 
+  async getDocs<T = any>(collectionName: string): Promise<T[]> {
+    return (this as any).getCollection(collectionName) as Promise<T[]>;
+  },
+
   async addDoc<T = any>(collectionName: string, data: any): Promise<T> {
     const isOnline = typeof navigator !== 'undefined' ? navigator.onLine : true;
     const generatedId = data.id || 'doc-' + Date.now() + '-' + Math.random().toString(36).substring(2, 7);
