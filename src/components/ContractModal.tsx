@@ -287,27 +287,30 @@ const ContractModal: React.FC<ContractModalProps> = ({ isOpen, onClose }) => {
         {/* New Contract Modal */}
         <AnimatePresence>
           {selectedContractForReview && (
-            <div className="fixed inset-0 z-[70] flex items-center justify-center p-4 bg-black/40 backdrop-blur-sm">
+            <div className="fixed inset-0 z-[70] flex items-end sm:items-center justify-center p-0 sm:p-4 bg-black/60 backdrop-blur-sm">
               <motion.div
-                initial={{ opacity: 0, scale: 0.9, y: 20 }}
+                initial={{ opacity: 0, scale: 0.98, y: 20 }}
                 animate={{ opacity: 1, scale: 1, y: 0 }}
-                exit={{ opacity: 0, scale: 0.9, y: 20 }}
-                className="bg-white w-full max-w-2xl rounded-[2.5rem] shadow-2xl overflow-hidden flex flex-col max-h-[80vh]"
+                exit={{ opacity: 0, scale: 0.98, y: 20 }}
+                className="bg-white w-full max-w-2xl rounded-t-[2rem] sm:rounded-[2.5rem] shadow-2xl overflow-hidden flex flex-col max-h-[92vh] sm:max-h-[85vh] pb-[env(safe-area-inset-bottom,0px)]"
               >
-                <div className="p-8 border-b border-neutral-100 flex items-center justify-between bg-indigo-900 text-white">
-                  <div className="flex items-center gap-3">
-                    <Sparkles size={24} className="text-indigo-400" />
-                    <div>
-                      <h3 className="text-xl font-bold">AI Kontraktskontroll</h3>
-                      <p className="text-xs text-indigo-300">{selectedContractForReview.title}</p>
+                {/* Mobile Grab Handle */}
+                <div className="sm:hidden w-12 h-1.5 bg-white/30 rounded-full mx-auto mt-3 mb-1 shrink-0" />
+
+                <div className="p-4 sm:p-8 border-b border-neutral-100 flex items-center justify-between bg-indigo-900 text-white shrink-0">
+                  <div className="flex items-center gap-3 min-w-0">
+                    <Sparkles size={20} className="text-indigo-400 sm:w-6 sm:h-6 shrink-0" />
+                    <div className="min-w-0">
+                      <h3 className="text-base sm:text-xl font-bold truncate">AI Kontraktskontroll</h3>
+                      <p className="text-xs text-indigo-300 truncate">{selectedContractForReview.title}</p>
                     </div>
                   </div>
-                  <button onClick={() => setSelectedContractForReview(null)} className="p-2 hover:bg-white/10 rounded-xl transition-colors">
+                  <button onClick={() => setSelectedContractForReview(null)} className="p-2 hover:bg-white/10 rounded-xl transition-colors shrink-0">
                     <X size={20} />
                   </button>
                 </div>
                 
-                <div className="flex-1 overflow-y-auto p-8 space-y-6">
+                <div className="flex-1 overflow-y-auto p-4 sm:p-8 space-y-6 custom-scrollbar">
                   {isReviewing ? (
                     <div className="flex flex-col items-center justify-center py-20 text-neutral-400">
                       <div className="w-12 h-12 border-4 border-indigo-200 border-t-indigo-600 rounded-full animate-spin mb-4" />
@@ -422,20 +425,23 @@ const ContractModal: React.FC<ContractModalProps> = ({ isOpen, onClose }) => {
         {/* New Contract Modal */}
         <AnimatePresence>
           {isNewContractOpen && (
-            <div className="fixed inset-0 z-[60] flex items-center justify-center p-4 bg-black/40 backdrop-blur-sm">
+            <div className="fixed inset-0 z-[60] flex items-end sm:items-center justify-center p-0 sm:p-4 bg-black/60 backdrop-blur-sm">
               <motion.div
-                initial={{ opacity: 0, scale: 0.9, y: 20 }}
+                initial={{ opacity: 0, scale: 0.98, y: 20 }}
                 animate={{ opacity: 1, scale: 1, y: 0 }}
-                exit={{ opacity: 0, scale: 0.9, y: 20 }}
-                className="bg-white w-full max-w-lg rounded-[2.5rem] shadow-2xl overflow-hidden"
+                exit={{ opacity: 0, scale: 0.98, y: 20 }}
+                className="bg-white w-full max-w-lg rounded-t-[2rem] sm:rounded-[2.5rem] shadow-2xl overflow-hidden flex flex-col max-h-[92vh] sm:max-h-[85vh] pb-[env(safe-area-inset-bottom,0px)]"
               >
-                <div className="p-8 border-b border-neutral-100 flex items-center justify-between">
-                  <h3 className="text-xl font-bold">Ny Kontrakt</h3>
-                  <button onClick={() => setIsNewContractOpen(false)} className="p-2 hover:bg-neutral-100 rounded-xl transition-colors">
+                {/* Mobile Grab Handle */}
+                <div className="sm:hidden w-12 h-1.5 bg-neutral-300 rounded-full mx-auto mt-3 mb-1 shrink-0" />
+
+                <div className="p-4 sm:p-8 border-b border-neutral-100 flex items-center justify-between shrink-0">
+                  <h3 className="text-lg sm:text-xl font-bold">Ny Kontrakt</h3>
+                  <button onClick={() => setIsNewContractOpen(false)} className="p-2 hover:bg-neutral-100 rounded-xl transition-colors shrink-0">
                     <X size={20} />
                   </button>
                 </div>
-                <form onSubmit={handleCreateContract} className="p-8 space-y-6">
+                <form onSubmit={handleCreateContract} className="p-4 sm:p-8 space-y-6 overflow-y-auto custom-scrollbar flex-1">
                   <div className="space-y-2">
                     <div className="flex items-center justify-between">
                       <label className="text-xs font-black uppercase tracking-widest text-neutral-400 ml-1">Tittel</label>

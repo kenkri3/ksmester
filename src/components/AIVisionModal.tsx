@@ -121,6 +121,8 @@ export default function AIVisionModal({ isOpen, onClose, projectId: initialProje
           severity: 'high',
           status: 'open',
           source: 'ai_vision',
+          imageUrl: image,
+          photoUrl: image,
           timestamp: serverTimestamp(),
           createdAt: new Date().toISOString()
         });
@@ -158,7 +160,7 @@ export default function AIVisionModal({ isOpen, onClose, projectId: initialProje
                 </div>
                 <div>
                   <h2 className="text-lg sm:text-2xl font-bold text-white tracking-tight">MesterAI Vision</h2>
-                  <p className="text-[8px] sm:text-[10px] text-rose-300 font-bold uppercase tracking-widest mt-0.5 sm:mt-1">Automatisk KS-kontroll</p>
+                  <p className="text-[10px] sm:text-xs text-rose-300 font-bold uppercase tracking-wider mt-0.5 sm:mt-1">Automatisk KS-kontroll</p>
                 </div>
               </div>
               <button onClick={onClose} aria-label="Lukk" title="Lukk" className="p-2 hover:bg-white/10 rounded-full transition-colors text-white">
@@ -171,15 +173,15 @@ export default function AIVisionModal({ isOpen, onClose, projectId: initialProje
               {!initialProjectId && !image && (
                 <div className="mb-6 sm:mb-8 space-y-3 sm:space-y-4">
                   <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-3">
-                    <h3 className="text-[8px] sm:text-xs font-black uppercase tracking-[0.2em] text-neutral-500">Velg Prosjekt</h3>
+                    <h3 className="text-[10px] sm:text-xs font-black uppercase tracking-[0.2em] text-neutral-400">Velg Prosjekt</h3>
                     <div className="relative w-full sm:w-64">
-                      <Search className="absolute left-3 top-1/2 -translate-y-1/2 text-neutral-500 sm:w-3.5 sm:h-3.5" size={12} />
+                      <Search className="absolute left-3 top-1/2 -translate-y-1/2 text-neutral-500 sm:w-3.5 sm:h-3.5" size={14} />
                       <input 
                         type="text"
                         placeholder="Søk i prosjekter..."
                         value={projectSearch}
                         onChange={(e) => setProjectSearch(e.target.value)}
-                        className="w-full pl-8 sm:pl-9 pr-4 py-2 bg-white/5 border border-white/10 rounded-xl text-[10px] sm:text-xs text-white focus:border-rose-500 transition-all outline-none"
+                        className="w-full pl-9 pr-4 py-2.5 bg-white/5 border border-white/10 rounded-xl text-xs sm:text-sm text-white focus:border-rose-500 transition-all outline-none"
                       />
                     </div>
                   </div>
@@ -214,8 +216,8 @@ export default function AIVisionModal({ isOpen, onClose, projectId: initialProje
                     <ListChecks size={14} className="sm:w-[18px] sm:h-[18px]" />
                   </div>
                   <div>
-                    <p className="text-[8px] sm:text-[10px] font-black uppercase tracking-widest text-rose-400">Koblet til sjekkliste-punkt</p>
-                    <p className="text-[10px] sm:text-sm font-bold text-white">{checklistItemName}</p>
+                    <p className="text-[10px] sm:text-xs font-black uppercase tracking-wider text-rose-400">Koblet til sjekkliste-punkt</p>
+                    <p className="text-xs sm:text-sm font-bold text-white">{checklistItemName}</p>
                   </div>
                 </div>
               )}
@@ -239,7 +241,7 @@ export default function AIVisionModal({ isOpen, onClose, projectId: initialProje
                   </div>
                   <div className="text-center px-4">
                     <p className="text-sm sm:text-lg font-bold text-white">Last opp eller ta bilde</p>
-                    <p className="text-[8px] sm:text-sm text-neutral-500 mt-1 sm:mt-2">AI vil automatisk analysere konstruksjonen for KS-krav</p>
+                    <p className="text-xs sm:text-sm text-neutral-400 mt-1 sm:mt-2">AI vil automatisk analysere konstruksjonen for KS-krav</p>
                   </div>
                   <input 
                     type="file" 
@@ -318,11 +320,11 @@ export default function AIVisionModal({ isOpen, onClose, projectId: initialProje
                         </div>
 
                         <div className="bg-white/5 rounded-2xl sm:rounded-3xl p-4 sm:p-6 border border-white/10">
-                          <h4 className="text-[8px] sm:text-xs font-bold text-neutral-500 uppercase tracking-widest mb-3 sm:mb-4">Detekterte Elementer</h4>
+                          <h4 className="text-[10px] sm:text-xs font-bold text-neutral-400 uppercase tracking-widest mb-3 sm:mb-4">Detekterte Elementer</h4>
                           <div className="flex flex-wrap gap-2">
                             {result.elements.map((el, i) => (
-                              <span key={i} className="px-2 sm:px-3 py-1 sm:py-1.5 bg-white/10 text-white rounded-lg sm:rounded-xl text-[8px] sm:text-xs font-medium flex items-center gap-1.5 sm:gap-2">
-                                <Scan size={10} className="sm:w-3 sm:h-3 text-rose-400" />
+                              <span key={i} className="px-2.5 sm:px-3 py-1 sm:py-1.5 bg-white/10 text-white rounded-lg sm:rounded-xl text-xs font-medium flex items-center gap-1.5 sm:gap-2">
+                                <Scan size={12} className="sm:w-3.5 sm:h-3.5 text-rose-400" />
                                 {el}
                               </span>
                             ))}
@@ -332,12 +334,12 @@ export default function AIVisionModal({ isOpen, onClose, projectId: initialProje
                         {result.tips && result.tips.length > 0 && (
                           <div className="bg-amber-500/10 rounded-2xl sm:rounded-3xl p-4 sm:p-6 border border-amber-500/20">
                             <div className="flex items-center gap-2 mb-3 sm:mb-4">
-                              <Lightbulb className="text-amber-400 sm:w-[18px] sm:h-[18px]" size={14} />
-                              <h4 className="text-[8px] sm:text-xs font-bold text-amber-400 uppercase tracking-widest">Tips & Triks</h4>
+                              <Lightbulb className="text-amber-400 sm:w-[18px] sm:h-[18px]" size={16} />
+                              <h4 className="text-[10px] sm:text-xs font-bold text-amber-400 uppercase tracking-widest">Tips & Triks</h4>
                             </div>
                             <ul className="space-y-1.5 sm:space-y-2">
                               {result.tips.map((tip, i) => (
-                                <li key={i} className="text-[10px] sm:text-sm text-neutral-300 flex gap-2">
+                                <li key={i} className="text-xs sm:text-sm text-neutral-300 flex gap-2">
                                   <span className="text-amber-500">•</span>
                                   {tip}
                                 </li>
@@ -349,12 +351,12 @@ export default function AIVisionModal({ isOpen, onClose, projectId: initialProje
                         {result.nextSteps && result.nextSteps.length > 0 && (
                           <div className="bg-indigo-500/10 rounded-2xl sm:rounded-3xl p-4 sm:p-6 border border-indigo-500/20">
                             <div className="flex items-center gap-2 mb-3 sm:mb-4">
-                              <ArrowRight className="text-indigo-400 sm:w-[18px] sm:h-[18px]" size={14} />
-                              <h4 className="text-[8px] sm:text-xs font-bold text-indigo-400 uppercase tracking-widest">Forslag til videre løp</h4>
+                              <ArrowRight className="text-indigo-400 sm:w-[18px] sm:h-[18px]" size={16} />
+                              <h4 className="text-[10px] sm:text-xs font-bold text-indigo-400 uppercase tracking-widest">Forslag til videre løp</h4>
                             </div>
                             <ul className="space-y-1.5 sm:space-y-2">
                               {result.nextSteps.map((step, i) => (
-                                <li key={i} className="text-[10px] sm:text-sm text-neutral-300 flex gap-2">
+                                <li key={i} className="text-xs sm:text-sm text-neutral-300 flex gap-2">
                                   <span className="text-indigo-500">→</span>
                                   {step}
                                 </li>
@@ -366,7 +368,7 @@ export default function AIVisionModal({ isOpen, onClose, projectId: initialProje
 
                       <div className="space-y-4 sm:space-y-6">
                         <div className="bg-white/5 rounded-2xl sm:rounded-3xl p-4 sm:p-6 border border-white/10 text-center">
-                          <div className="text-[8px] sm:text-xs font-bold text-neutral-500 uppercase tracking-widest mb-1 sm:mb-2">Confidence Score</div>
+                          <div className="text-[10px] sm:text-xs font-bold text-neutral-400 uppercase tracking-widest mb-1 sm:mb-2">Confidence Score</div>
                           <div className="text-xl sm:text-4xl font-bold text-white">{Math.round(result.confidence * 100)}%</div>
                           <div className="mt-2 sm:mt-4 h-1 sm:h-1.5 w-full bg-white/10 rounded-full overflow-hidden">
                             <div className="h-full bg-rose-500" style={{ width: `${result.confidence * 100}%` }} />

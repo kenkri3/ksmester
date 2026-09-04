@@ -79,41 +79,46 @@ export default function DailyLogModal({
 
   return (
     <AnimatePresence>
-      <div className="fixed inset-0 z-50 flex items-center justify-center p-4 bg-black/60 backdrop-blur-sm overflow-y-auto">
+      <div className="fixed inset-0 z-50 flex items-end sm:items-center justify-center p-0 sm:p-4 bg-black/60 backdrop-blur-sm">
         <motion.div
-          initial={{ opacity: 0, scale: 0.95 }}
-          animate={{ opacity: 1, scale: 1 }}
-          exit={{ opacity: 0, scale: 0.95 }}
-          className="bg-white rounded-3xl shadow-2xl max-w-4xl w-full p-6 sm:p-8 max-h-[90vh] flex flex-col border border-neutral-200"
+          initial={{ opacity: 0, scale: 0.98, y: 20 }}
+          animate={{ opacity: 1, scale: 1, y: 0 }}
+          exit={{ opacity: 0, scale: 0.98, y: 20 }}
+          className="bg-white rounded-t-[2rem] sm:rounded-3xl shadow-2xl max-w-4xl w-full max-h-[92vh] sm:max-h-[90vh] flex flex-col border border-neutral-200 overflow-hidden pb-[env(safe-area-inset-bottom,0px)]"
         >
+          {/* Mobile Grab Handle */}
+          <div className="sm:hidden w-12 h-1.5 bg-neutral-300 rounded-full mx-auto mt-3 mb-1 shrink-0" />
+
           {/* Header */}
-          <div className="flex justify-between items-start pb-6 border-b border-neutral-100">
-            <div>
+          <div className="p-4 sm:p-8 pb-4 sm:pb-6 border-b border-neutral-100 flex justify-between items-start shrink-0">
+            <div className="min-w-0">
               <div className="flex items-center gap-2 mb-1">
-                <span className="p-2 bg-sky-500/10 text-sky-600 rounded-xl">
-                  <CloudSun size={20} />
+                <span className="p-1.5 sm:p-2 bg-sky-500/10 text-sky-600 rounded-xl shrink-0">
+                  <CloudSun size={18} className="sm:w-5 sm:h-5" />
                 </span>
-                <span className="text-xs font-black uppercase tracking-widest text-sky-600">
-                  Byggherreforskriften § 15 & NS 8405/8406
+                <span className="text-[10px] sm:text-xs font-black uppercase tracking-widest text-sky-600 truncate">
+                  Byggherreforskriften § 15 &amp; NS 8405/8406
                 </span>
               </div>
-              <h2 className="text-2xl font-black text-neutral-900">Automatisk Byggedagbok</h2>
-              <p className="text-xs text-neutral-500">
+              <h2 className="text-lg sm:text-2xl font-black text-neutral-900 truncate">Automatisk Byggedagbok</h2>
+              <p className="text-xs text-neutral-500 truncate">
                 Prosjekt: {project.name} | Dokumenterer værforhold, mannskap og produksjon
               </p>
             </div>
 
-            <div className="flex items-center gap-2">
+            <div className="flex items-center gap-2 shrink-0 ml-2">
               <button
                 onClick={handleCompileToday}
                 disabled={isCompiling}
-                className="px-3.5 py-2 bg-sky-50 text-sky-700 hover:bg-sky-100 rounded-xl text-xs font-bold flex items-center gap-1.5 transition-all"
+                className="px-3 sm:px-3.5 py-2 bg-sky-50 text-sky-700 hover:bg-sky-100 rounded-xl text-xs font-bold flex items-center gap-1.5 transition-all active:scale-95"
               >
                 <RefreshCw size={13} className={isCompiling ? 'animate-spin' : ''} />
-                {isCompiling ? 'Oppdaterer...' : 'Kompiler i dag'}
+                <span className="hidden sm:inline">{isCompiling ? 'Oppdaterer...' : 'Kompiler i dag'}</span>
+                <span className="sm:hidden">{isCompiling ? '...' : 'Kompiler'}</span>
               </button>
               <button
                 onClick={onClose}
+                aria-label="Lukk"
                 className="p-2 text-neutral-400 hover:text-neutral-700 hover:bg-neutral-100 rounded-full transition-all"
               >
                 <X size={20} />
@@ -122,7 +127,8 @@ export default function DailyLogModal({
           </div>
 
           {/* Body Content */}
-          <div className="grid grid-cols-1 md:grid-cols-3 gap-6 my-6 flex-1 overflow-y-auto pr-1">
+          <div className="p-4 sm:p-8 flex-1 overflow-y-auto custom-scrollbar">
+            <div className="grid grid-cols-1 md:grid-cols-3 gap-4 sm:gap-6 mb-4">
             {/* Left: Date selector */}
             <div className="space-y-2">
               <div className="text-[10px] font-black uppercase tracking-widest text-neutral-400 mb-2">
@@ -130,7 +136,7 @@ export default function DailyLogModal({
               </div>
               {logs.length === 0 ? (
                 <div className="text-xs text-neutral-400 p-4 bg-neutral-50 rounded-xl text-center">
-                  Ingen dagslogger ennå. Klikk &laquo;Kompiler i dag&raquo;.
+                  Ingen dagslogger ennå. Klikk «Kompiler i dag».
                 </div>
               ) : (
                 logs.map(l => (
@@ -190,8 +196,8 @@ export default function DailyLogModal({
                   </div>
 
                   {/* Crew & Hours */}
-                  <div className="grid grid-cols-2 gap-4">
-                    <div className="p-4 bg-neutral-50 rounded-2xl border border-neutral-100">
+                  <div className="grid grid-cols-1 sm:grid-cols-2 gap-3 sm:gap-4">
+                    <div className="p-3 sm:p-4 bg-neutral-50 rounded-2xl border border-neutral-100">
                       <div className="flex items-center gap-2 text-neutral-700 font-bold text-xs mb-2">
                         <Users size={14} className="text-sky-600" />
                         Mannskapsliste (elektronisk logg)
@@ -206,12 +212,12 @@ export default function DailyLogModal({
                       </div>
                     </div>
 
-                    <div className="p-4 bg-neutral-50 rounded-2xl border border-neutral-100">
+                    <div className="p-3 sm:p-4 bg-neutral-50 rounded-2xl border border-neutral-100">
                       <div className="flex items-center gap-2 text-neutral-700 font-bold text-xs mb-2">
                         <Clock size={14} className="text-sky-600" />
                         Arbeidstimer i dag
                       </div>
-                      <div className="text-2xl font-black text-neutral-900">
+                      <div className="text-xl sm:text-2xl font-black text-neutral-900">
                         {activeLog.totalHoursWorked} timer
                       </div>
                       <div className="text-[10px] text-neutral-400 mt-1">
@@ -271,12 +277,13 @@ export default function DailyLogModal({
               )}
             </div>
           </div>
+        </div>
 
           {/* Footer */}
           <div className="pt-6 border-t border-neutral-100 flex justify-between items-center">
             <span className="text-xs text-neutral-400 flex items-center gap-1">
               <ShieldCheck size={13} className="text-emerald-500" />
-              Oppfyller Byggherreforskriften & dokumenterer eventuell force majeure
+              Oppfyller Byggherreforskriften &amp; dokumenterer eventuell force majeure
             </span>
             <button
               onClick={onClose}

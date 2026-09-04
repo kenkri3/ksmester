@@ -32,30 +32,33 @@ const IntegrationModal: React.FC<IntegrationModalProps> = ({ isOpen, onClose }) 
   if (!isOpen) return null;
 
   return (
-    <div className="fixed inset-0 z-50 flex items-center justify-center p-4 bg-black/60 backdrop-blur-sm">
+    <div className="fixed inset-0 z-50 flex items-end sm:items-center justify-center p-0 sm:p-4 bg-black/60 backdrop-blur-sm">
       <motion.div 
-        initial={{ opacity: 0, scale: 0.95, y: 20 }}
-        animate={{ opacity: 1, scale: 1, y: 0 }}
-        className="bg-neutral-50 w-full max-w-3xl rounded-[2.5rem] shadow-2xl overflow-hidden flex flex-col max-h-[90vh]"
+        initial={{ opacity: 0, y: 20 }}
+        animate={{ opacity: 1, y: 0 }}
+        className="bg-neutral-50 w-full max-w-3xl rounded-t-[2rem] sm:rounded-[2.5rem] shadow-2xl overflow-hidden flex flex-col max-h-[92vh] sm:max-h-[90vh] pb-[env(safe-area-inset-bottom,0px)]"
       >
         {/* Header */}
-        <div className="p-8 border-b border-neutral-200 flex items-center justify-between bg-white">
-          <div className="flex items-center gap-4">
-            <div className="w-12 h-12 rounded-2xl bg-neutral-900 flex items-center justify-center text-white shadow-lg shadow-neutral-200">
-              <RefreshCw size={24} />
+        <div className="p-4 sm:p-8 border-b border-neutral-200 bg-white shrink-0">
+          <div className="sm:hidden w-12 h-1.5 bg-neutral-300 rounded-full mx-auto -mt-1 mb-3 shrink-0" />
+          <div className="flex items-center justify-between">
+            <div className="flex items-center gap-3 sm:gap-4">
+              <div className="w-10 h-10 sm:w-12 sm:h-12 rounded-xl sm:rounded-2xl bg-neutral-900 flex items-center justify-center text-white shadow-lg shadow-neutral-200">
+                <RefreshCw size={20} className="sm:w-6 sm:h-6" />
+              </div>
+              <div>
+                <h2 className="text-lg sm:text-2xl font-bold tracking-tight">Integrasjonssenter</h2>
+                <p className="text-neutral-500 text-xs sm:text-sm font-medium">Koble KS MesterAI til dine favorittverktøy</p>
+              </div>
             </div>
-            <div>
-              <h2 className="text-2xl font-bold tracking-tight">Integrasjonssenter</h2>
-              <p className="text-neutral-500 text-sm font-medium">Koble KS MesterAI til dine favorittverktøy</p>
-            </div>
+            <button onClick={onClose} aria-label="Lukk" className="p-2 hover:bg-neutral-100 rounded-xl transition-colors shrink-0">
+              <X size={20} className="sm:w-6 sm:h-6" />
+            </button>
           </div>
-          <button onClick={onClose} className="p-2 hover:bg-neutral-100 rounded-xl transition-colors">
-            <X size={24} />
-          </button>
         </div>
 
         {/* Content */}
-        <div className="flex-1 overflow-y-auto p-8">
+        <div className="flex-1 overflow-y-auto p-4 sm:p-8 custom-scrollbar">
           <div className="flex items-center justify-between mb-8">
             <div className="flex items-center gap-2 text-xs font-bold text-emerald-600 bg-emerald-50 px-3 py-1 rounded-full">
               <ShieldCheck size={14} />
@@ -126,7 +129,7 @@ const IntegrationModal: React.FC<IntegrationModalProps> = ({ isOpen, onClose }) 
             })}
           </div>
 
-          <div className="mt-12 p-8 bg-neutral-900 rounded-[2.5rem] text-white relative overflow-hidden">
+          <div className="mt-8 sm:mt-12 p-6 sm:p-8 bg-neutral-900 rounded-3xl sm:rounded-[2.5rem] text-white relative overflow-hidden">
             <div className="relative z-10">
               <h3 className="text-xl font-bold mb-2">Trenger du en ny integrasjon?</h3>
               <p className="text-neutral-400 text-sm mb-6 max-w-md">

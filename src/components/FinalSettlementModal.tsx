@@ -95,15 +95,18 @@ export default function FinalSettlementModal({
 
   return (
     <AnimatePresence>
-      <div className="fixed inset-0 z-50 flex items-center justify-center p-4 bg-black/60 backdrop-blur-sm overflow-y-auto">
+      <div className="fixed inset-0 z-50 flex items-end sm:items-center justify-center p-0 sm:p-4 bg-black/60 backdrop-blur-sm">
         <motion.div
-          initial={{ opacity: 0, scale: 0.95 }}
-          animate={{ opacity: 1, scale: 1 }}
-          exit={{ opacity: 0, scale: 0.95 }}
-          className="bg-white rounded-3xl shadow-2xl max-w-3xl w-full p-6 sm:p-8 max-h-[90vh] flex flex-col border border-neutral-200"
+          initial={{ opacity: 0, y: 20 }}
+          animate={{ opacity: 1, y: 0 }}
+          exit={{ opacity: 0, y: 20 }}
+          className="bg-white rounded-t-[2rem] sm:rounded-3xl shadow-2xl max-w-3xl w-full p-5 sm:p-8 max-h-[92vh] sm:max-h-[90vh] flex flex-col border border-neutral-200 pb-[env(safe-area-inset-bottom,1.25rem)] sm:pb-8"
         >
+          {/* Mobile grab handle */}
+          <div className="sm:hidden w-12 h-1.5 bg-neutral-300 rounded-full mx-auto mb-3 shrink-0" />
+
           {/* Header */}
-          <div className="flex justify-between items-start pb-6 border-b border-neutral-100">
+          <div className="flex justify-between items-start pb-4 sm:pb-6 border-b border-neutral-100">
             <div>
               <div className="flex items-center gap-2 mb-1">
                 <span className="p-2 bg-emerald-500/10 text-emerald-600 rounded-xl">
@@ -193,7 +196,7 @@ export default function FinalSettlementModal({
                 </div>
 
                 {/* Deadlines & Preclusion Clause */}
-                <div className="grid grid-cols-2 gap-4">
+                <div className="grid grid-cols-1 sm:grid-cols-2 gap-3 sm:gap-4">
                   <div className="p-4 bg-neutral-50 rounded-xl border border-neutral-200">
                     <div className="text-[10px] font-black uppercase tracking-widest text-neutral-400">
                       Forfallsdato

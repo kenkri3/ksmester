@@ -54,46 +54,49 @@ export default function AiReportModal({
 
   return (
     <AnimatePresence>
-      <div className="fixed inset-0 z-[60] flex items-center justify-center p-4 bg-black/40 backdrop-blur-sm">
+      <div className="fixed inset-0 z-[60] flex items-end sm:items-center justify-center p-0 sm:p-4 bg-black/60 backdrop-blur-sm">
         <motion.div
-          initial={{ opacity: 0, scale: 0.95, y: 20 }}
+          initial={{ opacity: 0, scale: 0.98, y: 20 }}
           animate={{ opacity: 1, scale: 1, y: 0 }}
-          exit={{ opacity: 0, scale: 0.95, y: 20 }}
-          className="bg-white rounded-[2.5rem] w-full max-w-2xl max-h-[90vh] overflow-hidden shadow-2xl flex flex-col"
+          exit={{ opacity: 0, scale: 0.98, y: 20 }}
+          className="bg-white rounded-t-[2rem] sm:rounded-[2.5rem] w-full max-w-2xl max-h-[92vh] sm:max-h-[90vh] overflow-hidden shadow-2xl flex flex-col pb-[env(safe-area-inset-bottom,0px)]"
         >
+          {/* Mobile Grab Handle */}
+          <div className="sm:hidden w-12 h-1.5 bg-neutral-300 rounded-full mx-auto mt-3 mb-1 shrink-0" />
+
           {/* Header */}
-          <div className="p-8 border-b border-neutral-100 flex items-center justify-between bg-neutral-900 text-white">
-            <div className="flex items-center gap-4">
+          <div className="p-4 sm:p-8 border-b border-neutral-100 flex items-center justify-between bg-neutral-900 text-white shrink-0">
+            <div className="flex items-center gap-3 sm:gap-4 min-w-0">
               <div className={cn(
-                "w-12 h-12 rounded-2xl flex items-center justify-center",
+                "w-10 h-10 sm:w-12 sm:h-12 rounded-xl sm:rounded-2xl flex items-center justify-center shrink-0",
                 type === 'weekly_report' ? "bg-emerald-500" : 
                 type === 'project_analysis' ? "bg-indigo-500" :
                 "bg-blue-500"
               )}>
-                {type === 'weekly_report' ? <TrendingUp size={24} /> : 
-                 type === 'project_analysis' ? <Zap size={24} /> :
-                 <FileText size={24} />}
+                {type === 'weekly_report' ? <TrendingUp size={20} className="sm:w-6 sm:h-6" /> : 
+                 type === 'project_analysis' ? <Zap size={20} className="sm:w-6 sm:h-6" /> :
+                 <FileText size={20} className="sm:w-6 sm:h-6" />}
               </div>
-              <div>
-                <h2 className="text-xl font-bold">
+              <div className="min-w-0">
+                <h2 className="text-base sm:text-xl font-bold truncate">
                   {type === 'weekly_report' ? 'Ukentlig Leder-rapport' : 
                    type === 'fdv' ? `FDV-Dokumentasjon: ${projectName}` :
                    type === 'project_analysis' ? `AI Prosjektanalyse: ${projectName}` :
                    'AI Avviksanalyse'}
                 </h2>
-                <p className="text-xs text-neutral-400">Generert av KS MesterAI • {new Date().toLocaleDateString()}</p>
+                <p className="text-xs text-neutral-400 truncate">Generert av KS MesterAI • {new Date().toLocaleDateString()}</p>
               </div>
             </div>
             <button 
               onClick={onClose}
-              className="p-2 hover:bg-white/10 rounded-xl transition-colors"
+              className="p-2 hover:bg-white/10 rounded-xl transition-colors shrink-0"
             >
-              <X size={24} />
+              <X size={20} className="sm:w-6 sm:h-6" />
             </button>
           </div>
 
           {/* Content */}
-          <div className="flex-1 overflow-y-auto p-8">
+          <div className="flex-1 overflow-y-auto p-4 sm:p-8 custom-scrollbar">
             {isLoading ? (
               <div className="flex flex-col items-center justify-center py-20 text-neutral-400">
                 <Loader2 className="animate-spin mb-4" size={48} />
@@ -124,16 +127,16 @@ export default function AiReportModal({
                       </p>
                     </div>
 
-                    <div className="grid grid-cols-3 gap-4">
-                      <div className="p-4 bg-neutral-50 rounded-2xl text-center">
+                    <div className="grid grid-cols-1 sm:grid-cols-3 gap-3 sm:gap-4">
+                      <div className="p-3 sm:p-4 bg-neutral-50 rounded-2xl text-center">
                         <div className="text-[10px] font-black uppercase tracking-widest text-neutral-400 mb-1">Budsjett</div>
                         <div className="text-sm font-bold text-neutral-900">{analysisData.metrics.budgetHealth}</div>
                       </div>
-                      <div className="p-4 bg-neutral-50 rounded-2xl text-center">
+                      <div className="p-3 sm:p-4 bg-neutral-50 rounded-2xl text-center">
                         <div className="text-[10px] font-black uppercase tracking-widest text-neutral-400 mb-1">Dokumentasjon</div>
                         <div className="text-sm font-bold text-neutral-900">{analysisData.metrics.documentationHealth}%</div>
                       </div>
-                      <div className="p-4 bg-neutral-50 rounded-2xl text-center">
+                      <div className="p-3 sm:p-4 bg-neutral-50 rounded-2xl text-center">
                         <div className="text-[10px] font-black uppercase tracking-widest text-neutral-400 mb-1">Sikkerhet</div>
                         <div className="text-sm font-bold text-neutral-900">{analysisData.metrics.safetyScore}%</div>
                       </div>

@@ -87,31 +87,34 @@ const VehicleModal: React.FC<VehicleModalProps> = ({ isOpen, onClose, projects }
   if (!isOpen) return null;
 
   return (
-    <div className="fixed inset-0 z-50 flex items-center justify-center p-4 bg-black/60 backdrop-blur-sm">
+    <div className="fixed inset-0 z-50 flex items-end sm:items-center justify-center p-0 sm:p-4 bg-black/60 backdrop-blur-sm">
       <motion.div 
-        initial={{ opacity: 0, scale: 0.95, y: 20 }}
-        animate={{ opacity: 1, scale: 1, y: 0 }}
-        className="bg-neutral-50 w-full max-w-5xl rounded-[2.5rem] shadow-2xl overflow-hidden flex flex-col max-h-[90vh]"
+        initial={{ opacity: 0, y: 20 }}
+        animate={{ opacity: 1, y: 0 }}
+        className="bg-neutral-50 w-full max-w-5xl rounded-t-[2rem] sm:rounded-[2.5rem] shadow-2xl overflow-hidden flex flex-col max-h-[92vh] sm:max-h-[90vh] pb-[env(safe-area-inset-bottom,0px)]"
       >
         {/* Header */}
-        <div className="p-8 border-b border-neutral-200 flex items-center justify-between bg-white">
-          <div className="flex items-center gap-4">
-            <div className="w-12 h-12 rounded-2xl bg-neutral-900 flex items-center justify-center text-white shadow-lg shadow-neutral-100">
-              <Car size={24} />
+        <div className="p-4 sm:p-8 border-b border-neutral-200 bg-white shrink-0">
+          <div className="sm:hidden w-12 h-1.5 bg-neutral-300 rounded-full mx-auto -mt-1 mb-3 shrink-0" />
+          <div className="flex items-center justify-between">
+            <div className="flex items-center gap-3 sm:gap-4">
+              <div className="w-10 h-10 sm:w-12 sm:h-12 rounded-xl sm:rounded-2xl bg-neutral-900 flex items-center justify-center text-white shadow-lg shadow-neutral-100 shrink-0">
+                <Car size={20} className="sm:w-6 sm:h-6" />
+              </div>
+              <div>
+                <h2 className="text-lg sm:text-2xl font-bold tracking-tight">Kjørebok & Bilpark</h2>
+                <p className="text-neutral-500 text-xs sm:text-sm font-medium">Administrer biler, turer og bompenger</p>
+              </div>
             </div>
-            <div>
-              <h2 className="text-2xl font-bold tracking-tight">Kjørebok & Bilpark</h2>
-              <p className="text-neutral-500 text-sm font-medium">Administrer biler, turer og bompenger</p>
-            </div>
+            <button onClick={onClose} aria-label="Lukk" className="p-2 hover:bg-neutral-100 rounded-xl transition-colors shrink-0">
+              <X size={20} className="sm:w-6 sm:h-6" />
+            </button>
           </div>
-          <button onClick={onClose} className="p-2 hover:bg-neutral-100 rounded-xl transition-colors">
-            <X size={24} />
-          </button>
         </div>
 
         {/* Tabs */}
-        <div className="p-6 bg-white border-b border-neutral-100 flex items-center justify-between">
-          <div className="flex bg-neutral-100 p-1 rounded-2xl">
+        <div className="p-4 sm:p-6 bg-white border-b border-neutral-100 flex flex-col sm:flex-row gap-3 items-stretch sm:items-center justify-between shrink-0">
+          <div className="flex bg-neutral-100 p-1 rounded-2xl w-full sm:w-auto">
             {[
               { id: 'log', label: 'Kjørebok' },
               { id: 'vehicles', label: 'Biler' },
@@ -120,7 +123,7 @@ const VehicleModal: React.FC<VehicleModalProps> = ({ isOpen, onClose, projects }
               <button
                 key={tab.id}
                 onClick={() => setActiveTab(tab.id as any)}
-                className={`px-6 py-2 rounded-xl text-xs font-bold transition-all ${
+                className={`flex-1 sm:flex-none px-4 sm:px-6 py-2 rounded-xl text-xs font-bold transition-all text-center ${
                   activeTab === tab.id ? 'bg-white text-neutral-900 shadow-sm' : 'text-neutral-400 hover:text-neutral-600'
                 }`}
               >
@@ -130,14 +133,14 @@ const VehicleModal: React.FC<VehicleModalProps> = ({ isOpen, onClose, projects }
           </div>
           <button 
             onClick={() => setIsNewTripOpen(true)}
-            className="flex items-center gap-2 px-6 py-3 bg-neutral-900 text-white rounded-xl text-xs font-bold hover:bg-neutral-800 transition-all shadow-lg shadow-neutral-100"
+            className="flex items-center justify-center gap-2 px-5 sm:px-6 py-3 bg-neutral-900 text-white rounded-xl text-xs sm:text-sm font-bold hover:bg-neutral-800 transition-all shadow-lg shadow-neutral-100 cursor-pointer shrink-0"
           >
             <Plus size={16} /> Ny Tur
           </button>
         </div>
 
         {/* Content */}
-        <div className="flex-1 overflow-y-auto p-8 relative">
+        <div className="flex-1 overflow-y-auto p-4 sm:p-8 custom-scrollbar relative">
           {loading ? (
             <div className="flex items-center justify-center h-64">
               <div className="w-8 h-8 border-4 border-neutral-200 border-t-neutral-900 rounded-full animate-spin" />
@@ -307,27 +310,30 @@ const VehicleModal: React.FC<VehicleModalProps> = ({ isOpen, onClose, projects }
         {/* New Trip Modal */}
         <AnimatePresence>
           {isNewTripOpen && (
-            <div className="fixed inset-0 z-[60] flex items-center justify-center p-4 bg-black/40 backdrop-blur-sm">
+            <div className="fixed inset-0 z-[60] flex items-end sm:items-center justify-center p-0 sm:p-4 bg-black/50 backdrop-blur-sm">
               <motion.div
-                initial={{ opacity: 0, scale: 0.95, y: 20 }}
-                animate={{ opacity: 1, scale: 1, y: 0 }}
-                exit={{ opacity: 0, scale: 0.95, y: 20 }}
-                className="bg-white w-full max-w-md rounded-[2.5rem] shadow-2xl overflow-hidden"
+                initial={{ opacity: 0, y: 20 }}
+                animate={{ opacity: 1, y: 0 }}
+                exit={{ opacity: 0, y: 20 }}
+                className="bg-white w-full max-w-md rounded-t-[2rem] sm:rounded-[2.5rem] shadow-2xl overflow-hidden max-h-[90vh] flex flex-col pb-[env(safe-area-inset-bottom,0px)]"
               >
-                <div className="p-8 border-b border-neutral-100 flex items-center justify-between">
-                  <h3 className="text-xl font-bold">Registrer ny tur</h3>
-                  <button onClick={() => setIsNewTripOpen(false)} className="p-2 hover:bg-neutral-100 rounded-xl transition-colors">
-                    <X size={20} />
-                  </button>
+                <div className="p-4 sm:p-8 border-b border-neutral-100 shrink-0">
+                  <div className="sm:hidden w-12 h-1.5 bg-neutral-300 rounded-full mx-auto -mt-1 mb-3 shrink-0" />
+                  <div className="flex items-center justify-between">
+                    <h3 className="text-lg sm:text-xl font-bold">Registrer ny tur</h3>
+                    <button onClick={() => setIsNewTripOpen(false)} aria-label="Lukk" className="p-2 hover:bg-neutral-100 rounded-xl transition-colors">
+                      <X size={20} />
+                    </button>
+                  </div>
                 </div>
-                <form onSubmit={handleNewTrip} className="p-8 space-y-4">
+                <form onSubmit={handleNewTrip} className="p-4 sm:p-8 space-y-4 overflow-y-auto custom-scrollbar flex-1">
                   <div>
-                    <label className="block text-[10px] font-black text-neutral-400 uppercase tracking-widest mb-2">Velg Bil</label>
+                    <label className="block text-[11px] sm:text-xs font-black text-neutral-400 uppercase tracking-wider mb-1.5">Velg Bil</label>
                     <select
                       required
                       value={newTrip.vehicleId}
                       onChange={(e) => setNewTrip({ ...newTrip, vehicleId: e.target.value })}
-                      className="w-full bg-neutral-50 border-none rounded-2xl px-4 py-3 text-sm font-medium focus:ring-2 focus:ring-neutral-900 transition-all"
+                      className="w-full bg-neutral-50 border-none rounded-2xl px-4 py-3 text-base sm:text-sm font-medium focus:ring-2 focus:ring-neutral-900 transition-all"
                     >
                       <option value="">Velg en bil...</option>
                       {vehicles.map(v => (
@@ -335,45 +341,45 @@ const VehicleModal: React.FC<VehicleModalProps> = ({ isOpen, onClose, projects }
                       ))}
                     </select>
                   </div>
-                  <div className="grid grid-cols-2 gap-4">
+                  <div className="grid grid-cols-2 gap-3 sm:gap-4">
                     <div>
-                      <label className="block text-[10px] font-black text-neutral-400 uppercase tracking-widest mb-2">Start KM</label>
+                      <label className="block text-[11px] sm:text-xs font-black text-neutral-400 uppercase tracking-wider mb-1.5">Start KM</label>
                       <input
                         type="number"
                         required
                         value={newTrip.startKm}
                         onChange={(e) => setNewTrip({ ...newTrip, startKm: parseInt(e.target.value) })}
-                        className="w-full bg-neutral-50 border-none rounded-2xl px-4 py-3 text-sm font-medium focus:ring-2 focus:ring-neutral-900 transition-all"
+                        className="w-full bg-neutral-50 border-none rounded-2xl px-4 py-3 text-base sm:text-sm font-medium focus:ring-2 focus:ring-neutral-900 transition-all"
                       />
                     </div>
                     <div>
-                      <label className="block text-[10px] font-black text-neutral-400 uppercase tracking-widest mb-2">Slutt KM</label>
+                      <label className="block text-[11px] sm:text-xs font-black text-neutral-400 uppercase tracking-wider mb-1.5">Slutt KM</label>
                       <input
                         type="number"
                         required
                         value={newTrip.endKm}
                         onChange={(e) => setNewTrip({ ...newTrip, endKm: parseInt(e.target.value) })}
-                        className="w-full bg-neutral-50 border-none rounded-2xl px-4 py-3 text-sm font-medium focus:ring-2 focus:ring-neutral-900 transition-all"
+                        className="w-full bg-neutral-50 border-none rounded-2xl px-4 py-3 text-base sm:text-sm font-medium focus:ring-2 focus:ring-neutral-900 transition-all"
                       />
                     </div>
                   </div>
                   <div>
-                    <label className="block text-[10px] font-black text-neutral-400 uppercase tracking-widest mb-2">Formål</label>
+                    <label className="block text-[11px] sm:text-xs font-black text-neutral-400 uppercase tracking-wider mb-1.5">Formål</label>
                     <input
                       type="text"
                       required
                       placeholder="F.eks. Befaring, Materialhenting..."
                       value={newTrip.purpose}
                       onChange={(e) => setNewTrip({ ...newTrip, purpose: e.target.value })}
-                      className="w-full bg-neutral-50 border-none rounded-2xl px-4 py-3 text-sm font-medium focus:ring-2 focus:ring-neutral-900 transition-all"
+                      className="w-full bg-neutral-50 border-none rounded-2xl px-4 py-3 text-base sm:text-sm font-medium focus:ring-2 focus:ring-neutral-900 transition-all"
                     />
                   </div>
                   <div>
-                    <label className="block text-[10px] font-black text-neutral-400 uppercase tracking-widest mb-2">Prosjekt (Valgfritt)</label>
+                    <label className="block text-[11px] sm:text-xs font-black text-neutral-400 uppercase tracking-wider mb-1.5">Prosjekt (Valgfritt)</label>
                     <select
                       value={newTrip.projectId}
                       onChange={(e) => setNewTrip({ ...newTrip, projectId: e.target.value })}
-                      className="w-full bg-neutral-50 border-none rounded-2xl px-4 py-3 text-sm font-medium focus:ring-2 focus:ring-neutral-900 transition-all"
+                      className="w-full bg-neutral-50 border-none rounded-2xl px-4 py-3 text-base sm:text-sm font-medium focus:ring-2 focus:ring-neutral-900 transition-all"
                     >
                       <option value="">Ingen prosjekt</option>
                       {projects.map(p => (
@@ -383,9 +389,9 @@ const VehicleModal: React.FC<VehicleModalProps> = ({ isOpen, onClose, projects }
                   </div>
                   <button
                     type="submit"
-                    className="w-full bg-neutral-900 text-white py-4 rounded-2xl font-bold flex items-center justify-center gap-2 hover:bg-neutral-800 transition-all shadow-lg shadow-neutral-100 mt-4"
+                    className="w-full bg-neutral-900 text-white py-3.5 sm:py-4 rounded-2xl font-bold flex items-center justify-center gap-2 hover:bg-neutral-800 transition-all shadow-lg shadow-neutral-100 mt-4 text-sm sm:text-base cursor-pointer"
                   >
-                    <Send size={18} /> Lagre tur
+                    <Send size={16} /> Lagre tur
                   </button>
                 </form>
               </motion.div>

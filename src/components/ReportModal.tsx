@@ -89,7 +89,7 @@ export default function ReportModal({ isOpen, onClose, project, sjaReports, devi
 
   return (
     <AnimatePresence>
-      <div className="fixed inset-0 z-[100] flex items-center justify-center p-4 md:p-8">
+      <div className="fixed inset-0 z-[100] flex items-end sm:items-center justify-center p-0 sm:p-4 md:p-8">
         <motion.div 
           initial={{ opacity: 0 }}
           animate={{ opacity: 1 }}
@@ -99,29 +99,32 @@ export default function ReportModal({ isOpen, onClose, project, sjaReports, devi
         />
         
         <motion.div 
-          initial={{ opacity: 0, scale: 0.95, y: 20 }}
-          animate={{ opacity: 1, scale: 1, y: 0 }}
-          exit={{ opacity: 0, scale: 0.95, y: 20 }}
-          className="relative w-full max-w-5xl max-h-[calc(100vh-2rem)] bg-white rounded-2xl sm:rounded-[2.5rem] shadow-2xl overflow-hidden flex flex-col"
+          initial={{ opacity: 0, y: 20 }}
+          animate={{ opacity: 1, y: 0 }}
+          exit={{ opacity: 0, y: 20 }}
+          className="relative w-full max-w-5xl max-h-[92vh] sm:max-h-[90vh] bg-white rounded-t-[2rem] sm:rounded-[2.5rem] shadow-2xl overflow-hidden flex flex-col pb-[env(safe-area-inset-bottom,0px)]"
         >
           {/* Header */}
-          <div className="p-4 sm:p-6 border-b border-neutral-100 flex items-center justify-between bg-white sticky top-0 z-10 shrink-0">
-            <div className="flex items-center gap-2 sm:gap-4">
-              <div className="w-8 h-8 sm:w-10 sm:h-10 bg-emerald-50 text-emerald-600 rounded-lg sm:rounded-xl flex items-center justify-center">
-                <FileText size={16} className="sm:w-5 sm:h-5" />
+          <div className="p-4 sm:p-6 border-b border-neutral-100 bg-white sticky top-0 z-10 shrink-0">
+            <div className="sm:hidden w-12 h-1.5 bg-neutral-300 rounded-full mx-auto -mt-1 mb-3 shrink-0" />
+            <div className="flex items-center justify-between">
+              <div className="flex items-center gap-2.5 sm:gap-4">
+                <div className="w-9 h-9 sm:w-10 sm:h-10 bg-emerald-50 text-emerald-600 rounded-xl flex items-center justify-center shrink-0">
+                  <FileText size={18} className="sm:w-5 sm:h-5" />
+                </div>
+                <div className="min-w-0">
+                  <h2 className="text-sm sm:text-xl font-bold tracking-tight truncate">Prosjektrapport: {project.name}</h2>
+                  <p className="text-[10px] sm:text-xs text-neutral-400 font-bold uppercase tracking-wider">Generert {new Date().toLocaleDateString('no-NO')}</p>
+                </div>
               </div>
-              <div className="min-w-0">
-                <h2 className="text-xs sm:text-xl font-bold tracking-tight truncate max-w-[150px] xs:max-w-[200px] sm:max-w-none">Prosjektrapport: {project.name}</h2>
-                <p className="text-[7px] sm:text-[10px] text-neutral-400 font-bold uppercase tracking-widest">Generert {new Date().toLocaleDateString('no-NO')}</p>
-              </div>
+              <button 
+                onClick={onClose}
+                aria-label="Lukk"
+                className="p-2 hover:bg-neutral-100 rounded-full transition-colors shrink-0"
+              >
+                <X size={20} className="sm:w-5 sm:h-5" />
+              </button>
             </div>
-            <button 
-              onClick={onClose}
-              aria-label="Lukk"
-              className="p-1.5 sm:p-2 hover:bg-neutral-100 rounded-full transition-colors"
-            >
-              <X size={18} className="sm:w-5 sm:h-5" />
-            </button>
           </div>
 
           {/* Content */}
@@ -294,20 +297,20 @@ export default function ReportModal({ isOpen, onClose, project, sjaReports, devi
           </div>
 
           {/* Actions */}
-          <div className="p-3 sm:p-6 border-t border-neutral-100 bg-white flex flex-col sm:flex-row items-center justify-between gap-2.5 sm:gap-4 shrink-0">
+          <div className="p-4 sm:p-6 border-t border-neutral-100 bg-white flex flex-col sm:flex-row items-center justify-between gap-3 sm:gap-4 shrink-0">
             <div className="flex items-center gap-2 sm:gap-4 w-full sm:w-auto">
               <button 
                 onClick={handleDownloadPDF}
-                className="flex-1 sm:flex-none flex items-center justify-center gap-1.5 sm:gap-2 px-3 sm:px-6 py-2 sm:py-3 bg-neutral-100 text-neutral-700 rounded-lg sm:rounded-2xl text-[9px] sm:text-sm font-bold hover:bg-neutral-200 transition-all cursor-pointer"
+                className="flex-1 sm:flex-none flex items-center justify-center gap-2 px-4 sm:px-6 py-3 bg-neutral-100 text-neutral-700 rounded-xl sm:rounded-2xl text-xs sm:text-sm font-bold hover:bg-neutral-200 transition-all cursor-pointer"
               >
-                <Download size={12} className="sm:w-[18px] sm:h-[18px]" />
+                <Download size={15} className="sm:w-[18px] sm:h-[18px]" />
                 <span className="hidden xs:inline">Last ned</span> PDF
               </button>
               <button 
                 onClick={handleShare}
-                className="flex-1 sm:flex-none flex items-center justify-center gap-1.5 sm:gap-2 px-3 sm:px-6 py-2 sm:py-3 bg-neutral-100 text-neutral-700 rounded-lg sm:rounded-2xl text-[9px] sm:text-sm font-bold hover:bg-neutral-200 transition-all cursor-pointer"
+                className="flex-1 sm:flex-none flex items-center justify-center gap-2 px-4 sm:px-6 py-3 bg-neutral-100 text-neutral-700 rounded-xl sm:rounded-2xl text-xs sm:text-sm font-bold hover:bg-neutral-200 transition-all cursor-pointer"
               >
-                <Share2 size={12} className="sm:w-[18px] sm:h-[18px]" />
+                <Share2 size={15} className="sm:w-[18px] sm:h-[18px]" />
                 Del <span className="hidden xs:inline">med kunde</span>
               </button>
             </div>
@@ -316,7 +319,7 @@ export default function ReportModal({ isOpen, onClose, project, sjaReports, devi
               onClick={handleBoligmappaExport}
               disabled={isExporting}
               className={cn(
-                "w-full sm:w-auto flex items-center justify-center gap-2 sm:gap-3 px-6 sm:px-8 py-2.5 sm:py-3 rounded-lg sm:rounded-2xl text-[10px] sm:text-sm font-bold transition-all shadow-xl",
+                "w-full sm:w-auto flex items-center justify-center gap-2.5 sm:gap-3 px-6 sm:px-8 py-3.5 sm:py-3 rounded-xl sm:rounded-2xl text-xs sm:text-sm font-bold transition-all shadow-xl cursor-pointer",
                 exportStep === 'success' 
                   ? "bg-emerald-500 text-white shadow-emerald-100" 
                   : "bg-blue-600 text-white hover:bg-blue-500 shadow-blue-100"

@@ -1,7 +1,6 @@
 import React, { useState, useEffect } from 'react';
 import { useTranslation } from 'react-i18next';
 import { pdfService } from '../services/pdfService';
-import { toast } from 'sonner';
 import { 
   ArrowLeft, 
   MapPin, 
@@ -33,7 +32,12 @@ import {
   Download,
   Activity,
   Package,
-  RefreshCw
+  RefreshCw,
+  FileEdit,
+  CloudSun,
+  FlaskConical,
+  Coins,
+  BellRing
 } from 'lucide-react';
 import { motion, AnimatePresence } from 'motion/react';
 import { cn } from '@/src/lib/utils';
@@ -49,8 +53,16 @@ import OfferModal from './OfferModal';
 import ProjectHealthReport from './ProjectHealthReport';
 import ProjectMaterials from './ProjectMaterials';
 import ProjectActivityLog from './ProjectActivityLog';
+import DeviationDetailModal from './DeviationDetailModal';
 import AIVisionModal from './AIVisionModal';
 import { summaryService } from '../services/summaryService';
+import ComplianceHub from './ComplianceHub';
+import ChangeOrderModal from './ChangeOrderModal';
+import DailyLogModal from './DailyLogModal';
+import StoffkartotekModal from './StoffkartotekModal';
+import FinalSettlementModal from './FinalSettlementModal';
+import { budgetAlertService, BudgetStatus } from '../services/budgetAlertService';
+import { toast } from 'sonner';
 
 interface ProjectDetailsProps {
   project: Project;
@@ -63,9 +75,10 @@ interface ProjectDetailsProps {
 export default function ProjectDetails({ project, onBack, onShare, onStartChecklist, onHandover }: ProjectDetailsProps) {
   const { t } = useTranslation();
   const { user } = useAuth();
-  const [activeTab, setActiveTab] = useState<'overview' | 'sja' | 'deviations' | 'docs' | 'materials'>('overview');
+  const [activeTab, setActiveTab] = useState<'overview' | 'sja' | 'deviations' | 'docs' | 'materials' | 'change_orders' | 'daily_log' | 'stoffkartotek'>('overview');
   const [sjaReports, setSjaReports] = useState<any[]>([]);
   const [projectDeviations, setProjectDeviations] = useState<Deviation[]>([]);
+  const [selectedDeviation, setSelectedDeviation] = useState<Deviation | null>(null);
   const [projectCrew, setProjectCrew] = useState<CrewMember[]>([]);
   const [projectOffers, setProjectOffers] = useState<Offer[]>([]);
   const [projectContracts, setProjectContracts] = useState<Contract[]>([]);
@@ -79,6 +92,11 @@ export default function ProjectDetails({ project, onBack, onShare, onStartCheckl
   const [isInviteModalOpen, setIsInviteModalOpen] = useState(false);
   const [isOfferModalOpen, setIsOfferModalOpen] = useState(false);
   const [isHealthReportOpen, setIsHealthReportOpen] = useState(false);
+  const [isChangeOrderOpen, setIsChangeOrderOpen] = useState(false);
+  const [isDailyLogOpen, setIsDailyLogOpen] = useState(false);
+  const [isStoffkartotekOpen, setIsStoffkartotekOpen] = useState(false);
+  const [isFinalSettlementOpen, setIsFinalSettlementOpen] = useState(false);
+  const [budgetStatus, setBudgetStatus] = useState<BudgetStatus | null>(null);
 
   const [newDeviation, setNewDeviation] = useState({
     title: '',
@@ -188,6 +206,12 @@ export default function ProjectDetails({ project, onBack, onShare, onStartCheckl
       unsubscribeContracts();
     };
   }, [project.id]);
+
+  useEffect(() => {
+    if (project?.id) {
+      budgetAlertService.checkProjectBudget(project).then(setBudgetStatus).catch(console.warn);
+    }
+  }, [project]);
 
   const handleAddDeviation = async (e: React.FormEvent) => {
     e.preventDefault();
@@ -406,6 +430,40 @@ export default function ProjectDetails({ project, onBack, onShare, onStartCheckl
             <Activity size={16} className="text-emerald-600" />
             AI Helserapport
           </button>
+          <button 
+            onClick={() => setIsChangeOrderOpen(true)}
+            className="flex items-center gap-1.5 sm:gap-2 px-3 sm:px-4 py-2 bg-amber-500/10 text-amber-700 border border-amber-500/20 rounded-xl text-xs sm:text-sm font-bold hover:bg-amber-500/20 transition-all"
+            title="Opprett eller se endringsmeldinger / tilleggsarbeid"
+          >
+            <FileEdit size={16} />
+            Tilleggsarbeid
+          </button>
+          <button 
+            onClick={() => setIsDailyLogOpen(true)}
+            className="flex items-center gap-1.5 sm:gap-2 px-3 sm:px-4 py-2 bg-sky-500/10 text-sky-700 border border-sky-500/20 rounded-xl text-xs sm:text-sm font-bold hover:bg-sky-500/20 transition-all"
+            title="Automatisk byggedagbok med værdata fra Yr"
+          >
+            <CloudSun size={16} />
+            Byggedagbok
+          </button>
+          <button 
+            onClick={() => setIsStoffkartotekOpen(true)}
+            className="flex items-center gap-1.5 sm:gap-2 px-3 sm:px-4 py-2 bg-amber-500/10 text-amber-700 border border-amber-500/20 rounded-xl text-xs sm:text-sm font-bold hover:bg-amber-500/20 transition-all"
+            title="Kjemisk stoffkartotek for byggeplass"
+          >
+            <FlaskConical size={16} />
+            Stoffkartotek
+          </button>
+          {project.stage === 'completion' && (
+            <button 
+              onClick={() => setIsFinalSettlementOpen(true)}
+              className="flex items-center gap-1.5 sm:gap-2 px-3 sm:px-4 py-2 bg-slate-900 text-white rounded-xl text-xs sm:text-sm font-bold hover:bg-slate-800 transition-all shadow-md"
+              title="Formelt sluttoppgjør iht. NS 8406"
+            >
+              <Coins size={16} />
+              Sluttoppgjør
+            </button>
+          )}
           {project.stage === 'completion' && (
             <button 
               onClick={() => onHandover?.(project.id)}
@@ -424,7 +482,34 @@ export default function ProjectDetails({ project, onBack, onShare, onStartCheckl
         </div>
       </div>
 
-      {/* Report Modal */}
+      {/* Modals */}
+      <ChangeOrderModal
+        isOpen={isChangeOrderOpen}
+        onClose={() => setIsChangeOrderOpen(false)}
+        project={project}
+        currentUserId={auth.currentUser?.uid}
+        currentUserName={auth.currentUser?.displayName || 'Byggeleder'}
+      />
+
+      <DailyLogModal
+        isOpen={isDailyLogOpen}
+        onClose={() => setIsDailyLogOpen(false)}
+        project={project}
+        currentUserName={auth.currentUser?.displayName || 'Byggeleder'}
+      />
+
+      <StoffkartotekModal
+        isOpen={isStoffkartotekOpen}
+        onClose={() => setIsStoffkartotekOpen(false)}
+        project={project}
+      />
+
+      <FinalSettlementModal
+        isOpen={isFinalSettlementOpen}
+        onClose={() => setIsFinalSettlementOpen(false)}
+        project={project}
+      />
+
       <ReportModal 
         isOpen={isReportModalOpen}
         onClose={() => setIsReportModalOpen(false)}
@@ -515,6 +600,9 @@ export default function ProjectDetails({ project, onBack, onShare, onStartCheckl
       <div className="flex items-center gap-1 p-1 bg-neutral-100 rounded-2xl max-w-full overflow-x-auto whitespace-nowrap scrollbar-none">
         {[
           { id: 'overview', label: t('overview'), icon: <TrendingUp size={16} /> },
+          { id: 'change_orders', label: 'Tillegg & Endringer', icon: <FileEdit size={16} /> },
+          { id: 'daily_log', label: 'Byggedagbok', icon: <CloudSun size={16} /> },
+          { id: 'stoffkartotek', label: 'Stoffkartotek', icon: <FlaskConical size={16} /> },
           { id: 'sja', label: 'SJA', icon: <ShieldCheck size={16} /> },
           { id: 'deviations', label: t('deviations'), icon: <AlertTriangle size={16} /> },
           { id: 'docs', label: t('documentation'), icon: <FileText size={16} /> },
@@ -541,6 +629,58 @@ export default function ProjectDetails({ project, onBack, onShare, onStartCheckl
         <div className="lg:col-span-2 space-y-8">
           {activeTab === 'overview' && (
             <div className="space-y-8">
+              {/* Budsjettadvarsel ved 80% / 100% overforbruk */}
+              {budgetStatus && (budgetStatus.isWarning80 || budgetStatus.isOverBudget100) && (
+                <div className={cn(
+                  "p-5 rounded-3xl border flex flex-col sm:flex-row items-start sm:items-center justify-between gap-4 shadow-sm",
+                  budgetStatus.isOverBudget100 
+                    ? "bg-rose-50 border-rose-200 text-rose-950" 
+                    : "bg-amber-50 border-amber-200 text-amber-950"
+                )}>
+                  <div className="flex items-center gap-3">
+                    <div className={cn(
+                      "p-3 rounded-2xl text-white shrink-0",
+                      budgetStatus.isOverBudget100 ? "bg-rose-600" : "bg-amber-600"
+                    )}>
+                      <BellRing size={20} />
+                    </div>
+                    <div>
+                      <div className="text-xs font-black uppercase tracking-wider">
+                        {budgetStatus.isOverBudget100 ? 'Kritisk budsjettavvik (>100%)' : 'Budsjettadvarsel (>80%)'}
+                      </div>
+                      <p className="text-xs mt-0.5 max-w-xl text-neutral-700">
+                        {budgetStatus.message}
+                      </p>
+                    </div>
+                  </div>
+                  <div className="flex items-center gap-2 shrink-0">
+                    <button
+                      onClick={() => setIsChangeOrderOpen(true)}
+                      className="px-4 py-2 bg-neutral-900 text-white rounded-xl text-xs font-bold hover:bg-neutral-800 transition-all"
+                    >
+                      + Ny endringsmelding
+                    </button>
+                    <button
+                      onClick={() => pdfService.generateExtensionOfTimeClaimPDF(project, {
+                        id: 'claim_quick',
+                        projectId: project.id,
+                        claimNumber: 1,
+                        cause: 'uforutsett_grunnforhold',
+                        description: `Fristforlengelse kreves pga. uforutsette bygningsmessige forhold som har oversteget opprinnelige budsjettrammer (${budgetStatus.percentUsed}% medgått).`,
+                        daysClaimed: 5,
+                        costImpactClaimed: budgetStatus.spent - budgetStatus.budget,
+                        status: 'submitted',
+                        submittedDate: new Date().toISOString().split('T')[0],
+                        createdAt: new Date().toISOString()
+                      })}
+                      className="px-3 py-2 bg-white border border-neutral-300 rounded-xl text-xs font-bold hover:bg-neutral-50 transition-all text-neutral-800"
+                    >
+                      Krav om fristforlengelse
+                    </button>
+                  </div>
+                </div>
+              )}
+
               {/* Progress Card */}
               <div className="bg-white p-8 rounded-3xl border border-neutral-200 shadow-sm">
                 <div className="flex justify-between items-end mb-6">
@@ -676,7 +816,7 @@ export default function ProjectDetails({ project, onBack, onShare, onStartCheckl
               </div>
 
               {/* Project Activity Log */}
-              <ProjectActivityLog projectId={project.id} />
+              <ProjectActivityLog projectId={project.id} project={project} />
             </div>
           )}
 
@@ -783,7 +923,11 @@ export default function ProjectDetails({ project, onBack, onShare, onStartCheckl
               </div>
               <div className="divide-y divide-neutral-100">
                 {projectDeviations.map((dev) => (
-                  <div key={dev.id} className="p-6 hover:bg-neutral-50 transition-colors cursor-pointer group">
+                  <div 
+                    key={dev.id} 
+                    onClick={() => setSelectedDeviation(dev)}
+                    className="p-6 hover:bg-neutral-50 transition-colors cursor-pointer group"
+                  >
                     <div className="flex justify-between items-start mb-4">
                       <div className="flex items-center gap-4">
                         <div className={cn(
@@ -844,72 +988,135 @@ export default function ProjectDetails({ project, onBack, onShare, onStartCheckl
           )}
           
           {activeTab === 'docs' && (
-            <div className="bg-white rounded-3xl border border-neutral-200 shadow-sm overflow-hidden">
-              <div className="p-6 border-b border-neutral-100 flex justify-between items-center">
-                <h3 className="font-bold">{t('documentation')}</h3>
-                <div className="flex gap-2">
-                  <button 
-                    onClick={onShare}
-                    className="flex items-center gap-2 px-4 py-2 bg-neutral-100 text-neutral-600 rounded-xl text-xs font-bold hover:bg-neutral-200 transition-all"
-                  >
-                    <Share2 size={16} />
-                    {t('share')}
-                  </button>
-                  <button 
-                    onClick={() => {/* Implement file upload logic */}}
-                    className="flex items-center gap-2 px-4 py-2 bg-emerald-600 text-white rounded-xl text-xs font-bold hover:bg-emerald-500 transition-all shadow-lg shadow-emerald-100"
-                  >
-                    <Plus size={16} />
-                    {t('upload')}
-                  </button>
+            <ComplianceHub 
+              project={project} 
+              onOpenChecklist={() => onStartChecklist?.(project.id)} 
+            />
+          )}
+
+
+          {activeTab === 'materials' && (
+            <ProjectMaterials project={project} />
+          )}
+
+          {activeTab === 'change_orders' && (
+            <div className="bg-white p-8 rounded-3xl border border-neutral-200 shadow-sm space-y-6">
+              <div className="flex flex-col sm:flex-row justify-between items-start sm:items-center gap-4">
+                <div>
+                  <div className="flex items-center gap-2 mb-1">
+                    <span className="p-1.5 bg-amber-500/10 text-amber-600 rounded-lg">
+                      <FileEdit size={16} />
+                    </span>
+                    <span className="text-xs font-black uppercase tracking-widest text-amber-600">
+                      NS 8406 / Håndverkertjenesteloven § 9
+                    </span>
+                  </div>
+                  <h3 className="text-xl font-bold text-neutral-900">Endringsmeldinger & Tilleggsarbeid</h3>
+                  <p className="text-xs text-neutral-500">
+                    Sikrer skriftlig avtale, digital signatur og automatisk budsjettsynk.
+                  </p>
                 </div>
+                <button
+                  onClick={() => setIsChangeOrderOpen(true)}
+                  className="px-4 py-2.5 bg-neutral-900 hover:bg-neutral-800 text-white rounded-xl text-xs font-bold flex items-center gap-2 shadow-md transition-all"
+                >
+                  <Plus size={14} /> Opprett / Behandle endring
+                </button>
               </div>
-              <div className="p-6">
-                <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
-                  {[
-                    { name: 'Byggetegninger_V1.pdf', size: '4.2 MB', type: 'PDF', date: '12.03.2024' },
-                    { name: 'Samsvarserklæring_El.pdf', size: '1.1 MB', type: 'PDF', date: '15.03.2024' },
-                    { name: 'FDV_Dokumentasjon.zip', size: '12.8 MB', type: 'ZIP', date: '18.03.2024' },
-                    { name: 'Bilder_Befaring.jpg', size: '2.4 MB', type: 'IMG', date: '20.03.2024' }
-                  ].map((doc, i) => (
-                    <div key={i} className="flex items-center justify-between p-4 bg-neutral-50 rounded-2xl border border-neutral-100 group hover:border-emerald-200 transition-all cursor-pointer">
-                      <div className="flex items-center gap-4">
-                        <div className="w-10 h-10 bg-white rounded-xl border border-neutral-200 flex items-center justify-center text-neutral-400 group-hover:text-emerald-600 transition-colors">
-                          <FileText size={20} />
-                        </div>
-                        <div>
-                          <div className="text-sm font-bold truncate max-w-[150px]">{doc.name}</div>
-                          <div className="text-[10px] text-neutral-400 font-black uppercase tracking-widest">{doc.type} • {doc.size}</div>
-                        </div>
-                      </div>
-                      <div className="text-[10px] text-neutral-400 font-bold">{doc.date}</div>
-                    </div>
-                  ))}
-                </div>
-                
-                <div className="mt-8 p-6 bg-emerald-50 rounded-[2rem] border border-emerald-100">
-                  <div className="flex items-center gap-4 mb-4">
-                    <div className="w-12 h-12 bg-white rounded-2xl flex items-center justify-center text-emerald-600 shadow-sm">
-                      <ShieldCheck size={24} />
-                    </div>
-                    <div>
-                      <h4 className="font-bold text-emerald-900">Dokumentasjonsgrad</h4>
-                      <p className="text-xs text-emerald-700">Prosjektet har {project.documentationLevel || 85}% av påkrevd dokumentasjon.</p>
-                    </div>
-                  </div>
-                  <div className="w-full h-2 bg-white rounded-full overflow-hidden">
-                    <div 
-                      className="h-full bg-emerald-500 rounded-full" 
-                      style={{ width: `${project.documentationLevel || 85}%` }} 
-                    />
-                  </div>
-                </div>
+
+              <div className="p-4 bg-amber-500/10 border border-amber-500/20 rounded-2xl text-xs text-amber-900 leading-relaxed">
+                <strong>Lovkrav i Norge:</strong> Håndverkertjenesteloven § 9 og NS 8406 pkt. 19 krever at tilleggsarbeid varsles og godkjennes skriftlig for å ha rettmessig krav på vederlag. Ved å bruke digital endringsmelding unngår bedriften tvister og tapte penger.
+              </div>
+
+              <div className="flex justify-center py-6">
+                <button
+                  onClick={() => setIsChangeOrderOpen(true)}
+                  className="px-6 py-3 bg-amber-600 hover:bg-amber-700 text-white rounded-2xl text-xs font-black flex items-center gap-2 shadow-lg shadow-amber-600/20 transition-all cursor-pointer"
+                >
+                  <FileEdit size={16} /> Åpne oversikt over tilleggsavtaler
+                </button>
               </div>
             </div>
           )}
 
-          {activeTab === 'materials' && (
-            <ProjectMaterials project={project} />
+          {activeTab === 'daily_log' && (
+            <div className="bg-white p-8 rounded-3xl border border-neutral-200 shadow-sm space-y-6">
+              <div className="flex flex-col sm:flex-row justify-between items-start sm:items-center gap-4">
+                <div>
+                  <div className="flex items-center gap-2 mb-1">
+                    <span className="p-1.5 bg-sky-500/10 text-sky-600 rounded-lg">
+                      <CloudSun size={16} />
+                    </span>
+                    <span className="text-xs font-black uppercase tracking-widest text-sky-600">
+                      Byggherreforskriften § 15 & NS 8405/8406
+                    </span>
+                  </div>
+                  <h3 className="text-xl font-bold text-neutral-900">Automatisk Byggedagbok</h3>
+                  <p className="text-xs text-neutral-500">
+                    Sanntids værdata fra Yr/Open-Meteo, mannskapsliste og daglig produksjonslogg.
+                  </p>
+                </div>
+                <button
+                  onClick={() => setIsDailyLogOpen(true)}
+                  className="px-4 py-2.5 bg-sky-600 hover:bg-sky-500 text-white rounded-xl text-xs font-bold flex items-center gap-2 shadow-md transition-all"
+                >
+                  <CloudSun size={14} /> Se & Kompiler dagbok
+                </button>
+              </div>
+
+              <div className="p-4 bg-sky-50 border border-sky-200 rounded-2xl text-xs text-sky-950 leading-relaxed">
+                <strong>Hvorfor byggedagbok?</strong> Dokumenterer værforhold, temperatur, vind og nedbør samt hvem som er på byggeplassen. Dette gir entreprenøren juridisk bevis ved krav om fristforlengelse og beskytter mot dagbøter.
+              </div>
+
+              <div className="flex justify-center py-6">
+                <button
+                  onClick={() => setIsDailyLogOpen(true)}
+                  className="px-6 py-3 bg-sky-600 hover:bg-sky-500 text-white rounded-2xl text-xs font-black flex items-center gap-2 shadow-lg shadow-sky-600/20 transition-all cursor-pointer"
+                >
+                  <CloudSun size={16} /> Åpne Byggedagbok-modulen
+                </button>
+              </div>
+            </div>
+          )}
+
+          {activeTab === 'stoffkartotek' && (
+            <div className="bg-white p-8 rounded-3xl border border-neutral-200 shadow-sm space-y-6">
+              <div className="flex flex-col sm:flex-row justify-between items-start sm:items-center gap-4">
+                <div>
+                  <div className="flex items-center gap-2 mb-1">
+                    <span className="p-1.5 bg-amber-500/10 text-amber-600 rounded-lg">
+                      <FlaskConical size={16} />
+                    </span>
+                    <span className="text-xs font-black uppercase tracking-widest text-amber-600">
+                      Forskrift om utførelse av arbeid kap. 2 | Arbeidstilsynet
+                    </span>
+                  </div>
+                  <h3 className="text-xl font-bold text-neutral-900">Kjemisk Stoffkartotek</h3>
+                  <p className="text-xs text-neutral-500">
+                    Sikkerhetsdatablader, verneutstyr og førstehjelp for byggeplassen.
+                  </p>
+                </div>
+                <button
+                  onClick={() => setIsStoffkartotekOpen(true)}
+                  className="px-4 py-2.5 bg-neutral-900 hover:bg-neutral-800 text-white rounded-xl text-xs font-bold flex items-center gap-2 shadow-md transition-all"
+                >
+                  <FlaskConical size={14} /> Åpne stoffkartotek
+                </button>
+              </div>
+
+              <div className="p-4 bg-amber-50 border border-amber-200 rounded-2xl text-xs text-amber-950 leading-relaxed">
+                <strong>Arbeidstilsynets pålegg:</strong> Alle kjemikalier (fugemasse, lim, membran, lakk, sparkel) må ha oppdatert sikkerhetsdatablad på plassen. KS Mester forhåndsutfyller dette automatisk.
+              </div>
+
+              <div className="flex justify-center py-6">
+                <button
+                  onClick={() => setIsStoffkartotekOpen(true)}
+                  className="px-6 py-3 bg-neutral-900 hover:bg-neutral-800 text-white rounded-2xl text-xs font-black flex items-center gap-2 shadow-lg transition-all cursor-pointer"
+                >
+                  <FlaskConical size={16} /> Vis kjemikalier & Sikkerhetsdatablader
+                </button>
+              </div>
+            </div>
           )}
         </div>
 
@@ -1049,7 +1256,7 @@ export default function ProjectDetails({ project, onBack, onShare, onStartCheckl
             </div>
             <button 
               onClick={() => window.dispatchEvent(new CustomEvent('navigate_view', { detail: { view: 'settings' } }))}
-              className="w-full mt-6 py-3 rounded-xl border border-neutral-200 text-sm font-bold hover:bg-neutral-50 transition-colors"
+              className="w-full mt-6 py-3 rounded-xl border border-neutral-200 text-sm font-bold hover:bg-neutral-50 transition-colors cursor-pointer"
             >
               {t('manage_team')}
             </button>
@@ -1060,34 +1267,37 @@ export default function ProjectDetails({ project, onBack, onShare, onStartCheckl
       {/* New SJA Modal */}
       <AnimatePresence>
         {isNewSJAOpen && (
-          <div className="fixed inset-0 z-50 flex items-center justify-center p-2 sm:p-4 bg-black/60 backdrop-blur-sm">
+          <div className="fixed inset-0 z-50 flex items-end sm:items-center justify-center p-0 sm:p-4 bg-black/60 backdrop-blur-sm">
             <motion.div 
-              initial={{ opacity: 0, scale: 0.95, y: 20 }}
-              animate={{ opacity: 1, scale: 1, y: 0 }}
-              exit={{ opacity: 0, scale: 0.95, y: 20 }}
-              className="bg-white w-full max-w-2xl rounded-2xl sm:rounded-[2.5rem] shadow-2xl overflow-hidden max-h-[calc(100vh-2rem)] flex flex-col"
+              initial={{ opacity: 0, y: 20 }}
+              animate={{ opacity: 1, y: 0 }}
+              exit={{ opacity: 0, y: 20 }}
+              className="bg-white w-full max-w-2xl rounded-t-[2rem] sm:rounded-[2.5rem] shadow-2xl overflow-hidden max-h-[92vh] sm:max-h-[90vh] flex flex-col pb-[env(safe-area-inset-bottom,0px)]"
             >
-              <div className="p-4 sm:p-8 border-b border-neutral-100 flex items-center justify-between shrink-0">
-                <h3 className="text-base sm:text-xl font-bold">{t('new_sja')}</h3>
-                <button onClick={() => setIsNewSJAOpen(false)} className="p-2 hover:bg-neutral-100 rounded-xl transition-colors">
-                  <X size={20} />
-                </button>
+              <div className="p-4 sm:p-8 border-b border-neutral-100 shrink-0">
+                <div className="sm:hidden w-12 h-1.5 bg-neutral-300 rounded-full mx-auto -mt-1 mb-3 shrink-0" />
+                <div className="flex items-center justify-between">
+                  <h3 className="text-base sm:text-xl font-bold">{t('new_sja')}</h3>
+                  <button onClick={() => setIsNewSJAOpen(false)} aria-label="Lukk" className="p-2 hover:bg-neutral-100 rounded-xl transition-colors">
+                    <X size={20} />
+                  </button>
+                </div>
               </div>
               <form onSubmit={handleAddSJA} className="p-4 sm:p-8 space-y-4 sm:space-y-6 overflow-y-auto custom-scrollbar flex-1">
-                <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
+                <div className="grid grid-cols-1 sm:grid-cols-2 gap-3 sm:gap-4">
                   <div className="sm:col-span-1">
-                    <label className="block text-[8px] sm:text-[10px] font-black text-neutral-400 uppercase tracking-widest mb-1 sm:mb-2">Tittel</label>
+                    <label className="block text-[11px] sm:text-xs font-black text-neutral-400 uppercase tracking-wider mb-1.5">Tittel</label>
                     <input 
                       required
                       type="text" 
                       value={newSJA.title}
                       onChange={(e) => setNewSJA({...newSJA, title: e.target.value})}
-                      className="w-full bg-neutral-50 border-none rounded-xl sm:rounded-2xl px-4 py-2.5 sm:py-3 text-sm font-medium focus:ring-2 focus:ring-emerald-500/20 transition-all"
+                      className="w-full bg-neutral-50 border-none rounded-xl sm:rounded-2xl px-4 py-3 text-base sm:text-sm font-medium focus:ring-2 focus:ring-emerald-500/20 transition-all"
                       placeholder="F.eks. Montering av sikringsskap"
                     />
                   </div>
                   <div className="sm:col-span-2">
-                    <label className="block text-[8px] sm:text-[10px] font-black text-neutral-400 uppercase tracking-widest mb-1 sm:mb-2 flex items-center justify-between">
+                    <label className="block text-[11px] sm:text-xs font-black text-neutral-400 uppercase tracking-wider mb-1.5 flex items-center justify-between">
                       Oppgave
                       <button 
                         type="button"
@@ -1095,8 +1305,8 @@ export default function ProjectDetails({ project, onBack, onShare, onStartCheckl
                         disabled={isGeneratingAI || !newSJA.task.trim()}
                         className="flex items-center gap-1 text-emerald-600 hover:text-emerald-700 disabled:opacity-50 transition-colors"
                       >
-                        {isGeneratingAI ? <Loader2 size={10} className="animate-spin" /> : <Sparkles size={10} />}
-                        <span className="text-[8px] sm:text-[9px] font-bold uppercase tracking-wider">Generer med AI</span>
+                        {isGeneratingAI ? <Loader2 size={12} className="animate-spin" /> : <Sparkles size={12} />}
+                        <span className="text-[10px] sm:text-xs font-bold uppercase tracking-wider">Generer med AI</span>
                       </button>
                     </label>
                     <input 
@@ -1104,32 +1314,32 @@ export default function ProjectDetails({ project, onBack, onShare, onStartCheckl
                       type="text" 
                       value={newSJA.task}
                       onChange={(e) => setNewSJA({...newSJA, task: e.target.value})}
-                      className="w-full bg-neutral-50 border-none rounded-xl sm:rounded-2xl px-4 py-2.5 sm:py-3 text-sm font-medium focus:ring-2 focus:ring-emerald-500/20 transition-all"
+                      className="w-full bg-neutral-50 border-none rounded-xl sm:rounded-2xl px-4 py-3 text-base sm:text-sm font-medium focus:ring-2 focus:ring-emerald-500/20 transition-all"
                       placeholder="Spesifiser oppgaven (f.eks. Arbeid i høyden med lift)..."
                     />
                   </div>
                 </div>
 
                 <div>
-                  <label className="block text-[8px] sm:text-[10px] font-black text-neutral-400 uppercase tracking-widest mb-1 sm:mb-2">TEK17 / SAK10 Referanser</label>
+                  <label className="block text-[11px] sm:text-xs font-black text-neutral-400 uppercase tracking-wider mb-1.5">TEK17 / SAK10 Referanser</label>
                   <input 
                     type="text" 
                     value={newSJA.tek17Reference}
                     onChange={(e) => setNewSJA({...newSJA, tek17Reference: e.target.value})}
-                    className="w-full bg-neutral-50 border-none rounded-xl sm:rounded-2xl px-4 py-2.5 sm:py-3 text-sm font-medium focus:ring-2 focus:ring-emerald-500/20 transition-all"
+                    className="w-full bg-neutral-50 border-none rounded-xl sm:rounded-2xl px-4 py-3 text-base sm:text-sm font-medium focus:ring-2 focus:ring-emerald-500/20 transition-all"
                     placeholder="F.eks. TEK17 § 11-1, SAK10 § 12-1..."
                   />
                 </div>
 
                 <div className="space-y-3 sm:space-y-4">
                   <div className="flex items-center justify-between">
-                    <label className="block text-[8px] sm:text-[10px] font-black text-neutral-400 uppercase tracking-widest">Risikoanalyse</label>
+                    <label className="block text-[11px] sm:text-xs font-black text-neutral-400 uppercase tracking-wider">Risikoanalyse</label>
                     <button 
                       type="button"
                       onClick={addRisk}
-                      className="text-[8px] sm:text-[10px] font-bold text-emerald-600 flex items-center gap-1 hover:underline"
+                      className="text-xs font-bold text-emerald-600 flex items-center gap-1 hover:underline cursor-pointer"
                     >
-                      <Plus size={10} /> Legg til rad
+                      <Plus size={14} /> Legg til rad
                     </button>
                   </div>
                   <div className="space-y-2">
@@ -1144,7 +1354,7 @@ export default function ProjectDetails({ project, onBack, onShare, onStartCheckl
                               newRisks[index].aktivitet = e.target.value;
                               setNewSJA({...newSJA, risikoer: newRisks});
                             }}
-                            className="w-full bg-white border-none rounded-lg sm:rounded-xl px-3 py-2 text-[10px] sm:text-xs font-medium"
+                            className="w-full bg-white border-none rounded-lg sm:rounded-xl px-3 py-2 text-xs font-medium"
                           />
                         </div>
                         <div className="col-span-11 sm:col-span-3">
@@ -1156,7 +1366,7 @@ export default function ProjectDetails({ project, onBack, onShare, onStartCheckl
                               newRisks[index].risiko = e.target.value;
                               setNewSJA({...newSJA, risikoer: newRisks});
                             }}
-                            className="w-full bg-white border-none rounded-lg sm:rounded-xl px-3 py-2 text-[10px] sm:text-xs font-medium"
+                            className="w-full bg-white border-none rounded-lg sm:rounded-xl px-3 py-2 text-xs font-medium"
                           />
                         </div>
                         <div className="col-span-11 sm:col-span-4">
@@ -1168,7 +1378,7 @@ export default function ProjectDetails({ project, onBack, onShare, onStartCheckl
                               newRisks[index].tiltak = e.target.value;
                               setNewSJA({...newSJA, risikoer: newRisks});
                             }}
-                            className="w-full bg-white border-none rounded-lg sm:rounded-xl px-3 py-2 text-[10px] sm:text-xs font-medium"
+                            className="w-full bg-white border-none rounded-lg sm:rounded-xl px-3 py-2 text-xs font-medium"
                           />
                         </div>
                         <div className="col-span-1 flex justify-end pt-1">
@@ -1186,7 +1396,7 @@ export default function ProjectDetails({ project, onBack, onShare, onStartCheckl
                 </div>
 
                 <div>
-                  <label className="block text-[8px] sm:text-[10px] font-black text-neutral-400 uppercase tracking-widest mb-1 sm:mb-2">Nødvendig utstyr</label>
+                  <label className="block text-[11px] sm:text-xs font-black text-neutral-400 uppercase tracking-wider mb-1.5">Nødvendig utstyr</label>
                   <input 
                     type="text" 
                     placeholder="F.eks. Hjelm, Hansker (separer med komma)"
@@ -1200,25 +1410,25 @@ export default function ProjectDetails({ project, onBack, onShare, onStartCheckl
                         }
                       }
                     }}
-                    className="w-full bg-neutral-50 border-none rounded-xl sm:rounded-2xl px-4 py-2.5 sm:py-3 text-sm font-medium focus:ring-2 focus:ring-emerald-500/20 transition-all"
+                    className="w-full bg-neutral-50 border-none rounded-xl sm:rounded-2xl px-4 py-3 text-base sm:text-sm font-medium focus:ring-2 focus:ring-emerald-500/20 transition-all"
                   />
                   <div className="flex flex-wrap gap-1.5 sm:gap-2 mt-2">
                     {newSJA.utstyr.map((u, i) => (
-                      <span key={i} className="px-2 py-1 bg-neutral-100 text-neutral-600 text-[9px] sm:text-[10px] font-bold rounded-lg flex items-center gap-1">
+                      <span key={i} className="px-2.5 py-1 bg-neutral-100 text-neutral-600 text-xs font-bold rounded-lg flex items-center gap-1">
                         {u}
                         <button type="button" onClick={() => setNewSJA({...newSJA, utstyr: newSJA.utstyr.filter((_, idx) => idx !== i)})}>
-                          <X size={10} />
+                          <X size={12} />
                         </button>
                       </span>
                     ))}
                   </div>
                 </div>
 
-                <div className="sticky bottom-0 bg-white pt-2 pb-2 sm:pb-0">
+                <div className="sticky bottom-0 bg-white pt-3 pb-2 sm:pb-0">
                   <button 
                     type="submit"
                     disabled={isSaving}
-                    className="w-full py-3 sm:py-4 bg-emerald-600 text-white rounded-xl sm:rounded-2xl font-bold flex items-center justify-center gap-2 hover:bg-emerald-500 transition-all shadow-lg shadow-emerald-100"
+                    className="w-full py-3.5 sm:py-4 bg-emerald-600 text-white rounded-xl sm:rounded-2xl font-bold flex items-center justify-center gap-2 hover:bg-emerald-500 transition-all shadow-lg shadow-emerald-100 cursor-pointer"
                   >
                     {isSaving ? <Loader2 className="animate-spin" size={18} /> : <Save size={18} />}
                     <span className="text-sm sm:text-base">{t('save_sja')}</span>
@@ -1232,48 +1442,51 @@ export default function ProjectDetails({ project, onBack, onShare, onStartCheckl
       {/* New Deviation Modal */}
       <AnimatePresence>
         {isNewDeviationOpen && (
-          <div className="fixed inset-0 z-50 flex items-center justify-center p-2 sm:p-4 bg-black/60 backdrop-blur-sm">
+          <div className="fixed inset-0 z-50 flex items-end sm:items-center justify-center p-0 sm:p-4 bg-black/60 backdrop-blur-sm">
             <motion.div 
-              initial={{ opacity: 0, scale: 0.95, y: 20 }}
-              animate={{ opacity: 1, scale: 1, y: 0 }}
-              exit={{ opacity: 0, scale: 0.95, y: 20 }}
-              className="bg-white w-full max-w-md rounded-2xl sm:rounded-[2.5rem] shadow-2xl overflow-hidden max-h-[calc(100vh-2rem)] flex flex-col"
+              initial={{ opacity: 0, y: 20 }}
+              animate={{ opacity: 1, y: 0 }}
+              exit={{ opacity: 0, y: 20 }}
+              className="bg-white w-full max-w-md rounded-t-[2rem] sm:rounded-[2.5rem] shadow-2xl overflow-hidden max-h-[92vh] sm:max-h-[90vh] flex flex-col pb-[env(safe-area-inset-bottom,0px)]"
             >
-              <div className="p-4 sm:p-8 border-b border-neutral-100 flex items-center justify-between shrink-0">
-                <h3 className="text-base sm:text-xl font-bold">{t('log_deviation')}</h3>
-                <button onClick={() => setIsNewDeviationOpen(false)} className="p-2 hover:bg-neutral-100 rounded-xl transition-colors">
-                  <X size={20} />
-                </button>
+              <div className="p-4 sm:p-8 border-b border-neutral-100 shrink-0">
+                <div className="sm:hidden w-12 h-1.5 bg-neutral-300 rounded-full mx-auto -mt-1 mb-3 shrink-0" />
+                <div className="flex items-center justify-between">
+                  <h3 className="text-base sm:text-xl font-bold">{t('log_deviation')}</h3>
+                  <button onClick={() => setIsNewDeviationOpen(false)} aria-label="Lukk" className="p-2 hover:bg-neutral-100 rounded-xl transition-colors">
+                    <X size={20} />
+                  </button>
+                </div>
               </div>
               <form onSubmit={handleAddDeviation} className="p-4 sm:p-8 space-y-4 overflow-y-auto custom-scrollbar flex-1">
                 <div>
-                  <label className="block text-[8px] sm:text-[10px] font-black text-neutral-400 uppercase tracking-widest mb-1 sm:mb-2">Tittel</label>
+                  <label className="block text-[11px] sm:text-xs font-black text-neutral-400 uppercase tracking-wider mb-1.5">Tittel</label>
                   <input 
                     required
                     type="text" 
                     value={newDeviation.title}
                     onChange={(e) => setNewDeviation({...newDeviation, title: e.target.value})}
-                    className="w-full bg-neutral-50 border-none rounded-xl sm:rounded-2xl px-4 py-2.5 sm:py-3 text-sm font-medium focus:ring-2 focus:ring-emerald-500/20 transition-all"
+                    className="w-full bg-neutral-50 border-none rounded-xl sm:rounded-2xl px-4 py-3 text-base sm:text-sm font-medium focus:ring-2 focus:ring-emerald-500/20 transition-all"
                     placeholder="F.eks. Manglende rekkverk"
                   />
                 </div>
                 <div>
-                  <label className="block text-[8px] sm:text-[10px] font-black text-neutral-400 uppercase tracking-widest mb-1 sm:mb-2">Beskrivelse</label>
+                  <label className="block text-[11px] sm:text-xs font-black text-neutral-400 uppercase tracking-wider mb-1.5">Beskrivelse</label>
                   <textarea 
                     required
                     value={newDeviation.description}
                     onChange={(e) => setNewDeviation({...newDeviation, description: e.target.value})}
-                    className="w-full bg-neutral-50 border-none rounded-xl sm:rounded-2xl px-4 py-2.5 sm:py-3 text-sm font-medium focus:ring-2 focus:ring-emerald-500/20 transition-all min-h-[80px] sm:min-h-[100px]"
+                    className="w-full bg-neutral-50 border-none rounded-xl sm:rounded-2xl px-4 py-3 text-base sm:text-sm font-medium focus:ring-2 focus:ring-emerald-500/20 transition-all min-h-[80px] sm:min-h-[100px]"
                     placeholder="Beskriv avviket i detalj..."
                   />
                 </div>
-                <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
+                <div className="grid grid-cols-1 sm:grid-cols-2 gap-3 sm:gap-4">
                   <div>
-                    <label className="block text-[8px] sm:text-[10px] font-black text-neutral-400 uppercase tracking-widest mb-1 sm:mb-2">Alvorlighetsgrad</label>
+                    <label className="block text-[11px] sm:text-xs font-black text-neutral-400 uppercase tracking-wider mb-1.5">Alvorlighetsgrad</label>
                     <select 
                       value={newDeviation.severity}
                       onChange={(e) => setNewDeviation({...newDeviation, severity: e.target.value as any})}
-                      className="w-full bg-neutral-50 border-none rounded-xl sm:rounded-2xl px-4 py-2.5 sm:py-3 text-sm font-medium focus:ring-2 focus:ring-emerald-500/20 transition-all"
+                      className="w-full bg-neutral-50 border-none rounded-xl sm:rounded-2xl px-4 py-3 text-base sm:text-sm font-medium focus:ring-2 focus:ring-emerald-500/20 transition-all"
                     >
                       <option value="low">Lav</option>
                       <option value="medium">Middels</option>
@@ -1281,21 +1494,21 @@ export default function ProjectDetails({ project, onBack, onShare, onStartCheckl
                     </select>
                   </div>
                   <div>
-                    <label className="block text-[8px] sm:text-[10px] font-black text-neutral-400 uppercase tracking-widest mb-1 sm:mb-2">Lokasjon</label>
+                    <label className="block text-[11px] sm:text-xs font-black text-neutral-400 uppercase tracking-wider mb-1.5">Lokasjon</label>
                     <input 
                       type="text" 
                       value={newDeviation.location}
                       onChange={(e) => setNewDeviation({...newDeviation, location: e.target.value})}
-                      className="w-full bg-neutral-50 border-none rounded-xl sm:rounded-2xl px-4 py-2.5 sm:py-3 text-sm font-medium focus:ring-2 focus:ring-emerald-500/20 transition-all"
+                      className="w-full bg-neutral-50 border-none rounded-xl sm:rounded-2xl px-4 py-3 text-base sm:text-sm font-medium focus:ring-2 focus:ring-emerald-500/20 transition-all"
                       placeholder="F.eks. Plan 2, Sone B"
                     />
                   </div>
                 </div>
-                <div className="sticky bottom-0 bg-white pt-2 pb-2 sm:pb-0">
+                <div className="sticky bottom-0 bg-white pt-3 pb-2 sm:pb-0">
                   <button 
                     type="submit"
                     disabled={isSaving}
-                    className="w-full py-3 sm:py-4 bg-emerald-600 text-white rounded-xl sm:rounded-2xl font-bold flex items-center justify-center gap-2 hover:bg-emerald-500 transition-all shadow-lg shadow-emerald-100"
+                    className="w-full py-3.5 sm:py-4 bg-emerald-600 text-white rounded-xl sm:rounded-2xl font-bold flex items-center justify-center gap-2 hover:bg-emerald-500 transition-all shadow-lg shadow-emerald-100 cursor-pointer"
                   >
                     {isSaving ? <Loader2 className="animate-spin" size={18} /> : <Save size={18} />}
                     <span className="text-sm sm:text-base">{t('save_deviation')}</span>
@@ -1306,6 +1519,15 @@ export default function ProjectDetails({ project, onBack, onShare, onStartCheckl
           </div>
         )}
       </AnimatePresence>
+
+      {/* Deviation Detail Modal */}
+      <DeviationDetailModal 
+        isOpen={!!selectedDeviation}
+        onClose={() => setSelectedDeviation(null)}
+        deviation={selectedDeviation}
+        project={project}
+        onUpdated={() => {}}
+      />
 
     </motion.div>
   );

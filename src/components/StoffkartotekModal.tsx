@@ -66,40 +66,45 @@ export default function StoffkartotekModal({
 
   return (
     <AnimatePresence>
-      <div className="fixed inset-0 z-50 flex items-center justify-center p-4 bg-black/60 backdrop-blur-sm overflow-y-auto">
+      <div className="fixed inset-0 z-50 flex items-end sm:items-center justify-center p-0 sm:p-4 bg-black/60 backdrop-blur-sm">
         <motion.div
-          initial={{ opacity: 0, scale: 0.95 }}
-          animate={{ opacity: 1, scale: 1 }}
-          exit={{ opacity: 0, scale: 0.95 }}
-          className="bg-white rounded-3xl shadow-2xl max-w-5xl w-full p-6 sm:p-8 max-h-[90vh] flex flex-col border border-neutral-200"
+          initial={{ opacity: 0, y: 20 }}
+          animate={{ opacity: 1, y: 0 }}
+          exit={{ opacity: 0, y: 20 }}
+          className="bg-white rounded-t-[2rem] sm:rounded-3xl shadow-2xl max-w-5xl w-full p-4 sm:p-8 max-h-[92vh] sm:max-h-[90vh] flex flex-col border border-neutral-200 pb-[env(safe-area-inset-bottom,1rem)] sm:pb-8"
         >
+          {/* Mobile grab handle */}
+          <div className="sm:hidden w-12 h-1.5 bg-neutral-300 rounded-full mx-auto mb-3 shrink-0" />
+
           {/* Header */}
-          <div className="flex justify-between items-start pb-6 border-b border-neutral-100">
-            <div>
+          <div className="flex justify-between items-start pb-4 sm:pb-6 border-b border-neutral-100 gap-3">
+            <div className="min-w-0">
               <div className="flex items-center gap-2 mb-1">
-                <span className="p-2 bg-amber-500/10 text-amber-600 rounded-xl">
-                  <FlaskConical size={20} />
+                <span className="p-1.5 sm:p-2 bg-amber-500/10 text-amber-600 rounded-xl shrink-0">
+                  <FlaskConical size={18} className="sm:w-5 sm:h-5" />
                 </span>
-                <span className="text-xs font-black uppercase tracking-widest text-amber-600">
-                  Forskrift om utførelse av arbeid kap. 2 | Arbeidstilsynet
+                <span className="text-[10px] sm:text-xs font-black uppercase tracking-wider text-amber-600 truncate">
+                  Forskrift om utførelse av arbeid | Arbeidstilsynet
                 </span>
               </div>
-              <h2 className="text-2xl font-black text-neutral-900">Digitalt Stoffkartotek</h2>
-              <p className="text-xs text-neutral-500">
-                Prosjekt: {project.name} | Sikkerhetsdatablader, verneutstyr og førstehjelp på byggeplassen
+              <h2 className="text-xl sm:text-2xl font-black text-neutral-900 truncate">Digitalt Stoffkartotek</h2>
+              <p className="text-xs text-neutral-500 truncate">
+                Prosjekt: {project.name}
               </p>
             </div>
 
-            <div className="flex items-center gap-2">
+            <div className="flex items-center gap-1.5 sm:gap-2 shrink-0">
               <button
                 onClick={() => pdfService.generateStoffkartotekPDF(project, sheets)}
                 disabled={sheets.length === 0}
-                className="px-4 py-2 bg-neutral-900 hover:bg-neutral-800 text-white rounded-xl text-xs font-bold flex items-center gap-1.5 shadow-sm transition-all"
+                className="px-3 sm:px-4 py-2 bg-neutral-900 hover:bg-neutral-800 text-white rounded-xl text-xs font-bold flex items-center gap-1.5 shadow-sm transition-all"
+                title="Last ned PDF"
               >
-                <Download size={13} /> Last ned stoffkartotek (PDF)
+                <Download size={13} /> <span className="hidden xs:inline">PDF</span>
               </button>
               <button
                 onClick={onClose}
+                aria-label="Lukk"
                 className="p-2 text-neutral-400 hover:text-neutral-700 hover:bg-neutral-100 rounded-full transition-all"
               >
                 <X size={20} />

@@ -93,29 +93,32 @@ const InviteModal: React.FC<InviteModalProps> = ({ isOpen, onClose, project }) =
       ];
 
   return (
-    <div className="fixed inset-0 z-[100] flex items-center justify-center p-2 sm:p-4 bg-black/60 backdrop-blur-sm">
+    <div className="fixed inset-0 z-[100] flex items-end sm:items-center justify-center p-0 sm:p-4 bg-black/60 backdrop-blur-sm">
       <motion.div
-        initial={{ opacity: 0, scale: 0.95, y: 20 }}
-        animate={{ opacity: 1, scale: 1, y: 0 }}
-        className="bg-white w-full max-w-md rounded-2xl sm:rounded-[2.5rem] shadow-2xl overflow-hidden flex flex-col max-h-[calc(100vh-2rem)]"
+        initial={{ opacity: 0, y: 20 }}
+        animate={{ opacity: 1, y: 0 }}
+        className="bg-white w-full max-w-md rounded-t-[2rem] sm:rounded-[2.5rem] shadow-2xl overflow-hidden flex flex-col max-h-[92vh] sm:max-h-[90vh] pb-[env(safe-area-inset-bottom,0px)]"
       >
-        <div className="p-4 sm:p-8 border-b border-neutral-100 flex items-center justify-between bg-emerald-50 shrink-0">
-          <div className="flex items-center gap-2 sm:gap-3">
-            <div className="w-8 h-8 sm:w-10 sm:h-10 rounded-lg sm:rounded-xl bg-emerald-600 text-white flex items-center justify-center">
-              {project ? <Users size={16} className="sm:w-5 sm:h-5" /> : <Building2 size={16} className="sm:w-5 sm:h-5" />}
+        <div className="p-4 sm:p-8 border-b border-neutral-100 bg-emerald-50 shrink-0">
+          <div className="sm:hidden w-12 h-1.5 bg-emerald-300/70 rounded-full mx-auto -mt-1 mb-3 shrink-0" />
+          <div className="flex items-center justify-between">
+            <div className="flex items-center gap-2.5 sm:gap-3">
+              <div className="w-9 h-9 sm:w-10 sm:h-10 rounded-xl bg-emerald-600 text-white flex items-center justify-center shrink-0">
+                {project ? <Users size={18} className="sm:w-5 sm:h-5" /> : <Building2 size={18} className="sm:w-5 sm:h-5" />}
+              </div>
+              <div className="min-w-0">
+                <h3 className="text-base sm:text-xl font-bold text-emerald-900 truncate">
+                  {project ? 'Inviter til Prosjekt' : 'Inviter til Firma'}
+                </h3>
+                <p className="text-[10px] sm:text-xs text-emerald-700 font-bold uppercase tracking-wider truncate">
+                  {project ? `Ekstern bistand • ${project.name}` : userProfile?.companyName || 'Laster...'}
+                </p>
+              </div>
             </div>
-            <div className="min-w-0">
-              <h3 className="text-sm sm:text-xl font-bold text-emerald-900 truncate max-w-[150px] xs:max-w-[180px] sm:max-w-none">
-                {project ? 'Inviter til Prosjekt' : 'Inviter til Firma'}
-              </h3>
-              <p className="text-[7px] sm:text-[10px] text-emerald-700 font-bold uppercase tracking-widest truncate max-w-[120px] xs:max-w-[150px] sm:max-w-none">
-                {project ? `Ekstern bistand • ${project.name}` : userProfile?.companyName || 'Laster...'}
-              </p>
-            </div>
+            <button onClick={onClose} aria-label="Lukk" className="p-2 hover:bg-emerald-100 rounded-xl transition-colors text-emerald-900 shrink-0">
+              <X size={20} className="sm:w-5 sm:h-5" />
+            </button>
           </div>
-          <button onClick={onClose} className="p-1.5 sm:p-2 hover:bg-emerald-100 rounded-xl transition-colors text-emerald-900">
-            <X size={18} className="sm:w-5 sm:h-5" />
-          </button>
         </div>
 
         <div className="p-4 sm:p-8 overflow-y-auto custom-scrollbar flex-1">
@@ -158,42 +161,42 @@ const InviteModal: React.FC<InviteModalProps> = ({ isOpen, onClose, project }) =
             <form onSubmit={handleSendInvite} className="space-y-4 sm:space-y-6">
               <div className="space-y-3 sm:space-y-4">
                 <div>
-                  <label className="block text-[7px] sm:text-[10px] font-black text-neutral-400 uppercase tracking-widest mb-1 sm:mb-2">E-postadresse</label>
+                  <label className="block text-[11px] sm:text-xs font-black text-neutral-400 uppercase tracking-wider mb-1.5 sm:mb-2">E-postadresse</label>
                   <div className="relative">
-                    <Mail className="absolute left-3 sm:left-4 top-1/2 -translate-y-1/2 text-neutral-400 sm:w-[18px] sm:h-[18px]" size={14} />
+                    <Mail className="absolute left-3.5 sm:left-4 top-1/2 -translate-y-1/2 text-neutral-400 sm:w-[18px] sm:h-[18px]" size={16} />
                     <input
                       required
                       type="email"
                       value={email}
                       onChange={(e) => setEmail(e.target.value)}
-                      className="w-full pl-9 sm:pl-12 pr-4 py-2.5 sm:py-4 bg-neutral-50 border-none rounded-xl sm:rounded-2xl text-[10px] sm:text-sm font-medium focus:ring-2 focus:ring-emerald-600 transition-all"
+                      className="w-full pl-10 sm:pl-12 pr-4 py-3 sm:py-4 bg-neutral-50 border-none rounded-xl sm:rounded-2xl text-base sm:text-sm font-medium focus:ring-2 focus:ring-emerald-600 transition-all"
                       placeholder="navn@firma.no"
                     />
                   </div>
                 </div>
 
                 <div>
-                  <label className="block text-[7px] sm:text-[10px] font-black text-neutral-400 uppercase tracking-widest mb-1 sm:mb-2">Velg Rolle</label>
+                  <label className="block text-[11px] sm:text-xs font-black text-neutral-400 uppercase tracking-wider mb-1.5 sm:mb-2">Velg Rolle</label>
                   <div className="grid grid-cols-1 gap-2 sm:gap-3">
                     {roles.map((r) => (
                       <button
                         key={r.id}
                         type="button"
                         onClick={() => setRole(r.id)}
-                        className={`p-2.5 sm:p-4 rounded-xl sm:rounded-2xl border-2 transition-all text-left flex items-center gap-2.5 sm:gap-4 ${
+                        className={`p-3 sm:p-4 rounded-xl sm:rounded-2xl border-2 transition-all text-left flex items-center gap-3 sm:gap-4 ${
                           role === r.id 
                             ? 'border-emerald-600 bg-emerald-50' 
                             : 'border-neutral-100 bg-white hover:border-neutral-200'
                         }`}
                       >
-                        <div className={`w-7 h-7 sm:w-10 sm:h-10 rounded-lg sm:rounded-xl flex items-center justify-center shrink-0 ${
+                        <div className={`w-9 h-9 sm:w-10 sm:h-10 rounded-xl flex items-center justify-center shrink-0 ${
                           role === r.id ? 'bg-emerald-600 text-white' : 'bg-neutral-100 text-neutral-400'
                         }`}>
-                          {React.cloneElement(r.icon as React.ReactElement<any>, { size: 12, className: 'sm:w-4 sm:h-4' })}
+                          {React.cloneElement(r.icon as React.ReactElement<any>, { size: 16, className: 'sm:w-5 sm:h-5' })}
                         </div>
                         <div className="min-w-0">
-                          <div className="text-[9px] sm:text-xs font-bold truncate">{r.label}</div>
-                          <div className="text-[7px] sm:text-[10px] text-neutral-500 mt-0.5 truncate">{r.desc}</div>
+                          <div className="text-sm sm:text-base font-bold truncate">{r.label}</div>
+                          <div className="text-xs sm:text-xs text-neutral-500 mt-0.5 truncate">{r.desc}</div>
                         </div>
                       </button>
                     ))}
@@ -201,26 +204,26 @@ const InviteModal: React.FC<InviteModalProps> = ({ isOpen, onClose, project }) =
                 </div>
               </div>
 
-              <div className="p-2.5 sm:p-4 bg-amber-50 rounded-xl sm:rounded-2xl border border-amber-100 flex gap-2 sm:gap-3">
-                <Shield size={12} className="text-amber-600 shrink-0 mt-0.5 sm:w-4 sm:h-4" />
-                <p className="text-[7px] sm:text-[10px] text-amber-700 leading-relaxed">
+              <div className="p-3 sm:p-4 bg-amber-50 rounded-xl sm:rounded-2xl border border-amber-100 flex gap-2.5 sm:gap-3">
+                <Shield size={16} className="text-amber-600 shrink-0 mt-0.5" />
+                <p className="text-xs text-amber-700 leading-relaxed">
                   {project 
                     ? 'Ved å invitere en ekstern person gir du dem tilgang til prosjektets dokumenter, SJA-rapporter og avvik. De kan ikke se andre prosjekter i ditt firma.'
                     : 'Ved å invitere en ansatt gir du dem tilgang til firmaets ressurser basert på valgt rolle.'}
                 </p>
               </div>
 
-              <div className="sticky bottom-0 bg-white pt-2 pb-2 sm:pb-0">
+              <div className="sticky bottom-0 bg-white pt-3 pb-2 sm:pb-0">
                 <button
                   disabled={loading || !userProfile}
                   type="submit"
-                  className="w-full py-3 sm:py-4 bg-emerald-600 text-white rounded-xl sm:rounded-2xl font-bold flex items-center justify-center gap-2 hover:bg-emerald-500 transition-all shadow-xl shadow-emerald-100 disabled:opacity-50 text-xs sm:text-base"
+                  className="w-full py-3.5 sm:py-4 bg-emerald-600 text-white rounded-xl sm:rounded-2xl font-bold flex items-center justify-center gap-2 hover:bg-emerald-500 transition-all shadow-xl shadow-emerald-100 disabled:opacity-50 text-sm sm:text-base cursor-pointer"
                 >
                   {loading ? (
-                    <div className="w-4 h-4 sm:w-5 sm:h-5 border-2 border-white/30 border-t-white rounded-full animate-spin" />
+                    <div className="w-5 h-5 border-2 border-white/30 border-t-white rounded-full animate-spin" />
                   ) : (
                     <>
-                      <Send size={14} className="sm:w-[18px] sm:h-[18px]" />
+                      <Send size={16} className="sm:w-[18px] sm:h-[18px]" />
                       Generer Invitasjonslink
                     </>
                   )}

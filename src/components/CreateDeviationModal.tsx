@@ -207,42 +207,42 @@ export default function CreateDeviationModal({ isOpen, onClose, projects }: Crea
             <div className="sm:hidden w-12 h-1.5 bg-neutral-300 rounded-full mx-auto mt-3 mb-1" />
 
             <div className="p-4 sm:p-8 border-b border-neutral-100 flex justify-between items-center bg-orange-50 shrink-0">
-              <div className="flex items-center gap-2 sm:gap-3">
-                <div className="p-1.5 sm:p-2 bg-orange-100 text-orange-600 rounded-lg sm:rounded-xl">
-                  <AlertTriangle size={16} className="sm:w-6 sm:h-6" />
+              <div className="flex items-center gap-2.5 sm:gap-3">
+                <div className="p-2 sm:p-2.5 bg-orange-100 text-orange-600 rounded-xl">
+                  <AlertTriangle size={20} className="sm:w-6 sm:h-6" />
                 </div>
                 <div>
-                  <h2 className="text-xs sm:text-xl font-bold text-orange-900">{t('log_deviation', 'Loggfør Avvik / RUH')}</h2>
-                  <p className="text-[6px] sm:text-[10px] text-orange-700 font-medium uppercase tracking-wider">HMS & Kvalitetssikring</p>
+                  <h2 className="text-base sm:text-xl font-bold text-orange-900">{t('log_deviation', 'Loggfør Avvik / RUH')}</h2>
+                  <p className="text-[11px] sm:text-xs text-orange-700 font-medium uppercase tracking-wider">HMS & Kvalitetssikring</p>
                 </div>
               </div>
-              <button onClick={onClose} aria-label="Lukk" title="Lukk" className="p-1.5 sm:p-2 hover:bg-orange-100 rounded-full transition-colors text-orange-900">
-                <X size={16} className="sm:w-5 sm:h-5" />
+              <button onClick={onClose} aria-label="Lukk" title="Lukk" className="p-2 hover:bg-orange-100 rounded-full transition-colors text-orange-900">
+                <X size={20} className="sm:w-5 sm:h-5" />
               </button>
             </div>
 
             <div className="flex-1 overflow-y-auto custom-scrollbar">
-              <form onSubmit={handleSubmit} className="p-3 sm:p-8 space-y-3 sm:space-y-6">
-              <div className="space-y-3 sm:space-y-4">
+              <form onSubmit={handleSubmit} className="p-4 sm:p-8 space-y-4 sm:space-y-6">
+              <div className="space-y-4">
                 <div>
-                  <label className="block text-[6px] sm:text-xs font-bold text-neutral-400 uppercase tracking-widest mb-1 sm:mb-2">Tittel på avvik</label>
+                  <label className="block text-xs font-bold text-neutral-500 uppercase tracking-widest mb-1.5">Tittel på avvik</label>
                   <input
                     required
                     type="text"
                     value={formData.title}
                     onChange={(e) => setFormData({ ...formData, title: e.target.value })}
-                    className="w-full px-3 sm:px-4 py-1.5 sm:py-3 bg-neutral-50 border border-neutral-200 rounded-lg sm:rounded-xl focus:ring-2 focus:ring-orange-500/20 focus:border-orange-500 outline-none transition-all text-[9px] sm:text-sm"
+                    className="w-full px-3.5 py-2.5 sm:py-3 bg-neutral-50 border border-neutral-200 rounded-xl focus:ring-2 focus:ring-orange-500/20 focus:border-orange-500 outline-none transition-all text-sm sm:text-base font-medium"
                     placeholder="F.eks. Manglende rekkverk i 2. etasje"
                   />
                 </div>
 
                 <div>
-                  <label className="block text-[6px] sm:text-xs font-bold text-neutral-400 uppercase tracking-widest mb-1 sm:mb-2">Prosjekt</label>
+                  <label className="block text-xs font-bold text-neutral-500 uppercase tracking-widest mb-1.5">Prosjekt</label>
                   <select
                     required
                     value={formData.projectId}
                     onChange={(e) => setFormData({ ...formData, projectId: e.target.value })}
-                    className="w-full px-3 sm:px-4 py-1.5 sm:py-3 bg-neutral-50 border border-neutral-200 rounded-lg sm:rounded-xl focus:ring-2 focus:ring-orange-500/20 focus:border-orange-500 outline-none transition-all appearance-none text-[9px] sm:text-sm"
+                    className="w-full px-3.5 py-2.5 sm:py-3 bg-neutral-50 border border-neutral-200 rounded-xl focus:ring-2 focus:ring-orange-500/20 focus:border-orange-500 outline-none transition-all appearance-none text-sm sm:text-base font-medium"
                   >
                     <option value="">Velg prosjekt...</option>
                     {projects.map((p) => (
@@ -251,19 +251,19 @@ export default function CreateDeviationModal({ isOpen, onClose, projects }: Crea
                   </select>
                 </div>
 
-                <div className="grid grid-cols-3 gap-1 sm:gap-3">
+                <div className="grid grid-cols-3 gap-2 sm:gap-3">
                   {(['low', 'medium', 'high'] as const).map((sev) => (
                     <button
                       key={sev}
                       type="button"
                       onClick={() => setFormData({ ...formData, severity: sev })}
                       className={cn(
-                        "py-1 sm:py-3 rounded-lg sm:rounded-xl text-[6px] sm:text-xs font-bold uppercase tracking-widest border transition-all",
+                        "py-2.5 sm:py-3 rounded-xl text-xs font-bold uppercase tracking-wider border transition-all",
                         formData.severity === sev 
                           ? (sev === 'high' ? "bg-red-600 border-red-600 text-white shadow-lg shadow-red-100" : 
                              sev === 'medium' ? "bg-orange-600 border-orange-600 text-white shadow-lg shadow-orange-100" : 
                              "bg-blue-600 border-blue-600 text-white shadow-lg shadow-blue-100")
-                          : "bg-white border-neutral-200 text-neutral-400 hover:border-neutral-300"
+                          : "bg-white border-neutral-200 text-neutral-500 hover:border-neutral-300"
                       )}
                     >
                       {t(sev)}
@@ -272,8 +272,8 @@ export default function CreateDeviationModal({ isOpen, onClose, projects }: Crea
                 </div>
 
                 <div>
-                  <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-1 sm:gap-2 mb-1 sm:mb-2">
-                    <label className="block text-[6px] sm:text-xs font-bold text-neutral-400 uppercase tracking-widest">Beskrivelse</label>
+                  <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-1 sm:gap-2 mb-1.5">
+                    <label className="block text-xs font-bold text-neutral-500 uppercase tracking-widest">Beskrivelse</label>
                     <div className="flex items-center gap-2">
                       <AiTextAssistant 
                         currentText={formData.description} 
@@ -284,52 +284,52 @@ export default function CreateDeviationModal({ isOpen, onClose, projects }: Crea
                         type="button"
                         onClick={analyzeDeviationWithAi}
                         disabled={isAiAnalyzing || !formData.description}
-                        className="flex items-center gap-1 text-[6px] sm:text-[10px] font-bold text-orange-600 hover:text-orange-500 transition-colors disabled:opacity-50"
+                        className="flex items-center gap-1 text-[11px] sm:text-xs font-bold text-orange-600 hover:text-orange-500 transition-colors disabled:opacity-50"
                       >
-                        {isAiAnalyzing ? <Loader2 className="animate-spin sm:w-2.5 sm:h-2.5" size={8} /> : <Sparkles className="sm:w-2.5 sm:h-2.5" size={8} />}
+                        {isAiAnalyzing ? <Loader2 className="animate-spin" size={12} /> : <Sparkles size={12} />}
                         Analyser med AI
                       </button>
                     </div>
                   </div>
                   <textarea
                     required
-                    rows={2}
+                    rows={3}
                     value={formData.description}
                     onChange={(e) => setFormData({ ...formData, description: e.target.value })}
-                    className="w-full px-3 sm:px-4 py-1.5 sm:py-3 bg-neutral-50 border border-neutral-200 rounded-lg sm:rounded-xl focus:ring-2 focus:ring-orange-500/20 focus:border-orange-500 outline-none transition-all resize-none text-[9px] sm:text-sm"
+                    className="w-full px-3.5 py-2.5 sm:py-3 bg-neutral-50 border border-neutral-200 rounded-xl focus:ring-2 focus:ring-orange-500/20 focus:border-orange-500 outline-none transition-all resize-none text-sm sm:text-base font-medium"
                     placeholder="Beskriv hva som har skjedd og eventuelle umiddelbare tiltak..."
                   />
                 </div>
 
                 <div className="relative">
-                  <label className="block text-[6px] sm:text-xs font-bold text-neutral-400 uppercase tracking-widest mb-1 sm:mb-2">Lokasjon / Adresse</label>
+                  <label className="block text-xs font-bold text-neutral-500 uppercase tracking-widest mb-1.5">Lokasjon / Adresse</label>
                   <div className="relative">
-                    <MapPin className="absolute left-3 sm:left-4 top-1/2 -translate-y-1/2 text-neutral-400 sm:w-[18px] sm:h-[18px]" size={12} />
+                    <MapPin className="absolute left-3.5 top-1/2 -translate-y-1/2 text-neutral-400" size={16} />
                     <input 
                       type="text"
                       value={addressSearch !== '' ? addressSearch : formData.location}
                       onChange={(e) => setAddressSearch(e.target.value)}
-                      className="w-full bg-neutral-50 border border-neutral-200 rounded-lg sm:rounded-2xl py-1.5 sm:py-4 pl-8 sm:pl-12 pr-3 sm:pr-4 text-[9px] sm:text-sm focus:ring-2 focus:ring-orange-500/20 focus:border-orange-500 outline-none transition-all font-bold"
+                      className="w-full bg-neutral-50 border border-neutral-200 rounded-xl sm:rounded-2xl py-2.5 sm:py-3.5 pl-10 sm:pl-12 pr-4 text-sm sm:text-base focus:ring-2 focus:ring-orange-500/20 focus:border-orange-500 outline-none transition-all font-medium"
                       placeholder="Søk adresse for GNR/BNR..."
                     />
                     {isSearchingAddress && (
-                      <div className="absolute right-3 sm:right-4 top-1/2 -translate-y-1/2">
-                        <Loader2 className="animate-spin text-neutral-400 sm:w-4 sm:h-4" size={10} />
+                      <div className="absolute right-3.5 top-1/2 -translate-y-1/2">
+                        <Loader2 className="animate-spin text-neutral-400" size={14} />
                       </div>
                     )}
                   </div>
 
                   {addressSuggestions.length > 0 && (
-                    <div className="absolute z-50 left-0 right-0 mt-1 bg-white border border-neutral-200 rounded-lg sm:rounded-2xl shadow-xl overflow-hidden max-h-32 sm:max-h-60 overflow-y-auto custom-scrollbar">
+                    <div className="absolute z-50 left-0 right-0 mt-1 bg-white border border-neutral-200 rounded-xl sm:rounded-2xl shadow-xl overflow-hidden max-h-48 overflow-y-auto custom-scrollbar">
                       {addressSuggestions.map((addr, i) => (
                         <button
                           key={i}
                           type="button"
                           onClick={() => selectAddress(addr)}
-                          className="w-full text-left p-2 sm:p-4 hover:bg-neutral-50 transition-colors border-b border-neutral-100 last:border-0"
+                          className="w-full text-left p-3 hover:bg-neutral-50 transition-colors border-b border-neutral-100 last:border-0"
                         >
-                          <div className="text-[9px] sm:text-sm font-bold">{addr.address}</div>
-                          <div className="text-[6px] sm:text-[10px] text-neutral-500">
+                          <div className="text-xs sm:text-sm font-bold">{addr.address}</div>
+                          <div className="text-[10px] sm:text-xs text-neutral-500">
                             {addr.postcode} {addr.city} {addr.gnr && `(GNR: ${addr.gnr}, BNR: ${addr.bnr})`}
                           </div>
                         </button>
@@ -338,24 +338,24 @@ export default function CreateDeviationModal({ isOpen, onClose, projects }: Crea
                   )}
                 </div>
 
-                <div className="grid grid-cols-2 gap-2 sm:gap-4">
+                <div className="grid grid-cols-1 sm:grid-cols-2 gap-3 sm:gap-4">
                   <div>
-                    <label className="block text-[6px] sm:text-xs font-bold text-neutral-400 uppercase tracking-widest mb-1 sm:mb-2">GNR</label>
+                    <label className="block text-xs font-bold text-neutral-500 uppercase tracking-widest mb-1.5">GNR</label>
                     <input 
                       type="text"
                       value={formData.gnr}
                       onChange={(e) => setFormData({ ...formData, gnr: e.target.value })}
-                      className="w-full bg-neutral-50 border border-neutral-200 rounded-lg sm:rounded-2xl py-1.5 sm:py-4 px-3 sm:px-4 text-[9px] sm:text-sm focus:ring-2 focus:ring-orange-500/20 focus:border-rose-500 outline-none transition-all font-bold"
+                      className="w-full bg-neutral-50 border border-neutral-200 rounded-xl sm:rounded-2xl py-2.5 sm:py-3 px-3.5 text-sm sm:text-base focus:ring-2 focus:ring-orange-500/20 focus:border-rose-500 outline-none transition-all font-medium"
                       placeholder="Gårdsnummer"
                     />
                   </div>
                   <div>
-                    <label className="block text-[6px] sm:text-xs font-bold text-neutral-400 uppercase tracking-widest mb-1 sm:mb-2">BNR</label>
+                    <label className="block text-xs font-bold text-neutral-500 uppercase tracking-widest mb-1.5">BNR</label>
                     <input 
                       type="text"
                       value={formData.bnr}
                       onChange={(e) => setFormData({ ...formData, bnr: e.target.value })}
-                      className="w-full bg-neutral-50 border border-neutral-200 rounded-lg sm:rounded-2xl py-1.5 sm:py-4 px-3 sm:px-4 text-[9px] sm:text-sm focus:ring-2 focus:ring-orange-500/20 focus:border-rose-500 outline-none transition-all font-bold"
+                      className="w-full bg-neutral-50 border border-neutral-200 rounded-xl sm:rounded-2xl py-2.5 sm:py-3 px-3.5 text-sm sm:text-base focus:ring-2 focus:ring-orange-500/20 focus:border-rose-500 outline-none transition-all font-medium"
                       placeholder="Bruksnummer"
                     />
                   </div>
@@ -373,11 +373,11 @@ export default function CreateDeviationModal({ isOpen, onClose, projects }: Crea
 
                 {photoUrl && (
                   <div className="relative inline-block my-2 rounded-xl overflow-hidden border border-neutral-200">
-                    <img src={photoUrl} alt="Avviksbilde" className="h-28 w-full max-w-xs object-cover rounded-xl" />
+                    <img src={photoUrl} alt="Avviksbilde" className="h-32 w-full max-w-xs object-cover rounded-xl" />
                     <button 
                       type="button" 
                       onClick={() => setPhotoUrl(null)} 
-                      className="absolute top-1.5 right-1.5 p-1 bg-black/70 text-white rounded-full hover:bg-black transition-colors"
+                      className="absolute top-1.5 right-1.5 p-1.5 bg-black/70 text-white rounded-full hover:bg-black transition-colors"
                       title="Fjern bilde"
                     >
                       <X size={14} />
@@ -389,44 +389,44 @@ export default function CreateDeviationModal({ isOpen, onClose, projects }: Crea
                   <button 
                     type="button" 
                     onClick={() => fileInputRef.current?.click()}
-                    className="flex-1 flex items-center justify-center gap-1 sm:gap-2 py-1.5 sm:py-3 bg-neutral-100 text-neutral-700 rounded-lg sm:rounded-xl text-[8px] sm:text-xs font-bold hover:bg-neutral-200 transition-colors"
+                    className="flex-1 flex items-center justify-center gap-2 py-3 bg-neutral-100 text-neutral-800 rounded-xl text-xs sm:text-sm font-bold hover:bg-neutral-200 transition-colors active:scale-95"
                   >
-                    <Camera size={14} className="text-orange-600 sm:w-4 sm:h-4" />
+                    <Camera size={16} className="text-orange-600" />
                     {photoUrl ? 'Endre bilde' : 'Legg til bilde'}
                   </button>
                   <button 
                     type="button" 
                     disabled={isLocating}
                     onClick={handleGetLocation}
-                    className="flex-1 flex items-center justify-center gap-1 sm:gap-2 py-1.5 sm:py-3 bg-neutral-100 text-neutral-700 rounded-lg sm:rounded-xl text-[8px] sm:text-xs font-bold hover:bg-neutral-200 transition-colors disabled:opacity-50"
+                    className="flex-1 flex items-center justify-center gap-2 py-3 bg-neutral-100 text-neutral-800 rounded-xl text-xs sm:text-sm font-bold hover:bg-neutral-200 transition-colors disabled:opacity-50 active:scale-95"
                   >
-                    {isLocating ? <Loader2 size={14} className="animate-spin text-orange-600 sm:w-4 sm:h-4" /> : <MapPin size={14} className="text-orange-600 sm:w-4 sm:h-4" />}
+                    {isLocating ? <Loader2 size={16} className="animate-spin text-orange-600" /> : <MapPin size={16} className="text-orange-600" />}
                     {isLocating ? 'Henter GPS...' : 'Posisjon'}
                   </button>
                 </div>
               </div>
 
-              <div className="pt-2 sticky bottom-0 bg-white pb-2 sm:pb-0">
+              <div className="pt-3 sticky bottom-0 bg-white pb-2">
                 <button
                   disabled={loading}
                   type="submit"
-                  className="w-full py-2 sm:py-4 bg-orange-600 text-white rounded-lg sm:rounded-2xl font-bold flex items-center justify-center gap-2 hover:bg-orange-500 transition-all shadow-xl shadow-orange-100 disabled:opacity-50 text-[9px] sm:text-base"
+                  className="w-full py-3.5 sm:py-4 bg-orange-600 text-white rounded-xl sm:rounded-2xl font-bold flex items-center justify-center gap-2 hover:bg-orange-500 transition-all shadow-xl shadow-orange-100 disabled:opacity-50 text-sm sm:text-base active:scale-95"
                 >
                   {loading ? (
-                    <div className="w-3 h-3 sm:w-5 sm:h-5 border-2 border-white/30 border-t-white rounded-full animate-spin" />
+                    <div className="w-5 h-5 border-2 border-white/30 border-t-white rounded-full animate-spin" />
                   ) : (
                     <>
-                      <Send size={12} className="sm:w-[18px] sm:h-[18px]" />
+                      <Send size={16} />
                       Send inn rapport
                     </>
                   )}
                 </button>
               </div>
-              </form>
-            </div>
-          </motion.div>
-        </div>
-      )}
-    </AnimatePresence>
+            </form>
+          </div>
+        </motion.div>
+      </div>
+    )}
+  </AnimatePresence>
   );
 }

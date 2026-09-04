@@ -75,6 +75,7 @@ export interface Project {
   spent?: number;
   gnr?: string;
   bnr?: string;
+  portalToken?: string;
   createdAt?: any;
 }
 
