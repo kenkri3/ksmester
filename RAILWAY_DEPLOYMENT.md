@@ -42,7 +42,9 @@ I Railway under **"Variables"**:
 | `JWT_SECRET` | Generer en sikker nøkkel (min 32 tegn) |
 | `ADMIN_EMAIL` | `kenkri3@gmail.com` |
 | `ADMIN_PASSWORD` | `Admin2026!SecurePassword` |
-| `GEMINI_API_KEY` | Din Google Gemini API-nøkkel |
+| `DEEP_SEEK_API` | Din DeepSeek API-nøkkel (fra platform.deepseek.com) |
+| `CRON_SECRET` | Valgfri nøkkel for GitHub Actions daglig bakgrunnsrevisjon |
+| `RESEND_API_KEY` | *(Valgfritt)* For sending av ekte e-poster via Resend |
 | `NOBB_API_KEY` | *(Valgfritt)* For byggevareoppslag |
 | `FIRECRAWL_API_KEY` | *(Valgfritt)* For nettskraping |
 

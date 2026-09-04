@@ -40,7 +40,7 @@ export const visionService = {
 
     try {
       const response = await generateAiContent({
-        model: "gemini-2.5-flash", 
+        model: "deepseek-chat", 
         prompt: prompt,
         images: [
           {

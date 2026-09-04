@@ -1,0 +1,36 @@
+name: Daglig KS & HMS Bakgrunnskjøring (Token-sparing)
+
+on:
+  schedule:
+    # Kjører hver morgen kl. 05:00 UTC (kl. 06:00/07:00 norsk tid)
+    - cron: '0 5 * * *'
+  workflow_dispatch:
+
+jobs:
+  daily_audit:
+    runs-on: ubuntu-latest
+    steps:
+      - name: Kjør Daglig Sammendrag og HMS-revisjon
+        run: |
+          APP_URL="${{ secrets.APP_URL }}"
+          if [ -z "$APP_URL" ]; then
+            APP_URL="https://ksmester.no"
+          fi
+          
+          echo "Kaller cron-endepunkt på: $APP_URL/api/cron/daily-summary"
+          
+          RESPONSE=$(curl -s -w "\n%{http_code}" -X POST "$APP_URL/api/cron/daily-summary" \
+            -H "Authorization: Bearer ${{ secrets.CRON_SECRET }}" \
+            -H "Content-Type: application/json")
+          
+          HTTP_STATUS=$(echo "$RESPONSE" | tail -n1)
+          BODY=$(echo "$RESPONSE" | sed '$d')
+          
+          echo "HTTP Status: $HTTP_STATUS"
+          echo "Svar: $BODY"
+          
+          if [ "$HTTP_STATUS" -ge 200 ] && [ "$HTTP_STATUS" -lt 300 ]; then
+            echo "✅ Bakgrunnsrevisjon fullført med suksess!"
+          else
+            echo "⚠️ Advarsel: Bakgrunnsjobb returnerte status $HTTP_STATUS"
+          fi

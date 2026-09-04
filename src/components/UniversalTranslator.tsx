@@ -93,7 +93,7 @@ export default function UniversalTranslator({ className, projectId }: { classNam
           </div>
           <div>
             <h3 className="font-bold text-sm">{t('realtime_translation')}</h3>
-            <p className="text-[10px] text-neutral-400 uppercase tracking-widest font-black">Powered by Gemini 3.1</p>
+            <p className="text-[10px] text-neutral-400 uppercase tracking-widest font-black">Powered by DeepSeek-V3</p>
           </div>
         </div>
         <div className="flex items-center gap-2 px-3 py-1 bg-blue-50 text-blue-700 rounded-full text-[10px] font-bold">

@@ -1,14 +1,14 @@
-// Server-proxy AI client keeping GEMINI_API_KEY 100% server-side
-
+// Server-proxy AI client keeping DEEP_SEEK_API 100% server-side with token caching
 export interface GenerateAiOptions {
   prompt?: string;
   contents?: any;
-  model?: string;
+  model?: 'deepseek-chat' | 'deepseek-reasoner' | string;
   systemInstruction?: string;
   responseMimeType?: string;
   responseSchema?: any;
   images?: any[];
   inlineData?: any;
+  forceRefresh?: boolean;
 }
 
 export async function generateAiContent(options: GenerateAiOptions): Promise<{ text: string }> {

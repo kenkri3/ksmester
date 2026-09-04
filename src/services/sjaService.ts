@@ -59,7 +59,7 @@ export const sjaService = {
 
     try {
       const response = await generateAiContent({
-        model: "gemini-2.5-flash",
+        model: "deepseek-chat",
         prompt: prompt,
         responseMimeType: "application/json",
         responseSchema: {
