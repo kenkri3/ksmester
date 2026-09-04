@@ -1,5 +1,6 @@
 import React, { createContext, useContext, useEffect, useState } from 'react';
 import { api } from '../services/api';
+import { setCurrentAuthUser } from '../services/dbAdapter';
 
 export interface User {
   uid: string;
@@ -58,7 +59,7 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
         const res = await api.getMe();
         if (res && res.user) {
           const u = res.user;
-          setUser({
+          const userObj: User = {
             uid: u.id || u.uid,
             id: u.id || u.uid,
             email: u.email,
@@ -68,18 +69,22 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
             company: u.company || 'Mester Entreprenør AS',
             companyId: u.companyId || 'comp-001',
             subscriptionStatus: u.subscriptionStatus || 'active'
-          });
+          };
+          setUser(userObj);
+          setCurrentAuthUser(userObj);
           setRole(u.role || 'worker');
           setTrade(u.trade || 'Tømrer');
           setCompany(u.company || 'Mester Entreprenør AS');
           setSubscriptionStatus(u.subscriptionStatus || 'active');
         } else {
           setUser(null);
+          setCurrentAuthUser(null);
           setRole(null);
         }
       } catch (err) {
         console.warn("Auth check notice:", err);
         setUser(null);
+        setCurrentAuthUser(null);
         setRole(null);
       } finally {
         setLoading(false);
@@ -98,7 +103,7 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
     const res = await api.login(email, pass);
     if (res && res.user) {
       const u = res.user;
-      setUser({
+      const userObj: User = {
         uid: u.id || u.uid,
         id: u.id || u.uid,
         email: u.email,
@@ -108,7 +113,9 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
         company: u.company || 'Mester Entreprenør AS',
         companyId: u.companyId || 'comp-001',
         subscriptionStatus: u.subscriptionStatus || 'active'
-      });
+      };
+      setUser(userObj);
+      setCurrentAuthUser(userObj);
       setRole(u.role || 'worker');
       setCompany(u.company || 'Mester Entreprenør AS');
       setTrade(u.trade || 'Tømrer');
@@ -122,7 +129,7 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
     const res = await api.register({ email, password: pass, name, company, gdprConsent });
     if (res && res.user) {
       const u = res.user;
-      setUser({
+      const userObj: User = {
         uid: u.id || u.uid,
         id: u.id || u.uid,
         email: u.email,
@@ -132,7 +139,9 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
         company: u.company || company,
         companyId: u.companyId,
         subscriptionStatus: u.subscriptionStatus || 'trial'
-      });
+      };
+      setUser(userObj);
+      setCurrentAuthUser(userObj);
       setRole(u.role || 'leader');
       setCompany(u.company || company);
       setTrade(u.trade || 'Byggmester');
@@ -143,12 +152,12 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
   };
 
   const resetPassword = async (email: string) => {
-    // Simulated success notice
     console.log("Tilbakestilling av passord sendt til:", email);
   };
 
   const logout = async () => {
     api.logout();
+    setCurrentAuthUser(null);
     stopImpersonation();
     setUser(null);
     setRole(null);
@@ -156,7 +165,7 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
   };
 
   const startImpersonation = (companyId: string, role: string) => {
-    if (user?.email !== 'kenkri3@gmail.com') return;
+    if (user?.role !== 'admin' && user?.email !== 'kenkri3@gmail.com') return;
     localStorage.setItem('impersonatedCompanyId', companyId);
     localStorage.setItem('impersonatedRole', role);
     setImpersonatedCompanyId(companyId);

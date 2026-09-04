@@ -17,8 +17,71 @@ export function handleDbError(error: unknown, operationType?: OperationType, pat
 // Alias for backwards compatibility with existing UI components
 export const handleFirestoreError = handleDbError;
 
+export const CURRENT_USER_STORAGE_KEY = 'ks_current_user';
+
+export function setCurrentAuthUser(user: any) {
+  if (typeof window === 'undefined') return;
+  if (user) {
+    localStorage.setItem(CURRENT_USER_STORAGE_KEY, JSON.stringify(user));
+  } else {
+    localStorage.removeItem(CURRENT_USER_STORAGE_KEY);
+  }
+}
+
+export function getCurrentAuthUser() {
+  if (typeof window === 'undefined') return null;
+  try {
+    const raw = localStorage.getItem(CURRENT_USER_STORAGE_KEY);
+    if (raw) {
+      const u = JSON.parse(raw);
+      return {
+        uid: u.uid || u.id,
+        id: u.uid || u.id,
+        email: u.email,
+        displayName: u.displayName || u.name || u.email?.split('@')[0] || 'Bruker',
+        photoURL: u.photoURL || null,
+        role: u.role || 'worker',
+        trade: u.trade || '',
+        company: u.company || '',
+        companyId: u.companyId || ''
+      };
+    }
+    const token = localStorage.getItem('token');
+    if (token) {
+      const parts = token.split('.');
+      if (parts.length === 3) {
+        const payload = JSON.parse(atob(parts[1]));
+        return {
+          uid: payload.id,
+          id: payload.id,
+          email: payload.email,
+          displayName: payload.displayName || payload.email?.split('@')[0] || 'Bruker',
+          photoURL: null,
+          role: payload.role || 'worker',
+          trade: payload.trade || '',
+          company: payload.company || '',
+          companyId: payload.companyId || ''
+        };
+      }
+    }
+  } catch {
+    return null;
+  }
+  return null;
+}
+
 export const db = { name: 'postgres' };
-export const auth = { currentUser: null, onAuthStateChanged: (cb: any) => { cb(null); return () => {}; } };
+export const auth = {
+  get currentUser() {
+    return getCurrentAuthUser();
+  },
+  onAuthStateChanged: (cb: (user: any) => void) => {
+    if (typeof window !== 'undefined') {
+      cb(getCurrentAuthUser());
+    }
+    return () => {};
+  }
+};
 export const googleProvider = {};
 
 export async function getUserProfile(uid: string): Promise<any | null> {
@@ -90,17 +153,82 @@ export async function getDoc(docRef: any) {
   };
 }
 
+export function applyQueryConstraints(items: any[], constraints?: any[]): any[] {
+  if (!constraints || constraints.length === 0) return items;
+  let result = [...items];
+
+  for (const c of constraints) {
+    if (c.field && c.op && c.value !== undefined) {
+      result = result.filter((item: any) => {
+        const val = item[c.field];
+
+        // Flexible company / companyId matching
+        if (c.field === 'company' || c.field === 'companyId') {
+          const compVal = item.company;
+          const compIdVal = item.companyId;
+          if (c.op === '==') {
+            return compVal === c.value || compIdVal === c.value;
+          }
+          if (c.op === '!=') {
+            return compVal !== c.value && compIdVal !== c.value;
+          }
+          if (c.op === 'in' && Array.isArray(c.value)) {
+            return c.value.includes(compVal) || c.value.includes(compIdVal);
+          }
+        }
+
+        switch (c.op) {
+          case '==':
+            return val === c.value;
+          case '!=':
+            return val !== c.value;
+          case 'in':
+            return Array.isArray(c.value) && c.value.includes(val);
+          case 'not-in':
+            return Array.isArray(c.value) && !c.value.includes(val);
+          case 'array-contains':
+            return Array.isArray(val) && val.includes(c.value);
+          case '<':
+            return val < c.value;
+          case '<=':
+            return val <= c.value;
+          case '>':
+            return val > c.value;
+          case '>=':
+            return val >= c.value;
+          default:
+            return true;
+        }
+      });
+    }
+
+    // Apply orderBy sorting if present
+    if (c.field && c.direction && !c.op) {
+      result.sort((a: any, b: any) => {
+        const aVal = a[c.field];
+        const bVal = b[c.field];
+        if (aVal == null) return 1;
+        if (bVal == null) return -1;
+        const comp = aVal < bVal ? -1 : aVal > bVal ? 1 : 0;
+        return c.direction === 'desc' ? -comp : comp;
+      });
+    }
+
+    // Apply limit if present
+    if (c.limit && typeof c.limit === 'number') {
+      result = result.slice(0, c.limit);
+    }
+  }
+
+  return result;
+}
+
 export async function getDocs(queryRef: any) {
   const col = queryRef.collectionName;
   let items = await api.getCollection(col);
 
-  // Apply basic memory constraints if present
   if (queryRef.constraints) {
-    for (const c of queryRef.constraints) {
-      if (c.field && c.op === '==' && c.value !== undefined) {
-        items = items.filter((i: any) => i[c.field] === c.value);
-      }
-    }
+    items = applyQueryConstraints(items, queryRef.constraints);
   }
 
   const docs = items.map((i: any) => ({
@@ -146,11 +274,7 @@ export function onSnapshot(queryOrColRef: any, callback: (snapshot: any) => void
     try {
       let items = await api.getCollection(col);
       if (queryOrColRef.constraints) {
-        for (const c of queryOrColRef.constraints) {
-          if (c.field && c.op === '==' && c.value !== undefined) {
-            items = items.filter((i: any) => i[c.field] === c.value);
-          }
-        }
+        items = applyQueryConstraints(items, queryOrColRef.constraints);
       }
       const docs = items.map((i: any) => ({
         id: i.id,
