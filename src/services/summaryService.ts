@@ -22,7 +22,8 @@ export const summaryService = {
 
     try {
       const response = await generateAiContent({
-        prompt: prompt
+        prompt: prompt,
+        isPortal: true
       });
       return response.text;
     } catch (error) {
