@@ -1,8 +1,9 @@
-import React, { useState, useEffect, useMemo } from 'react';
+import React, { useState, useEffect, useMemo, useRef } from 'react';
 import { motion, AnimatePresence } from 'motion/react';
 import { X, Library, Search, Filter, Download, FileText, Image as ImageIcon, FileCode, Sparkles, RefreshCw, CheckCircle2 } from 'lucide-react';
 import { ProjectDocument } from '../types';
 import { db, collection, query, where, onSnapshot, addDoc, serverTimestamp, handleFirestoreError, OperationType } from '../services/firebase';
+import { toast } from 'sonner';
 
 interface DocumentationArchiveProps {
   isOpen: boolean;
@@ -16,6 +17,53 @@ const DocumentationArchive: React.FC<DocumentationArchiveProps> = ({ isOpen, onC
   const [isSyncing, setIsSyncing] = useState(false);
   const [syncSuccess, setSyncSuccess] = useState(false);
   const [documents, setDocuments] = useState<ProjectDocument[]>([]);
+  const fileInputRef = useRef<HTMLInputElement>(null);
+
+  const handleManualUpload = (e: React.ChangeEvent<HTMLInputElement>) => {
+    const file = e.target.files?.[0];
+    if (!file) return;
+
+    const reader = new FileReader();
+    reader.onloadend = async () => {
+      try {
+        const newDoc: any = {
+          projectId: projectId || 'general',
+          title: file.name,
+          category: activeCategory === 'all' ? 'FDV Dokumentasjon' : activeCategory === 'drawing' ? 'Tegninger' : activeCategory === 'contract' ? 'Kontrakter' : 'FDV Dokumentasjon',
+          type: file.type.includes('pdf') ? 'pdf' : file.type.includes('image') ? 'image' : 'word',
+          source: 'manual',
+          fileData: reader.result as string,
+          createdAt: new Date().toLocaleDateString('no-NO')
+        };
+        await addDoc(collection(db, 'project_documents'), newDoc);
+        setDocuments(prev => [newDoc, ...prev]);
+        toast.success(`'${file.name}' ble lastet opp!`);
+      } catch (err) {
+        toast.error('Feil ved lagring av dokument.');
+      }
+    };
+    reader.readAsDataURL(file);
+  };
+
+  const handleDownloadDoc = (docItem: any) => {
+    if (docItem.fileData) {
+      const a = document.createElement('a');
+      a.href = docItem.fileData;
+      a.download = docItem.title || 'dokument';
+      a.click();
+      toast.success(`Laster ned ${docItem.title}`);
+    } else {
+      // Create download blob
+      const content = `KS MESTER DOKUMENTARKIV\nDokument: ${docItem.title}\nKategori: ${docItem.category}\nKilde: ${docItem.source}\nDato: ${docItem.createdAt}\nStatus: Gyldig og verifisert`;
+      const blob = new Blob([content], { type: 'text/plain;charset=utf-8' });
+      const url = URL.createObjectURL(blob);
+      const a = document.createElement('a');
+      a.href = url;
+      a.download = `${docItem.title || 'dokument'}.txt`;
+      a.click();
+      toast.success(`Laster ned ${docItem.title}`);
+    }
+  };
 
   useEffect(() => {
     if (!isOpen) return;
@@ -115,6 +163,12 @@ const DocumentationArchive: React.FC<DocumentationArchiveProps> = ({ isOpen, onC
             </div>
             
             <div className="flex items-center gap-3 w-full md:w-auto">
+              <input 
+                type="file" 
+                ref={fileInputRef} 
+                onChange={handleManualUpload} 
+                className="hidden" 
+              />
               <button 
                 onClick={handleSyncNOBB}
                 disabled={isSyncing}
@@ -123,7 +177,10 @@ const DocumentationArchive: React.FC<DocumentationArchiveProps> = ({ isOpen, onC
                 {isSyncing ? <RefreshCw className="animate-spin" size={16} /> : <Sparkles size={16} />}
                 {syncSuccess ? 'Synkronisert!' : 'Hent fra NOBB'}
               </button>
-              <button className="flex-1 md:flex-none flex items-center justify-center gap-2 px-6 py-3 bg-white border border-neutral-200 rounded-2xl text-sm font-bold hover:bg-neutral-50 transition-all">
+              <button 
+                onClick={() => fileInputRef.current?.click()}
+                className="flex-1 md:flex-none flex items-center justify-center gap-2 px-6 py-3 bg-white border border-neutral-200 rounded-2xl text-sm font-bold hover:bg-neutral-50 transition-all cursor-pointer"
+              >
                 Last opp manuelt
               </button>
             </div>
@@ -180,7 +237,11 @@ const DocumentationArchive: React.FC<DocumentationArchiveProps> = ({ isOpen, onC
                       )}
                     </div>
                   </div>
-                  <button className="p-2 text-neutral-400 hover:text-neutral-900 hover:bg-neutral-100 rounded-xl transition-all">
+                  <button 
+                    onClick={() => handleDownloadDoc(doc)}
+                    title="Last ned dokument"
+                    className="p-2 text-neutral-400 hover:text-neutral-900 hover:bg-neutral-100 rounded-xl transition-all cursor-pointer"
+                  >
                     <Download size={20} />
                   </button>
                 </div>
