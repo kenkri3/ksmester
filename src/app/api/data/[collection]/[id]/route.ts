@@ -1,5 +1,5 @@
 import { NextRequest, NextResponse } from 'next/server';
-import { getCollectionItems, updateCollectionItem, deleteCollectionItem } from '@/src/lib/server/db';
+import { getCollectionItems, updateCollectionItem, deleteCollectionItem, saveCollectionItem } from '@/src/lib/server/db';
 import { getUserFromRequest } from '@/src/lib/server/auth';
 
 export async function GET(
@@ -66,22 +66,33 @@ export async function PUT(
       return NextResponse.json({ error: 'Uautorisert' }, { status: 401 });
     }
 
-    // IDOR / Authorization Check: Verify tenant ownership
-    if (user.role !== 'admin') {
-      const allItems = await getCollectionItems(collection);
-      const existing = allItems.find((i: any) => i.id === id);
-      if (existing) {
-        const isOwner =
-          (existing.companyId && existing.companyId === user.companyId) ||
-          (existing.company && existing.company === user.companyId) ||
-          (existing.userId && existing.userId === user.id) ||
-          (existing.authorId && existing.authorId === user.id);
+    const allItems = await getCollectionItems(collection);
+    const existing = allItems.find((i: any) => i.id === id);
 
-        if (!isOwner) {
-          return NextResponse.json({ error: 'Ingen tilgang til å oppdatere dette objektet (IDOR-beskyttelse)' }, { status: 403 });
-        }
-      } else {
-         return NextResponse.json({ error: 'Elementet ble ikke funnet' }, { status: 404 });
+    // Upsert: If item doesn't exist, create it for this tenant
+    if (!existing) {
+      const newItem = {
+        ...body,
+        id,
+        authorId: user.id,
+        companyId: user.role === 'admin' ? (body.companyId || user.companyId) : user.companyId,
+        createdAt: body.createdAt || new Date().toISOString(),
+        updatedAt: new Date().toISOString()
+      };
+      const saved = await saveCollectionItem(collection, newItem);
+      return NextResponse.json(saved);
+    }
+
+    // IDOR / Authorization Check: Verify tenant ownership for existing items
+    if (user.role !== 'admin') {
+      const isOwner =
+        (existing.companyId && existing.companyId === user.companyId) ||
+        (existing.company && existing.company === user.companyId) ||
+        (existing.userId && existing.userId === user.id) ||
+        (existing.authorId && existing.authorId === user.id);
+
+      if (!isOwner) {
+        return NextResponse.json({ error: 'Ingen tilgang til å oppdatere dette objektet (IDOR-beskyttelse)' }, { status: 403 });
       }
     }
 

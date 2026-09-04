@@ -51,6 +51,7 @@ export const inMemoryStore: Record<string, any[]> = {
       documentationLevel: 80,
       clientName: 'Ole Nordmann',
       clientEmail: 'ole@nordmann.no',
+      company: 'Mester Entreprenør AS',
       companyId: 'comp-001',
       companyName: 'Mester Entreprenør AS',
       startDate: new Date().toISOString(),
@@ -196,6 +197,19 @@ export function isDbConnected(): boolean {
 
 export async function getCollectionItems(collectionName: string): Promise<any[]> {
   await initDb();
+  if (collectionName === 'users' && pool) {
+    try {
+      const rows = await dbQuery(
+        'SELECT id, email, display_name as "displayName", role, trade, company, company_id as "companyId", subscription_status as "subscriptionStatus", created_at as "createdAt" FROM users ORDER BY created_at DESC'
+      );
+      if (rows && rows.length > 0) {
+        return rows;
+      }
+    } catch (e) {
+      console.warn('Error fetching users from users table, fallback to store:', e);
+    }
+  }
+
   if (pool) {
     try {
       const rows = await dbQuery(
@@ -260,6 +274,22 @@ export async function updateCollectionItem(collectionName: string, id: string, d
          ON CONFLICT (id) DO UPDATE SET data = $3`,
         [id, collectionName, JSON.stringify(updatedItem)]
       );
+
+      // Also keep users table updated if updating user collection
+      if (collectionName === 'users') {
+        await dbQuery(
+          `UPDATE users SET 
+             display_name = COALESCE($2, display_name),
+             role = COALESCE($3, role),
+             trade = COALESCE($4, trade),
+             company = COALESCE($5, company),
+             company_id = COALESCE($6, company_id),
+             subscription_status = COALESCE($7, subscription_status),
+             updated_at = CURRENT_TIMESTAMP
+           WHERE id = $1`,
+          [id, data.displayName || null, data.role || null, data.trade || null, data.company || null, data.companyId || null, data.subscriptionStatus || null]
+        ).catch(() => {});
+      }
     } catch (e) {
       console.warn('Store update error:', e);
     }
