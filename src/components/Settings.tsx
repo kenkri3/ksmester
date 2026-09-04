@@ -28,7 +28,8 @@ import {
   Download,
   FileText,
   Lock,
-  AlertCircle
+  AlertCircle,
+  Cookie
 } from 'lucide-react';
 import { useAuth } from '../hooks/useAuth';
 import { useTranslation } from 'react-i18next';
@@ -902,6 +903,29 @@ export default function Settings() {
                         {isRequestingDelete ? 'Sender...' : 'Send sletteforespørsel'}
                       </button>
                     </div>
+                  </div>
+                </div>
+
+                {/* Section 4: Informasjonskapsler og samtykke */}
+                <div className="p-6 bg-white rounded-2xl border border-neutral-200/90 space-y-4 shadow-sm">
+                  <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-4">
+                    <div>
+                      <h4 className="font-bold text-neutral-900 text-sm flex items-center gap-2">
+                        <Cookie size={16} className="text-emerald-600" />
+                        Informasjonskapsler og samtykke (GDPR & Ekomloven)
+                      </h4>
+                      <p className="text-xs text-neutral-500 mt-1 leading-relaxed">
+                        Administrer hvilke informasjonskapsler og analyseverktøy som benyttes i din nettleser. Du kan når som helst endre eller trekke tilbake samtykket ditt.
+                      </p>
+                    </div>
+                    <button
+                      type="button"
+                      onClick={() => window.dispatchEvent(new CustomEvent('open_cookie_settings'))}
+                      className="px-4 py-2.5 bg-neutral-100 hover:bg-neutral-200 text-neutral-800 text-xs font-bold rounded-xl transition-all flex items-center justify-center gap-2 shrink-0 cursor-pointer shadow-xs"
+                    >
+                      <Cookie size={14} className="text-emerald-600" />
+                      <span>Endre cookie-innstillinger</span>
+                    </button>
                   </div>
                 </div>
               </motion.div>

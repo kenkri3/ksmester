@@ -1,11 +1,15 @@
 {
+  "id": "/?source=pwa",
   "name": "KS MesterAI Elite",
-  "short_name": "KS MesterAI",
+  "short_name": "KS Mester",
   "description": "Autonom HMS/KS og AI-drevet SJA for norske håndverkere.",
-  "start_url": "/",
+  "start_url": "/?source=pwa",
+  "scope": "/",
   "display": "standalone",
+  "orientation": "portrait-primary",
   "background_color": "#ffffff",
   "theme_color": "#059669",
+  "categories": ["business", "productivity", "utilities"],
   "icons": [
     {
       "src": "/icon.svg",

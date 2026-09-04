@@ -29,6 +29,8 @@ import { ImageAnalysisResult, Project as ProjectType, UserProfile, Trade } from 
 import InstallGuide from './InstallGuide';
 import ChecklistModal from './ChecklistModal';
 import ProjectActivityLog from './ProjectActivityLog';
+import { toast } from 'sonner';
+import { promptPWAInstall, isPWAInstalled } from '../lib/pwa';
 import { useTranslation } from 'react-i18next';
 import UniversalTranslator from './UniversalTranslator';
 import { db, auth, collection, onSnapshot, addDoc, Timestamp, handleFirestoreError, OperationType, query, orderBy, limit, where, updateDoc, doc, getUserProfile, updateUserProfile, serverTimestamp, getDocs } from '../services/firebase';
@@ -121,6 +123,19 @@ export default function MobileApp() {
   const [selectedProjectId, setSelectedProjectId] = useState<string>("");
   const [recentEvents, setRecentEvents] = useState<any[]>([]);
   const [showInstallGuide, setShowInstallGuide] = useState(false);
+
+  const handleInstallApp = async () => {
+    if (isPWAInstalled()) {
+      toast.info('KS Mester er allerede installert som app på denne enheten!');
+      return;
+    }
+    const outcome = await promptPWAInstall();
+    if (outcome === 'accepted') {
+      toast.success('Laster ned og installerer KS Mester på telefonen...');
+      return;
+    }
+    setShowInstallGuide(true);
+  };
   const [showChecklistModal, setShowChecklistModal] = useState(false);
   const [checklistProjectId, setChecklistProjectId] = useState<string | undefined>(undefined);
   const [userProfile, setUserProfile] = useState<UserProfile | null>(null);
@@ -451,8 +466,8 @@ export default function MobileApp() {
                 />
 
                 <button
-                  onClick={() => setShowInstallGuide(true)}
-                  className="w-full py-2.5 px-3.5 bg-neutral-100/90 hover:bg-emerald-50 text-neutral-800 hover:text-emerald-900 rounded-2xl text-xs font-bold flex items-center justify-between border border-neutral-200 transition-all"
+                  onClick={handleInstallApp}
+                  className="w-full py-2.5 px-3.5 bg-neutral-100/90 hover:bg-emerald-50 text-neutral-800 hover:text-emerald-900 rounded-2xl text-xs font-bold flex items-center justify-between border border-neutral-200 transition-all cursor-pointer"
                 >
                   <span className="flex items-center gap-2"><Smartphone size={15} className="text-emerald-600" /> Legg til snarvei på mobilen</span>
                   <span className="text-[10px] uppercase font-black text-emerald-800 bg-emerald-100/80 px-2 py-0.5 rounded-full">Offline OK</span>

@@ -51,6 +51,8 @@ import {
 } from 'lucide-react';
 import { cn } from '@/src/lib/utils';
 import InstallGuide from './InstallGuide';
+import { toast } from 'sonner';
+import { promptPWAInstall, isPWAInstalled } from '../lib/pwa';
 
 export type LandingTab = 'home' | 'ai' | 'hms' | 'fdv' | 'pricing';
 
@@ -83,6 +85,20 @@ export default function LandingPage({
   };
 
   const [showInstallGuide, setShowInstallGuide] = useState(false);
+
+  const handleInstallApp = async () => {
+    if (isPWAInstalled()) {
+      toast.info('KS Mester er allerede installert som app på denne enheten!');
+      return;
+    }
+    const outcome = await promptPWAInstall();
+    if (outcome === 'accepted') {
+      toast.success('Laster ned og installerer KS Mester på telefonen...');
+      return;
+    }
+    setShowInstallGuide(true);
+  };
+
   const [projectCode, setProjectCode] = useState('');
   const [activeFaq, setActiveFaq] = useState<number | null>(null);
 
@@ -302,7 +318,7 @@ export default function LandingPage({
               <ul className="space-y-2.5">
                 <li><button onClick={() => switchTab('pricing')} className="hover:text-white transition-colors text-left cursor-pointer">Priser & Pakker</button></li>
                 <li><button onClick={onStartDemo} className="hover:text-white transition-colors text-left cursor-pointer">Prøv gratis i 14 dager</button></li>
-                <li><button onClick={() => setShowInstallGuide(true)} className="hover:text-white transition-colors text-left cursor-pointer">Mobil-app (PWA)</button></li>
+                <li><button onClick={handleInstallApp} className="hover:text-white transition-colors text-left cursor-pointer">Mobil-app (PWA)</button></li>
                 <li><button onClick={() => onViewChange('spec')} className="hover:text-white transition-colors text-left cursor-pointer">Teknisk spesifikasjon</button></li>
                 <li><button onClick={() => onViewChange('contact')} className="hover:text-white transition-colors text-left cursor-pointer">Bestill demo</button></li>
               </ul>
@@ -316,6 +332,14 @@ export default function LandingPage({
                 <li><button onClick={() => onViewChange('contact')} className="hover:text-white transition-colors text-left cursor-pointer">Kontakt & Support</button></li>
                 <li><button onClick={() => onViewChange('privacy')} className="hover:text-white transition-colors text-left cursor-pointer">Personvern (GDPR)</button></li>
                 <li><button onClick={() => onViewChange('terms')} className="hover:text-white transition-colors text-left cursor-pointer">Vilkår & Betingelser</button></li>
+                <li>
+                  <button 
+                    onClick={() => window.dispatchEvent(new CustomEvent('open_cookie_settings'))} 
+                    className="hover:text-white transition-colors text-left cursor-pointer text-emerald-400 font-medium"
+                  >
+                    Informasjonskapsler
+                  </button>
+                </li>
                 <li><a href="tel:+4740163082" className="hover:text-white transition-colors text-emerald-400 font-semibold">+47 401 63 082</a></li>
               </ul>
             </div>

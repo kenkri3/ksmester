@@ -82,6 +82,7 @@ import { useTranslation } from 'react-i18next';
 import { Globe } from 'lucide-react';
 import { db, doc, getDoc, collection, query, where, getDocs, updateUserProfile } from './services/firebase';
 import { toast } from 'sonner';
+import { promptPWAInstall, isPWAInstalled } from './lib/pwa';
 
 export default function App() {
   return (
@@ -165,6 +166,21 @@ function AppContent() {
       setView('login');
       toast.info('Vennligst logg inn eller opprett bedriftskonto for å få tilgang.');
     }
+  };
+
+  const handleInstallApp = async () => {
+    if (isPWAInstalled()) {
+      toast.info('KS Mester er allerede installert som app på denne enheten!');
+      return;
+    }
+
+    const outcome = await promptPWAInstall();
+    if (outcome === 'accepted') {
+      toast.success('Laster ned og installerer KS Mester på telefonen...');
+      return;
+    }
+
+    setShowInstallGuide(true);
   };
 
   const handleOpenPortal = async (projectIdOrCode: string) => {
@@ -629,7 +645,7 @@ function AppContent() {
               {/* Desktop Right: Install Shortcut, Language, Notifications, Unified Profile */}
               <div className="hidden md:flex items-center gap-3">
                 <button 
-                  onClick={() => setShowInstallGuide(true)}
+                  onClick={handleInstallApp}
                   className="flex items-center gap-1.5 px-3 py-1.5 bg-neutral-100 hover:bg-emerald-50 text-neutral-700 hover:text-emerald-800 rounded-xl text-xs font-bold transition-all border border-neutral-200/80 hover:border-emerald-300 shadow-sm active:scale-95 cursor-pointer"
                   title="Installer snarvei på mobil"
                 >
@@ -817,7 +833,7 @@ function AppContent() {
                     </div>
 
                     <button 
-                      onClick={() => { setShowInstallGuide(true); setIsMenuOpen(false); }} 
+                      onClick={() => { handleInstallApp(); setIsMenuOpen(false); }} 
                       className="w-full mt-3 flex items-center justify-center gap-2 py-2.5 px-3 bg-neutral-100 text-neutral-800 rounded-xl text-xs font-bold border border-neutral-200/80 hover:bg-neutral-200 transition-all cursor-pointer"
                     >
                       <Smartphone size={15} className="text-emerald-600" />
@@ -1021,7 +1037,7 @@ function AppContent() {
                     </div>
 
                     <button 
-                      onClick={() => { setShowInstallGuide(true); setIsMenuOpen(false); }} 
+                      onClick={() => { handleInstallApp(); setIsMenuOpen(false); }} 
                       className="w-full flex items-center justify-center gap-2 py-3 px-3 bg-emerald-600 text-white rounded-xl text-xs font-bold shadow-md hover:bg-emerald-500 transition-all cursor-pointer"
                     >
                       <Smartphone size={16} />

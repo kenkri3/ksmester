@@ -70,6 +70,25 @@ export default function RootLayout({
           type="application/ld+json"
           dangerouslySetInnerHTML={{ __html: JSON.stringify(jsonLd) }}
         />
+        <script
+          dangerouslySetInnerHTML={{
+            __html: `
+              if (typeof window !== 'undefined' && 'serviceWorker' in navigator) {
+                window.addEventListener('load', function() {
+                  navigator.serviceWorker.register('/sw.js').catch(function(err) {
+                    console.log('SW registration error:', err);
+                  });
+                });
+              }
+              window.deferredInstallPrompt = null;
+              window.addEventListener('beforeinstallprompt', function(e) {
+                e.preventDefault();
+                window.deferredInstallPrompt = e;
+                window.dispatchEvent(new CustomEvent('pwa_prompt_available'));
+              });
+            `,
+          }}
+        />
       </head>
       <body>
         <Providers>

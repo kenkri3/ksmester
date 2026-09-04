@@ -80,22 +80,6 @@ export default function CookieBanner({ onOpenPrivacyPolicy }: { onOpenPrivacyPol
 
   return (
     <>
-      {/* Floating Re-Open Trigger (always available in bottom left corner if closed) */}
-      {!isOpen && (
-        <button
-          onClick={() => {
-            setIsOpen(true);
-            setShowDetails(true);
-          }}
-          className="fixed bottom-4 left-4 z-40 flex items-center gap-2 px-3 py-2 bg-white/90 backdrop-blur-md border border-neutral-200/80 rounded-full shadow-md text-xs font-medium text-neutral-700 hover:bg-neutral-50 hover:text-emerald-700 transition-all cursor-pointer group"
-          title="Endre cookie- og personverninnstillinger"
-          id="cookie-settings-trigger"
-        >
-          <Cookie size={15} className="text-emerald-600 group-hover:rotate-12 transition-transform" />
-          <span className="hidden sm:inline">Informasjonskapsler</span>
-        </button>
-      )}
-
       <AnimatePresence>
         {isOpen && (
           <div className="fixed inset-0 z-50 flex items-end justify-center p-3 sm:p-6 bg-black/30 backdrop-blur-[2px] pointer-events-auto">
