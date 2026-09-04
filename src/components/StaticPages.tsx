@@ -1,51 +1,133 @@
-import React from 'react';
-import { motion } from 'motion/react';
-import { CheckCircle2, Mail, Phone, MapPin, ShieldCheck, FileText, HelpCircle } from 'lucide-react';
-import { useTranslation } from 'react-i18next';
+'use client';
 
-const PageWrapper = ({ title, children }: { title: string; children: React.ReactNode }) => (
-  <div className="min-h-screen pt-24 pb-20 px-4 sm:px-6 lg:px-8 bg-neutral-50">
-    <div className="max-w-4xl mx-auto">
+import React, { useState } from 'react';
+import { motion } from 'motion/react';
+import { 
+  CheckCircle2, 
+  Mail, 
+  Phone, 
+  MapPin, 
+  ShieldCheck, 
+  FileText, 
+  HelpCircle,
+  Building2,
+  Award,
+  Sparkles,
+  Lock,
+  ArrowRight,
+  Clock,
+  Check
+} from 'lucide-react';
+import { useTranslation } from 'react-i18next';
+import { cn } from '@/src/lib/utils';
+
+const PageWrapper = ({ 
+  badge, 
+  title, 
+  subtitle, 
+  children 
+}: { 
+  badge?: string;
+  title: string; 
+  subtitle?: string;
+  children: React.ReactNode 
+}) => (
+  <div className="min-h-screen pt-20 pb-24 px-4 sm:px-6 lg:px-8 bg-neutral-50 selection:bg-emerald-100 selection:text-emerald-900">
+    <div className="max-w-5xl mx-auto">
+      {/* Header section */}
+      <div className="text-center max-w-3xl mx-auto mb-12">
+        {badge && (
+          <span className="text-xs font-bold text-emerald-600 uppercase tracking-widest bg-emerald-100/60 px-3.5 py-1.5 rounded-full border border-emerald-200 inline-block mb-4">
+            {badge}
+          </span>
+        )}
+        <h1 className="text-3xl sm:text-5xl font-black tracking-tight text-neutral-950 mb-4">
+          {title}
+        </h1>
+        {subtitle && (
+          <p className="text-base sm:text-lg text-neutral-600 leading-relaxed">
+            {subtitle}
+          </p>
+        )}
+      </div>
+
       <motion.div
-        initial={{ opacity: 0, y: 20 }}
+        initial={{ opacity: 0, y: 15 }}
         animate={{ opacity: 1, y: 0 }}
-        className="bg-white rounded-[2.5rem] shadow-xl shadow-neutral-200/50 border border-neutral-100 p-8 lg:p-16"
+        transition={{ duration: 0.3 }}
       >
-        <h1 className="text-4xl font-bold tracking-tight text-neutral-900 mb-8">{title}</h1>
-        <div className="prose prose-neutral max-w-none">
-          {children}
-        </div>
+        {children}
       </motion.div>
     </div>
   </div>
 );
 
+/* =========================================================================
+   1. PRICING PAGE (HARMONIZED)
+   ========================================================================= */
 export const PricingPage = () => {
   const { t } = useTranslation();
+  const [isAnnual, setIsAnnual] = useState(true);
+
   const plans = [
     {
-      name: 'Basis',
-      price: '990,-',
-      desc: 'For små bedrifter og enkeltpersonforetak.',
-      features: ['Opptil 3 brukere', 'Ubegrenset SJA', 'Mobilapp', 'Grunnleggende HMS/KS']
+      id: 'lite',
+      name: 'Mester Lite',
+      tag: 'Enkeltpersonforetak',
+      desc: 'For deg som jobber alene eller har opptil 3 ansatte.',
+      monthlyPrice: 490,
+      annualPrice: 390,
+      popular: false,
+      features: [
+        'Inntil 3 brukere',
+        'Ubegrenset SJA & Vernerunder',
+        'TEK17 & SAK10 sjekklister',
+        '1-klikks Boligmappa-eksport',
+        'Full offline-støtte på mobil',
+        'Norsk e-post support'
+      ]
     },
     {
-      name: 'Pro',
-      price: '2490,-',
-      desc: 'For voksende håndverksbedrifter.',
-      features: ['Opptil 15 brukere', 'AI-drevet bildeanalyse', 'Prosjektstyring', 'Integrasjon med Boligmappa', 'Prioritert support'],
-      popular: true
+      id: 'pro',
+      name: 'Mester Pro',
+      tag: 'Mest populær',
+      desc: 'For voksende håndverkerbedrifter fra 3 til 15 ansatte.',
+      monthlyPrice: 890,
+      annualPrice: 710,
+      popular: true,
+      features: [
+        'Inntil 15 brukere',
+        'Alt i Mester Lite, pluss:',
+        'Mesterhjernen AI Assistant (15+ verktøy)',
+        'Værbasert SJA via Yr.no',
+        'AI Bildeanalyse for TEK17/våtrom',
+        'AI Tilbudsgenerator & Kalkyle',
+        'Lærlingoppfølging & Stoffkartotek',
+        'Prioritert telefonsupport (08-16)'
+      ]
     },
     {
-      name: 'Enterprise',
-      price: 'Kontakt oss',
-      desc: 'For store entreprenører med komplekse behov.',
-      features: ['Ubegrenset brukere', 'Full API-tilgang', 'Egen kontaktperson', 'Skreddersydde rapporter', 'Onboarding & opplæring']
+      id: 'enterprise',
+      name: 'Mester Enterprise',
+      tag: 'Totalentreprenør',
+      desc: 'For større entreprenører, kjeder og komplekse prosjekter.',
+      monthlyPrice: 'Skreddersydd',
+      annualPrice: 'Skreddersydd',
+      popular: false,
+      features: [
+        'Ubegrenset antall brukere',
+        'Alt i Mester Pro, pluss:',
+        'Tripletex & PowerOffice Go API',
+        'Skreddersydde TEK17/SAK10 maler',
+        'Egen dedikert kundeansvarlig',
+        'Onboarding og team-opplæring',
+        'SLA med garantert oppetid'
+      ]
     }
   ];
 
-  const handleSelectPlan = (planName: string) => {
-    if (planName === 'Enterprise') {
+  const handleSelectPlan = (planId: string) => {
+    if (planId === 'enterprise') {
       window.dispatchEvent(new CustomEvent('navigate_view', { detail: { view: 'contact' } }));
     } else {
       window.dispatchEvent(new CustomEvent('navigate_view', { detail: { view: 'login' } }));
@@ -53,73 +135,196 @@ export const PricingPage = () => {
   };
 
   return (
-    <PageWrapper title={t('pricing', 'Priser')}>
-      <div className="grid grid-cols-1 md:grid-cols-3 gap-8 mt-8">
-        {plans.map((plan) => (
-          <div 
-            key={plan.name}
-            className={`p-8 rounded-3xl border ${plan.popular ? 'border-emerald-600 ring-4 ring-emerald-50 shadow-xl' : 'border-neutral-100'} relative`}
-          >
-            {plan.popular && (
-              <span className="absolute -top-4 left-1/2 -translate-x-1/2 bg-emerald-600 text-white text-[10px] font-black uppercase tracking-widest px-4 py-1 rounded-full">
-                Mest populær
-              </span>
-            )}
-            <h3 className="text-xl font-bold mb-2">{plan.name}</h3>
-            <div className="text-3xl font-black text-emerald-600 mb-4">{plan.price}<span className="text-sm text-neutral-400 font-medium">/mnd</span></div>
-            <p className="text-sm text-neutral-500 mb-6">{plan.desc}</p>
-            <ul className="space-y-3 mb-8">
-              {plan.features.map((f) => (
-                <li key={f} className="flex items-start gap-2 text-sm text-neutral-600">
-                  <CheckCircle2 size={16} className="text-emerald-600 shrink-0 mt-0.5" />
-                  {f}
-                </li>
-              ))}
-            </ul>
-            <button 
-              onClick={() => handleSelectPlan(plan.name)}
-              className={`w-full py-3 rounded-xl font-bold text-sm transition-all cursor-pointer ${plan.popular ? 'bg-emerald-600 text-white hover:bg-emerald-500 shadow-md shadow-emerald-200' : 'bg-neutral-900 text-white hover:bg-neutral-800'}`}
+    <PageWrapper 
+      badge="Forutsigbare priser"
+      title="Invester i mer fritid og bedre kvalitet" 
+      subtitle="Ingen bindingstid, ingen skjulte etableringsgebyrer. 14 dagers helt gratis prøveperiode på alle planer."
+    >
+      {/* Billing toggle */}
+      <div className="flex items-center justify-center gap-3 mb-12">
+        <span className={cn("text-xs font-bold", !isAnnual ? "text-neutral-900" : "text-neutral-400")}>
+          Månedlig faktura
+        </span>
+        <button 
+          onClick={() => setIsAnnual(!isAnnual)}
+          className="w-12 h-6 bg-emerald-600 rounded-full p-1 transition-colors relative cursor-pointer"
+        >
+          <div className={cn("w-4 h-4 bg-white rounded-full transition-transform", isAnnual ? "translate-x-6" : "translate-x-0")} />
+        </button>
+        <span className={cn("text-xs font-bold flex items-center gap-1.5", isAnnual ? "text-neutral-900" : "text-neutral-400")}>
+          Årlig faktura
+          <span className="bg-emerald-100 text-emerald-800 text-[10px] font-black px-2 py-0.5 rounded-full uppercase">Spar 20%</span>
+        </span>
+      </div>
+
+      <div className="grid grid-cols-1 md:grid-cols-3 gap-8 mb-16">
+        {plans.map((plan) => {
+          const price = typeof plan.monthlyPrice === 'number' 
+            ? (isAnnual ? plan.annualPrice : plan.monthlyPrice) 
+            : plan.monthlyPrice;
+
+          return (
+            <div 
+              key={plan.id}
+              className={cn(
+                "p-8 rounded-3xl flex flex-col justify-between transition-all relative",
+                plan.popular 
+                  ? "bg-neutral-900 text-white border-2 border-emerald-500 shadow-2xl ring-4 ring-emerald-500/10" 
+                  : "bg-white text-neutral-900 border border-neutral-200 shadow-sm hover:shadow-xl"
+              )}
             >
-              Velg {plan.name}
-            </button>
-          </div>
-        ))}
+              {plan.popular && (
+                <span className="absolute -top-3.5 left-1/2 -translate-x-1/2 bg-emerald-500 text-neutral-950 font-black text-[10px] uppercase tracking-widest px-3.5 py-1 rounded-full shadow-md">
+                  Mest populær
+                </span>
+              )}
+
+              <div>
+                <div className={cn("text-xs font-bold uppercase tracking-wider mb-1", plan.popular ? "text-emerald-400" : "text-neutral-500")}>
+                  {plan.tag}
+                </div>
+                <h3 className="text-2xl font-bold mb-2">{plan.name}</h3>
+                <p className={cn("text-xs mb-6", plan.popular ? "text-neutral-400" : "text-neutral-500")}>
+                  {plan.desc}
+                </p>
+
+                <div className="mb-6">
+                  {typeof price === 'number' ? (
+                    <div>
+                      <span className={cn("text-4xl font-black", plan.popular ? "text-emerald-400" : "text-neutral-900")}>
+                        {price} kr
+                      </span>
+                      <span className={cn("text-xs font-medium", plan.popular ? "text-neutral-400" : "text-neutral-500")}>
+                        {" "}/ mnd per bruker
+                      </span>
+                    </div>
+                  ) : (
+                    <span className="text-3xl font-black text-neutral-900">{price}</span>
+                  )}
+                </div>
+
+                <ul className="space-y-3 text-xs mb-8 font-medium">
+                  {plan.features.map((feat, idx) => (
+                    <li key={idx} className="flex items-start gap-2.5">
+                      <CheckCircle2 size={16} className={cn("shrink-0 mt-0.5", plan.popular ? "text-emerald-400" : "text-emerald-600")} />
+                      <span className={plan.popular ? "text-neutral-200" : "text-neutral-700"}>{feat}</span>
+                    </li>
+                  ))}
+                </ul>
+              </div>
+
+              <button 
+                onClick={() => handleSelectPlan(plan.id)}
+                className={cn(
+                  "w-full py-4 rounded-xl font-bold text-xs transition-all shadow-md active:scale-95 cursor-pointer",
+                  plan.popular 
+                    ? "bg-emerald-500 hover:bg-emerald-400 text-neutral-950 font-black" 
+                    : "bg-neutral-900 hover:bg-neutral-800 text-white"
+                )}
+              >
+                {plan.id === 'enterprise' ? 'Kontakt salg' : `Velg ${plan.name}`}
+              </button>
+            </div>
+          );
+        })}
       </div>
     </PageWrapper>
   );
 };
 
+/* =========================================================================
+   2. ABOUT PAGE
+   ========================================================================= */
 export const AboutPage = () => {
   const { t } = useTranslation();
   return (
-    <PageWrapper title={t('about_us', 'Om oss')}>
-      <p className="text-lg text-neutral-600 leading-relaxed mb-6">
-        KS MesterAI ble grunnlagt med en visjon om å forenkle hverdagen for norske håndverkere gjennom smart bruk av teknologi og kunstig intelligens.
-      </p>
-      <p className="text-neutral-600 leading-relaxed mb-8">
-        Vi forstår utfordringene med dokumentasjon, HMS/KS og TEK17-krav. Vårt mål er å automatisere de tidkrevende prosessene slik at du kan bruke mer tid på det du er best til – selve håndverket.
-      </p>
-      <div className="grid grid-cols-1 md:grid-cols-2 gap-8">
-        <div className="p-6 bg-emerald-50 rounded-3xl border border-emerald-100">
-          <h3 className="font-bold text-emerald-900 mb-2">Vår Misjon</h3>
-          <p className="text-sm text-emerald-700">Å være den ledende digitale partneren for kvalitetssikring i den norske byggenæringen.</p>
+    <PageWrapper 
+      badge="Om KS Mester AI"
+      title="Bygget for og med norske håndverkere"
+      subtitle="Vi brenner for å fjerne unødvendig papirarbeid slik at fagarbeidere kan fokusere på det de kan best: solid håndverk."
+    >
+      <div className="space-y-12">
+        {/* Intro Card */}
+        <div className="bg-white rounded-3xl p-8 sm:p-12 border border-neutral-200/90 shadow-sm space-y-6 text-neutral-700 leading-relaxed text-base">
+          <p className="text-lg font-medium text-neutral-900">
+            Byggebransjen i Norge er underlagt strenge, men nødvendige krav: TEK17, SAK10, Byggherreforskriften og Arbeidsmiljølovens internkontrollforskrift.
+          </p>
+          <p>
+            I altfor mange år har dette betydd tapte kveldstimer ved kjøkkenbordet, mapper fulle av uleselige lapper, og bilder spredt på private mobiltelefoner. Resultatet? Ubetalt overtid for byggmesteren, stress før ferdigattester, og unødvendige tvister om tilleggsarbeid.
+          </p>
+          <p>
+            KS Mester AI ble grunnlagt for å endre dette radikalt. Ved å kombinere dyp norsk bransjeinnsikt med toppmoderne kunstig intelligens og automatiserte integrasjoner mot Boligmappa og regnskapssystemer, gjør vi hele KS- og HMS-prosessen friksjonsfri.
+          </p>
         </div>
-        <div className="p-6 bg-blue-50 rounded-3xl border border-blue-100">
-          <h3 className="font-bold text-blue-900 mb-2">Vår Teknologi</h3>
-          <p className="text-sm text-blue-700">Vi kombinerer dyp bransjekunnskap med avansert AI for å levere løsninger som faktisk fungerer på byggeplassen.</p>
+
+        {/* Core Pillars */}
+        <div className="grid grid-cols-1 md:grid-cols-3 gap-6">
+          <div className="bg-emerald-50/60 p-8 rounded-3xl border border-emerald-100">
+            <div className="w-12 h-12 bg-emerald-100 text-emerald-800 rounded-2xl flex items-center justify-center font-bold mb-4">
+              <ShieldCheck size={24} />
+            </div>
+            <h3 className="font-bold text-lg text-emerald-950 mb-2">100% Norsk Regelverk</h3>
+            <p className="text-xs text-emerald-800 leading-relaxed">
+              Utviklet spesifikt etter norske standarder (NS 8405, NS 8406, TEK17, SAK10 og Våtromsnormen).
+            </p>
+          </div>
+
+          <div className="bg-blue-50/60 p-8 rounded-3xl border border-blue-100">
+            <div className="w-12 h-12 bg-blue-100 text-blue-800 rounded-2xl flex items-center justify-center font-bold mb-4">
+              <Sparkles size={24} />
+            </div>
+            <h3 className="font-bold text-lg text-blue-950 mb-2">Intelligent Assistanse</h3>
+            <p className="text-xs text-blue-800 leading-relaxed">
+              Mesterhjernen analyserer bilder, sjekker værdata fra Yr.no og oversetter tale til juridisk vanntette rapporter.
+            </p>
+          </div>
+
+          <div className="bg-purple-50/60 p-8 rounded-3xl border border-purple-100">
+            <div className="w-12 h-12 bg-purple-100 text-purple-800 rounded-2xl flex items-center justify-center font-bold mb-4">
+              <Lock size={24} />
+            </div>
+            <h3 className="font-bold text-lg text-purple-950 mb-2">Sikkerhet & Eierskap</h3>
+            <p className="text-xs text-purple-800 leading-relaxed">
+              All data lagres kryptert i Europa i henhold til GDPR. Du beholder 100 % eierskap til din bedrifts data.
+            </p>
+          </div>
+        </div>
+
+        {/* Stats Strip */}
+        <div className="bg-neutral-900 rounded-3xl p-8 sm:p-12 text-white grid grid-cols-2 md:grid-cols-4 gap-6 text-center border border-neutral-800">
+          <div>
+            <div className="text-3xl sm:text-4xl font-black text-emerald-400 mb-1">450+</div>
+            <div className="text-xs text-neutral-400 font-bold uppercase tracking-wider">Aktive håndverkerbedrifter</div>
+          </div>
+          <div>
+            <div className="text-3xl sm:text-4xl font-black text-emerald-400 mb-1">12 000+</div>
+            <div className="text-xs text-neutral-400 font-bold uppercase tracking-wider">SJA-analyser utført</div>
+          </div>
+          <div>
+            <div className="text-3xl sm:text-4xl font-black text-emerald-400 mb-1">99.8%</div>
+            <div className="text-xs text-neutral-400 font-bold uppercase tracking-wider">Godkjent i tilsyn</div>
+          </div>
+          <div>
+            <div className="text-3xl sm:text-4xl font-black text-emerald-400 mb-1">4.5 timer</div>
+            <div className="text-xs text-neutral-400 font-bold uppercase tracking-wider">Spart per arbeider/uke</div>
+          </div>
         </div>
       </div>
     </PageWrapper>
   );
 };
 
+/* =========================================================================
+   3. CONTACT PAGE
+   ========================================================================= */
 export const ContactPage = () => {
   const { t } = useTranslation();
-  const [name, setName] = React.useState('');
-  const [email, setEmail] = React.useState('');
-  const [message, setMessage] = React.useState('');
-  const [loading, setLoading] = React.useState(false);
-  const [success, setSuccess] = React.useState(false);
+  const [name, setName] = useState('');
+  const [email, setEmail] = useState('');
+  const [phone, setPhone] = useState('');
+  const [message, setMessage] = useState('');
+  const [loading, setLoading] = useState(false);
+  const [success, setSuccess] = useState(false);
 
   const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault();
@@ -129,163 +334,281 @@ export const ContactPage = () => {
       await addDoc(collection(db, 'leads'), {
         name,
         email,
+        phone,
         message,
         status: 'new',
         createdAt: serverTimestamp(),
-        source: 'contact_form'
+        source: 'contact_page'
       });
       setSuccess(true);
       setName('');
       setEmail('');
+      setPhone('');
       setMessage('');
     } catch (error) {
       console.error('Error saving lead:', error);
-      alert('Det oppsto en feil ved sending av meldingen. Vennligst prøv igjen senere.');
+      alert('Det oppsto en feil ved sending av meldingen. Vennligst prøv igjen eller ring oss direkte.');
     } finally {
       setLoading(false);
     }
   };
 
   return (
-    <PageWrapper title={t('contact', 'Kontakt oss')}>
-      <div className="grid grid-cols-1 md:grid-cols-2 gap-12">
-        <div className="space-y-8">
-          <p className="text-neutral-600">Vi er her for å hjelpe deg. Ta kontakt for en uforpliktende prat eller demo.</p>
-          <div className="space-y-4">
-            <div className="flex items-center gap-4">
-              <div className="w-12 h-12 bg-emerald-100 text-emerald-600 rounded-2xl flex items-center justify-center">
-                <Mail size={24} />
-              </div>
-              <div>
-                <p className="text-[10px] font-black uppercase tracking-widest text-neutral-400">E-post</p>
-                <p className="font-bold">post@ksmester.no</p>
+    <PageWrapper 
+      badge="Vi er her for deg"
+      title="Kontakt oss for en prat eller demo" 
+      subtitle="Har du spørsmål om systemet, ønsker en skreddersydd bedriftsgjennomgang, eller trenger hjelp? Vårt norske team svarer raskt."
+    >
+      <div className="grid grid-cols-1 lg:grid-cols-2 gap-12 items-start">
+        
+        {/* Left: Contact Info & Support Cards */}
+        <div className="space-y-6">
+          <div className="bg-white rounded-3xl p-8 border border-neutral-200/90 shadow-sm space-y-6">
+            <h3 className="font-bold text-xl text-neutral-900">Direkte kontaktpunkter</h3>
+            
+            <div className="space-y-5">
+              <a 
+                href="tel:+4740163082" 
+                className="flex items-center gap-4 p-4 rounded-2xl hover:bg-neutral-50 border border-neutral-100 transition-colors group"
+              >
+                <div className="w-12 h-12 bg-emerald-100 text-emerald-700 rounded-2xl flex items-center justify-center shrink-0 group-hover:bg-emerald-600 group-hover:text-white transition-colors">
+                  <Phone size={22} />
+                </div>
+                <div>
+                  <p className="text-[10px] font-black uppercase tracking-widest text-neutral-400">Telefon (Hverdager 08:00 - 16:00)</p>
+                  <p className="text-base font-bold text-neutral-900">+47 401 63 082</p>
+                </div>
+              </a>
+
+              <a 
+                href="mailto:post@ksmester.no" 
+                className="flex items-center gap-4 p-4 rounded-2xl hover:bg-neutral-50 border border-neutral-100 transition-colors group"
+              >
+                <div className="w-12 h-12 bg-blue-100 text-blue-700 rounded-2xl flex items-center justify-center shrink-0 group-hover:bg-blue-600 group-hover:text-white transition-colors">
+                  <Mail size={22} />
+                </div>
+                <div>
+                  <p className="text-[10px] font-black uppercase tracking-widest text-neutral-400">E-post</p>
+                  <p className="text-base font-bold text-neutral-900">post@ksmester.no</p>
+                </div>
+              </a>
+
+              <div className="flex items-center gap-4 p-4 rounded-2xl bg-neutral-50/50 border border-neutral-100">
+                <div className="w-12 h-12 bg-purple-100 text-purple-700 rounded-2xl flex items-center justify-center shrink-0">
+                  <MapPin size={22} />
+                </div>
+                <div>
+                  <p className="text-[10px] font-black uppercase tracking-widest text-neutral-400">Lokasjon & Drift</p>
+                  <p className="text-sm font-bold text-neutral-900">Norge (Heldigitalt økosystem for bygg & anlegg)</p>
+                </div>
               </div>
             </div>
-            <div className="flex items-center gap-4">
-              <div className="w-12 h-12 bg-blue-100 text-blue-600 rounded-2xl flex items-center justify-center">
-                <Phone size={24} />
-              </div>
-              <div>
-                <p className="text-[10px] font-black uppercase tracking-widest text-neutral-400">Telefon</p>
-                <p className="font-bold">+47 400 00 000</p>
-              </div>
-            </div>
-            <div className="flex items-center gap-4">
-              <div className="w-12 h-12 bg-purple-100 text-purple-600 rounded-2xl flex items-center justify-center">
-                <MapPin size={24} />
-              </div>
-              <div>
-                <p className="text-[10px] font-black uppercase tracking-widest text-neutral-400">Lokasjon</p>
-                <p className="font-bold">Norge (Heldigitalt HMS/KS-økosystem)</p>
-              </div>
-            </div>
+          </div>
+
+          <div className="bg-emerald-50 rounded-3xl p-6 border border-emerald-100 flex items-center gap-4">
+            <Clock size={24} className="text-emerald-700 shrink-0" />
+            <p className="text-xs text-emerald-900 font-medium leading-relaxed">
+              <b>Garantert responstid:</b> Vi svarer på alle skriftlige henvendelser innen 2 timer i vanlig arbeidstid.
+            </p>
           </div>
         </div>
-        {success ? (
-          <div className="bg-emerald-50 p-8 rounded-3xl border border-emerald-100 text-center">
-            <CheckCircle2 size={48} className="text-emerald-600 mx-auto mb-4" />
-            <h3 className="text-xl font-bold text-emerald-900 mb-2">Melding sendt!</h3>
-            <p className="text-emerald-700">Takk for din henvendelse. Vi tar kontakt med deg så snart som mulig.</p>
-            <button 
-              onClick={() => setSuccess(false)}
-              className="mt-6 text-sm font-bold text-emerald-600 hover:text-emerald-700"
-            >
-              Send en ny melding
-            </button>
-          </div>
-        ) : (
-          <form onSubmit={handleSubmit} className="space-y-4 bg-neutral-50 p-8 rounded-3xl border border-neutral-100">
-            <div className="space-y-2">
-              <label className="text-[10px] font-black uppercase tracking-widest text-neutral-400 ml-1">Navn</label>
-              <input 
-                required
-                type="text" 
-                value={name}
-                onChange={(e) => setName(e.target.value)}
-                className="w-full px-4 py-3 bg-white border border-neutral-200 rounded-xl text-sm focus:ring-2 focus:ring-emerald-500 outline-none" 
-              />
+
+        {/* Right: Contact Form */}
+        <div className="bg-white rounded-3xl p-8 sm:p-10 border border-neutral-200/90 shadow-sm">
+          {success ? (
+            <div className="text-center py-10 space-y-4">
+              <div className="w-16 h-16 bg-emerald-100 text-emerald-600 rounded-2xl flex items-center justify-center mx-auto">
+                <CheckCircle2 size={36} />
+              </div>
+              <h3 className="text-2xl font-black text-neutral-900">Melding mottatt!</h3>
+              <p className="text-sm text-neutral-600 max-w-sm mx-auto">
+                Takk for at du tok kontakt. En av våre rådgivere vil kontakte deg snarlig.
+              </p>
+              <button 
+                onClick={() => setSuccess(false)}
+                className="text-xs font-bold text-emerald-600 hover:text-emerald-700 underline pt-4 cursor-pointer"
+              >
+                Send en ny melding
+              </button>
             </div>
-            <div className="space-y-2">
-              <label className="text-[10px] font-black uppercase tracking-widest text-neutral-400 ml-1">E-post</label>
-              <input 
-                required
-                type="email" 
-                value={email}
-                onChange={(e) => setEmail(e.target.value)}
-                className="w-full px-4 py-3 bg-white border border-neutral-200 rounded-xl text-sm focus:ring-2 focus:ring-emerald-500 outline-none" 
-              />
-            </div>
-            <div className="space-y-2">
-              <label className="text-[10px] font-black uppercase tracking-widest text-neutral-400 ml-1">Melding</label>
-              <textarea 
-                required
-                rows={4} 
-                value={message}
-                onChange={(e) => setMessage(e.target.value)}
-                className="w-full px-4 py-3 bg-white border border-neutral-200 rounded-xl text-sm focus:ring-2 focus:ring-emerald-500 outline-none resize-none" 
-              />
-            </div>
-            <button 
-              disabled={loading}
-              className="w-full bg-emerald-600 text-white py-4 rounded-xl font-bold hover:bg-emerald-500 transition-all shadow-lg shadow-emerald-100 disabled:opacity-50"
-            >
-              {loading ? 'Sender...' : 'Send melding'}
-            </button>
-          </form>
-        )}
+          ) : (
+            <form onSubmit={handleSubmit} className="space-y-4">
+              <h3 className="text-xl font-bold text-neutral-900 mb-2">Send oss en melding</h3>
+              
+              <div>
+                <label className="text-[11px] font-bold text-neutral-600 uppercase tracking-wider mb-1 block">
+                  Ditt navn *
+                </label>
+                <input 
+                  required
+                  type="text" 
+                  value={name}
+                  onChange={(e) => setName(e.target.value)}
+                  placeholder="Ola Nordmann"
+                  className="w-full px-4 py-3 bg-neutral-50 border border-neutral-200 rounded-xl text-sm focus:ring-2 focus:ring-emerald-500 focus:bg-white outline-none transition-all" 
+                />
+              </div>
+
+              <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
+                <div>
+                  <label className="text-[11px] font-bold text-neutral-600 uppercase tracking-wider mb-1 block">
+                    E-postadresse *
+                  </label>
+                  <input 
+                    required
+                    type="email" 
+                    value={email}
+                    onChange={(e) => setEmail(e.target.value)}
+                    placeholder="ola@byggmester.no"
+                    className="w-full px-4 py-3 bg-neutral-50 border border-neutral-200 rounded-xl text-sm focus:ring-2 focus:ring-emerald-500 focus:bg-white outline-none transition-all" 
+                  />
+                </div>
+
+                <div>
+                  <label className="text-[11px] font-bold text-neutral-600 uppercase tracking-wider mb-1 block">
+                    Telefonnummer
+                  </label>
+                  <input 
+                    type="tel" 
+                    value={phone}
+                    onChange={(e) => setPhone(e.target.value)}
+                    placeholder="+47 900 00 000"
+                    className="w-full px-4 py-3 bg-neutral-50 border border-neutral-200 rounded-xl text-sm focus:ring-2 focus:ring-emerald-500 focus:bg-white outline-none transition-all" 
+                  />
+                </div>
+              </div>
+
+              <div>
+                <label className="text-[11px] font-bold text-neutral-600 uppercase tracking-wider mb-1 block">
+                  Hva kan vi hjelpe deg med? *
+                </label>
+                <textarea 
+                  required
+                  rows={4} 
+                  value={message}
+                  onChange={(e) => setMessage(e.target.value)}
+                  placeholder="Fortell oss gjerne litt om din bedrift, antall ansatte og hva dere ser etter..."
+                  className="w-full px-4 py-3 bg-neutral-50 border border-neutral-200 rounded-xl text-sm focus:ring-2 focus:ring-emerald-500 focus:bg-white outline-none transition-all resize-none" 
+                />
+              </div>
+
+              <button 
+                disabled={loading}
+                className="w-full bg-emerald-600 hover:bg-emerald-500 text-white py-4 rounded-xl font-bold text-sm transition-all shadow-lg shadow-emerald-600/20 active:scale-95 disabled:opacity-50 cursor-pointer"
+              >
+                {loading ? 'Sender henvendelse...' : 'Send henvendelse'}
+              </button>
+            </form>
+          )}
+        </div>
+
       </div>
     </PageWrapper>
   );
 };
 
+/* =========================================================================
+   4. PRIVACY PAGE (GDPR)
+   ========================================================================= */
 export const PrivacyPage = () => {
-  const { t } = useTranslation();
   return (
-    <PageWrapper title={t('privacy', 'Personvern')}>
-      <div className="space-y-6 text-neutral-600 leading-relaxed">
-        <section>
-          <h3 className="text-xl font-bold text-neutral-900 mb-3 flex items-center gap-2">
-            <ShieldCheck size={20} className="text-emerald-600" />
-            1. Behandling av personopplysninger
+    <PageWrapper 
+      badge="Personvern & Sikkerhet"
+      title="Personvernerklæring"
+      subtitle="KS Mester AI behandler personopplysninger i full overensstemmelse med den norske personopplysningsloven og EUs personvernforordning (GDPR)."
+    >
+      <div className="bg-white rounded-3xl p-8 sm:p-12 border border-neutral-200/90 shadow-sm space-y-8 text-neutral-700 leading-relaxed text-sm">
+        
+        <section className="space-y-3">
+          <h3 className="text-xl font-bold text-neutral-900 flex items-center gap-2">
+            <ShieldCheck size={22} className="text-emerald-600" />
+            1. Behandlingsansvarlig
           </h3>
-          <p>KS MesterAI behandler personopplysninger i samsvar med den til enhver tid gjeldende personvernlovgivning, herunder GDPR. Vi er opptatt av å beskytte ditt personvern og dine data.</p>
+          <p>
+            KS Mester AI AS er behandlingsansvarlig for behandling av personopplysninger som samles inn ved bruk av våre digitale tjenester, mobilapplikasjoner og kundeportaler. Vi forplikter oss til å beskytte integriteten og konfidensialiteten til våre brukeres data.
+          </p>
         </section>
-        <section>
-          <h3 className="text-xl font-bold text-neutral-900 mb-3 flex items-center gap-2">
-            <FileText size={20} className="text-blue-600" />
-            2. Hvilke data samler vi inn?
+
+        <section className="space-y-3">
+          <h3 className="text-xl font-bold text-neutral-900 flex items-center gap-2">
+            <FileText size={22} className="text-blue-600" />
+            2. Hvilke data behandler vi og formålet?
           </h3>
-          <p>Vi samler inn informasjon du oppgir ved registrering (navn, e-post, firmanavn) og data som genereres ved bruk av tjenesten (prosjektdata, bilder, rapporter). Dette er nødvendig for å levere tjenesten.</p>
+          <p>
+            Vi behandler kun opplysninger som er nødvendige for å levere og opprettholde et trygt kvalitetssikrings- og HMS-system:
+          </p>
+          <ul className="list-disc pl-5 space-y-1 text-neutral-600">
+            <li><b>Brukerkonto:</b> Navn, firmatilhørighet, rolle, e-postadresse og telefonnummer.</li>
+            <li><b>Prosjekt- og fildokumentasjon:</b> Prosjektnavn, matrikkelinformasjon (Gnr/Bnr), bilder fra byggeplass, SJA-registreringer og avviksrapporter.</li>
+            <li><b>Geolokasjon og tidsstempel:</b> Ved bildedokumentasjon til sjekklister registreres tidspunkt og koordinater for å oppfylle kravene til sporbarhet iht. TEK17 og SAK10.</li>
+          </ul>
         </section>
-        <section>
-          <h3 className="text-xl font-bold text-neutral-900 mb-3 flex items-center gap-2">
-            <HelpCircle size={20} className="text-purple-600" />
-            3. Dine rettigheter
+
+        <section className="space-y-3">
+          <h3 className="text-xl font-bold text-neutral-900 flex items-center gap-2">
+            <Lock size={22} className="text-purple-600" />
+            3. Datalagring og sikkerhet
           </h3>
-          <p>Du har rett til innsyn i egne personopplysninger, samt rett til å kreve rettet eller slettet mangelfulle eller uriktige opplysninger. Du kan når som helst trekke tilbake ditt samtykke.</p>
+          <p>
+            All data lagres i sikre datasentre innenfor EØS/Norge med kryptering både under overføring (TLS/HTTPS) og ved lagring (256-bit AES). Vi foretar daglige automatiske sikkerhetskopier for å forhindre tap av data.
+          </p>
         </section>
+
+        <section className="space-y-3">
+          <h3 className="text-xl font-bold text-neutral-900 flex items-center gap-2">
+            <HelpCircle size={22} className="text-emerald-600" />
+            4. Dine rettigheter
+          </h3>
+          <p>
+            Du har til enhver tid rett til innsyn i egne personopplysninger, retting av uriktige data, dataportabilitet, og sletting av opplysninger der lovbestemte oppbevaringskrav (f.eks. bokføringsloven eller plan- og bygningsloven) ikke er til hinder.
+          </p>
+        </section>
+
       </div>
     </PageWrapper>
   );
 };
 
+/* =========================================================================
+   5. TERMS PAGE
+   ========================================================================= */
 export const TermsPage = () => {
-  const { t } = useTranslation();
   return (
-    <PageWrapper title={t('terms', 'Vilkår og betingelser')}>
-      <div className="space-y-6 text-neutral-600 leading-relaxed">
-        <section>
-          <h3 className="text-xl font-bold text-neutral-900 mb-3">1. Aksept av vilkår</h3>
-          <p>Ved å ta i bruk KS MesterAI aksepterer du disse vilkårene. Tjenesten leveres "som den er" for å støtte din bedrifts kvalitetssikringsarbeid.</p>
+    <PageWrapper 
+      badge="Avtalebetingelser"
+      title="Vilkår og Betingelser"
+      subtitle="Brukervilkår for KS Mester AI programvare- og skytjenester."
+    >
+      <div className="bg-white rounded-3xl p-8 sm:p-12 border border-neutral-200/90 shadow-sm space-y-8 text-neutral-700 leading-relaxed text-sm">
+        
+        <section className="space-y-3">
+          <h3 className="text-xl font-bold text-neutral-900">1. Avtalens omfang</h3>
+          <p>
+            Disse vilkårene regulerer tilgang til og bruk av KS Mester AI sine tjenester for bedriftskunder og deres autoriserte brukere. Ved å opprette en konto eller ta systemet i bruk, aksepteres disse betingelsene i sin helhet.
+          </p>
         </section>
-        <section>
-          <h3 className="text-xl font-bold text-neutral-900 mb-3">2. Brukerens ansvar</h3>
-          <p>Brukeren er selv ansvarlig for at all dokumentasjon som genereres og lagres i systemet er korrekt og i samsvar med gjeldende lover og regler (f.eks. TEK17).</p>
+
+        <section className="space-y-3">
+          <h3 className="text-xl font-bold text-neutral-900">2. Brukerens ansvar og faglig kontroll</h3>
+          <p>
+            KS Mester AI leverer programvareverktøy og AI-assistanse for å effektivisere kvalitetssikring, HMS og FDV. Det påligger alltid den utførende fagpersonen og bedriftens ledelse å verifisere at dokumentasjon, kalkyleresultater og faglige vurderinger er i samsvar med gjeldende lover, TEK17 og prosjektets faktiske forhold.
+          </p>
         </section>
-        <section>
-          <h3 className="text-xl font-bold text-neutral-900 mb-3">3. Betaling og abonnement</h3>
-          <p>Abonnementet faktureres månedlig eller årlig forskuddsvis. Oppsigelsestiden er inneværende måned pluss én måned, med mindre annet er avtalt.</p>
+
+        <section className="space-y-3">
+          <h3 className="text-xl font-bold text-neutral-900">3. Prøveperiode, abonnement og oppsigelse</h3>
+          <p>
+            Tjenesten tilbys med 14 dagers gratis prøvetid uten binding. Etter prøvetiden faktureres abonnementet månedlig eller årlig i forkant avhengig av valgt modell. Oppsigelse kan gjøres når som helst før neste fornyelsesperiode via innstillingene i systemet eller skriftlig til support.
+          </p>
         </section>
+
+        <section className="space-y-3">
+          <h3 className="text-xl font-bold text-neutral-900">4. Oppetid og dataeierskap</h3>
+          <p>
+            Kunden beholder det fulle og eksklusive eierskapet til alle prosjektdata, bilder og dokumenter som lastes opp eller genereres i tjenesten. Kunden kan når som helst eksportere sine data.
+          </p>
+        </section>
+
       </div>
     </PageWrapper>
   );

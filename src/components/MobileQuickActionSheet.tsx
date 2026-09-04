@@ -12,7 +12,9 @@ import {
   Sparkles,
   Zap,
   FolderPlus,
-  ShieldAlert
+  ShieldAlert,
+  Car,
+  Package
 } from 'lucide-react';
 import { cn } from '@/src/lib/utils';
 
@@ -76,6 +78,22 @@ export default function MobileQuickActionSheet({
       sublabel: 'Kalkuler og send tilbud',
       icon: <FileText size={22} />,
       color: 'bg-gradient-to-br from-sky-500 to-blue-600 text-white',
+      badge: null
+    },
+    {
+      id: 'vehicle',
+      label: 'Kjørebok',
+      sublabel: 'Registrer tur og kilometer',
+      icon: <Car size={22} />,
+      color: 'bg-gradient-to-br from-neutral-700 to-neutral-900 text-white',
+      badge: null
+    },
+    {
+      id: 'inventory',
+      label: 'Lager & Verktøy',
+      sublabel: 'Oversikt over verktøy og utstyr',
+      icon: <Package size={22} />,
+      color: 'bg-gradient-to-br from-blue-600 to-indigo-700 text-white',
       badge: null
     },
     {

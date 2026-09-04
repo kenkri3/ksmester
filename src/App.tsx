@@ -32,12 +32,22 @@ import {
   Download,
   User as UserIcon,
   Shield,
-  Bell
+  Bell,
+  Coins,
+  GraduationCap,
+  Brain,
+  Car,
+  Package,
+  Clock,
+  FolderKanban,
+  ChevronDown,
+  Sparkles,
+  FileCheck
 } from 'lucide-react';
 import { cn } from '@/src/lib/utils';
 import { Toaster } from 'sonner';
 import { View, Project, SJAReport, Deviation } from './types';
-import LandingPage from './components/LandingPage';
+import LandingPage, { LandingTab } from './components/LandingPage';
 import Dashboard from './components/Dashboard';
 import MobileApp from './components/MobileApp';
 import TechnicalSpec from './components/TechnicalSpec';
@@ -94,6 +104,10 @@ function AppContent() {
   const [isDemo, setIsDemo] = useState(false);
   const [isMenuOpen, setIsMenuOpen] = useState(false);
   const [showInstallGuide, setShowInstallGuide] = useState(false);
+  const [landingTab, setLandingTab] = useState<LandingTab>('home');
+  const [isPortalModalOpen, setIsPortalModalOpen] = useState(false);
+  const [portalModalCode, setPortalModalCode] = useState('');
+  const [isSolutionsDropdownOpen, setIsSolutionsDropdownOpen] = useState(false);
   const { t, i18n } = useTranslation();
   const { user, logout, isAuthReady, subscriptionStatus, trialDaysLeft, impersonatedCompanyId, stopImpersonation } = useAuth();
 
@@ -528,92 +542,211 @@ function AppContent() {
               initial={{ opacity: 0, y: -20 }}
               animate={{ opacity: 1, y: 0 }}
               exit={{ opacity: 0, y: -20 }}
-              className="absolute top-16 left-0 right-0 bg-white border-b border-neutral-200 p-4 md:hidden shadow-xl max-h-[calc(100vh-4rem)] overflow-y-auto"
+              className="absolute top-16 left-0 right-0 bg-white border-b border-neutral-200 p-4 md:hidden shadow-2xl max-h-[calc(100vh-4rem)] overflow-y-auto custom-scrollbar z-40 pb-20"
             >
-              <div className="flex flex-col gap-2">
+              <div className="flex flex-col gap-3">
                 {user ? (
-                  <div className="flex items-center justify-between px-4 py-3 border-b border-neutral-100 mb-2">
-                    <div className="flex items-center gap-3 shrink-0 min-w-0">
-                      <button 
-                        onClick={() => { setView('settings'); setIsMenuOpen(false); }}
-                        className={cn(
-                          "w-10 h-10 rounded-full flex items-center justify-center transition-colors shrink-0 aspect-square",
-                          view === 'settings' ? "bg-emerald-50 text-emerald-600" : "bg-neutral-100 text-neutral-400"
+                  <>
+                    {/* User profile header */}
+                    <div className="flex items-center justify-between p-3.5 bg-neutral-50 rounded-2xl border border-neutral-100">
+                      <div className="flex items-center gap-3 min-w-0">
+                        {user.photoURL ? (
+                          <img 
+                            src={user.photoURL} 
+                            alt={user.displayName || 'User'} 
+                            className="w-10 h-10 rounded-full border border-neutral-200 object-cover shrink-0 aspect-square"
+                            referrerPolicy="no-referrer"
+                          />
+                        ) : (
+                          <div className="w-10 h-10 bg-emerald-100 text-emerald-800 font-black rounded-full flex items-center justify-center shrink-0">
+                            {user.displayName?.[0] || 'U'}
+                          </div>
                         )}
-                      >
-                        <Settings size={20} />
-                      </button>
-                      {user.photoURL ? (
-                        <img 
-                          src={user.photoURL} 
-                          alt={user.displayName || 'User'} 
-                          className="w-10 h-10 rounded-full border border-neutral-200 object-cover shrink-0 aspect-square"
-                          referrerPolicy="no-referrer"
-                        />
-                      ) : (
-                        <div className="w-10 h-10 bg-neutral-100 rounded-full flex items-center justify-center text-neutral-500 shrink-0 aspect-square">
-                          <UserIcon size={20} />
+                        <div className="min-w-0">
+                          <p className="text-sm font-bold text-neutral-900 truncate">{user.displayName || 'Mester Bruker'}</p>
+                          <p className="text-xs text-neutral-500 truncate">{user.email}</p>
                         </div>
-                      )}
-                      <div className="text-left">
-                        <p className="text-sm font-bold leading-none mb-1">{user.displayName}</p>
-                        <p className="text-[10px] text-neutral-500 leading-none">{user.email}</p>
+                      </div>
+                      <div className="flex items-center gap-1 shrink-0">
+                        <button 
+                          onClick={() => { setView('settings'); setIsMenuOpen(false); }}
+                          aria-label="Innstillinger"
+                          className={cn(
+                            "p-2 rounded-xl transition-colors",
+                            view === 'settings' ? "bg-emerald-100 text-emerald-700" : "text-neutral-500 hover:bg-neutral-200"
+                          )}
+                        >
+                          <Settings size={18} />
+                        </button>
+                        <button 
+                          onClick={() => { logout(); setIsMenuOpen(false); }}
+                          aria-label="Logg ut"
+                          className="p-2 text-neutral-400 hover:text-red-500 rounded-xl hover:bg-neutral-200 transition-colors"
+                        >
+                          <LogOut size={18} />
+                        </button>
                       </div>
                     </div>
-                    <button 
-                      onClick={logout}
-                      className="p-2 text-neutral-400 hover:text-red-500 transition-colors"
-                    >
-                      <LogOut size={20} />
-                    </button>
-                  </div>
+
+                    {/* Main App Modules */}
+                    <div>
+                      <div className="text-[10px] font-black uppercase tracking-wider text-neutral-400 px-1 mb-2">
+                        Systemmoduler
+                      </div>
+                      <div className="grid grid-cols-2 gap-2">
+                        {[
+                          { tab: 'oversikt', label: 'Oversikt', icon: <LayoutDashboard size={16} /> },
+                          { tab: 'prosjekter', label: 'Prosjekter', icon: <FolderKanban size={16} /> },
+                          { tab: 'tilbud', label: 'Tilbud & Kalkyle', icon: <FileText size={16} /> },
+                          { tab: 'avvik', label: 'Avvik & KS', icon: <AlertTriangle size={16} /> },
+                          { tab: 'hms', label: 'HMS & Mannskap', icon: <ShieldCheck size={16} /> },
+                          { tab: 'finans', label: 'Finans & Endringer', icon: <Coins size={16} /> },
+                          { tab: 'laerling', label: 'Lærling', icon: <GraduationCap size={16} /> },
+                          { tab: 'ai', label: 'AI Analyse', icon: <Brain size={16} /> },
+                        ].map((m) => (
+                          <button
+                            key={m.tab}
+                            onClick={() => {
+                              handleMobileNavigate('dashboard', m.tab);
+                              setIsMenuOpen(false);
+                            }}
+                            className={cn(
+                              "flex items-center gap-2.5 p-3 rounded-xl text-left text-xs font-bold transition-all border",
+                              view === 'dashboard' && dashboardTab === m.tab
+                                ? "bg-emerald-50 border-emerald-300 text-emerald-800 shadow-sm"
+                                : "bg-white border-neutral-200/80 text-neutral-700 hover:bg-neutral-50"
+                            )}
+                          >
+                            <span className={cn(
+                              "p-1.5 rounded-lg shrink-0",
+                              view === 'dashboard' && dashboardTab === m.tab ? "bg-emerald-600 text-white" : "bg-neutral-100 text-neutral-600"
+                            )}>
+                              {m.icon}
+                            </span>
+                            <span className="truncate">{m.label}</span>
+                          </button>
+                        ))}
+                      </div>
+                    </div>
+
+                    {/* Field Tools Direct Launch */}
+                    <div>
+                      <div className="text-[10px] font-black uppercase tracking-wider text-neutral-400 px-1 mb-2">
+                        Feltverktøy
+                      </div>
+                      <div className="grid grid-cols-2 gap-2">
+                        <button
+                          onClick={() => {
+                            handleMobileAction('vehicle');
+                            setIsMenuOpen(false);
+                          }}
+                          className="flex items-center gap-2.5 p-3 rounded-xl text-left text-xs font-bold bg-neutral-50 border border-neutral-200/80 text-neutral-800 hover:bg-neutral-100 transition-all"
+                        >
+                          <span className="p-1.5 rounded-lg bg-neutral-900 text-white shrink-0">
+                            <Car size={16} />
+                          </span>
+                          <span className="truncate">Kjørebok</span>
+                        </button>
+
+                        <button
+                          onClick={() => {
+                            handleMobileAction('inventory');
+                            setIsMenuOpen(false);
+                          }}
+                          className="flex items-center gap-2.5 p-3 rounded-xl text-left text-xs font-bold bg-neutral-50 border border-neutral-200/80 text-neutral-800 hover:bg-neutral-100 transition-all"
+                        >
+                          <span className="p-1.5 rounded-lg bg-blue-600 text-white shrink-0">
+                            <Package size={16} />
+                          </span>
+                          <span className="truncate">Lager & Utstyr</span>
+                        </button>
+
+                        <button
+                          onClick={() => {
+                            handleMobileAction('time_registration');
+                            setIsMenuOpen(false);
+                          }}
+                          className="flex items-center gap-2.5 p-3 rounded-xl text-left text-xs font-bold bg-neutral-50 border border-neutral-200/80 text-neutral-800 hover:bg-neutral-100 transition-all"
+                        >
+                          <span className="p-1.5 rounded-lg bg-emerald-600 text-white shrink-0">
+                            <Clock size={16} />
+                          </span>
+                          <span className="truncate">Før timer</span>
+                        </button>
+
+                        <button
+                          onClick={() => {
+                            handleMobileAction('take_photo');
+                            setIsMenuOpen(false);
+                          }}
+                          className="flex items-center gap-2.5 p-3 rounded-xl text-left text-xs font-bold bg-neutral-50 border border-neutral-200/80 text-neutral-800 hover:bg-neutral-100 transition-all"
+                        >
+                          <span className="p-1.5 rounded-lg bg-rose-500 text-white shrink-0">
+                            <Camera size={16} />
+                          </span>
+                          <span className="truncate">AI Vision</span>
+                        </button>
+                      </div>
+                    </div>
+
+                    {/* App Views & Admin */}
+                    <div className="pt-2 border-t border-neutral-100 space-y-2">
+                      <div className="grid grid-cols-2 gap-2">
+                        <button 
+                          onClick={() => { setView('mobile'); setIsMenuOpen(false); }} 
+                          className={cn("flex items-center gap-2 p-2.5 rounded-xl text-xs font-bold", view === 'mobile' ? "bg-emerald-50 text-emerald-700" : "text-neutral-600 hover:bg-neutral-50")}
+                        >
+                          <Smartphone size={15} />
+                          <span>Mobil Feltapp</span>
+                        </button>
+
+                        <button 
+                          onClick={() => { setView('settings'); setIsMenuOpen(false); }} 
+                          className={cn("flex items-center gap-2 p-2.5 rounded-xl text-xs font-bold", view === 'settings' ? "bg-emerald-50 text-emerald-700" : "text-neutral-600 hover:bg-neutral-50")}
+                        >
+                          <Settings size={15} />
+                          <span>Innstillinger</span>
+                        </button>
+
+                        {(user.role === 'admin' || user.email === 'kenkri3@gmail.com') && (
+                          <button 
+                            onClick={() => { setView('super-admin'); setIsMenuOpen(false); }} 
+                            className={cn("col-span-2 flex items-center gap-2 p-2.5 rounded-xl text-xs font-bold", view === 'super-admin' ? "bg-rose-50 text-rose-700" : "text-rose-600 hover:bg-rose-50")}
+                          >
+                            <Shield size={15} />
+                            <span>SuperAdmin Kontrollpanel</span>
+                          </button>
+                        )}
+                      </div>
+
+                      <button 
+                        onClick={() => { setShowInstallGuide(true); setIsMenuOpen(false); }} 
+                        className="w-full flex items-center justify-center gap-2 py-3 px-3 bg-emerald-600 text-white rounded-xl text-xs font-bold shadow-md hover:bg-emerald-500 transition-all cursor-pointer"
+                      >
+                        <Smartphone size={16} />
+                        <span>Installer som app på mobilen</span>
+                      </button>
+                    </div>
+                  </>
                 ) : (
-                  <div className="px-4 py-3 border-b border-neutral-100 mb-2">
+                  <div className="space-y-3">
                     <button 
                       onClick={() => { setView('dashboard'); setIsMenuOpen(false); }}
-                      className="w-full bg-neutral-900 text-white py-3 rounded-xl text-sm font-bold active:scale-95 transition-all"
+                      className="w-full bg-neutral-900 text-white py-3.5 rounded-xl text-sm font-bold active:scale-95 transition-all shadow-md"
                     >
                       {t('login', 'Logg inn')}
+                    </button>
+                    <button 
+                      onClick={() => { setView('landing'); setIsMenuOpen(false); }} 
+                      className="w-full text-center py-2 text-sm font-medium text-neutral-600"
+                    >
+                      {t('welcome')}
                     </button>
                   </div>
                 )}
 
-                <div className="grid grid-cols-2 gap-2 px-4 py-2 border-b border-neutral-100 mb-2">
-                  <button 
-                    onClick={() => { setView('landing'); setIsMenuOpen(false); }} 
-                    className={cn("text-left px-3 py-2 rounded-lg text-sm font-medium", view === 'landing' ? "bg-emerald-50 text-emerald-600" : "text-neutral-600")}
-                  >
-                    {t('welcome')}
-                  </button>
-                  <button 
-                    onClick={() => { handleGoToDashboard(); setIsMenuOpen(false); }} 
-                    className={cn("text-left px-3 py-2 rounded-lg text-sm font-medium", view === 'dashboard' ? "bg-emerald-50 text-emerald-600" : "text-neutral-600")}
-                  >
-                    {t('dashboard')}
-                  </button>
-                  <button 
-                    onClick={() => { setView('mobile'); setIsMenuOpen(false); }} 
-                    className={cn("text-left px-3 py-2 rounded-lg text-sm font-medium", view === 'mobile' ? "bg-emerald-50 text-emerald-600" : "text-neutral-600")}
-                  >
-                    {t('mobile_app')}
-                  </button>
-                  <button 
-                    onClick={() => { setView('spec'); setIsMenuOpen(false); }} 
-                    className={cn("text-left px-3 py-2 rounded-lg text-sm font-medium", view === 'spec' ? "bg-emerald-50 text-emerald-600" : "text-neutral-600")}
-                  >
-                    {t('specification', 'Spesifikasjon')}
-                  </button>
-
-                  <button 
-                    onClick={() => { setShowInstallGuide(true); setIsMenuOpen(false); }} 
-                    className="col-span-2 flex items-center justify-center gap-2 py-2.5 px-3 bg-emerald-50 text-emerald-800 rounded-xl text-xs font-bold border border-emerald-200 hover:bg-emerald-100 transition-all mt-1"
-                  >
-                    <Smartphone size={15} className="text-emerald-600" />
-                    <span>📱 Slik legger du til som snarvei på mobilen</span>
-                  </button>
-                </div>
-
-                <div className="flex items-center justify-between px-4 py-3 bg-neutral-50 rounded-xl border border-neutral-100">
+                {/* Language Selector */}
+                <div className="flex items-center justify-between px-4 py-3 bg-neutral-50 rounded-xl border border-neutral-100 mt-1">
                   <div className="flex items-center gap-2">
                     <Globe size={16} className="text-emerald-600" />
                     <select 
@@ -627,7 +760,7 @@ function AppContent() {
                       <option value="lt">Lietuvių (LT)</option>
                     </select>
                   </div>
-                  <span className="text-[9px] font-black uppercase text-emerald-700 bg-emerald-100/60 px-2 py-0.5 rounded">
+                  <span className="text-[10px] font-black uppercase text-emerald-700 bg-emerald-100/60 px-2 py-0.5 rounded">
                     Eksport: Norsk
                   </span>
                 </div>
@@ -722,11 +855,11 @@ function AppContent() {
 
       {/* Install Guide Modal */}
       {showInstallGuide && (
-        <div className="fixed inset-0 z-[100] flex items-center justify-center p-4 bg-neutral-900/60 backdrop-blur-sm">
+        <div className="fixed inset-0 z-[100] flex items-end sm:items-center justify-center p-0 sm:p-4 bg-neutral-900/60 backdrop-blur-sm">
           <motion.div
-            initial={{ opacity: 0, scale: 0.9, y: 20 }}
-            animate={{ opacity: 1, scale: 1, y: 0 }}
-            className="w-full max-w-3xl max-h-[90vh] overflow-y-auto rounded-[2.5rem]"
+            initial={{ opacity: 0, y: 20 }}
+            animate={{ opacity: 1, y: 0 }}
+            className="w-full max-w-3xl max-h-[92vh] sm:max-h-[90vh] overflow-y-auto rounded-t-[2.5rem] sm:rounded-[2.5rem] pb-[env(safe-area-inset-bottom,0px)]"
           >
             <InstallGuide onClose={() => setShowInstallGuide(false)} />
           </motion.div>

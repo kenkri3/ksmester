@@ -901,13 +901,13 @@ export default function Dashboard({
             </div>
 
             {/* Tabs */}
-            <div className="flex items-center gap-6 border-b border-neutral-200 mb-8 overflow-x-auto">
+            <div className="flex items-center gap-4 sm:gap-6 border-b border-neutral-200 mb-6 sm:mb-8 overflow-x-auto no-scrollbar py-1">
               {['oversikt', 'prosjekter', 'tilbud', 'avvik', 'hms', 'finans', 'laerling', 'ai'].map((tab) => (
                 <button
                   key={tab}
-                  onClick={() => setActiveTab(tab as any)}
+                  onClick={() => handleTabSelect(tab as any)}
                   className={cn(
-                    "pb-4 text-sm font-bold transition-all relative whitespace-nowrap",
+                    "pb-4 text-sm font-bold transition-all relative whitespace-nowrap shrink-0",
                     activeTab === tab ? "text-emerald-600" : "text-neutral-400 hover:text-neutral-600"
                   )}
                 >

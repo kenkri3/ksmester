@@ -59,29 +59,33 @@ export default function InstallGuide({ onClose }: InstallGuideProps) {
   };
 
   return (
-    <div className="bg-white rounded-[2.5rem] shadow-2xl border border-neutral-200 overflow-hidden max-w-3xl w-full mx-auto animate-in fade-in zoom-in-95 duration-200">
-      <div className="p-8 border-b border-neutral-100 flex justify-between items-center bg-neutral-50/80">
-        <div className="flex items-center gap-3">
-          <div className="w-10 h-10 rounded-2xl bg-emerald-600 text-white flex items-center justify-center shadow-md shadow-emerald-600/20">
-            <Smartphone size={22} />
+    <div className="bg-white rounded-t-[2rem] sm:rounded-[2.5rem] shadow-2xl border border-neutral-200 overflow-hidden max-w-3xl w-full mx-auto">
+      <div className="p-4 sm:p-8 border-b border-neutral-100 bg-neutral-50/80 shrink-0">
+        <div className="sm:hidden w-12 h-1.5 bg-neutral-300 rounded-full mx-auto -mt-1 mb-3 shrink-0" />
+        <div className="flex justify-between items-center">
+          <div className="flex items-center gap-3">
+            <div className="w-10 h-10 rounded-2xl bg-emerald-600 text-white flex items-center justify-center shadow-md shadow-emerald-600/20 shrink-0">
+              <Smartphone size={22} />
+            </div>
+            <div>
+              <h2 className="text-lg sm:text-2xl font-black tracking-tight text-neutral-900">Bruk som app på mobilen</h2>
+              <p className="text-xs font-semibold text-neutral-500">Rask tilgang direkte fra hjemskjermen – ingen nedlasting fra App Store nødvendig.</p>
+            </div>
           </div>
-          <div>
-            <h2 className="text-2xl font-black tracking-tight text-neutral-900">Bruk som app på mobilen</h2>
-            <p className="text-xs font-semibold text-neutral-500">Rask tilgang direkte fra hjemskjermen – ingen nedlasting fra App Store nødvendig.</p>
-          </div>
+          {onClose && (
+            <button 
+              onClick={onClose}
+              aria-label="Lukk"
+              className="p-2 sm:p-2.5 hover:bg-neutral-200/70 rounded-full transition-colors shrink-0"
+            >
+              <X size={20} className="text-neutral-400" />
+            </button>
+          )}
         </div>
-        {onClose && (
-          <button 
-            onClick={onClose}
-            className="p-2.5 hover:bg-neutral-200/70 rounded-full transition-colors"
-          >
-            <X size={20} className="text-neutral-400" />
-          </button>
-        )}
       </div>
 
       {/* Offline Feature Callout Banner */}
-      <div className="mx-8 mt-6 p-4 rounded-2xl bg-amber-50 border border-amber-200/80 flex items-start gap-3.5">
+      <div className="mx-4 sm:mx-8 mt-4 sm:mt-6 p-4 rounded-2xl bg-amber-50 border border-amber-200/80 flex items-start gap-3.5">
         <div className="w-8 h-8 rounded-xl bg-amber-500 text-white flex items-center justify-center shrink-0 mt-0.5 shadow-sm">
           <WifiOff size={16} />
         </div>
@@ -96,7 +100,7 @@ export default function InstallGuide({ onClose }: InstallGuideProps) {
         </div>
       </div>
 
-      <div className="p-8 grid grid-cols-1 md:grid-cols-2 gap-8">
+      <div className="p-4 sm:p-8 grid grid-cols-1 md:grid-cols-2 gap-4 sm:gap-8">
         {/* iOS Section */}
         <div className="bg-neutral-50/70 p-6 rounded-3xl border border-neutral-200/70 space-y-6">
           <div className="flex items-center gap-3 pb-3 border-b border-neutral-200/60">
