@@ -8,6 +8,7 @@ import { TRADE_CHECKLISTS } from '@/src/constants/checklists';
 import { projectService } from '../services/projectService';
 import { toast } from 'sonner';
 import AIVisionModal from './AIVisionModal';
+import { db, collection, addDoc, serverTimestamp } from '../services/firebase';
 
 interface ChecklistModalProps {
   isOpen: boolean;
@@ -58,15 +59,26 @@ export default function ChecklistModal({ isOpen, onClose, projectId, initialTrad
   const handleSave = async () => {
     setLoading(true);
     try {
-      // Simulate API call
-      await new Promise(resolve => setTimeout(resolve, 1500));
-      
       if (projectId) {
-        // If all items are checked, we could trigger documentation generation
-        // For now, we'll just call the service which checks if the project is ready
+        await addDoc(collection(db, 'project_checklists'), {
+          projectId,
+          trade: selectedTrade,
+          answers,
+          progress: Math.round(progress),
+          status: progress >= 100 ? 'completed' : 'in_progress',
+          createdAt: serverTimestamp(),
+          updatedAt: serverTimestamp()
+        });
         await projectService.finalizeProjectDocumentation(projectId);
-        toast.success("Sjekkliste lagret og dokumentasjon er under utarbeidelse.");
+        toast.success("Sjekkliste lagret og dokumentasjon er oppdatert.");
       } else {
+        await addDoc(collection(db, 'checklists'), {
+          trade: selectedTrade,
+          answers,
+          progress: Math.round(progress),
+          status: 'completed',
+          createdAt: serverTimestamp()
+        });
         toast.success("Sjekkliste lagret.");
       }
       

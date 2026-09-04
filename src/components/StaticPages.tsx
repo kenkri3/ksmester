@@ -44,6 +44,14 @@ export const PricingPage = () => {
     }
   ];
 
+  const handleSelectPlan = (planName: string) => {
+    if (planName === 'Enterprise') {
+      window.dispatchEvent(new CustomEvent('navigate_view', { detail: { view: 'contact' } }));
+    } else {
+      window.dispatchEvent(new CustomEvent('navigate_view', { detail: { view: 'login' } }));
+    }
+  };
+
   return (
     <PageWrapper title={t('pricing', 'Priser')}>
       <div className="grid grid-cols-1 md:grid-cols-3 gap-8 mt-8">
@@ -68,7 +76,10 @@ export const PricingPage = () => {
                 </li>
               ))}
             </ul>
-            <button className={`w-full py-3 rounded-xl font-bold text-sm transition-all ${plan.popular ? 'bg-emerald-600 text-white hover:bg-emerald-500' : 'bg-neutral-100 text-neutral-900 hover:bg-neutral-200'}`}>
+            <button 
+              onClick={() => handleSelectPlan(plan.name)}
+              className={`w-full py-3 rounded-xl font-bold text-sm transition-all cursor-pointer ${plan.popular ? 'bg-emerald-600 text-white hover:bg-emerald-500 shadow-md shadow-emerald-200' : 'bg-neutral-900 text-white hover:bg-neutral-800'}`}
+            >
               Velg {plan.name}
             </button>
           </div>
@@ -147,7 +158,7 @@ export const ContactPage = () => {
               </div>
               <div>
                 <p className="text-[10px] font-black uppercase tracking-widest text-neutral-400">E-post</p>
-                <p className="font-bold">support@ksmesterai.no</p>
+                <p className="font-bold">post@ksmester.no</p>
               </div>
             </div>
             <div className="flex items-center gap-4">
@@ -156,7 +167,7 @@ export const ContactPage = () => {
               </div>
               <div>
                 <p className="text-[10px] font-black uppercase tracking-widest text-neutral-400">Telefon</p>
-                <p className="font-bold">+47 22 33 44 55</p>
+                <p className="font-bold">+47 400 00 000</p>
               </div>
             </div>
             <div className="flex items-center gap-4">
@@ -164,8 +175,8 @@ export const ContactPage = () => {
                 <MapPin size={24} />
               </div>
               <div>
-                <p className="text-[10px] font-black uppercase tracking-widest text-neutral-400">Adresse</p>
-                <p className="font-bold">Teknologiveien 1, 0123 Oslo</p>
+                <p className="text-[10px] font-black uppercase tracking-widest text-neutral-400">Lokasjon</p>
+                <p className="font-bold">Norge (Heldigitalt HMS/KS-økosystem)</p>
               </div>
             </div>
           </div>
