@@ -1,5 +1,6 @@
 import { useState, useEffect } from 'react';
 import { motion } from 'motion/react';
+import { toast } from 'sonner';
 import { 
   User, 
   Building2, 
@@ -731,11 +732,21 @@ export default function Settings() {
                       }
                     </p>
                     <div className="flex items-center gap-4">
-                      <button className="px-6 py-2 bg-emerald-600 text-white rounded-xl text-sm font-bold hover:bg-emerald-500 transition-all">
+                      <button 
+                        onClick={() => {
+                          toast.info('For oppgradering til Pro/Enterprise eller endring av abonnement, kontakt support@ksmester.no eller ring +47 22 33 44 55.');
+                        }}
+                        className="px-6 py-2 bg-emerald-600 text-white rounded-xl text-sm font-bold hover:bg-emerald-500 transition-all cursor-pointer"
+                      >
                         {subscriptionStatus === 'trial' ? t('upgrade_now', 'Oppgrader nå') : t('manage_billing', 'Administrer betaling')}
                       </button>
                       {subscriptionStatus !== 'trial' && (
-                        <button className="px-6 py-2 bg-white/10 text-white rounded-xl text-sm font-bold hover:bg-white/20 transition-all">
+                        <button 
+                          onClick={() => {
+                            toast.info('Fakturaer sendes per EHF eller e-post til bedriftens registrerte fakturaadresse.');
+                          }}
+                          className="px-6 py-2 bg-white/10 text-white rounded-xl text-sm font-bold hover:bg-white/20 transition-all cursor-pointer"
+                        >
                           {t('view_invoices', 'Se fakturaer')}
                         </button>
                       )}

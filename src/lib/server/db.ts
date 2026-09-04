@@ -212,6 +212,25 @@ export async function getCollectionItems(collectionName: string): Promise<any[]>
 
   if (pool) {
     try {
+      if (collectionName === 'users') {
+        const rows = await dbQuery('SELECT id, email, display_name, role, trade, company, company_id, subscription_status, created_at, updated_at FROM users ORDER BY created_at DESC');
+        if (rows.length > 0) {
+          return rows.map(r => ({
+            id: r.id,
+            uid: r.id,
+            email: r.email,
+            displayName: r.display_name || r.email.split('@')[0],
+            role: r.role || 'worker',
+            trade: r.trade || 'Tømrer',
+            company: r.company || 'Mester Entreprenør AS',
+            companyId: r.company_id || 'comp-001',
+            subscriptionStatus: r.subscription_status || 'active',
+            createdAt: r.created_at,
+            updatedAt: r.updated_at
+          }));
+        }
+      }
+
       const rows = await dbQuery(
         'SELECT id, data FROM items_store WHERE collection_name = $1 ORDER BY created_at DESC',
         [collectionName]
@@ -241,6 +260,31 @@ export async function saveCollectionItem(collectionName: string, item: any): Pro
 
   if (pool) {
     try {
+      if (collectionName === 'users' && fullItem.email) {
+        await dbQuery(`
+          INSERT INTO users (id, email, password, display_name, role, trade, company, company_id, subscription_status)
+          VALUES ($1, $2, $3, $4, $5, $6, $7, $8, $9)
+          ON CONFLICT (email) DO UPDATE SET
+            display_name = COALESCE(EXCLUDED.display_name, users.display_name),
+            role = COALESCE(EXCLUDED.role, users.role),
+            trade = COALESCE(EXCLUDED.trade, users.trade),
+            company = COALESCE(EXCLUDED.company, users.company),
+            company_id = COALESCE(EXCLUDED.company_id, users.company_id),
+            subscription_status = COALESCE(EXCLUDED.subscription_status, users.subscription_status),
+            updated_at = CURRENT_TIMESTAMP
+        `, [
+          fullItem.id,
+          fullItem.email.toLowerCase().trim(),
+          fullItem.password || DEFAULT_ADMIN_HASH,
+          fullItem.displayName || fullItem.name || fullItem.email.split('@')[0],
+          fullItem.role || 'worker',
+          fullItem.trade || 'Tømrer',
+          fullItem.company || 'Mester Entreprenør AS',
+          fullItem.companyId || 'comp-001',
+          fullItem.subscriptionStatus || 'active'
+        ]);
+      }
+
       await dbQuery(
         `INSERT INTO items_store (id, collection_name, data) VALUES ($1, $2, $3)
          ON CONFLICT (id) DO UPDATE SET data = $3`,
@@ -269,6 +313,28 @@ export async function updateCollectionItem(collectionName: string, id: string, d
 
   if (pool) {
     try {
+      if (collectionName === 'users') {
+        await dbQuery(`
+          UPDATE users SET
+            display_name = COALESCE($2, display_name),
+            role = COALESCE($3, role),
+            trade = COALESCE($4, trade),
+            company = COALESCE($5, company),
+            company_id = COALESCE($6, company_id),
+            subscription_status = COALESCE($7, subscription_status),
+            updated_at = CURRENT_TIMESTAMP
+          WHERE id = $1 OR LOWER(email) = LOWER($1)
+        `, [
+          id,
+          data.displayName || data.name || null,
+          data.role || null,
+          data.trade || null,
+          data.company || null,
+          data.companyId || null,
+          data.subscriptionStatus || null
+        ]);
+      }
+
       await dbQuery(
         `INSERT INTO items_store (id, collection_name, data) VALUES ($1, $2, $3)
          ON CONFLICT (id) DO UPDATE SET data = $3`,
@@ -306,6 +372,9 @@ export async function deleteCollectionItem(collectionName: string, id: string): 
 
   if (pool) {
     try {
+      if (collectionName === 'users') {
+        await dbQuery('DELETE FROM users WHERE id = $1 OR LOWER(email) = LOWER($1)', [id]);
+      }
       await dbQuery('DELETE FROM items_store WHERE id = $1 AND collection_name = $2', [id, collectionName]);
     } catch (e) {
       console.warn('Store delete error:', e);

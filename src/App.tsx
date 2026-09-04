@@ -171,6 +171,16 @@ function AppContent() {
         return;
       }
 
+      // Try searching by portalToken
+      const qToken = query(collection(db, 'projects'), where('portalToken', '==', projectIdOrCode));
+      const tokenSnap = await getDocs(qToken);
+      if (!tokenSnap.empty) {
+        const foundDoc = tokenSnap.docs[0];
+        setPortalProject({ id: foundDoc.id, ...foundDoc.data() } as Project);
+        setView('customer-portal');
+        return;
+      }
+
       toast.error(`Prosjektet med kode/ID "${projectIdOrCode}" ble ikke funnet.`);
     } catch (error) {
       console.error("Error opening portal project:", error);
@@ -191,7 +201,7 @@ function AppContent() {
     window.scrollTo(0, 0);
   }, [view]);
 
-  // Check for offer token in URL
+  // Check for offer token, invite token, or portal link in URL
   useEffect(() => {
     const params = new URLSearchParams(window.location.search);
     const token = params.get('offer');
@@ -206,7 +216,12 @@ function AppContent() {
       setView('invite');
     }
 
-    // Check for path-based tokens (e.g., /invite/token)
+    const portal = params.get('portal') || params.get('portalToken');
+    if (portal) {
+      handleOpenPortal(portal);
+    }
+
+    // Check for path-based tokens (e.g., /invite/token, /offer/token, /portal/id)
     const pathParts = window.location.pathname.split('/');
     if (pathParts[1] === 'invite' && pathParts[2]) {
       setInviteToken(pathParts[2]);
@@ -215,6 +230,9 @@ function AppContent() {
     if (pathParts[1] === 'offer' && pathParts[2]) {
       setOfferToken(pathParts[2]);
       setView('offer');
+    }
+    if (pathParts[1] === 'portal' && pathParts[2]) {
+      handleOpenPortal(pathParts[2]);
     }
   }, []);
 
