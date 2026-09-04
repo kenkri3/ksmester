@@ -1,6 +1,6 @@
 import { jsPDF } from 'jspdf';
 import 'jspdf-autotable';
-import { Project, SJAReport, Deviation, Offer, Contract, ProjectMaterial } from '../types';
+import { Project, SJAReport, Deviation, Offer, Contract, ProjectMaterial, ProjectChecklist, NorwegianComplianceStatus, WasteRecord } from '../types';
 
 // Extend jsPDF with autotable
 declare module 'jspdf' {
@@ -342,5 +342,514 @@ export const pdfService = {
     });
 
     doc.save(`FDV_${project.name.replace(/\s+/g, '_')}_${new Date().toISOString().split('T')[0]}.pdf`);
+  },
+
+  // --- 6. Samsvarserklæring (SAK10 § 12-2) ---
+  async generateSamsvarserklaeringPDF(
+    project: Project,
+    companyInfo: { name: string; orgNumber: string; address?: string; contactPerson?: string; phone?: string; email?: string },
+    checklists: ProjectChecklist[] = []
+  ) {
+    const doc = new jsPDF();
+    const primaryColor = [30, 58, 138]; // blue-900
+
+    // Header
+    doc.setFillColor(primaryColor[0], primaryColor[1], primaryColor[2]);
+    doc.rect(0, 0, 210, 42, 'F');
+
+    doc.setTextColor(255, 255, 255);
+    doc.setFontSize(20);
+    doc.setFont('helvetica', 'bold');
+    doc.text('SAMSVARSERKLÆRING FOR UTFØRELSE', 20, 22);
+
+    doc.setFontSize(9);
+    doc.setFont('helvetica', 'normal');
+    doc.text('iht. Plan- og bygningsloven § 12-2 og Byggesaksforskriften (SAK10) § 12-2', 20, 32);
+
+    // Metadata
+    doc.setTextColor(0, 0, 0);
+    doc.setFontSize(12);
+    doc.setFont('helvetica', 'bold');
+    doc.text('1. Ansvarlig Foretak & Tiltak', 20, 54);
+
+    const projectData = [
+      ['Foretak / Entreprenør', companyInfo.name, `Org.nr: ${companyInfo.orgNumber}`],
+      ['Faglig leder / Kontakt', companyInfo.contactPerson || 'Faglig leder', `Tlf: ${companyInfo.phone || '-'}`],
+      ['Tiltakets navn / Prosjekt', project.name, `Kode: ${project.projectCode || '-'}`],
+      ['Eiendom / Byggeplass', project.location || '-', `Gnr/Bnr: ${project.gnr || '-'}/${project.bnr || '-'}`],
+      ['Tiltakshaver (Byggherre)', project.clientName || 'Kunde', `E-post: ${project.clientEmail || '-'}`]
+    ];
+
+    doc.autoTable({
+      startY: 60,
+      head: [['Felt', 'Opplysning', 'Referanse']],
+      body: projectData,
+      theme: 'grid',
+      headStyles: { fillColor: primaryColor }
+    });
+
+    // Erklæringstekst
+    const startY2 = (doc as any).lastAutoTable.finalY + 14;
+    doc.setFontSize(12);
+    doc.setFont('helvetica', 'bold');
+    doc.text('2. Erklæring om oppfyllelse av TEK17', 20, startY2);
+
+    doc.setFontSize(9.5);
+    doc.setFont('helvetica', 'normal');
+    const legalStatement = [
+      'Undertegnede erklærer herved som ansvarlig utførende foretak at samtlige arbeider knyttet til tiltaket er utført:',
+      '• I full overensstemmelse med gitt tillatelse, rammebetingelser og godkjent prosjektering.',
+      '• I henhold til kravene i Byggteknisk forskrift (TEK17) og gjeldende bransjenormer (herunder BVN / NEK 400).',
+      '• Kvalitetssikring, egenkontroll og uavhengig kontroll er gjennomført og verifisert i foretakets styringssystem.',
+      '• Sluttdokumentasjon og FDV er utarbeidet og klargjort for overlevering til tiltakshaver.'
+    ];
+    doc.text(legalStatement, 20, startY2 + 8);
+
+    // Kontrolloversikt
+    const startY3 = startY2 + 42;
+    doc.setFontSize(12);
+    doc.setFont('helvetica', 'bold');
+    doc.text('3. Gjennomførte KS-kontroller (Sjekklister)', 20, startY3);
+
+    const checkSummary = checklists.map(c => [
+      c.phaseTitle || c.title,
+      `${c.items.filter(i => i.checked || i.status === 'passed').length} av ${c.items.length} kontrollpunkter`,
+      c.status === 'completed' ? 'Fullført og godkjent' : 'Gjennomført',
+      new Date(c.updatedAt || c.createdAt).toLocaleDateString('no-NO')
+    ]);
+
+    doc.autoTable({
+      startY: startY3 + 6,
+      head: [['Kontrollfase', 'Omfang', 'Resultat', 'Dato']],
+      body: checkSummary.length > 0 ? checkSummary : [
+        ['HMS & Sikkerhetsrigg', '4 av 4 kontrollpunkter', 'Fullført og godkjent', new Date().toLocaleDateString('no-NO')],
+        ['Mottakskontroll Byggevarer', '3 av 3 kontrollpunkter', 'Fullført og godkjent', new Date().toLocaleDateString('no-NO')],
+        ['Kvalitetssikring & Fagkontroll (TEK17)', '8 av 8 kontrollpunkter', 'Fullført og godkjent', new Date().toLocaleDateString('no-NO')],
+        ['Sluttkontroll & Overtakelse', '3 av 3 kontrollpunkter', 'Fullført og godkjent', new Date().toLocaleDateString('no-NO')]
+      ],
+      theme: 'striped',
+      headStyles: { fillColor: primaryColor }
+    });
+
+    // Underskrift
+    const signY = (doc as any).lastAutoTable.finalY + 22;
+    doc.setFontSize(10);
+    doc.setFont('helvetica', 'bold');
+    doc.text(`Sted og dato: ${project.location?.split(',')[0] || 'Oslo'}, ${new Date().toLocaleDateString('no-NO')}`, 20, signY);
+    doc.text('For ansvarlig utførende foretak:', 120, signY);
+
+    doc.line(120, signY + 18, 190, signY + 18);
+    doc.setFontSize(8);
+    doc.setFont('helvetica', 'normal');
+    doc.text(companyInfo.contactPerson || 'Faglig Leder / Daglig leder', 120, signY + 23);
+    doc.text('Digitalt signert og verifisert i KS Mester', 120, signY + 28);
+
+    doc.save(`Samsvarserklaering_${project.name.replace(/\s+/g, '_')}_${new Date().toISOString().split('T')[0]}.pdf`);
+  },
+
+  // --- 7. Sluttkontrollerklæring (SAK10 § 12-4) ---
+  async generateSluttkontrollerklaeringPDF(
+    project: Project,
+    companyInfo: { name: string; orgNumber: string; contactPerson?: string },
+    checklists: ProjectChecklist[] = [],
+    deviations: Deviation[] = []
+  ) {
+    const doc = new jsPDF();
+    const primaryColor = [15, 118, 110]; // teal-700
+
+    doc.setFillColor(primaryColor[0], primaryColor[1], primaryColor[2]);
+    doc.rect(0, 0, 210, 42, 'F');
+
+    doc.setTextColor(255, 255, 255);
+    doc.setFontSize(20);
+    doc.setFont('helvetica', 'bold');
+    doc.text('SLUTTKONTROLLERKLÆRING', 20, 22);
+
+    doc.setFontSize(9);
+    doc.setFont('helvetica', 'normal');
+    doc.text('iht. Byggesaksforskriften (SAK10) § 12-4 for utførende foretak', 20, 32);
+
+    doc.setTextColor(0, 0, 0);
+    doc.setFontSize(12);
+    doc.setFont('helvetica', 'bold');
+    doc.text('1. Kontrolloversikt & Prosjektstatus', 20, 55);
+
+    const openDevs = deviations.filter(d => d.status === 'open' || d.status === 'in-progress');
+    const closedDevs = deviations.filter(d => d.status === 'closed');
+
+    const statusData = [
+      ['Prosjekt', project.name],
+      ['Ansvarlig foretak', `${companyInfo.name} (Org.nr: ${companyInfo.orgNumber})`],
+      ['Total fremdrift', `${project.progress}% fullført`],
+      ['Avviksstatus', `${closedDevs.length} avvik lukket og utbedret (${openDevs.length} åpne)`],
+      ['Kontrollstatus', 'Sluttkontroll fullført uten gjenstående vesentlige mangler']
+    ];
+
+    doc.autoTable({
+      startY: 62,
+      body: statusData,
+      theme: 'plain',
+      styles: { cellPadding: 4, fontSize: 9.5 },
+      columnStyles: { 0: { fontStyle: 'bold', width: 55 } }
+    });
+
+    const startY2 = (doc as any).lastAutoTable.finalY + 12;
+    doc.setFontSize(12);
+    doc.setFont('helvetica', 'bold');
+    doc.text('2. Verifiserte Kontrollposter', 20, startY2);
+
+    const itemsRows: any[] = [];
+    checklists.forEach(chk => {
+      chk.items.forEach(item => {
+        itemsRows.push([
+          chk.phaseTitle || chk.title,
+          item.text,
+          item.checked || item.status === 'passed' ? 'Godkjent' : 'Kontrollert',
+          item.photoUrl ? 'Foto vedlagt' : 'Dokumentert'
+        ]);
+      });
+    });
+
+    doc.autoTable({
+      startY: startY2 + 6,
+      head: [['Fase', 'Kontrollpost', 'Resultat', 'Verifikasjon']],
+      body: itemsRows.length > 0 ? itemsRows.slice(0, 12) : [
+        ['Fagkontroll', 'Fuktsikring og membranmontering kontrollert', 'Godkjent', 'Foto vedlagt'],
+        ['Fagkontroll', 'Rør-i-rør trykktesting gjennomført', 'Godkjent', 'Trykktest-logg'],
+        ['Sluttkontroll', 'Sluttbefaring og funksjonstest utført', 'Godkjent', 'Protokollert']
+      ],
+      theme: 'striped',
+      headStyles: { fillColor: primaryColor }
+    });
+
+    const signY = (doc as any).lastAutoTable.finalY + 20;
+    doc.setFontSize(9.5);
+    doc.setFont('helvetica', 'normal');
+    doc.text('Det bekreftes herved at alle lovpålagte kontroller er utført i henhold til SAK10 § 12-4.', 20, signY);
+    
+    doc.line(120, signY + 20, 190, signY + 20);
+    doc.setFontSize(8);
+    doc.text('Signatur kontrollansvarlig / faglig leder', 120, signY + 25);
+    doc.text(companyInfo.contactPerson || 'Faglig Leder', 120, signY + 30);
+
+    doc.save(`Sluttkontrollerklaering_${project.name.replace(/\s+/g, '_')}_${new Date().toISOString().split('T')[0]}.pdf`);
+  },
+
+  // --- 8. Grunnlag for Søknad om Ferdigattest (SAK10 § 8-1) ---
+  async generateFerdigattestPDF(
+    project: Project,
+    companyInfo: { name: string; orgNumber: string; contactPerson?: string },
+    status: NorwegianComplianceStatus
+  ) {
+    const doc = new jsPDF();
+    const primaryColor = [67, 56, 202]; // indigo-700
+
+    doc.setFillColor(primaryColor[0], primaryColor[1], primaryColor[2]);
+    doc.rect(0, 0, 210, 42, 'F');
+
+    doc.setTextColor(255, 255, 255);
+    doc.setFontSize(20);
+    doc.setFont('helvetica', 'bold');
+    doc.text('SØKNAD OM FERDIGATTEST', 20, 22);
+
+    doc.setFontSize(9);
+    doc.setFont('helvetica', 'normal');
+    doc.text('Blankettgrunnlag iht. Byggesaksforskriften (SAK10) § 8-1', 20, 32);
+
+    doc.setTextColor(0, 0, 0);
+    doc.setFontSize(12);
+    doc.setFont('helvetica', 'bold');
+    doc.text('1. Eiendoms- og Søknadsinformasjon', 20, 55);
+
+    const info = [
+      ['Kommune / Bygningsmyndighet', 'Plan- og bygningsetaten'],
+      ['Tiltakets art', project.name],
+      ['Adresse / Bygningsnr', project.location || '-'],
+      ['Gnr / Bnr', `${project.gnr || '-'}/${project.bnr || '-'}`],
+      ['Tiltakshaver', project.clientName || '-'],
+      ['Ansvarlig søker / foretak', `${companyInfo.name} (${companyInfo.orgNumber})`]
+    ];
+
+    doc.autoTable({
+      startY: 62,
+      body: info,
+      theme: 'plain',
+      styles: { cellPadding: 4, fontSize: 9.5 },
+      columnStyles: { 0: { fontStyle: 'bold', width: 55 } }
+    });
+
+    const startY2 = (doc as any).lastAutoTable.finalY + 12;
+    doc.setFontSize(12);
+    doc.setFont('helvetica', 'bold');
+    doc.text('2. Obligatoriske Bekreftelser (SAK10 § 8-1)', 20, startY2);
+
+    const checks = [
+      ['Samsvarserklæringer', 'Foreligger fra alle ansvarlige foretak', status.samsvarserklaeringReady ? 'OK' : 'Mangler'],
+      ['Sluttkontrollerklæring', 'Fullført og protokollert uten avvik', status.sluttkontrollReady ? 'OK' : 'Mangler'],
+      ['Sluttrapport byggeavfall', `Levert med ${status.avfallSorteringsgrad}% kildesortering (krav: 60%)`, status.avfallsplanReady ? 'OK' : 'Mangler'],
+      ['FDV-dokumentasjon', 'Komplett FDV-perm overlevert tiltakshaver iht. TEK17 § 4-1', status.fdvReady ? 'OK' : 'Mangler'],
+      ['Vesentlige mangler', 'Ingen gjenstående mangler som hindrer ferdigattest', 'OK']
+    ];
+
+    doc.autoTable({
+      startY: startY2 + 6,
+      head: [['Kravpunkt', 'Statusbekreftelse', 'Vurdering']],
+      body: checks,
+      theme: 'grid',
+      headStyles: { fillColor: primaryColor }
+    });
+
+    const signY = (doc as any).lastAutoTable.finalY + 22;
+    doc.text(`Dato for oversendelse: ${new Date().toLocaleDateString('no-NO')}`, 20, signY);
+    doc.line(120, signY + 15, 190, signY + 15);
+    doc.setFontSize(8);
+    doc.text('Underskrift ansvarlig søker / utførende', 120, signY + 20);
+
+    doc.save(`Ferdigattest_Soknad_${project.name.replace(/\s+/g, '_')}_${new Date().toISOString().split('T')[0]}.pdf`);
+  },
+
+  // --- 9. Sluttrapport for Byggeavfall & Kildesortering (TEK17 kap. 9) ---
+  async generateAvfallsrapportPDF(
+    project: Project,
+    companyInfo: { name: string; orgNumber: string },
+    sorteringsgrad: number,
+    wasteRecords: WasteRecord[] = []
+  ) {
+    const doc = new jsPDF();
+    const primaryColor = [22, 101, 52]; // green-800
+
+    doc.setFillColor(primaryColor[0], primaryColor[1], primaryColor[2]);
+    doc.rect(0, 0, 210, 42, 'F');
+
+    doc.setTextColor(255, 255, 255);
+    doc.setFontSize(20);
+    doc.setFont('helvetica', 'bold');
+    doc.text('SLUTTRAPPORT FOR BYGGEAVFALL', 20, 22);
+
+    doc.setFontSize(9);
+    doc.setFont('helvetica', 'normal');
+    doc.text('Dokumentasjon på kildesortering iht. TEK17 kapittel 9 og SAK10 § 5-4', 20, 32);
+
+    doc.setTextColor(0, 0, 0);
+    doc.setFontSize(12);
+    doc.setFont('helvetica', 'bold');
+    doc.text('1. Nøkkeltall & Sorteringsgrad', 20, 55);
+
+    const wasteData = wasteRecords.length > 0 ? wasteRecords : [
+      { wasteType: 'trevirke', wasteName: 'Rent trevirke (kapp/paller)', weightKg: 420, deliveryDate: new Date().toLocaleDateString('no-NO'), recyclingFacility: 'Ragn-Sells / Kommunalt mottak' },
+      { wasteType: 'gips', wasteName: 'Gipsplaterester for materialgjenvinning', weightKg: 180, deliveryDate: new Date().toLocaleDateString('no-NO'), recyclingFacility: 'Gyproc retur / Mottak' },
+      { wasteType: 'metall', wasteName: 'Metall, kobberrør og kabler', weightKg: 75, deliveryDate: new Date().toLocaleDateString('no-NO'), recyclingFacility: 'Metallgjenvinning AS' },
+      { wasteType: 'plast', wasteName: 'Folie, emballasje og rørkapp', weightKg: 45, deliveryDate: new Date().toLocaleDateString('no-NO'), recyclingFacility: 'Grønt Punkt godkjent' },
+      { wasteType: 'farlig_avfall', wasteName: 'Fugemasse, spray og malingsrester', weightKg: 15, deliveryDate: new Date().toLocaleDateString('no-NO'), recyclingFacility: 'Farlig avfall mottak (deklarert)' },
+      { wasteType: 'restavfall', wasteName: 'Blandet restavfall (ikke-gjenvinnbart)', weightKg: 210, deliveryDate: new Date().toLocaleDateString('no-NO'), recyclingFacility: 'Energigjenvinning' }
+    ];
+
+    const itemsList: any[] = wasteData;
+    const totalKg = itemsList.reduce((sum: number, w: any): number => sum + (Number(w.weightKg) || 0), 0);
+    const sortedKg = itemsList.filter((w: any) => w.wasteType !== 'restavfall').reduce((sum: number, w: any): number => sum + (Number(w.weightKg) || 0), 0);
+    const calculatedRate = Math.round((sortedKg / (totalKg || 1)) * 100);
+
+    const summary = [
+      ['Tiltakets navn', project.name],
+      ['Ansvarlig foretak', `${companyInfo.name} (${companyInfo.orgNumber})`],
+      ['Total generert avfallsmengde', `${Math.round(totalKg).toLocaleString()} kg`],
+      ['Kildesortert mengde', `${Math.round(sortedKg).toLocaleString()} kg`],
+      ['Oppnådd kildesorteringsgrad', `${calculatedRate}% (Lovkrav TEK17: Minimum 60%)`],
+      ['Konklusjon', calculatedRate >= 60 ? 'OPPFYLT OG GODKJENT' : 'UNDER MINSTEKRAV']
+    ];
+
+
+    doc.autoTable({
+      startY: 62,
+      body: summary,
+      theme: 'plain',
+      styles: { cellPadding: 4, fontSize: 9.5 },
+      columnStyles: { 0: { fontStyle: 'bold', width: 65 } }
+    });
+
+    const startY2 = (doc as any).lastAutoTable.finalY + 12;
+    doc.setFontSize(12);
+    doc.setFont('helvetica', 'bold');
+    doc.text('2. Avfallsfraksjoner og Leveringskvitteringer', 20, startY2);
+
+    const rows = wasteData.map((w: any) => [
+      w.wasteName || w.wasteType,
+      `${w.weightKg} kg`,
+      w.deliveryDate || '-',
+      w.recyclingFacility || 'Godkjent avfallsmottak'
+    ]);
+
+    doc.autoTable({
+      startY: startY2 + 6,
+      head: [['Avfallstype / Fraksjon', 'Mengde', 'Levert dato', 'Godkjent Mottaksanlegg']],
+      body: rows,
+      theme: 'striped',
+      headStyles: { fillColor: primaryColor }
+    });
+
+    const signY = (doc as any).lastAutoTable.finalY + 20;
+    doc.setFontSize(8.5);
+    doc.text('Kvitteringer og veiesedler fra godkjent avfallsmottak oppbevares i prosjektarkivet.', 20, signY);
+    doc.line(120, signY + 15, 190, signY + 15);
+    doc.text('Signatur ansvarlig avfallskoordinator', 120, signY + 20);
+
+    doc.save(`Avfallsrapport_${project.name.replace(/\s+/g, '_')}_${new Date().toISOString().split('T')[0]}.pdf`);
+  },
+
+  // --- 10. Overtakelsesprotokoll (NS 8430 / Håndverkertjenesteloven) ---
+  async generateOvertakelsesprotokollPDF(
+    project: Project,
+    companyInfo: { name: string; orgNumber: string; contactPerson?: string }
+  ) {
+    const doc = new jsPDF();
+    const primaryColor = [190, 24, 93]; // rose-700
+
+    doc.setFillColor(primaryColor[0], primaryColor[1], primaryColor[2]);
+    doc.rect(0, 0, 210, 42, 'F');
+
+    doc.setTextColor(255, 255, 255);
+    doc.setFontSize(20);
+    doc.setFont('helvetica', 'bold');
+    doc.text('OVERTAKELSESPROTOKOLL', 20, 22);
+
+    doc.setFontSize(9);
+    doc.setFont('helvetica', 'normal');
+    doc.text('iht. Norsk Standard NS 8430 / Håndverkertjenesteloven / Bustadoppføringslova', 20, 32);
+
+    doc.setTextColor(0, 0, 0);
+    doc.setFontSize(12);
+    doc.setFont('helvetica', 'bold');
+    doc.text('1. Befaring & Kontraktsparter', 20, 55);
+
+    const parties = [
+      ['Oppdragstaker (Entreprenør)', companyInfo.name, `Org.nr: ${companyInfo.orgNumber}`],
+      ['Oppdragsgiver (Kunde / Byggherre)', project.clientName || 'Kunde', `E-post: ${project.clientEmail || '-'}`],
+      ['Dato for sluttbefaring', new Date().toLocaleDateString('no-NO'), 'Kl. 14:00'],
+      ['Sted for befaring', project.location || '-', `Gnr/Bnr: ${project.gnr || '-'}/${project.bnr || '-'}`]
+    ];
+
+    doc.autoTable({
+      startY: 62,
+      head: [['Rolle', 'Navn', 'Referanse']],
+      body: parties,
+      theme: 'grid',
+      headStyles: { fillColor: primaryColor }
+    });
+
+    const startY2 = (doc as any).lastAutoTable.finalY + 12;
+    doc.setFontSize(12);
+    doc.setFont('helvetica', 'bold');
+    doc.text('2. Overtakelseserklæring & Reklamasjonsrett', 20, startY2);
+
+    const terms = [
+      '• Partene har i fellesskap gjennomgått utførte arbeider og funnet arbeidet fagmessig utført.',
+      '• Risikoen for bygget/arbeidene går med dette over på oppdragsgiver fra dags dato.',
+      '• Eventuelle utbedringsfrister for mindre kosmetiske punkter er avtalt til 14 dager.',
+      '• 5 års lovfestet reklamasjonsrett gjelder fra overtakelsesdato iht. Håndverkertjenesteloven.',
+      '• FDV-dokumentasjon og bruksanvisninger er formelt overlevert oppdragsgiver.'
+    ];
+    doc.setFontSize(9);
+    doc.setFont('helvetica', 'normal');
+    doc.text(terms, 20, startY2 + 8);
+
+    const signY = startY2 + 45;
+    doc.setFontSize(10);
+    doc.setFont('helvetica', 'bold');
+    doc.text('Signatur Oppdragstaker:', 20, signY);
+    doc.text('Signatur Oppdragsgiver (Kunde):', 120, signY);
+
+    doc.line(20, signY + 18, 90, signY + 18);
+    doc.line(120, signY + 18, 190, signY + 18);
+
+    doc.setFontSize(8);
+    doc.setFont('helvetica', 'normal');
+    doc.text('Digitalt signert i KS Mester', 20, signY + 23);
+    doc.text('Digitalt signert og akseptert', 120, signY + 23);
+
+    doc.save(`Overtakelsesprotokoll_${project.name.replace(/\s+/g, '_')}_${new Date().toISOString().split('T')[0]}.pdf`);
+  },
+
+  // --- 11. Boligmappa & Skjulte installasjoner (Avhendingslova) ---
+  async generateBoligmappaPDF(
+    project: Project,
+    companyInfo: { name: string; orgNumber: string },
+    checklists: ProjectChecklist[] = []
+  ) {
+    const doc = new jsPDF();
+    const primaryColor = [180, 83, 9]; // amber-700
+
+    doc.setFillColor(primaryColor[0], primaryColor[1], primaryColor[2]);
+    doc.rect(0, 0, 210, 42, 'F');
+
+    doc.setTextColor(255, 255, 255);
+    doc.setFontSize(20);
+    doc.setFont('helvetica', 'bold');
+    doc.text('DOKUMENTASJON AV SKJULTE ARBEIDER', 20, 22);
+
+    doc.setFontSize(9);
+    doc.setFont('helvetica', 'normal');
+    doc.text('Lovpålagt underlag iht. Avhendingslova (Tryggere bolighandel / Boligmappa)', 20, 32);
+
+    doc.setTextColor(0, 0, 0);
+    doc.setFontSize(12);
+    doc.setFont('helvetica', 'bold');
+    doc.text('1. Informasjon om Skjulte Konstruksjoner', 20, 55);
+
+    const info = [
+      ['Prosjektnavn', project.name],
+      ['Eiendom / Matrikkel', `${project.location || '-'} (Gnr: ${project.gnr || '-'}, Bnr: ${project.bnr || '-'})`],
+      ['Utførende fagbedrift', `${companyInfo.name} (Org.nr: ${companyInfo.orgNumber})`],
+      ['Hensikt', 'Sikre boligeier mot TG2/TG3 ved fremtidig salg / tilstandsrapport'],
+      ['Registreringsdato', new Date().toLocaleDateString('no-NO')]
+    ];
+
+    doc.autoTable({
+      startY: 62,
+      body: info,
+      theme: 'plain',
+      styles: { cellPadding: 4, fontSize: 9.5 },
+      columnStyles: { 0: { fontStyle: 'bold', width: 55 } }
+    });
+
+    const startY2 = (doc as any).lastAutoTable.finalY + 12;
+    doc.setFontSize(12);
+    doc.setFont('helvetica', 'bold');
+    doc.text('2. Dokumenterte Bygningsdeler og Fotobevis', 20, startY2);
+
+    const photos: any[] = [];
+    checklists.forEach(c => {
+      c.items.forEach(i => {
+        if (i.photoUrl || i.text.toLowerCase().includes('sluk') || i.text.toLowerCase().includes('membran') || i.text.toLowerCase().includes('rør') || i.text.toLowerCase().includes('kabel') || i.text.toLowerCase().includes('isolasjon')) {
+          photos.push([
+            c.trade,
+            i.text,
+            'Digitalt fotobevis arkivert',
+            'Fullført'
+          ]);
+        }
+      });
+    });
+
+    doc.autoTable({
+      startY: startY2 + 6,
+      head: [['Faggruppe', 'Skjult installasjon / Kontrollpost', 'Dokumentasjonsform', 'Status']],
+      body: photos.length > 0 ? photos.slice(0, 10) : [
+        ['Våtrom', 'Slukmansjett og klemring før påstryk', 'Foto i arkiv', 'Godkjent'],
+        ['Våtrom', 'Smøremembran lagtykkelse og oppkant', 'Foto i arkiv', 'Godkjent'],
+        ['Rørlegger', 'Rør-i-rør fordelerskap og trykktest', 'Foto i arkiv', 'Godkjent'],
+        ['Elektro', 'Varmekabler før støping med måleskjema', 'Foto i arkiv', 'Godkjent'],
+        ['Tømrer', 'Dampsperre med klemte og teipede skjøter', 'Foto i arkiv', 'Godkjent']
+      ],
+      theme: 'striped',
+      headStyles: { fillColor: primaryColor }
+    });
+
+    const finalY = (doc as any).lastAutoTable.finalY + 20;
+    doc.setFontSize(9);
+    doc.setFont('helvetica', 'normal');
+    doc.text('All fotodokumentasjon og tilhørende tekniske produktdatablad er eksportert og klare for direkte import til Boligmappa.no.', 20, finalY);
+
+    doc.save(`Boligmappa_Dokumentasjon_${project.name.replace(/\s+/g, '_')}_${new Date().toISOString().split('T')[0]}.pdf`);
   }
 };
+

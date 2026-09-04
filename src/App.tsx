@@ -53,6 +53,7 @@ import CustomerPortal from './components/CustomerPortal';
 import SuperAdmin from './components/SuperAdmin';
 import OfferPage from './components/OfferPage';
 import InviteAcceptancePage from './components/InviteAcceptancePage';
+import PublicOfferFlow from './components/PublicOfferFlow';
 import { PricingPage, AboutPage, ContactPage, PrivacyPage, TermsPage } from './components/StaticPages';
 import Logo from './components/Logo';
 import { NotificationBell } from './components/NotificationBell';
@@ -125,7 +126,7 @@ function AppContent() {
     }
   };
 
-  const publicViews: View[] = ['landing', 'spec', 'pricing', 'about', 'contact', 'privacy', 'terms', 'offer', 'invite', 'customer-portal', 'login'];
+  const publicViews: View[] = ['landing', 'spec', 'pricing', 'about', 'contact', 'privacy', 'terms', 'offer', 'invite', 'customer-portal', 'login', 'public-offer'];
   const isPublicView = publicViews.includes(view);
 
   const changeLanguage = async (lng: string) => {
@@ -204,10 +205,22 @@ function AppContent() {
   // Check for offer token, invite token, or portal link in URL
   useEffect(() => {
     const params = new URLSearchParams(window.location.search);
+    
+    // Customer Offer & Contract direct links (Mesterhjernen)
+    const customerOfferParam = params.get('offerToken') || params.get('contractToken') || params.get('tilbud') || params.get('kontrakt');
+    if (customerOfferParam) {
+      setOfferToken(customerOfferParam);
+      setView('public-offer');
+    }
+
     const token = params.get('offer');
     if (token) {
       setOfferToken(token);
-      setView('offer');
+      if (token.startsWith('o-') || token.startsWith('c-')) {
+        setView('public-offer');
+      } else {
+        setView('offer');
+      }
     }
 
     const invite = params.get('invite');
@@ -221,15 +234,23 @@ function AppContent() {
       handleOpenPortal(portal);
     }
 
-    // Check for path-based tokens (e.g., /invite/token, /offer/token, /portal/id)
+    // Check for path-based tokens (e.g., /invite/token, /tilbud/token, /kontrakt/token, /offer/token, /portal/id)
     const pathParts = window.location.pathname.split('/');
     if (pathParts[1] === 'invite' && pathParts[2]) {
       setInviteToken(pathParts[2]);
       setView('invite');
     }
+    if ((pathParts[1] === 'tilbud' || pathParts[1] === 'kontrakt') && pathParts[2]) {
+      setOfferToken(pathParts[2]);
+      setView('public-offer');
+    }
     if (pathParts[1] === 'offer' && pathParts[2]) {
       setOfferToken(pathParts[2]);
-      setView('offer');
+      if (pathParts[2].startsWith('o-') || pathParts[2].startsWith('c-')) {
+        setView('public-offer');
+      } else {
+        setView('offer');
+      }
     }
     if (pathParts[1] === 'portal' && pathParts[2]) {
       handleOpenPortal(pathParts[2]);
@@ -244,10 +265,22 @@ function AppContent() {
     );
   }
 
+  // Direct full-screen Customer Offer & Contract flow (Mesterhjernen)
+  if (view === 'public-offer') {
+    return (
+      <PublicOfferFlow 
+        token={offerToken || undefined} 
+        onNavigateToPortal={(id) => handleOpenPortal(id)} 
+        onBackToApp={() => setView('landing')} 
+      />
+    );
+  }
+
   // If trying to access a private view without being logged in, show login
   if (!user && !isPublicView) {
     return <Login onBack={() => setView('landing')} />;
   }
+
 
   if (user && subscriptionStatus === 'expired') {
     return (

@@ -1,6 +1,6 @@
 import React, { useState, useEffect } from 'react';
 import { motion, AnimatePresence } from 'motion/react';
-import { X, Plus, Trash2, Calculator, Sparkles, Send, FileText, CheckCircle2, Copy, Building2 } from 'lucide-react';
+import { X, Plus, Trash2, Calculator, Sparkles, Send, FileText, CheckCircle2, Copy, Building2, Mail } from 'lucide-react';
 import { Offer, OfferItem, Project } from '../types';
 import { offerAiService } from '../services/offerAiService';
 import { masterAiService } from '../services/masterAiService';
@@ -41,6 +41,8 @@ const OfferModal: React.FC<OfferModalProps> = ({ isOpen, onClose, initialData })
   const [isSuccess, setIsSuccess] = useState(false);
   const [isSaving, setIsSaving] = useState(false);
   const [createdOfferId, setCreatedOfferId] = useState<string | null>(null);
+  const [createdOfferToken, setCreatedOfferToken] = useState<string | null>(null);
+  const [isSendingEmail, setIsSendingEmail] = useState(false);
 
   useEffect(() => {
     if (isOpen) {
@@ -160,10 +162,9 @@ const OfferModal: React.FC<OfferModalProps> = ({ isOpen, onClose, initialData })
     try {
       const userCompany = (user as any)?.companyName || (user as any)?.company || 'Firma';
       const authorName = (user as any)?.name || auth.currentUser.email || 'Saksbehandler';
-      
-      // Calculate 30 days valid until
       const validUntilDate = new Date();
       validUntilDate.setDate(validUntilDate.getDate() + 30);
+      const token = 'o-' + Date.now().toString(36) + Math.random().toString(36).substring(2, 6);
 
       const offerData = {
         clientName,
@@ -180,6 +181,8 @@ const OfferModal: React.FC<OfferModalProps> = ({ isOpen, onClose, initialData })
         authorName,
         company: userCompany,
         companyName: userCompany,
+        token,
+        shareUrl: typeof window !== 'undefined' ? `${window.location.origin}/?offerToken=${token}` : `/?offerToken=${token}`,
         validUntil: validUntilDate.toISOString().split('T')[0],
         createdAt: serverTimestamp(),
         updatedAt: serverTimestamp(),
@@ -187,24 +190,10 @@ const OfferModal: React.FC<OfferModalProps> = ({ isOpen, onClose, initialData })
 
       const docRef = await addDoc(collection(db, 'offers'), offerData);
       setCreatedOfferId(docRef.id);
+      setCreatedOfferToken(token);
       
       setIsSuccess(true);
       toast.success(status === 'sent' ? 'Tilbud lagret og merket som sendt!' : 'Tilbudsutkast lagret!');
-
-      setTimeout(() => {
-        onClose();
-        setIsSuccess(false);
-        setStep(1);
-        setCreatedOfferId(null);
-        // Reset form
-        setClientName('');
-        setClientEmail('');
-        setProjectCode('');
-        setProjectId('');
-        setTitle('');
-        setDescription('');
-        setItems([{ description: '', quantity: 1, unit: 'timer', pricePerUnit: 0, total: 0 }]);
-      }, 2500);
     } catch (error) {
       handleFirestoreError(error, OperationType.CREATE, 'offers');
       toast.error("Kunne ikke lagre tilbudet.");
@@ -214,11 +203,64 @@ const OfferModal: React.FC<OfferModalProps> = ({ isOpen, onClose, initialData })
   };
 
   const handleCopyOfferLink = () => {
-    if (createdOfferId) {
-      const link = `${window.location.origin}/#offer-${createdOfferId}`;
+    const tokenOrId = createdOfferToken || createdOfferId;
+    if (tokenOrId) {
+      const link = `${window.location.origin}/?offerToken=${tokenOrId}`;
       navigator.clipboard.writeText(link);
       toast.success("Tilbudslenke kopiert til utklippstavlen!");
     }
+  };
+
+  const handleSendEmail = async () => {
+    if (!clientEmail) {
+      toast.error("Ingen e-postadresse registrert på kunden.");
+      return;
+    }
+    const tokenOrId = createdOfferToken || createdOfferId;
+    const link = `${window.location.origin}/?offerToken=${tokenOrId}`;
+    setIsSendingEmail(true);
+    try {
+      const res = await fetch('/api/notify/email', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({
+          to: clientEmail,
+          subject: `Pristilbud: ${title}`,
+          html: `
+            <h2>Pristilbud fra ${user?.company || 'Mester Entreprenør AS'}</h2>
+            <p>Hei ${clientName},</p>
+            <p>Vi har utarbeidet et tilbud til deg: <strong>${title}</strong> pålydende kr ${totalAmount.toLocaleString('no-NO')} eks. mva.</p>
+            <p>Klikk på lenken under for å gjennomgå tilbudet og godkjenne det direkte på skjermen:</p>
+            <p><a href="${link}" style="background-color: #10b981; color: white; padding: 12px 24px; text-decoration: none; border-radius: 8px; font-weight: bold; display: inline-block;">Gjennomgå og godkjenn tilbud</a></p>
+            <p>Med vennlig hilsen,<br>${user?.displayName || 'Byggmester'}</p>
+          `
+        })
+      });
+      if (res.ok) {
+        toast.success(`Tilbud sendt på e-post til ${clientEmail}!`);
+      } else {
+        toast.info("E-posttjenesten simulerte utsendelse (sett RESEND_API_KEY for live sending).");
+      }
+    } catch (e) {
+      toast.info("Tilbudslenke er generert og klar til deling.");
+    } finally {
+      setIsSendingEmail(false);
+    }
+  };
+
+  const handleCloseAndReset = () => {
+    onClose();
+    setIsSuccess(false);
+    setStep(1);
+    setCreatedOfferId(null);
+    setCreatedOfferToken(null);
+    setClientName('');
+    setClientEmail('');
+    setProjectCode('');
+    setProjectId('');
+    setTitle('');
+    setDescription('');
+    setItems([{ description: '', quantity: 1, unit: 'timer', pricePerUnit: 0, total: 0 }]);
   };
 
   if (!isOpen) return null;
@@ -228,51 +270,79 @@ const OfferModal: React.FC<OfferModalProps> = ({ isOpen, onClose, initialData })
       <motion.div 
         initial={{ opacity: 0, scale: 0.98, y: 20 }}
         animate={{ opacity: 1, scale: 1, y: 0 }}
-        exit={{ opacity: 0, scale: 0.98, y: 20 }}
-        className="bg-neutral-50 w-full max-w-4xl rounded-t-[2.5rem] sm:rounded-[2.5rem] shadow-2xl overflow-hidden flex flex-col max-h-[92vh] sm:max-h-[calc(100vh-2rem)] pb-[env(safe-area-inset-bottom,0px)]"
+        className="bg-neutral-50 w-full max-w-4xl rounded-t-[2rem] sm:rounded-[2.5rem] shadow-2xl overflow-hidden flex flex-col max-h-[92vh] sm:max-h-[90vh] pb-[env(safe-area-inset-bottom,0px)]"
       >
-        {/* Mobile Grab Handle */}
         <div className="sm:hidden w-12 h-1.5 bg-neutral-300 rounded-full mx-auto mt-3 mb-1" />
 
-        {/* Header */}
         <div className="p-4 sm:p-8 border-b border-neutral-200 flex items-center justify-between bg-white shrink-0">
           <div className="flex items-center gap-3 sm:gap-4">
-            <div className="w-9 h-9 sm:w-12 sm:h-12 rounded-xl sm:rounded-2xl bg-emerald-600 flex items-center justify-center text-white shadow-lg shadow-emerald-100">
-              <Calculator size={18} className="sm:w-6 sm:h-6" />
+            <div className="w-10 h-10 sm:w-12 sm:h-12 rounded-xl sm:rounded-2xl bg-emerald-500 flex items-center justify-center text-white shadow-lg shadow-emerald-100">
+              <Calculator size={20} className="sm:w-6 sm:h-6" />
             </div>
-            <div className="min-w-0">
-              <h2 className="text-base sm:text-2xl font-bold tracking-tight truncate">Opprett Nytt Tilbud</h2>
-              <p className="text-neutral-500 text-[10px] sm:text-sm font-medium truncate">Generer profesjonelle tilbud med AI-kalkyle og automatisk spesifikasjon</p>
+            <div>
+              <h2 className="text-lg sm:text-2xl font-bold tracking-tight">Opprett Pristilbud</h2>
+              <p className="text-neutral-500 text-xs sm:text-sm font-medium">Lag et profesjonelt tilbud og del direkte med kunden</p>
             </div>
           </div>
-          <button onClick={onClose} aria-label="Lukk" className="p-1.5 sm:p-2 hover:bg-neutral-100 rounded-xl transition-colors">
-            <X size={18} className="sm:w-6 sm:h-6 text-neutral-500" />
+          <button onClick={handleCloseAndReset} className="p-2 hover:bg-neutral-100 rounded-xl transition-colors">
+            <X size={20} className="sm:w-6 sm:h-6" />
           </button>
         </div>
 
-        {/* Content */}
         <div className="flex-1 overflow-y-auto p-4 sm:p-8 custom-scrollbar">
           <AnimatePresence mode="wait">
             {isSuccess ? (
               <motion.div 
                 initial={{ opacity: 0, scale: 0.9 }}
                 animate={{ opacity: 1, scale: 1 }}
-                className="flex flex-col items-center justify-center py-8 sm:py-12 text-center"
+                className="flex flex-col items-center justify-center py-6 sm:py-10 text-center space-y-6"
               >
-                <div className="w-12 h-12 sm:w-20 sm:h-20 bg-emerald-100 text-emerald-600 rounded-full flex items-center justify-center mb-4 sm:mb-6">
-                  <CheckCircle2 size={24} className="sm:w-12 sm:h-12" />
+                <div className="w-16 h-16 sm:w-20 sm:h-20 bg-emerald-100 text-emerald-600 rounded-full flex items-center justify-center shadow-lg shadow-emerald-100">
+                  <CheckCircle2 size={40} className="sm:w-12 sm:h-12" />
                 </div>
-                <h3 className="text-lg sm:text-2xl font-bold mb-1 sm:mb-2 text-neutral-900">Tilbud Vellykket Opprettet!</h3>
-                <p className="text-xs sm:text-sm text-neutral-500 max-w-md mb-6">Tilbudet er lagret i systemet og klart for oppfølging og distribusjon.</p>
-                {createdOfferId && (
+                <div className="space-y-1 max-w-md">
+                  <h3 className="text-xl sm:text-2xl font-bold text-neutral-900">Tilbud Vellykket Opprettet!</h3>
+                  <p className="text-xs sm:text-sm text-neutral-500">
+                    Tilbudet er lagret i systemet. Kunden kan nå godkjenne tilbudet og signere kontrakten på samme skjerm.
+                  </p>
+                </div>
+
+                <div className="flex flex-col sm:flex-row items-center justify-center gap-3 w-full max-w-lg">
                   <button 
                     onClick={handleCopyOfferLink}
-                    className="flex items-center gap-2 px-4 py-2.5 bg-emerald-50 text-emerald-700 hover:bg-emerald-100 rounded-xl font-bold text-xs sm:text-sm border border-emerald-200 transition-colors"
+                    className="w-full sm:w-auto flex-1 flex items-center justify-center gap-2 px-5 py-3.5 bg-white border border-neutral-300 hover:bg-neutral-50 text-neutral-800 rounded-xl font-bold text-xs sm:text-sm shadow-sm transition-all"
                   >
                     <Copy size={16} />
-                    Kopiér Tilbudslenke
+                    Kopiér Kundelenke
                   </button>
-                )}
+                  {clientEmail && (
+                    <button 
+                      onClick={handleSendEmail}
+                      disabled={isSendingEmail}
+                      className="w-full sm:w-auto flex-1 flex items-center justify-center gap-2 px-5 py-3.5 bg-blue-600 hover:bg-blue-500 text-white rounded-xl font-bold text-xs sm:text-sm shadow-sm transition-all disabled:opacity-50"
+                    >
+                      <Mail size={16} />
+                      {isSendingEmail ? 'Sender...' : 'Send på e-post'}
+                    </button>
+                  )}
+                  <button 
+                    onClick={() => {
+                      const tokenOrId = createdOfferToken || createdOfferId;
+                      window.open(`/?offerToken=${tokenOrId}`, '_blank');
+                    }}
+                    className="w-full sm:w-auto flex-1 flex items-center justify-center gap-2 px-5 py-3.5 bg-emerald-600 hover:bg-emerald-500 text-white rounded-xl font-bold text-xs sm:text-sm shadow-md shadow-emerald-200 transition-all"
+                  >
+                    <Sparkles size={16} />
+                    Forhåndsvis Flyt
+                  </button>
+                </div>
+
+                <button 
+                  onClick={handleCloseAndReset}
+                  className="text-xs text-neutral-400 hover:text-neutral-700 font-bold underline pt-2"
+                >
+                  Lukk vindu og gå tilbake
+                </button>
               </motion.div>
             ) : step === 1 ? (
               <motion.div 

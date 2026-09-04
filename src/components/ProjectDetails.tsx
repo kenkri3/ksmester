@@ -50,6 +50,7 @@ import ProjectMaterials from './ProjectMaterials';
 import ProjectActivityLog from './ProjectActivityLog';
 import AIVisionModal from './AIVisionModal';
 import { summaryService } from '../services/summaryService';
+import ComplianceHub from './ComplianceHub';
 
 interface ProjectDetailsProps {
   project: Project;
@@ -843,69 +844,12 @@ export default function ProjectDetails({ project, onBack, onShare, onStartCheckl
           )}
           
           {activeTab === 'docs' && (
-            <div className="bg-white rounded-3xl border border-neutral-200 shadow-sm overflow-hidden">
-              <div className="p-6 border-b border-neutral-100 flex justify-between items-center">
-                <h3 className="font-bold">{t('documentation')}</h3>
-                <div className="flex gap-2">
-                  <button 
-                    onClick={onShare}
-                    className="flex items-center gap-2 px-4 py-2 bg-neutral-100 text-neutral-600 rounded-xl text-xs font-bold hover:bg-neutral-200 transition-all"
-                  >
-                    <Share2 size={16} />
-                    {t('share')}
-                  </button>
-                  <button 
-                    onClick={() => {/* Implement file upload logic */}}
-                    className="flex items-center gap-2 px-4 py-2 bg-emerald-600 text-white rounded-xl text-xs font-bold hover:bg-emerald-500 transition-all shadow-lg shadow-emerald-100"
-                  >
-                    <Plus size={16} />
-                    {t('upload')}
-                  </button>
-                </div>
-              </div>
-              <div className="p-6">
-                <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
-                  {[
-                    { name: 'Byggetegninger_V1.pdf', size: '4.2 MB', type: 'PDF', date: '12.03.2024' },
-                    { name: 'Samsvarserklæring_El.pdf', size: '1.1 MB', type: 'PDF', date: '15.03.2024' },
-                    { name: 'FDV_Dokumentasjon.zip', size: '12.8 MB', type: 'ZIP', date: '18.03.2024' },
-                    { name: 'Bilder_Befaring.jpg', size: '2.4 MB', type: 'IMG', date: '20.03.2024' }
-                  ].map((doc, i) => (
-                    <div key={i} className="flex items-center justify-between p-4 bg-neutral-50 rounded-2xl border border-neutral-100 group hover:border-emerald-200 transition-all cursor-pointer">
-                      <div className="flex items-center gap-4">
-                        <div className="w-10 h-10 bg-white rounded-xl border border-neutral-200 flex items-center justify-center text-neutral-400 group-hover:text-emerald-600 transition-colors">
-                          <FileText size={20} />
-                        </div>
-                        <div>
-                          <div className="text-sm font-bold truncate max-w-[150px]">{doc.name}</div>
-                          <div className="text-[10px] text-neutral-400 font-black uppercase tracking-widest">{doc.type} • {doc.size}</div>
-                        </div>
-                      </div>
-                      <div className="text-[10px] text-neutral-400 font-bold">{doc.date}</div>
-                    </div>
-                  ))}
-                </div>
-                
-                <div className="mt-8 p-6 bg-emerald-50 rounded-[2rem] border border-emerald-100">
-                  <div className="flex items-center gap-4 mb-4">
-                    <div className="w-12 h-12 bg-white rounded-2xl flex items-center justify-center text-emerald-600 shadow-sm">
-                      <ShieldCheck size={24} />
-                    </div>
-                    <div>
-                      <h4 className="font-bold text-emerald-900">Dokumentasjonsgrad</h4>
-                      <p className="text-xs text-emerald-700">Prosjektet har {project.documentationLevel || 85}% av påkrevd dokumentasjon.</p>
-                    </div>
-                  </div>
-                  <div className="w-full h-2 bg-white rounded-full overflow-hidden">
-                    <div 
-                      className="h-full bg-emerald-500 rounded-full" 
-                      style={{ width: `${project.documentationLevel || 85}%` }} 
-                    />
-                  </div>
-                </div>
-              </div>
-            </div>
+            <ComplianceHub 
+              project={project} 
+              onOpenChecklist={() => onStartChecklist?.(project.id)} 
+            />
           )}
+
 
           {activeTab === 'materials' && (
             <ProjectMaterials project={project} />

@@ -47,7 +47,8 @@ export interface UserProfile {
   updatedAt?: any;
 }
 
-export type View = 'landing' | 'dashboard' | 'mobile' | 'spec' | 'settings' | 'customer-portal' | 'pricing' | 'about' | 'contact' | 'privacy' | 'terms' | 'super-admin' | 'offer' | 'invite' | 'login';
+export type View = 'landing' | 'dashboard' | 'mobile' | 'spec' | 'settings' | 'customer-portal' | 'pricing' | 'about' | 'contact' | 'privacy' | 'terms' | 'super-admin' | 'offer' | 'invite' | 'login' | 'public-offer';
+
 
 export interface Project {
   id: string;
@@ -143,6 +144,14 @@ export interface Offer {
   validUntil: string;
   authorId: string;
   authorName: string;
+  company?: string;
+  companyName?: string;
+  companyOrgNumber?: string;
+  terms?: string;
+  token?: string;
+  shareUrl?: string;
+  acceptedAt?: string;
+  contractId?: string;
 }
 
 export interface Contract {
@@ -152,6 +161,8 @@ export interface Contract {
   offerId?: string;
   clientName: string;
   clientEmail?: string;
+  clientPhone?: string;
+  clientAddress?: string;
   title: string;
   status: 'draft' | 'pending_signature' | 'signed' | 'expired';
   createdAt: string;
@@ -159,6 +170,19 @@ export interface Contract {
   documentUrl?: string;
   authorId: string;
   company?: string;
+  companyName?: string;
+  companyOrgNumber?: string;
+  totalAmount?: number;
+  paymentTerms?: string;
+  startDate?: string;
+  completionDate?: string;
+  terms?: string;
+  signatureData?: string; // Data URL for canvas signature or signature hash
+  signerName?: string;
+  signerIp?: string;
+  token?: string;
+  shareUrl?: string;
+  contractStandard?: 'NS8406' | 'NS8405' | 'haandverker';
 }
 
 export interface ProjectDocument {
@@ -326,3 +350,59 @@ export interface AppNotification {
   link?: string;
   createdAt: string;
 }
+
+// --- Dynamic & Editable Checklist System ---
+export interface ChecklistItem {
+  id: string;
+  text: string;
+  checked: boolean;
+  status?: 'passed' | 'failed' | 'na' | 'pending';
+  notes?: string;
+  photoUrl?: string;
+  aiVerified?: boolean;
+  aiComment?: string;
+  required?: boolean;
+  category?: string;
+  order?: number;
+}
+
+export interface ProjectChecklist {
+  id: string;
+  projectId: string;
+  title: string;
+  trade: Trade | string;
+  phase: 'hms_rigg' | 'fagkontroll' | 'mottak' | 'sluttkontroll' | 'custom';
+  phaseTitle: string;
+  items: ChecklistItem[];
+  status: 'pending' | 'in_progress' | 'completed';
+  createdAt: string;
+  updatedAt?: string;
+  completedAt?: string;
+}
+
+// --- Norwegian Legal Compliance Package ---
+export interface NorwegianComplianceStatus {
+  samsvarserklaeringReady: boolean;
+  sluttkontrollReady: boolean;
+  ferdigattestReady: boolean;
+  avfallsplanReady: boolean;
+  avfallSorteringsgrad: number; // e.g. 68% (TEK17 requirement is >= 60%)
+  overtakelsesprotokollReady: boolean;
+  fdvReady: boolean;
+  boligmappaReady: boolean;
+  hmsLogReady: boolean;
+  totalComplianceScore: number; // 0-100%
+  hiddenInstallationsPhotoCount: number;
+}
+
+export interface WasteRecord {
+  id: string;
+  projectId: string;
+  wasteType: 'trevirke' | 'betong_tegl' | 'gips' | 'metall' | 'plast' | 'farlig_avfall' | 'restavfall';
+  wasteName: string;
+  weightKg: number;
+  deliveryDate: string;
+  recyclingFacility: string;
+  receiptUrl?: string;
+}
+

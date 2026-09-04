@@ -230,6 +230,17 @@ export const api = {
     }
   },
 
+  async saveDoc<T = any>(collectionName: string, data: any): Promise<T> {
+    if (data.id) {
+      const cached = getLocalCache(collectionName);
+      const existing = cached.find((i: any) => i.id === data.id);
+      if (existing) {
+        return this.updateDoc(collectionName, data.id, data) as any;
+      }
+    }
+    return this.addDoc(collectionName, data) as any;
+  },
+
   async deleteDoc(collectionName: string, id: string): Promise<{ success: boolean }> {
     const isOnline = typeof navigator !== 'undefined' ? navigator.onLine : true;
 
