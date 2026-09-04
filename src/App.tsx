@@ -372,105 +372,286 @@ function AppContent() {
 
       {/* Navigation */}
       <nav className={cn(
-        "fixed left-0 right-0 z-50 bg-white/90 backdrop-blur-md border-b border-neutral-200/80 transition-all",
+        "fixed left-0 right-0 z-50 bg-white/95 backdrop-blur-md border-b border-neutral-200/80 transition-all shadow-xs",
         (user && subscriptionStatus === 'trial') || impersonatedCompanyId ? "top-6" : "top-0"
       )}>
         <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8">
-          <div className="flex justify-between h-16 items-center">
-            {/* Left: Logo & Live Offline/Online Status Badge */}
-            <div className="flex items-center gap-3 shrink-0">
-              <div 
-                className="flex items-center gap-1.5 cursor-pointer group"
-                onClick={() => setView('landing')}
-              >
-                <Logo size="md" className="text-neutral-900" />
+          {(!user || ['landing', 'pricing', 'about', 'contact', 'privacy', 'terms'].includes(view)) ? (
+            /* PUBLIC MARKETING NAVBAR */
+            <div className="flex justify-between h-16 items-center">
+              {/* Left: Logo & Audience Tag */}
+              <div className="flex items-center gap-3 shrink-0">
+                <div 
+                  className="flex items-center gap-2 cursor-pointer group"
+                  onClick={() => { setView('landing'); setLandingTab('home'); }}
+                >
+                  <Logo size="md" className="text-neutral-900" />
+                  <span className="hidden sm:inline-flex items-center text-[10px] font-bold text-neutral-500 bg-neutral-100 px-2.5 py-0.5 rounded-full border border-neutral-200/80">
+                    For Bygg & Anlegg
+                  </span>
+                </div>
+                <NetworkStatusBadge />
               </div>
-              <NetworkStatusBadge />
-            </div>
 
-            {/* Desktop Center: Clean, Focused Navigation Links */}
-            <div className="hidden md:flex items-center gap-1.5 lg:gap-2">
-              <button 
-                onClick={handleGoToDashboard}
-                className={cn(
-                  "px-3.5 py-2 rounded-xl text-xs font-bold transition-all flex items-center gap-1.5",
-                  view === 'dashboard' 
-                    ? "bg-emerald-50 text-emerald-700 font-black shadow-sm" 
-                    : "text-neutral-600 hover:text-neutral-900 hover:bg-neutral-100/70"
-                )}
-              >
-                <LayoutDashboard size={15} />
-                {t('dashboard', 'Dashboard')}
-              </button>
+              {/* Desktop Center: World-Class SaaS Links */}
+              <div className="hidden md:flex items-center gap-1 lg:gap-2">
+                {/* Løsninger Dropdown */}
+                <div className="relative group">
+                  <button 
+                    onClick={() => setIsSolutionsDropdownOpen(!isSolutionsDropdownOpen)}
+                    className={cn(
+                      "px-3.5 py-2 rounded-xl text-xs font-bold transition-all flex items-center gap-1.5 cursor-pointer",
+                      (view === 'landing' && ['ai', 'hms', 'fdv'].includes(landingTab))
+                        ? "bg-emerald-50 text-emerald-700 font-black" 
+                        : "text-neutral-600 hover:text-neutral-900 hover:bg-neutral-100/70"
+                    )}
+                  >
+                    <span>Løsninger</span>
+                    <ChevronDown size={14} className="text-neutral-400 group-hover:text-neutral-700 transition-transform group-hover:rotate-180" />
+                  </button>
 
-              <button 
-                onClick={() => setView('mobile')}
-                className={cn(
-                  "px-3.5 py-2 rounded-xl text-xs font-bold transition-all flex items-center gap-1.5",
-                  view === 'mobile' 
-                    ? "bg-emerald-50 text-emerald-700 font-black shadow-sm" 
-                    : "text-neutral-600 hover:text-neutral-900 hover:bg-neutral-100/70"
-                )}
-              >
-                <Smartphone size={15} />
-                {t('mobile_app', 'Mobil-app')}
-              </button>
+                  {/* Dropdown Menu */}
+                  <div className="absolute top-full left-0 mt-1.5 w-72 bg-white rounded-2xl shadow-xl border border-neutral-200/80 p-2 hidden group-hover:block z-50 animate-in fade-in-50 slide-in-from-top-1 duration-150">
+                    <button 
+                      onClick={() => { setLandingTab('ai'); setView('landing'); }}
+                      className="w-full text-left p-3 rounded-xl hover:bg-emerald-50 transition-colors flex items-start gap-3 cursor-pointer group/item"
+                    >
+                      <div className="w-8 h-8 rounded-lg bg-emerald-100 text-emerald-700 flex items-center justify-center shrink-0 group-hover/item:bg-emerald-600 group-hover/item:text-white transition-colors">
+                        <Sparkles size={16} />
+                      </div>
+                      <div>
+                        <p className="text-xs font-bold text-neutral-900">Mesterhjernen AI</p>
+                        <p className="text-[10px] text-neutral-500 leading-tight">Tale-til-SJA, Yr værrisiko & TEK17 syn</p>
+                      </div>
+                    </button>
 
-              <button 
-                onClick={() => setView('spec')}
-                className={cn(
-                  "px-3.5 py-2 rounded-xl text-xs font-bold transition-all text-neutral-600 hover:text-neutral-900 hover:bg-neutral-100/70",
-                  view === 'spec' && "bg-neutral-100 text-neutral-900 font-black"
-                )}
-              >
-                {t('specification', 'Spesifikasjon')}
-              </button>
+                    <button 
+                      onClick={() => { setLandingTab('hms'); setView('landing'); }}
+                      className="w-full text-left p-3 rounded-xl hover:bg-blue-50 transition-colors flex items-start gap-3 cursor-pointer group/item"
+                    >
+                      <div className="w-8 h-8 rounded-lg bg-blue-100 text-blue-700 flex items-center justify-center shrink-0 group-hover/item:bg-blue-600 group-hover/item:text-white transition-colors">
+                        <ShieldCheck size={16} />
+                      </div>
+                      <div>
+                        <p className="text-xs font-bold text-neutral-900">HMS & SJA</p>
+                        <p className="text-[10px] text-neutral-500 leading-tight">Vernerunder, AML-krav & stoffkartotek</p>
+                      </div>
+                    </button>
 
-              {user && (user.role === 'admin' || user.email === 'kenkri3@gmail.com') && (
+                    <button 
+                      onClick={() => { setLandingTab('fdv'); setView('landing'); }}
+                      className="w-full text-left p-3 rounded-xl hover:bg-teal-50 transition-colors flex items-start gap-3 cursor-pointer group/item"
+                    >
+                      <div className="w-8 h-8 rounded-lg bg-teal-100 text-teal-700 flex items-center justify-center shrink-0 group-hover/item:bg-teal-600 group-hover/item:text-white transition-colors">
+                        <FileCheck size={16} />
+                      </div>
+                      <div>
+                        <p className="text-xs font-bold text-neutral-900">FDV & Boligmappa</p>
+                        <p className="text-[10px] text-neutral-500 leading-tight">Automatisk NOBB-ark & 1-klikks eksport</p>
+                      </div>
+                    </button>
+                  </div>
+                </div>
+
+                {/* Priser */}
                 <button 
-                  onClick={() => setView('super-admin')}
+                  onClick={() => { setView('pricing'); setLandingTab('pricing'); }}
                   className={cn(
-                    "text-xs font-bold transition-all flex items-center gap-1.5 px-3 py-1.5 rounded-xl border ml-1",
-                    view === 'super-admin' 
-                      ? "bg-red-600 text-white border-red-600 shadow-sm font-black" 
-                      : "bg-red-50 text-red-700 border-red-200 hover:bg-red-100"
+                    "px-3.5 py-2 rounded-xl text-xs font-bold transition-all cursor-pointer",
+                    view === 'pricing' || (view === 'landing' && landingTab === 'pricing')
+                      ? "bg-emerald-50 text-emerald-700 font-black"
+                      : "text-neutral-600 hover:text-neutral-900 hover:bg-neutral-100/70"
                   )}
                 >
-                  <Shield size={14} />
-                  Admin Kontroll
+                  Priser
                 </button>
-              )}
-            </div>
 
-            {/* Desktop Right: Mobile Shortcut Guide, Language, Notifications, Unified Profile */}
-            <div className="hidden md:flex items-center gap-3">
-              {/* Mobil Snarvei (PWA) Button */}
-              <button 
-                onClick={() => setShowInstallGuide(true)}
-                className="flex items-center gap-1.5 px-3 py-1.5 bg-neutral-100 hover:bg-emerald-50 text-neutral-700 hover:text-emerald-800 rounded-xl text-xs font-bold transition-all border border-neutral-200/80 hover:border-emerald-300 shadow-sm active:scale-95"
-                title="Slik legger du til KS Mester som snarvei/app på din iPhone eller Android med full offline-støtte"
-              >
-                <Smartphone size={14} className="text-emerald-600" />
-                <span>Mobil-snarvei</span>
-              </button>
-
-              {/* Language Selector */}
-              <div className="flex items-center gap-1 px-2.5 py-1.5 bg-neutral-100/80 hover:bg-neutral-100 rounded-xl border border-neutral-200 transition-all">
-                <Globe size={14} className="text-neutral-500 shrink-0" />
-                <select 
-                  onChange={(e) => changeLanguage(e.target.value)}
-                  value={getStandardLang(i18n.language)}
-                  className="text-xs font-black bg-transparent border-none focus:ring-0 cursor-pointer uppercase text-neutral-800 pr-1 outline-none"
-                  title="Bytt språk"
+                {/* Kundeportal */}
+                <button 
+                  onClick={() => setIsPortalModalOpen(true)}
+                  className="px-3.5 py-2 rounded-xl text-xs font-bold text-neutral-600 hover:text-neutral-900 hover:bg-neutral-100/70 transition-all flex items-center gap-1.5 cursor-pointer"
                 >
-                  <option value="no">NO</option>
-                  <option value="en">EN</option>
-                  <option value="pl">PL</option>
-                  <option value="lt">LT</option>
-                </select>
+                  <Users size={14} className="text-emerald-600" />
+                  <span>Kundeportal</span>
+                </button>
+
+                {/* Om oss */}
+                <button 
+                  onClick={() => setView('about')}
+                  className={cn(
+                    "px-3.5 py-2 rounded-xl text-xs font-bold transition-all cursor-pointer",
+                    view === 'about'
+                      ? "bg-emerald-50 text-emerald-700 font-black"
+                      : "text-neutral-600 hover:text-neutral-900 hover:bg-neutral-100/70"
+                  )}
+                >
+                  Om oss
+                </button>
+
+                {/* Kontakt */}
+                <button 
+                  onClick={() => setView('contact')}
+                  className={cn(
+                    "px-3.5 py-2 rounded-xl text-xs font-bold transition-all cursor-pointer",
+                    view === 'contact'
+                      ? "bg-emerald-50 text-emerald-700 font-black"
+                      : "text-neutral-600 hover:text-neutral-900 hover:bg-neutral-100/70"
+                  )}
+                >
+                  Kontakt
+                </button>
               </div>
 
-              {user ? (
+              {/* Desktop Right: Actions */}
+              <div className="hidden md:flex items-center gap-3">
+                {/* Language Selector */}
+                <div className="flex items-center gap-1 px-2.5 py-1.5 bg-neutral-100/80 hover:bg-neutral-100 rounded-xl border border-neutral-200 transition-all">
+                  <Globe size={14} className="text-neutral-500 shrink-0" />
+                  <select 
+                    onChange={(e) => changeLanguage(e.target.value)}
+                    value={getStandardLang(i18n.language)}
+                    className="text-xs font-black bg-transparent border-none focus:ring-0 cursor-pointer uppercase text-neutral-800 pr-1 outline-none"
+                    title="Bytt språk"
+                  >
+                    <option value="no">NO</option>
+                    <option value="en">EN</option>
+                    <option value="pl">PL</option>
+                    <option value="lt">LT</option>
+                  </select>
+                </div>
+
+                {user ? (
+                  <button 
+                    onClick={handleGoToDashboard}
+                    className="bg-emerald-600 hover:bg-emerald-500 text-white px-4 py-2 rounded-xl text-xs font-bold transition-all shadow-md active:scale-95 flex items-center gap-1.5 cursor-pointer"
+                  >
+                    <LayoutDashboard size={14} />
+                    <span>Gå til Dashboard</span>
+                  </button>
+                ) : (
+                  <div className="flex items-center gap-2">
+                    <button 
+                      onClick={() => setView('login')}
+                      className="text-neutral-700 hover:text-neutral-950 px-3.5 py-2 rounded-xl text-xs font-bold hover:bg-neutral-100 transition-all cursor-pointer"
+                    >
+                      Logg inn
+                    </button>
+                    <button 
+                      onClick={handleStartDemo}
+                      className="bg-emerald-600 hover:bg-emerald-500 text-white px-4 py-2.5 rounded-xl text-xs font-bold transition-all shadow-md hover:shadow-emerald-600/20 active:scale-95 flex items-center gap-1.5 cursor-pointer"
+                    >
+                      <span>Prøv gratis i 14 dager</span>
+                      <ArrowRight size={14} />
+                    </button>
+                  </div>
+                )}
+              </div>
+
+              {/* Mobile Menu Button */}
+              <div className="md:hidden flex items-center gap-2">
+                <NetworkStatusBadge />
+                <button 
+                  onClick={() => setIsMenuOpen(!isMenuOpen)}
+                  className="p-2 text-neutral-700 hover:text-neutral-950 rounded-xl hover:bg-neutral-100 cursor-pointer"
+                >
+                  {isMenuOpen ? <X size={22} /> : <Menu size={22} />}
+                </button>
+              </div>
+            </div>
+          ) : (
+            /* AUTHENTICATED INTERNAL APP NAVBAR */
+            <div className="flex justify-between h-16 items-center">
+              {/* Left: Logo & Live Offline/Online Status Badge */}
+              <div className="flex items-center gap-3 shrink-0">
+                <div 
+                  className="flex items-center gap-1.5 cursor-pointer group"
+                  onClick={() => setView('landing')}
+                >
+                  <Logo size="md" className="text-neutral-900" />
+                </div>
+                <NetworkStatusBadge />
+              </div>
+
+              {/* Desktop Center: Internal Operational App Navigation */}
+              <div className="hidden md:flex items-center gap-1.5 lg:gap-2">
+                <button 
+                  onClick={handleGoToDashboard}
+                  className={cn(
+                    "px-3.5 py-2 rounded-xl text-xs font-bold transition-all flex items-center gap-1.5 cursor-pointer",
+                    view === 'dashboard' 
+                      ? "bg-emerald-50 text-emerald-700 font-black shadow-sm" 
+                      : "text-neutral-600 hover:text-neutral-900 hover:bg-neutral-100/70"
+                  )}
+                >
+                  <LayoutDashboard size={15} />
+                  {t('dashboard', 'Dashboard')}
+                </button>
+
+                <button 
+                  onClick={() => setView('mobile')}
+                  className={cn(
+                    "px-3.5 py-2 rounded-xl text-xs font-bold transition-all flex items-center gap-1.5 cursor-pointer",
+                    view === 'mobile' 
+                      ? "bg-emerald-50 text-emerald-700 font-black shadow-sm" 
+                      : "text-neutral-600 hover:text-neutral-900 hover:bg-neutral-100/70"
+                  )}
+                >
+                  <Smartphone size={15} />
+                  {t('mobile_app', 'Mobil-app')}
+                </button>
+
+                <button 
+                  onClick={() => setView('spec')}
+                  className={cn(
+                    "px-3.5 py-2 rounded-xl text-xs font-bold transition-all text-neutral-600 hover:text-neutral-900 hover:bg-neutral-100/70 cursor-pointer",
+                    view === 'spec' && "bg-neutral-100 text-neutral-900 font-black"
+                  )}
+                >
+                  {t('specification', 'Spesifikasjon')}
+                </button>
+
+                {user && (user.role === 'admin' || user.email === 'kenkri3@gmail.com') && (
+                  <button 
+                    onClick={() => setView('super-admin')}
+                    className={cn(
+                      "text-xs font-bold transition-all flex items-center gap-1.5 px-3 py-1.5 rounded-xl border ml-1 cursor-pointer",
+                      view === 'super-admin' 
+                        ? "bg-red-600 text-white border-red-600 shadow-sm font-black" 
+                        : "bg-red-50 text-red-700 border-red-200 hover:bg-red-100"
+                    )}
+                  >
+                    <Shield size={14} />
+                    Admin Kontroll
+                  </button>
+                )}
+              </div>
+
+              {/* Desktop Right: Install Shortcut, Language, Notifications, Unified Profile */}
+              <div className="hidden md:flex items-center gap-3">
+                <button 
+                  onClick={() => setShowInstallGuide(true)}
+                  className="flex items-center gap-1.5 px-3 py-1.5 bg-neutral-100 hover:bg-emerald-50 text-neutral-700 hover:text-emerald-800 rounded-xl text-xs font-bold transition-all border border-neutral-200/80 hover:border-emerald-300 shadow-sm active:scale-95 cursor-pointer"
+                  title="Installer snarvei på mobil"
+                >
+                  <Smartphone size={14} className="text-emerald-600" />
+                  <span>Mobil-snarvei</span>
+                </button>
+
+                <div className="flex items-center gap-1 px-2.5 py-1.5 bg-neutral-100/80 hover:bg-neutral-100 rounded-xl border border-neutral-200 transition-all">
+                  <Globe size={14} className="text-neutral-500 shrink-0" />
+                  <select 
+                    onChange={(e) => changeLanguage(e.target.value)}
+                    value={getStandardLang(i18n.language)}
+                    className="text-xs font-black bg-transparent border-none focus:ring-0 cursor-pointer uppercase text-neutral-800 pr-1 outline-none"
+                    title="Bytt språk"
+                  >
+                    <option value="no">NO</option>
+                    <option value="en">EN</option>
+                    <option value="pl">PL</option>
+                    <option value="lt">LT</option>
+                  </select>
+                </div>
+
                 <div className="flex items-center gap-2 pl-2 border-l border-neutral-200">
                   <NotificationBell />
 
@@ -478,7 +659,7 @@ function AppContent() {
                     <button 
                       onClick={() => setView('settings')}
                       className={cn(
-                        "flex items-center gap-2 p-1.5 pr-2.5 rounded-xl border transition-all text-left",
+                        "flex items-center gap-2 p-1.5 pr-2.5 rounded-xl border transition-all text-left cursor-pointer",
                         view === 'settings' 
                           ? "bg-emerald-50 border-emerald-200 text-emerald-900" 
                           : "bg-neutral-50 border-neutral-200/80 hover:bg-neutral-100 text-neutral-800"
@@ -505,34 +686,27 @@ function AppContent() {
 
                     <button 
                       onClick={logout}
-                      className="p-2 text-neutral-400 hover:text-red-600 hover:bg-red-50 rounded-xl transition-all"
+                      className="p-2 text-neutral-400 hover:text-red-600 hover:bg-red-50 rounded-xl transition-all cursor-pointer"
                       title={t('logout', 'Logg ut')}
                     >
                       <LogOut size={16} />
                     </button>
                   </div>
                 </div>
-              ) : (
-                <button 
-                  onClick={() => setView('dashboard')}
-                  className="bg-neutral-900 text-white px-4 py-2 rounded-xl text-xs font-bold hover:bg-neutral-800 transition-all shadow-sm active:scale-95"
-                >
-                  {t('login', 'Logg inn')}
-                </button>
-              )}
-            </div>
+              </div>
 
-            {/* Mobile Menu Button */}
-            <div className="md:hidden flex items-center gap-2">
-              <NetworkStatusBadge />
-              <button 
-                onClick={() => setIsMenuOpen(!isMenuOpen)}
-                className="p-2 text-neutral-600 hover:text-neutral-900 rounded-xl hover:bg-neutral-100"
-              >
-                {isMenuOpen ? <X size={22} /> : <Menu size={22} />}
-              </button>
+              {/* Mobile Menu Button for Authenticated State */}
+              <div className="md:hidden flex items-center gap-2">
+                <NetworkStatusBadge />
+                <button 
+                  onClick={() => setIsMenuOpen(!isMenuOpen)}
+                  className="p-2 text-neutral-700 hover:text-neutral-900 rounded-xl hover:bg-neutral-100 cursor-pointer"
+                >
+                  {isMenuOpen ? <X size={22} /> : <Menu size={22} />}
+                </button>
+              </div>
             </div>
-          </div>
+          )}
         </div>
 
         {/* Mobile Menu Overlay */}
@@ -544,227 +718,338 @@ function AppContent() {
               exit={{ opacity: 0, y: -20 }}
               className="absolute top-16 left-0 right-0 bg-white border-b border-neutral-200 p-4 md:hidden shadow-2xl max-h-[calc(100vh-4rem)] overflow-y-auto custom-scrollbar z-40 pb-20"
             >
-              <div className="flex flex-col gap-3">
-                {user ? (
-                  <>
-                    {/* User profile header */}
-                    <div className="flex items-center justify-between p-3.5 bg-neutral-50 rounded-2xl border border-neutral-100">
-                      <div className="flex items-center gap-3 min-w-0">
-                        {user.photoURL ? (
-                          <img 
-                            src={user.photoURL} 
-                            alt={user.displayName || 'User'} 
-                            className="w-10 h-10 rounded-full border border-neutral-200 object-cover shrink-0 aspect-square"
-                            referrerPolicy="no-referrer"
-                          />
-                        ) : (
-                          <div className="w-10 h-10 bg-emerald-100 text-emerald-800 font-black rounded-full flex items-center justify-center shrink-0">
-                            {user.displayName?.[0] || 'U'}
-                          </div>
-                        )}
-                        <div className="min-w-0">
-                          <p className="text-sm font-bold text-neutral-900 truncate">{user.displayName || 'Mester Bruker'}</p>
-                          <p className="text-xs text-neutral-500 truncate">{user.email}</p>
-                        </div>
-                      </div>
-                      <div className="flex items-center gap-1 shrink-0">
-                        <button 
-                          onClick={() => { setView('settings'); setIsMenuOpen(false); }}
-                          aria-label="Innstillinger"
-                          className={cn(
-                            "p-2 rounded-xl transition-colors",
-                            view === 'settings' ? "bg-emerald-100 text-emerald-700" : "text-neutral-500 hover:bg-neutral-200"
-                          )}
-                        >
-                          <Settings size={18} />
-                        </button>
-                        <button 
-                          onClick={() => { logout(); setIsMenuOpen(false); }}
-                          aria-label="Logg ut"
-                          className="p-2 text-neutral-400 hover:text-red-500 rounded-xl hover:bg-neutral-200 transition-colors"
-                        >
-                          <LogOut size={18} />
-                        </button>
-                      </div>
-                    </div>
-
-                    {/* Main App Modules */}
-                    <div>
-                      <div className="text-[10px] font-black uppercase tracking-wider text-neutral-400 px-1 mb-2">
-                        Systemmoduler
-                      </div>
-                      <div className="grid grid-cols-2 gap-2">
-                        {[
-                          { tab: 'oversikt', label: 'Oversikt', icon: <LayoutDashboard size={16} /> },
-                          { tab: 'prosjekter', label: 'Prosjekter', icon: <FolderKanban size={16} /> },
-                          { tab: 'tilbud', label: 'Tilbud & Kalkyle', icon: <FileText size={16} /> },
-                          { tab: 'avvik', label: 'Avvik & KS', icon: <AlertTriangle size={16} /> },
-                          { tab: 'hms', label: 'HMS & Mannskap', icon: <ShieldCheck size={16} /> },
-                          { tab: 'finans', label: 'Finans & Endringer', icon: <Coins size={16} /> },
-                          { tab: 'laerling', label: 'Lærling', icon: <GraduationCap size={16} /> },
-                          { tab: 'ai', label: 'AI Analyse', icon: <Brain size={16} /> },
-                        ].map((m) => (
-                          <button
-                            key={m.tab}
-                            onClick={() => {
-                              handleMobileNavigate('dashboard', m.tab);
-                              setIsMenuOpen(false);
-                            }}
-                            className={cn(
-                              "flex items-center gap-2.5 p-3 rounded-xl text-left text-xs font-bold transition-all border",
-                              view === 'dashboard' && dashboardTab === m.tab
-                                ? "bg-emerald-50 border-emerald-300 text-emerald-800 shadow-sm"
-                                : "bg-white border-neutral-200/80 text-neutral-700 hover:bg-neutral-50"
-                            )}
-                          >
-                            <span className={cn(
-                              "p-1.5 rounded-lg shrink-0",
-                              view === 'dashboard' && dashboardTab === m.tab ? "bg-emerald-600 text-white" : "bg-neutral-100 text-neutral-600"
-                            )}>
-                              {m.icon}
-                            </span>
-                            <span className="truncate">{m.label}</span>
-                          </button>
-                        ))}
-                      </div>
-                    </div>
-
-                    {/* Field Tools Direct Launch */}
-                    <div>
-                      <div className="text-[10px] font-black uppercase tracking-wider text-neutral-400 px-1 mb-2">
-                        Feltverktøy
-                      </div>
-                      <div className="grid grid-cols-2 gap-2">
-                        <button
-                          onClick={() => {
-                            handleMobileAction('vehicle');
-                            setIsMenuOpen(false);
-                          }}
-                          className="flex items-center gap-2.5 p-3 rounded-xl text-left text-xs font-bold bg-neutral-50 border border-neutral-200/80 text-neutral-800 hover:bg-neutral-100 transition-all"
-                        >
-                          <span className="p-1.5 rounded-lg bg-neutral-900 text-white shrink-0">
-                            <Car size={16} />
-                          </span>
-                          <span className="truncate">Kjørebok</span>
-                        </button>
-
-                        <button
-                          onClick={() => {
-                            handleMobileAction('inventory');
-                            setIsMenuOpen(false);
-                          }}
-                          className="flex items-center gap-2.5 p-3 rounded-xl text-left text-xs font-bold bg-neutral-50 border border-neutral-200/80 text-neutral-800 hover:bg-neutral-100 transition-all"
-                        >
-                          <span className="p-1.5 rounded-lg bg-blue-600 text-white shrink-0">
-                            <Package size={16} />
-                          </span>
-                          <span className="truncate">Lager & Utstyr</span>
-                        </button>
-
-                        <button
-                          onClick={() => {
-                            handleMobileAction('time_registration');
-                            setIsMenuOpen(false);
-                          }}
-                          className="flex items-center gap-2.5 p-3 rounded-xl text-left text-xs font-bold bg-neutral-50 border border-neutral-200/80 text-neutral-800 hover:bg-neutral-100 transition-all"
-                        >
-                          <span className="p-1.5 rounded-lg bg-emerald-600 text-white shrink-0">
-                            <Clock size={16} />
-                          </span>
-                          <span className="truncate">Før timer</span>
-                        </button>
-
-                        <button
-                          onClick={() => {
-                            handleMobileAction('take_photo');
-                            setIsMenuOpen(false);
-                          }}
-                          className="flex items-center gap-2.5 p-3 rounded-xl text-left text-xs font-bold bg-neutral-50 border border-neutral-200/80 text-neutral-800 hover:bg-neutral-100 transition-all"
-                        >
-                          <span className="p-1.5 rounded-lg bg-rose-500 text-white shrink-0">
-                            <Camera size={16} />
-                          </span>
-                          <span className="truncate">AI Vision</span>
-                        </button>
-                      </div>
-                    </div>
-
-                    {/* App Views & Admin */}
-                    <div className="pt-2 border-t border-neutral-100 space-y-2">
-                      <div className="grid grid-cols-2 gap-2">
-                        <button 
-                          onClick={() => { setView('mobile'); setIsMenuOpen(false); }} 
-                          className={cn("flex items-center gap-2 p-2.5 rounded-xl text-xs font-bold", view === 'mobile' ? "bg-emerald-50 text-emerald-700" : "text-neutral-600 hover:bg-neutral-50")}
-                        >
-                          <Smartphone size={15} />
-                          <span>Mobil Feltapp</span>
-                        </button>
-
-                        <button 
-                          onClick={() => { setView('settings'); setIsMenuOpen(false); }} 
-                          className={cn("flex items-center gap-2 p-2.5 rounded-xl text-xs font-bold", view === 'settings' ? "bg-emerald-50 text-emerald-700" : "text-neutral-600 hover:bg-neutral-50")}
-                        >
-                          <Settings size={15} />
-                          <span>Innstillinger</span>
-                        </button>
-
-                        {(user.role === 'admin' || user.email === 'kenkri3@gmail.com') && (
-                          <button 
-                            onClick={() => { setView('super-admin'); setIsMenuOpen(false); }} 
-                            className={cn("col-span-2 flex items-center gap-2 p-2.5 rounded-xl text-xs font-bold", view === 'super-admin' ? "bg-rose-50 text-rose-700" : "text-rose-600 hover:bg-rose-50")}
-                          >
-                            <Shield size={15} />
-                            <span>SuperAdmin Kontrollpanel</span>
-                          </button>
-                        )}
-                      </div>
-
+              {(!user || ['landing', 'pricing', 'about', 'contact', 'privacy', 'terms'].includes(view)) ? (
+                /* Public Mobile Menu */
+                <div className="space-y-4">
+                  {/* Primary Actions */}
+                  {user ? (
+                    <button 
+                      onClick={() => { handleGoToDashboard(); setIsMenuOpen(false); }}
+                      className="w-full bg-emerald-600 text-white py-3.5 rounded-xl text-xs font-bold flex items-center justify-center gap-2 shadow-md cursor-pointer"
+                    >
+                      <LayoutDashboard size={16} />
+                      <span>Gå til Dashboard</span>
+                    </button>
+                  ) : (
+                    <div className="grid grid-cols-2 gap-2">
                       <button 
-                        onClick={() => { setShowInstallGuide(true); setIsMenuOpen(false); }} 
-                        className="w-full flex items-center justify-center gap-2 py-3 px-3 bg-emerald-600 text-white rounded-xl text-xs font-bold shadow-md hover:bg-emerald-500 transition-all cursor-pointer"
+                        onClick={() => { handleStartDemo(); setIsMenuOpen(false); }}
+                        className="w-full bg-emerald-600 text-white py-3 rounded-xl text-xs font-bold shadow-md cursor-pointer text-center"
                       >
-                        <Smartphone size={16} />
-                        <span>Installer som app på mobilen</span>
+                        Prøv gratis
+                      </button>
+                      <button 
+                        onClick={() => { setView('login'); setIsMenuOpen(false); }}
+                        className="w-full bg-neutral-900 text-white py-3 rounded-xl text-xs font-bold cursor-pointer text-center"
+                      >
+                        Logg inn
                       </button>
                     </div>
-                  </>
-                ) : (
-                  <div className="space-y-3">
-                    <button 
-                      onClick={() => { setView('dashboard'); setIsMenuOpen(false); }}
-                      className="w-full bg-neutral-900 text-white py-3.5 rounded-xl text-sm font-bold active:scale-95 transition-all shadow-md"
-                    >
-                      {t('login', 'Logg inn')}
-                    </button>
-                    <button 
-                      onClick={() => { setView('landing'); setIsMenuOpen(false); }} 
-                      className="w-full text-center py-2 text-sm font-medium text-neutral-600"
-                    >
-                      {t('welcome')}
-                    </button>
-                  </div>
-                )}
+                  )}
 
-                {/* Language Selector */}
-                <div className="flex items-center justify-between px-4 py-3 bg-neutral-50 rounded-xl border border-neutral-100 mt-1">
-                  <div className="flex items-center gap-2">
-                    <Globe size={16} className="text-emerald-600" />
-                    <select 
-                      onChange={(e) => { changeLanguage(e.target.value); setIsMenuOpen(false); }}
-                      value={getStandardLang(i18n.language)}
-                      className="text-xs font-black bg-transparent border-none focus:ring-0 cursor-pointer uppercase text-neutral-800"
-                    >
-                      <option value="no">Norsk (NO)</option>
-                      <option value="en">English (EN)</option>
-                      <option value="pl">Polski (PL)</option>
-                      <option value="lt">Lietuvių (LT)</option>
-                    </select>
+                  {/* Løsninger Section */}
+                  <div className="pt-2 border-t border-neutral-100">
+                    <div className="text-[10px] font-black uppercase tracking-wider text-neutral-400 mb-2">
+                      Løsninger for bygg & anlegg
+                    </div>
+                    <div className="space-y-1">
+                      <button 
+                        onClick={() => { setLandingTab('ai'); setView('landing'); setIsMenuOpen(false); }}
+                        className="w-full text-left p-3 rounded-xl hover:bg-emerald-50 text-xs font-bold text-neutral-800 flex items-center gap-3 cursor-pointer"
+                      >
+                        <div className="w-7 h-7 rounded-lg bg-emerald-100 text-emerald-700 flex items-center justify-center shrink-0">
+                          <Sparkles size={15} />
+                        </div>
+                        <span>Mesterhjernen AI</span>
+                      </button>
+                      <button 
+                        onClick={() => { setLandingTab('hms'); setView('landing'); setIsMenuOpen(false); }}
+                        className="w-full text-left p-3 rounded-xl hover:bg-blue-50 text-xs font-bold text-neutral-800 flex items-center gap-3 cursor-pointer"
+                      >
+                        <div className="w-7 h-7 rounded-lg bg-blue-100 text-blue-700 flex items-center justify-center shrink-0">
+                          <ShieldCheck size={15} />
+                        </div>
+                        <span>HMS & SJA</span>
+                      </button>
+                      <button 
+                        onClick={() => { setLandingTab('fdv'); setView('landing'); setIsMenuOpen(false); }}
+                        className="w-full text-left p-3 rounded-xl hover:bg-teal-50 text-xs font-bold text-neutral-800 flex items-center gap-3 cursor-pointer"
+                      >
+                        <div className="w-7 h-7 rounded-lg bg-teal-100 text-teal-700 flex items-center justify-center shrink-0">
+                          <FileCheck size={15} />
+                        </div>
+                        <span>FDV & Boligmappa</span>
+                      </button>
+                    </div>
                   </div>
-                  <span className="text-[10px] font-black uppercase text-emerald-700 bg-emerald-100/60 px-2 py-0.5 rounded">
-                    Eksport: Norsk
-                  </span>
+
+                  {/* Pages Section */}
+                  <div className="pt-2 border-t border-neutral-100">
+                    <div className="text-[10px] font-black uppercase tracking-wider text-neutral-400 mb-2">
+                      Informasjon
+                    </div>
+                    <div className="grid grid-cols-2 gap-2">
+                      <button 
+                        onClick={() => { setView('pricing'); setIsMenuOpen(false); }}
+                        className="text-left p-2.5 rounded-xl bg-neutral-50 text-xs font-bold text-neutral-700 hover:bg-neutral-100 cursor-pointer"
+                      >
+                        Priser
+                      </button>
+                      <button 
+                        onClick={() => { setIsPortalModalOpen(true); setIsMenuOpen(false); }}
+                        className="text-left p-2.5 rounded-xl bg-neutral-50 text-xs font-bold text-neutral-700 hover:bg-neutral-100 cursor-pointer flex items-center gap-1.5"
+                      >
+                        <Users size={13} className="text-emerald-600" />
+                        <span>Kundeportal</span>
+                      </button>
+                      <button 
+                        onClick={() => { setView('about'); setIsMenuOpen(false); }}
+                        className="text-left p-2.5 rounded-xl bg-neutral-50 text-xs font-bold text-neutral-700 hover:bg-neutral-100 cursor-pointer"
+                      >
+                        Om oss
+                      </button>
+                      <button 
+                        onClick={() => { setView('contact'); setIsMenuOpen(false); }}
+                        className="text-left p-2.5 rounded-xl bg-neutral-50 text-xs font-bold text-neutral-700 hover:bg-neutral-100 cursor-pointer"
+                      >
+                        Kontakt
+                      </button>
+                    </div>
+
+                    <button 
+                      onClick={() => { setShowInstallGuide(true); setIsMenuOpen(false); }} 
+                      className="w-full mt-3 flex items-center justify-center gap-2 py-2.5 px-3 bg-neutral-100 text-neutral-800 rounded-xl text-xs font-bold border border-neutral-200/80 hover:bg-neutral-200 transition-all cursor-pointer"
+                    >
+                      <Smartphone size={15} className="text-emerald-600" />
+                      <span>Legg til snarvei på mobil (PWA)</span>
+                    </button>
+                  </div>
+
+                  {/* Language Selector */}
+                  <div className="flex items-center justify-between px-4 py-3 bg-neutral-50 rounded-xl border border-neutral-100 mt-2">
+                    <div className="flex items-center gap-2">
+                      <Globe size={16} className="text-emerald-600" />
+                      <select 
+                        onChange={(e) => { changeLanguage(e.target.value); setIsMenuOpen(false); }}
+                        value={getStandardLang(i18n.language)}
+                        className="text-xs font-black bg-transparent border-none focus:ring-0 cursor-pointer uppercase text-neutral-800"
+                      >
+                        <option value="no">Norsk (NO)</option>
+                        <option value="en">English (EN)</option>
+                        <option value="pl">Polski (PL)</option>
+                        <option value="lt">Lietuvių (LT)</option>
+                      </select>
+                    </div>
+                    <span className="text-[10px] font-black uppercase text-emerald-700 bg-emerald-100/60 px-2 py-0.5 rounded">
+                      Eksport: Norsk
+                    </span>
+                  </div>
                 </div>
-              </div>
+              ) : (
+                /* Authenticated App Mobile Menu */
+                <div className="flex flex-col gap-3">
+                  {/* User profile header */}
+                  <div className="flex items-center justify-between p-3.5 bg-neutral-50 rounded-2xl border border-neutral-100">
+                    <div className="flex items-center gap-3 min-w-0">
+                      {user.photoURL ? (
+                        <img 
+                          src={user.photoURL} 
+                          alt={user.displayName || 'User'} 
+                          className="w-10 h-10 rounded-full border border-neutral-200 object-cover shrink-0 aspect-square"
+                          referrerPolicy="no-referrer"
+                        />
+                      ) : (
+                        <div className="w-10 h-10 bg-emerald-100 text-emerald-800 font-black rounded-full flex items-center justify-center shrink-0">
+                          {user.displayName?.[0] || 'U'}
+                        </div>
+                      )}
+                      <div className="min-w-0">
+                        <p className="text-sm font-bold text-neutral-900 truncate">{user.displayName || 'Mester Bruker'}</p>
+                        <p className="text-xs text-neutral-500 truncate">{user.email}</p>
+                      </div>
+                    </div>
+                    <div className="flex items-center gap-1 shrink-0">
+                      <button 
+                        onClick={() => { setView('settings'); setIsMenuOpen(false); }}
+                        aria-label="Innstillinger"
+                        className={cn(
+                          "p-2 rounded-xl transition-colors cursor-pointer",
+                          view === 'settings' ? "bg-emerald-100 text-emerald-700" : "text-neutral-500 hover:bg-neutral-200"
+                        )}
+                      >
+                        <Settings size={18} />
+                      </button>
+                      <button 
+                        onClick={() => { logout(); setIsMenuOpen(false); }}
+                        aria-label="Logg ut"
+                        className="p-2 text-neutral-400 hover:text-red-500 rounded-xl hover:bg-neutral-200 transition-colors cursor-pointer"
+                      >
+                        <LogOut size={18} />
+                      </button>
+                    </div>
+                  </div>
+
+                  {/* Main App Modules */}
+                  <div>
+                    <div className="text-[10px] font-black uppercase tracking-wider text-neutral-400 px-1 mb-2">
+                      Systemmoduler
+                    </div>
+                    <div className="grid grid-cols-2 gap-2">
+                      {[
+                        { tab: 'oversikt', label: 'Oversikt', icon: <LayoutDashboard size={16} /> },
+                        { tab: 'prosjekter', label: 'Prosjekter', icon: <FolderKanban size={16} /> },
+                        { tab: 'tilbud', label: 'Tilbud & Kalkyle', icon: <FileText size={16} /> },
+                        { tab: 'avvik', label: 'Avvik & KS', icon: <AlertTriangle size={16} /> },
+                        { tab: 'hms', label: 'HMS & Mannskap', icon: <ShieldCheck size={16} /> },
+                        { tab: 'finans', label: 'Finans & Endringer', icon: <Coins size={16} /> },
+                        { tab: 'laerling', label: 'Lærling', icon: <GraduationCap size={16} /> },
+                        { tab: 'ai', label: 'AI Analyse', icon: <Brain size={16} /> },
+                      ].map((m) => (
+                        <button
+                          key={m.tab}
+                          onClick={() => {
+                            handleMobileNavigate('dashboard', m.tab);
+                            setIsMenuOpen(false);
+                          }}
+                          className={cn(
+                            "flex items-center gap-2.5 p-3 rounded-xl text-left text-xs font-bold transition-all border cursor-pointer",
+                            view === 'dashboard' && dashboardTab === m.tab
+                              ? "bg-emerald-50 border-emerald-300 text-emerald-800 shadow-sm"
+                              : "bg-white border-neutral-200/80 text-neutral-700 hover:bg-neutral-50"
+                          )}
+                        >
+                          <span className={cn(
+                            "p-1.5 rounded-lg shrink-0",
+                            view === 'dashboard' && dashboardTab === m.tab ? "bg-emerald-600 text-white" : "bg-neutral-100 text-neutral-600"
+                          )}>
+                            {m.icon}
+                          </span>
+                          <span className="truncate">{m.label}</span>
+                        </button>
+                      ))}
+                    </div>
+                  </div>
+
+                  {/* Field Tools Direct Launch */}
+                  <div>
+                    <div className="text-[10px] font-black uppercase tracking-wider text-neutral-400 px-1 mb-2">
+                      Feltverktøy
+                    </div>
+                    <div className="grid grid-cols-2 gap-2">
+                      <button
+                        onClick={() => {
+                          handleMobileAction('vehicle');
+                          setIsMenuOpen(false);
+                        }}
+                        className="flex items-center gap-2.5 p-3 rounded-xl text-left text-xs font-bold bg-neutral-50 border border-neutral-200/80 text-neutral-800 hover:bg-neutral-100 transition-all cursor-pointer"
+                      >
+                        <span className="p-1.5 rounded-lg bg-neutral-900 text-white shrink-0">
+                          <Car size={16} />
+                        </span>
+                        <span className="truncate">Kjørebok</span>
+                      </button>
+
+                      <button
+                        onClick={() => {
+                          handleMobileAction('inventory');
+                          setIsMenuOpen(false);
+                        }}
+                        className="flex items-center gap-2.5 p-3 rounded-xl text-left text-xs font-bold bg-neutral-50 border border-neutral-200/80 text-neutral-800 hover:bg-neutral-100 transition-all cursor-pointer"
+                      >
+                        <span className="p-1.5 rounded-lg bg-blue-600 text-white shrink-0">
+                          <Package size={16} />
+                        </span>
+                        <span className="truncate">Lager & Utstyr</span>
+                      </button>
+
+                      <button
+                        onClick={() => {
+                          handleMobileAction('time_registration');
+                          setIsMenuOpen(false);
+                        }}
+                        className="flex items-center gap-2.5 p-3 rounded-xl text-left text-xs font-bold bg-neutral-50 border border-neutral-200/80 text-neutral-800 hover:bg-neutral-100 transition-all cursor-pointer"
+                      >
+                        <span className="p-1.5 rounded-lg bg-emerald-600 text-white shrink-0">
+                          <Clock size={16} />
+                        </span>
+                        <span className="truncate">Før timer</span>
+                      </button>
+
+                      <button
+                        onClick={() => {
+                          handleMobileAction('take_photo');
+                          setIsMenuOpen(false);
+                        }}
+                        className="flex items-center gap-2.5 p-3 rounded-xl text-left text-xs font-bold bg-neutral-50 border border-neutral-200/80 text-neutral-800 hover:bg-neutral-100 transition-all cursor-pointer"
+                      >
+                        <span className="p-1.5 rounded-lg bg-rose-500 text-white shrink-0">
+                          <Camera size={16} />
+                        </span>
+                        <span className="truncate">AI Vision</span>
+                      </button>
+                    </div>
+                  </div>
+
+                  {/* App Views & Admin */}
+                  <div className="pt-2 border-t border-neutral-100 space-y-2">
+                    <div className="grid grid-cols-2 gap-2">
+                      <button 
+                        onClick={() => { setView('mobile'); setIsMenuOpen(false); }} 
+                        className={cn("flex items-center gap-2 p-2.5 rounded-xl text-xs font-bold cursor-pointer", view === 'mobile' ? "bg-emerald-50 text-emerald-700" : "text-neutral-600 hover:bg-neutral-50")}
+                      >
+                        <Smartphone size={15} />
+                        <span>Mobil Feltapp</span>
+                      </button>
+
+                      <button 
+                        onClick={() => { setView('settings'); setIsMenuOpen(false); }} 
+                        className={cn("flex items-center gap-2 p-2.5 rounded-xl text-xs font-bold cursor-pointer", view === 'settings' ? "bg-emerald-50 text-emerald-700" : "text-neutral-600 hover:bg-neutral-50")}
+                      >
+                        <Settings size={15} />
+                        <span>Innstillinger</span>
+                      </button>
+
+                      {(user.role === 'admin' || user.email === 'kenkri3@gmail.com') && (
+                        <button 
+                          onClick={() => { setView('super-admin'); setIsMenuOpen(false); }} 
+                          className={cn("col-span-2 flex items-center gap-2 p-2.5 rounded-xl text-xs font-bold cursor-pointer", view === 'super-admin' ? "bg-rose-50 text-rose-700" : "text-rose-600 hover:bg-rose-50")}
+                        >
+                          <Shield size={15} />
+                          <span>SuperAdmin Kontrollpanel</span>
+                        </button>
+                      )}
+                    </div>
+
+                    <button 
+                      onClick={() => { setShowInstallGuide(true); setIsMenuOpen(false); }} 
+                      className="w-full flex items-center justify-center gap-2 py-3 px-3 bg-emerald-600 text-white rounded-xl text-xs font-bold shadow-md hover:bg-emerald-500 transition-all cursor-pointer"
+                    >
+                      <Smartphone size={16} />
+                      <span>Installer som app på mobilen</span>
+                    </button>
+                  </div>
+
+                  {/* Language Selector */}
+                  <div className="flex items-center justify-between px-4 py-3 bg-neutral-50 rounded-xl border border-neutral-100 mt-1">
+                    <div className="flex items-center gap-2">
+                      <Globe size={16} className="text-emerald-600" />
+                      <select 
+                        onChange={(e) => { changeLanguage(e.target.value); setIsMenuOpen(false); }}
+                        value={getStandardLang(i18n.language)}
+                        className="text-xs font-black bg-transparent border-none focus:ring-0 cursor-pointer uppercase text-neutral-800"
+                      >
+                        <option value="no">Norsk (NO)</option>
+                        <option value="en">English (EN)</option>
+                        <option value="pl">Polski (PL)</option>
+                        <option value="lt">Lietuvių (LT)</option>
+                      </select>
+                    </div>
+                    <span className="text-[10px] font-black uppercase text-emerald-700 bg-emerald-100/60 px-2 py-0.5 rounded">
+                      Eksport: Norsk
+                    </span>
+                  </div>
+                </div>
+              )}
             </motion.div>
           )}
         </AnimatePresence>
@@ -785,6 +1070,8 @@ function AppContent() {
                 onStartDemo={handleStartDemo} 
                 onOpenPortal={handleOpenPortal}
                 onViewChange={setView}
+                currentTab={landingTab}
+                onTabChange={setLandingTab}
               />
             )}
             {view === 'login' && <Login onBack={() => setView('landing')} />}
@@ -913,6 +1200,70 @@ function AppContent() {
             </div>
           </div>
         </footer>
+      )}
+
+      {/* Kundeportal Modal */}
+      {isPortalModalOpen && (
+        <div className="fixed inset-0 z-[120] flex items-center justify-center p-4 bg-neutral-900/60 backdrop-blur-sm">
+          <motion.div
+            initial={{ opacity: 0, scale: 0.95 }}
+            animate={{ opacity: 1, scale: 1 }}
+            exit={{ opacity: 0, scale: 0.95 }}
+            className="bg-white rounded-3xl p-6 md:p-8 max-w-md w-full shadow-2xl border border-neutral-100 relative"
+          >
+            <button
+              onClick={() => setIsPortalModalOpen(false)}
+              className="absolute top-5 right-5 w-8 h-8 rounded-full bg-neutral-100 hover:bg-neutral-200 text-neutral-500 flex items-center justify-center transition-colors cursor-pointer text-sm"
+              aria-label="Lukk"
+            >
+              ✕
+            </button>
+            <div className="w-12 h-12 rounded-2xl bg-emerald-100 text-emerald-700 flex items-center justify-center mb-4">
+              <Users size={24} />
+            </div>
+            <h3 className="text-xl font-bold text-neutral-900 mb-2">Kundeportal for byggherre</h3>
+            <p className="text-neutral-500 text-xs md:text-sm mb-6 leading-relaxed">
+              Er du oppdragsgiver eller byggherre? Tast inn din prosjektkode eller prosjekt-ID for direkte innsyn i fremdrift, KS-dokumentasjon, bilder og FDV-arkiv.
+            </p>
+            <form onSubmit={(e) => {
+              e.preventDefault();
+              if (portalModalCode.trim()) {
+                handleOpenPortal(portalModalCode.trim());
+                setIsPortalModalOpen(false);
+              }
+            }} className="space-y-4">
+              <div>
+                <label className="block text-[11px] font-black text-neutral-700 mb-1.5 uppercase tracking-wider">
+                  Prosjektkode eller ID
+                </label>
+                <input
+                  type="text"
+                  value={portalModalCode}
+                  onChange={(e) => setPortalModalCode(e.target.value)}
+                  placeholder="f.eks. P-2025-01 eller portal-token"
+                  className="w-full px-4 py-3 bg-neutral-50 border border-neutral-200 rounded-xl text-neutral-900 font-medium text-sm focus:outline-none focus:ring-2 focus:ring-emerald-500 focus:bg-white transition-all"
+                  autoFocus
+                />
+              </div>
+              <div className="flex gap-3 pt-2">
+                <button
+                  type="button"
+                  onClick={() => setIsPortalModalOpen(false)}
+                  className="flex-1 py-3 bg-neutral-100 hover:bg-neutral-200 text-neutral-700 text-xs font-bold rounded-xl transition-all cursor-pointer"
+                >
+                  Avbryt
+                </button>
+                <button
+                  type="submit"
+                  disabled={!portalModalCode.trim()}
+                  className="flex-1 py-3 bg-emerald-600 hover:bg-emerald-500 disabled:opacity-50 text-white text-xs font-bold rounded-xl shadow-lg shadow-emerald-600/20 transition-all cursor-pointer"
+                >
+                  Åpne portal
+                </button>
+              </div>
+            </form>
+          </motion.div>
+        </div>
       )}
 
       {/* GDPR Cookie Banner */}
