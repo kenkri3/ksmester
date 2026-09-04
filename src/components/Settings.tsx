@@ -181,7 +181,7 @@ export default function Settings() {
       await setDoc(doc(db, 'users', user.uid), {
         ...profile,
         email: user.email,
-        role: 'admin', // Default role for now
+        role: user.role || 'worker',
         updatedAt: new Date().toISOString()
       }, { merge: true });
       
