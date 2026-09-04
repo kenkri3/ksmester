@@ -1,24 +1,38 @@
-// Server-proxy AI client keeping DEEP_SEEK_API 100% server-side with token caching
+// Server-proxy AI client keeping GEMINI_API_KEY 100% server-side
+
 export interface GenerateAiOptions {
   prompt?: string;
   contents?: any;
-  model?: 'deepseek-chat' | 'deepseek-reasoner' | string;
+  model?: string;
   systemInstruction?: string;
   responseMimeType?: string;
   responseSchema?: any;
   images?: any[];
   inlineData?: any;
-  forceRefresh?: boolean;
+  isPortal?: boolean;
 }
 
 export async function generateAiContent(options: GenerateAiOptions): Promise<{ text: string }> {
-  const token = localStorage.getItem('token');
+  const token = typeof window !== 'undefined' ? localStorage.getItem('token') : null;
+  const isPortal = options.isPortal || (typeof window !== 'undefined' && (
+    window.location.search.includes('portal=') || 
+    window.location.search.includes('offer=') || 
+    window.location.search.includes('contract=')
+  ));
+
+  const headers: Record<string, string> = {
+    'Content-Type': 'application/json',
+  };
+  if (token) {
+    headers['Authorization'] = `Bearer ${token}`;
+  }
+  if (isPortal) {
+    headers['x-portal-access'] = 'true';
+  }
+
   const res = await fetch('/api/ai/generate', {
     method: 'POST',
-    headers: {
-      'Content-Type': 'application/json',
-      ...(token ? { 'Authorization': `Bearer ${token}` } : {})
-    },
+    headers,
     body: JSON.stringify(options)
   });
 
