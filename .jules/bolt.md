@@ -25,3 +25,7 @@
 ## 2024-05-18 - [Use Debounce hook]
 **Learning:** React inputs that trigger an async function on change can cause performance issues if not debounced.
 **Action:** When working with async search functions, use a `useDebounce` hook to ensure the function is only executed after a short delay.
+
+## 2025-05-19 - Debounced synchronous array filtering on text input
+**Learning:** Found an anti-pattern in `Dashboard.tsx` where text inputs (`offerSearchTerm` and `projectSearchTerm`) were used directly in `useMemo` hooks to filter large arrays (`offers` and `projects`). This causes the component to re-render and re-execute expensive string operations (`.toLowerCase()`, `.includes()`) on every keystroke, which can lead to UI jank.
+**Action:** When filtering large arrays based on text input (even synchronously), use a `useDebounce` hook on the text input state before passing it into the `useMemo` dependency array. This drastically reduces the number of times the expensive filtering logic runs while the user is typing.

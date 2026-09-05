@@ -51,6 +51,7 @@ import { resourceService, ResourceEstimation } from '../services/resourceService
 import AiReportModal from './AiReportModal';
 import { useDashboardData } from '../hooks/useDashboardData';
 import { useAuth } from '../hooks/useAuth';
+import { useDebounce } from '../hooks/useDebounce';
 import UniversalTranslator from './UniversalTranslator';
 import ActivityLogModal from './ActivityLogModal';
 import CreateProjectModal from './CreateProjectModal';
@@ -116,6 +117,7 @@ export default function Dashboard({
   };
   const [offers, setOffers] = useState<Offer[]>([]);
   const [offerSearchTerm, setOfferSearchTerm] = useState('');
+  const debouncedOfferSearchTerm = useDebounce(offerSearchTerm, 300);
   const [offerStatusFilter, setOfferStatusFilter] = useState<string>('alle');
   const [isActivityLogModalOpen, setIsActivityLogModalOpen] = useState(false);
   const [isCreateModalOpen, setIsCreateModalOpen] = useState(false);
@@ -137,6 +139,7 @@ export default function Dashboard({
   const [isHMSModalOpen, setIsHMSModalOpen] = useState(false);
   const [isSmartSearchOpen, setIsSmartSearchOpen] = useState(false);
   const [projectSearchTerm, setProjectSearchTerm] = useState('');
+  const debouncedProjectSearchTerm = useDebounce(projectSearchTerm, 300);
   const [userProfile, setUserProfile] = useState<UserProfile | null>(null);
   const [selectedProject, setSelectedProject] = useState<Project | null>(null);
   const [deviationAnalysis, setDeviationAnalysis] = useState<DeviationAnalysis | null>(null);
@@ -543,22 +546,22 @@ export default function Dashboard({
 
   const filteredOffersList = useMemo(() => {
     return offers.filter(offer => {
-      const matchesSearch = !offerSearchTerm ||
-        (offer.title && offer.title.toLowerCase().includes(offerSearchTerm.toLowerCase())) ||
-        (offer.clientName && offer.clientName.toLowerCase().includes(offerSearchTerm.toLowerCase())) ||
-        (offer.projectCode && offer.projectCode.toLowerCase().includes(offerSearchTerm.toLowerCase()));
+      const matchesSearch = !debouncedOfferSearchTerm ||
+        (offer.title && offer.title.toLowerCase().includes(debouncedOfferSearchTerm.toLowerCase())) ||
+        (offer.clientName && offer.clientName.toLowerCase().includes(debouncedOfferSearchTerm.toLowerCase())) ||
+        (offer.projectCode && offer.projectCode.toLowerCase().includes(debouncedOfferSearchTerm.toLowerCase()));
       const matchesStatus = offerStatusFilter === 'alle' || offer.status === offerStatusFilter;
       return matchesSearch && matchesStatus;
     });
-  }, [offers, offerSearchTerm, offerStatusFilter]);
+  }, [offers, debouncedOfferSearchTerm, offerStatusFilter]);
 
   const filteredProjectsList = useMemo(() => {
     return projects.filter(p =>
-      p.name.toLowerCase().includes(projectSearchTerm.toLowerCase()) ||
-      p.projectCode?.toLowerCase().includes(projectSearchTerm.toLowerCase()) ||
-      p.location.toLowerCase().includes(projectSearchTerm.toLowerCase())
+      p.name.toLowerCase().includes(debouncedProjectSearchTerm.toLowerCase()) ||
+      p.projectCode?.toLowerCase().includes(debouncedProjectSearchTerm.toLowerCase()) ||
+      p.location.toLowerCase().includes(debouncedProjectSearchTerm.toLowerCase())
     );
-  }, [projects, projectSearchTerm]);
+  }, [projects, debouncedProjectSearchTerm]);
 
   const memoizedStageCounts = useMemo(() => {
     const counts: Record<string, number> = {};
