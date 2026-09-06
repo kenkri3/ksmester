@@ -25,3 +25,7 @@
 ## 2024-05-18 - [Use Debounce hook]
 **Learning:** React inputs that trigger an async function on change can cause performance issues if not debounced.
 **Action:** When working with async search functions, use a `useDebounce` hook to ensure the function is only executed after a short delay.
+
+## 2026-09-06 - Extracted inline array filtering in SuperAdmin.tsx
+**Learning:** Found multiple instances where large arrays (`companies`, `leads`) were being heavily filtered directly inside the render cycle (e.g. `companies.filter(c => c.subscriptionStatus === 'active').length`), which could lead to significant performance degradation on every tab change or search input.
+**Action:** Always extract `.filter()` computations into `useMemo` hooks rather than executing them inline during the render cycle to preserve performance on frequent renders.

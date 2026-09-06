@@ -358,6 +358,11 @@ export default function SuperAdmin() {
     );
   }, [companies, searchTerm]);
 
+  // ⚡ Bolt: Memoize statistics counts to avoid inline O(N) filtering on every render
+  const activeCompaniesCount = useMemo(() => companies.filter(c => c.subscriptionStatus === 'active').length, [companies]);
+  const trialCompaniesCount = useMemo(() => companies.filter(c => c.subscriptionStatus === 'trial').length, [companies]);
+  const newLeadsCount = useMemo(() => leads.filter(l => l.status === 'new').length, [leads]);
+
   if (!isSuperAdmin) {
     return (
       <div className="min-h-screen flex items-center justify-center bg-neutral-50">
@@ -422,9 +427,9 @@ export default function SuperAdmin() {
           >
             {tab.icon}
             {tab.label}
-            {tab.id === 'leads' && leads.filter(l => l.status === 'new').length > 0 && (
+            {tab.id === 'leads' && newLeadsCount > 0 && (
               <span className="ml-2 px-2 py-0.5 bg-red-500 text-white text-[10px] rounded-full">
-                {leads.filter(l => l.status === 'new').length}
+                {newLeadsCount}
               </span>
             )}
           </button>
@@ -435,8 +440,8 @@ export default function SuperAdmin() {
       <div className="grid grid-cols-1 md:grid-cols-4 gap-6 mb-12">
         {[
           { label: 'Totalt antall kunder', value: companies.length, icon: <Building2 className="text-blue-600" />, bg: 'bg-blue-50' },
-          { label: 'Aktive abonnement', value: companies.filter(c => c.subscriptionStatus === 'active').length, icon: <CheckCircle2 className="text-emerald-600" />, bg: 'bg-emerald-50' },
-          { label: 'Prøveperioder', value: companies.filter(c => c.subscriptionStatus === 'trial').length, icon: <Zap className="text-orange-600" />, bg: 'bg-orange-50' },
+          { label: 'Aktive abonnement', value: activeCompaniesCount, icon: <CheckCircle2 className="text-emerald-600" />, bg: 'bg-emerald-50' },
+          { label: 'Prøveperioder', value: trialCompaniesCount, icon: <Zap className="text-orange-600" />, bg: 'bg-orange-50' },
           { label: 'Systemstatus', value: 'Operativ', icon: <Shield className="text-amber-600" />, bg: 'bg-amber-50' },
         ].map((stat, i) => (
           <div key={i} className={cn("p-6 rounded-[2rem] border border-neutral-200 shadow-sm", stat.bg)}>
