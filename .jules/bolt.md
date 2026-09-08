@@ -25,3 +25,7 @@
 ## 2024-05-18 - [Use Debounce hook]
 **Learning:** React inputs that trigger an async function on change can cause performance issues if not debounced.
 **Action:** When working with async search functions, use a `useDebounce` hook to ensure the function is only executed after a short delay.
+
+## 2024-05-18 - [Extract static string manipulations out of `.filter` maps]
+**Learning:** Found string allocations and lowercase conversions (`searchQuery.toLowerCase()`) happening repeatedly within an array `.filter` check in React components. This executes `3 * N` times per render and degrades performance on long lists when tying in an un-debounced search input.
+**Action:** Extract the lowercase conversion outside the `useMemo` filter array block and combine with `useDebounce` to guarantee the calculation only runs once per keystroke throttling window instead of running excessively across elements.
