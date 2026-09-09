@@ -56,7 +56,7 @@ const resources = {
       "select_plan": "Velg {{name}}",
       "cta_title": "Klar for å eliminere papirarbeidet?",
       "cta_desc": "Bli med over 500 norske bedrifter som allerede bruker KS Mester AI for en enklere hverdag.",
-      "cta_button": "Start din 14-dagers gratis prøveperiode",
+      "cta_button": "Kom i gang med KS Mester AI",
       "cta_footer": "Ingen kredittkort kreves. Avslutt når som helst.",
       "dashboard_desc": "Her er oversikten over dine aktive byggeplasser.",
       "filter": "Filtrer",
