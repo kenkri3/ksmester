@@ -75,7 +75,7 @@ export default function FinalSettlementModal({
               Vennligst finn fullstendig oppstilling vedlagt eller i kundeportalen.
               
               Med vennlig hilsen,
-              ${project.companyName || 'Entreprenøren'} / KS Mester
+              ${project.companyName || 'Entreprenøren'} / VikingMester
             `
           })
         });

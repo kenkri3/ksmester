@@ -106,7 +106,7 @@ export const changeOrderService = {
               ${shareUrl}
               
               Med vennlig hilsen,
-              ${params.authorName} / KS Mester
+              ${params.authorName} / VikingMester
             `
           })
         });

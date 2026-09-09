@@ -1,11 +1,11 @@
-# Deployveiledning: KS Mester.no (Next.js) på Railway
+# Deployveiledning: VikingMester.no (Next.js) på Railway
 
-Denne guiden forklarer oppsett og drift av **KS Mester.no** på **Railway** med PostgreSQL, Gemini 3.8 Flash og bakgrunnsautomatiseringer.
+Denne guiden forklarer oppsett og drift av **VikingMester.no** på **Railway** med PostgreSQL, Gemini 3.8 Flash og bakgrunnsautomatiseringer.
 
 ---
 
 ## 🚀 1. Hovedtjeneste (Web / Next.js)
-1. **Repository:** `kenkri3/ksmester` (branch `main`).
+1. **Repository:** `kenkri3/VikingMester` (branch `main`).
 2. **Start Command:** `npm start`
 3. **Healthcheck:** `/api/health`
 4. **Viktig om Cron Schedule på Web:**  
@@ -32,6 +32,6 @@ Applikasjonen er oppgradert til Googles nyeste modell: **Gemini 3.8 Flash** (`ge
 ## ⏰ 4. Valgfri dedikert Railway Cron Worker
 Dersom du ønsker en separat dedikert cron-arbeider i Railway i stedet for/i tillegg til den interne scheduleren:
 1. Klikk **"+ New"** -> **"Service"** i samme Railway-prosjekt.
-2. Velg samme repo (`ksmester`).
+2. Velg samme repo (`VikingMester`).
 3. Sett **Start Command:** `npm run cron`
 4. Sett **Cron Schedule:** `0 5 * * *` (kjører kl. 05:00 UTC / 06:00-07:00 norsk tid og avslutter prosessen pent).

@@ -31,7 +31,7 @@ export async function GET(req: NextRequest) {
         userId: user.id,
         companyId: user.companyId,
         gdprCompliance: 'Iht. EUs personvernforordning (GDPR) artikkel 15 og 20 (Rett til innsyn og dataportabilitet)',
-        dataController: 'KS MesterAI / Bedriftskunde'
+        dataController: 'VikingMester / Bedriftskunde'
       },
       userData: null,
       companyData: {}

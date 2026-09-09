@@ -1112,7 +1112,7 @@ export default function ProjectDetails({ project, onBack, onShare, onStartCheckl
               </div>
 
               <div className="p-4 bg-amber-50 border border-amber-200 rounded-2xl text-xs text-amber-950 leading-relaxed">
-                <strong>Arbeidstilsynets pålegg:</strong> Alle kjemikalier (fugemasse, lim, membran, lakk, sparkel) må ha oppdatert sikkerhetsdatablad på plassen. KS Mester forhåndsutfyller dette automatisk.
+                <strong>Arbeidstilsynets pålegg:</strong> Alle kjemikalier (fugemasse, lim, membran, lakk, sparkel) må ha oppdatert sikkerhetsdatablad på plassen. VikingMester forhåndsutfyller dette automatisk.
               </div>
 
               <div className="flex justify-center py-6">

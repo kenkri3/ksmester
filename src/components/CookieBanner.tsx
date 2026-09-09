@@ -122,7 +122,7 @@ export default function CookieBanner({ onOpenPrivacyPolicy }: { onOpenPrivacyPol
               {/* Main Content */}
               <div className="p-4 sm:p-6 overflow-y-auto space-y-4 text-xs sm:text-sm text-neutral-600">
                 <p className="leading-relaxed">
-                  KS MesterAI benytter informasjonskapsler (cookies) og lokal lagring for å sikre at fagapplikasjonen fungerer optimalt, husker innstillingene dine, og gir deg en trygg opplevelse i tråd med den norske Ekomloven § 2-7b og EUs personvernforordning (GDPR).
+                  VikingMester benytter informasjonskapsler (cookies) og lokal lagring for å sikre at fagapplikasjonen fungerer optimalt, husker innstillingene dine, og gir deg en trygg opplevelse i tråd med den norske Ekomloven § 2-7b og EUs personvernforordning (GDPR).
                 </p>
 
                 {showDetails ? (

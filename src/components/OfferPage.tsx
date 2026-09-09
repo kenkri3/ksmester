@@ -238,7 +238,7 @@ export default function OfferPage({ token }: { token: string }) {
 
             <div className="pt-8 border-t border-neutral-100 text-center">
               <p className="text-xs text-neutral-400">
-                Har du spørsmål? Kontakt oss på support@ksmesterai.no eller ring +47 22 33 44 55
+                Har du spørsmål? Kontakt oss på support@VikingMester.no eller ring +47 22 33 44 55
               </p>
             </div>
           </div>

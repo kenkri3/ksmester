@@ -72,7 +72,7 @@ export const warrantyInspectionService = {
             Vennligst ta kontakt med oss for å avtale nøyaktig tidspunkt som passer for deg.
             
             Med vennlig hilsen,
-            ${companyName || 'Byggmesteren'} / KS Mester
+            ${companyName || 'Byggmesteren'} / VikingMester
           `
         })
       });

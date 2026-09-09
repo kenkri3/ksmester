@@ -37,7 +37,7 @@ const PageWrapper = ({
       {/* Header section */}
       <div className="text-center max-w-3xl mx-auto mb-12">
         {badge && (
-          <span className="text-xs font-bold text-emerald-600 uppercase tracking-widest bg-emerald-100/60 px-3.5 py-1.5 rounded-full border border-emerald-200 inline-block mb-4">
+          <span className="text-xs font-bold text-amber-500 uppercase tracking-widest bg-emerald-100/60 px-3.5 py-1.5 rounded-full border border-amber-500/20 inline-block mb-4">
             {badge}
           </span>
         )}
@@ -161,7 +161,7 @@ export const PricingPage = () => {
         </span>
         <button 
           onClick={() => setIsAnnual(!isAnnual)}
-          className="w-12 h-6 bg-emerald-600 rounded-full p-1 transition-colors relative cursor-pointer"
+          className="w-12 h-6 bg-amber-500 rounded-full p-1 transition-colors relative cursor-pointer"
         >
           <div className={cn("w-4 h-4 bg-white rounded-full transition-transform", isAnnual ? "translate-x-6" : "translate-x-0")} />
         </button>
@@ -188,7 +188,7 @@ export const PricingPage = () => {
               )}
             >
               {plan.popular && (
-                <span className="absolute -top-3.5 left-1/2 -translate-x-1/2 bg-emerald-500 text-neutral-950 font-black text-[10px] uppercase tracking-widest px-3.5 py-1 rounded-full shadow-md">
+                <span className="absolute -top-3.5 left-1/2 -translate-x-1/2 bg-amber-500/100 text-neutral-950 font-black text-[10px] uppercase tracking-widest px-3.5 py-1 rounded-full shadow-md">
                   Mest populær
                 </span>
               )}
@@ -220,7 +220,7 @@ export const PricingPage = () => {
                 <ul className="space-y-3 text-xs mb-8 font-medium">
                   {plan.features.map((feat, idx) => (
                     <li key={idx} className="flex items-start gap-2.5">
-                      <CheckCircle2 size={16} className={cn("shrink-0 mt-0.5", plan.popular ? "text-emerald-400" : "text-emerald-600")} />
+                      <CheckCircle2 size={16} className={cn("shrink-0 mt-0.5", plan.popular ? "text-emerald-400" : "text-amber-500")} />
                       <span className={plan.popular ? "text-neutral-200" : "text-neutral-700"}>{feat}</span>
                     </li>
                   ))}
@@ -232,7 +232,7 @@ export const PricingPage = () => {
                 className={cn(
                   "w-full py-4 rounded-xl font-bold text-xs transition-all shadow-md active:scale-95 cursor-pointer",
                   plan.popular 
-                    ? "bg-emerald-500 hover:bg-emerald-400 text-neutral-950 font-black" 
+                    ? "bg-amber-500/100 hover:bg-emerald-400 text-neutral-950 font-black" 
                     : "bg-neutral-900 hover:bg-neutral-800 text-white"
                 )}
               >
@@ -246,7 +246,7 @@ export const PricingPage = () => {
       {/* Modular Addons & Customization */}
       <div className="bg-neutral-50 rounded-3xl p-8 sm:p-12 border border-neutral-200 mb-16">
         <div className="text-center max-w-2xl mx-auto mb-10">
-          <span className="text-xs font-bold text-emerald-600 uppercase tracking-widest bg-emerald-100/60 px-3 py-1 rounded-full">
+          <span className="text-xs font-bold text-amber-500 uppercase tracking-widest bg-emerald-100/60 px-3 py-1 rounded-full">
             100 % fleksibelt
           </span>
           <h3 className="text-2xl font-bold text-neutral-900 mt-3 mb-2">
@@ -259,9 +259,9 @@ export const PricingPage = () => {
 
         <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-4">
           {addons.map((addon, idx) => (
-            <div key={idx} className="bg-white p-5 rounded-2xl border border-neutral-200/80 shadow-xs hover:border-emerald-300 transition-colors">
+            <div key={idx} className="bg-white p-5 rounded-2xl border border-neutral-200/80 shadow-xs hover:border-amber-500/30 transition-colors">
               <div className="text-xs font-bold text-neutral-900 mb-1">{addon.title}</div>
-              <div className="text-sm font-black text-emerald-600 mb-1.5">{addon.price}</div>
+              <div className="text-sm font-black text-amber-500 mb-1.5">{addon.price}</div>
               <div className="text-[11px] text-neutral-500 leading-snug">{addon.desc}</div>
             </div>
           ))}
@@ -279,7 +279,7 @@ export const AboutPage = () => {
   const { t } = useTranslation();
   return (
     <PageWrapper 
-      badge="Om KS Mester AI"
+      badge="Om VikingMester"
       title="Bygget for og med norske håndverkere"
       subtitle="Norges første 100 % autonome AI-byggeleder i lomma. Snakk rett inn i Teams, Slack eller WhatsApp – agenten ordner resten."
     >
@@ -293,13 +293,13 @@ export const AboutPage = () => {
             I altfor mange år har dette betydd tapte kveldstimer ved kjøkkenbordet foran PC-en, mapper fulle av uleselige lapper, og bilder spredt på private telefoner. Håndverkere skal bygge – ikke kaste bort kveldene på tungvinte datasystemer.
           </p>
           <p>
-            KS Mester AI ble grunnlagt for å endre dette radikalt. Ved å kombinere dyp norsk bransjeinnsikt (TEK17, SAK10, NS 8406) med en 100 % autonom samtaleagent i Microsoft Teams, Slack og WhatsApp, gjøres all registrering, byggedagbok, SJA og avviksrapportering ferdig mens du står med hammeren i hånden.
+            VikingMester ble grunnlagt for å endre dette radikalt. Ved å kombinere dyp norsk bransjeinnsikt (TEK17, SAK10, NS 8406) med en 100 % autonom samtaleagent i Microsoft Teams, Slack og WhatsApp, gjøres all registrering, byggedagbok, SJA og avviksrapportering ferdig mens du står med hammeren i hånden.
           </p>
         </div>
 
         {/* Core Pillars */}
         <div className="grid grid-cols-1 md:grid-cols-3 gap-6">
-          <div className="bg-emerald-50/60 p-8 rounded-3xl border border-emerald-100">
+          <div className="bg-amber-500/10/60 p-8 rounded-3xl border border-emerald-100">
             <div className="w-12 h-12 bg-emerald-100 text-emerald-800 rounded-2xl flex items-center justify-center font-bold mb-4">
               <ShieldCheck size={24} />
             </div>
@@ -411,7 +411,7 @@ export const ContactPage = () => {
                 href="tel:+4740163082" 
                 className="flex items-center gap-4 p-4 rounded-2xl hover:bg-neutral-50 border border-neutral-100 transition-colors group"
               >
-                <div className="w-12 h-12 bg-emerald-100 text-emerald-700 rounded-2xl flex items-center justify-center shrink-0 group-hover:bg-emerald-600 group-hover:text-white transition-colors">
+                <div className="w-12 h-12 bg-emerald-100 text-amber-600 rounded-2xl flex items-center justify-center shrink-0 group-hover:bg-amber-500 group-hover:text-white transition-colors">
                   <Phone size={22} />
                 </div>
                 <div>
@@ -421,7 +421,7 @@ export const ContactPage = () => {
               </a>
 
               <a 
-                href="mailto:post@ksmester.no" 
+                href="mailto:post@vikingmester.no" 
                 className="flex items-center gap-4 p-4 rounded-2xl hover:bg-neutral-50 border border-neutral-100 transition-colors group"
               >
                 <div className="w-12 h-12 bg-blue-100 text-blue-700 rounded-2xl flex items-center justify-center shrink-0 group-hover:bg-blue-600 group-hover:text-white transition-colors">
@@ -429,7 +429,7 @@ export const ContactPage = () => {
                 </div>
                 <div>
                   <p className="text-[10px] font-black uppercase tracking-widest text-neutral-400">E-post</p>
-                  <p className="text-base font-bold text-neutral-900">post@ksmester.no</p>
+                  <p className="text-base font-bold text-neutral-900">post@vikingmester.no</p>
                 </div>
               </a>
 
@@ -445,8 +445,8 @@ export const ContactPage = () => {
             </div>
           </div>
 
-          <div className="bg-emerald-50 rounded-3xl p-6 border border-emerald-100 flex items-center gap-4">
-            <Clock size={24} className="text-emerald-700 shrink-0" />
+          <div className="bg-amber-500/10 rounded-3xl p-6 border border-emerald-100 flex items-center gap-4">
+            <Clock size={24} className="text-amber-600 shrink-0" />
             <p className="text-xs text-emerald-900 font-medium leading-relaxed">
               <b>Garantert responstid:</b> Vi svarer på alle skriftlige henvendelser innen 2 timer i vanlig arbeidstid.
             </p>
@@ -457,7 +457,7 @@ export const ContactPage = () => {
         <div className="bg-white rounded-3xl p-8 sm:p-10 border border-neutral-200/90 shadow-sm">
           {success ? (
             <div className="text-center py-10 space-y-4">
-              <div className="w-16 h-16 bg-emerald-100 text-emerald-600 rounded-2xl flex items-center justify-center mx-auto">
+              <div className="w-16 h-16 bg-emerald-100 text-amber-500 rounded-2xl flex items-center justify-center mx-auto">
                 <CheckCircle2 size={36} />
               </div>
               <h3 className="text-2xl font-black text-neutral-900">Melding mottatt!</h3>
@@ -466,7 +466,7 @@ export const ContactPage = () => {
               </p>
               <button 
                 onClick={() => setSuccess(false)}
-                className="text-xs font-bold text-emerald-600 hover:text-emerald-700 underline pt-4 cursor-pointer"
+                className="text-xs font-bold text-amber-500 hover:text-amber-600 underline pt-4 cursor-pointer"
               >
                 Send en ny melding
               </button>
@@ -534,7 +534,7 @@ export const ContactPage = () => {
 
               <button 
                 disabled={loading}
-                className="w-full bg-emerald-600 hover:bg-emerald-500 text-white py-4 rounded-xl font-bold text-sm transition-all shadow-lg shadow-emerald-600/20 active:scale-95 disabled:opacity-50 cursor-pointer"
+                className="w-full bg-amber-500 hover:bg-amber-500/100 text-white py-4 rounded-xl font-bold text-sm transition-all shadow-lg shadow-emerald-600/20 active:scale-95 disabled:opacity-50 cursor-pointer"
               >
                 {loading ? 'Sender henvendelse...' : 'Send henvendelse'}
               </button>
@@ -555,17 +555,17 @@ export const PrivacyPage = () => {
     <PageWrapper 
       badge="Personvern & Sikkerhet"
       title="Personvernerklæring"
-      subtitle="KS Mester AI behandler personopplysninger i full overensstemmelse med den norske personopplysningsloven og EUs personvernforordning (GDPR)."
+      subtitle="VikingMester behandler personopplysninger i full overensstemmelse med den norske personopplysningsloven og EUs personvernforordning (GDPR)."
     >
       <div className="bg-white rounded-3xl p-8 sm:p-12 border border-neutral-200/90 shadow-sm space-y-8 text-neutral-700 leading-relaxed text-sm">
         
         <section className="space-y-3">
           <h3 className="text-xl font-bold text-neutral-900 flex items-center gap-2">
-            <ShieldCheck size={22} className="text-emerald-600" />
+            <ShieldCheck size={22} className="text-amber-500" />
             1. Behandlingsansvarlig
           </h3>
           <p>
-            KS Mester AI AS er behandlingsansvarlig for behandling av personopplysninger som samles inn ved bruk av våre digitale tjenester, mobilapplikasjoner og kundeportaler. Vi forplikter oss til å beskytte integriteten og konfidensialiteten til våre brukeres data.
+            Vikingnet / AIChat Norge AS er behandlingsansvarlig for behandling av personopplysninger som samles inn ved bruk av våre digitale tjenester, mobilapplikasjoner og kundeportaler. Vi forplikter oss til å beskytte integriteten og konfidensialiteten til våre brukeres data.
           </p>
         </section>
 
@@ -596,7 +596,7 @@ export const PrivacyPage = () => {
 
         <section className="space-y-3">
           <h3 className="text-xl font-bold text-neutral-900 flex items-center gap-2">
-            <HelpCircle size={22} className="text-emerald-600" />
+            <HelpCircle size={22} className="text-amber-500" />
             4. Dine rettigheter
           </h3>
           <p>
@@ -617,21 +617,21 @@ export const TermsPage = () => {
     <PageWrapper 
       badge="Avtalebetingelser"
       title="Vilkår og Betingelser"
-      subtitle="Brukervilkår for KS Mester AI programvare- og skytjenester."
+      subtitle="Brukervilkår for VikingMester programvare- og skytjenester."
     >
       <div className="bg-white rounded-3xl p-8 sm:p-12 border border-neutral-200/90 shadow-sm space-y-8 text-neutral-700 leading-relaxed text-sm">
         
         <section className="space-y-3">
           <h3 className="text-xl font-bold text-neutral-900">1. Avtalens omfang</h3>
           <p>
-            Disse vilkårene regulerer tilgang til og bruk av KS Mester AI sine tjenester for bedriftskunder og deres autoriserte brukere. Ved å opprette en konto eller ta systemet i bruk, aksepteres disse betingelsene i sin helhet.
+            Disse vilkårene regulerer tilgang til og bruk av VikingMester sine tjenester for bedriftskunder og deres autoriserte brukere. Ved å opprette en konto eller ta systemet i bruk, aksepteres disse betingelsene i sin helhet.
           </p>
         </section>
 
         <section className="space-y-3">
           <h3 className="text-xl font-bold text-neutral-900">2. Brukerens ansvar og faglig kontroll</h3>
           <p>
-            KS Mester AI leverer programvareverktøy og AI-assistanse for å effektivisere kvalitetssikring, HMS og FDV. Det påligger alltid den utførende fagpersonen og bedriftens ledelse å verifisere at dokumentasjon, kalkyleresultater og faglige vurderinger er i samsvar med gjeldende lover, TEK17 og prosjektets faktiske forhold.
+            VikingMester leverer programvareverktøy og AI-assistanse for å effektivisere kvalitetssikring, HMS og FDV. Det påligger alltid den utførende fagpersonen og bedriftens ledelse å verifisere at dokumentasjon, kalkyleresultater og faglige vurderinger er i samsvar med gjeldende lover, TEK17 og prosjektets faktiske forhold.
           </p>
         </section>
 

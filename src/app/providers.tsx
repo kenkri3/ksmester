@@ -13,7 +13,7 @@ export function Providers({ children }: { children: React.ReactNode }) {
   }, []);
 
   if (!mounted) {
-    return <div className="min-h-screen bg-slate-900 text-slate-100 flex items-center justify-center">Laster KS Mester...</div>;
+    return <div className="min-h-screen bg-slate-900 text-slate-100 flex items-center justify-center">Laster VikingMester...</div>;
   }
 
   return (
