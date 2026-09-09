@@ -153,6 +153,15 @@ export async function initDb() {
         data JSONB NOT NULL,
         created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP
       );
+
+      CREATE INDEX IF NOT EXISTS idx_items_store_collection ON items_store (collection_name);
+      CREATE INDEX IF NOT EXISTS idx_items_store_data ON items_store USING gin (data);
+      CREATE TABLE IF NOT EXISTS ai_cache (
+        hash VARCHAR(64) PRIMARY KEY,
+        prompt TEXT NOT NULL,
+        response TEXT NOT NULL,
+        created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP
+      );
     `);
 
     await client.query(`
