@@ -74,58 +74,70 @@ export const PricingPage = () => {
       id: 'solo',
       name: 'Mester Solo',
       tag: 'Enkeltpersonforetak & små lag',
-      desc: 'For deg som jobber alene eller har inntil 3 håndverkere i felt.',
+      desc: 'For deg som jobber alene eller driver et mindre håndverkerlag.',
       monthlyPrice: 990,
       annualPrice: 890,
       popular: false,
       features: [
-        'Inntil 3 fagarbeidere',
+        '1 aktiv bruker (enkelt å legge til flere)',
+        'Inntil 3 aktive prosjekter samtidig',
+        '2 GB lynrask skylagring (~10 000 WebP-bilder)',
+        'Inntil 100 AI-analyser / mnd (tale, SJA & bilde)',
         'Autonom AI-agent i WhatsApp, SMS, Teams eller Web',
         'Ubegrenset stemme-til-byggedagbok på farten',
-        'Automatisk værdata via Yr.no i alle rapporter (0 kr/tokens)',
-        'SJA-generator med risikovurdering iht. TEK17',
-        'Lovpålagte TEK17 & SAK10 sjekklister for alle fag',
-        '1-klikks Boligmappa & PDF-eksport',
-        'Norsk personlig support og oppstartshjelp'
+        'Automatisk værdata via Yr.no i alle rapporter (0 kr)',
+        '1-klikks Boligmappa & PDF-eksport'
       ]
     },
     {
       id: 'team',
       name: 'Mester Team',
       tag: 'Mest populær',
-      desc: 'For voksende håndverkerbedrifter fra 4 til 15 ansatte.',
+      desc: 'For voksende håndverkerbedrifter som vil fjerne alt papirarbeid.',
       monthlyPrice: 2490,
       annualPrice: 1990,
       popular: true,
       features: [
-        'Inntil 15 fagarbeidere / prosjekter',
-        'Alt i Mester Solo, pluss:',
+        'Inntil 5 aktive fagarbeidere (+249,- per ekstra)',
+        'Inntil 15 aktive prosjekter samtidig',
+        '10 GB skylagring (~50 000 WebP-bilder & FDV)',
+        'Inntil 500 AI-analyser / mnd (Gemini 3.8 Flash Vision)',
         'Full integrasjon i bedriftens Microsoft Teams & Slack',
-        'Flerspråklig oversettelse (Polsk, Litauisk, Ukrainsk, Engelsk)',
-        'AI Vision bildeanalyse på byggeplass (TEK17 & Våtromsnormen BVN)',
-        'Automatisk varsel om endringsordre & fristforlengelse (NS 8406)',
-        'Lærlingoppfølging (Udir kompetansemål) & Stoffkartotek',
-        'Prioritert telefonsupport (08-16)'
+        'Flerspråklig oversettelse (Polsk, Litauisk, Ukrainsk)',
+        'AI Vision bildekontroll (TEK17 & Våtromsnormen BVN)',
+        'Endringsordrer & fristforlengelse (NS 8406)'
       ]
     },
     {
       id: 'enterprise',
       name: 'Totalentreprenør',
       tag: 'Større bedrifter & konsern',
-      desc: 'For større entreprenører (15+ ansatte), kjeder og komplekse prosjekter.',
+      desc: 'For entreprenører (15+ ansatte), kjeder og komplekse byggeplasser.',
       monthlyPrice: 'Fra 4 900 kr',
       annualPrice: 'Fra 4 900 kr',
       popular: false,
       features: [
-        'Ubegrenset antall håndverkere & underentreprenører',
-        'Alt i Mester Team, pluss:',
-        'Egen skreddersydd AI-bot i bedriftens Teams Tenant / Slack',
-        'Tripletex, PowerOffice Go & Fiken API-synkronisering',
-        'SHA-koordinator & vernerunder iht. Byggherreforskriften',
+        'Inntil 15 aktive brukere (skalerbart til 100+)',
+        'Inntil 50 aktive prosjekter & 30 GB lagring',
+        'Inntil 2 000 AI-analyser / mnd',
+        'Egen skreddersydd AI-bot i bedriftens Teams Tenant',
+        'Tripletex, PowerOffice Go & Fiken API-bro',
+        'SHA-koordinator iht. Byggherreforskriften',
         'Underentreprenør-portal med automatisk avviksruting',
-        'Dedikert onboarding, team-opplæring & SLA med opptidsgaranti'
+        'Dedikert onboarding & garantert oppetid'
       ]
     }
+  ];
+
+  const addons = [
+    { title: 'Ekstra brukerlisens', price: 'kr 249,- / mnd', desc: 'Legg til ekstra fagarbeidere ved behov' },
+    { title: 'Ekstra prosjektpakke (+10)', price: 'kr 490,- / mnd', desc: 'Utvider grensen med 10 aktive byggeprosjekter' },
+    { title: 'Ekstra lagringsvolum (+10 GB)', price: 'kr 149,- / mnd', desc: 'Plass til ytterligere ~50 000 WebP-bilder og FDV' },
+    { title: 'Våtrom & Membran (BVN)', price: 'kr 490,- / mnd', desc: 'Dypkontroll iht. Byggebransjens Våtromsnorm BVN 31.205' },
+    { title: 'Elektro & NEK 400', price: 'kr 490,- / mnd', desc: 'Samsvarserklæring og risikovurdering for el-installasjon' },
+    { title: 'Asbest & Miljøsanering', price: 'kr 690,- / mnd', desc: 'Arbeidstilsynets meldeskjema og avfallsdeklarering' },
+    { title: 'Tripletex / PowerOffice API', price: 'kr 490,- / mnd', desc: 'Synkroniserer timer, ordre og prosjekter automatisk' },
+    { title: '40-t Verneombudskurs (Lovpålagt)', price: 'kr 4 490,- engangs', desc: '100% fleksibelt nettkurs iht. AML § 6-5' }
   ];
 
   const handleSelectPlan = (planId: string) => {
@@ -230,6 +242,32 @@ export const PricingPage = () => {
           );
         })}
       </div>
+
+      {/* Modular Addons & Customization */}
+      <div className="bg-neutral-50 rounded-3xl p-8 sm:p-12 border border-neutral-200 mb-16">
+        <div className="text-center max-w-2xl mx-auto mb-10">
+          <span className="text-xs font-bold text-emerald-600 uppercase tracking-widest bg-emerald-100/60 px-3 py-1 rounded-full">
+            100 % fleksibelt
+          </span>
+          <h3 className="text-2xl font-bold text-neutral-900 mt-3 mb-2">
+            Skreddersy pakken med modulære tillegg
+          </h3>
+          <p className="text-xs text-neutral-600">
+            Start med det du trenger i dag, og bygg på med spesialiserte fagmoduler, ekstra kvoter og regnskapsintegrasjoner når bedriften vokser.
+          </p>
+        </div>
+
+        <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-4">
+          {addons.map((addon, idx) => (
+            <div key={idx} className="bg-white p-5 rounded-2xl border border-neutral-200/80 shadow-xs hover:border-emerald-300 transition-colors">
+              <div className="text-xs font-bold text-neutral-900 mb-1">{addon.title}</div>
+              <div className="text-sm font-black text-emerald-600 mb-1.5">{addon.price}</div>
+              <div className="text-[11px] text-neutral-500 leading-snug">{addon.desc}</div>
+            </div>
+          ))}
+        </div>
+      </div>
+
     </PageWrapper>
   );
 };
