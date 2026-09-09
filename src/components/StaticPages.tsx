@@ -71,57 +71,59 @@ export const PricingPage = () => {
 
   const plans = [
     {
-      id: 'lite',
-      name: 'Mester Lite',
-      tag: 'Enkeltpersonforetak',
-      desc: 'For deg som jobber alene eller har opptil 3 ansatte.',
-      monthlyPrice: 490,
-      annualPrice: 390,
+      id: 'solo',
+      name: 'Mester Solo',
+      tag: 'Enkeltpersonforetak & små lag',
+      desc: 'For deg som jobber alene eller har inntil 3 håndverkere i felt.',
+      monthlyPrice: 990,
+      annualPrice: 890,
       popular: false,
       features: [
-        'Inntil 3 brukere',
-        'Ubegrenset SJA & Vernerunder',
-        'TEK17 & SAK10 sjekklister',
-        '1-klikks Boligmappa-eksport',
-        'Full offline-støtte på mobil',
-        'Norsk e-post support'
+        'Inntil 3 fagarbeidere',
+        'Autonom AI-agent i WhatsApp, SMS, Teams eller Web',
+        'Ubegrenset stemme-til-byggedagbok på farten',
+        'Automatisk værdata via Yr.no i alle rapporter (0 kr/tokens)',
+        'SJA-generator med risikovurdering iht. TEK17',
+        'Lovpålagte TEK17 & SAK10 sjekklister for alle fag',
+        '1-klikks Boligmappa & PDF-eksport',
+        'Norsk personlig support og oppstartshjelp'
       ]
     },
     {
-      id: 'pro',
-      name: 'Mester Pro',
+      id: 'team',
+      name: 'Mester Team',
       tag: 'Mest populær',
-      desc: 'For voksende håndverkerbedrifter fra 3 til 15 ansatte.',
-      monthlyPrice: 890,
-      annualPrice: 710,
+      desc: 'For voksende håndverkerbedrifter fra 4 til 15 ansatte.',
+      monthlyPrice: 2490,
+      annualPrice: 1990,
       popular: true,
       features: [
-        'Inntil 15 brukere',
-        'Alt i Mester Lite, pluss:',
-        'Mesterhjernen AI Assistant (15+ verktøy)',
-        'Værbasert SJA via Yr.no',
-        'AI Bildeanalyse for TEK17/våtrom',
-        'AI Tilbudsgenerator & Kalkyle',
-        'Lærlingoppfølging & Stoffkartotek',
+        'Inntil 15 fagarbeidere / prosjekter',
+        'Alt i Mester Solo, pluss:',
+        'Full integrasjon i bedriftens Microsoft Teams & Slack',
+        'Flerspråklig oversettelse (Polsk, Litauisk, Ukrainsk, Engelsk)',
+        'AI Vision bildeanalyse på byggeplass (TEK17 & Våtromsnormen BVN)',
+        'Automatisk varsel om endringsordre & fristforlengelse (NS 8406)',
+        'Lærlingoppfølging (Udir kompetansemål) & Stoffkartotek',
         'Prioritert telefonsupport (08-16)'
       ]
     },
     {
       id: 'enterprise',
-      name: 'Mester Enterprise',
-      tag: 'Totalentreprenør',
-      desc: 'For større entreprenører, kjeder og komplekse prosjekter.',
-      monthlyPrice: 'Skreddersydd',
-      annualPrice: 'Skreddersydd',
+      name: 'Totalentreprenør',
+      tag: 'Større bedrifter & konsern',
+      desc: 'For større entreprenører (15+ ansatte), kjeder og komplekse prosjekter.',
+      monthlyPrice: 'Fra 4 900 kr',
+      annualPrice: 'Fra 4 900 kr',
       popular: false,
       features: [
-        'Ubegrenset antall brukere',
-        'Alt i Mester Pro, pluss:',
-        'Tripletex & PowerOffice Go API',
-        'Skreddersydde TEK17/SAK10 maler',
-        'Egen dedikert kundeansvarlig',
-        'Onboarding og team-opplæring',
-        'SLA med garantert oppetid'
+        'Ubegrenset antall håndverkere & underentreprenører',
+        'Alt i Mester Team, pluss:',
+        'Egen skreddersydd AI-bot i bedriftens Teams Tenant / Slack',
+        'Tripletex, PowerOffice Go & Fiken API-synkronisering',
+        'SHA-koordinator & vernerunder iht. Byggherreforskriften',
+        'Underentreprenør-portal med automatisk avviksruting',
+        'Dedikert onboarding, team-opplæring & SLA med opptidsgaranti'
       ]
     }
   ];
@@ -138,7 +140,7 @@ export const PricingPage = () => {
     <PageWrapper 
       badge="Forutsigbare priser"
       title="Invester i mer fritid og bedre kvalitet" 
-      subtitle="Ingen bindingstid, ingen skjulte etableringsgebyrer. 14 dagers helt gratis prøveperiode på alle planer."
+      subtitle="Ingen bindingstid, ingen etableringsgebyrer. Enkel månedlig faktura med full oppstartsgaranti for din bedrift."
     >
       {/* Billing toggle */}
       <div className="flex items-center justify-center gap-3 mb-12">
@@ -195,7 +197,7 @@ export const PricingPage = () => {
                         {price} kr
                       </span>
                       <span className={cn("text-xs font-medium", plan.popular ? "text-neutral-400" : "text-neutral-500")}>
-                        {" "}/ mnd per bruker
+                        {" "}/ mnd ekskl. mva
                       </span>
                     </div>
                   ) : (
@@ -241,7 +243,7 @@ export const AboutPage = () => {
     <PageWrapper 
       badge="Om KS Mester AI"
       title="Bygget for og med norske håndverkere"
-      subtitle="Vi brenner for å fjerne unødvendig papirarbeid slik at fagarbeidere kan fokusere på det de kan best: solid håndverk."
+      subtitle="Norges første 100 % autonome AI-byggeleder i lomma. Snakk rett inn i Teams, Slack eller WhatsApp – agenten ordner resten."
     >
       <div className="space-y-12">
         {/* Intro Card */}
@@ -250,10 +252,10 @@ export const AboutPage = () => {
             Byggebransjen i Norge er underlagt strenge, men nødvendige krav: TEK17, SAK10, Byggherreforskriften og Arbeidsmiljølovens internkontrollforskrift.
           </p>
           <p>
-            I altfor mange år har dette betydd tapte kveldstimer ved kjøkkenbordet, mapper fulle av uleselige lapper, og bilder spredt på private mobiltelefoner. Resultatet? Ubetalt overtid for byggmesteren, stress før ferdigattester, og unødvendige tvister om tilleggsarbeid.
+            I altfor mange år har dette betydd tapte kveldstimer ved kjøkkenbordet foran PC-en, mapper fulle av uleselige lapper, og bilder spredt på private telefoner. Håndverkere skal bygge – ikke kaste bort kveldene på tungvinte datasystemer.
           </p>
           <p>
-            KS Mester AI ble grunnlagt for å endre dette radikalt. Ved å kombinere dyp norsk bransjeinnsikt med toppmoderne kunstig intelligens og automatiserte integrasjoner mot Boligmappa og regnskapssystemer, gjør vi hele KS- og HMS-prosessen friksjonsfri.
+            KS Mester AI ble grunnlagt for å endre dette radikalt. Ved å kombinere dyp norsk bransjeinnsikt (TEK17, SAK10, NS 8406) med en 100 % autonom samtaleagent i Microsoft Teams, Slack og WhatsApp, gjøres all registrering, byggedagbok, SJA og avviksrapportering ferdig mens du står med hammeren i hånden.
           </p>
         </div>
 
@@ -598,7 +600,7 @@ export const TermsPage = () => {
         <section className="space-y-3">
           <h3 className="text-xl font-bold text-neutral-900">3. Prøveperiode, abonnement og oppsigelse</h3>
           <p>
-            Tjenesten tilbys med 14 dagers gratis prøvetid uten binding. Etter prøvetiden faktureres abonnementet månedlig eller årlig i forkant avhengig av valgt modell. Oppsigelse kan gjøres når som helst før neste fornyelsesperiode via innstillingene i systemet eller skriftlig til support.
+            Tjenesten faktureres etterskuddsvis eller månedlig via standard bedriftsfaktura (EHF/e-post) uten bindingstid, med mindre annet er særskilt avtalt. Oppsigelse kan gjøres når som helst før neste fornyelsesperiode via innstillingene i systemet eller skriftlig til support.
           </p>
         </section>
 

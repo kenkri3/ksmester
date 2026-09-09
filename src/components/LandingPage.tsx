@@ -317,7 +317,7 @@ export default function LandingPage({
               <div className="text-white font-bold mb-4 uppercase tracking-wider text-[11px]">Produkt</div>
               <ul className="space-y-2.5">
                 <li><button onClick={() => switchTab('pricing')} className="hover:text-white transition-colors text-left cursor-pointer">Priser & Pakker</button></li>
-                <li><button onClick={onStartDemo} className="hover:text-white transition-colors text-left cursor-pointer">Prøv gratis i 14 dager</button></li>
+                <li><button onClick={onStartDemo} className="hover:text-white transition-colors text-left cursor-pointer">Kom i gang på 2 minutter</button></li>
                 <li><button onClick={handleInstallApp} className="hover:text-white transition-colors text-left cursor-pointer">Mobil-app (PWA)</button></li>
                 <li><button onClick={() => onViewChange('spec')} className="hover:text-white transition-colors text-left cursor-pointer">Teknisk spesifikasjon</button></li>
                 <li><button onClick={() => onViewChange('contact')} className="hover:text-white transition-colors text-left cursor-pointer">Bestill demo</button></li>
@@ -417,9 +417,9 @@ function HomeView({
           {/* Main Hero Headline */}
           <div className="text-center max-w-4xl mx-auto">
             <h1 className="text-4xl sm:text-6xl lg:text-7xl font-black tracking-tight text-neutral-950 leading-[1.08] mb-6">
-              Kvalitetssikring i mesterklassen. <br />
+              Byggelederen i lomma di. <br />
               <span className="bg-gradient-to-r from-emerald-600 via-teal-600 to-emerald-500 bg-clip-text text-transparent">
-                Drevet av intelligent norsk AI.
+                Snakk rett inn i Teams, Slack eller WhatsApp.
               </span>
             </h1>
             
@@ -433,7 +433,7 @@ function HomeView({
                 onClick={onStartDemo}
                 className="w-full sm:w-auto bg-emerald-600 hover:bg-emerald-500 text-white px-8 py-4 rounded-2xl font-bold text-base flex items-center justify-center gap-3 transition-all shadow-xl shadow-emerald-600/25 active:scale-95 group cursor-pointer"
               >
-                <span>Prøv gratis i 14 dager</span>
+                <span>Kom i gang på 2 minutter</span>
                 <ArrowRight size={18} className="group-hover:translate-x-1 transition-transform" />
               </button>
               
@@ -1484,7 +1484,7 @@ function HomeView({
               onClick={onStartDemo} 
               className="w-full sm:w-auto bg-emerald-500 hover:bg-emerald-400 text-neutral-950 px-8 py-4 rounded-2xl font-black text-sm shadow-xl shadow-emerald-500/20 active:scale-95 transition-all cursor-pointer"
             >
-              Start 14 dagers gratis prøveperiode
+              Kom i gang på 2 minutter
             </button>
             <button 
               onClick={() => onSwitchTab('pricing')} 
@@ -1663,14 +1663,14 @@ function MesterHjernenView({ onStartDemo, onBack }: { onStartDemo: () => void, o
             Klar til å oppleve Mesterhjernen?
           </h2>
           <p className="text-xs sm:text-sm text-emerald-200 mb-6 max-w-xl">
-            Start 14 dagers gratis prøveperiode i dag og opplev hvordan AI kutter timer av arbeidsdagen din.
+            Kom i gang på 2 minutter i dag og opplev hvordan AI kutter timer av arbeidsdagen din.
           </p>
           <button 
             onClick={onStartDemo}
             className="bg-emerald-500 hover:bg-emerald-400 text-neutral-950 px-8 py-4 rounded-2xl font-black text-sm transition-all shadow-xl active:scale-95 flex items-center gap-2 cursor-pointer"
           >
             <Sparkles size={16} />
-            Prøv Mesterhjernen gratis i 14 dager
+            Opplev Mesterhjernen i dag
           </button>
         </div>
 
@@ -1719,7 +1719,7 @@ function HMSView({ onStartDemo, onBack, onGoToPricing }: { onStartDemo: () => vo
                 onClick={onStartDemo}
                 className="bg-emerald-600 hover:bg-emerald-500 text-white px-8 py-4 rounded-2xl font-bold text-sm flex items-center justify-center gap-2 shadow-xl shadow-emerald-600/20 transition-all active:scale-95 cursor-pointer"
               >
-                Start gratis i 14 dager
+                Aktiver din AI-byggeleder
                 <ArrowRight size={16} />
               </button>
             </div>
@@ -1805,14 +1805,14 @@ function HMSView({ onStartDemo, onBack, onGoToPricing }: { onStartDemo: () => vo
             Klar for enklere HMS i bedriften?
           </h2>
           <p className="text-xs sm:text-sm text-neutral-400 mb-6 max-w-xl">
-            Start 14 dagers gratis prøveperiode i dag. Ingen kredittkort, ingen bindingstid.
+            Kom i gang på 2 minutter i dag. Ingen kredittkort, ingen bindingstid.
           </p>
           <div className="flex flex-col sm:flex-row gap-4">
             <button 
               onClick={onStartDemo}
               className="bg-emerald-600 hover:bg-emerald-500 text-white px-8 py-4 rounded-2xl font-bold text-sm transition-all shadow-xl active:scale-95 cursor-pointer"
             >
-              Start gratis i 14 dager
+              Aktiver din AI-byggeleder
             </button>
             <button 
               onClick={onGoToPricing}
@@ -1868,7 +1868,7 @@ function FDVView({ onStartDemo, onBack }: { onStartDemo: () => void, onBack: () 
                 onClick={onStartDemo}
                 className="bg-emerald-600 hover:bg-emerald-500 text-white px-8 py-4 rounded-2xl font-bold text-sm flex items-center justify-center gap-2 shadow-xl shadow-emerald-600/20 transition-all active:scale-95 cursor-pointer"
               >
-                Start gratis i 14 dager
+                Aktiver din AI-byggeleder
                 <ArrowRight size={16} />
               </button>
             </div>
@@ -1939,13 +1939,13 @@ function FDVView({ onStartDemo, onBack }: { onStartDemo: () => void, onBack: () 
             Klar for automatisk FDV?
           </h2>
           <p className="text-xs sm:text-sm text-neutral-300 mb-6 max-w-xl">
-            Start gratis i 14 dager og se hvor mye tid du sparer på hvert eneste prosjekt.
+            Aktiver din AI-byggeleder og se hvor mye tid du sparer på hvert eneste prosjekt.
           </p>
           <button 
             onClick={onStartDemo}
             className="bg-emerald-500 hover:bg-emerald-400 text-neutral-950 px-8 py-4 rounded-2xl font-black text-sm transition-all shadow-xl active:scale-95 flex items-center gap-2 cursor-pointer"
           >
-            Start gratis i 14 dager
+            Aktiver din AI-byggeleder
           </button>
         </div>
 
@@ -1962,57 +1962,59 @@ function PricingView({ onStartDemo, onBack, faqs, activeFaq, setActiveFaq }: any
 
   const plans = [
     {
-      id: 'lite',
-      tag: 'Enkeltpersonforetak',
-      name: 'Mester Lite',
-      desc: 'For deg som jobber alene eller har opptil 3 ansatte.',
-      monthlyPrice: 490,
-      annualPrice: 390,
+      id: 'solo',
+      tag: 'Enkeltpersonforetak & små lag',
+      name: 'Mester Solo',
+      desc: 'For deg som jobber alene eller har inntil 3 håndverkere i felt.',
+      monthlyPrice: 990,
+      annualPrice: 890,
       popular: false,
       features: [
-        'Inntil 3 brukere',
-        'Ubegrenset SJA & Vernerunder',
-        'TEK17 & SAK10 sjekklister',
-        '1-klikks Boligmappa-eksport',
-        'Full offline-støtte på mobil',
-        'Norsk e-post support'
+        'Inntil 3 fagarbeidere',
+        'Autonom AI-agent i WhatsApp, SMS, Teams eller Web',
+        'Ubegrenset stemme-til-byggedagbok på farten',
+        'Automatisk værdata via Yr.no i alle rapporter (0 kr/tokens)',
+        'SJA-generator med risikovurdering iht. TEK17',
+        'Lovpålagte TEK17 & SAK10 sjekklister for alle fag',
+        '1-klikks Boligmappa & PDF-eksport',
+        'Norsk personlig support og oppstartshjelp'
       ]
     },
     {
-      id: 'pro',
+      id: 'team',
       tag: 'Mest populær',
-      name: 'Mester Pro',
-      desc: 'For voksende håndverkerbedrifter fra 3 til 15 ansatte.',
-      monthlyPrice: 890,
-      annualPrice: 710,
+      name: 'Mester Team',
+      desc: 'For voksende håndverkerbedrifter fra 4 til 15 ansatte.',
+      monthlyPrice: 2490,
+      annualPrice: 1990,
       popular: true,
       features: [
-        'Inntil 15 brukere',
-        'Alt i Mester Lite, pluss:',
-        'Mesterhjernen AI Assistant (15+ verktøy)',
-        'Værbasert SJA via Yr.no',
-        'AI Bildeanalyse for TEK17/våtrom',
-        'AI Tilbudsgenerator & Kalkyle',
-        'Lærlingoppfølging & Stoffkartotek',
+        'Inntil 15 fagarbeidere / prosjekter',
+        'Alt i Mester Solo, pluss:',
+        'Full integrasjon i bedriftens Microsoft Teams & Slack',
+        'Flerspråklig oversettelse (Polsk, Litauisk, Ukrainsk, Engelsk)',
+        'AI Vision bildeanalyse på byggeplass (TEK17 & Våtromsnormen BVN)',
+        'Automatisk varsel om endringsordre & fristforlengelse (NS 8406)',
+        'Lærlingoppfølging (Udir kompetansemål) & Stoffkartotek',
         'Prioritert telefonsupport (08-16)'
       ]
     },
     {
       id: 'enterprise',
-      tag: 'Totalentreprenør',
-      name: 'Mester Enterprise',
-      desc: 'For større entreprenører, kjeder og komplekse prosjekter.',
-      monthlyPrice: 'Skreddersydd',
-      annualPrice: 'Skreddersydd',
+      tag: 'Større bedrifter & konsern',
+      name: 'Totalentreprenør',
+      desc: 'For større entreprenører (15+ ansatte), kjeder og komplekse prosjekter.',
+      monthlyPrice: 'Fra 4 900 kr',
+      annualPrice: 'Fra 4 900 kr',
       popular: false,
       features: [
-        'Ubegrenset antall brukere',
-        'Alt i Mester Pro, pluss:',
-        'Tripletex & PowerOffice Go API',
-        'Skreddersydde TEK17/SAK10 maler',
-        'Egen dedikert kundeansvarlig',
-        'Onboarding og team-opplæring',
-        'SLA med garantert oppetid'
+        'Ubegrenset antall håndverkere & underentreprenører',
+        'Alt i Mester Team, pluss:',
+        'Egen skreddersydd AI-bot i bedriftens Teams Tenant / Slack',
+        'Tripletex, PowerOffice Go & Fiken API-synkronisering',
+        'SHA-koordinator & vernerunder iht. Byggherreforskriften',
+        'Underentreprenør-portal med automatisk avviksruting',
+        'Dedikert onboarding, team-opplæring & SLA med opptidsgaranti'
       ]
     }
   ];
@@ -2029,7 +2031,7 @@ function PricingView({ onStartDemo, onBack, faqs, activeFaq, setActiveFaq }: any
             Invester i mer fritid og null papirkaos
           </h1>
           <p className="text-neutral-600 text-base">
-            Ingen bindingstid, ingen etableringsgebyrer. 14 dagers helt gratis prøveperiode på alle pakker.
+            Ingen bindingstid, ingen etableringsgebyrer. Enkel månedlig faktura med full oppstartsgaranti for din bedrift.
           </p>
 
           {/* Billing Toggle */}
@@ -2087,7 +2089,7 @@ function PricingView({ onStartDemo, onBack, faqs, activeFaq, setActiveFaq }: any
                           {price} kr
                         </span>
                         <span className={cn("text-xs font-medium", plan.popular ? "text-neutral-400" : "text-neutral-500")}>
-                          {" "}/ mnd per bruker
+                          {" "}/ mnd ekskl. mva
                         </span>
                       </div>
                     ) : (
@@ -2114,7 +2116,7 @@ function PricingView({ onStartDemo, onBack, faqs, activeFaq, setActiveFaq }: any
                       : "bg-neutral-900 hover:bg-neutral-800 text-white"
                   )}
                 >
-                  {plan.id === 'enterprise' ? 'Kontakt salg' : 'Start 14 dagers gratis prøve'}
+                  {plan.id === 'enterprise' ? 'Kontakt salg' : 'Velg pakke & kom i gang'}
                 </button>
               </div>
             );

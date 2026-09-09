@@ -556,7 +556,7 @@ function AppContent() {
                       onClick={handleStartDemo}
                       className="bg-emerald-600 hover:bg-emerald-500 text-white px-4 py-2.5 rounded-xl text-xs font-bold transition-all shadow-md hover:shadow-emerald-600/20 active:scale-95 flex items-center gap-1.5 cursor-pointer"
                     >
-                      <span>Prøv gratis i 14 dager</span>
+                      <span>Kom i gang på 2 minutter</span>
                       <ArrowRight size={14} />
                     </button>
                   </div>
