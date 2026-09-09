@@ -170,13 +170,13 @@ function AppContent() {
 
   const handleInstallApp = async () => {
     if (isPWAInstalled()) {
-      toast.info('KS Mester er allerede installert som app på denne enheten!');
+      toast.info('VikingMester er allerede installert som app på denne enheten!');
       return;
     }
 
     const outcome = await promptPWAInstall();
     if (outcome === 'accepted') {
-      toast.success('Laster ned og installerer KS Mester på telefonen...');
+      toast.success('Laster ned og installerer VikingMester på telefonen...');
       return;
     }
 
@@ -348,7 +348,7 @@ function AppContent() {
           </div>
           <h1 className="text-2xl font-bold mb-4">{t('trial_expired', 'Prøveperioden er utløpt')}</h1>
           <p className="text-neutral-500 mb-8">
-            {t('trial_expired_desc', 'Din 7-dagers gratis prøveperiode er over. For å fortsette å bruke KS MesterAI må du registrere deg for et abonnement.')}
+            {t('trial_expired_desc', 'Din 7-dagers gratis prøveperiode er over. For å fortsette å bruke VikingMester må du registrere deg for et abonnement.')}
           </p>
           <button className="w-full bg-emerald-600 text-white py-4 rounded-2xl font-bold hover:bg-emerald-500 transition-all mb-4">
             {t('choose_plan', 'Velg abonnement')}

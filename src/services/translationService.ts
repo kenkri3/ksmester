@@ -13,7 +13,7 @@ export const translationService = {
    */
   async translateAndNormalize(text: string, targetLang: string): Promise<TranslationResult> {
     const prompt = `
-      You are a specialized construction industry translator for KS Mester AI.
+      You are a specialized construction industry translator for VikingMester.
       Input text: "${text}"
       
       Tasks:

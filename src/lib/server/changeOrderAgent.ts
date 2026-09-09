@@ -82,7 +82,7 @@ Returner KUN et gyldig JSON-objekt med følgende felter:
         totalAmount,
         impactDays: Number(parsed.impactDays) || 0,
         legalHjemmel: parsed.legalHjemmel || 'NS 8406 pkt. 19.2 / Håndverkertjenesteloven § 9',
-        smsMessageToClient: parsed.smsMessageToClient || `Hei! Vi har registrert et tilleggsønske: ${parsed.title}. Se spesifikasjon og godkjenn i KS Mester.`
+        smsMessageToClient: parsed.smsMessageToClient || `Hei! Vi har registrert et tilleggsønske: ${parsed.title}. Se spesifikasjon og godkjenn i VikingMester.`
       };
     } catch (err) {
       console.warn('Gemini change order parser fallback to heuristic:', err);
@@ -149,7 +149,7 @@ export async function createAutonomousChangeOrder(params: {
   const changeNumber = projectOrders.length + 1;
 
   const token = 'co_' + Math.random().toString(36).substring(2, 10) + Date.now().toString(36);
-  const shareUrl = `https://ksmester.no/?view=public-change-order&token=${token}`;
+  const shareUrl = `https://VikingMester.no/?view=public-change-order&token=${token}`;
 
   const changeOrder = {
     projectId: params.projectId,

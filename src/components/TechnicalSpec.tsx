@@ -31,7 +31,7 @@ import ArchitecturePhase5 from './ArchitecturePhase5';
 import ArchitecturePhase6 from './ArchitecturePhase6';
 
 const SPEC_CONTENT = `
-# Teknisk Spesifikasjon: KS Mester AI Elite
+# Teknisk Spesifikasjon: VikingMester Elite
 
 ## 1. Systemarkitektur & Infrastruktur
 Systemet er bygget som en moderne **Full-Stack Enterprise Cloud-Native** applikasjon med robust sikkerhet, sanntidsfunksjonalitet og dypt integrert AI.
@@ -105,7 +105,7 @@ export default function TechnicalSpec() {
               <h1 className="text-3xl font-bold tracking-tight">Master-Blueprint</h1>
             </div>
             <p className="text-neutral-500 max-w-2xl">
-              Dette dokumentet definerer den tekniske og kommersielle rammen for KS Mester AI. 
+              Dette dokumentet definerer den tekniske og kommersielle rammen for VikingMester. 
               Utviklet for å møte kravene i TEK17 og SAK10.
             </p>
           </div>

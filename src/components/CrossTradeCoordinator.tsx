@@ -389,7 +389,7 @@ export default function CrossTradeCoordinator({ project }: CrossTradeCoordinator
               className="px-5 py-2.5 bg-emerald-600 hover:bg-emerald-700 text-white rounded-xl text-xs font-bold flex items-center gap-2 shadow-md transition-all cursor-pointer"
             >
               <Send size={14} />
-              {isProcessingVoice ? 'Behandler med KS Mester AI...' : 'Generer Endringsvarsel'}
+              {isProcessingVoice ? 'Behandler med VikingMester...' : 'Generer Endringsvarsel'}
             </button>
           </div>
         </div>

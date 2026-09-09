@@ -84,7 +84,7 @@ export default function AiReportModal({
                    type === 'project_analysis' ? `AI Prosjektanalyse: ${projectName}` :
                    'AI Avviksanalyse'}
                 </h2>
-                <p className="text-xs text-neutral-400 truncate">Generert av KS MesterAI • {new Date().toLocaleDateString()}</p>
+                <p className="text-xs text-neutral-400 truncate">Generert av VikingMester • {new Date().toLocaleDateString()}</p>
               </div>
             </div>
             <button 

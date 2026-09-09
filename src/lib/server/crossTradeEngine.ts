@@ -142,7 +142,7 @@ export function evaluatePreCloseWall(params: {
     pendingTrades.push({
       trade: 'plumber',
       tradeName: 'Rørlegger / VVS',
-      task: 'Gjennomfør trykkprøving og last opp bilde av manometer i KS Mester.'
+      task: 'Gjennomfør trykkprøving og last opp bilde av manometer i VikingMester.'
     });
   }
 

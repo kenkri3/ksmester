@@ -54,7 +54,7 @@ const DocumentationArchive: React.FC<DocumentationArchiveProps> = ({ isOpen, onC
       toast.success(`Laster ned ${docItem.title}`);
     } else {
       // Create download blob
-      const content = `KS MESTER DOKUMENTARKIV\nDokument: ${docItem.title}\nKategori: ${docItem.category}\nKilde: ${docItem.source}\nDato: ${docItem.createdAt}\nStatus: Gyldig og verifisert`;
+      const content = `VikingMester DOKUMENTARKIV\nDokument: ${docItem.title}\nKategori: ${docItem.category}\nKilde: ${docItem.source}\nDato: ${docItem.createdAt}\nStatus: Gyldig og verifisert`;
       const blob = new Blob([content], { type: 'text/plain;charset=utf-8' });
       const url = URL.createObjectURL(blob);
       const a = document.createElement('a');

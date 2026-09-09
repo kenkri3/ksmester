@@ -4,25 +4,25 @@ import { Providers } from './providers';
 import { Toaster } from 'sonner';
 
 export const metadata: Metadata = {
-  title: 'KS MesterAI Elite - Det mest avanserte økosystemet for norske håndverksbedrifter',
-  description: 'Autonom HMS/KS, AI-drevet SJA og usynlig dokumentasjon. Systemet som tenker mens du bygger.',
+  title: 'VikingMester - Byggeplassens råeste kraftverktøy | Autonom HMS, KS & Fagledelse',
+  description: 'Byggeplassens råeste kraftverktøy for norske håndverkere og entreprenører. Snakk inn dagboken, knips avvikene, og la VikingMester ta resten. En del av Vikingnet.',
   manifest: '/manifest.json',
-  metadataBase: new URL(process.env.APP_URL || 'https://ksmester.no'),
+  metadataBase: new URL(process.env.APP_URL || 'https://vikingmester.no'),
   alternates: {
     canonical: '/',
   },
   openGraph: {
-    title: 'KS MesterAI Elite - Profesjonelt HMS & KS for håndverkere',
-    description: 'Autonom HMS/KS, AI-drevet SJA og usynlig dokumentasjon for norske håndverksbedrifter.',
-    url: '/',
-    siteName: 'KS Mester AI Elite',
+    title: 'VikingMester - Byggeplassens råeste kraftverktøy',
+    description: 'Autonom HMS, TEK17-avvik og byggedagbok på sekunder. Bygget for norske håndverkere og entreprenører av Vikingnet.',
+    url: 'https://vikingmester.no',
+    siteName: 'VikingMester',
     locale: 'nb_NO',
     type: 'website',
   },
   twitter: {
     card: 'summary_large_image',
-    title: 'KS MesterAI Elite',
-    description: 'Autonom HMS/KS og AI-drevet SJA for norske håndverkere.',
+    title: 'VikingMester - Byggeplassens råeste kraftverktøy',
+    description: 'Autonom HMS, TEK17-avvik og byggedagbok for norske håndverkere.',
   },
   icons: {
     icon: '/icon.svg',
@@ -37,16 +37,16 @@ export const viewport: Viewport = {
   maximumScale: 1.0,
   userScalable: false,
   viewportFit: 'cover',
-  themeColor: '#059669',
+  themeColor: '#0F1115',
 };
 
 const jsonLd = {
   '@context': 'https://schema.org',
   '@type': 'SoftwareApplication',
-  name: 'KS Mester AI Elite',
+  name: 'VikingMester',
   applicationCategory: 'BusinessApplication',
   operatingSystem: 'Web, iOS, Android',
-  description: 'Autonom HMS/KS, AI-drevet SJA og usynlig dokumentasjon for norske håndverksbedrifter.',
+  description: 'Autonom HMS/KS, TEK17-avvik og usynlig dokumentasjon for norske håndverksbedrifter.',
   offers: {
     '@type': 'Offer',
     price: '990',
@@ -54,7 +54,8 @@ const jsonLd = {
   },
   publisher: {
     '@type': 'Organization',
-    name: 'KS Mester',
+    name: 'Vikingnet / AIChat Norge AS',
+    url: 'https://vikingmester.no',
   },
 };
 

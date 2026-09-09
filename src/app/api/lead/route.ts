@@ -53,7 +53,7 @@ export async function POST(req: NextRequest) {
       message: message || '',
       brregInfo,
       status: 'warm_lead',
-      source: 'ksmester.no',
+      source: 'VikingMester.no',
       createdAt: new Date().toISOString()
     };
 
@@ -74,9 +74,9 @@ export async function POST(req: NextRequest) {
             email: leadRecord.email,
             phone: leadRecord.phone,
             trade: leadRecord.trade,
-            product: `KS Mester AI - ${leadRecord.plan} (${leadRecord.channel})`,
+            product: `VikingMester - ${leadRecord.plan} (${leadRecord.channel})`,
             status: 'warm_lead',
-            source: 'ksmester.no-autonom-lead',
+            source: 'vikingmester.no-lead',
             notes: `Foretrukket kanal: ${leadRecord.channel}. Antall ansatte ifølge Brreg: ${brregInfo?.antallAnsatte || 'Ukjent'}. Næring: ${brregInfo?.naeringskode || leadRecord.trade}`
           }),
           signal: AbortSignal.timeout(4000)
@@ -90,7 +90,7 @@ export async function POST(req: NextRequest) {
     const resendKey = process.env.RESEND_API_KEY;
     if (resendKey && leadRecord.email) {
       try {
-        const fromEmail = process.env.EMAIL_FROM || 'KS Mester AI <varsel@ksmester.no>';
+        const fromEmail = process.env.EMAIL_FROM || 'VikingMester <varsel@vikingmester.no>';
         await fetch('https://api.resend.com/emails', {
           method: 'POST',
           headers: {
@@ -100,11 +100,11 @@ export async function POST(req: NextRequest) {
           body: JSON.stringify({
             from: fromEmail,
             to: [leadRecord.email],
-            subject: `Velkommen til KS Mester AI – Din autonome byggeleder i lomma`,
+            subject: `Velkommen til VikingMester – Din autonome byggeleder i lomma`,
             html: `
               <div style="font-family: sans-serif; max-width: 600px; margin: 0 auto; color: #171717; line-height: 1.6;">
-                <h2 style="color: #059669;">Hei ${leadRecord.name}!</h2>
-                <p>Takk for at du valgte <strong>KS Mester AI</strong> for <strong>${leadRecord.company}</strong>.</p>
+                <h2 style="color: #F59E0B;">Hei ${leadRecord.name}!</h2>
+                <p>Takk for at du valgte <strong>VikingMester</strong> for <strong>${leadRecord.company}</strong>.</p>
                 <p>Du har valgt <strong>${leadRecord.plan}</strong> med foretrukket integrasjon i <strong>${leadRecord.channel}</strong>.</p>
                 <div style="background: #f4f4f5; padding: 16px; border-radius: 12px; margin: 20px 0;">
                   <h4 style="margin-top: 0; color: #111;">Slik kommer du i gang på 2 minutter:</h4>
@@ -114,8 +114,8 @@ export async function POST(req: NextRequest) {
                     <li>Prøv å sende ditt første 10-sekunders taleopptak eller et bilde – se byggedagboken og SJA-en bli ført av seg selv!</li>
                   </ol>
                 </div>
-                <p>Har du spørsmål, kan du svare direkte på denne e-posten eller ringe oss på <a href="tel:+4740163082" style="color: #059669; font-weight: bold;">+47 401 63 082</a>.</p>
-                <p style="margin-top: 30px; font-size: 13px; color: #71717a;">Med vennlig hilsen,<br><strong>KS Mester AI-teamet</strong><br>AIChat Norge AS / Vikingnet</p>
+                <p>Har du spørsmål, kan du svare direkte på denne e-posten eller ringe oss på <a href="tel:+4740163082" style="color: #F59E0B; font-weight: bold;">+47 401 63 082</a>.</p>
+                <p style="margin-top: 30px; font-size: 13px; color: #71717a;">Med vennlig hilsen,<br><strong>VikingMester-teamet</strong><br>AIChat Norge AS / Vikingnet</p>
               </div>
             `
           }),

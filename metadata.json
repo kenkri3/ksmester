@@ -1,10 +1,10 @@
 {
-  "name": "Remix KS MesterAI Elite",
-  "description": "Det mest avanserte økosystemet for norske håndverksbedrifter. Autonom HMS/KS, AI-drevet SJA og usynlig dokumentasjon. Systemet som tenker mens du bygger.",
+  "name": "VikingMester Pro",
+  "description": "Byggeplassens råeste kraftverktøy for norske håndverkere og entreprenører. Autonom HMS/KS, TEK17-avvik og usynlig byggedagbok. En del av Vikingnet.",
   "requestFramePermissions": [
     "geolocation"
   ],
   "majorCapabilities": [
-    "MAJOR_CAPABILITY_SERVER_SIDE_DEEPSEEK_API"
+    "MAJOR_CAPABILITY_SERVER_SIDE_GEMINI_API"
   ]
 }

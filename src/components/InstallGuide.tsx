@@ -48,14 +48,14 @@ export default function InstallGuide({ onClose }: InstallGuideProps) {
 
   const handleDirectInstall = async () => {
     if (isInstalled) {
-      toast.info('KS Mester er allerede installert som app på denne enheten!');
+      toast.info('VikingMester er allerede installert som app på denne enheten!');
       onClose?.();
       return;
     }
 
     const outcome = await promptPWAInstall();
     if (outcome === 'accepted') {
-      toast.success('Laster ned og installerer KS Mester på telefonen...');
+      toast.success('Laster ned og installerer VikingMester på telefonen...');
       onClose?.();
     } else if (outcome === 'unavailable') {
       if (isIOS()) {
@@ -71,7 +71,7 @@ export default function InstallGuide({ onClose }: InstallGuideProps) {
       {
         icon: <Smartphone className="text-blue-500" size={18} />,
         title: '1. Åpne i Safari',
-        desc: 'Sjekk at du har åpnet ksmester.no i Safari på din iPhone/iPad.'
+        desc: 'Sjekk at du har åpnet vikingmester.no i Safari på din iPhone/iPad.'
       },
       {
         icon: <Share className="text-blue-500" size={18} />,
@@ -114,7 +114,7 @@ export default function InstallGuide({ onClose }: InstallGuideProps) {
               <Smartphone size={22} />
             </div>
             <div>
-              <h2 className="text-lg sm:text-2xl font-black tracking-tight text-neutral-900">Installer KS Mester på mobilen</h2>
+              <h2 className="text-lg sm:text-2xl font-black tracking-tight text-neutral-900">Installer VikingMester på mobilen</h2>
               <p className="text-xs font-semibold text-neutral-500">Direkte tilgang på byggeplassen – lynrask og tilgjengelig offline.</p>
             </div>
           </div>
@@ -143,7 +143,7 @@ export default function InstallGuide({ onClose }: InstallGuideProps) {
                 Klar til å installere på din enhet
               </h3>
               <p className="text-xs text-neutral-600 max-w-md">
-                Trykk på knappen under for å laste ned og legge KS Mester direkte på hjemskjermen med eget app-ikon og fullskjermsvisning.
+                Trykk på knappen under for å laste ned og legge VikingMester direkte på hjemskjermen med eget app-ikon og fullskjermsvisning.
               </p>
             </div>
 

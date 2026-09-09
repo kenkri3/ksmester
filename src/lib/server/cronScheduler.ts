@@ -70,7 +70,7 @@ Prosjekter: ${activeProjects.map((p: any) => p.name).slice(0, 5).join(', ')}.
             messages: [
               {
                 role: 'system',
-                content: 'Du er KS MesterAI. Skriv en presis og oppmuntrende morgen-brief til byggeledelsen på profesjonelt norsk.'
+                content: 'Du er VikingMester. Skriv en presis og oppmuntrende morgen-brief til byggeledelsen på profesjonelt norsk.'
               },
               { role: 'user', content: prompt }
             ],
@@ -148,7 +148,7 @@ export function startBackgroundScheduler() {
   if (isScheduled) return;
   isScheduled = true;
 
-  console.log('🕒 [Background Scheduler] KS Mester scheduler initiert (Europe/Oslo)');
+  console.log('🕒 [Background Scheduler] VikingMester scheduler initiert (Europe/Oslo)');
 
   function scheduleNext() {
     try {

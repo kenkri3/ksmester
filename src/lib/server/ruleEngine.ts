@@ -232,7 +232,7 @@ export function tryResolveDeterministicSja(taskDescription: string, weatherInfo?
         {
           aktivitet: 'Lukking før tverrfaglig kontroll er gjennomført',
           risiko: 'Innelukking av ikke-trykktestede rør eller udokumentert el-skjultanlegg',
-          tiltak: 'VERIFISER: Rørleggerens trykktest og elektrikerens fotodokumentasjon må være godkjent i KS Mester før første plate skrus'
+          tiltak: 'VERIFISER: Rørleggerens trykktest og elektrikerens fotodokumentasjon må være godkjent i VikingMester før første plate skrus'
         },
         {
           aktivitet: 'Montering og klemming av dampsperre (plast)',

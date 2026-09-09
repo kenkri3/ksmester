@@ -88,7 +88,7 @@ export const pdfService = {
       doc.setPage(i);
       doc.setFontSize(8);
       doc.setTextColor(150, 150, 150);
-      doc.text(`Side ${i} av ${pageCount} - Generert av KS MesterAI`, 105, 285, { align: 'center' });
+      doc.text(`Side ${i} av ${pageCount} - Generert av VikingMester`, 105, 285, { align: 'center' });
     }
 
     doc.save(`SJA_${project.name.replace(/\s+/g, '_')}_${new Date().toISOString().split('T')[0]}.pdf`);
@@ -138,7 +138,7 @@ export const pdfService = {
       doc.text('Fotodokumentasjon', 20, (doc as any).lastAutoTable.finalY + 15);
       doc.setFontSize(9);
       doc.setTextColor(100, 100, 100);
-      doc.text('Fotobevis er registrert digitalt i KS MesterAI-arkivet.', 20, (doc as any).lastAutoTable.finalY + 25);
+      doc.text('Fotobevis er registrert digitalt i VikingMester-arkivet.', 20, (doc as any).lastAutoTable.finalY + 25);
     }
 
     doc.save(`AVVIK_${deviation.title.replace(/\s+/g, '_')}_${new Date().toISOString().split('T')[0]}.pdf`);
@@ -289,7 +289,7 @@ export const pdfService = {
 
     doc.setFontSize(8);
     doc.setFont('helvetica', 'normal');
-    doc.text('Digitalt bekreftet i KS MesterAI', 20, signY + 20);
+    doc.text('Digitalt bekreftet i VikingMester', 20, signY + 20);
     doc.text(contract.status === 'signed' ? 'Digitalt signert via Kundeportal' : 'Venter på digital signatur', 120, signY + 20);
 
     doc.save(`Kontrakt_${(contract.clientName || 'Kunde').replace(/\s+/g, '_')}_${new Date().toISOString().split('T')[0]}.pdf`);
@@ -458,7 +458,7 @@ export const pdfService = {
     doc.setFontSize(8);
     doc.setFont('helvetica', 'normal');
     doc.text(companyInfo.contactPerson || 'Faglig Leder / Daglig leder', 120, signY + 23);
-    doc.text('Digitalt signert og verifisert i KS Mester', 120, signY + 28);
+    doc.text('Digitalt signert og verifisert i VikingMester', 120, signY + 28);
 
     doc.save(`Samsvarserklaering_${project.name.replace(/\s+/g, '_')}_${new Date().toISOString().split('T')[0]}.pdf`);
   },
@@ -779,7 +779,7 @@ export const pdfService = {
 
     doc.setFontSize(8);
     doc.setFont('helvetica', 'normal');
-    doc.text('Digitalt signert i KS Mester', 20, signY + 23);
+    doc.text('Digitalt signert i VikingMester', 20, signY + 23);
     doc.text('Digitalt signert og akseptert', 120, signY + 23);
 
     doc.save(`Overtakelsesprotokoll_${project.name.replace(/\s+/g, '_')}_${new Date().toISOString().split('T')[0]}.pdf`);
@@ -1026,7 +1026,7 @@ export const pdfService = {
     doc.setTextColor(0, 0, 0);
     doc.setFontSize(9);
     doc.setFont('helvetica', 'normal');
-    doc.text(`Attestert av byggeleder: ${dailyLog.inspectedBy || 'Byggeleder'} | Automatisk verifisert av KS Mester.`, 20, finalY);
+    doc.text(`Attestert av byggeleder: ${dailyLog.inspectedBy || 'Byggeleder'} | Automatisk verifisert av VikingMester.`, 20, finalY);
 
     doc.save(`Byggedagbok_${project.name.replace(/\s+/g, '_')}_${dailyLog.date}.pdf`);
   },
