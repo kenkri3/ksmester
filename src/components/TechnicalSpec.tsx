@@ -48,8 +48,8 @@ Systemet er bygget som en moderne **Full-Stack Enterprise Cloud-Native** applika
 - **REST API Client:** Sanntids REST-klient med automatisk lokal fallback og caching.
 
 ### AI Mesterhjerne
-- **AI-Kvalitetssikring & TEK17:** DeepSeek-V3 for sanntids analyse, gjenkjenning av bygningselementer og avvikssjekk mot TEK17.
-- **Smart-SJA & Autonom KS:** DeepSeek-V3 og DeepSeek-R1 for naturlig språkforståelse, automatisk risikovurdering og generering av HMS/KS-dokumentasjon.
+- **AI-Kvalitetssikring & TEK17:** Gemini 3.8 Flash for sanntids analyse, gjenkjenning av bygningselementer og avvikssjekk mot TEK17.
+- **Smart-SJA & Autonom KS:** Gemini 3.8 Flash for naturlig språkforståelse, automatisk risikovurdering og generering av HMS/KS-dokumentasjon.
 
 ## 2. Kjernefunksjonalitet
 ### HMS/KS, SJA & Avvik
@@ -152,7 +152,7 @@ export default function TechnicalSpec() {
                   <h3 className="text-xl font-bold mb-8">Sentrale Teknologier</h3>
                   <div className="grid grid-cols-2 md:grid-cols-4 gap-8">
                     {[
-                      { icon: <Zap className="text-emerald-400" />, label: "DeepSeek AI" },
+                      { icon: <Zap className="text-emerald-400" />, label: "Gemini 3.8 Flash" },
                       { icon: <Database className="text-blue-400" />, label: "PostgreSQL" },
                       { icon: <Lock className="text-purple-400" />, label: "BankID" },
                       { icon: <Globe className="text-amber-400" />, label: "NOBB API" }

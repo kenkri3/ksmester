@@ -47,7 +47,7 @@ export async function getCachedAiResponse(hash: string): Promise<string | null> 
           memoryCache.set(hash, {
             text: stored.text,
             createdAt: stored.createdAt,
-            model: stored.model || 'deepseek-chat',
+            model: stored.model || 'gemini-3.8-flash',
             hits: (stored.hits || 0) + 1
           });
           totalTokenSavings += Math.round(stored.text.length / 4);
@@ -65,7 +65,7 @@ export async function getCachedAiResponse(hash: string): Promise<string | null> 
 export async function setCachedAiResponse(
   hash: string,
   text: string,
-  model: string = 'deepseek-chat'
+  model: string = 'gemini-3.8-flash'
 ): Promise<void> {
   const now = Date.now();
   memoryCache.set(hash, {

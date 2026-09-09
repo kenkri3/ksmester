@@ -14,7 +14,7 @@ export async function POST(req: NextRequest) {
   const deepseekKey = process.env.DEEP_SEEK_API || process.env.DEEPSEEK_API_KEY;
 
   if (!apiKey && !deepseekKey) {
-    return NextResponse.json({ error: 'Ingen AI-nøkkel (GEMINI_API_KEY eller DEEP_SEEK_API) er konfigurert på serveren.' }, { status: 500 });
+    return NextResponse.json({ error: 'Ingen AI-nøkkel (GEMINI_API_KEY) er konfigurert på serveren.' }, { status: 500 });
   }
 
   try {
@@ -28,10 +28,6 @@ export async function POST(req: NextRequest) {
     }
 
     if (apiKey) {
-      if (!model || model.startsWith('gemini-2') || model.startsWith('gemini-1') || model === 'deepseek-chat') {
-        model = 'gemini-3.8-flash';
-      }
-
       const ai = new GoogleGenAI({ apiKey });
 
       if (inlineData && (!images || images.length === 0)) {
@@ -75,11 +71,39 @@ export async function POST(req: NextRequest) {
       if (responseMimeType) config.responseMimeType = responseMimeType;
       if (responseSchema) config.responseSchema = responseSchema;
 
-      const aiResponse = await ai.models.generateContent({
-        model,
-        contents: finalContents,
-        config: Object.keys(config).length > 0 ? config : undefined
-      });
+      // Robust candidate model list: prioritize gemini-3.8-flash, with automatic resilient fallbacks
+      const candidateModels = [
+        model || 'gemini-3.8-flash',
+        'gemini-2.5-flash',
+        'gemini-2.0-flash',
+        'gemini-1.5-flash'
+      ];
+
+      // Remove duplicate models if any
+      const uniqueModels = Array.from(new Set(candidateModels));
+
+      let aiResponse: any = null;
+      let lastError: any = null;
+
+      for (const cand of uniqueModels) {
+        try {
+          aiResponse = await ai.models.generateContent({
+            model: cand,
+            contents: finalContents,
+            config: Object.keys(config).length > 0 ? config : undefined
+          });
+          if (aiResponse && aiResponse.text) {
+            break;
+          }
+        } catch (err: any) {
+          lastError = err;
+          console.warn(`[AI Generation] Modell ${cand} feilet (${err.message}), forsøker neste kandidat...`);
+        }
+      }
+
+      if (!aiResponse) {
+        throw lastError || new Error('Gemini generering feilet for alle modeller');
+      }
 
       return NextResponse.json({ text: aiResponse.text || '' });
     } else if (deepseekKey) {

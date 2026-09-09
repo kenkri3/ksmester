@@ -158,7 +158,7 @@ export const checklistGenerator = {
   /**
    * Genererer 100% skreddersydde, faseinndelte sjekklister basert på arbeidets art og bransje.
    * Benytter deterministisk regelmotor for umiddelbar respons og 0 tokens,
-   * og DeepSeek AI dersom oppdraget krever unik prosjekttilpasning.
+   * og Gemini 3.8 Flash dersom oppdraget krever unik prosjekttilpasning.
    */
   async generateChecklistsForScope(
     projectId: string,
