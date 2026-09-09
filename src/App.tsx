@@ -337,20 +337,20 @@ function AppContent() {
 
   if (user && subscriptionStatus === 'expired') {
     return (
-      <div className="min-h-screen bg-neutral-50 flex items-center justify-center p-4">
+      <div className="min-h-screen bg-[#08090d] bg-tactical-grid bg-radial-amber flex items-center justify-center p-4">
         <motion.div 
           initial={{ opacity: 0, scale: 0.95 }}
           animate={{ opacity: 1, scale: 1 }}
-          className="max-w-md w-full bg-white rounded-[2.5rem] shadow-2xl p-8 lg:p-12 text-center border border-red-100"
+          className="max-w-md w-full bg-[#0e111a] rounded-2xl shadow-2xl p-8 lg:p-12 text-center border border-white/10"
         >
           <div className="w-16 h-16 bg-red-100 text-red-600 rounded-2xl flex items-center justify-center mx-auto mb-8">
             <AlertTriangle size={32} />
           </div>
           <h1 className="text-2xl font-bold mb-4">{t('trial_expired', 'Prøveperioden er utløpt')}</h1>
-          <p className="text-neutral-500 mb-8">
+          <p className="text-slate-400 mb-8">
             {t('trial_expired_desc', 'Din 7-dagers gratis prøveperiode er over. For å fortsette å bruke VikingMester må du registrere deg for et abonnement.')}
           </p>
-          <button className="w-full bg-emerald-600 text-white py-4 rounded-2xl font-bold hover:bg-emerald-500 transition-all mb-4">
+          <button className="w-full bg-emerald-600 text-white py-4 rounded-2xl font-bold hover:bg-white/50 transition-all mb-4">
             {t('choose_plan', 'Velg abonnement')}
           </button>
           <button 
@@ -365,7 +365,7 @@ function AppContent() {
   }
 
   return (
-    <div className="min-h-screen bg-neutral-50 text-neutral-900 font-sans selection:bg-emerald-100 selection:text-emerald-900">
+    <div className="min-h-screen bg-[#08090d] text-slate-100 font-sans selection:bg-amber-500/30 selection:text-amber-200">
       {/* Trial Banner */}
       {user && subscriptionStatus === 'trial' && !impersonatedCompanyId && (
         <div className="fixed top-0 left-0 right-0 z-[60] bg-emerald-600 text-white text-[10px] font-bold py-1 text-center uppercase tracking-widest">
@@ -379,7 +379,7 @@ function AppContent() {
           <span>DU VISER NÅ SYSTEMET SOM EN ANNEN KUNDE (ID: {impersonatedCompanyId})</span>
           <button 
             onClick={() => { stopImpersonation(); setView('super-admin'); }}
-            className="px-2 py-0.5 bg-white text-red-600 rounded hover:bg-neutral-100 transition-colors"
+            className="px-2 py-0.5 bg-white text-red-600 rounded hover:bg-white/5 transition-colors"
           >
             AVSLUTT
           </button>
@@ -388,7 +388,7 @@ function AppContent() {
 
       {/* Navigation */}
       <nav className={cn(
-        "fixed left-0 right-0 z-50 bg-white/95 backdrop-blur-md border-b border-neutral-200/80 transition-all shadow-xs",
+        "fixed left-0 right-0 z-50 bg-[#0a0c12]/95 backdrop-blur-xl border-b border-white/10 transition-all shadow-2xl",
         (user && subscriptionStatus === 'trial') || impersonatedCompanyId ? "top-6" : "top-0"
       )}>
         <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8">
@@ -401,8 +401,8 @@ function AppContent() {
                   className="flex items-center gap-2 cursor-pointer group"
                   onClick={() => { setView('landing'); setLandingTab('home'); }}
                 >
-                  <Logo size="md" className="text-neutral-900" />
-                  <span className="hidden sm:inline-flex items-center text-[10px] font-bold text-neutral-500 bg-neutral-100 px-2.5 py-0.5 rounded-full border border-neutral-200/80">
+                  <Logo size="md" className="text-white" />
+                  <span className="hidden sm:inline-flex items-center text-[10px] font-mono font-bold text-amber-400 bg-amber-500/10 px-2.5 py-0.5 rounded-full border border-amber-500/30">
                     For Bygg & Anlegg
                   </span>
                 </div>
@@ -418,52 +418,52 @@ function AppContent() {
                     className={cn(
                       "px-3.5 py-2 rounded-xl text-xs font-bold transition-all flex items-center gap-1.5 cursor-pointer",
                       (view === 'landing' && ['ai', 'hms', 'fdv'].includes(landingTab))
-                        ? "bg-emerald-50 text-emerald-700 font-black" 
-                        : "text-neutral-600 hover:text-neutral-900 hover:bg-neutral-100/70"
+                        ? "bg-amber-500/20 text-amber-400 font-bold border border-amber-500/30" 
+                        : "text-slate-300 hover:text-white hover:bg-white/5"
                     )}
                   >
                     <span>Løsninger</span>
-                    <ChevronDown size={14} className="text-neutral-400 group-hover:text-neutral-700 transition-transform group-hover:rotate-180" />
+                    <ChevronDown size={14} className="text-slate-500 group-hover:text-amber-400 transition-transform group-hover:rotate-180" />
                   </button>
 
                   {/* Dropdown Menu */}
-                  <div className="absolute top-full left-0 mt-1.5 w-72 bg-white rounded-2xl shadow-xl border border-neutral-200/80 p-2 hidden group-hover:block z-50 animate-in fade-in-50 slide-in-from-top-1 duration-150">
+                  <div className="absolute top-full left-0 mt-1.5 w-72 bg-[#0d1017] rounded-2xl shadow-2xl border border-white/10 p-2 hidden group-hover:block z-50 animate-in fade-in-50 slide-in-from-top-1 duration-150">
                     <button 
                       onClick={() => { setLandingTab('ai'); setView('landing'); }}
-                      className="w-full text-left p-3 rounded-xl hover:bg-emerald-50 transition-colors flex items-start gap-3 cursor-pointer group/item"
+                      className="w-full text-left p-3 rounded-xl hover:bg-white/5 transition-colors flex items-start gap-3 cursor-pointer group/item"
                     >
                       <div className="w-8 h-8 rounded-lg bg-emerald-100 text-emerald-700 flex items-center justify-center shrink-0 group-hover/item:bg-emerald-600 group-hover/item:text-white transition-colors">
                         <Sparkles size={16} />
                       </div>
                       <div>
-                        <p className="text-xs font-bold text-neutral-900">Mesterhjernen AI</p>
-                        <p className="text-[10px] text-neutral-500 leading-tight">Tale-til-SJA, Yr værrisiko & TEK17 syn</p>
+                        <p className="text-xs font-bold text-white">Mesterhjernen AI</p>
+                        <p className="text-[10px] text-slate-400 leading-tight">Tale-til-SJA, Yr værrisiko & TEK17 syn</p>
                       </div>
                     </button>
 
                     <button 
                       onClick={() => { setLandingTab('hms'); setView('landing'); }}
-                      className="w-full text-left p-3 rounded-xl hover:bg-blue-50 transition-colors flex items-start gap-3 cursor-pointer group/item"
+                      className="w-full text-left p-3 rounded-xl hover:bg-white/5 transition-colors flex items-start gap-3 cursor-pointer group/item"
                     >
                       <div className="w-8 h-8 rounded-lg bg-blue-100 text-blue-700 flex items-center justify-center shrink-0 group-hover/item:bg-blue-600 group-hover/item:text-white transition-colors">
                         <ShieldCheck size={16} />
                       </div>
                       <div>
-                        <p className="text-xs font-bold text-neutral-900">HMS & SJA</p>
-                        <p className="text-[10px] text-neutral-500 leading-tight">Vernerunder, AML-krav & stoffkartotek</p>
+                        <p className="text-xs font-bold text-white">HMS & SJA</p>
+                        <p className="text-[10px] text-slate-400 leading-tight">Vernerunder, AML-krav & stoffkartotek</p>
                       </div>
                     </button>
 
                     <button 
                       onClick={() => { setLandingTab('fdv'); setView('landing'); }}
-                      className="w-full text-left p-3 rounded-xl hover:bg-teal-50 transition-colors flex items-start gap-3 cursor-pointer group/item"
+                      className="w-full text-left p-3 rounded-xl hover:bg-white/5 transition-colors flex items-start gap-3 cursor-pointer group/item"
                     >
                       <div className="w-8 h-8 rounded-lg bg-teal-100 text-teal-700 flex items-center justify-center shrink-0 group-hover/item:bg-teal-600 group-hover/item:text-white transition-colors">
                         <FileCheck size={16} />
                       </div>
                       <div>
-                        <p className="text-xs font-bold text-neutral-900">FDV & Boligmappa</p>
-                        <p className="text-[10px] text-neutral-500 leading-tight">Automatisk NOBB-ark & 1-klikks eksport</p>
+                        <p className="text-xs font-bold text-white">FDV & Boligmappa</p>
+                        <p className="text-[10px] text-slate-400 leading-tight">Automatisk NOBB-ark & 1-klikks eksport</p>
                       </div>
                     </button>
                   </div>
@@ -475,8 +475,8 @@ function AppContent() {
                   className={cn(
                     "px-3.5 py-2 rounded-xl text-xs font-bold transition-all cursor-pointer",
                     view === 'pricing' || (view === 'landing' && landingTab === 'pricing')
-                      ? "bg-emerald-50 text-emerald-700 font-black"
-                      : "text-neutral-600 hover:text-neutral-900 hover:bg-neutral-100/70"
+                      ? "bg-amber-500/20 text-amber-400 font-bold border border-amber-500/30"
+                      : "text-slate-300 hover:text-white hover:bg-white/5"
                   )}
                 >
                   Priser
@@ -485,7 +485,7 @@ function AppContent() {
                 {/* Kundeportal */}
                 <button 
                   onClick={() => setIsPortalModalOpen(true)}
-                  className="px-3.5 py-2 rounded-xl text-xs font-bold text-neutral-600 hover:text-neutral-900 hover:bg-neutral-100/70 transition-all flex items-center gap-1.5 cursor-pointer"
+                  className="px-3.5 py-2 rounded-xl text-xs font-bold text-slate-300 hover:text-white hover:bg-white/5 transition-all flex items-center gap-1.5 cursor-pointer"
                 >
                   <Users size={14} className="text-emerald-600" />
                   <span>Kundeportal</span>
@@ -497,8 +497,8 @@ function AppContent() {
                   className={cn(
                     "px-3.5 py-2 rounded-xl text-xs font-bold transition-all cursor-pointer",
                     view === 'about'
-                      ? "bg-emerald-50 text-emerald-700 font-black"
-                      : "text-neutral-600 hover:text-neutral-900 hover:bg-neutral-100/70"
+                      ? "bg-amber-500/20 text-amber-400 font-bold border border-amber-500/30"
+                      : "text-slate-300 hover:text-white hover:bg-white/5"
                   )}
                 >
                   Om oss
@@ -510,8 +510,8 @@ function AppContent() {
                   className={cn(
                     "px-3.5 py-2 rounded-xl text-xs font-bold transition-all cursor-pointer",
                     view === 'contact'
-                      ? "bg-emerald-50 text-emerald-700 font-black"
-                      : "text-neutral-600 hover:text-neutral-900 hover:bg-neutral-100/70"
+                      ? "bg-amber-500/20 text-amber-400 font-bold border border-amber-500/30"
+                      : "text-slate-300 hover:text-white hover:bg-white/5"
                   )}
                 >
                   Kontakt
@@ -521,12 +521,12 @@ function AppContent() {
               {/* Desktop Right: Actions */}
               <div className="hidden md:flex items-center gap-3">
                 {/* Language Selector */}
-                <div className="flex items-center gap-1 px-2.5 py-1.5 bg-neutral-100/80 hover:bg-neutral-100 rounded-xl border border-neutral-200 transition-all">
-                  <Globe size={14} className="text-neutral-500 shrink-0" />
+                <div className="flex items-center gap-1 px-2.5 py-1.5 bg-white/5 hover:bg-white/10 rounded-xl border border-white/10 transition-all">
+                  <Globe size={14} className="text-slate-400 shrink-0" />
                   <select 
                     onChange={(e) => changeLanguage(e.target.value)}
                     value={getStandardLang(i18n.language)}
-                    className="text-xs font-black bg-transparent border-none focus:ring-0 cursor-pointer uppercase text-neutral-800 pr-1 outline-none"
+                    className="text-xs font-black bg-transparent border-none focus:ring-0 cursor-pointer uppercase text-slate-200 pr-1 outline-none"
                     title="Bytt språk"
                   >
                     <option value="no">NO</option>
@@ -539,7 +539,7 @@ function AppContent() {
                 {user ? (
                   <button 
                     onClick={handleGoToDashboard}
-                    className="bg-emerald-600 hover:bg-emerald-500 text-white px-4 py-2 rounded-xl text-xs font-bold transition-all shadow-md active:scale-95 flex items-center gap-1.5 cursor-pointer"
+                    className="bg-emerald-600 hover:bg-white/50 text-white px-4 py-2 rounded-xl text-xs font-bold transition-all shadow-md active:scale-95 flex items-center gap-1.5 cursor-pointer"
                   >
                     <LayoutDashboard size={14} />
                     <span>Gå til Dashboard</span>
@@ -548,13 +548,13 @@ function AppContent() {
                   <div className="flex items-center gap-2">
                     <button 
                       onClick={() => setView('login')}
-                      className="text-neutral-700 hover:text-neutral-950 px-3.5 py-2 rounded-xl text-xs font-bold hover:bg-neutral-100 transition-all cursor-pointer"
+                      className="text-slate-300 hover:text-white px-3.5 py-2 rounded-xl text-xs font-mono font-bold hover:bg-white/5 transition-all cursor-pointer"
                     >
                       Logg inn
                     </button>
                     <button 
                       onClick={handleStartDemo}
-                      className="bg-emerald-600 hover:bg-emerald-500 text-white px-4 py-2.5 rounded-xl text-xs font-bold transition-all shadow-md hover:shadow-emerald-600/20 active:scale-95 flex items-center gap-1.5 cursor-pointer"
+                      className="bg-emerald-600 hover:bg-white/50 text-white px-4 py-2.5 rounded-xl text-xs font-bold transition-all shadow-md hover:shadow-emerald-600/20 active:scale-95 flex items-center gap-1.5 cursor-pointer"
                     >
                       <span>Kom i gang på 2 minutter</span>
                       <ArrowRight size={14} />
@@ -568,7 +568,7 @@ function AppContent() {
                 <NetworkStatusBadge />
                 <button 
                   onClick={() => setIsMenuOpen(!isMenuOpen)}
-                  className="p-2 text-neutral-700 hover:text-neutral-950 rounded-xl hover:bg-neutral-100 cursor-pointer"
+                  className="p-2 text-neutral-700 hover:text-neutral-950 rounded-xl hover:bg-white/5 cursor-pointer"
                 >
                   {isMenuOpen ? <X size={22} /> : <Menu size={22} />}
                 </button>
@@ -583,7 +583,7 @@ function AppContent() {
                   className="flex items-center gap-1.5 cursor-pointer group"
                   onClick={() => setView('landing')}
                 >
-                  <Logo size="md" className="text-neutral-900" />
+                  <Logo size="md" className="text-white" />
                 </div>
                 <NetworkStatusBadge />
               </div>
@@ -595,8 +595,8 @@ function AppContent() {
                   className={cn(
                     "px-3.5 py-2 rounded-xl text-xs font-bold transition-all flex items-center gap-1.5 cursor-pointer",
                     view === 'dashboard' 
-                      ? "bg-emerald-50 text-emerald-700 font-black shadow-sm" 
-                      : "text-neutral-600 hover:text-neutral-900 hover:bg-neutral-100/70"
+                      ? "bg-amber-500/20 text-amber-400 font-bold border border-amber-500/30 shadow-sm" 
+                      : "text-slate-300 hover:text-white hover:bg-white/5"
                   )}
                 >
                   <LayoutDashboard size={15} />
@@ -608,8 +608,8 @@ function AppContent() {
                   className={cn(
                     "px-3.5 py-2 rounded-xl text-xs font-bold transition-all flex items-center gap-1.5 cursor-pointer",
                     view === 'mobile' 
-                      ? "bg-emerald-50 text-emerald-700 font-black shadow-sm" 
-                      : "text-neutral-600 hover:text-neutral-900 hover:bg-neutral-100/70"
+                      ? "bg-amber-500/20 text-amber-400 font-bold border border-amber-500/30 shadow-sm" 
+                      : "text-slate-300 hover:text-white hover:bg-white/5"
                   )}
                 >
                   <Smartphone size={15} />
@@ -619,8 +619,8 @@ function AppContent() {
                 <button 
                   onClick={() => setView('spec')}
                   className={cn(
-                    "px-3.5 py-2 rounded-xl text-xs font-bold transition-all text-neutral-600 hover:text-neutral-900 hover:bg-neutral-100/70 cursor-pointer",
-                    view === 'spec' && "bg-neutral-100 text-neutral-900 font-black"
+                    "px-3.5 py-2 rounded-xl text-xs font-bold transition-all text-slate-300 hover:text-white hover:bg-white/5 cursor-pointer",
+                    view === 'spec' && "bg-white/5 text-white font-black"
                   )}
                 >
                   {t('specification', 'Spesifikasjon')}
@@ -646,15 +646,15 @@ function AppContent() {
               <div className="hidden md:flex items-center gap-3">
                 <button 
                   onClick={handleInstallApp}
-                  className="flex items-center gap-1.5 px-3 py-1.5 bg-neutral-100 hover:bg-emerald-50 text-neutral-700 hover:text-emerald-800 rounded-xl text-xs font-bold transition-all border border-neutral-200/80 hover:border-emerald-300 shadow-sm active:scale-95 cursor-pointer"
+                  className="flex items-center gap-1.5 px-3 py-1.5 bg-white/5 hover:bg-white/5 text-neutral-700 hover:text-emerald-800 rounded-xl text-xs font-bold transition-all border border-neutral-200/80 hover:border-emerald-300 shadow-sm active:scale-95 cursor-pointer"
                   title="Installer snarvei på mobil"
                 >
                   <Smartphone size={14} className="text-emerald-600" />
                   <span>Mobil-snarvei</span>
                 </button>
 
-                <div className="flex items-center gap-1 px-2.5 py-1.5 bg-neutral-100/80 hover:bg-neutral-100 rounded-xl border border-neutral-200 transition-all">
-                  <Globe size={14} className="text-neutral-500 shrink-0" />
+                <div className="flex items-center gap-1 px-2.5 py-1.5 bg-white/5/80 hover:bg-white/5 rounded-xl border border-neutral-200 transition-all">
+                  <Globe size={14} className="text-slate-400 shrink-0" />
                   <select 
                     onChange={(e) => changeLanguage(e.target.value)}
                     value={getStandardLang(i18n.language)}
@@ -678,7 +678,7 @@ function AppContent() {
                         "flex items-center gap-2 p-1.5 pr-2.5 rounded-xl border transition-all text-left cursor-pointer",
                         view === 'settings' 
                           ? "bg-emerald-50 border-emerald-200 text-emerald-900" 
-                          : "bg-neutral-50 border-neutral-200/80 hover:bg-neutral-100 text-neutral-800"
+                          : "bg-neutral-50 border-neutral-200/80 hover:bg-white/5 text-neutral-800"
                       )}
                       title="Brukerprofil & Innstillinger"
                     >
@@ -716,7 +716,7 @@ function AppContent() {
                 <NetworkStatusBadge />
                 <button 
                   onClick={() => setIsMenuOpen(!isMenuOpen)}
-                  className="p-2 text-neutral-700 hover:text-neutral-900 rounded-xl hover:bg-neutral-100 cursor-pointer"
+                  className="p-2 text-neutral-700 hover:text-white rounded-xl hover:bg-white/5 cursor-pointer"
                 >
                   {isMenuOpen ? <X size={22} /> : <Menu size={22} />}
                 </button>
@@ -732,7 +732,7 @@ function AppContent() {
               initial={{ opacity: 0, y: -20 }}
               animate={{ opacity: 1, y: 0 }}
               exit={{ opacity: 0, y: -20 }}
-              className="absolute top-16 left-0 right-0 bg-white border-b border-neutral-200 p-4 md:hidden shadow-2xl max-h-[calc(100vh-4rem)] overflow-y-auto custom-scrollbar z-40 pb-20"
+              className="absolute top-16 left-0 right-0 bg-[#0a0c12] border-b border-white/10 p-4 md:hidden shadow-2xl max-h-[calc(100vh-4rem)] overflow-y-auto custom-scrollbar z-40 pb-20"
             >
               {(!user || ['landing', 'pricing', 'about', 'contact', 'privacy', 'terms'].includes(view)) ? (
                 /* Public Mobile Menu */
@@ -771,7 +771,7 @@ function AppContent() {
                     <div className="space-y-1">
                       <button 
                         onClick={() => { setLandingTab('ai'); setView('landing'); setIsMenuOpen(false); }}
-                        className="w-full text-left p-3 rounded-xl hover:bg-emerald-50 text-xs font-bold text-neutral-800 flex items-center gap-3 cursor-pointer"
+                        className="w-full text-left p-3 rounded-xl hover:bg-white/5 text-xs font-bold text-neutral-800 flex items-center gap-3 cursor-pointer"
                       >
                         <div className="w-7 h-7 rounded-lg bg-emerald-100 text-emerald-700 flex items-center justify-center shrink-0">
                           <Sparkles size={15} />
@@ -780,7 +780,7 @@ function AppContent() {
                       </button>
                       <button 
                         onClick={() => { setLandingTab('hms'); setView('landing'); setIsMenuOpen(false); }}
-                        className="w-full text-left p-3 rounded-xl hover:bg-blue-50 text-xs font-bold text-neutral-800 flex items-center gap-3 cursor-pointer"
+                        className="w-full text-left p-3 rounded-xl hover:bg-white/5 text-xs font-bold text-neutral-800 flex items-center gap-3 cursor-pointer"
                       >
                         <div className="w-7 h-7 rounded-lg bg-blue-100 text-blue-700 flex items-center justify-center shrink-0">
                           <ShieldCheck size={15} />
@@ -789,7 +789,7 @@ function AppContent() {
                       </button>
                       <button 
                         onClick={() => { setLandingTab('fdv'); setView('landing'); setIsMenuOpen(false); }}
-                        className="w-full text-left p-3 rounded-xl hover:bg-teal-50 text-xs font-bold text-neutral-800 flex items-center gap-3 cursor-pointer"
+                        className="w-full text-left p-3 rounded-xl hover:bg-white/5 text-xs font-bold text-neutral-800 flex items-center gap-3 cursor-pointer"
                       >
                         <div className="w-7 h-7 rounded-lg bg-teal-100 text-teal-700 flex items-center justify-center shrink-0">
                           <FileCheck size={15} />
@@ -807,26 +807,26 @@ function AppContent() {
                     <div className="grid grid-cols-2 gap-2">
                       <button 
                         onClick={() => { setView('pricing'); setIsMenuOpen(false); }}
-                        className="text-left p-2.5 rounded-xl bg-neutral-50 text-xs font-bold text-neutral-700 hover:bg-neutral-100 cursor-pointer"
+                        className="text-left p-2.5 rounded-xl bg-neutral-50 text-xs font-bold text-neutral-700 hover:bg-white/5 cursor-pointer"
                       >
                         Priser
                       </button>
                       <button 
                         onClick={() => { setIsPortalModalOpen(true); setIsMenuOpen(false); }}
-                        className="text-left p-2.5 rounded-xl bg-neutral-50 text-xs font-bold text-neutral-700 hover:bg-neutral-100 cursor-pointer flex items-center gap-1.5"
+                        className="text-left p-2.5 rounded-xl bg-neutral-50 text-xs font-bold text-neutral-700 hover:bg-white/5 cursor-pointer flex items-center gap-1.5"
                       >
                         <Users size={13} className="text-emerald-600" />
                         <span>Kundeportal</span>
                       </button>
                       <button 
                         onClick={() => { setView('about'); setIsMenuOpen(false); }}
-                        className="text-left p-2.5 rounded-xl bg-neutral-50 text-xs font-bold text-neutral-700 hover:bg-neutral-100 cursor-pointer"
+                        className="text-left p-2.5 rounded-xl bg-neutral-50 text-xs font-bold text-neutral-700 hover:bg-white/5 cursor-pointer"
                       >
                         Om oss
                       </button>
                       <button 
                         onClick={() => { setView('contact'); setIsMenuOpen(false); }}
-                        className="text-left p-2.5 rounded-xl bg-neutral-50 text-xs font-bold text-neutral-700 hover:bg-neutral-100 cursor-pointer"
+                        className="text-left p-2.5 rounded-xl bg-neutral-50 text-xs font-bold text-neutral-700 hover:bg-white/5 cursor-pointer"
                       >
                         Kontakt
                       </button>
@@ -834,7 +834,7 @@ function AppContent() {
 
                     <button 
                       onClick={() => { handleInstallApp(); setIsMenuOpen(false); }} 
-                      className="w-full mt-3 flex items-center justify-center gap-2 py-2.5 px-3 bg-neutral-100 text-neutral-800 rounded-xl text-xs font-bold border border-neutral-200/80 hover:bg-neutral-200 transition-all cursor-pointer"
+                      className="w-full mt-3 flex items-center justify-center gap-2 py-2.5 px-3 bg-white/5 text-neutral-800 rounded-xl text-xs font-bold border border-neutral-200/80 hover:bg-neutral-200 transition-all cursor-pointer"
                     >
                       <Smartphone size={15} className="text-emerald-600" />
                       <span>Legg til snarvei på mobil (PWA)</span>
@@ -880,8 +880,8 @@ function AppContent() {
                         </div>
                       )}
                       <div className="min-w-0">
-                        <p className="text-sm font-bold text-neutral-900 truncate">{user.displayName || 'Mester Bruker'}</p>
-                        <p className="text-xs text-neutral-500 truncate">{user.email}</p>
+                        <p className="text-sm font-bold text-white truncate">{user.displayName || 'Mester Bruker'}</p>
+                        <p className="text-xs text-slate-400 truncate">{user.email}</p>
                       </div>
                     </div>
                     <div className="flex items-center gap-1 shrink-0">
@@ -890,7 +890,7 @@ function AppContent() {
                         aria-label="Innstillinger"
                         className={cn(
                           "p-2 rounded-xl transition-colors cursor-pointer",
-                          view === 'settings' ? "bg-emerald-100 text-emerald-700" : "text-neutral-500 hover:bg-neutral-200"
+                          view === 'settings' ? "bg-emerald-100 text-emerald-700" : "text-slate-400 hover:bg-neutral-200"
                         )}
                       >
                         <Settings size={18} />
@@ -936,7 +936,7 @@ function AppContent() {
                         >
                           <span className={cn(
                             "p-1.5 rounded-lg shrink-0",
-                            view === 'dashboard' && dashboardTab === m.tab ? "bg-emerald-600 text-white" : "bg-neutral-100 text-neutral-600"
+                            view === 'dashboard' && dashboardTab === m.tab ? "bg-emerald-600 text-white" : "bg-white/5 text-neutral-600"
                           )}>
                             {m.icon}
                           </span>
@@ -957,7 +957,7 @@ function AppContent() {
                           handleMobileAction('vehicle');
                           setIsMenuOpen(false);
                         }}
-                        className="flex items-center gap-2.5 p-3 rounded-xl text-left text-xs font-bold bg-neutral-50 border border-neutral-200/80 text-neutral-800 hover:bg-neutral-100 transition-all cursor-pointer"
+                        className="flex items-center gap-2.5 p-3 rounded-xl text-left text-xs font-bold bg-neutral-50 border border-neutral-200/80 text-neutral-800 hover:bg-white/5 transition-all cursor-pointer"
                       >
                         <span className="p-1.5 rounded-lg bg-neutral-900 text-white shrink-0">
                           <Car size={16} />
@@ -970,7 +970,7 @@ function AppContent() {
                           handleMobileAction('inventory');
                           setIsMenuOpen(false);
                         }}
-                        className="flex items-center gap-2.5 p-3 rounded-xl text-left text-xs font-bold bg-neutral-50 border border-neutral-200/80 text-neutral-800 hover:bg-neutral-100 transition-all cursor-pointer"
+                        className="flex items-center gap-2.5 p-3 rounded-xl text-left text-xs font-bold bg-neutral-50 border border-neutral-200/80 text-neutral-800 hover:bg-white/5 transition-all cursor-pointer"
                       >
                         <span className="p-1.5 rounded-lg bg-blue-600 text-white shrink-0">
                           <Package size={16} />
@@ -983,7 +983,7 @@ function AppContent() {
                           handleMobileAction('time_registration');
                           setIsMenuOpen(false);
                         }}
-                        className="flex items-center gap-2.5 p-3 rounded-xl text-left text-xs font-bold bg-neutral-50 border border-neutral-200/80 text-neutral-800 hover:bg-neutral-100 transition-all cursor-pointer"
+                        className="flex items-center gap-2.5 p-3 rounded-xl text-left text-xs font-bold bg-neutral-50 border border-neutral-200/80 text-neutral-800 hover:bg-white/5 transition-all cursor-pointer"
                       >
                         <span className="p-1.5 rounded-lg bg-emerald-600 text-white shrink-0">
                           <Clock size={16} />
@@ -996,7 +996,7 @@ function AppContent() {
                           handleMobileAction('take_photo');
                           setIsMenuOpen(false);
                         }}
-                        className="flex items-center gap-2.5 p-3 rounded-xl text-left text-xs font-bold bg-neutral-50 border border-neutral-200/80 text-neutral-800 hover:bg-neutral-100 transition-all cursor-pointer"
+                        className="flex items-center gap-2.5 p-3 rounded-xl text-left text-xs font-bold bg-neutral-50 border border-neutral-200/80 text-neutral-800 hover:bg-white/5 transition-all cursor-pointer"
                       >
                         <span className="p-1.5 rounded-lg bg-rose-500 text-white shrink-0">
                           <Camera size={16} />
@@ -1038,7 +1038,7 @@ function AppContent() {
 
                     <button 
                       onClick={() => { handleInstallApp(); setIsMenuOpen(false); }} 
-                      className="w-full flex items-center justify-center gap-2 py-3 px-3 bg-emerald-600 text-white rounded-xl text-xs font-bold shadow-md hover:bg-emerald-500 transition-all cursor-pointer"
+                      className="w-full flex items-center justify-center gap-2 py-3 px-3 bg-emerald-600 text-white rounded-xl text-xs font-bold shadow-md hover:bg-white/50 transition-all cursor-pointer"
                     >
                       <Smartphone size={16} />
                       <span>Installer som app på mobilen</span>
@@ -1113,13 +1113,13 @@ function AppContent() {
                   <div className="w-16 h-16 bg-red-100 text-red-600 rounded-2xl flex items-center justify-center mx-auto mb-4">
                     <Shield size={32} />
                   </div>
-                  <h2 className="text-xl font-bold text-neutral-900 mb-2">Ingen tilgang til Admin</h2>
-                  <p className="text-neutral-500 text-sm mb-6">
+                  <h2 className="text-xl font-bold text-white mb-2">Ingen tilgang til Admin</h2>
+                  <p className="text-slate-400 text-sm mb-6">
                     Denne modulen krever administrator-rettigheter. Vennligst logg inn med en admin-konto.
                   </p>
                   <button 
                     onClick={() => logout().then(() => setView('dashboard'))} 
-                    className="w-full bg-emerald-600 text-white py-3 rounded-xl font-bold text-sm hover:bg-emerald-500 transition-all shadow-md"
+                    className="w-full bg-emerald-600 text-white py-3 rounded-xl font-bold text-sm hover:bg-white/50 transition-all shadow-md"
                   >
                     Logg inn som Admin
                   </button>
@@ -1229,7 +1229,7 @@ function AppContent() {
           >
             <button
               onClick={() => setIsPortalModalOpen(false)}
-              className="absolute top-5 right-5 w-8 h-8 rounded-full bg-neutral-100 hover:bg-neutral-200 text-neutral-500 flex items-center justify-center transition-colors cursor-pointer text-sm"
+              className="absolute top-5 right-5 w-8 h-8 rounded-full bg-white/5 hover:bg-neutral-200 text-slate-400 flex items-center justify-center transition-colors cursor-pointer text-sm"
               aria-label="Lukk"
             >
               ✕
@@ -1237,8 +1237,8 @@ function AppContent() {
             <div className="w-12 h-12 rounded-2xl bg-emerald-100 text-emerald-700 flex items-center justify-center mb-4">
               <Users size={24} />
             </div>
-            <h3 className="text-xl font-bold text-neutral-900 mb-2">Kundeportal for byggherre</h3>
-            <p className="text-neutral-500 text-xs md:text-sm mb-6 leading-relaxed">
+            <h3 className="text-xl font-bold text-white mb-2">Kundeportal for byggherre</h3>
+            <p className="text-slate-400 text-xs md:text-sm mb-6 leading-relaxed">
               Er du oppdragsgiver eller byggherre? Tast inn din prosjektkode eller prosjekt-ID for direkte innsyn i fremdrift, KS-dokumentasjon, bilder og FDV-arkiv.
             </p>
             <form onSubmit={(e) => {
@@ -1257,7 +1257,7 @@ function AppContent() {
                   value={portalModalCode}
                   onChange={(e) => setPortalModalCode(e.target.value)}
                   placeholder="f.eks. P-2025-01 eller portal-token"
-                  className="w-full px-4 py-3 bg-neutral-50 border border-neutral-200 rounded-xl text-neutral-900 font-medium text-sm focus:outline-none focus:ring-2 focus:ring-emerald-500 focus:bg-white transition-all"
+                  className="w-full px-4 py-3 bg-neutral-50 border border-neutral-200 rounded-xl text-white font-medium text-sm focus:outline-none focus:ring-2 focus:ring-emerald-500 focus:bg-white transition-all"
                   autoFocus
                 />
               </div>
@@ -1265,14 +1265,14 @@ function AppContent() {
                 <button
                   type="button"
                   onClick={() => setIsPortalModalOpen(false)}
-                  className="flex-1 py-3 bg-neutral-100 hover:bg-neutral-200 text-neutral-700 text-xs font-bold rounded-xl transition-all cursor-pointer"
+                  className="flex-1 py-3 bg-white/5 hover:bg-neutral-200 text-neutral-700 text-xs font-bold rounded-xl transition-all cursor-pointer"
                 >
                   Avbryt
                 </button>
                 <button
                   type="submit"
                   disabled={!portalModalCode.trim()}
-                  className="flex-1 py-3 bg-emerald-600 hover:bg-emerald-500 disabled:opacity-50 text-white text-xs font-bold rounded-xl shadow-lg shadow-emerald-600/20 transition-all cursor-pointer"
+                  className="flex-1 py-3 bg-emerald-600 hover:bg-white/50 disabled:opacity-50 text-white text-xs font-bold rounded-xl shadow-lg shadow-emerald-600/20 transition-all cursor-pointer"
                 >
                   Åpne portal
                 </button>

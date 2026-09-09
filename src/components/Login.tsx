@@ -1,7 +1,7 @@
 import React, { useState } from 'react';
 import { motion, AnimatePresence } from 'motion/react';
 import Logo from './Logo';
-import { ShieldCheck, LogIn, ArrowLeft, Mail, Lock, User, Building, ArrowRight, Loader2, CheckSquare, Square } from 'lucide-react';
+import { ShieldCheck, LogIn, ArrowLeft, Mail, Lock, User, Building, ArrowRight, Loader2, CheckSquare, Square, Terminal } from 'lucide-react';
 import { useAuth } from '../hooks/useAuth';
 import { useTranslation } from 'react-i18next';
 
@@ -54,13 +54,7 @@ export default function Login({ onBack }: { onBack?: () => void }) {
   };
 
   return (
-    <div className="min-h-screen bg-neutral-50 flex items-center justify-center p-4 relative overflow-hidden">
-      {/* Background decoration */}
-      <div className="absolute top-0 left-0 w-full h-full overflow-hidden -z-10">
-        <div className="absolute top-[-10%] left-[-10%] w-[40%] h-[40%] bg-emerald-100/50 rounded-full blur-3xl" />
-        <div className="absolute bottom-[-10%] right-[-10%] w-[40%] h-[40%] bg-blue-100/50 rounded-full blur-3xl" />
-      </div>
-
+    <div className="min-h-screen bg-[#08090d] bg-tactical-grid bg-radial-amber flex items-center justify-center p-4 relative overflow-hidden text-slate-100 font-mono">
       {(onBack || mode !== 'login') && (
         <button 
           onClick={() => {
@@ -72,30 +66,39 @@ export default function Login({ onBack }: { onBack?: () => void }) {
               onBack();
             }
           }}
-          className="absolute top-8 left-8 flex items-center gap-2 text-neutral-500 hover:text-neutral-900 transition-colors font-medium z-10"
+          className="absolute top-6 left-6 flex items-center gap-2 text-slate-400 hover:text-amber-400 transition-colors text-xs uppercase tracking-wider font-bold z-10 cursor-pointer"
         >
-          <ArrowLeft size={20} />
-          {t('back', 'Tilbake')}
+          <ArrowLeft size={16} />
+          {t('back', 'Tilbake til forsiden')}
         </button>
       )}
       
       <motion.div 
-        initial={{ opacity: 0, y: 20 }}
+        initial={{ opacity: 0, y: 15 }}
         animate={{ opacity: 1, y: 0 }}
-        className="max-w-md w-full bg-white rounded-[2.5rem] shadow-2xl shadow-amber-500/10 border border-neutral-100 p-8 lg:p-12"
+        className="max-w-md w-full bg-[#0d1017]/95 border border-amber-500/30 rounded-2xl shadow-2xl p-6 sm:p-10 relative overflow-hidden backdrop-blur-xl"
       >
-        <div className="flex flex-col items-center mb-8">
-          <Logo size="xl" className="mb-2 text-neutral-900" />
-          <p className="text-neutral-500 text-sm text-center">
+        {/* Terminal Header Bar */}
+        <div className="flex items-center justify-between pb-4 mb-6 border-b border-white/10 text-[10px] text-slate-500">
+          <div className="flex items-center gap-1.5">
+            <span className="w-2 h-2 rounded-full bg-emerald-400 animate-pulse" />
+            <span className="text-slate-300 font-bold uppercase tracking-widest">VIKINGMESTER ADGANGS-TERMINAL</span>
+          </div>
+          <span className="text-amber-400">AES-256</span>
+        </div>
+
+        <div className="flex flex-col items-center mb-6">
+          <Logo size="lg" className="mb-3" />
+          <p className="text-slate-400 text-xs text-center font-sans">
             {mode === 'login' 
-              ? t('login_desc', 'Velkommen tilbake. Logg inn med din bedriftskonto.') 
+              ? 'Logg inn med din autoriserte bedriftskonto.' 
               : mode === 'register'
-              ? t('register_desc', 'Opprett bedriftskonto med standard bedriftsfaktura.')
-              : t('forgot_desc', 'Skriv inn din e-postadresse for å tilbakestille passordet.')}
+              ? 'Opprett bedriftskonto med månedlig bedriftsfaktura.'
+              : 'Oppgi din e-postadresse for å motta tilbakestillingslenke.'}
           </p>
         </div>
 
-        <form onSubmit={handleSubmit} className="space-y-4">
+        <form onSubmit={handleSubmit} className="space-y-4 text-xs">
           <AnimatePresence mode="wait">
             {mode === 'register' && (
               <motion.div
@@ -106,25 +109,25 @@ export default function Login({ onBack }: { onBack?: () => void }) {
                 className="space-y-4 overflow-hidden"
               >
                 <div className="relative">
-                  <User className="absolute left-4 top-1/2 -translate-y-1/2 text-neutral-400" size={18} />
+                  <User className="absolute left-3.5 top-1/2 -translate-y-1/2 text-slate-500" size={16} />
                   <input
                     type="text"
-                    placeholder={t('full_name', 'Fullt navn (daglig leder/kontaktperson)')}
+                    placeholder="Fullt navn (daglig leder/kontaktperson)"
                     value={name}
                     onChange={(e) => setName(e.target.value)}
                     required
-                    className="w-full pl-12 pr-4 py-3.5 bg-neutral-50 border border-neutral-200 rounded-2xl focus:ring-2 focus:ring-amber-500 focus:border-transparent outline-none transition-all text-sm"
+                    className="w-full pl-10 pr-4 py-3 bg-black/60 border border-white/10 rounded-xl text-white focus:border-amber-500 outline-none transition-all"
                   />
                 </div>
                 <div className="relative">
-                  <Building className="absolute left-4 top-1/2 -translate-y-1/2 text-neutral-400" size={18} />
+                  <Building className="absolute left-3.5 top-1/2 -translate-y-1/2 text-slate-500" size={16} />
                   <input
                     type="text"
-                    placeholder={t('company_name', 'Bedriftsnavn (Foretak)')}
+                    placeholder="Bedriftsnavn (Foretak)"
                     value={company}
                     onChange={(e) => setCompany(e.target.value)}
                     required
-                    className="w-full pl-12 pr-4 py-3.5 bg-neutral-50 border border-neutral-200 rounded-2xl focus:ring-2 focus:ring-amber-500 focus:border-transparent outline-none transition-all text-sm"
+                    className="w-full pl-10 pr-4 py-3 bg-black/60 border border-white/10 rounded-xl text-white focus:border-amber-500 outline-none transition-all"
                   />
                 </div>
               </motion.div>
@@ -132,108 +135,112 @@ export default function Login({ onBack }: { onBack?: () => void }) {
           </AnimatePresence>
 
           <div className="relative">
-            <Mail className="absolute left-4 top-1/2 -translate-y-1/2 text-neutral-400" size={18} />
+            <Mail className="absolute left-3.5 top-1/2 -translate-y-1/2 text-slate-500" size={16} />
             <input
               type="email"
-              placeholder={t('email_or_username', 'E-postadresse')}
+              placeholder="E-postadresse (jobbadresse)"
               value={email}
               onChange={(e) => setEmail(e.target.value)}
               required
-              className="w-full pl-12 pr-4 py-3.5 bg-neutral-50 border border-neutral-200 rounded-2xl focus:ring-2 focus:ring-amber-500 focus:border-transparent outline-none transition-all text-sm"
+              className="w-full pl-10 pr-4 py-3 bg-black/60 border border-white/10 rounded-xl text-white focus:border-amber-500 outline-none transition-all"
             />
           </div>
 
           {mode !== 'forgot' && (
             <div className="relative">
-              <Lock className="absolute left-4 top-1/2 -translate-y-1/2 text-neutral-400" size={18} />
+              <Lock className="absolute left-3.5 top-1/2 -translate-y-1/2 text-slate-500" size={16} />
               <input
                 type="password"
-                placeholder={mode === 'register' ? 'Passord (minst 8 tegn)' : t('password', 'Passord')}
+                placeholder={mode === 'register' ? 'Passord (minst 8 tegn)' : 'Passord'}
                 value={password}
                 onChange={(e) => setPassword(e.target.value)}
                 required
                 minLength={mode === 'register' ? 8 : 1}
-                className="w-full pl-12 pr-4 py-3.5 bg-neutral-50 border border-neutral-200 rounded-2xl focus:ring-2 focus:ring-amber-500 focus:border-transparent outline-none transition-all text-sm"
+                className="w-full pl-10 pr-4 py-3 bg-black/60 border border-white/10 rounded-xl text-white focus:border-amber-500 outline-none transition-all"
               />
             </div>
           )}
 
           {mode === 'register' && (
-            <div className="bg-neutral-50 p-4 rounded-2xl border border-neutral-200">
-              <label className="flex items-start gap-3 cursor-pointer select-none text-xs text-neutral-600 leading-relaxed">
+            <div className="bg-black/40 p-3.5 rounded-xl border border-white/5">
+              <label className="flex items-start gap-2.5 cursor-pointer select-none text-[11px] text-slate-400 leading-relaxed font-sans">
                 <input
                   type="checkbox"
                   checked={gdprConsent}
                   onChange={(e) => setGdprConsent(e.target.checked)}
                   required
-                  className="mt-0.5 rounded border-neutral-300 text-amber-500 focus:ring-amber-500"
+                  className="mt-0.5 accent-amber-500"
                 />
                 <span>
-                  Jeg bekrefter at jeg godtar VikingMester sine vilkår, databehandleravtale (DPA) og personvernerklæring i samsvar med GDPR og norsk lovgivning.
+                  Jeg godtar VikingMester sine forretningsvilkår, databehandleravtale (DPA) og personvernerklæring.
                 </span>
               </label>
             </div>
           )}
 
           {mode === 'login' && (
-            <div className="flex justify-end items-center px-2">
+            <div className="flex justify-end items-center px-1">
               <button 
                 type="button"
                 onClick={() => setMode('forgot')}
-                className="text-xs text-amber-500 font-bold hover:underline"
+                className="text-[11px] text-amber-400 hover:underline cursor-pointer"
               >
-                {t('forgot_password', 'Glemt passord?')}
+                Glemt passord?
               </button>
             </div>
           )}
 
           {error && (
-            <p className="text-red-500 text-xs font-medium px-2">{error}</p>
+            <div className="p-2.5 rounded bg-red-950/40 border border-red-500/40 text-red-300 text-xs">
+              {error}
+            </div>
           )}
 
           {success && (
-            <p className="text-amber-500 text-xs font-medium px-2">{success}</p>
+            <div className="p-2.5 rounded bg-amber-950/40 border border-amber-500/40 text-amber-300 text-xs">
+              {success}
+            </div>
           )}
 
           <button
             type="submit"
             disabled={isSubmitting}
-            className="w-full bg-amber-500 text-white py-4 rounded-2xl font-bold flex items-center justify-center gap-3 hover:bg-amber-400 transition-all active:scale-[0.98] disabled:opacity-50 shadow-lg shadow-amber-500/20 text-sm"
+            className="w-full py-3.5 rounded-xl bg-gradient-to-r from-amber-500 to-orange-500 hover:from-amber-400 hover:to-orange-400 text-black font-black uppercase tracking-wider text-xs shadow-lg shadow-amber-500/20 transition-all flex items-center justify-center gap-2 cursor-pointer disabled:opacity-50"
           >
             {isSubmitting ? (
-              <Loader2 className="animate-spin" size={20} />
+              <Loader2 className="animate-spin" size={18} />
             ) : (
               <>
-                {mode === 'login' ? t('login', 'Logg inn') : mode === 'register' ? t('start_trial', 'Opprett bedriftskonto') : t('reset_password', 'Tilbakestill passord')}
-                <ArrowRight size={18} />
+                <span>{mode === 'login' ? 'Logg inn på Dashboard' : mode === 'register' ? 'Opprett Bedriftskonto' : 'Send Tilbakestilling'}</span>
+                <ArrowRight size={14} />
               </>
             )}
           </button>
         </form>
 
-        <p className="mt-8 text-center text-sm text-neutral-500">
+        <div className="mt-6 pt-4 border-t border-white/10 text-center text-xs text-slate-400">
           {mode === 'login' ? (
             <>
-              {t('no_account', 'Har du ikke konto?')} {' '}
+              Har du ikke konto ennå?{' '}
               <button 
                 onClick={() => setMode('register')}
-                className="text-amber-500 font-bold hover:underline"
+                className="text-amber-400 font-bold hover:underline cursor-pointer"
               >
-                {t('register_now', 'Registrer bedrift')}
+                Registrer bedrift her
               </button>
             </>
           ) : (
             <>
-              {t('already_have_account', 'Har du allerede en konto?')} {' '}
+              Har du allerede en konto?{' '}
               <button 
                 onClick={() => setMode('login')}
-                className="text-amber-500 font-bold hover:underline"
+                className="text-amber-400 font-bold hover:underline cursor-pointer"
               >
-                {t('login', 'Logg inn')}
+                Logg inn her
               </button>
             </>
           )}
-        </p>
+        </div>
       </motion.div>
     </div>
   );
