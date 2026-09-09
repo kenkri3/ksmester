@@ -36,13 +36,17 @@ Prosjekter: ${activeProjects.map((p: any) => p.name).slice(0, 5).join(', ')}.
     if (geminiKey) {
       try {
         const ai = new GoogleGenAI({ apiKey: geminiKey });
-        const aiResponse = await ai.models.generateContent({
-          model: 'gemini-3.8-flash',
-          contents: prompt,
-          config: {
-            systemInstruction: 'Du er KS MesterAI. Skriv en presis og oppmuntrende morgen-brief til byggeledelsen på profesjonelt norsk.'
-          }
-        });
+        const candidateModels = ['gemini-3.8-flash', 'gemini-2.5-flash', 'gemini-2.0-flash', 'gemini-1.5-flash'];
+      let aiResponse: any = null;
+      for (const m of candidateModels) {
+        try {
+          aiResponse = await ai.models.generateContent({
+            model: m,
+            contents: `Oppsummer denne daglige KS/HMS-revisjonen for ledelsen på 2-3 setninger:\n${JSON.stringify(metrics)}`,
+          });
+          if (aiResponse && aiResponse.text) break;
+        } catch (e) {}
+      }
         if (aiResponse.text) {
           aiSummaryText = aiResponse.text.trim();
           aiSource = 'gemini-3.8-flash';
