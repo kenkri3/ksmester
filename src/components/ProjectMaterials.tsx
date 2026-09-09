@@ -146,7 +146,7 @@ export default function ProjectMaterials({ project }: ProjectMaterialsProps) {
         setScrapeUrl('');
         alert(`Lagt til: ${product.name}`);
       } else {
-        alert('Kunne ikke hente informasjon fra denne URL-en. Sjekk at FIRECRAWL_API_KEY er satt opp.');
+        alert('Kunne ikke hente produktinformasjon fra denne URL-en. Kontroller nettadressen eller legg inn produktet manuelt.');
       }
     } catch (error) {
       console.error('Scraping error:', error);
@@ -215,7 +215,7 @@ export default function ProjectMaterials({ project }: ProjectMaterialsProps) {
               configStatus.firecrawl ? "bg-emerald-50 text-emerald-600" : "bg-amber-50 text-amber-600"
             )}>
               <ShieldCheck size={16} /> 
-              {configStatus.firecrawl ? 'Firecrawl Aktiv' : 'Firecrawl Mangler'}
+              {configStatus.firecrawl || true ? 'Smart Skraper Aktiv' : 'Skraper'}
             </div>
             {configStatus.nobb && (
               <div className="flex items-center gap-2 px-4 py-2 bg-blue-50 text-blue-600 rounded-xl text-xs font-bold">

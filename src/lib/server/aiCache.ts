@@ -14,7 +14,7 @@ const CACHE_TTL_MS = 24 * 60 * 60 * 1000; // 24 hours
 
 let totalTokenSavings = 0;
 
-export function hashAiRequest(prompt: string, systemInstruction?: string, model: string = 'deepseek-chat'): string {
+export function hashAiRequest(prompt: string, systemInstruction?: string, model: string = 'gemini-3.8-flash'): string {
   const content = `${model}:::${systemInstruction || ''}:::${prompt.trim().toLowerCase()}`;
   return createHash('sha256').update(content).digest('hex');
 }

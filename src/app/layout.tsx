@@ -7,7 +7,7 @@ export const metadata: Metadata = {
   title: 'KS MesterAI Elite - Det mest avanserte økosystemet for norske håndverksbedrifter',
   description: 'Autonom HMS/KS, AI-drevet SJA og usynlig dokumentasjon. Systemet som tenker mens du bygger.',
   manifest: '/manifest.json',
-  metadataBase: new URL(process.env.APP_URL || 'https://ksmester.no'),
+  metadataBase: new URL(process.env.APP_URL || 'https://kamerater.no'),
   alternates: {
     canonical: '/',
   },

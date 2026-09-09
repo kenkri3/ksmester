@@ -1,55 +1,37 @@
-# Deployveiledning: KS Mester AI Elite (Next.js) på Railway / Render / Vercel
+# Deployveiledning: KS Mester / Kamerater.no (Next.js) på Railway
 
-Denne guiden forklarer steg-for-steg hvordan du deployer **KS Mester AI Elite** bygget med **Next.js (App Router)** til **Railway** (eller Vercel/Render) med sky-PostgreSQL.
-
----
-
-## 🚀 Steg 1: Push koden til GitHub
-
-```bash
-git add .
-git commit -m "Migrert til Next.js 15 App Router med fullstack API-ruter"
-git push origin main
-```
+Denne guiden forklarer oppsett og drift av **KS Mester / Kamerater.no** på **Railway** med PostgreSQL, Gemini 3.8 Flash og bakgrunnsautomatiseringer.
 
 ---
 
-## 🛤️ Steg 2: Opprett nytt prosjekt på Railway
-
-1. Gå til [Railway Dashboard](https://railway.com/dashboard).
-2. Klikk på **"New Project"**.
-3. Velg **"Deploy from GitHub repo"** og velg `ksmester` repositoryet.
-4. Klikk **"Deploy Now"**. Railway gjenkjenner automatisk Next.js og bygger prosjektet med `npm run build` og starter med `npm start`.
-
----
-
-## 🗄️ Steg 3: Legg til PostgreSQL Database på Railway
-
-1. I Railway-prosjektet, klikk **"+ New"** ➔ **"Database"** ➔ **"Add PostgreSQL"**.
-2. Railway oppretter automatisk PostgreSQL og kobler `DATABASE_URL` direkte til web-tjenesten din.
+## 🚀 1. Hovedtjeneste (Web / Next.js)
+1. **Repository:** `kenkri3/ksmester` (branch `main`).
+2. **Start Command:** `npm start`
+3. **Healthcheck:** `/api/health`
+4. **Viktig om Cron Schedule på Web:**  
+   Sett **IKKE** en Cron Schedule på selve web-tjenesten i Railway! En web-tjeneste må kjøre 24/7. Web-applikasjonen har en **innebygd bakgrunnsscheduler** (`src/instrumentation.ts` og `src/lib/server/cronScheduler.ts`) som automatisk kjører daglig status og Byggedagbok hver morgen kl. 06:00 (norsk tid, Europe/Oslo).
 
 ---
 
-## 🔑 Steg 4: Konfigurer Miljøvariabler (Environment Variables)
+## 🤖 2. AI & Modelloppsett (Gemini 3.8 Flash)
+Applikasjonen er oppgradert til Googles nyeste modell: **Gemini 3.8 Flash** (`gemini-3.8-flash`).
 
-I Railway under **"Variables"**:
-
-| Variabelnavn | Eksempelverdi / Forklaring |
+| Variabel | Verdi / Beskrivelse |
 | :--- | :--- |
-| `NODE_ENV` | `production` |
-| `PORT` | `3000` |
-| `DATABASE_URL` | `${{Postgres.DATABASE_URL}}` |
-| `JWT_SECRET` | Generer en sikker nøkkel (min 32 tegn) |
-| `ADMIN_EMAIL` | `kenkri3@gmail.com` |
-| `ADMIN_PASSWORD` | `Admin2026!SecurePassword` |
-| `DEEP_SEEK_API` | Din DeepSeek API-nøkkel (fra platform.deepseek.com) |
-| `CRON_SECRET` | Valgfri nøkkel for GitHub Actions daglig bakgrunnsrevisjon |
-| `RESEND_API_KEY` | *(Valgfritt)* For sending av ekte e-poster via Resend |
-| `NOBB_API_KEY` | *(Valgfritt)* For byggevareoppslag |
-| `FIRECRAWL_API_KEY` | *(Valgfritt)* For nettskraping |
+| `GEMINI_API_KEY` | Google Gemini API-nøkkel (bruker `gemini-3.8-flash` for lynrask generering og multimodal bildeanalyse) |
+| `DEEP_SEEK_API` | *(Valgfri fallback)* Dersom Gemini-nøkkel ikke er satt, faller systemet automatisk tilbake på DeepSeek |
 
 ---
 
-## 🌐 Steg 5: Generer Domene
+## 🕸️ 3. Nettskraping & FDV (100 % Direkte, Firecrawl deaktivert)
+* **Firecrawl er slått helt av:** Det kreves **ingen** `FIRECRAWL_API_KEY` og det påløper **0 kr** i tredjepartskreditter.
+* **Direkte native skraping:** Systemet henter produktsider direkte og ekstraherer produktdata, GTIN, NOBB og FDV via Schema.org JSON-LD og Gemini 3.8 Flash.
 
-Under **Settings** ➔ **Networking** ➔ **Generate Domain**, får du din live URL (f.eks. `https://ks-mester-ai.up.railway.app`).
+---
+
+## ⏰ 4. Valgfri dedikert Railway Cron Worker
+Dersom du ønsker en separat dedikert cron-arbeider i Railway i stedet for/i tillegg til den interne scheduleren:
+1. Klikk **"+ New"** -> **"Service"** i samme Railway-prosjekt.
+2. Velg samme repo (`ksmester`).
+3. Sett **Start Command:** `npm run cron`
+4. Sett **Cron Schedule:** `0 5 * * *` (kjører kl. 05:00 UTC / 06:00-07:00 norsk tid og avslutter prosessen pent).

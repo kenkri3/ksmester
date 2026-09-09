@@ -3,11 +3,8 @@
 import { hashAiRequest, getCachedAiResponse, setCachedAiResponse } from '@/src/lib/server/aiCache';
 import { tryResolveDeterministicSja } from '@/src/lib/server/ruleEngine';
 import { getCollectionItems } from '@/src/lib/server/db';
+import { GoogleGenAI } from '@google/genai';
 
-/**
- * Server Action for SJA generation with deterministic rule check and cache
- * Saves tokens by avoiding DeepSeek API calls whenever possible.
- */
 export async function generateSJAAction(taskDescription: string, weatherContext?: string) {
   if (!taskDescription || taskDescription.trim().length === 0) {
     throw new Error('Arbeidsoppgave må spesifiseres');
@@ -26,7 +23,7 @@ export async function generateSJAAction(taskDescription: string, weatherContext?
 
   // 2. Check server-side cache (0 tokens)
   const prompt = `Generer SJA for: ${taskDescription}. Vær: ${weatherContext || 'Normalt'}.`;
-  const cacheKey = hashAiRequest(prompt, 'sja_generator', 'deepseek-chat');
+  const cacheKey = hashAiRequest(prompt, 'sja_generator', 'gemini-3.8-flash');
   const cached = await getCachedAiResponse(cacheKey);
   if (cached) {
     try {
@@ -35,62 +32,107 @@ export async function generateSJAAction(taskDescription: string, weatherContext?
         data: JSON.parse(cached),
         source: 'cache'
       };
-    } catch {
-      // If parsing failed, proceed to generate
+    } catch {}
+  }
+
+  // 3. AI Generation: Prefer Gemini 3.8 Flash
+  const geminiKey = process.env.GEMINI_API_KEY || process.env.GOOGLE_API_KEY || process.env.GOOGLE_GENAI_API_KEY;
+  const deepseekKey = process.env.DEEP_SEEK_API || process.env.DEEPSEEK_API_KEY;
+
+  if (geminiKey) {
+    try {
+      const ai = new GoogleGenAI({ apiKey: geminiKey });
+      const aiResponse = await ai.models.generateContent({
+        model: 'gemini-3.8-flash',
+        contents: `Generer et SJA-utkast som JSON for følgende oppgave: ${taskDescription}. Værforhold: ${weatherContext || 'Normalt innendørs/utendørs'}.`,
+        config: {
+          systemInstruction: 'Du er en ekspert på Sikker Jobb Analyse (SJA) i Norge. Returner KUN et gyldig JSON-objekt med feltene: title, task, risikoer (liste med aktivitet, risiko, tiltak), utstyr (liste), tek17Reference, weatherImpact.',
+          responseMimeType: 'application/json',
+          responseSchema: {
+            type: 'OBJECT',
+            properties: {
+              title: { type: 'STRING' },
+              task: { type: 'STRING' },
+              risikoer: {
+                type: 'ARRAY',
+                items: {
+                  type: 'OBJECT',
+                  properties: {
+                    aktivitet: { type: 'STRING' },
+                    risiko: { type: 'STRING' },
+                    tiltak: { type: 'STRING' }
+                  },
+                  required: ['aktivitet', 'risiko', 'tiltak']
+                }
+              },
+              utstyr: { type: 'ARRAY', items: { type: 'STRING' } },
+              tek17Reference: { type: 'STRING' },
+              weatherImpact: { type: 'STRING' }
+            },
+            required: ['title', 'task', 'risikoer', 'utstyr', 'tek17Reference', 'weatherImpact']
+          }
+        }
+      });
+
+      const text = aiResponse.text || '{}';
+      await setCachedAiResponse(cacheKey, text, 'gemini-3.8-flash');
+      return {
+        success: true,
+        data: JSON.parse(text),
+        source: 'gemini_3.8_flash',
+        tokensUsed: null
+      };
+    } catch (gErr: any) {
+      console.warn('Gemini SJA generation error, trying fallback:', gErr.message);
     }
   }
 
-  // 3. Invoke DeepSeek API only if needed
-  const apiKey = process.env.DEEP_SEEK_API || process.env.DEEPSEEK_API_KEY;
-  if (!apiKey) {
-    throw new Error('DEEP_SEEK_API er ikke konfigurert');
+  // 4. Fallback to DeepSeek
+  if (deepseekKey) {
+    const res = await fetch('https://api.deepseek.com/chat/completions', {
+      method: 'POST',
+      headers: {
+        'Content-Type': 'application/json',
+        'Authorization': `Bearer ${deepseekKey}`
+      },
+      body: JSON.stringify({
+        model: 'deepseek-chat',
+        messages: [
+          {
+            role: 'system',
+            content: 'Du er en ekspert på Sikker Jobb Analyse (SJA) i Norge. Returner KUN et gyldig JSON-objekt med feltene: title, task, risikoer (liste med aktivitet, risiko, tiltak), utstyr (liste), tek17Reference, weatherImpact.'
+          },
+          {
+            role: 'user',
+            content: `Generer et SJA-utkast som JSON for følgende oppgave: ${taskDescription}. Værforhold: ${weatherContext || 'Normalt innendørs/utendørs'}.`
+          }
+        ],
+        response_format: { type: 'json_object' },
+        max_tokens: 1500,
+        temperature: 0.2
+      }),
+      signal: AbortSignal.timeout(10000)
+    });
+
+    if (res.ok) {
+      const json = await res.json();
+      let content = json.choices?.[0]?.message?.content || '{}';
+      content = content.replace(/^```json\s*/i, '').replace(/\s*```$/i, '').trim();
+
+      await setCachedAiResponse(cacheKey, content, 'deepseek-chat');
+
+      return {
+        success: true,
+        data: JSON.parse(content),
+        source: 'deepseek_api',
+        tokensUsed: json.usage?.total_tokens || null
+      };
+    }
   }
 
-  const res = await fetch('https://api.deepseek.com/chat/completions', {
-    method: 'POST',
-    headers: {
-      'Content-Type': 'application/json',
-      'Authorization': `Bearer ${apiKey}`
-    },
-    body: JSON.stringify({
-      model: 'deepseek-chat',
-      messages: [
-        {
-          role: 'system',
-          content: 'Du er en ekspert på Sikker Jobb Analyse (SJA) i Norge. Returner KUN et gyldig JSON-objekt med feltene: title, task, risikoer (liste med aktivitet, risiko, tiltak), utstyr (liste), tek17Reference, weatherImpact.'
-        },
-        {
-          role: 'user',
-          content: `Generer et SJA-utkast som JSON for følgende oppgave: ${taskDescription}. Værforhold: ${weatherContext || 'Normalt innendørs/utendørs'}.`
-        }
-      ],
-      response_format: { type: 'json_object' },
-      max_tokens: 1500,
-      temperature: 0.2
-    })
-  });
-
-  if (!res.ok) {
-    throw new Error(`DeepSeek API feil: ${res.statusText}`);
-  }
-
-  const json = await res.json();
-  let content = json.choices?.[0]?.message?.content || '{}';
-  content = content.replace(/^```json\s*/i, '').replace(/\s*```$/i, '').trim();
-
-  await setCachedAiResponse(cacheKey, content, 'deepseek-chat');
-
-  return {
-    success: true,
-    data: JSON.parse(content),
-    source: 'deepseek_api',
-    tokensUsed: json.usage?.total_tokens || null
-  };
+  throw new Error('Ingen AI-nøkkel konfigurert for SJA-generering.');
 }
 
-/**
- * Server Action to fetch pre-computed daily summary with 0 token expenditure
- */
 export async function getLatestDailySummaryAction() {
   const summaries = await getCollectionItems('daily_summaries');
   if (summaries && summaries.length > 0) {
