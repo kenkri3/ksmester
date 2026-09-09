@@ -51,7 +51,7 @@ interface Company {
 
 export default function SuperAdmin() {
   const { user, startImpersonation } = useAuth();
-  const isSuperAdmin = user?.role === 'admin' || user?.email === 'kenkri3@gmail.com' || user?.email === 'admin@ksmester.no';
+  const isSuperAdmin = user?.role === 'admin' || user?.email === 'kenkri3@gmail.com' || user?.email === 'admin@VikingMester.no';
 
   const formatDate = (date: any) => {
     if (!date) return '-';

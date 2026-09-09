@@ -681,7 +681,7 @@ export default function Dashboard({
                   {isDemo ? "Velkommen til Demo" : `${t('welcome')}, Ken`}
                 </h1>
                 <p className="text-neutral-500">
-                  {isDemo ? "Utforsk funksjonene i KS MesterAI med eksempeldata" : "Sømløs kontroll fra tilbud til ferdigstillelse."}
+                  {isDemo ? "Utforsk funksjonene i VikingMester med eksempeldata" : "Sømløs kontroll fra tilbud til ferdigstillelse."}
                 </p>
               </div>
               <div className="flex items-center gap-3">

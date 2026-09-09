@@ -765,7 +765,7 @@ export default function Settings() {
                     <div className="flex items-center gap-4">
                       <button 
                         onClick={() => {
-                          toast.info('For oppgradering til Pro/Enterprise eller endring av abonnement, kontakt support@ksmester.no eller ring +47 22 33 44 55.');
+                          toast.info('For oppgradering til Pro/Enterprise eller endring av abonnement, kontakt support@vikingmester.no eller ring +47 22 33 44 55.');
                         }}
                         className="px-6 py-2 bg-emerald-600 text-white rounded-xl text-sm font-bold hover:bg-emerald-500 transition-all cursor-pointer"
                       >
@@ -817,7 +817,7 @@ export default function Settings() {
                   <div>
                     <h3 className="font-bold text-emerald-950 text-base mb-1">Personvern, Sikkerhet & GDPR</h3>
                     <p className="text-xs text-emerald-800 leading-relaxed">
-                      KS MesterAI oppfyller EUs personvernforordning (GDPR), Personopplysningsloven, Byggherreforskriften og gjeldende norske HMS- og regnskapskrav. Dine data lagres strengt isolert og deles aldri med uvedkommende.
+                      VikingMester oppfyller EUs personvernforordning (GDPR), Personopplysningsloven, Byggherreforskriften og gjeldende norske HMS- og regnskapskrav. Dine data lagres strengt isolert og deles aldri med uvedkommende.
                     </p>
                   </div>
                 </div>
@@ -939,7 +939,7 @@ export default function Settings() {
               >
                 <div className="p-6 bg-emerald-50 rounded-2xl border border-emerald-100">
                   <h3 className="font-bold text-emerald-900 mb-2">Lanseringssjekkliste</h3>
-                  <p className="text-xs text-emerald-700 mb-6">Status for produksjonsklarhet for KS MesterAI Elite.</p>
+                  <p className="text-xs text-emerald-700 mb-6">Status for produksjonsklarhet for VikingMester Elite.</p>
                   
                   <div className="space-y-3">
                     {[

@@ -35,10 +35,12 @@ import {
   RefreshCw,
   FileEdit,
   CloudSun,
+  Building2,
   FlaskConical,
   Coins,
   BellRing
 } from 'lucide-react';
+import CrossTradeCoordinator from './CrossTradeCoordinator';
 import { motion, AnimatePresence } from 'motion/react';
 import { cn } from '@/src/lib/utils';
 import { Project, Deviation, CrewMember, Offer, Contract } from '../types';
@@ -75,7 +77,7 @@ interface ProjectDetailsProps {
 export default function ProjectDetails({ project, onBack, onShare, onStartChecklist, onHandover }: ProjectDetailsProps) {
   const { t } = useTranslation();
   const { user } = useAuth();
-  const [activeTab, setActiveTab] = useState<'overview' | 'sja' | 'deviations' | 'docs' | 'materials' | 'change_orders' | 'daily_log' | 'stoffkartotek'>('overview');
+  const [activeTab, setActiveTab] = useState<'overview' | 'crosstrade' | 'sja' | 'deviations' | 'docs' | 'materials' | 'change_orders' | 'daily_log' | 'stoffkartotek'>('overview');
   const [sjaReports, setSjaReports] = useState<any[]>([]);
   const [projectDeviations, setProjectDeviations] = useState<Deviation[]>([]);
   const [selectedDeviation, setSelectedDeviation] = useState<Deviation | null>(null);
@@ -600,6 +602,7 @@ export default function ProjectDetails({ project, onBack, onShare, onStartCheckl
       <div className="flex items-center gap-1 p-1 bg-neutral-100 rounded-2xl max-w-full overflow-x-auto whitespace-nowrap scrollbar-none">
         {[
           { id: 'overview', label: t('overview'), icon: <TrendingUp size={16} /> },
+          { id: 'crosstrade', label: 'Tverrfaglig & Lukkesperre', icon: <Building2 size={16} /> },
           { id: 'change_orders', label: 'Tillegg & Endringer', icon: <FileEdit size={16} /> },
           { id: 'daily_log', label: 'Byggedagbok', icon: <CloudSun size={16} /> },
           { id: 'stoffkartotek', label: 'Stoffkartotek', icon: <FlaskConical size={16} /> },
@@ -999,6 +1002,10 @@ export default function ProjectDetails({ project, onBack, onShare, onStartCheckl
             <ProjectMaterials project={project} />
           )}
 
+          {activeTab === 'crosstrade' && (
+            <CrossTradeCoordinator project={project} />
+          )}
+
           {activeTab === 'change_orders' && (
             <div className="bg-white p-8 rounded-3xl border border-neutral-200 shadow-sm space-y-6">
               <div className="flex flex-col sm:flex-row justify-between items-start sm:items-center gap-4">
@@ -1105,7 +1112,7 @@ export default function ProjectDetails({ project, onBack, onShare, onStartCheckl
               </div>
 
               <div className="p-4 bg-amber-50 border border-amber-200 rounded-2xl text-xs text-amber-950 leading-relaxed">
-                <strong>Arbeidstilsynets pålegg:</strong> Alle kjemikalier (fugemasse, lim, membran, lakk, sparkel) må ha oppdatert sikkerhetsdatablad på plassen. KS Mester forhåndsutfyller dette automatisk.
+                <strong>Arbeidstilsynets pålegg:</strong> Alle kjemikalier (fugemasse, lim, membran, lakk, sparkel) må ha oppdatert sikkerhetsdatablad på plassen. VikingMester forhåndsutfyller dette automatisk.
               </div>
 
               <div className="flex justify-center py-6">

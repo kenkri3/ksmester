@@ -48,7 +48,7 @@ const IntegrationModal: React.FC<IntegrationModalProps> = ({ isOpen, onClose }) 
               </div>
               <div>
                 <h2 className="text-lg sm:text-2xl font-bold tracking-tight">Integrasjonssenter</h2>
-                <p className="text-neutral-500 text-xs sm:text-sm font-medium">Koble KS MesterAI til dine favorittverktøy</p>
+                <p className="text-neutral-500 text-xs sm:text-sm font-medium">Koble VikingMester til dine favorittverktøy</p>
               </div>
             </div>
             <button onClick={onClose} aria-label="Lukk" className="p-2 hover:bg-neutral-100 rounded-xl transition-colors shrink-0">

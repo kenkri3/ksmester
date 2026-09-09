@@ -126,12 +126,12 @@ export default function MobileApp() {
 
   const handleInstallApp = async () => {
     if (isPWAInstalled()) {
-      toast.info('KS Mester er allerede installert som app på denne enheten!');
+      toast.info('VikingMester er allerede installert som app på denne enheten!');
       return;
     }
     const outcome = await promptPWAInstall();
     if (outcome === 'accepted') {
-      toast.success('Laster ned og installerer KS Mester på telefonen...');
+      toast.success('Laster ned og installerer VikingMester på telefonen...');
       return;
     }
     setShowInstallGuide(true);

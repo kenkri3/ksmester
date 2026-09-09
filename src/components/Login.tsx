@@ -82,7 +82,7 @@ export default function Login({ onBack }: { onBack?: () => void }) {
       <motion.div 
         initial={{ opacity: 0, y: 20 }}
         animate={{ opacity: 1, y: 0 }}
-        className="max-w-md w-full bg-white rounded-[2.5rem] shadow-2xl shadow-emerald-100/50 border border-neutral-100 p-8 lg:p-12"
+        className="max-w-md w-full bg-white rounded-[2.5rem] shadow-2xl shadow-amber-500/10 border border-neutral-100 p-8 lg:p-12"
       >
         <div className="flex flex-col items-center mb-8">
           <Logo size="xl" className="mb-2 text-neutral-900" />
@@ -113,7 +113,7 @@ export default function Login({ onBack }: { onBack?: () => void }) {
                     value={name}
                     onChange={(e) => setName(e.target.value)}
                     required
-                    className="w-full pl-12 pr-4 py-3.5 bg-neutral-50 border border-neutral-200 rounded-2xl focus:ring-2 focus:ring-emerald-500 focus:border-transparent outline-none transition-all text-sm"
+                    className="w-full pl-12 pr-4 py-3.5 bg-neutral-50 border border-neutral-200 rounded-2xl focus:ring-2 focus:ring-amber-500 focus:border-transparent outline-none transition-all text-sm"
                   />
                 </div>
                 <div className="relative">
@@ -124,7 +124,7 @@ export default function Login({ onBack }: { onBack?: () => void }) {
                     value={company}
                     onChange={(e) => setCompany(e.target.value)}
                     required
-                    className="w-full pl-12 pr-4 py-3.5 bg-neutral-50 border border-neutral-200 rounded-2xl focus:ring-2 focus:ring-emerald-500 focus:border-transparent outline-none transition-all text-sm"
+                    className="w-full pl-12 pr-4 py-3.5 bg-neutral-50 border border-neutral-200 rounded-2xl focus:ring-2 focus:ring-amber-500 focus:border-transparent outline-none transition-all text-sm"
                   />
                 </div>
               </motion.div>
@@ -139,7 +139,7 @@ export default function Login({ onBack }: { onBack?: () => void }) {
               value={email}
               onChange={(e) => setEmail(e.target.value)}
               required
-              className="w-full pl-12 pr-4 py-3.5 bg-neutral-50 border border-neutral-200 rounded-2xl focus:ring-2 focus:ring-emerald-500 focus:border-transparent outline-none transition-all text-sm"
+              className="w-full pl-12 pr-4 py-3.5 bg-neutral-50 border border-neutral-200 rounded-2xl focus:ring-2 focus:ring-amber-500 focus:border-transparent outline-none transition-all text-sm"
             />
           </div>
 
@@ -153,7 +153,7 @@ export default function Login({ onBack }: { onBack?: () => void }) {
                 onChange={(e) => setPassword(e.target.value)}
                 required
                 minLength={mode === 'register' ? 8 : 1}
-                className="w-full pl-12 pr-4 py-3.5 bg-neutral-50 border border-neutral-200 rounded-2xl focus:ring-2 focus:ring-emerald-500 focus:border-transparent outline-none transition-all text-sm"
+                className="w-full pl-12 pr-4 py-3.5 bg-neutral-50 border border-neutral-200 rounded-2xl focus:ring-2 focus:ring-amber-500 focus:border-transparent outline-none transition-all text-sm"
               />
             </div>
           )}
@@ -166,10 +166,10 @@ export default function Login({ onBack }: { onBack?: () => void }) {
                   checked={gdprConsent}
                   onChange={(e) => setGdprConsent(e.target.checked)}
                   required
-                  className="mt-0.5 rounded border-neutral-300 text-emerald-600 focus:ring-emerald-500"
+                  className="mt-0.5 rounded border-neutral-300 text-amber-500 focus:ring-amber-500"
                 />
                 <span>
-                  Jeg bekrefter at jeg godtar KS MesterAI sine vilkår, databehandleravtale (DPA) og personvernerklæring i samsvar med GDPR og norsk lovgivning.
+                  Jeg bekrefter at jeg godtar VikingMester sine vilkår, databehandleravtale (DPA) og personvernerklæring i samsvar med GDPR og norsk lovgivning.
                 </span>
               </label>
             </div>
@@ -180,7 +180,7 @@ export default function Login({ onBack }: { onBack?: () => void }) {
               <button 
                 type="button"
                 onClick={() => setMode('forgot')}
-                className="text-xs text-emerald-600 font-bold hover:underline"
+                className="text-xs text-amber-500 font-bold hover:underline"
               >
                 {t('forgot_password', 'Glemt passord?')}
               </button>
@@ -192,13 +192,13 @@ export default function Login({ onBack }: { onBack?: () => void }) {
           )}
 
           {success && (
-            <p className="text-emerald-600 text-xs font-medium px-2">{success}</p>
+            <p className="text-amber-500 text-xs font-medium px-2">{success}</p>
           )}
 
           <button
             type="submit"
             disabled={isSubmitting}
-            className="w-full bg-emerald-600 text-white py-4 rounded-2xl font-bold flex items-center justify-center gap-3 hover:bg-emerald-500 transition-all active:scale-[0.98] disabled:opacity-50 shadow-lg shadow-emerald-100 text-sm"
+            className="w-full bg-amber-500 text-white py-4 rounded-2xl font-bold flex items-center justify-center gap-3 hover:bg-amber-400 transition-all active:scale-[0.98] disabled:opacity-50 shadow-lg shadow-amber-500/20 text-sm"
           >
             {isSubmitting ? (
               <Loader2 className="animate-spin" size={20} />
@@ -217,7 +217,7 @@ export default function Login({ onBack }: { onBack?: () => void }) {
               {t('no_account', 'Har du ikke konto?')} {' '}
               <button 
                 onClick={() => setMode('register')}
-                className="text-emerald-600 font-bold hover:underline"
+                className="text-amber-500 font-bold hover:underline"
               >
                 {t('register_now', 'Registrer bedrift')}
               </button>
@@ -227,7 +227,7 @@ export default function Login({ onBack }: { onBack?: () => void }) {
               {t('already_have_account', 'Har du allerede en konto?')} {' '}
               <button 
                 onClick={() => setMode('login')}
-                className="text-emerald-600 font-bold hover:underline"
+                className="text-amber-500 font-bold hover:underline"
               >
                 {t('login', 'Logg inn')}
               </button>
