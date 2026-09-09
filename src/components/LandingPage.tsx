@@ -143,8 +143,8 @@ export default function LandingPage({
       a: "Ja! Appen støtter full flerspråklighet (Norsk, Engelsk, Polsk, Litauisk). En polsktalende håndverker kan fylle ut en SJA eller registrere et avvik på polsk, og systemet oversetter det automatisk til korrekt norsk fagterminologi for byggherre og kontrollmyndigheter."
     },
     {
-      q: "Er det noen bindingstid, og kan vi prøve gratis først?",
-      a: "Ingen bindingstid overhodet. Du får en 14-dagers helt uforpliktende prøveperiode med tilgang til samtlige funksjoner. Ingen kredittkort er påkrevd for å starte."
+      q: "Er det noen bindingstid eller krav til kredittkort?",
+      a: "Ingen bindingstid og ingen kredittkort. Vi fakturerer månedlig via standard bedriftsfaktura eller EHF. Du får full personlig oppstartsstøtte og gjennomgang av dine maler og prosjekter fra dag én."
     },
     {
       q: "Får vi hjelp og opplæring?",
@@ -1477,7 +1477,7 @@ function HomeView({
             Klar til å oppleve Mester-kvalitet?
           </h2>
           <p className="text-neutral-300 text-sm sm:text-base mb-8 max-w-xl mx-auto leading-relaxed">
-            Start din 14-dagers gratis prøveperiode i dag. Ingen bindingstid, ingen kredittkort, full tilgang til samtlige funksjoner.
+            Kom i gang med din autonome byggeleder i dag. Ingen bindingstid, ingen kredittkort, standard bedriftsfaktura og full personlig oppfølging.
           </p>
           <div className="flex flex-col sm:flex-row items-center justify-center gap-4">
             <button 

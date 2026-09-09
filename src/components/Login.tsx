@@ -90,7 +90,7 @@ export default function Login({ onBack }: { onBack?: () => void }) {
             {mode === 'login' 
               ? t('login_desc', 'Velkommen tilbake. Logg inn med din bedriftskonto.') 
               : mode === 'register'
-              ? t('register_desc', 'Opprett bedriftskonto med 7-dagers prøveperiode.')
+              ? t('register_desc', 'Opprett bedriftskonto med standard bedriftsfaktura.')
               : t('forgot_desc', 'Skriv inn din e-postadresse for å tilbakestille passordet.')}
           </p>
         </div>
