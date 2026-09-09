@@ -1,6 +1,6 @@
-# Deployveiledning: KS Mester / Kamerater.no (Next.js) på Railway
+# Deployveiledning: KS Mester.no (Next.js) på Railway
 
-Denne guiden forklarer oppsett og drift av **KS Mester / Kamerater.no** på **Railway** med PostgreSQL, Gemini 3.8 Flash og bakgrunnsautomatiseringer.
+Denne guiden forklarer oppsett og drift av **KS Mester.no** på **Railway** med PostgreSQL, Gemini 3.8 Flash og bakgrunnsautomatiseringer.
 
 ---
 

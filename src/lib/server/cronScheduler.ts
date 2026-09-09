@@ -40,7 +40,7 @@ Prosjekter: ${activeProjects.map((p: any) => p.name).slice(0, 5).join(', ')}.
           model: 'gemini-3.8-flash',
           contents: prompt,
           config: {
-            systemInstruction: 'Du er Kamerater / KS MesterAI. Skriv en presis og oppmuntrende morgen-brief til byggeledelsen på profesjonelt norsk.'
+            systemInstruction: 'Du er KS MesterAI. Skriv en presis og oppmuntrende morgen-brief til byggeledelsen på profesjonelt norsk.'
           }
         });
         if (aiResponse.text) {
@@ -66,7 +66,7 @@ Prosjekter: ${activeProjects.map((p: any) => p.name).slice(0, 5).join(', ')}.
             messages: [
               {
                 role: 'system',
-                content: 'Du er Kamerater / KS MesterAI. Skriv en presis og oppmuntrende morgen-brief til byggeledelsen på profesjonelt norsk.'
+                content: 'Du er KS MesterAI. Skriv en presis og oppmuntrende morgen-brief til byggeledelsen på profesjonelt norsk.'
               },
               { role: 'user', content: prompt }
             ],
@@ -144,7 +144,7 @@ export function startBackgroundScheduler() {
   if (isScheduled) return;
   isScheduled = true;
 
-  console.log('🕒 [Background Scheduler] KS Mester / Kamerater scheduler initiert (Europe/Oslo)');
+  console.log('🕒 [Background Scheduler] KS Mester scheduler initiert (Europe/Oslo)');
 
   function scheduleNext() {
     try {

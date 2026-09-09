@@ -14,7 +14,7 @@ async function triggerCron() {
   const urlsToTry = [
     `http://localhost:${port}/api/cron/daily-summary`,
     appUrl.endsWith('/') ? `${appUrl}api/cron/daily-summary` : `${appUrl}/api/cron/daily-summary`,
-    'https://kamerater.no/api/cron/daily-summary',
+    'https://ksmester.no/api/cron/daily-summary',
     'https://ksmester.no/api/cron/daily-summary'
   ];
 
