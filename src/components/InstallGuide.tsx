@@ -15,7 +15,7 @@ import {
   Zap
 } from 'lucide-react';
 import { toast } from 'sonner';
-import { isAndroid, isIOS, isPWAInstalled, promptPWAInstall } from '../lib/pwa';
+import { isAndroid, isIOS, isPWAInstalled, promptPWAInstall, downloadMobileShortcut } from '../lib/pwa';
 
 interface InstallGuideProps {
   onClose?: () => void;
@@ -26,6 +26,7 @@ export default function InstallGuide({ onClose }: InstallGuideProps) {
   const [device, setDevice] = useState<'android' | 'ios'>('android');
   const [isInstalled, setIsInstalled] = useState(false);
   const [hasInstallPrompt, setHasInstallPrompt] = useState(false);
+  const [isDownloading, setIsDownloading] = useState(false);
 
   useEffect(() => {
     setIsInstalled(isPWAInstalled());
@@ -53,17 +54,26 @@ export default function InstallGuide({ onClose }: InstallGuideProps) {
       return;
     }
 
+    setIsDownloading(true);
+
+    // 1. First attempt: Native 1-click OS PWA prompt
     const outcome = await promptPWAInstall();
     if (outcome === 'accepted') {
       toast.success('Laster ned og installerer VikingMester på telefonen...');
+      setIsDownloading(false);
       onClose?.();
-    } else if (outcome === 'unavailable') {
-      if (isIOS()) {
-        toast.info('På iPhone: Trykk på Del-knappen nederst og velg "Legg til på Hjem-skjerm".');
-      } else {
-        toast.info('Trykk på menyen (tre prikker ⋮) øverst i nettleseren og velg "Installer app".');
-      }
+      return;
     }
+
+    // 2. Direct file download fallback
+    const isApple = device === 'ios' || isIOS();
+    downloadMobileShortcut(isApple ? 'ios' : 'shortcut');
+    toast.success(
+      isApple 
+        ? 'Profil lastet ned! Trykk "Tillat" og åpne Innstillinger på din iPhone for å installere.'
+        : 'Snarvei lastet ned! Åpne filen eller velg "Installer" for å legge til på hjemskjermen.'
+    );
+    setIsDownloading(false);
   };
 
   const steps = {
@@ -149,10 +159,46 @@ export default function InstallGuide({ onClose }: InstallGuideProps) {
 
             <button
               onClick={handleDirectInstall}
-              className="w-full sm:w-auto px-8 py-4 bg-emerald-600 hover:bg-emerald-500 text-white rounded-2xl font-black text-sm flex items-center justify-center gap-2.5 shadow-xl shadow-emerald-600/30 active:scale-95 transition-all cursor-pointer shrink-0"
+              disabled={isDownloading}
+              className="w-full sm:w-auto px-8 py-4 bg-emerald-600 hover:bg-emerald-500 text-white rounded-2xl font-black text-sm flex items-center justify-center gap-2.5 shadow-xl shadow-emerald-600/30 active:scale-95 transition-all cursor-pointer shrink-0 disabled:opacity-50"
             >
               <Download size={18} />
-              <span>Last ned / Installer app</span>
+              <span>{isDownloading ? 'Laster ned...' : 'Last ned / Installer app nå'}</span>
+            </button>
+          </div>
+
+          {/* Direct download file alternatives */}
+          <div className="flex flex-wrap items-center justify-center sm:justify-start gap-2 pt-3 mt-3 border-t border-emerald-200/60 text-xs">
+            <span className="text-[11px] font-bold text-neutral-500 uppercase tracking-wider">Direkte filnedlasting:</span>
+            <button
+              type="button"
+              onClick={() => {
+                downloadMobileShortcut('ios');
+                toast.success('Apple-profil lastet ned! Åpne Innstillinger på din iPhone for å installere.');
+              }}
+              className="px-3 py-1.5 bg-white hover:bg-neutral-50 text-neutral-800 rounded-xl font-bold border border-neutral-200 shadow-xs flex items-center gap-1.5 cursor-pointer"
+            >
+              <span>iPhone profil (.mobileconfig)</span>
+            </button>
+            <button
+              type="button"
+              onClick={() => {
+                downloadMobileShortcut('shortcut');
+                toast.success('Snarvei lastet ned! Kan åpnes i alle nettlesere.');
+              }}
+              className="px-3 py-1.5 bg-white hover:bg-neutral-50 text-neutral-800 rounded-xl font-bold border border-neutral-200 shadow-xs flex items-center gap-1.5 cursor-pointer"
+            >
+              <span>Android/Mobil snarvei (.html)</span>
+            </button>
+            <button
+              type="button"
+              onClick={() => {
+                downloadMobileShortcut('windows');
+                toast.success('Windows-snarvei lastet ned til skrivebordet!');
+              }}
+              className="px-3 py-1.5 bg-white hover:bg-neutral-50 text-neutral-800 rounded-xl font-bold border border-neutral-200 shadow-xs flex items-center gap-1.5 cursor-pointer"
+            >
+              <span>PC snarvei (.url)</span>
             </button>
           </div>
         </div>

@@ -59,7 +59,7 @@ import {
 import { cn } from '@/src/lib/utils';
 import InstallGuide from './InstallGuide';
 import { toast } from 'sonner';
-import { promptPWAInstall, isPWAInstalled } from '../lib/pwa';
+import { promptPWAInstall, isPWAInstalled, triggerAppDownloadOrInstall } from '../lib/pwa';
 
 export type LandingTab = 'home' | 'ai' | 'hms' | 'fdv' | 'pricing';
 
@@ -69,6 +69,7 @@ interface LandingPageProps {
   onViewChange: (view: any) => void;
   currentTab?: LandingTab;
   onTabChange?: (tab: LandingTab) => void;
+  onInstallApp?: () => void;
 }
 
 export default function LandingPage({ 
@@ -76,7 +77,8 @@ export default function LandingPage({
   onOpenPortal, 
   onViewChange,
   currentTab = 'home',
-  onTabChange
+  onTabChange,
+  onInstallApp
 }: LandingPageProps) {
   const { t } = useTranslation();
   const [internalTab, setInternalTab] = useState<LandingTab>(currentTab);
@@ -99,14 +101,21 @@ export default function LandingPage({
   };
 
   const handleInstallApp = async () => {
+    if (onInstallApp) {
+      onInstallApp();
+      return;
+    }
     if (isPWAInstalled()) {
       toast.info('VikingMester er allerede installert på din enhet!');
       return;
     }
-    const outcome = await promptPWAInstall();
-    if (outcome === 'accepted') {
-      toast.success('VikingMester ble installert på hjemskjermen!');
-    }
+    await triggerAppDownloadOrInstall({
+      onInstalled: () => toast.info('VikingMester er allerede installert på din enhet!'),
+      onAccepted: () => toast.success('VikingMester ble installert på hjemskjermen!'),
+      onFallback: () => {
+        toast.success('Snarvei lastet ned til enheten din!');
+      }
+    });
   };
 
   return (
@@ -187,7 +196,7 @@ export default function LandingPage({
               className="text-xs font-bold text-slate-700 hover:text-navy-900 flex items-center gap-1.5 bg-slate-50 hover:bg-slate-100 px-3 py-1 rounded-full border border-slate-200 transition-colors cursor-pointer"
             >
               <Download size={12} />
-              <span>Installer PWA</span>
+              <span>Last ned app / snarvei</span>
             </button>
           </div>
         </div>

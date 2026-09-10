@@ -39,7 +39,7 @@ import InstallGuide from './InstallGuide';
 import ChecklistModal from './ChecklistModal';
 import ProjectActivityLog from './ProjectActivityLog';
 import { toast } from 'sonner';
-import { promptPWAInstall, isPWAInstalled } from '../lib/pwa';
+import { promptPWAInstall, isPWAInstalled, triggerAppDownloadOrInstall } from '../lib/pwa';
 import { useTranslation } from 'react-i18next';
 import UniversalTranslator from './UniversalTranslator';
 import { db, auth, collection, onSnapshot, addDoc, Timestamp, handleFirestoreError, OperationType, query, orderBy, limit, where, updateDoc, doc, getUserProfile, updateUserProfile, serverTimestamp, getDocs } from '../services/firebase';
@@ -138,12 +138,13 @@ export default function MobileApp() {
       toast.info('VikingMester er allerede installert som app på denne enheten!');
       return;
     }
-    const outcome = await promptPWAInstall();
-    if (outcome === 'accepted') {
-      toast.success('Laster ned og installerer VikingMester på telefonen...');
-      return;
-    }
-    setShowInstallGuide(true);
+    await triggerAppDownloadOrInstall({
+      onInstalled: () => toast.info('VikingMester er allerede installert som app på denne enheten!'),
+      onAccepted: () => toast.success('Laster ned og installerer VikingMester på telefonen...'),
+      onFallback: () => {
+        setShowInstallGuide(true);
+      }
+    });
   };
   const [showChecklistModal, setShowChecklistModal] = useState(false);
   const [checklistProjectId, setChecklistProjectId] = useState<string | undefined>(undefined);
@@ -700,7 +701,7 @@ interface ColleagueContact {
                   onClick={handleInstallApp}
                   className="w-full py-2.5 px-3.5 bg-neutral-100/90 hover:bg-emerald-50 text-neutral-800 hover:text-emerald-900 rounded-2xl text-xs font-bold flex items-center justify-between border border-neutral-200 transition-all cursor-pointer"
                 >
-                  <span className="flex items-center gap-2"><Smartphone size={15} className="text-emerald-600" /> Legg til snarvei på mobilen</span>
+                  <span className="flex items-center gap-2"><Download size={15} className="text-emerald-600" /> Last ned app / snarvei</span>
                   <span className="text-[10px] uppercase font-black text-emerald-800 bg-emerald-100/80 px-2 py-0.5 rounded-full">Offline OK</span>
                 </button>
 

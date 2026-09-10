@@ -90,7 +90,7 @@ import { useTranslation } from 'react-i18next';
 import { Globe } from 'lucide-react';
 import { db, doc, getDoc, collection, query, where, getDocs, updateUserProfile } from './services/firebase';
 import { toast } from 'sonner';
-import { promptPWAInstall, isPWAInstalled } from './lib/pwa';
+import { promptPWAInstall, isPWAInstalled, triggerAppDownloadOrInstall, downloadMobileShortcut } from './lib/pwa';
 
 export default function App() {
   return (
@@ -199,13 +199,11 @@ function AppContent() {
       return;
     }
 
-    const outcome = await promptPWAInstall();
-    if (outcome === 'accepted') {
-      toast.success('Laster ned og installerer VikingMester på telefonen...');
-      return;
-    }
-
-    setShowInstallGuide(true);
+    await triggerAppDownloadOrInstall({
+      onInstalled: () => toast.info('VikingMester er allerede installert som app på denne enheten!'),
+      onAccepted: () => toast.success('Laster ned og installerer VikingMester på telefonen...'),
+      onFallback: () => setShowInstallGuide(true)
+    });
   };
 
   const handleOpenPortal = async (projectIdOrCode: string) => {
@@ -787,10 +785,10 @@ function AppContent() {
                 <button 
                   onClick={handleInstallApp}
                   className="flex items-center gap-1.5 px-3 py-1.5 bg-white/5 hover:bg-slate-50 text-neutral-700 hover:text-emerald-800 rounded-xl text-xs font-bold transition-all border border-neutral-200/80 hover:border-emerald-300 shadow-sm active:scale-95 cursor-pointer"
-                  title="Installer snarvei på mobil"
+                  title="Last ned app eller snarvei til mobil"
                 >
-                  <Smartphone size={14} className="text-emerald-600" />
-                  <span>Mobil-snarvei</span>
+                  <Download size={14} className="text-emerald-600" />
+                  <span>Last ned app</span>
                 </button>
 
                 <div className="flex items-center gap-1 px-2.5 py-1.5 bg-white/5/80 hover:bg-slate-50 rounded-xl border border-neutral-200 transition-all">
@@ -1043,10 +1041,10 @@ function AppContent() {
 
                     <button 
                       onClick={() => { handleInstallApp(); setIsMenuOpen(false); }} 
-                      className="w-full mt-3 flex items-center justify-center gap-2 py-2.5 px-3 bg-slate-50 text-slate-800 rounded-xl text-xs font-bold border border-slate-200 hover:bg-slate-100 transition-all cursor-pointer"
+                      className="w-full mt-3 flex items-center justify-center gap-2 py-2.5 px-3 bg-electric-50 text-electric-900 rounded-xl text-xs font-bold border border-electric-200 hover:bg-electric-100 transition-all cursor-pointer"
                     >
-                      <Smartphone size={15} className="text-emerald-600" />
-                      <span>Legg til snarvei på mobil (PWA)</span>
+                      <Download size={15} className="text-electric-600" />
+                      <span>Last ned mobil-app / snarvei</span>
                     </button>
                   </div>
 
@@ -1291,6 +1289,7 @@ function AppContent() {
                   onViewChange={setView}
                   currentTab={landingTab}
                   onTabChange={setLandingTab}
+                  onInstallApp={handleInstallApp}
                 />
               )}
               {view === 'login' && <Login onBack={() => setView('landing')} onSuccess={() => setView('dashboard')} />}
