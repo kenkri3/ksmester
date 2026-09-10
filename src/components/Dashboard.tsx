@@ -498,8 +498,8 @@ export default function Dashboard({
                   </form>
 
                   {/* Suggestion Chips */}
-                  <div className="flex items-center gap-2 mt-3 overflow-x-auto no-scrollbar py-1">
-                    <span className="text-[11px] font-bold text-slate-400 uppercase tracking-wider shrink-0">Hurtig:</span>
+                  <div className="flex flex-wrap items-center gap-2 mt-3 pt-1">
+                    <span className="text-[11px] font-bold text-slate-400 uppercase tracking-wider shrink-0 mr-0.5">Hurtig:</span>
                     {[
                       'Lag SJA for tak- og stillasarbeid',
                       'Registrer endringsordre: Ekstra downlights i stue kr 14500',
@@ -510,7 +510,7 @@ export default function Dashboard({
                         key={i}
                         type="button"
                         onClick={() => handleSendCommand(chip)}
-                        className="px-3 py-1 bg-slate-100 hover:bg-electric-50 hover:text-electric-600 border border-slate-200/80 rounded-xl text-xs font-medium text-slate-700 whitespace-nowrap transition-all"
+                        className="px-3 py-1.5 bg-slate-100/90 hover:bg-electric-50 hover:text-electric-700 hover:border-electric-300 border border-slate-200/90 rounded-xl text-xs font-medium text-slate-700 transition-all text-left shadow-xs"
                       >
                         {chip}
                       </button>
