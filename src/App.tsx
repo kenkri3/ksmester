@@ -65,6 +65,7 @@ import OfferPage from './components/OfferPage';
 import InviteAcceptancePage from './components/InviteAcceptancePage';
 import PublicOfferFlow from './components/PublicOfferFlow';
 import PublicChangeOrderFlow from './components/PublicChangeOrderFlow';
+import PartnerPortal from './components/PartnerPortal';
 import { PricingPage, AboutPage, ContactPage, PrivacyPage, TermsPage } from './components/StaticPages';
 import Logo from './components/Logo';
 import { NotificationBell } from './components/NotificationBell';
@@ -160,7 +161,7 @@ function AppContent() {
     }
   };
 
-  const publicViews: View[] = ['landing', 'spec', 'pricing', 'about', 'contact', 'privacy', 'terms', 'offer', 'invite', 'customer-portal', 'login', 'public-offer', 'public-change-order'];
+  const publicViews: View[] = ['landing', 'spec', 'pricing', 'about', 'contact', 'privacy', 'terms', 'offer', 'invite', 'customer-portal', 'login', 'public-offer', 'public-change-order', 'partner'];
   const isPublicView = publicViews.includes(view);
 
   const changeLanguage = async (lng: string) => {
@@ -331,8 +332,15 @@ function AppContent() {
         setView('offer');
       }
     }
-    if (pathParts[1] === 'portal' && pathParts[2]) {
+    if (pathParts[1] === portal && pathParts[2]) {
       handleOpenPortal(pathParts[2]);
+    }
+    if (pathParts[1] === partner) {
+      setView(partner);
+    }
+    const partnerParam = params.get(partner) || params.get(partnerportal);
+    if (partnerParam) {
+      setView(partner);
     }
   }, []);
 
@@ -361,6 +369,15 @@ function AppContent() {
       <PublicChangeOrderFlow 
         token={changeOrderToken} 
         onNavigateToPortal={(id) => handleOpenPortal(id)} 
+      />
+    );
+  }
+
+  // Direct full-screen Partner Onboarding & Lead Portal (50/50 Joint Venture)
+  if (view === partner) {
+    return (
+      <PartnerPortal 
+        onBackToApp={() => setView(user ? dashboard : landing)} 
       />
     );
   }
@@ -668,6 +685,20 @@ function AppContent() {
                 >
                   <Settings size={15} />
                   <span>Innstillinger</span>
+                </button>
+
+                <button 
+                  onClick={() => setView(partner)}
+                  className={cn(
+                    "px-3.5 py-2 rounded-xl text-xs font-bold transition-all flex items-center gap-1.5 cursor-pointer",
+                    view === partner 
+                      ? "bg-purple-50 text-purple-700 font-bold border border-purple-300/30 shadow-sm" 
+                      : "text-slate-600 hover:text-purple-700 hover:bg-purple-50"
+                  )}
+                  title="50/50 Partner Lead-portal"
+                >
+                  <Users size={15} />
+                  <span>Partnerportal</span>
                 </button>
 
                 {user.role === 'admin' && (

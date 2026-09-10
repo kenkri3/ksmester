@@ -326,7 +326,8 @@ export default function LandingPage({
           <div className="flex gap-6">
             <span className="hover:text-white cursor-pointer transition-colors" onClick={() => { window.scrollTo({ top: 0, left: 0, behavior: 'instant' }); onViewChange('privacy'); }}>Personvern & GDPR</span>
             <span className="hover:text-white cursor-pointer transition-colors" onClick={() => { window.scrollTo({ top: 0, left: 0, behavior: 'instant' }); onViewChange('terms'); }}>Vilkår & DPA</span>
-            <span className="hover:text-white cursor-pointer transition-colors" onClick={() => { window.scrollTo({ top: 0, left: 0, behavior: 'instant' }); onViewChange('about'); }}>Om Vikingnet</span>
+            <span className="hover:text-white cursor-pointer transition-colors" onClick={() => { window.scrollTo({ top: 0, left: 0, behavior: instant }); onViewChange(about); }}>Om Vikingnet</span>
+            <span className="text-purple-400 font-bold hover:text-purple-300 cursor-pointer transition-colors" onClick={() => { window.scrollTo({ top: 0, left: 0, behavior: instant }); onViewChange(partner); }}>Partnerportal (50/50 Lead-inntak)</span>
           </div>
         </div>
       </footer>
