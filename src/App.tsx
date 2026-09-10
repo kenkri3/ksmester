@@ -56,6 +56,8 @@ import { AuthProvider, useAuth } from './hooks/useAuth';
 import NetworkStatusBadge from './components/NetworkStatusBadge';
 import CookieBanner from './components/CookieBanner';
 import { ErrorBoundary } from './components/ErrorBoundary';
+import Link from 'next/link';
+import { PublicFooter } from './components/PublicFooter';
 import MobileBottomNav from './components/MobileBottomNav';
 import MobileQuickActionSheet from './components/MobileQuickActionSheet';
 
@@ -487,60 +489,117 @@ function AppContent() {
                   </button>
 
                   {/* Dropdown Menu */}
-                  <div className="absolute top-full left-0 mt-1.5 w-72 bg-white rounded-2xl shadow-card-hover border border-slate-200 p-2 hidden group-hover:block z-50 animate-in fade-in-50 slide-in-from-top-1 duration-150">
-                    <button 
-                      onClick={() => { setLandingTab('ai'); setView('landing'); }}
-                      className="w-full text-left p-3 rounded-xl hover:bg-slate-50 transition-colors flex items-start gap-3 cursor-pointer group/item"
+                  <div className="absolute top-full left-0 mt-1.5 w-80 bg-white rounded-2xl shadow-card-hover border border-slate-200 p-2 hidden group-hover:block z-50 animate-in fade-in-50 slide-in-from-top-1 duration-150">
+                    <Link 
+                      href="/ks-system"
+                      className="w-full text-left p-2.5 rounded-xl hover:bg-slate-50 transition-colors flex items-start gap-3 group/item"
                     >
-                      <div className="w-8 h-8 rounded-lg bg-emerald-100 text-emerald-700 flex items-center justify-center shrink-0 group-hover/item:bg-emerald-600 group-hover/item:text-navy-900 transition-colors">
-                        <Sparkles size={16} />
-                      </div>
-                      <div>
-                        <p className="text-xs font-bold text-navy-900">Mesterhjernen AI</p>
-                        <p className="text-[10px] text-slate-400 leading-tight">Tale-til-SJA, Yr værrisiko & TEK17 syn</p>
-                      </div>
-                    </button>
-
-                    <button 
-                      onClick={() => { setLandingTab('hms'); setView('landing'); }}
-                      className="w-full text-left p-3 rounded-xl hover:bg-slate-50 transition-colors flex items-start gap-3 cursor-pointer group/item"
-                    >
-                      <div className="w-8 h-8 rounded-lg bg-blue-100 text-blue-700 flex items-center justify-center shrink-0 group-hover/item:bg-blue-600 group-hover/item:text-navy-900 transition-colors">
-                        <ShieldCheck size={16} />
-                      </div>
-                      <div>
-                        <p className="text-xs font-bold text-navy-900">HMS & SJA</p>
-                        <p className="text-[10px] text-slate-400 leading-tight">Vernerunder, AML-krav & stoffkartotek</p>
-                      </div>
-                    </button>
-
-                    <button 
-                      onClick={() => { setLandingTab('fdv'); setView('landing'); }}
-                      className="w-full text-left p-3 rounded-xl hover:bg-slate-50 transition-colors flex items-start gap-3 cursor-pointer group/item"
-                    >
-                      <div className="w-8 h-8 rounded-lg bg-teal-100 text-teal-700 flex items-center justify-center shrink-0 group-hover/item:bg-teal-600 group-hover/item:text-navy-900 transition-colors">
+                      <div className="w-8 h-8 rounded-lg bg-emerald-100 text-emerald-700 flex items-center justify-center shrink-0 group-hover/item:bg-emerald-600 group-hover/item:text-white transition-colors">
                         <FileCheck size={16} />
                       </div>
                       <div>
-                        <p className="text-xs font-bold text-navy-900">FDV & Boligmappa</p>
-                        <p className="text-[10px] text-slate-400 leading-tight">Automatisk FDV-ark & 1-klikks eksport</p>
+                        <p className="text-xs font-bold text-navy-900">KS-system & Kvalitetssikring</p>
+                        <p className="text-[10px] text-slate-500 leading-tight">Byggedagbok, sjekklister & TEK17</p>
                       </div>
-                    </button>
+                    </Link>
+
+                    <Link 
+                      href="/hms"
+                      className="w-full text-left p-2.5 rounded-xl hover:bg-slate-50 transition-colors flex items-start gap-3 group/item"
+                    >
+                      <div className="w-8 h-8 rounded-lg bg-blue-100 text-blue-700 flex items-center justify-center shrink-0 group-hover/item:bg-blue-600 group-hover/item:text-white transition-colors">
+                        <ShieldCheck size={16} />
+                      </div>
+                      <div>
+                        <p className="text-xs font-bold text-navy-900">HMS & Internkontroll</p>
+                        <p className="text-[10px] text-slate-500 leading-tight">Lovpålagt § 5, vernerunde & risikovurdering</p>
+                      </div>
+                    </Link>
+
+                    <Link 
+                      href="/avvikshandtering"
+                      className="w-full text-left p-2.5 rounded-xl hover:bg-slate-50 transition-colors flex items-start gap-3 group/item"
+                    >
+                      <div className="w-8 h-8 rounded-lg bg-purple-100 text-purple-700 flex items-center justify-center shrink-0 group-hover/item:bg-purple-600 group-hover/item:text-white transition-colors">
+                        <Camera size={16} />
+                      </div>
+                      <div>
+                        <p className="text-xs font-bold text-navy-900">Avvik med TEK17-visjon</p>
+                        <p className="text-[10px] text-slate-500 leading-tight">AI-analyse av bilder på 5 sekunder</p>
+                      </div>
+                    </Link>
+
+                    <Link 
+                      href="/sja"
+                      className="w-full text-left p-2.5 rounded-xl hover:bg-slate-50 transition-colors flex items-start gap-3 group/item"
+                    >
+                      <div className="w-8 h-8 rounded-lg bg-amber-100 text-amber-700 flex items-center justify-center shrink-0 group-hover/item:bg-amber-600 group-hover/item:text-white transition-colors">
+                        <AlertTriangle size={16} />
+                      </div>
+                      <div>
+                        <p className="text-xs font-bold text-navy-900">Sikker Jobb Analyse (SJA)</p>
+                        <p className="text-[10px] text-slate-500 leading-tight">Risikokartlegging & Yr-vær</p>
+                      </div>
+                    </Link>
+
+                    <Link 
+                      href="/stoffkartotek"
+                      className="w-full text-left p-2.5 rounded-xl hover:bg-slate-50 transition-colors flex items-start gap-3 group/item"
+                    >
+                      <div className="w-8 h-8 rounded-lg bg-teal-100 text-teal-700 flex items-center justify-center shrink-0 group-hover/item:bg-teal-600 group-hover/item:text-white transition-colors">
+                        <Package size={16} />
+                      </div>
+                      <div>
+                        <p className="text-xs font-bold text-navy-900">Digitalt Stoffkartotek</p>
+                        <p className="text-[10px] text-slate-500 leading-tight">Sikkerhetsdatablader offline på mobil</p>
+                      </div>
+                    </Link>
+
+                    <Link 
+                      href="/prosjektstyring"
+                      className="w-full text-left p-2.5 rounded-xl hover:bg-slate-50 transition-colors flex items-start gap-3 group/item"
+                    >
+                      <div className="w-8 h-8 rounded-lg bg-rose-100 text-rose-700 flex items-center justify-center shrink-0 group-hover/item:bg-rose-600 group-hover/item:text-white transition-colors">
+                        <FolderKanban size={16} />
+                      </div>
+                      <div>
+                        <p className="text-xs font-bold text-navy-900">Prosjektstyring & Endringsordre</p>
+                        <p className="text-[10px] text-slate-500 leading-tight">Få betalt for uvarslet ekstraarbeid (NS 8406)</p>
+                      </div>
+                    </Link>
                   </div>
                 </div>
 
                 {/* Priser */}
-                <button 
-                  onClick={() => { setView('pricing'); setLandingTab('pricing'); }}
+                <Link
+                  href="/priser"
                   className={cn(
-                    "px-3.5 py-2 rounded-xl text-xs font-bold transition-all cursor-pointer",
-                    view === 'pricing' || (view === 'landing' && landingTab === 'pricing')
+                    "px-3.5 py-2 rounded-xl text-xs font-bold transition-all",
+                    view === 'pricing'
                       ? "bg-electric-50 text-electric-600 font-bold border border-electric-300/30"
                       : "text-slate-600 hover:text-navy-900 hover:bg-slate-100"
                   )}
                 >
                   Priser
-                </button>
+                </Link>
+
+                {/* Partner 50/50 */}
+                <Link
+                  href="/partner"
+                  className="px-3 py-1.5 rounded-xl text-xs font-bold text-emerald-700 hover:text-emerald-800 bg-emerald-50 hover:bg-emerald-100 border border-emerald-200 transition-all flex items-center gap-1.5"
+                  title="50/50 provisjon for partnere"
+                >
+                  <span className="w-2 h-2 rounded-full bg-emerald-500 animate-pulse" />
+                  <span>Partner 50/50</span>
+                </Link>
+
+                {/* FAQ */}
+                <Link
+                  href="/faq"
+                  className="px-3.5 py-2 rounded-xl text-xs font-bold text-slate-600 hover:text-navy-900 hover:bg-slate-100 transition-all"
+                >
+                  FAQ
+                </Link>
 
                 {/* Kundeportal */}
                 <button 
@@ -552,30 +611,30 @@ function AppContent() {
                 </button>
 
                 {/* Om oss */}
-                <button 
-                  onClick={() => setView('about')}
+                <Link
+                  href="/om-oss"
                   className={cn(
-                    "px-3.5 py-2 rounded-xl text-xs font-bold transition-all cursor-pointer",
+                    "px-3.5 py-2 rounded-xl text-xs font-bold transition-all",
                     view === 'about'
                       ? "bg-electric-50 text-electric-600 font-bold border border-electric-300/30"
                       : "text-slate-600 hover:text-navy-900 hover:bg-slate-100"
                   )}
                 >
                   Om oss
-                </button>
+                </Link>
 
                 {/* Kontakt */}
-                <button 
-                  onClick={() => setView('contact')}
+                <Link
+                  href="/kontakt"
                   className={cn(
-                    "px-3.5 py-2 rounded-xl text-xs font-bold transition-all cursor-pointer",
+                    "px-3.5 py-2 rounded-xl text-xs font-bold transition-all",
                     view === 'contact'
                       ? "bg-electric-50 text-electric-600 font-bold border border-electric-300/30"
                       : "text-slate-600 hover:text-navy-900 hover:bg-slate-100"
                   )}
                 >
                   Kontakt
-                </button>
+                </Link>
               </div>
 
               {/* Desktop Right: Actions */}
@@ -850,48 +909,115 @@ function AppContent() {
                       Løsninger for bygg & anlegg
                     </div>
                     <div className="space-y-1">
-                      <button 
-                        onClick={() => { setLandingTab('ai'); setView('landing'); setIsMenuOpen(false); }}
-                        className="w-full text-left p-3 rounded-xl hover:bg-slate-50 text-xs font-bold text-slate-800 flex items-center gap-3 cursor-pointer"
+                      <Link 
+                        href="/ks-system"
+                        onClick={() => setIsMenuOpen(false)}
+                        className="w-full text-left p-2.5 rounded-xl hover:bg-slate-50 text-xs font-bold text-slate-800 flex items-center gap-3"
                       >
-                        <div className="w-7 h-7 rounded-lg bg-electric-50 text-electric-600 border border-electric-200 flex items-center justify-center shrink-0">
-                          <Sparkles size={15} />
+                        <div className="w-7 h-7 rounded-lg bg-emerald-50 text-emerald-600 border border-emerald-200 flex items-center justify-center shrink-0">
+                          <FileCheck size={15} />
                         </div>
-                        <span>Mesterhjernen AI</span>
-                      </button>
-                      <button 
-                        onClick={() => { setLandingTab('hms'); setView('landing'); setIsMenuOpen(false); }}
-                        className="w-full text-left p-3 rounded-xl hover:bg-slate-50 text-xs font-bold text-slate-800 flex items-center gap-3 cursor-pointer"
+                        <div>
+                          <div className="font-bold text-navy-900">KS-system & Kvalitetssikring</div>
+                          <div className="text-[10px] text-slate-500 font-normal">Byggedagbok, sjekklister & TEK17</div>
+                        </div>
+                      </Link>
+                      <Link 
+                        href="/hms"
+                        onClick={() => setIsMenuOpen(false)}
+                        className="w-full text-left p-2.5 rounded-xl hover:bg-slate-50 text-xs font-bold text-slate-800 flex items-center gap-3"
                       >
                         <div className="w-7 h-7 rounded-lg bg-blue-50 text-blue-600 border border-blue-200 flex items-center justify-center shrink-0">
                           <ShieldCheck size={15} />
                         </div>
-                        <span>HMS & SJA</span>
-                      </button>
-                      <button 
-                        onClick={() => { setLandingTab('fdv'); setView('landing'); setIsMenuOpen(false); }}
-                        className="w-full text-left p-3 rounded-xl hover:bg-slate-50 text-xs font-bold text-slate-800 flex items-center gap-3 cursor-pointer"
+                        <div>
+                          <div className="font-bold text-navy-900">HMS & Internkontroll (§ 5)</div>
+                          <div className="text-[10px] text-slate-500 font-normal">Lovpålagt § 5 & vernerunder</div>
+                        </div>
+                      </Link>
+                      <Link 
+                        href="/avvikshandtering"
+                        onClick={() => setIsMenuOpen(false)}
+                        className="w-full text-left p-2.5 rounded-xl hover:bg-slate-50 text-xs font-bold text-slate-800 flex items-center gap-3"
+                      >
+                        <div className="w-7 h-7 rounded-lg bg-purple-50 text-purple-600 border border-purple-200 flex items-center justify-center shrink-0">
+                          <Camera size={15} />
+                        </div>
+                        <div>
+                          <div className="font-bold text-navy-900">Avvik med TEK17-visjon</div>
+                          <div className="text-[10px] text-slate-500 font-normal">AI bildekontroll på 5 sekunder</div>
+                        </div>
+                      </Link>
+                      <Link 
+                        href="/sja"
+                        onClick={() => setIsMenuOpen(false)}
+                        className="w-full text-left p-2.5 rounded-xl hover:bg-slate-50 text-xs font-bold text-slate-800 flex items-center gap-3"
+                      >
+                        <div className="w-7 h-7 rounded-lg bg-amber-50 text-amber-600 border border-amber-200 flex items-center justify-center shrink-0">
+                          <AlertTriangle size={15} />
+                        </div>
+                        <div>
+                          <div className="font-bold text-navy-900">Sikker Jobb Analyse (SJA)</div>
+                          <div className="text-[10px] text-slate-500 font-normal">Yr-vær og risikovurdering</div>
+                        </div>
+                      </Link>
+                      <Link 
+                        href="/stoffkartotek"
+                        onClick={() => setIsMenuOpen(false)}
+                        className="w-full text-left p-2.5 rounded-xl hover:bg-slate-50 text-xs font-bold text-slate-800 flex items-center gap-3"
                       >
                         <div className="w-7 h-7 rounded-lg bg-teal-50 text-teal-600 border border-teal-200 flex items-center justify-center shrink-0">
-                          <FileCheck size={15} />
+                          <Package size={15} />
                         </div>
-                        <span>FDV & Boligmappa</span>
-                      </button>
+                        <div>
+                          <div className="font-bold text-navy-900">Digitalt Stoffkartotek</div>
+                          <div className="text-[10px] text-slate-500 font-normal">Sikkerhetsdatablader offline</div>
+                        </div>
+                      </Link>
+                      <Link 
+                        href="/prosjektstyring"
+                        onClick={() => setIsMenuOpen(false)}
+                        className="w-full text-left p-2.5 rounded-xl hover:bg-slate-50 text-xs font-bold text-slate-800 flex items-center gap-3"
+                      >
+                        <div className="w-7 h-7 rounded-lg bg-rose-50 text-rose-600 border border-rose-200 flex items-center justify-center shrink-0">
+                          <FolderKanban size={15} />
+                        </div>
+                        <div>
+                          <div className="font-bold text-navy-900">Prosjektstyring & Endring (NS 8406)</div>
+                          <div className="text-[10px] text-slate-500 font-normal">Få betalt for ekstraarbeid</div>
+                        </div>
+                      </Link>
                     </div>
                   </div>
 
                   {/* Pages Section */}
                   <div className="pt-2 border-t border-neutral-100">
                     <div className="text-[11px] font-black uppercase tracking-wider text-slate-500 mb-2">
-                      Informasjon
+                      Informasjon & Ressurser
                     </div>
                     <div className="grid grid-cols-2 gap-2">
-                      <button 
-                        onClick={() => { setView('pricing'); setIsMenuOpen(false); }}
-                        className="text-left p-2.5 rounded-xl bg-slate-50 text-xs font-bold text-slate-800 hover:bg-slate-100 border border-slate-200 cursor-pointer"
+                      <Link 
+                        href="/priser"
+                        onClick={() => setIsMenuOpen(false)}
+                        className="text-left p-2.5 rounded-xl bg-slate-50 text-xs font-bold text-slate-800 hover:bg-slate-100 border border-slate-200"
                       >
-                        Priser
-                      </button>
+                        Priser & Pakker
+                      </Link>
+                      <Link 
+                        href="/partner"
+                        onClick={() => setIsMenuOpen(false)}
+                        className="text-left p-2.5 rounded-xl bg-emerald-50 text-xs font-bold text-emerald-800 hover:bg-emerald-100 border border-emerald-200 flex items-center gap-1.5"
+                      >
+                        <span className="w-1.5 h-1.5 rounded-full bg-emerald-500 animate-pulse" />
+                        <span>Partner 50/50</span>
+                      </Link>
+                      <Link 
+                        href="/faq"
+                        onClick={() => setIsMenuOpen(false)}
+                        className="text-left p-2.5 rounded-xl bg-slate-50 text-xs font-bold text-slate-800 hover:bg-slate-100 border border-slate-200"
+                      >
+                        FAQ
+                      </Link>
                       <button 
                         onClick={() => { setIsPortalModalOpen(true); setIsMenuOpen(false); }}
                         className="text-left p-2.5 rounded-xl bg-slate-50 text-xs font-bold text-slate-800 hover:bg-slate-100 border border-slate-200 cursor-pointer flex items-center gap-1.5"
@@ -899,18 +1025,20 @@ function AppContent() {
                         <Users size={13} className="text-electric-600" />
                         <span>Kundeportal</span>
                       </button>
-                      <button 
-                        onClick={() => { setView('about'); setIsMenuOpen(false); }}
-                        className="text-left p-2.5 rounded-xl bg-slate-50 text-xs font-bold text-slate-800 hover:bg-slate-100 border border-slate-200 cursor-pointer"
+                      <Link 
+                        href="/om-oss"
+                        onClick={() => setIsMenuOpen(false)}
+                        className="text-left p-2.5 rounded-xl bg-slate-50 text-xs font-bold text-slate-800 hover:bg-slate-100 border border-slate-200"
                       >
                         Om oss
-                      </button>
-                      <button 
-                        onClick={() => { setView('contact'); setIsMenuOpen(false); }}
-                        className="text-left p-2.5 rounded-xl bg-slate-50 text-xs font-bold text-slate-800 hover:bg-slate-100 border border-slate-200 cursor-pointer"
+                      </Link>
+                      <Link 
+                        href="/kontakt"
+                        onClick={() => setIsMenuOpen(false)}
+                        className="text-left p-2.5 rounded-xl bg-slate-50 text-xs font-bold text-slate-800 hover:bg-slate-100 border border-slate-200"
                       >
                         Kontakt
-                      </button>
+                      </Link>
                     </div>
 
                     <button 
@@ -1257,56 +1385,9 @@ function AppContent() {
         </div>
       )}
 
-      {/* Footer - Only rendered when not on landing page since LandingPage has its own dedicated footer */}
-      {view !== 'landing' && (
-        <footer className="bg-navy-900 text-slate-300 py-16 border-t border-navy-800">
-          <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8">
-            <div className="grid grid-cols-1 md:grid-cols-4 gap-12">
-              <div className="col-span-1 md:col-span-2">
-                <Logo size="md" className="mb-4" theme="dark" showSubtitle />
-                <p className="max-w-md text-xs text-slate-400 leading-relaxed font-sans mb-3">
-                  {t('footer_desc')}
-                </p>
-                <div className="text-xs font-medium text-slate-500">
-                  En del av Vikingnet • AIChat Norge AS (Org.nr: 933 851 222)
-                </div>
-              </div>
-              <div>
-                <h4 className="text-xs font-bold text-electric-400 uppercase tracking-widest mb-4">{t('product')}</h4>
-                <ul className="space-y-2.5 text-xs text-slate-300 font-medium">
-                  <li><button onClick={() => { scrollToTop(); setView('dashboard'); }} className="hover:text-white transition-colors cursor-pointer text-left">{t('dashboard')}</button></li>
-                  <li><button onClick={() => { scrollToTop(); setView('mobile'); }} className="hover:text-white transition-colors cursor-pointer text-left">{t('mobile_app')}</button></li>
-                  <li><button onClick={() => { scrollToTop(); setView('pricing'); }} className="hover:text-white transition-colors cursor-pointer text-left">{t('pricing')}</button></li>
-                  <li><button onClick={() => setIsIntegrationModalOpen(true)} className="hover:text-white transition-colors cursor-pointer text-left">{t('integrations')}</button></li>
-                </ul>
-              </div>
-              <div>
-                <h4 className="text-xs font-bold text-electric-400 uppercase tracking-widest mb-4">{t('company')}</h4>
-                <ul className="space-y-2.5 text-xs text-slate-300 font-medium">
-                  <li><button onClick={() => { scrollToTop(); setView('about'); }} className="hover:text-white transition-colors cursor-pointer text-left">{t('about_us')}</button></li>
-                  <li><button onClick={() => { scrollToTop(); setView('contact'); }} className="hover:text-white transition-colors cursor-pointer text-left">{t('contact')}</button></li>
-                  <li><button onClick={() => { scrollToTop(); setView('privacy'); }} className="hover:text-white transition-colors cursor-pointer text-left">{t('privacy')}</button></li>
-                  <li><button onClick={() => { scrollToTop(); setView('terms'); }} className="hover:text-white transition-colors cursor-pointer text-left">{t('terms')}</button></li>
-                  <li>
-                    <button 
-                      onClick={() => window.dispatchEvent(new CustomEvent('open_cookie_settings'))} 
-                      className="hover:text-emerald-300 transition-colors text-emerald-400 font-medium cursor-pointer text-left"
-                    >
-                      Informasjonskapsler
-                    </button>
-                  </li>
-                </ul>
-              </div>
-            </div>
-            <div className="mt-12 pt-8 border-t border-navy-800 flex flex-col md:flex-row justify-between items-center gap-4 text-xs text-slate-400">
-              <p>{t('footer_rights')}</p>
-              <div className="flex gap-6">
-                <span>{t('tek17_compliance')}</span>
-                <span>{t('gdpr_compliance')}</span>
-              </div>
-            </div>
-          </div>
-        </footer>
+      {/* Public Marketing Footer */}
+      {(!user || ['landing', 'pricing', 'about', 'contact', 'privacy', 'terms'].includes(view)) && (
+        <PublicFooter />
       )}
 
       {/* Kundeportal Modal */}

@@ -77,6 +77,7 @@ import VehicleModal from './VehicleModal';
 import HMSModal from './HMSModal';
 import ProjectDetails from './ProjectDetails';
 import SmartSearch from './SmartSearch';
+import ChangeOrderModal from './ChangeOrderModal';
 
 interface DashboardProps {
   initialTab?: any;
@@ -136,6 +137,7 @@ export default function Dashboard({
   const [isHMSModalOpen, setIsHMSModalOpen] = useState(false);
   const [isSmartSearchOpen, setIsSmartSearchOpen] = useState(false);
   const [isActivityLogModalOpen, setIsActivityLogModalOpen] = useState(false);
+  const [isChangeOrderModalOpen, setIsChangeOrderModalOpen] = useState(false);
 
   // Agent State & Live Dispatch
   const [agentStatus, setAgentStatus] = useState<any>({
@@ -368,6 +370,37 @@ export default function Dashboard({
       <VehicleModal isOpen={isVehicleModalOpen} onClose={() => setIsVehicleModalOpen(false)} projects={projects} />
       <HMSModal isOpen={isHMSModalOpen} onClose={() => setIsHMSModalOpen(false)} projects={projects} />
       <ActivityLogModal isOpen={isActivityLogModalOpen} onClose={() => setIsActivityLogModalOpen(false)} projectId={projects[0]?.id} />
+      <ChangeOrderModal
+        isOpen={isChangeOrderModalOpen}
+        onClose={() => {
+          setIsChangeOrderModalOpen(false);
+          fetchAgentState();
+        }}
+        project={(selectedProject || projects[0] || {
+          id: 'proj-101',
+          name: 'Nyebakken 14 - Totalrenovering',
+          projectCode: 'P-2026-01',
+          description: 'Totalrenovering',
+          location: 'Oslo',
+          progress: 65,
+          status: 'active',
+          stage: 'active',
+          documentationLevel: 85,
+          clientName: 'Ole Nordmann',
+          clientEmail: 'ole@nordmann.no',
+          clientPhone: '912 34 567',
+          company: 'Mester Entreprenør AS',
+          companyId: 'comp-001',
+          companyName: 'Mester Entreprenør AS',
+          projectManager: 'Ken (Byggmester)',
+          startDate: new Date().toISOString(),
+          lastUpdate: new Date().toISOString(),
+          createdAt: new Date().toISOString(),
+          updatedAt: new Date().toISOString()
+        }) as unknown as Project}
+        currentUserId={user?.id || 'admin_user'}
+        currentUserName={user?.displayName || 'Byggeleder'}
+      />
       <SmartSearch isOpen={isSmartSearchOpen} onClose={() => setIsSmartSearchOpen(false)} onNavigate={(v) => setActiveTab(v as any)} />
 
       <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 pt-8">
@@ -537,7 +570,10 @@ export default function Dashboard({
                   {/* 7. Endringsordre (NS 8406) */}
                   <button
                     type="button"
-                    onClick={() => handleTabSelect("endringsordrer")}
+                    onClick={() => {
+                      setIsChangeOrderModalOpen(true);
+                      handleTabSelect("endringsordrer");
+                    }}
                     className="flex flex-col items-center text-center p-3.5 sm:p-4 rounded-2xl bg-white border border-slate-200/90 shadow-sm hover:shadow-md hover:border-rose-300 active:scale-95 transition-all group cursor-pointer"
                   >
                     <div className="w-12 h-12 rounded-2xl bg-gradient-to-tr from-rose-600 to-pink-500 text-white flex items-center justify-center shadow-md mb-2 group-hover:scale-105 transition-transform">
@@ -1175,8 +1211,9 @@ export default function Dashboard({
                     </div>
 
                     <button 
-                      onClick={() => handleSendCommand('Registrer endringsordre: ')}
-                      className="flex items-center gap-2 px-4 py-2.5 bg-gradient-to-r from-electric-500 to-electric-400 text-white rounded-2xl text-xs font-black shadow-purple-cta"
+                      type="button"
+                      onClick={() => setIsChangeOrderModalOpen(true)}
+                      className="flex items-center gap-2 px-4 py-2.5 bg-gradient-to-r from-electric-500 to-electric-400 hover:opacity-95 text-white rounded-2xl text-xs font-black shadow-purple-cta transition-opacity cursor-pointer"
                     >
                       <Plus size={16} />
                       <span>Ny Endringsordre</span>
@@ -1227,12 +1264,22 @@ export default function Dashboard({
                               <div className="text-[10px] text-slate-400 font-bold">eks mva (+{co.days} dgr)</div>
                             </div>
 
-                            <button 
-                              onClick={() => toast.success('Godkjenningslenke kopiert til utklippstavlen!')}
-                              className="px-3 py-2 bg-slate-100 hover:bg-slate-200 text-navy-900 rounded-xl text-xs font-bold transition-all"
-                            >
-                              Kopier lenke
-                            </button>
+                            <div className="flex items-center gap-2">
+                              <button 
+                                type="button"
+                                onClick={() => setIsChangeOrderModalOpen(true)}
+                                className="px-3 py-2 bg-rose-50 hover:bg-rose-100 text-rose-700 rounded-xl text-xs font-bold transition-all cursor-pointer"
+                              >
+                                Behandle
+                              </button>
+                              <button 
+                                type="button"
+                                onClick={() => toast.success('Godkjenningslenke kopiert til utklippstavlen!')}
+                                className="px-3 py-2 bg-slate-100 hover:bg-slate-200 text-navy-900 rounded-xl text-xs font-bold transition-all cursor-pointer"
+                              >
+                                Kopier lenke
+                              </button>
+                            </div>
                           </div>
                         </div>
                       ))}

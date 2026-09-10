@@ -1,6 +1,7 @@
 'use client';
 
 import { useState } from 'react';
+import Link from 'next/link';
 import { motion, AnimatePresence } from 'motion/react';
 import { useTranslation } from 'react-i18next';
 import { 
@@ -51,7 +52,9 @@ import {
   Radio, 
   Eye, 
   Wrench, 
-  Hammer
+  Hammer,
+  FolderKanban,
+  Package
 } from 'lucide-react';
 import { cn } from '@/src/lib/utils';
 import InstallGuide from './InstallGuide';
@@ -256,81 +259,6 @@ export default function LandingPage({
           </motion.div>
         )}
       </AnimatePresence>
-
-      {/* Global Vikingnet Authority Footer */}
-      <footer className="border-t border-navy-800 bg-navy-900 text-slate-300 py-16 px-4 sm:px-6 lg:px-8">
-        <div className="max-w-7xl mx-auto grid grid-cols-1 md:grid-cols-4 gap-12 mb-12">
-          <div className="space-y-4">
-            <div className="flex items-center gap-2">
-              <span className="text-2xl font-black text-white">Viking<span className="text-electric-400">Mester</span></span>
-              <span className="text-[10px] font-bold px-2 py-0.5 rounded-full bg-electric-500/20 text-electric-300 border border-electric-400/30">PRO</span>
-            </div>
-            <p className="text-xs text-slate-400 leading-relaxed font-sans">
-              Byggeplassens råeste kraftverktøy. Utviklet i Norge for tømrere, rørleggere, elektrikere og totalentreprenører som vil ha alt på stell før de forlater byggeplassen.
-            </p>
-            <div className="text-xs font-medium text-slate-400">
-              En del av Vikingnet • AIChat Norge AS (Org.nr: 933 851 222)
-            </div>
-          </div>
-
-          <div>
-            <h4 className="text-xs font-bold text-electric-400 uppercase tracking-widest mb-4">Fagområder</h4>
-            <ul className="space-y-2 text-xs text-slate-300 font-medium">
-              <li className="hover:text-white transition-colors cursor-pointer">Tømrer & Byggmester (TEK17)</li>
-              <li className="hover:text-white transition-colors cursor-pointer">Rørlegger & VVS (BVN 31.205)</li>
-              <li className="hover:text-white transition-colors cursor-pointer">Elektro & El-installasjon (NEK 400)</li>
-              <li className="hover:text-white transition-colors cursor-pointer">Graving & Grunnarbeid (Geomatikk)</li>
-              <li className="hover:text-white transition-colors cursor-pointer">Maler, Sparkel & Flis</li>
-              <li className="hover:text-white transition-colors cursor-pointer">Totalentreprenør & Prosjektledelse</li>
-            </ul>
-          </div>
-
-          <div>
-            <h4 className="text-xs font-bold text-electric-400 uppercase tracking-widest mb-4">Teknisk & Sikkerhet</h4>
-            <ul className="space-y-2 text-xs text-slate-300 font-medium">
-              <li>Gemini 3.8 Flash Multimodal</li>
-              <li>Deterministisk SJA-motor</li>
-              <li>Yr.no Værsynkronisering</li>
-              <li>Brønnøysundregistrene API</li>
-              <li>AES-256 kryptering & GDPR</li>
-              <li>Norsk skylagring i Oslo</li>
-            </ul>
-          </div>
-
-          <div>
-            <h4 className="text-xs font-bold text-electric-400 uppercase tracking-widest mb-4">Direktekontakt & Support</h4>
-            <div className="space-y-3 text-xs text-slate-300">
-              <p className="flex items-center gap-2">
-                <Mail size={14} className="text-electric-400" />
-                <a href="mailto:hei@vikingmester.no" className="text-electric-300 font-bold hover:underline">hei@vikingmester.no</a>
-              </p>
-              <p className="text-slate-400 text-xs leading-relaxed">
-                Man-Fre 07:00 - 17:00.<br/>Autonom e-postagent svarer døgnet rundt på henvendelser og tilbud.
-              </p>
-              <div className="pt-2">
-                <button 
-                  onClick={onStartDemo}
-                  className="w-full bg-electric-500/10 hover:bg-electric-500/20 text-electric-300 border border-electric-400/40 px-3 py-2.5 rounded-xl text-xs font-bold transition-all text-center cursor-pointer"
-                >
-                  Åpne Interaktiv Demo →
-                </button>
-              </div>
-            </div>
-          </div>
-        </div>
-
-        <div className="max-w-7xl mx-auto pt-8 border-t border-navy-800 flex flex-col sm:flex-row items-center justify-between gap-4 text-xs text-slate-400">
-          <div>
-            © {new Date().getFullYear()} VikingMester PRO • En del av Vikingnet. Alle rettigheter reservert.
-          </div>
-          <div className="flex gap-6">
-            <span className="hover:text-white cursor-pointer transition-colors" onClick={() => { window.scrollTo({ top: 0, left: 0, behavior: 'instant' }); onViewChange('privacy'); }}>Personvern & GDPR</span>
-            <span className="hover:text-white cursor-pointer transition-colors" onClick={() => { window.scrollTo({ top: 0, left: 0, behavior: 'instant' }); onViewChange('terms'); }}>Vilkår & DPA</span>
-            <span className="hover:text-white cursor-pointer transition-colors" onClick={() => { window.scrollTo({ top: 0, left: 0, behavior: "instant" }); onViewChange("about"); }}>Om Vikingnet</span>
-            <span className="text-purple-400 font-bold hover:text-purple-300 cursor-pointer transition-colors" onClick={() => { window.scrollTo({ top: 0, left: 0, behavior: "instant" }); onViewChange("partner"); }}>Partnerportal (50/50 Lead-inntak)</span>
-          </div>
-        </div>
-      </footer>
     </div>
   );
 }
@@ -758,6 +686,202 @@ function TacticalHomeView({ onStartDemo, onGoToPricing, onViewChange }: { onStar
                 Spesialfunksjon: Tverrfaglig Lukkesperre
               </div>
             </div>
+          </div>
+        </div>
+      </section>
+
+      {/* Dedikert SEO- og Fagseksjon: Komplett verktøykasse for norsk byggebransje */}
+      <section className="py-24 bg-slate-50 border-b border-slate-200">
+        <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8">
+          <div className="text-center max-w-3xl mx-auto mb-16">
+            <span className="text-xs font-bold text-electric-600 uppercase tracking-widest bg-electric-50 px-3.5 py-1 rounded-full border border-electric-300/40">
+              KOMPLETT FAGSYSTEM
+            </span>
+            <h2 className="text-2xl sm:text-4xl lg:text-5xl font-black text-navy-900 mt-4 leading-tight">
+              UTFORSK VÅRE SPESIALISERINGER & MODULER
+            </h2>
+            <p className="text-slate-600 mt-4 text-sm sm:text-base leading-relaxed font-sans">
+              Alt du trenger for å levere feilfrie bygg, bestå revisjoner fra Arbeidstilsynet og sikre full betaling for ekstraarbeid.
+            </p>
+          </div>
+
+          <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-8">
+            {/* 1. KS-system */}
+            <Link 
+              href="/ks-system"
+              className="bg-white rounded-3xl p-8 border border-slate-200 hover:border-electric-400 hover:shadow-card-hover transition-all flex flex-col justify-between group"
+            >
+              <div>
+                <div className="w-12 h-12 rounded-2xl bg-emerald-100 text-emerald-700 flex items-center justify-center mb-6 group-hover:scale-110 transition-transform">
+                  <FileCheck size={24} />
+                </div>
+                <div className="flex items-center gap-2 mb-2">
+                  <span className="text-[10px] font-bold uppercase tracking-wider text-emerald-700 bg-emerald-50 px-2 py-0.5 rounded border border-emerald-200">TEK17 & BVN</span>
+                  <span className="text-xs text-slate-400 font-mono">PBL § 21</span>
+                </div>
+                <h3 className="text-xl font-bold text-navy-900 group-hover:text-electric-600 transition-colors mb-3">
+                  KS-system for håndverkere
+                </h3>
+                <p className="text-sm text-slate-600 leading-relaxed font-sans mb-6">
+                  Komplett kvalitetssikring rett i lomma. Snakk inn byggedagboken på 20 sekunder, ta bilder og generer revisjonsgodkjente rapporter til byggherre og Boligmappa.
+                </p>
+              </div>
+              <div className="pt-4 border-t border-slate-100 flex items-center justify-between text-xs font-bold text-electric-600 group-hover:translate-x-1 transition-transform">
+                <span>Les mer om KS-systemet</span>
+                <ArrowRight size={14} />
+              </div>
+            </Link>
+
+            {/* 2. HMS & Internkontroll */}
+            <Link 
+              href="/hms"
+              className="bg-white rounded-3xl p-8 border border-slate-200 hover:border-electric-400 hover:shadow-card-hover transition-all flex flex-col justify-between group"
+            >
+              <div>
+                <div className="w-12 h-12 rounded-2xl bg-blue-100 text-blue-700 flex items-center justify-center mb-6 group-hover:scale-110 transition-transform">
+                  <ShieldCheck size={24} />
+                </div>
+                <div className="flex items-center gap-2 mb-2">
+                  <span className="text-[10px] font-bold uppercase tracking-wider text-blue-700 bg-blue-50 px-2 py-0.5 rounded border border-blue-200">ARBEIDSTILSYNET</span>
+                  <span className="text-xs text-slate-400 font-mono">IK-FORSKRIFTEN § 5</span>
+                </div>
+                <h3 className="text-xl font-bold text-navy-900 group-hover:text-electric-600 transition-colors mb-3">
+                  HMS & Internkontroll
+                </h3>
+                <p className="text-sm text-slate-600 leading-relaxed font-sans mb-6">
+                  Lovpålagt HMS for bygg og anlegg med null papirarbeid. Digitale vernerunder, risikovurderinger og beredskapsplaner ferdig utfylt og godkjent.
+                </p>
+              </div>
+              <div className="pt-4 border-t border-slate-100 flex items-center justify-between text-xs font-bold text-electric-600 group-hover:translate-x-1 transition-transform">
+                <span>Les mer om HMS & vernerunder</span>
+                <ArrowRight size={14} />
+              </div>
+            </Link>
+
+            {/* 3. Avvikshåndtering TEK17 */}
+            <Link 
+              href="/avvikshandtering"
+              className="bg-white rounded-3xl p-8 border border-slate-200 hover:border-electric-400 hover:shadow-card-hover transition-all flex flex-col justify-between group"
+            >
+              <div>
+                <div className="w-12 h-12 rounded-2xl bg-purple-100 text-purple-700 flex items-center justify-center mb-6 group-hover:scale-110 transition-transform">
+                  <Camera size={24} />
+                </div>
+                <div className="flex items-center gap-2 mb-2">
+                  <span className="text-[10px] font-bold uppercase tracking-wider text-purple-700 bg-purple-50 px-2 py-0.5 rounded border border-purple-200">AI-VISJON</span>
+                  <span className="text-xs text-slate-400 font-mono">TEK17 / BVN</span>
+                </div>
+                <h3 className="text-xl font-bold text-navy-900 group-hover:text-electric-600 transition-colors mb-3">
+                  Avvikshåndtering (TEK17)
+                </h3>
+                <p className="text-sm text-slate-600 leading-relaxed font-sans mb-6">
+                  Knips bilde av konstruksjonen – Gemini AI identifiserer brudd på TEK17 og Våtromsnormen automatisk. Tverrfaglig lukkesperre hindrer plating før feil er rettet.
+                </p>
+              </div>
+              <div className="pt-4 border-t border-slate-100 flex items-center justify-between text-xs font-bold text-electric-600 group-hover:translate-x-1 transition-transform">
+                <span>Les mer om avvikskontroll</span>
+                <ArrowRight size={14} />
+              </div>
+            </Link>
+
+            {/* 4. SJA */}
+            <Link 
+              href="/sja"
+              className="bg-white rounded-3xl p-8 border border-slate-200 hover:border-electric-400 hover:shadow-card-hover transition-all flex flex-col justify-between group"
+            >
+              <div>
+                <div className="w-12 h-12 rounded-2xl bg-amber-100 text-amber-700 flex items-center justify-center mb-6 group-hover:scale-110 transition-transform">
+                  <AlertTriangle size={24} />
+                </div>
+                <div className="flex items-center gap-2 mb-2">
+                  <span className="text-[10px] font-bold uppercase tracking-wider text-amber-700 bg-amber-50 px-2 py-0.5 rounded border border-amber-200">SIKKER JOBB ANALYSE</span>
+                  <span className="text-xs text-slate-400 font-mono">YR.NO SYNC</span>
+                </div>
+                <h3 className="text-xl font-bold text-navy-900 group-hover:text-electric-600 transition-colors mb-3">
+                  Sikker Jobb Analyse (SJA)
+                </h3>
+                <p className="text-sm text-slate-600 leading-relaxed font-sans mb-6">
+                  Autonom SJA på 30 sekunder. Snakk inn oppgaven på stillaset – AI henter sanntids vind- og nedbørsdata fra Yr og foreslår relevante sikkerhetstiltak.
+                </p>
+              </div>
+              <div className="pt-4 border-t border-slate-100 flex items-center justify-between text-xs font-bold text-electric-600 group-hover:translate-x-1 transition-transform">
+                <span>Les mer om SJA & værrisiko</span>
+                <ArrowRight size={14} />
+              </div>
+            </Link>
+
+            {/* 5. Stoffkartotek */}
+            <Link 
+              href="/stoffkartotek"
+              className="bg-white rounded-3xl p-8 border border-slate-200 hover:border-electric-400 hover:shadow-card-hover transition-all flex flex-col justify-between group"
+            >
+              <div>
+                <div className="w-12 h-12 rounded-2xl bg-teal-100 text-teal-700 flex items-center justify-center mb-6 group-hover:scale-110 transition-transform">
+                  <Package size={24} />
+                </div>
+                <div className="flex items-center gap-2 mb-2">
+                  <span className="text-[10px] font-bold uppercase tracking-wider text-teal-700 bg-teal-50 px-2 py-0.5 rounded border border-teal-200">OFFLINE KARTOTEK</span>
+                  <span className="text-xs text-slate-400 font-mono">FORSKRIFT OM UTTAKT § 2</span>
+                </div>
+                <h3 className="text-xl font-bold text-navy-900 group-hover:text-electric-600 transition-colors mb-3">
+                  Digitalt Stoffkartotek
+                </h3>
+                <p className="text-sm text-slate-600 leading-relaxed font-sans mb-6">
+                  Full kontroll på kjemikalier, lim, maling og fugemasser. Sikkerhetsdatablader (SDS) og faresymboler tilgjengelig offline ute i felten for alle ansatte.
+                </p>
+              </div>
+              <div className="pt-4 border-t border-slate-100 flex items-center justify-between text-xs font-bold text-electric-600 group-hover:translate-x-1 transition-transform">
+                <span>Les mer om stoffkartoteket</span>
+                <ArrowRight size={14} />
+              </div>
+            </Link>
+
+            {/* 6. Prosjektstyring & Endringsordre */}
+            <Link 
+              href="/prosjektstyring"
+              className="bg-white rounded-3xl p-8 border border-slate-200 hover:border-electric-400 hover:shadow-card-hover transition-all flex flex-col justify-between group"
+            >
+              <div>
+                <div className="w-12 h-12 rounded-2xl bg-rose-100 text-rose-700 flex items-center justify-center mb-6 group-hover:scale-110 transition-transform">
+                  <FolderKanban size={24} />
+                </div>
+                <div className="flex items-center gap-2 mb-2">
+                  <span className="text-[10px] font-bold uppercase tracking-wider text-rose-700 bg-rose-50 px-2 py-0.5 rounded border border-rose-200">NS 8406 / NS 8405</span>
+                  <span className="text-xs text-slate-400 font-mono">LØNNSOMHET</span>
+                </div>
+                <h3 className="text-xl font-bold text-navy-900 group-hover:text-electric-600 transition-colors mb-3">
+                  Prosjektstyring & Endring
+                </h3>
+                <p className="text-sm text-slate-600 leading-relaxed font-sans mb-6">
+                  Få betalt for uvarslet ekstraarbeid. Generer formelle endringsvarsler på 15 sekunder med tale, send direkte til byggherre og få godkjenning på SMS.
+                </p>
+              </div>
+              <div className="pt-4 border-t border-slate-100 flex items-center justify-between text-xs font-bold text-electric-600 group-hover:translate-x-1 transition-transform">
+                <span>Les mer om endringsordrer</span>
+                <ArrowRight size={14} />
+              </div>
+            </Link>
+          </div>
+
+          {/* Quick Pillar Links */}
+          <div className="mt-12 pt-8 border-t border-slate-200 flex flex-wrap items-center justify-center gap-4 text-xs font-bold">
+            <span className="text-slate-400 uppercase tracking-wider">Hurtigsnarveier:</span>
+            <Link href="/priser" className="px-4 py-2 bg-white hover:bg-slate-100 text-slate-800 rounded-full border border-slate-200 transition-colors">
+              Priser & Rammer
+            </Link>
+            <Link href="/partner" className="px-4 py-2 bg-emerald-50 hover:bg-emerald-100 text-emerald-800 rounded-full border border-emerald-200 transition-colors flex items-center gap-1.5">
+              <span className="w-2 h-2 rounded-full bg-emerald-500 animate-pulse" />
+              Bli Partner (50/50 provisjon)
+            </Link>
+            <Link href="/faq" className="px-4 py-2 bg-white hover:bg-slate-100 text-slate-800 rounded-full border border-slate-200 transition-colors">
+              Ofte stilte spørsmål (FAQ)
+            </Link>
+            <Link href="/om-oss" className="px-4 py-2 bg-white hover:bg-slate-100 text-slate-800 rounded-full border border-slate-200 transition-colors">
+              Om oss & Sikkerhet
+            </Link>
+            <Link href="/kontakt" className="px-4 py-2 bg-white hover:bg-slate-100 text-slate-800 rounded-full border border-slate-200 transition-colors">
+              Kontakt & Demo
+            </Link>
           </div>
         </div>
       </section>
