@@ -1,25 +1,38 @@
 import { NextRequest, NextResponse } from 'next/server';
-import { saveCollectionItem, getCollectionItems } from '@/src/lib/server/db';
+import { saveCollectionItem, getCollectionItems, ADMIN_EMAILS } from '@/src/lib/server/db';
 import { enrollCustomerInNurture } from '@/src/lib/server/nurtureEngine';
+import { getUserFromRequest } from '@/src/lib/server/auth';
 
-// GET: Hent registrerte partner-leads og nøkkeltall
+// GET: Hent partner-leads (isolert per selger med mindre admin)
 export async function GET(req: NextRequest) {
   try {
-    const items = await getCollectionItems('leads');
+    const userPayload = getUserFromRequest(req);
     const sellerParam = req.nextUrl.searchParams.get('seller');
+    const items = await getCollectionItems('leads');
 
-    // Filtrer ut leads som kommer fra partnerportalen
     let partnerLeads = (items || []).filter((l: any) => 
       l.source === 'partner_portal' || 
       Boolean(l.sellerName) || 
       Boolean(l.partnerRep)
     );
 
-    if (sellerParam && sellerParam.trim()) {
+    // Hvis innlogget selger (og ikke admin), isoler KUN deres egne leads
+    if (userPayload && userPayload.email) {
+      const userEmail = userPayload.email.toLowerCase().trim();
+      const isAdmin = ADMIN_EMAILS.includes(userEmail) || userPayload.role === 'admin';
+
+      if (!isAdmin) {
+        partnerLeads = partnerLeads.filter((l: any) => 
+          (l.sellerEmail && l.sellerEmail.toLowerCase() === userEmail) ||
+          (l.sellerId && l.sellerId === userPayload.id) ||
+          (l.sellerName && l.sellerName.toLowerCase().includes(userEmail.split('@')[0]))
+        );
+      }
+    } else if (sellerParam && sellerParam.trim()) {
       const q = sellerParam.trim().toLowerCase();
       partnerLeads = partnerLeads.filter((l: any) => 
         (l.sellerName && l.sellerName.toLowerCase().includes(q)) ||
-        (l.partnerRep && l.partnerRep.toLowerCase().includes(q))
+        (l.sellerEmail && l.sellerEmail.toLowerCase() === q)
       );
     }
 
@@ -32,8 +45,11 @@ export async function GET(req: NextRequest) {
 
     const totalLeads = partnerLeads.length;
     const contacted = partnerLeads.filter((l: any) => l.status === 'contacted' || l.followUpSentAt).length;
+    const inDialogue = partnerLeads.filter((l: any) => l.status === 'dialogue').length;
+    const inTrial = partnerLeads.filter((l: any) => l.status === 'trial').length;
+    const won = partnerLeads.filter((l: any) => l.status === 'won').length;
     const totalEstimatedMrc = partnerLeads.reduce((sum: number, l: any) => sum + (Number(l.monthlyPrice) || 3490), 0);
-    const sellers = Array.from(new Set(partnerLeads.map((l: any) => l.sellerName || l.partnerRep).filter(Boolean)));
+    const wonMrc = partnerLeads.filter((l: any) => l.status === 'won').reduce((sum: number, l: any) => sum + (Number(l.monthlyPrice) || 3490), 0);
 
     return NextResponse.json({
       success: true,
@@ -41,9 +57,11 @@ export async function GET(req: NextRequest) {
       stats: {
         totalLeads,
         contacted,
+        inDialogue,
+        inTrial,
+        won,
         totalEstimatedMrc,
-        sellersCount: sellers.length,
-        sellers
+        wonMrc
       }
     });
   } catch (err: any) {
@@ -52,12 +70,16 @@ export async function GET(req: NextRequest) {
   }
 }
 
-// POST: Registrer nytt partner-lead & start autonom oppfølging
+// POST: Registrer nytt partner-lead & start autonom oppfølging på vegne av selgeren
 export async function POST(req: NextRequest) {
   try {
+    const userPayload = getUserFromRequest(req);
     const body = await req.json();
-    const sellerName = (body.sellerName || body.seller || '').trim();
-    const sellerEmail = (body.sellerEmail || '').trim().toLowerCase();
+
+    const sellerName = (body.sellerName || userPayload?.email?.split('@')[0] || body.seller || '').trim();
+    const sellerEmail = (body.sellerEmail || userPayload?.email || '').trim().toLowerCase();
+    const sellerId = userPayload?.id || body.sellerId || null;
+
     const rawCompany = (body.company || body.companyName || '').trim();
     const rawOrgnr = (body.orgnr || body.organizationNumber || '').toString().replace(/\s+/g, '').trim();
     const contactName = (body.name || body.contactName || '').trim();
@@ -120,7 +142,7 @@ export async function POST(req: NextRequest) {
         });
         if (res.ok) {
           const data = await res.json();
-          const unit = data._embedded?.enheter?.[0];
+          const unit = data._embedded ? data._embedded.enheter?.[0] : null;
           if (unit) {
             brregInfo = {
               orgnr: unit.organisasjonsnummer,
@@ -156,17 +178,29 @@ export async function POST(req: NextRequest) {
       }
     } else if (leadType === 'trial') {
       planTitle = 'VikingMester Team (14 dagers prøveperiode)';
-      monthlyPrice = 3490; // Ordinær mnd-pris etter prøveperiode
+      monthlyPrice = 3490;
     } else {
       planTitle = 'VikingMester Team (Informasjon & introduksjon)';
       monthlyPrice = 3490;
     }
 
-    // 3. Lagre lead i databasen
+    // 3. Opprett lead-record med tidslinje for forhandlinger
     const leadId = `lead-partner-${Date.now()}-${Math.random().toString(36).substring(2, 7)}`;
+    const initialTimeline = [
+      {
+        id: `event-${Date.now()}`,
+        timestamp: new Date().toISOString(),
+        status: 'contacted',
+        title: '📬 Lead registrert & Autonom oppfølging startet',
+        note: `Registrert av ${sellerName}. Personlig introduksjonse-post sendt fra hei@vikingnet.no.`,
+        updatedBy: sellerName
+      }
+    ];
+
     const leadRecord = {
       id: leadId,
       source: 'partner_portal',
+      sellerId,
       sellerName,
       sellerEmail: sellerEmail || null,
       partnerRep: sellerName,
@@ -183,16 +217,23 @@ export async function POST(req: NextRequest) {
       workers,
       notes,
       brregInfo,
-      status: 'contacted',
+      status: 'contacted', // 'contacted' | 'dialogue' | 'trial' | 'won' | 'lost'
+      timeline: initialTimeline,
       followUpSentAt: new Date().toISOString(),
       createdAt: new Date().toISOString()
     };
 
     await saveCollectionItem('leads', leadRecord);
 
-    // 4. Send automatisk oppfølging via Resend
+    // 4. Send automatisk oppfølging via Resend på vegne av selgeren
     const resendKey = process.env.RESEND_API_KEY || process.env.RESEND_API || process.env.RESEND_KEY || process.env.RESEND_TOKEN || process.env.RESEND || process.env.RESEND_APIKEY;
-    const fromEmail = process.env.EMAIL_FROM || process.env.RESEND_FROM || 'VikingMester <hei@vikingnet.no>';
+    
+    // 💡 Avsendernavn: "${sellerName} | VikingMester" <hei@vikingnet.no>
+    // Reply-To: ${sellerEmail}, hei@vikingnet.no
+    // Dette gir 100% SPF/DKIM-levering, og kunden ser at henvendelsen kommer personlig fra selgeren!
+    const senderDisplayName = `${sellerName} | VikingMester`;
+    const fromEmail = `"${senderDisplayName}" <hei@vikingnet.no>`;
+    const replyToHeader = sellerEmail ? `${sellerEmail}, hei@vikingnet.no` : 'hei@vikingnet.no';
 
     let customerEmailSent = false;
     let internalAlertSent = false;
@@ -200,21 +241,21 @@ export async function POST(req: NextRequest) {
     if (resendKey) {
       // 4A. E-post til leadet (kunden)
       try {
-        let emailSubject = `VikingMester – Informasjon og introduksjon (via ${sellerName})`;
+        let emailSubject = `VikingMester – Informasjon og introduksjon (fra ${sellerName})`;
         let headlineText = `Hei ${contactName}!`;
-        let introLeadText = `${sellerName} fra vårt partnerteam tipset oss om at dere i <strong>${companyName}</strong> ønsket informasjon om hvordan VikingMester forenkler hverdagen for håndverkere.`;
+        let introLeadText = `Jeg (${sellerName} i VikingMester-teamet) følger opp samtalen vår angående hvordan VikingMester forenkler hverdagen for <strong>${companyName}</strong>.`;
 
         if (leadType === 'trial') {
-          emailSubject = `Din 14-dagers prøveperiode på VikingMester er klar (via ${sellerName})`;
-          introLeadText = `${sellerName} har registrert en 14 dagers uforpliktende prøveperiode for <strong>${companyName}</strong>.`;
+          emailSubject = `Din 14-dagers prøveperiode på VikingMester er klar (fra ${sellerName})`;
+          introLeadText = `Jeg har nå klargjort en 14 dagers uforpliktende prøveperiode for <strong>${companyName}</strong>.`;
         } else if (leadType === 'order') {
-          emailSubject = `Bekreftelse og oppstart av VikingMester for ${companyName} (via ${sellerName})`;
-          introLeadText = `Takk for bestillingen formidlet via ${sellerName} for <strong>${companyName}</strong>. Vi gleder oss til å ha dere med!`;
+          emailSubject = `Bekreftelse og oppstart av VikingMester for ${companyName} (fra ${sellerName})`;
+          introLeadText = `Takk for bestillingen av VikingMester for <strong>${companyName}</strong>! Vi gleder oss til å ha dere med.`;
         }
 
         const notesBlockHtml = notes ? `
           <div style="background: #F8FAFC; border-left: 4px solid #8B5CF6; padding: 14px 18px; margin: 20px 0; border-radius: 6px;">
-            <p style="margin: 0 0 6px 0; font-size: 13px; font-weight: bold; color: #6B21A8; text-transform: uppercase; letter-spacing: 0.5px;">Notat fra ${sellerName}:</p>
+            <p style="margin: 0 0 6px 0; font-size: 13px; font-weight: bold; color: #6B21A8; text-transform: uppercase; letter-spacing: 0.5px;">Bakgrunn for henvendelsen:</p>
             <p style="margin: 0; font-style: italic; color: #334155; font-size: 14px;">«${notes}»</p>
           </div>
         ` : '';
@@ -227,7 +268,7 @@ export async function POST(req: NextRequest) {
           },
           body: JSON.stringify({
             from: fromEmail,
-            reply_to: sellerEmail ? `${sellerEmail}, hei@vikingnet.no` : 'hei@vikingnet.no',
+            reply_to: replyToHeader,
             to: [email],
             subject: emailSubject,
             html: `
@@ -273,15 +314,15 @@ export async function POST(req: NextRequest) {
                 </div>
 
                 <p style="font-size: 14px; color: #475569; margin-top: 24px;">
-                  Har du spørsmål eller ønsker en kort gjennomgang på telefon eller Teams, er det bare å svare direkte på denne e-posten.
+                  Har du spørsmål eller ønsker en kort gjennomgang, er det bare å svare direkte på denne e-posten, så svarer jeg eller en kollega deg umiddelbart.
                 </p>
                 
                 <div style="margin-top: 32px; padding-top: 16px; border-top: 1px solid #E2E8F0; font-size: 12px; color: #64748B;">
                   Med vennlig hilsen,<br>
-                  <strong>VikingMester Teamet</strong><br>
-                  i samarbeid med ${sellerName}<br>
-                  E-post: <a href="mailto:hei@vikingnet.no" style="color: #8B5CF6;">hei@vikingnet.no</a> • Web: <a href="https://vikingmester.no" style="color: #8B5CF6;">vikingmester.no</a><br>
-                  AIChat Norge AS / Vikingnet • Org.nr: 933 851 222 MVA
+                  <strong>${sellerName}</strong><br>
+                  VikingMester Salg & Partnerteam<br>
+                  ${sellerEmail ? `Direkte: <a href="mailto:${sellerEmail}" style="color: #8B5CF6;">${sellerEmail}</a> • ` : ''}Felles: <a href="mailto:hei@vikingnet.no" style="color: #8B5CF6;">hei@vikingnet.no</a><br>
+                  Web: <a href="https://vikingmester.no" style="color: #8B5CF6;">vikingmester.no</a> • Org.nr: 933 851 222 MVA
                 </div>
               </div>
             `
@@ -293,7 +334,7 @@ export async function POST(req: NextRequest) {
         console.warn('Customer follow-up email warning:', custErr);
       }
 
-      // 4B. Intern e-postvarsling til Kenneth, Fredrik, aichatnorge@gmail.com og selgeren
+      // 4B. Intern e-postvarsling til selgeren og ledelsen
       try {
         const recipients = ['kenkri3@gmail.com', 'fredrik.r.ellingsen@gmail.com', 'aichatnorge@gmail.com'];
         if (sellerEmail && !recipients.includes(sellerEmail)) {
@@ -334,10 +375,6 @@ export async function POST(req: NextRequest) {
                     <td style="padding: 8px 0; font-family: monospace; font-weight: bold;">${orgNumber || 'Ikke oppgitt'}</td>
                   </tr>
                   <tr style="border-bottom: 1px solid #E2E8F0;">
-                    <td style="padding: 8px 0; font-weight: bold; color: #64748B;">Forretningsadresse:</td>
-                    <td style="padding: 8px 0;">${brregInfo?.forretningsadresse || 'Ikke oppgitt'}</td>
-                  </tr>
-                  <tr style="border-bottom: 1px solid #E2E8F0;">
                     <td style="padding: 8px 0; font-weight: bold; color: #64748B;">Kontaktperson:</td>
                     <td style="padding: 8px 0; font-weight: bold;">${contactName}</td>
                   </tr>
@@ -372,11 +409,11 @@ export async function POST(req: NextRequest) {
                 </table>
 
                 <div style="background: #F0FDF4; border: 1px solid #BBF7D0; padding: 12px; border-radius: 8px; font-size: 13px; color: #166534; margin-bottom: 16px;">
-                  ✓ <strong>Autonom status:</strong> Personlig introduksjonse-post er automatisk sendt fra <code>hei@vikingnet.no</code> til kunden. Kunden er også inrullert i autonom oppfølging etter 3 og 7 dager.
+                  ✓ <strong>Autonom status:</strong> Personlig introduksjonse-post er automatisk sendt fra <code>"${senderDisplayName}" &lt;hei@vikingnet.no&gt;</code> med direkte svaradresse til <code>${replyToHeader}</code>.
                 </div>
 
                 <div style="background: #F1F5F9; padding: 12px; border-radius: 8px; font-size: 12px; color: #64748B;">
-                  <em>Dette leadet tilhører 50/50-partnerskapet for VikingMester. Eventuelle fremtidige abonnementsinntekter inngår i den månedlige 50/50-avregningen.</em>
+                  <em>Dette leadet tilhører 50/50-partnerskapet for VikingMester. Fremtidige abonnementsinntekter inngår i den månedlige 50/50-avregningen.</em>
                 </div>
               </div>
             `
