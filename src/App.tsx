@@ -689,12 +689,7 @@ function AppContent() {
 
                 <button 
                   onClick={() => setView('partner')}
-                  className={cn(
-                    "px-3.5 py-2 rounded-xl text-xs font-bold transition-all flex items-center gap-1.5 cursor-pointer",
-                    view === 'partner' 
-                      ? "bg-purple-50 text-purple-700 font-bold border border-purple-300/30 shadow-sm" 
-                      : "text-slate-600 hover:text-purple-700 hover:bg-purple-50"
-                  )}
+                  className="px-3.5 py-2 rounded-xl text-xs font-bold transition-all flex items-center gap-1.5 cursor-pointer text-slate-600 hover:text-purple-700 hover:bg-purple-50"
                   title="50/50 Partner Lead-portal"
                 >
                   <Users size={15} />
