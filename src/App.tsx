@@ -121,12 +121,14 @@ function AppContent() {
     return () => window.removeEventListener('navigate_view', handleNav);
   }, []);
 
-  // 🚀 Auto-route into dashboard whenever user is authenticated and on login screen
+  // 🚀 Auto-route into dashboard whenever user is authenticated
   useEffect(() => {
-    if (user && view === 'login') {
-      setView('dashboard');
+    if (isAuthReady && user) {
+      if (['landing', 'login'].includes(view)) {
+        setView('dashboard');
+      }
     }
-  }, [user, view]);
+  }, [isAuthReady, user, view]);
 
   const handleMobileNavigate = (targetView: string, tab?: string) => {
     if (tab) {
@@ -436,11 +438,7 @@ function AppContent() {
                   onClick={() => { setView('landing'); setLandingTab('home'); }}
                 >
                   <Logo size="md" className="text-navy-900" />
-                  <span className="hidden sm:inline-flex items-center text-[10px] font-mono font-bold text-electric-600 bg-electric-50 px-2.5 py-0.5 rounded-full border border-electric-300/30 font-bold">
-                    For Bygg & Anlegg
-                  </span>
                 </div>
-                <NetworkStatusBadge />
               </div>
 
               {/* Desktop Center: World-Class SaaS Links */}
@@ -611,15 +609,24 @@ function AppContent() {
           ) : (
             /* AUTHENTICATED INTERNAL APP NAVBAR */
             <div className="flex justify-between h-16 items-center">
-              {/* Left: Logo & Live Offline/Online Status Badge */}
+              {/* Left: Logo & Active Workspace Badge */}
               <div className="flex items-center gap-3 shrink-0">
                 <div 
                   className="flex items-center gap-1.5 cursor-pointer group"
-                  onClick={() => setView('landing')}
+                  onClick={() => setView('dashboard')}
+                  title="Gå til Dashboard"
                 >
                   <Logo size="md" className="text-navy-900" />
                 </div>
-                <NetworkStatusBadge />
+                {user?.company && (
+                  <span className="hidden sm:inline-flex items-center text-xs font-bold text-slate-700 bg-slate-100 px-2.5 py-1 rounded-xl border border-slate-200">
+                    {user.company}
+                  </span>
+                )}
+                <div className="hidden md:inline-flex items-center gap-1.5 px-2.5 py-1 rounded-full bg-emerald-50 border border-emerald-200 text-emerald-700 text-[11px] font-bold">
+                  <span className="w-2 h-2 rounded-full bg-emerald-500 animate-pulse" />
+                  <span>MesterAI Aktiv</span>
+                </div>
               </div>
 
               {/* Desktop Center: Internal Operational App Navigation */}
@@ -634,7 +641,7 @@ function AppContent() {
                   )}
                 >
                   <LayoutDashboard size={15} />
-                  {t('dashboard', 'Dashboard')}
+                  <span>Oversikt</span>
                 </button>
 
                 <button 
@@ -647,10 +654,36 @@ function AppContent() {
                   )}
                 >
                   <Smartphone size={15} />
-                  {t('mobile_app', 'Mobil-app')}
+                  <span>Mobilapp</span>
                 </button>
 
+                <button 
+                  onClick={() => setView('settings')}
+                  className={cn(
+                    "px-3.5 py-2 rounded-xl text-xs font-bold transition-all flex items-center gap-1.5 cursor-pointer",
+                    view === 'settings' 
+                      ? "bg-electric-50 text-electric-600 font-bold border border-electric-300/30 shadow-sm" 
+                      : "text-slate-600 hover:text-navy-900 hover:bg-slate-100"
+                  )}
+                >
+                  <Settings size={15} />
+                  <span>Innstillinger</span>
+                </button>
 
+                {user.role === 'admin' && (
+                  <button 
+                    onClick={() => setView('super-admin')}
+                    className={cn(
+                      "px-3.5 py-2 rounded-xl text-xs font-bold transition-all flex items-center gap-1.5 cursor-pointer",
+                      view === 'super-admin' 
+                        ? "bg-rose-50 text-rose-600 font-bold border border-rose-300/30 shadow-sm" 
+                        : "text-slate-600 hover:text-rose-600 hover:bg-rose-50"
+                    )}
+                  >
+                    <Shield size={15} />
+                    <span>Super Admin</span>
+                  </button>
+                )}
               </div>
 
               {/* Desktop Right: Install Shortcut, Language, Notifications, Unified Profile */}

@@ -30,7 +30,15 @@ if (DATABASE_URL) {
 
   pool = new Pool({
     connectionString: DATABASE_URL,
+    max: 10,
+    idleTimeoutMillis: 30000,
+    connectionTimeoutMillis: 10000,
     ssl: isInternal ? false : (process.env.NODE_ENV === 'production' ? { rejectUnauthorized: false } : false)
+  });
+
+  // 🛡️ BOMBECIKKER DRIFT: Forhindre at uventede feil på ledige databaseklienter krasjer serverprosessen
+  pool.on('error', (err) => {
+    console.error('⚠️ [PostgreSQL Pool Warning] Uventet feil på ledig databaseklient:', err.message);
   });
 }
 
