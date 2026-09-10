@@ -85,7 +85,14 @@ export default function LandingPage({
     } else {
       setInternalTab(tab);
     }
-    window.scrollTo({ top: 0, behavior: 'smooth' });
+    window.scrollTo({ top: 0, left: 0, behavior: 'instant' });
+    if (document.documentElement) document.documentElement.scrollTop = 0;
+    if (document.body) document.body.scrollTop = 0;
+    setTimeout(() => {
+      window.scrollTo({ top: 0, left: 0, behavior: 'instant' });
+      if (document.documentElement) document.documentElement.scrollTop = 0;
+      if (document.body) document.body.scrollTop = 0;
+    }, 250);
   };
 
   const handleInstallApp = async () => {
@@ -317,9 +324,9 @@ export default function LandingPage({
             © {new Date().getFullYear()} VikingMester PRO • En del av Vikingnet. Alle rettigheter reservert.
           </div>
           <div className="flex gap-6">
-            <span className="hover:text-white cursor-pointer transition-colors" onClick={() => onViewChange('privacy')}>Personvern & GDPR</span>
-            <span className="hover:text-white cursor-pointer transition-colors" onClick={() => onViewChange('terms')}>Vilkår & DPA</span>
-            <span className="hover:text-white cursor-pointer transition-colors" onClick={() => onViewChange('about')}>Om Vikingnet</span>
+            <span className="hover:text-white cursor-pointer transition-colors" onClick={() => { window.scrollTo({ top: 0, left: 0, behavior: 'instant' }); onViewChange('privacy'); }}>Personvern & GDPR</span>
+            <span className="hover:text-white cursor-pointer transition-colors" onClick={() => { window.scrollTo({ top: 0, left: 0, behavior: 'instant' }); onViewChange('terms'); }}>Vilkår & DPA</span>
+            <span className="hover:text-white cursor-pointer transition-colors" onClick={() => { window.scrollTo({ top: 0, left: 0, behavior: 'instant' }); onViewChange('about'); }}>Om Vikingnet</span>
           </div>
         </div>
       </footer>

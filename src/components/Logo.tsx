@@ -63,12 +63,12 @@ const Logo: React.FC<LogoProps> = ({
         }`}>
           <span className={`${theme === 'dark' ? 'text-white' : 'text-navy-900'} font-extrabold tracking-tight`}>Viking</span>
           <span className="text-gradient-purple font-black ml-0.5">Mester</span>
-          <span className="text-[10px] uppercase font-bold tracking-widest px-2 py-0.5 ml-2 rounded-full bg-electric-50 text-electric-600 border border-electric-300/40 shadow-xs">
+          <span className={`text-[10px] uppercase font-bold tracking-widest px-2 py-0.5 ml-2 rounded-full border shadow-xs ${theme === "dark" ? "bg-electric-500/20 text-electric-300 border-electric-400/30" : "bg-electric-50 text-electric-600 border-electric-300/40"}`}>
             PRO
           </span>
         </div>
         {showSubtitle && (
-          <span className="text-[10px] font-bold text-slate-500 uppercase tracking-widest mt-1">
+          <span className={`text-[10px] font-bold uppercase tracking-widest mt-1 ${theme === "dark" ? "text-slate-400" : "text-slate-500"}`}>
             En del av Vikingnet
           </span>
         )}

@@ -229,10 +229,29 @@ function AppContent() {
     }
   };
 
-  // Scroll to top on view change
+  // Scroll to top helper - Rock-solid across all view & tab transitions
+  const scrollToTop = () => {
+    if (typeof window === 'undefined') return;
+    window.scrollTo({ top: 0, left: 0, behavior: 'instant' });
+    if (document.documentElement) document.documentElement.scrollTop = 0;
+    if (document.body) document.body.scrollTop = 0;
+  };
+
+  // Scroll to top on view and landingTab change
   useEffect(() => {
-    window.scrollTo(0, 0);
-  }, [view]);
+    scrollToTop();
+    const rAF = requestAnimationFrame(scrollToTop);
+    const t1 = setTimeout(scrollToTop, 50);
+    const t2 = setTimeout(scrollToTop, 150);
+    const t3 = setTimeout(scrollToTop, 350);
+
+    return () => {
+      cancelAnimationFrame(rAF);
+      clearTimeout(t1);
+      clearTimeout(t2);
+      clearTimeout(t3);
+    };
+  }, [view, landingTab]);
 
   // Check for offer token, invite token, or portal link in URL
   useEffect(() => {
@@ -1079,7 +1098,8 @@ function AppContent() {
             initial={{ opacity: 0, y: 10 }}
             animate={{ opacity: 1, y: 0 }}
             exit={{ opacity: 0, y: -10 }}
-            transition={{ duration: 0.3 }}
+            transition={{ duration: 0.2 }}
+            onAnimationComplete={() => scrollToTop()}
           >
             {view === 'landing' && (
               <LandingPage 
@@ -1171,35 +1191,38 @@ function AppContent() {
 
       {/* Footer - Only rendered when not on landing page since LandingPage has its own dedicated footer */}
       {view !== 'landing' && (
-        <footer className="bg-neutral-900 text-neutral-400 py-12 border-t border-neutral-800">
+        <footer className="bg-navy-900 text-slate-300 py-16 border-t border-navy-800">
           <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8">
             <div className="grid grid-cols-1 md:grid-cols-4 gap-12">
               <div className="col-span-1 md:col-span-2">
-                <Logo size="md" className="mb-6 text-navy-900" />
-                <p className="max-w-md text-sm leading-relaxed">
+                <Logo size="md" className="mb-4" theme="dark" showSubtitle />
+                <p className="max-w-md text-xs text-slate-400 leading-relaxed font-sans mb-3">
                   {t('footer_desc')}
                 </p>
+                <div className="text-xs font-medium text-slate-500">
+                  En del av Vikingnet • AIChat Norge AS (Org.nr: 933 851 222)
+                </div>
               </div>
               <div>
-                <h4 className="text-navy-900 font-semibold mb-4">{t('product')}</h4>
-                <ul className="space-y-2 text-sm">
-                  <li><button onClick={() => setView('dashboard')} className="hover:text-navy-900 transition-colors">{t('dashboard')}</button></li>
-                  <li><button onClick={() => setView('mobile')} className="hover:text-navy-900 transition-colors">{t('mobile_app')}</button></li>
-                  <li><button onClick={() => setView('pricing')} className="hover:text-navy-900 transition-colors">{t('pricing')}</button></li>
-                  <li><button className="hover:text-navy-900 transition-colors">{t('integrations')}</button></li>
+                <h4 className="text-xs font-bold text-electric-400 uppercase tracking-widest mb-4">{t('product')}</h4>
+                <ul className="space-y-2.5 text-xs text-slate-300 font-medium">
+                  <li><button onClick={() => { scrollToTop(); setView('dashboard'); }} className="hover:text-white transition-colors cursor-pointer text-left">{t('dashboard')}</button></li>
+                  <li><button onClick={() => { scrollToTop(); setView('mobile'); }} className="hover:text-white transition-colors cursor-pointer text-left">{t('mobile_app')}</button></li>
+                  <li><button onClick={() => { scrollToTop(); setView('pricing'); }} className="hover:text-white transition-colors cursor-pointer text-left">{t('pricing')}</button></li>
+                  <li><button onClick={() => { scrollToTop(); setView('spec'); }} className="hover:text-white transition-colors cursor-pointer text-left">{t('integrations')}</button></li>
                 </ul>
               </div>
               <div>
-                <h4 className="text-navy-900 font-semibold mb-4">{t('company')}</h4>
-                <ul className="space-y-2 text-sm">
-                  <li><button onClick={() => setView('about')} className="hover:text-navy-900 transition-colors">{t('about_us')}</button></li>
-                  <li><button onClick={() => setView('contact')} className="hover:text-navy-900 transition-colors">{t('contact')}</button></li>
-                  <li><button onClick={() => setView('privacy')} className="hover:text-navy-900 transition-colors">{t('privacy')}</button></li>
-                  <li><button onClick={() => setView('terms')} className="hover:text-navy-900 transition-colors">{t('terms')}</button></li>
+                <h4 className="text-xs font-bold text-electric-400 uppercase tracking-widest mb-4">{t('company')}</h4>
+                <ul className="space-y-2.5 text-xs text-slate-300 font-medium">
+                  <li><button onClick={() => { scrollToTop(); setView('about'); }} className="hover:text-white transition-colors cursor-pointer text-left">{t('about_us')}</button></li>
+                  <li><button onClick={() => { scrollToTop(); setView('contact'); }} className="hover:text-white transition-colors cursor-pointer text-left">{t('contact')}</button></li>
+                  <li><button onClick={() => { scrollToTop(); setView('privacy'); }} className="hover:text-white transition-colors cursor-pointer text-left">{t('privacy')}</button></li>
+                  <li><button onClick={() => { scrollToTop(); setView('terms'); }} className="hover:text-white transition-colors cursor-pointer text-left">{t('terms')}</button></li>
                   <li>
                     <button 
                       onClick={() => window.dispatchEvent(new CustomEvent('open_cookie_settings'))} 
-                      className="hover:text-navy-900 transition-colors text-emerald-400 font-medium"
+                      className="hover:text-emerald-300 transition-colors text-emerald-400 font-medium cursor-pointer text-left"
                     >
                       Informasjonskapsler
                     </button>
@@ -1207,7 +1230,7 @@ function AppContent() {
                 </ul>
               </div>
             </div>
-            <div className="mt-12 pt-8 border-t border-neutral-800 flex flex-col md:flex-row justify-between items-center gap-4 text-xs">
+            <div className="mt-12 pt-8 border-t border-navy-800 flex flex-col md:flex-row justify-between items-center gap-4 text-xs text-slate-400">
               <p>{t('footer_rights')}</p>
               <div className="flex gap-6">
                 <span>{t('tek17_compliance')}</span>
