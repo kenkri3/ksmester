@@ -403,7 +403,7 @@ export default function SuperAdmin() {
       </div>
 
       {/* Tabs */}
-      <div className="flex gap-2 mb-8 overflow-x-auto pb-2">
+      <div className="flex flex-wrap gap-2 mb-8 pb-2">
         {[
           { id: 'companies', label: 'Kunder', icon: <Building2 size={18} /> },
           { id: 'leads', label: 'Henvendelser', icon: <MessageSquare size={18} /> },
