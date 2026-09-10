@@ -1,4 +1,5 @@
-1. **Identify Performance Bottleneck**: `src/components/Dashboard.tsx` contains multiple inline `.filter()` and `.reduce()` operations on arrays like `offers` and `projects` within the render loop.
-2. **Optimization**: Extract these calculations out of the render loop by memoizing them with `useMemo`. This will prevent unnecessary recalculations on every render when the underlying arrays and filters have not changed.
-3. **Pre-commit**: Complete pre-commit steps to ensure proper testing and formatting.
-4. **Create PR**: Submit the PR with the performance improvements.
+1. **Import `useDebounce`**: Import the `useDebounce` hook in `src/components/Dashboard.tsx`.
+2. **Debounce Search Terms**: Wrap `offerSearchTerm` and `projectSearchTerm` with `useDebounce` in `Dashboard.tsx`.
+3. **Optimize Filtering Logic**: Extract `.toLowerCase()` on the debounced search terms outside the `.filter()` loop in `filteredOffersList` and `filteredProjectsList` to prevent repetitive O(N) string manipulation on each render.
+4. **Pre-commit Checks**: Run `pre_commit_instructions` and follow the required steps.
+5. **Submit**: Create a PR with the performance improvement.

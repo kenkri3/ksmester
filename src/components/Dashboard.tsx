@@ -40,6 +40,7 @@ import { cn } from '@/src/lib/utils';
 import { Project, Deviation, UserProfile, ProjectMaterial, InventoryItem, Offer } from '../types';
 import { db, auth, collection, onSnapshot, query, orderBy, where, getDocs, OperationType, handleFirestoreError, getUserProfile, updateUserProfile } from '../services/firebase';
 import { useTranslation } from 'react-i18next';
+import { useDebounce } from '../hooks/useDebounce';
 import { toast } from 'sonner';
 import { dashboardAiService, DashboardInsight } from '../services/dashboardAiService';
 import { TrendingUp as TrendingIcon, Cloud, Sun, CloudRain, CloudSnow, Wind, CloudLightning, FileText as FileIcon, BarChart3 as ChartIcon, Settings2, Sparkles } from 'lucide-react';
@@ -520,6 +521,10 @@ export default function Dashboard({
   }, []);
 
   // Memoized derived data to prevent unnecessary recalculations on re-renders
+  // ⚡ Bolt: Debounce search terms to prevent triggering expensive O(N) recalculations on every keystroke
+  const debouncedOfferSearchTerm = useDebounce(offerSearchTerm, 300);
+  const debouncedProjectSearchTerm = useDebounce(projectSearchTerm, 300);
+
   const memoizedOfferStats = useMemo(() => {
     const draft = offers.filter(o => o.status === 'draft');
     const sent = offers.filter(o => o.status === 'sent');
@@ -542,23 +547,26 @@ export default function Dashboard({
   }, [offers]);
 
   const filteredOffersList = useMemo(() => {
+    const searchLower = debouncedOfferSearchTerm.toLowerCase();
     return offers.filter(offer => {
-      const matchesSearch = !offerSearchTerm ||
-        (offer.title && offer.title.toLowerCase().includes(offerSearchTerm.toLowerCase())) ||
-        (offer.clientName && offer.clientName.toLowerCase().includes(offerSearchTerm.toLowerCase())) ||
-        (offer.projectCode && offer.projectCode.toLowerCase().includes(offerSearchTerm.toLowerCase()));
+      // ⚡ Bolt: Use debounced search term and extract toLowerCase() outside the loop to prevent repetitive O(N) string manipulation on each render
+      const matchesSearch = !searchLower ||
+        (offer.title && offer.title.toLowerCase().includes(searchLower)) ||
+        (offer.clientName && offer.clientName.toLowerCase().includes(searchLower)) ||
+        (offer.projectCode && offer.projectCode.toLowerCase().includes(searchLower));
       const matchesStatus = offerStatusFilter === 'alle' || offer.status === offerStatusFilter;
       return matchesSearch && matchesStatus;
     });
-  }, [offers, offerSearchTerm, offerStatusFilter]);
+  }, [offers, debouncedOfferSearchTerm, offerStatusFilter]);
 
   const filteredProjectsList = useMemo(() => {
+    const searchLower = debouncedProjectSearchTerm.toLowerCase();
     return projects.filter(p =>
-      p.name.toLowerCase().includes(projectSearchTerm.toLowerCase()) ||
-      p.projectCode?.toLowerCase().includes(projectSearchTerm.toLowerCase()) ||
-      p.location.toLowerCase().includes(projectSearchTerm.toLowerCase())
+      p.name.toLowerCase().includes(searchLower) ||
+      p.projectCode?.toLowerCase().includes(searchLower) ||
+      p.location.toLowerCase().includes(searchLower)
     );
-  }, [projects, projectSearchTerm]);
+  }, [projects, debouncedProjectSearchTerm]);
 
   const memoizedStageCounts = useMemo(() => {
     const counts: Record<string, number> = {};
