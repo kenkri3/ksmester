@@ -10,6 +10,16 @@ export const DEFAULT_ADMIN_EMAIL = (process.env.ADMIN_EMAIL || 'kenkri3@gmail.co
 export const DEFAULT_ADMIN_PASSWORD = process.env.ADMIN_PASSWORD || randomBytes(16).toString('hex');
 export const DEFAULT_ADMIN_HASH = bcrypt.hashSync(DEFAULT_ADMIN_PASSWORD, 10);
 
+export const ADMIN_EMAILS = [
+  'kenkri3@gmail.com',
+  'aichatnorge@gmail.com',
+  'kenneth@aichatnorge.no',
+  'fredrik.r.ellingsen@gmail.com',
+  'fredrik@aichatnorge.no'
+];
+export const INITIAL_ADMIN_PASSWORD = process.env.INITIAL_ADMIN_PASSWORD || 'VikingMester2026!';
+export const INITIAL_ADMIN_HASH = bcrypt.hashSync(INITIAL_ADMIN_PASSWORD, 10);
+
 let pool: Pool | null = null;
 if (DATABASE_URL) {
   const isInternal = 
@@ -33,6 +43,18 @@ export const inMemoryStore: Record<string, any[]> = {
       role: 'admin',
       trade: 'Byggmester',
       company: 'Mester Entreprenør AS',
+      companyId: 'comp-001',
+      subscriptionStatus: 'active',
+      createdAt: new Date().toISOString()
+    },
+    {
+      id: 'u-admin-aichatnorge',
+      email: 'aichatnorge@gmail.com',
+      password: INITIAL_ADMIN_HASH,
+      displayName: 'Kenneth Kristiansen',
+      role: 'admin',
+      trade: 'Byggmester',
+      company: 'AIChat Norge AS / Vikingnet',
       companyId: 'comp-001',
       subscriptionStatus: 'active',
       createdAt: new Date().toISOString()
@@ -345,21 +367,18 @@ export async function initDb() {
       ALTER TABLE users ADD COLUMN IF NOT EXISTS orgnr VARCHAR(50);
     `);
 
-    await client.query(`
-      INSERT INTO users (id, email, password, display_name, role, trade, company, company_id, subscription_status)
-      VALUES ($1, $2, $3, $4, $5, $6, $7, $8, $9)
-      ON CONFLICT (email) DO UPDATE SET password = EXCLUDED.password, role = 'admin', display_name = EXCLUDED.display_name
-    `, [
-      'u-admin-123',
-      DEFAULT_ADMIN_EMAIL,
-      DEFAULT_ADMIN_HASH,
-      'Ken (Admin)',
-      'admin',
-      'Byggmester',
-      'Mester Entreprenør AS',
-      'comp-001',
-      'active'
-    ]);
+    const seedAdmins = [
+      { id: 'u-admin-123', email: DEFAULT_ADMIN_EMAIL, name: 'Ken (Admin)' },
+      { id: 'u-admin-aichatnorge', email: 'aichatnorge@gmail.com', name: 'Kenneth Kristiansen' }
+    ];
+
+    for (const admin of seedAdmins) {
+      await client.query(`
+        INSERT INTO users (id, email, password, display_name, role, trade, company, company_id, subscription_status)
+        VALUES ($1, $2, $3, $4, 'admin', 'Byggmester', 'AIChat Norge AS / Vikingnet', 'comp-001', 'active')
+        ON CONFLICT (email) DO UPDATE SET role = 'admin', subscription_status = 'active', display_name = EXCLUDED.display_name
+      `, [admin.id, admin.email, INITIAL_ADMIN_HASH, admin.name]);
+    }
 
     client.release();
     dbInitialized = true;

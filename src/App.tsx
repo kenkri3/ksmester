@@ -1113,7 +1113,7 @@ function AppContent() {
             )}
             {view === 'settings' && <SettingsPage />}
             {view === 'super-admin' && (
-              (user?.role === 'admin' || user?.email === 'kenkri3@gmail.com') ? (
+              (user?.role === 'admin' || user?.email === 'kenkri3@gmail.com' || user?.email === 'aichatnorge@gmail.com' || user?.email === 'kenneth@aichatnorge.no') ? (
                 <SuperAdmin />
               ) : (
                 <div className="max-w-md mx-auto my-20 p-8 bg-white rounded-3xl shadow-xl border border-red-100 text-center">

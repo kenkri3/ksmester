@@ -165,7 +165,8 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
   };
 
   const startImpersonation = (companyId: string, role: string) => {
-    if (user?.role !== 'admin' && user?.email !== 'kenkri3@gmail.com') return;
+    const isSuper = user?.role === 'admin' || user?.email === 'kenkri3@gmail.com' || user?.email === 'aichatnorge@gmail.com' || user?.email === 'kenneth@aichatnorge.no';
+    if (!isSuper) return;
     localStorage.setItem('impersonatedCompanyId', companyId);
     localStorage.setItem('impersonatedRole', role);
     setImpersonatedCompanyId(companyId);
