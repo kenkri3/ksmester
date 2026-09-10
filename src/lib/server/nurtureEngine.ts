@@ -45,6 +45,11 @@ export async function enrollCustomerInNurture(lead: {
     return existing;
   }
 
+  // Eksklusjonsliste: Kunder unntatt fra mersalg iht. instruks
+  const isNoUpsellCustomer = 
+    lead.email?.toLowerCase().includes("nonfoodgroup.no") ||
+    lead.company?.toLowerCase().includes("nonfood");
+
   const record: CustomerNurtureRecord = {
     id: nurtureId,
     leadId: lead.id,
@@ -105,6 +110,15 @@ export async function processAutonomousNurtureSequence(): Promise<{
 
   for (const item of activeNurtures) {
     try {
+      // Sikkerhetssperre: Blokker automatisk mersalg til unntatte kunder (f.eks. NonFoodGroup / Lars Erik)
+      if (
+        item.email?.toLowerCase().includes("nonfoodgroup.no") ||
+        item.company?.toLowerCase().includes("nonfood") ||
+        item.status === "completed" ||
+        item.unsubscribed
+      ) {
+        continue;
+      }
       const regDate = new Date(item.registeredAt);
       const diffMs = now.getTime() - regDate.getTime();
       const daysSinceRegistration = Math.floor(diffMs / (1000 * 60 * 60 * 24));
