@@ -87,7 +87,7 @@ export async function processAutonomousNurtureSequence(): Promise<{
   details: string[];
 }> {
   const resendKey = process.env.RESEND_API_KEY || process.env.RESEND_API || process.env.RESEND_KEY;
-  const fromEmail = process.env.EMAIL_FROM || process.env.RESEND_FROM || 'Vikingnet <hei@vikingnet.no>';
+  const fromEmail = process.env.EMAIL_FROM || process.env.RESEND_FROM || 'VikingMester <hei@vikingmester.no>';
   const appUrl = process.env.APP_URL || process.env.NEXT_PUBLIC_APP_URL || 'https://vikingmester.no';
 
   if (!resendKey) {
@@ -284,7 +284,7 @@ async function sendEmailViaResend({
     },
     body: JSON.stringify({
       from,
-      reply_to: 'hei@vikingnet.no',
+      reply_to: 'hei@vikingmester.no',
       to: [to],
       subject,
       html
@@ -305,8 +305,8 @@ function getFooterHtml(item: CustomerNurtureRecord, appUrl: string): string {
   return `
     <div style="margin-top: 32px; padding-top: 16px; border-top: 1px solid #E2E8F0; font-size: 12px; color: #64748B;">
       Med vennlig hilsen,<br>
-      <strong>Kenneth & Teamet i Vikingnet</strong><br>
-      <a href="mailto:hei@vikingnet.no" style="color: #8B5CF6; text-decoration: none;">hei@vikingnet.no</a> • <a href="https://vikingnet.no" style="color: #64748B; text-decoration: none;">vikingnet.no</a>
+      <strong>Kenneth & Teamet i VikingMester</strong><br>
+      <a href="mailto:hei@vikingmester.no" style="color: #8B5CF6; text-decoration: none;">hei@vikingmester.no</a> • <a href="https://vikingnet.no" style="color: #64748B; text-decoration: none;">vikingnet.no</a>
       <p style="font-size: 11px; color: #94A3B8; margin-top: 16px;">
         Du mottar dette tipset som registrert kunde av VikingMester. Ønsker du ikke å motta tips om våre andre B2B-løsninger? <a href="${unsubUrl}" style="color: #94A3B8; text-decoration: underline;">Meld deg av her</a>.
       </p>

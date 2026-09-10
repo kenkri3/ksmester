@@ -28,7 +28,7 @@ export async function GET(req: NextRequest) {
     }
 
     return new NextResponse(
-      renderHtml('Du er nå avmeldt oppfølgingse-poster og tips om andre tjenester fra Vikingnet.', true),
+      renderHtml('Du er nå avmeldt oppfølgingse-poster og tips om andre tjenester fra VikingMester.', true),
       {
         status: 200,
         headers: { 'Content-Type': 'text/html; charset=utf-8' }
@@ -49,7 +49,7 @@ function renderHtml(message: string, isSuccess: boolean): string {
 <head>
   <meta charset="UTF-8">
   <meta name="viewport" content="width=device-width, initial-scale=1.0">
-  <title>Avmelding • Vikingnet</title>
+  <title>Avmelding • VikingMester</title>
   <style>
     body {
       font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, Helvetica, Arial, sans-serif;
@@ -125,7 +125,7 @@ function renderHtml(message: string, isSuccess: boolean): string {
     <p>${message}</p>
     <a href="https://vikingmester.no" class="btn">Tilbake til VikingMester</a>
     <div class="subtext">
-      Vikingnet AS • hei@vikingnet.no<br>
+      VikingMester • hei@vikingmester.no<br>
       Kritiske driftsmeldinger for din aktive lisens påvirkes ikke av denne avmeldingen.
     </div>
   </div>

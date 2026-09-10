@@ -238,7 +238,7 @@ export default function OfferPage({ token }: { token: string }) {
 
             <div className="pt-8 border-t border-neutral-100 text-center">
               <p className="text-xs text-neutral-400">
-                Har du spørsmål? Kontakt oss på hei@vikingnet.no eller via kundeportalen.
+                Har du spørsmål? Kontakt oss på hei@vikingmester.no eller via kundeportalen.
               </p>
             </div>
           </div>

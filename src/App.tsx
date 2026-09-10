@@ -332,15 +332,15 @@ function AppContent() {
         setView('offer');
       }
     }
-    if (pathParts[1] === portal && pathParts[2]) {
+    if (pathParts[1] === 'portal' && pathParts[2]) {
       handleOpenPortal(pathParts[2]);
     }
-    if (pathParts[1] === partner) {
-      setView(partner);
+    if (pathParts[1] === 'partner') {
+      setView('partner');
     }
-    const partnerParam = params.get(partner) || params.get(partnerportal);
+    const partnerParam = params.get('partner') || params.get('partnerportal');
     if (partnerParam) {
-      setView(partner);
+      setView('partner');
     }
   }, []);
 
@@ -374,10 +374,10 @@ function AppContent() {
   }
 
   // Direct full-screen Partner Onboarding & Lead Portal (50/50 Joint Venture)
-  if (view === partner) {
+  if (view === 'partner') {
     return (
       <PartnerPortal 
-        onBackToApp={() => setView(user ? dashboard : landing)} 
+        onBackToApp={() => setView(user ? 'dashboard' : 'landing')} 
       />
     );
   }
@@ -688,10 +688,10 @@ function AppContent() {
                 </button>
 
                 <button 
-                  onClick={() => setView(partner)}
+                  onClick={() => setView('partner')}
                   className={cn(
                     "px-3.5 py-2 rounded-xl text-xs font-bold transition-all flex items-center gap-1.5 cursor-pointer",
-                    view === partner 
+                    view === 'partner' 
                       ? "bg-purple-50 text-purple-700 font-bold border border-purple-300/30 shadow-sm" 
                       : "text-slate-600 hover:text-purple-700 hover:bg-purple-50"
                   )}

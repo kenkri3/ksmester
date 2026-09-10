@@ -192,7 +192,7 @@ export async function POST(req: NextRequest) {
         timestamp: new Date().toISOString(),
         status: 'contacted',
         title: '📬 Lead registrert & Autonom oppfølging startet',
-        note: `Registrert av ${sellerName}. Personlig introduksjonse-post sendt fra hei@vikingnet.no.`,
+        note: `Registrert av ${sellerName}. Personlig introduksjonse-post sendt fra hei@vikingmester.no.`,
         updatedBy: sellerName
       }
     ];
@@ -228,12 +228,12 @@ export async function POST(req: NextRequest) {
     // 4. Send automatisk oppfølging via Resend på vegne av selgeren
     const resendKey = process.env.RESEND_API_KEY || process.env.RESEND_API || process.env.RESEND_KEY || process.env.RESEND_TOKEN || process.env.RESEND || process.env.RESEND_APIKEY;
     
-    // 💡 Avsendernavn: "${sellerName} | VikingMester" <hei@vikingnet.no>
-    // Reply-To: ${sellerEmail}, hei@vikingnet.no
+    // 💡 Avsendernavn: "${sellerName} | VikingMester" <hei@vikingmester.no>
+    // Reply-To: ${sellerEmail}, hei@vikingmester.no
     // Dette gir 100% SPF/DKIM-levering, og kunden ser at henvendelsen kommer personlig fra selgeren!
     const senderDisplayName = `${sellerName} | VikingMester`;
-    const fromEmail = `"${senderDisplayName}" <hei@vikingnet.no>`;
-    const replyToHeader = sellerEmail ? `${sellerEmail}, hei@vikingnet.no` : 'hei@vikingnet.no';
+    const fromEmail = `"${senderDisplayName}" <hei@vikingmester.no>`;
+    const replyToHeader = sellerEmail ? `${sellerEmail}, hei@vikingmester.no` : 'hei@vikingmester.no';
 
     let customerEmailSent = false;
     let internalAlertSent = false;
@@ -321,7 +321,7 @@ export async function POST(req: NextRequest) {
                   Med vennlig hilsen,<br>
                   <strong>${sellerName}</strong><br>
                   VikingMester Salg & Partnerteam<br>
-                  ${sellerEmail ? `Direkte: <a href="mailto:${sellerEmail}" style="color: #8B5CF6;">${sellerEmail}</a> • ` : ''}Felles: <a href="mailto:hei@vikingnet.no" style="color: #8B5CF6;">hei@vikingnet.no</a><br>
+                  ${sellerEmail ? `Direkte: <a href="mailto:${sellerEmail}" style="color: #8B5CF6;">${sellerEmail}</a> • ` : ''}Felles: <a href="mailto:hei@vikingmester.no" style="color: #8B5CF6;">hei@vikingmester.no</a><br>
                   Web: <a href="https://vikingmester.no" style="color: #8B5CF6;">vikingmester.no</a> • Org.nr: 933 851 222 MVA
                 </div>
               </div>
@@ -409,7 +409,7 @@ export async function POST(req: NextRequest) {
                 </table>
 
                 <div style="background: #F0FDF4; border: 1px solid #BBF7D0; padding: 12px; border-radius: 8px; font-size: 13px; color: #166534; margin-bottom: 16px;">
-                  ✓ <strong>Autonom status:</strong> Personlig introduksjonse-post er automatisk sendt fra <code>"${senderDisplayName}" &lt;hei@vikingnet.no&gt;</code> med direkte svaradresse til <code>${replyToHeader}</code>.
+                  ✓ <strong>Autonom status:</strong> Personlig introduksjonse-post er automatisk sendt fra <code>"${senderDisplayName}" &lt;hei@vikingmester.no&gt;</code> med direkte svaradresse til <code>${replyToHeader}</code>.
                 </div>
 
                 <div style="background: #F1F5F9; padding: 12px; border-radius: 8px; font-size: 12px; color: #64748B;">

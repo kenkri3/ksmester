@@ -138,7 +138,7 @@ export async function POST(req: NextRequest) {
 
     // 4. Send automatisk onboarding og FAKTURAGRUNNLAG via Resend
     const resendKey = process.env.RESEND_API_KEY || process.env.RESEND_API || process.env.RESEND_KEY || process.env.RESEND_TOKEN || process.env.RESEND || process.env.RESEND_APIKEY;
-    const fromEmail = process.env.EMAIL_FROM || process.env.RESEND_FROM || 'VikingMester <hei@vikingnet.no>';
+    const fromEmail = process.env.EMAIL_FROM || process.env.RESEND_FROM || 'VikingMester <hei@vikingmester.no>';
 
     if (resendKey) {
       // 4A. Send velkomst- og onboarding-epost til kunden
@@ -152,7 +152,7 @@ export async function POST(req: NextRequest) {
             },
             body: JSON.stringify({
               from: fromEmail,
-              reply_to: 'hei@vikingnet.no',
+              reply_to: 'hei@vikingmester.no',
               to: [leadRecord.email],
               subject: `Velkommen til VikingMester – Din autonome byggeleder i lomma`,
               html: `
@@ -185,7 +185,7 @@ export async function POST(req: NextRequest) {
                     </ol>
                   </div>
 
-                  <p style="font-size: 14px; color: #475569;">Har du spørsmål, kan du svare direkte på denne e-posten til <a href="mailto:hei@vikingnet.no" style="color: #8B5CF6;">hei@vikingnet.no</a>.</p>
+                  <p style="font-size: 14px; color: #475569;">Har du spørsmål, kan du svare direkte på denne e-posten til <a href="mailto:hei@vikingmester.no" style="color: #8B5CF6;">hei@vikingmester.no</a>.</p>
                   
                   <div style="margin-top: 30px; padding-top: 16px; border-top: 1px solid #E2E8F0; font-size: 12px; color: #64748B;">
                     Med vennlig hilsen,<br>
@@ -213,7 +213,7 @@ export async function POST(req: NextRequest) {
           },
           body: JSON.stringify({
             from: fromEmail,
-            reply_to: leadRecord.email || 'hei@vikingnet.no',
+            reply_to: leadRecord.email || 'hei@vikingmester.no',
             to: ['kenkri3@gmail.com', 'fredrik.r.ellingsen@gmail.com', 'aichatnorge@gmail.com'],
             subject: `🔥 FAKTURAGRUNNLAG [${leadRecord.id}]: ${leadRecord.company} – ${leadRecord.plan}`,
             html: `

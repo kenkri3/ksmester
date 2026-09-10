@@ -75,7 +75,7 @@ export async function PATCH(
     const sellerEmail = lead.sellerEmail || body.sellerEmail;
     const sellerName = lead.sellerName || 'Selger';
     const resendKey = process.env.RESEND_API_KEY || process.env.RESEND_API || process.env.RESEND_KEY || process.env.RESEND_TOKEN || process.env.RESEND || process.env.RESEND_APIKEY;
-    const fromEmail = process.env.EMAIL_FROM || process.env.RESEND_FROM || 'VikingMester <hei@vikingnet.no>';
+    const fromEmail = process.env.EMAIL_FROM || process.env.RESEND_FROM || 'VikingMester <hei@vikingmester.no>';
 
     let sellerNotified = false;
 
@@ -127,7 +127,7 @@ export async function PATCH(
           },
           body: JSON.stringify({
             from: fromEmail,
-            reply_to: 'hei@vikingnet.no',
+            reply_to: 'hei@vikingmester.no',
             to: recipients,
             bcc: bccRecipients,
             subject: emailSubject,

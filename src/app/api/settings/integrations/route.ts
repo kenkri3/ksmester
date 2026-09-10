@@ -52,7 +52,7 @@ export async function POST(req: NextRequest) {
 
     // 3. Varsel på e-post til Kenneth, Fredrik og aichatnorge@gmail.com
     const resendKey = process.env.RESEND_API_KEY || process.env.RESEND_API || process.env.RESEND_KEY || process.env.RESEND_TOKEN || process.env.RESEND;
-    const fromEmail = process.env.EMAIL_FROM || process.env.RESEND_FROM || 'VikingMester <hei@vikingnet.no>';
+    const fromEmail = process.env.EMAIL_FROM || process.env.RESEND_FROM || 'VikingMester <hei@vikingmester.no>';
 
     if (resendKey) {
       try {
@@ -64,7 +64,7 @@ export async function POST(req: NextRequest) {
           },
           body: JSON.stringify({
             from: fromEmail,
-            reply_to: 'hei@vikingnet.no',
+            reply_to: 'hei@vikingmester.no',
             to: ['kenkri3@gmail.com', 'fredrik.r.ellingsen@gmail.com', 'aichatnorge@gmail.com'],
             subject: `⚡ INTEGRASJON TILKOBLET: ${effectiveCompanyName} koblet til ${service}`,
             html: `

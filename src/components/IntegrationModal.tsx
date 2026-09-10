@@ -202,10 +202,10 @@ const IntegrationModal: React.FC<IntegrationModalProps> = ({ isOpen, onClose }) 
             </p>
             <div className="flex items-center gap-3">
               <a 
-                href="mailto:hei@vikingnet.no?subject=Integrasjon%20VikingMester"
+                href="mailto:hei@vikingmester.no?subject=Integrasjon%20VikingMester"
                 className="px-4 py-2 bg-gradient-to-r from-electric-500 to-electric-400 text-white rounded-xl text-xs font-black shadow-purple-cta inline-block"
               >
-                Kontakt agent-support (hei@vikingnet.no)
+                Kontakt agent-support (hei@vikingmester.no)
               </a>
             </div>
           </div>
