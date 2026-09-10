@@ -21,7 +21,7 @@ interface AuthContextType {
   loading: boolean;
   login: () => Promise<void>;
   loginWithEmail: (email: string, pass: string) => Promise<void>;
-  registerWithEmail: (email: string, pass: string, name: string, company: string, gdprConsent?: boolean) => Promise<void>;
+  registerWithEmail: (email: string, pass: string, name: string, company: string, gdprConsent?: boolean, orgnr?: string) => Promise<void>;
   resetPassword: (email: string) => Promise<void>;
   logout: () => Promise<void>;
   isAuthReady: boolean;
@@ -125,8 +125,8 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
     }
   };
 
-  const registerWithEmail = async (email: string, pass: string, name: string, company: string, gdprConsent: boolean = true) => {
-    const res = await api.register({ email, password: pass, name, company, gdprConsent });
+  const registerWithEmail = async (email: string, pass: string, name: string, company: string, gdprConsent: boolean = true, orgnr?: string) => {
+    const res = await api.register({ email, password: pass, name, company, orgnr, gdprConsent });
     if (res && res.user) {
       const u = res.user;
       const userObj: User = {

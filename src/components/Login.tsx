@@ -1,7 +1,7 @@
 import React, { useState } from 'react';
 import { motion, AnimatePresence } from 'motion/react';
 import Logo from './Logo';
-import { ShieldCheck, LogIn, ArrowLeft, Mail, Lock, User, Building, ArrowRight, Loader2 } from 'lucide-react';
+import { ShieldCheck, LogIn, ArrowLeft, Mail, Lock, User, Building, ArrowRight, Loader2, Hash } from 'lucide-react';
 import { useAuth } from '../hooks/useAuth';
 import { useTranslation } from 'react-i18next';
 
@@ -14,6 +14,7 @@ export default function Login({ onBack }: { onBack?: () => void }) {
   const [password, setPassword] = useState('');
   const [name, setName] = useState('');
   const [company, setCompany] = useState('');
+  const [orgnr, setOrgnr] = useState('');
   const [gdprConsent, setGdprConsent] = useState(false);
   const [error, setError] = useState('');
   const [success, setSuccess] = useState('');
@@ -41,7 +42,7 @@ export default function Login({ onBack }: { onBack?: () => void }) {
       if (mode === 'login') {
         await loginWithEmail(email, password);
       } else if (mode === 'register') {
-        await registerWithEmail(email, password, name, company, gdprConsent);
+        await registerWithEmail(email, password, name, company, gdprConsent, orgnr);
       } else if (mode === 'forgot') {
         await resetPassword(email);
         setSuccess(t('reset_email_sent', 'E-post for tilbakestilling av passord er sendt. Sjekk innboksen din.'));
@@ -128,6 +129,18 @@ export default function Login({ onBack }: { onBack?: () => void }) {
                     onChange={(e) => setCompany(e.target.value)}
                     required
                     className="w-full pl-10 pr-4 py-3 bg-slate-50 border border-slate-200 rounded-xl text-slate-900 placeholder:text-slate-400 focus:bg-white focus:border-electric-500 focus:ring-2 focus:ring-electric-500/20 outline-none text-sm transition-all"
+                  />
+                </div>
+                <div className="relative">
+                  <Hash className="absolute left-3.5 top-1/2 -translate-y-1/2 text-slate-400" size={17} />
+                  <input
+                    type="text"
+                    placeholder="Organisasjonsnummer (9 siffer)"
+                    value={orgnr}
+                    onChange={(e) => setOrgnr(e.target.value)}
+                    maxLength={12}
+                    required
+                    className="w-full pl-10 pr-4 py-3 bg-slate-50 border border-slate-200 rounded-xl text-slate-900 placeholder:text-slate-400 focus:bg-white focus:border-electric-500 focus:ring-2 focus:ring-electric-500/20 outline-none text-sm transition-all font-mono"
                   />
                 </div>
               </motion.div>

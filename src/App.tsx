@@ -50,7 +50,7 @@ import { View, Project, SJAReport, Deviation } from './types';
 import LandingPage, { LandingTab } from './components/LandingPage';
 import Dashboard from './components/Dashboard';
 import MobileApp from './components/MobileApp';
-import TechnicalSpec from './components/TechnicalSpec';
+import IntegrationModal from './components/IntegrationModal';
 import ArchitecturePhase1 from './components/ArchitecturePhase1';
 import ArchitecturePhase2 from './components/ArchitecturePhase2';
 import ArchitecturePhase3 from './components/ArchitecturePhase3';
@@ -109,6 +109,7 @@ function AppContent() {
   const [isPortalModalOpen, setIsPortalModalOpen] = useState(false);
   const [portalModalCode, setPortalModalCode] = useState('');
   const [isSolutionsDropdownOpen, setIsSolutionsDropdownOpen] = useState(false);
+  const [isIntegrationModalOpen, setIsIntegrationModalOpen] = useState(false);
   const { t, i18n } = useTranslation();
   const { user, logout, isAuthReady, subscriptionStatus, trialDaysLeft, impersonatedCompanyId, stopImpersonation } = useAuth();
 
@@ -1092,7 +1093,17 @@ function AppContent() {
               />
             )}
             {view === 'mobile' && <MobileApp />}
-            {view === 'spec' && <TechnicalSpec />}
+            {view === 'spec' && (
+              <Dashboard 
+                isDemo={false} 
+                initialTab={dashboardTab}
+                onTabChange={(tab) => setDashboardTab(tab as any)}
+                onOpenPortal={(p) => {
+                  setPortalProject(p);
+                  setView('customer-portal');
+                }}
+              />
+            )}
             {view === 'settings' && <SettingsPage />}
             {view === 'super-admin' && (
               (user?.role === 'admin' || user?.email === 'kenkri3@gmail.com') ? (
@@ -1178,7 +1189,7 @@ function AppContent() {
                   <li><button onClick={() => { scrollToTop(); setView('dashboard'); }} className="hover:text-white transition-colors cursor-pointer text-left">{t('dashboard')}</button></li>
                   <li><button onClick={() => { scrollToTop(); setView('mobile'); }} className="hover:text-white transition-colors cursor-pointer text-left">{t('mobile_app')}</button></li>
                   <li><button onClick={() => { scrollToTop(); setView('pricing'); }} className="hover:text-white transition-colors cursor-pointer text-left">{t('pricing')}</button></li>
-                  <li><button onClick={() => { scrollToTop(); setView('spec'); }} className="hover:text-white transition-colors cursor-pointer text-left">{t('integrations')}</button></li>
+                  <li><button onClick={() => setIsIntegrationModalOpen(true)} className="hover:text-white transition-colors cursor-pointer text-left">{t('integrations')}</button></li>
                 </ul>
               </div>
               <div>
@@ -1273,6 +1284,9 @@ function AppContent() {
           </motion.div>
         </div>
       )}
+
+      {/* Integration Modal */}
+      <IntegrationModal isOpen={isIntegrationModalOpen} onClose={() => setIsIntegrationModalOpen(false)} />
 
       {/* GDPR Cookie Banner */}
       <CookieBanner onOpenPrivacyPolicy={() => setView('privacy')} />

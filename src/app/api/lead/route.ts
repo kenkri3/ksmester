@@ -1,10 +1,12 @@
 import { NextRequest, NextResponse } from 'next/server';
 import { saveCollectionItem } from '@/src/lib/server/db';
+import { enrollCustomerInNurture } from '@/src/lib/server/nurtureEngine';
 
 export async function POST(req: NextRequest) {
   try {
     const body = await req.json();
     const rawCompany = body.company || body.companyName || '';
+    const rawOrgnr = (body.orgnr || body.organizationNumber || '').toString().replace(/\s+/g, '').trim();
     const rawName = body.name || body.contactName || '';
     const email = (body.email || '').toLowerCase().trim();
     const phone = body.phone || '';
@@ -20,8 +22,31 @@ export async function POST(req: NextRequest) {
 
     // 1. Offentlig Brønnøysund-oppslag (0 tokens, gratis åpent API)
     let brregInfo: any = null;
+    if (rawOrgnr && /^\d{9}$/.test(rawOrgnr)) {
+      try {
+        const res = await fetch(`https://data.brreg.no/enhetsregisteret/api/enheter/${rawOrgnr}`, {
+          headers: { 'Accept': 'application/json' },
+          signal: AbortSignal.timeout(3000)
+        });
+        if (res.ok) {
+          const unit = await res.json();
+          brregInfo = {
+            orgnr: unit.organisasjonsnummer,
+            navn: unit.navn,
+            organisasjonsform: unit.organisasjonsform?.kode,
+            forretningsadresse: unit.forretningsadresse ? `${unit.forretningsadresse.adresse?.[0] || ''}, ${unit.forretningsadresse.postnummer || ''} ${unit.forretningsadresse.poststed || ''}` : null,
+            mvaRegistrert: unit.registrertIMvaregisteret || false,
+            antallAnsatte: unit.antallAnsatte || workers,
+            naeringskode: unit.naeringskode1?.beskrivelse || null
+          };
+        }
+      } catch (e) {
+        console.warn('Brønnøysund direct orgnr lookup warning:', e);
+      }
+    }
+
     const lookupQuery = rawCompany.trim();
-    if (lookupQuery.length > 1) {
+    if (!brregInfo && lookupQuery.length > 1) {
       try {
         const query = encodeURIComponent(lookupQuery);
         const res = await fetch(`https://data.brreg.no/enhetsregisteret/api/enheter?navn=${query}&size=1`, {
@@ -64,7 +89,7 @@ export async function POST(req: NextRequest) {
       id: `lead-${Date.now()}-${Math.random().toString(36).substring(2, 7)}`,
       name: rawName || brregInfo?.navn || rawCompany || 'Interessert håndverker',
       company: brregInfo?.navn || rawCompany || 'Ukjent firma',
-      orgnr: brregInfo?.orgnr || null,
+      orgnr: brregInfo?.orgnr || (rawOrgnr && /^\d{9}$/.test(rawOrgnr) ? rawOrgnr : null),
       email,
       phone,
       trade,
@@ -204,7 +229,7 @@ export async function POST(req: NextRequest) {
                   </tr>
                   <tr style="border-bottom: 1px solid #E2E8F0;">
                     <td style="padding: 8px 0; font-weight: bold; color: #64748B;">Organisasjonsnr:</td>
-                    <td style="padding: 8px 0; font-family: monospace;">${leadRecord.orgnr || 'Må verifiseres / enkeltpersonforetak'}</td>
+                    <td style="padding: 8px 0; font-family: monospace; font-weight: bold; color: #0F172A;">${leadRecord.orgnr || 'Må verifiseres / enkeltpersonforetak'}</td>
                   </tr>
                   <tr style="border-bottom: 1px solid #E2E8F0;">
                     <td style="padding: 8px 0; font-weight: bold; color: #64748B;">Forretningsadr.:</td>
@@ -253,9 +278,23 @@ export async function POST(req: NextRequest) {
       }
     }
 
+    // 5. Autonom inrullering i oppfølgings- og mersalgssekvens (Dag 3, 7, 14, 21)
+    try {
+      await enrollCustomerInNurture({
+        id: leadRecord.id,
+        email: leadRecord.email,
+        name: leadRecord.name,
+        company: leadRecord.company,
+        trade: leadRecord.trade,
+        plan: leadRecord.plan
+      });
+    } catch (nurtureErr) {
+      console.warn('Could not auto-enroll in nurture sequence:', nurtureErr);
+    }
+
     return NextResponse.json({
       success: true,
-      message: 'Bestilling registrert. Fakturagrunnlag og velkomstepost er sendt.',
+      message: 'Bestilling registrert. Fakturagrunnlag, velkomstepost og oppfølgingssekvens aktivert.',
       lead: leadRecord
     });
   } catch (err: any) {

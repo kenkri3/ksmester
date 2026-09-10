@@ -1,6 +1,6 @@
 import { useState, useEffect } from 'react';
 import { motion, AnimatePresence } from 'motion/react';
-import { X, MapPin, HardHat, Loader2, Sparkles, Users, Clock, Package, TrendingUp } from 'lucide-react';
+import { X, MapPin, HardHat, Loader2, Sparkles, Users, Clock, Package, TrendingUp, Mic, MicOff, Brain, Wand2, Check } from 'lucide-react';
 import { db, collection, setDoc, doc, OperationType, handleFirestoreError, Timestamp, auth } from '../services/firebase';
 import { useTranslation } from 'react-i18next';
 import { useAuth } from '../hooks/useAuth';
@@ -9,6 +9,7 @@ import { resourceService, ResourceEstimation } from '../services/resourceService
 import { locationService, AddressInfo } from '../services/locationService';
 import { cn } from '@/src/lib/utils';
 import { useDebounce } from '../hooks/useDebounce';
+import { toast } from 'sonner';
 
 interface CreateProjectModalProps {
   isOpen: boolean;
@@ -22,21 +23,26 @@ export default function CreateProjectModal({ isOpen, onClose }: CreateProjectMod
   const [isAiGenerating, setIsAiGenerating] = useState(false);
   const [isEstimating, setIsEstimating] = useState(false);
   const [estimation, setEstimation] = useState<ResourceEstimation | null>(null);
+
+  // MesterAI prompt state
+  const [aiPrompt, setAiPrompt] = useState('');
+  const [isListeningMic, setIsListeningMic] = useState(false);
+
   const [formData, setFormData] = useState({
     name: '',
-    projectCode: '',
+    projectCode: `P${new Date().getFullYear()}-${String(Math.floor(Math.random() * 900) + 100)}`,
     description: '',
     location: '',
     gnr: '',
     bnr: '',
     clientName: '',
     clientEmail: '',
-    projectManager: '',
-    startDate: '',
+    projectManager: user?.displayName || 'Byggmester / Prosjektleder',
+    startDate: new Date().toISOString().split('T')[0],
     endDate: '',
     tags: '',
     status: 'active' as 'active' | 'completed' | 'on-hold',
-    stage: 'offer' as 'offer' | 'contract' | 'active' | 'handover' | 'archived',
+    stage: 'active' as 'offer' | 'contract' | 'active' | 'handover' | 'archived',
   });
 
   const [addressSearch, setAddressSearch] = useState('');
@@ -56,7 +62,7 @@ export default function CreateProjectModal({ isOpen, onClose }: CreateProjectMod
         const results = await locationService.searchAddress(debouncedAddressSearch);
         setAddressSuggestions(results);
       } catch (error) {
-        console.error("Address search error:", error);
+        console.error('Address search error:', error);
       } finally {
         setIsSearchingAddress(false);
       }
@@ -76,21 +82,145 @@ export default function CreateProjectModal({ isOpen, onClose }: CreateProjectMod
     setAddressSuggestions([]);
   };
 
-  const generateAiDescription = async () => {
-    if (!formData.name) return;
+  // 1-Click quick templates
+  const applyQuickTemplate = (templateName: string) => {
+    if (templateName === 'enebolig') {
+      setAiPrompt('Oppføring av ny enebolig i trekonstruksjon, 180 kvm over to plan. Totalentreprise iht. TEK17.');
+      setFormData(prev => ({
+        ...prev,
+        name: 'Ny Enebolig Bjørklund',
+        description: 'Oppføring av moderne enebolig i bindingsverk over 2 plan iht. TEK17. Inkluderer grunnarbeid, tømrer, elektro, VVS og våtrom.',
+        tags: 'nybygg, enebolig, tek17, trekonstruksjon',
+        stage: 'active'
+      }));
+    } else if (templateName === 'bad') {
+      setAiPrompt('Totalrenovering av hovedbad 10 kvm. Ny membran, sluk, fliser og rør-i-rør iht. Våtromsnormen BVN.');
+      setFormData(prev => ({
+        ...prev,
+        name: 'Totalrehabilitering Bad',
+        description: 'Full renovering av bad iht. Byggebransjens Våtromsnorm (BVN). Riving til stender, ny klemring på sluk, smøremembran og flislegging.',
+        tags: 'bad, våtrom, bvn, tek17, rør-i-rør',
+        stage: 'active'
+      }));
+    } else if (templateName === 'tilbygg') {
+      setAiPrompt('Tilbygg på 45 kvm med integrert garasje og etterisolering av fasade.');
+      setFormData(prev => ({
+        ...prev,
+        name: 'Tilbygg & Fasaderehabilitering',
+        description: 'Oppføring av tilbygg på 45 kvm med ny garasje samt etterisolering av eksisterende fasade og nye 3-lags vinduer.',
+        tags: 'tilbygg, fasade, etterisolering, garasje',
+        stage: 'active'
+      }));
+    } else if (templateName === 'naering') {
+      setAiPrompt('Innvendig ombygging av kontorlokaler 250 kvm. Systemvegger, lydkrav og elektrooppgradering iht. NS 8406.');
+      setFormData(prev => ({
+        ...prev,
+        name: 'Rehab Kontorlokaler',
+        description: 'Ombygging av næringslokaler med nye systemvegger, lyddemping Rw 48dB og tilpasning av ventilasjon og el-skjultanlegg.',
+        tags: 'næring, kontor, ns8406, systemvegg',
+        stage: 'active'
+      }));
+    }
+    toast.success('Mal lagt inn! Du kan justere feltene nedenfor.');
+  };
+
+  // Magic AI Parse from Prompt
+  const handleMagicAiFill = async () => {
+    if (!aiPrompt.trim()) {
+      toast.info('Skriv eller dikter inn en setning om prosjektet først.');
+      return;
+    }
     setIsAiGenerating(true);
     try {
       const response = await generateAiContent({
-        prompt: `Som en profesjonell prosjektleder i byggebransjen, skriv en kort og profesjonell prosjektbeskrivelse for et prosjekt med navn: "${formData.name}". 
-        Inkluder typiske faser og fokusområder for et slikt prosjekt i Norge. Svar på norsk.`,
+        prompt: `Du er MesterAI i VikingMester. Brukeren ønsker å opprette et byggeprosjekt og skriver:
+"${aiPrompt}"
+
+Tolk dette og returner KUN gyldig JSON i følgende format (uten markdown-formatering):
+{
+  "name": "Kort og profesjonelt prosjektnavn",
+  "description": "Fyldig og profesjonell beskrivelse med faglige krav iht. TEK17 / NS standarder",
+  "location": "Adresse eller sted dersom nevnt, ellers la stå tom",
+  "clientName": "Kundenavn dersom nevnt, ellers la stå tom",
+  "tags": "kommaseparerte nøkkelord f.eks: tømrer, våtrom, rehab"
+}`
       });
+
       if (response.text) {
-        setFormData(prev => ({ ...prev, description: response.text || '' }));
+        try {
+          const cleaned = response.text.replace(/```json/g, '').replace(/```/g, '').trim();
+          const parsed = JSON.parse(cleaned);
+          setFormData(prev => ({
+            ...prev,
+            name: parsed.name || prev.name,
+            description: parsed.description || prev.description,
+            location: parsed.location || prev.location,
+            clientName: parsed.clientName || prev.clientName,
+            tags: parsed.tags || prev.tags
+          }));
+          if (parsed.location) {
+            setAddressSearch(parsed.location);
+          }
+          toast.success('MesterAI har analysert og fylt ut prosjektet!');
+        } catch (parseErr) {
+          // Fallback if not pure JSON
+          setFormData(prev => ({
+            ...prev,
+            description: response.text || prev.description
+          }));
+          toast.success('Prosjektbeskrivelse generert med MesterAI!');
+        }
       }
-    } catch (error) {
-      console.error("AI Generation error:", error);
+    } catch (error: any) {
+      console.error('Magic AI error:', error);
+      toast.error('Kunne ikke nå MesterAI: ' + error.message);
     } finally {
       setIsAiGenerating(false);
+    }
+  };
+
+  // Voice recording
+  const toggleMic = () => {
+    if (isListeningMic) {
+      setIsListeningMic(false);
+      return;
+    }
+
+    if (!('webkitSpeechRecognition' in window) && !('SpeechRecognition' in window)) {
+      toast.info('Tale-til-tekst er aktivert via tastatur. Dikter direkte i feltet.');
+      return;
+    }
+
+    try {
+      const SpeechRecognition = (window as any).SpeechRecognition || (window as any).webkitSpeechRecognition;
+      const recognition = new SpeechRecognition();
+      recognition.lang = 'nb-NO';
+      recognition.continuous = false;
+      recognition.interimResults = false;
+
+      recognition.onstart = () => {
+        setIsListeningMic(true);
+        toast.info('Lytter... Snakk nå.');
+      };
+
+      recognition.onresult = (event: any) => {
+        const transcript = event.results[0][0].transcript;
+        setAiPrompt(prev => (prev ? `${prev} ${transcript}` : transcript));
+        setIsListeningMic(false);
+        toast.success('Tale oppfattet!');
+      };
+
+      recognition.onerror = () => {
+        setIsListeningMic(false);
+      };
+
+      recognition.onend = () => {
+        setIsListeningMic(false);
+      };
+
+      recognition.start();
+    } catch {
+      setIsListeningMic(false);
     }
   };
 
@@ -106,13 +236,13 @@ export default function CreateProjectModal({ isOpen, onClose }: CreateProjectMod
         tags: formData.tags.split(',').map(t => t.trim()),
         progress: 0,
         status: 'active',
-        stage: 'offer',
+        stage: 'active',
         documentationLevel: 0,
         lastUpdate: new Date().toISOString()
       });
       setEstimation(data);
     } catch (error) {
-      console.error("Estimation error:", error);
+      console.error('Estimation error:', error);
     } finally {
       setIsEstimating(false);
     }
@@ -120,14 +250,18 @@ export default function CreateProjectModal({ isOpen, onClose }: CreateProjectMod
 
   const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault();
-    if (!auth.currentUser) return;
+    if (!formData.name.trim()) {
+      toast.error('Prosjektet må ha et navn.');
+      return;
+    }
     setLoading(true);
-    const projectId = Math.random().toString(36).substring(2, 15);
+    const projectId = `proj-${Date.now().toString(36)}`;
     const path = `projects/${projectId}`;
 
     try {
-      const userCompany = (user as any)?.company || '';
+      const userCompany = (user as any)?.company || 'Byggmester AS';
       await setDoc(doc(db, 'projects', projectId), {
+        id: projectId,
         name: formData.name,
         projectCode: formData.projectCode,
         description: formData.description,
@@ -137,49 +271,39 @@ export default function CreateProjectModal({ isOpen, onClose }: CreateProjectMod
         clientName: formData.clientName,
         clientEmail: formData.clientEmail,
         projectManager: formData.projectManager,
-        managerId: auth.currentUser.uid,
+        managerId: auth.currentUser?.uid || 'admin',
         company: userCompany,
         startDate: formData.startDate,
         endDate: formData.endDate,
         tags: formData.tags.split(',').map(tag => tag.trim()).filter(tag => tag !== ''),
         status: formData.status,
         stage: formData.stage,
-        progress: 0,
-        documentationLevel: 0,
-        lastUpdate: Timestamp.now(),
-        imageUrl: ""
+        progress: 10,
+        documentationLevel: 25,
+        lastUpdate: new Date().toLocaleDateString('no-NO'),
+        imageUrl: ''
       });
-      // Logg autonom agent-aktivitet
+
+      // Logg autonom agent-aktivitet slik at Mesterhjerne fanger opp prosjektet med en gang
       try {
         await setDoc(doc(db, 'agent_activities', `act-${Date.now()}`), {
           type: 'project_created',
-          title: `Nytt prosjekt opprettet: ${formData.name}`,
-          description: `Prosjekt ${formData.projectCode || ''} registrert (${formData.location || 'Norge'}). Autonom overvåking av TEK17, byggedagbok og HMS igangsatt.`,
+          title: `Nytt prosjekt overvåkes: ${formData.name}`,
+          description: `Prosjektkode ${formData.projectCode || ''} opprettet på ${formData.location || 'Norge'}. Autonom MesterAI aktivert for TEK17, Yr-værsynk og elektronisk byggedagbok.`,
           projectId,
+          projectName: formData.name,
           createdAt: new Date().toISOString(),
-          status: 'active'
+          status: 'verified',
+          badge: 'MesterAI Aktiv'
         });
       } catch (actErr) {
-        console.warn('Agent activity log notice:', actErr);
+        console.warn('Agent activity notice:', actErr);
       }
 
-      onClose();
-      setFormData({ 
-        name: '', 
-        projectCode: '',
-        description: '', 
-        location: '', 
-        gnr: '',
-        bnr: '',
-        clientName: '', 
-        clientEmail: '',
-        projectManager: '', 
-        startDate: '', 
-        endDate: '', 
-        tags: '', 
-        status: 'active',
-        stage: 'offer'
+      toast.success('Prosjekt opprettet!', {
+        description: 'MesterAI overvåker nå fremdrift og sjekklister automatisk.'
       });
+      onClose();
     } catch (error) {
       handleFirestoreError(error, OperationType.CREATE, path);
     } finally {
@@ -190,351 +314,343 @@ export default function CreateProjectModal({ isOpen, onClose }: CreateProjectMod
   return (
     <AnimatePresence>
       {isOpen && (
-        <div className="fixed inset-0 z-[60] flex items-end sm:items-center justify-center p-0 sm:p-4">
+        <div className="fixed inset-0 z-[70] flex items-end sm:items-center justify-center p-0 sm:p-4">
           <motion.div 
             initial={{ opacity: 0 }}
             animate={{ opacity: 1 }}
             exit={{ opacity: 0 }}
             onClick={onClose}
-            className="absolute inset-0 bg-neutral-900/40 backdrop-blur-sm"
+            className="absolute inset-0 bg-navy-950/60 backdrop-blur-md"
           />
           
           <motion.div 
             initial={{ opacity: 0, scale: 0.98, y: 20 }}
             animate={{ opacity: 1, scale: 1, y: 0 }}
             exit={{ opacity: 0, scale: 0.98, y: 20 }}
-            className="relative w-full max-w-2xl bg-white rounded-t-[2.5rem] sm:rounded-[2.5rem] shadow-2xl overflow-hidden flex flex-col max-h-[92vh] sm:max-h-[calc(100vh-2rem)] pb-[env(safe-area-inset-bottom,0px)]"
+            className="relative w-full max-w-2xl bg-white rounded-t-[2.5rem] sm:rounded-3xl shadow-2xl border border-slate-200/80 overflow-hidden flex flex-col max-h-[92vh] sm:max-h-[calc(100vh-3rem)] pb-[env(safe-area-inset-bottom,0px)]"
           >
             {/* Mobile Grab Handle */}
-            <div className="sm:hidden w-12 h-1.5 bg-neutral-300 rounded-full mx-auto mt-3 mb-1" />
+            <div className="sm:hidden w-12 h-1.5 bg-slate-300 rounded-full mx-auto mt-3 mb-1" />
 
-            {/* 1. FAST HEADER */}
-            <div className="px-5 sm:px-8 py-4 sm:py-5 border-b border-neutral-100 flex justify-between items-center bg-white shrink-0">
-              <div className="flex items-center gap-2.5">
-                <div className="w-8 h-8 rounded-xl bg-emerald-50 text-emerald-700 flex items-center justify-center font-bold">
-                  <HardHat size={18} />
+            {/* 1. FAST HEADER I VIKINGMESTER-STIL */}
+            <div className="px-5 sm:px-8 py-4 sm:py-5 border-b border-slate-100 flex justify-between items-center bg-white shrink-0">
+              <div className="flex items-center gap-3">
+                <div className="w-10 h-10 rounded-2xl bg-gradient-to-br from-electric-500 to-electric-600 text-white flex items-center justify-center font-bold shadow-md shadow-electric-500/20">
+                  <Brain size={20} />
                 </div>
                 <div>
-                  <h2 className="text-base sm:text-xl font-black text-navy-900 tracking-tight leading-tight">
-                    {t('new_project_title', 'Opprett nytt prosjekt')}
-                  </h2>
-                  <p className="text-[11px] text-slate-400 font-medium">Overvåkes og føres automatisk av MesterAI</p>
+                  <div className="flex items-center gap-2">
+                    <h2 className="text-base sm:text-xl font-black text-navy-900 tracking-tight leading-tight">
+                      Opprett prosjekt med MesterAI
+                    </h2>
+                    <span className="hidden sm:inline-block px-2 py-0.5 rounded-full text-[10px] font-black uppercase tracking-wider bg-electric-50 text-electric-600 border border-electric-200">
+                      Autonom agent
+                    </span>
+                  </div>
+                  <p className="text-[11px] text-slate-400 font-medium mt-0.5">
+                    TEK17-regler, byggedagbok og værsynk aktiveres automatisk
+                  </p>
                 </div>
               </div>
               <button 
                 type="button"
                 onClick={onClose} 
                 aria-label="Lukk" 
-                className="p-1.5 sm:p-2 hover:bg-neutral-100 text-slate-400 hover:text-slate-700 rounded-full transition-colors cursor-pointer"
+                className="p-2 hover:bg-slate-100 text-slate-400 hover:text-slate-700 rounded-xl transition-colors cursor-pointer"
               >
-                <X size={18} className="sm:w-5 sm:h-5" />
+                <X size={20} />
               </button>
             </div>
 
-            {/* 2. RULLBAR SKJEMA-KROPP (Går aldri bak knappen) */}
-            <form id="create-project-form" onSubmit={handleSubmit} className="flex-1 overflow-y-auto custom-scrollbar p-5 sm:p-8 space-y-4 sm:space-y-6">
-                <div className="grid grid-cols-1 md:grid-cols-2 gap-4 sm:gap-6">
-                  <div className="md:col-span-2">
-                    <label className="block text-xs font-bold uppercase tracking-widest text-neutral-500 mb-1.5">
-                      {t('project_name', 'Prosjektnavn')}
-                    </label>
-                    <div className="relative">
-                      <HardHat className="absolute left-3.5 top-1/2 -translate-y-1/2 text-neutral-400" size={18} />
-                      <input 
-                        required
-                        type="text"
-                        value={formData.name}
-                        onChange={(e) => setFormData({ ...formData, name: e.target.value })}
-                        className="w-full bg-neutral-50 border border-neutral-200 rounded-xl sm:rounded-2xl py-3 sm:py-4 pl-11 sm:pl-12 pr-4 text-sm sm:text-base focus:ring-2 focus:ring-emerald-500/20 focus:border-emerald-500 outline-none transition-all font-medium"
-                        placeholder={t('project_name_placeholder', 'f.eks. Enebolig Bjørklund')}
-                      />
-                    </div>
-                  </div>
+            {/* 2. RULLBAR SKJEMA-KROPP (Med god luft i bunnen så ingenting kuttes) */}
+            <form id="create-project-form" onSubmit={handleSubmit} className="flex-1 overflow-y-auto custom-scrollbar p-5 sm:p-8 space-y-6 pb-12">
+              
+              {/* AUTONOM AGENT-PROMPT BOKS */}
+              <div className="p-4 sm:p-5 rounded-2xl bg-gradient-to-br from-electric-50/70 via-slate-50 to-white border border-electric-200 shadow-sm space-y-3">
+                <div className="flex items-center justify-between">
+                  <span className="text-xs font-black uppercase tracking-wider text-electric-700 flex items-center gap-1.5">
+                    <Sparkles size={14} className="text-electric-500" />
+                    Fortell MesterAI hva du skal bygge (eller dikter)
+                  </span>
+                  <span className="text-[10px] font-bold text-slate-400">1-klikk utfylling</span>
+                </div>
 
-                  <div className="md:col-span-2">
-                    <label className="block text-xs font-bold uppercase tracking-widest text-neutral-500 mb-1.5">
-                      Prosjektkode
-                    </label>
+                <div className="relative">
+                  <textarea 
+                    value={aiPrompt}
+                    onChange={(e) => setAiPrompt(e.target.value)}
+                    placeholder="f.eks: Totalrenovering av bad og rør-i-rør i Storgata 14 for Per Hansen. Start 1. oktober..."
+                    rows={2}
+                    className="w-full bg-white border border-slate-200 rounded-xl p-3 pr-24 text-xs sm:text-sm font-medium text-navy-900 focus:ring-2 focus:ring-electric-500/20 focus:border-electric-500 outline-none resize-none transition-all placeholder:text-slate-400"
+                  />
+                  <div className="absolute right-2 bottom-2.5 flex items-center gap-1.5">
+                    <button
+                      type="button"
+                      onClick={toggleMic}
+                      className={cn(
+                        "p-2 rounded-lg transition-all",
+                        isListeningMic 
+                          ? "bg-rose-500 text-white animate-pulse" 
+                          : "bg-slate-100 hover:bg-slate-200 text-slate-600"
+                      )}
+                      title="Dikter med stemme"
+                    >
+                      {isListeningMic ? <MicOff size={15} /> : <Mic size={15} />}
+                    </button>
+                    <button
+                      type="button"
+                      onClick={handleMagicAiFill}
+                      disabled={isAiGenerating || !aiPrompt.trim()}
+                      className="px-3 py-1.5 bg-gradient-to-r from-electric-500 to-electric-400 text-white rounded-lg text-xs font-black hover:opacity-95 transition-all shadow-sm flex items-center gap-1 disabled:opacity-50"
+                    >
+                      {isAiGenerating ? <Loader2 size={13} className="animate-spin" /> : <Wand2 size={13} />}
+                      <span>Fyll ut</span>
+                    </button>
+                  </div>
+                </div>
+
+                {/* 1-Klikks hurtigmaler */}
+                <div className="flex flex-wrap items-center gap-1.5 pt-1">
+                  <span className="text-[10px] font-bold uppercase tracking-wider text-slate-400 mr-1">Maler:</span>
+                  <button
+                    type="button"
+                    onClick={() => applyQuickTemplate('enebolig')}
+                    className="px-2.5 py-1 bg-white hover:bg-electric-50 hover:text-electric-700 hover:border-electric-200 border border-slate-200 rounded-lg text-[11px] font-bold text-slate-600 transition-all cursor-pointer shadow-xs"
+                  >
+                    🏠 Enebolig Nybygg
+                  </button>
+                  <button
+                    type="button"
+                    onClick={() => applyQuickTemplate('bad')}
+                    className="px-2.5 py-1 bg-white hover:bg-electric-50 hover:text-electric-700 hover:border-electric-200 border border-slate-200 rounded-lg text-[11px] font-bold text-slate-600 transition-all cursor-pointer shadow-xs"
+                  >
+                    🚿 Bad & Våtrom (BVN)
+                  </button>
+                  <button
+                    type="button"
+                    onClick={() => applyQuickTemplate('tilbygg')}
+                    className="px-2.5 py-1 bg-white hover:bg-electric-50 hover:text-electric-700 hover:border-electric-200 border border-slate-200 rounded-lg text-[11px] font-bold text-slate-600 transition-all cursor-pointer shadow-xs"
+                  >
+                    🔨 Tilbygg & Fasade
+                  </button>
+                  <button
+                    type="button"
+                    onClick={() => applyQuickTemplate('naering')}
+                    className="px-2.5 py-1 bg-white hover:bg-electric-50 hover:text-electric-700 hover:border-electric-200 border border-slate-200 rounded-lg text-[11px] font-bold text-slate-600 transition-all cursor-pointer shadow-xs"
+                  >
+                    ⚡ Næring / Kontor
+                  </button>
+                </div>
+              </div>
+
+              {/* DETALJERTE PROSJEKTFELTER */}
+              <div className="grid grid-cols-1 md:grid-cols-2 gap-4 sm:gap-5">
+                
+                {/* Prosjektnavn */}
+                <div className="md:col-span-2">
+                  <label className="block text-xs font-bold uppercase tracking-wider text-slate-500 mb-1.5">
+                    Prosjektnavn *
+                  </label>
+                  <div className="relative">
+                    <HardHat className="absolute left-3.5 top-1/2 -translate-y-1/2 text-slate-400" size={18} />
+                    <input 
+                      required
+                      type="text"
+                      value={formData.name}
+                      onChange={(e) => setFormData({ ...formData, name: e.target.value })}
+                      className="w-full bg-slate-50 border border-slate-200 rounded-xl py-3 pl-11 pr-4 text-sm font-semibold text-navy-900 focus:bg-white focus:ring-2 focus:ring-electric-500/20 focus:border-electric-500 outline-none transition-all"
+                      placeholder="f.eks. Enebolig Bjørklund"
+                    />
+                  </div>
+                </div>
+
+                {/* Prosjektkode */}
+                <div>
+                  <label className="block text-xs font-bold uppercase tracking-wider text-slate-500 mb-1.5">
+                    Prosjektkode
+                  </label>
+                  <input 
+                    type="text"
+                    value={formData.projectCode}
+                    onChange={(e) => setFormData({ ...formData, projectCode: e.target.value })}
+                    className="w-full bg-slate-50 border border-slate-200 rounded-xl py-3 px-4 text-sm font-semibold text-navy-900 focus:bg-white focus:ring-2 focus:ring-electric-500/20 focus:border-electric-500 outline-none transition-all"
+                    placeholder="P2026-001"
+                  />
+                </div>
+
+                {/* Prosjektfase */}
+                <div>
+                  <label className="block text-xs font-bold uppercase tracking-wider text-slate-500 mb-1.5">
+                    Prosjektfase
+                  </label>
+                  <select 
+                    value={formData.stage}
+                    onChange={(e) => setFormData({ ...formData, stage: e.target.value as any })}
+                    className="w-full bg-slate-50 border border-slate-200 rounded-xl py-3 px-4 text-sm font-semibold text-navy-900 focus:bg-white focus:ring-2 focus:ring-electric-500/20 focus:border-electric-500 outline-none transition-all cursor-pointer"
+                  >
+                    <option value="active">Gjennomføring (Aktiv)</option>
+                    <option value="offer">Tilbud / Befaring</option>
+                    <option value="contract">Kontrakt inngått</option>
+                    <option value="handover">Overlevering / Sluttbefaring</option>
+                    <option value="archived">Arkivert</option>
+                  </select>
+                </div>
+
+                {/* Beskrivelse */}
+                <div className="md:col-span-2">
+                  <label className="block text-xs font-bold uppercase tracking-wider text-slate-500 mb-1.5">
+                    Beskrivelse & Omfang
+                  </label>
+                  <textarea 
+                    value={formData.description}
+                    onChange={(e) => setFormData({ ...formData, description: e.target.value })}
+                    className="w-full bg-slate-50 border border-slate-200 rounded-xl p-3 text-sm font-medium text-navy-900 focus:bg-white focus:ring-2 focus:ring-electric-500/20 focus:border-electric-500 outline-none transition-all min-h-[85px] resize-none"
+                    placeholder="Kort beskrivelse av arbeidet som skal utføres..."
+                  />
+                </div>
+
+                {/* Lokasjon / Adresse */}
+                <div className="md:col-span-2 relative">
+                  <label className="block text-xs font-bold uppercase tracking-wider text-slate-500 mb-1.5">
+                    Lokasjon / Adresse (Geonorge synk)
+                  </label>
+                  <div className="relative">
+                    <MapPin className="absolute left-3.5 top-1/2 -translate-y-1/2 text-slate-400" size={18} />
                     <input 
                       type="text"
-                      value={formData.projectCode}
-                      onChange={(e) => setFormData({ ...formData, projectCode: e.target.value })}
-                      className="w-full bg-neutral-50 border border-neutral-200 rounded-xl sm:rounded-2xl py-3 sm:py-4 px-4 text-sm sm:text-base focus:ring-2 focus:ring-emerald-500/20 focus:border-emerald-500 outline-none transition-all font-medium"
-                      placeholder="f.eks. P2024-001"
+                      value={addressSearch !== '' ? addressSearch : formData.location}
+                      onChange={(e) => setAddressSearch(e.target.value)}
+                      className="w-full bg-slate-50 border border-slate-200 rounded-xl py-3 pl-11 pr-4 text-sm font-medium text-navy-900 focus:bg-white focus:ring-2 focus:ring-electric-500/20 focus:border-electric-500 outline-none transition-all"
+                      placeholder="Søk gateadresse for å hente GNR/BNR automatisk..."
                     />
-                  </div>
-
-                  <div className="md:col-span-2">
-                    <div className="flex justify-between items-center mb-1.5">
-                      <label className="block text-xs font-bold uppercase tracking-widest text-neutral-500">
-                        {t('description', 'Beskrivelse')}
-                      </label>
-                      <button 
-                        type="button"
-                        onClick={generateAiDescription}
-                        disabled={isAiGenerating || !formData.name}
-                        className="flex items-center gap-1.5 text-xs font-bold text-emerald-600 hover:text-emerald-500 transition-colors disabled:opacity-50"
-                      >
-                        {isAiGenerating ? <Loader2 className="animate-spin" size={14} /> : <Sparkles size={14} />}
-                        Generer med AI
-                      </button>
-                    </div>
-                    <textarea 
-                      value={formData.description}
-                      onChange={(e) => setFormData({ ...formData, description: e.target.value })}
-                      className="w-full bg-neutral-50 border border-neutral-200 rounded-xl sm:rounded-2xl py-3 sm:py-4 px-4 text-sm sm:text-base focus:ring-2 focus:ring-emerald-500/20 focus:border-emerald-500 outline-none transition-all min-h-[90px] font-medium resize-none"
-                      placeholder={t('description_placeholder', 'Kort beskrivelse av prosjektet...')}
-                    />
-                  </div>
-
-                  <div className="md:col-span-2 relative">
-                    <label className="block text-xs font-bold uppercase tracking-widest text-neutral-500 mb-1.5">
-                      {t('location', 'Lokasjon / Adresse')}
-                    </label>
-                    <div className="relative">
-                      <MapPin className="absolute left-3.5 top-1/2 -translate-y-1/2 text-neutral-400" size={18} />
-                      <input 
-                        required
-                        type="text"
-                        value={addressSearch !== '' ? addressSearch : formData.location}
-                        onChange={(e) => setAddressSearch(e.target.value)}
-                        className="w-full bg-neutral-50 border border-neutral-200 rounded-xl sm:rounded-2xl py-3 sm:py-4 pl-11 sm:pl-12 pr-4 text-sm sm:text-base focus:ring-2 focus:ring-emerald-500/20 focus:border-emerald-500 outline-none transition-all font-medium"
-                        placeholder={t('location_placeholder', 'Søk adresse for å hente GNR/BNR...')}
-                      />
-                      {isSearchingAddress && (
-                        <div className="absolute right-3.5 top-1/2 -translate-y-1/2">
-                          <Loader2 className="animate-spin text-neutral-400" size={16} />
-                        </div>
-                      )}
-                    </div>
-
-                    {addressSuggestions.length > 0 && (
-                      <div className="absolute z-50 left-0 right-0 mt-1 bg-white border border-neutral-200 rounded-xl sm:rounded-2xl shadow-xl overflow-hidden max-h-52 overflow-y-auto custom-scrollbar">
-                        {addressSuggestions.map((addr, i) => (
-                          <button
-                            key={i}
-                            type="button"
-                            onClick={() => selectAddress(addr)}
-                            className="w-full text-left p-3 sm:p-4 hover:bg-neutral-50 transition-colors border-b border-neutral-100 last:border-0"
-                          >
-                            <div className="text-xs sm:text-sm font-bold">{addr.address}</div>
-                            <div className="text-[10px] sm:text-xs text-neutral-500">
-                              {addr.postcode} {addr.city} {addr.gnr && `(GNR: ${addr.gnr}, BNR: ${addr.bnr})`}
-                            </div>
-                          </button>
-                        ))}
+                    {isSearchingAddress && (
+                      <div className="absolute right-3.5 top-1/2 -translate-y-1/2">
+                        <Loader2 className="animate-spin text-electric-500" size={16} />
                       </div>
                     )}
                   </div>
 
-                  <div className="grid grid-cols-1 sm:grid-cols-2 gap-3 sm:gap-4 md:col-span-2">
-                    <div>
-                      <label className="block text-xs font-bold uppercase tracking-widest text-neutral-500 mb-1.5">
-                        GNR
-                      </label>
-                      <input 
-                        type="text"
-                        value={formData.gnr}
-                        onChange={(e) => setFormData({ ...formData, gnr: e.target.value })}
-                        className="w-full bg-neutral-50 border border-neutral-200 rounded-xl sm:rounded-2xl py-3 sm:py-4 px-4 text-sm sm:text-base focus:ring-2 focus:ring-emerald-500/20 focus:border-emerald-500 outline-none transition-all font-medium"
-                        placeholder="Gårdsnummer"
-                      />
+                  {addressSuggestions.length > 0 && (
+                    <div className="absolute z-50 left-0 right-0 mt-1 bg-white border border-slate-200 rounded-xl shadow-xl overflow-hidden max-h-52 overflow-y-auto custom-scrollbar">
+                      {addressSuggestions.map((addr, i) => (
+                        <button
+                          key={i}
+                          type="button"
+                          onClick={() => selectAddress(addr)}
+                          className="w-full text-left p-3 hover:bg-slate-50 transition-colors border-b border-slate-100 last:border-0"
+                        >
+                          <div className="text-xs sm:text-sm font-bold text-navy-900">{addr.address}</div>
+                          <div className="text-[10px] text-slate-500">
+                            {addr.postcode} {addr.city} {addr.gnr && `(GNR: ${addr.gnr}, BNR: ${addr.bnr})`}
+                          </div>
+                        </button>
+                      ))}
                     </div>
-                    <div>
-                      <label className="block text-xs font-bold uppercase tracking-widest text-neutral-500 mb-1.5">
-                        BNR
-                      </label>
-                      <input 
-                        type="text"
-                        value={formData.bnr}
-                        onChange={(e) => setFormData({ ...formData, bnr: e.target.value })}
-                        className="w-full bg-neutral-50 border border-neutral-200 rounded-xl sm:rounded-2xl py-3 sm:py-4 px-4 text-sm sm:text-base focus:ring-2 focus:ring-emerald-500/20 focus:border-emerald-500 outline-none transition-all font-medium"
-                        placeholder="Bruksnummer"
-                      />
-                    </div>
-                  </div>
-
-                  <div>
-                    <label className="block text-xs font-bold uppercase tracking-widest text-neutral-500 mb-1.5">
-                      {t('client_name', 'Kunde')}
-                    </label>
-                    <input 
-                      type="text"
-                      value={formData.clientName}
-                      onChange={(e) => setFormData({ ...formData, clientName: e.target.value })}
-                      className="w-full bg-neutral-50 border border-neutral-200 rounded-xl sm:rounded-2xl py-3 sm:py-4 px-4 text-sm sm:text-base focus:ring-2 focus:ring-emerald-500/20 focus:border-emerald-500 outline-none transition-all font-medium"
-                      placeholder={t('client_placeholder', 'Kundenavn')}
-                    />
-                  </div>
-
-                  <div>
-                    <label className="block text-xs font-bold uppercase tracking-widest text-neutral-500 mb-1.5">
-                      Kunde-E-post
-                    </label>
-                    <input 
-                      type="email"
-                      value={formData.clientEmail}
-                      onChange={(e) => setFormData({ ...formData, clientEmail: e.target.value })}
-                      className="w-full bg-neutral-50 border border-neutral-200 rounded-xl sm:rounded-2xl py-3 sm:py-4 px-4 text-sm sm:text-base focus:ring-2 focus:ring-emerald-500/20 focus:border-emerald-500 outline-none transition-all font-medium"
-                      placeholder="kunde@eksempel.no"
-                    />
-                  </div>
-
-                  <div>
-                    <label className="block text-xs font-bold uppercase tracking-widest text-neutral-500 mb-1.5">
-                      {t('project_manager', 'Prosjektleder')}
-                    </label>
-                    <input 
-                      type="text"
-                      value={formData.projectManager}
-                      onChange={(e) => setFormData({ ...formData, projectManager: e.target.value })}
-                      className="w-full bg-neutral-50 border border-neutral-200 rounded-xl sm:rounded-2xl py-3 sm:py-4 px-4 text-sm sm:text-base focus:ring-2 focus:ring-emerald-500/20 focus:border-emerald-500 outline-none transition-all font-medium"
-                      placeholder={t('manager_placeholder', 'Navn på leder')}
-                    />
-                  </div>
-
-                  <div>
-                    <label className="block text-xs font-bold uppercase tracking-widest text-neutral-500 mb-1.5">
-                      {t('status', 'Status')}
-                    </label>
-                    <select 
-                      value={formData.status}
-                      onChange={(e) => setFormData({ ...formData, status: e.target.value as any })}
-                      className="w-full bg-neutral-50 border border-neutral-200 rounded-xl sm:rounded-2xl py-3 sm:py-4 px-4 text-sm sm:text-base focus:ring-2 focus:ring-emerald-500/20 focus:border-emerald-500 outline-none transition-all appearance-none font-medium"
-                    >
-                      <option value="active">{t('active', 'Aktiv')}</option>
-                      <option value="completed">{t('completed', 'Fullført')}</option>
-                      <option value="on-hold">{t('on-hold', 'På vent')}</option>
-                    </select>
-                  </div>
-
-                  <div>
-                    <label className="block text-xs font-bold uppercase tracking-widest text-neutral-500 mb-1.5">
-                      Prosjektfase
-                    </label>
-                    <select 
-                      value={formData.stage}
-                      onChange={(e) => setFormData({ ...formData, stage: e.target.value as any })}
-                      className="w-full bg-neutral-50 border border-neutral-200 rounded-xl sm:rounded-2xl py-3 sm:py-4 px-4 text-sm sm:text-base focus:ring-2 focus:ring-emerald-500/20 focus:border-emerald-500 outline-none transition-all appearance-none font-medium"
-                    >
-                      <option value="offer">Tilbud</option>
-                      <option value="contract">Kontrakt</option>
-                      <option value="active">Gjennomføring</option>
-                      <option value="handover">Overlevering</option>
-                      <option value="archived">Arkiv</option>
-                    </select>
-                  </div>
-
-                  <div>
-                    <label className="block text-xs font-bold uppercase tracking-widest text-neutral-500 mb-1.5">
-                      {t('start_date', 'Startdato')}
-                    </label>
-                    <input 
-                      type="date"
-                      value={formData.startDate}
-                      onChange={(e) => setFormData({ ...formData, startDate: e.target.value })}
-                      className="w-full bg-neutral-50 border border-neutral-200 rounded-xl sm:rounded-2xl py-3 sm:py-4 px-4 text-sm sm:text-base focus:ring-2 focus:ring-emerald-500/20 focus:border-emerald-500 outline-none transition-all font-medium"
-                    />
-                  </div>
-
-                  <div>
-                    <label className="block text-xs font-bold uppercase tracking-widest text-neutral-500 mb-1.5">
-                      {t('end_date', 'Sluttdato')}
-                    </label>
-                    <input 
-                      type="date"
-                      value={formData.endDate}
-                      onChange={(e) => setFormData({ ...formData, endDate: e.target.value })}
-                      className="w-full bg-neutral-50 border border-neutral-200 rounded-xl sm:rounded-2xl py-3 sm:py-4 px-4 text-sm sm:text-base focus:ring-2 focus:ring-emerald-500/20 focus:border-emerald-500 outline-none transition-all font-medium"
-                    />
-                  </div>
-
-                  <div className="md:col-span-2">
-                    <label className="block text-xs font-bold uppercase tracking-widest text-neutral-500 mb-1.5">
-                      {t('tags', 'Tagger (kommaseparert)')}
-                    </label>
-                    <input 
-                      type="text"
-                      value={formData.tags}
-                      onChange={(e) => setFormData({ ...formData, tags: e.target.value })}
-                      className="w-full bg-neutral-50 border border-neutral-200 rounded-xl sm:rounded-2xl py-3 sm:py-4 px-4 text-sm sm:text-base focus:ring-2 focus:ring-emerald-500/20 focus:border-emerald-500 outline-none transition-all font-medium"
-                      placeholder="f.eks. nybygg, enebolig, oslo"
-                    />
-                  </div>
-
-                  {/* AI Estimation Section */}
-                  <div className="md:col-span-2">
-                    <button 
-                      type="button"
-                      onClick={generateEstimation}
-                      disabled={isEstimating || !formData.description}
-                      className="w-full py-3.5 px-4 bg-emerald-50 text-emerald-800 rounded-xl sm:rounded-2xl font-bold flex items-center justify-center gap-2 hover:bg-emerald-100 transition-all border border-emerald-200 disabled:opacity-50 text-xs sm:text-sm active:scale-95"
-                    >
-                      {isEstimating ? (
-                        <Loader2 className="animate-spin text-emerald-600" size={16} />
-                      ) : (
-                        <Sparkles className="text-emerald-600" size={16} />
-                      )}
-                      Estimer ressurs- og materialbehov med MesterAI
-                    </button>
-
-                    {estimation && (
-                      <motion.div 
-                        initial={{ opacity: 0, y: 10 }}
-                        animate={{ opacity: 1, y: 0 }}
-                        className="mt-3 sm:mt-4 p-4 sm:p-6 bg-neutral-900 text-white rounded-2xl sm:rounded-3xl space-y-4 sm:space-y-6"
-                      >
-                        <div className="flex items-center justify-between">
-                          <h3 className="text-xs sm:text-sm font-bold flex items-center gap-2">
-                            <Sparkles size={16} className="text-emerald-400" />
-                            AI Estimat
-                          </h3>
-                          <div className="flex gap-4">
-                            <div className="text-center">
-                              <div className="text-[10px] text-neutral-400 uppercase">Timer</div>
-                              <div className="text-xs sm:text-sm font-bold">{estimation.estimatedHours}t</div>
-                            </div>
-                            <div className="text-center">
-                              <div className="text-[10px] text-neutral-400 uppercase">Team</div>
-                              <div className="text-xs sm:text-sm font-bold">{estimation.teamSize} pers</div>
-                            </div>
-                          </div>
-                        </div>
-
-                        <div className="grid grid-cols-1 sm:grid-cols-2 gap-3 sm:gap-4">
-                          <div className="space-y-2">
-                            <div className="text-[10px] font-black uppercase tracking-widest text-neutral-400">Faggrupper</div>
-                            {estimation.roles.map((role, i) => (
-                              <div key={i} className="flex items-center justify-between text-xs bg-white/5 p-2 rounded-xl">
-                                <span>{role.role}</span>
-                                <span className="font-bold text-emerald-400">x{role.count}</span>
-                              </div>
-                            ))}
-                          </div>
-                          <div className="space-y-2">
-                            <div className="text-[10px] font-black uppercase tracking-widest text-neutral-400">Hovedmaterialer</div>
-                            {estimation.materials.slice(0, 3).map((mat, i) => (
-                              <div key={i} className="text-xs bg-white/5 p-2 rounded-xl">
-                                <div className="font-bold">{mat.item}</div>
-                                <div className="text-neutral-400 text-[11px]">{mat.quantity}</div>
-                              </div>
-                            ))}
-                          </div>
-                        </div>
-                      </motion.div>
-                    )}
-                  </div>
+                  )}
                 </div>
 
-              </form>
+                {/* GNR & BNR */}
+                <div>
+                  <label className="block text-xs font-bold uppercase tracking-wider text-slate-500 mb-1.5">
+                    GNR (Gårdsnummer)
+                  </label>
+                  <input 
+                    type="text"
+                    value={formData.gnr}
+                    onChange={(e) => setFormData({ ...formData, gnr: e.target.value })}
+                    className="w-full bg-slate-50 border border-slate-200 rounded-xl py-3 px-4 text-sm font-medium text-navy-900 focus:bg-white focus:ring-2 focus:ring-electric-500/20 focus:border-electric-500 outline-none transition-all"
+                    placeholder="Gårdsnummer"
+                  />
+                </div>
+                <div>
+                  <label className="block text-xs font-bold uppercase tracking-wider text-slate-500 mb-1.5">
+                    BNR (Bruksnummer)
+                  </label>
+                  <input 
+                    type="text"
+                    value={formData.bnr}
+                    onChange={(e) => setFormData({ ...formData, bnr: e.target.value })}
+                    className="w-full bg-slate-50 border border-slate-200 rounded-xl py-3 px-4 text-sm font-medium text-navy-900 focus:bg-white focus:ring-2 focus:ring-electric-500/20 focus:border-electric-500 outline-none transition-all"
+                    placeholder="Bruksnummer"
+                  />
+                </div>
 
-            {/* 3. FAST BUNN-FOOTER (Ligger utenfor rullefeltet, dekker ALDRI felter) */}
-            <div className="px-5 sm:px-8 py-3.5 sm:py-4 bg-slate-50 border-t border-neutral-100 shrink-0 flex items-center justify-between gap-3">
-              <span className="text-[11px] text-slate-400 hidden sm:inline-flex items-center gap-1.5">
-                <Sparkles size={13} className="text-emerald-600" />
-                TEK17- og fremdriftsregler aktiveres automatisk
+                {/* Kunde & E-post */}
+                <div>
+                  <label className="block text-xs font-bold uppercase tracking-wider text-slate-500 mb-1.5">
+                    Kunde (Byggherre)
+                  </label>
+                  <input 
+                    type="text"
+                    value={formData.clientName}
+                    onChange={(e) => setFormData({ ...formData, clientName: e.target.value })}
+                    className="w-full bg-slate-50 border border-slate-200 rounded-xl py-3 px-4 text-sm font-medium text-navy-900 focus:bg-white focus:ring-2 focus:ring-electric-500/20 focus:border-electric-500 outline-none transition-all"
+                    placeholder="Kundenavn"
+                  />
+                </div>
+
+                <div>
+                  <label className="block text-xs font-bold uppercase tracking-wider text-slate-500 mb-1.5">
+                    Kunde E-post (for portal & varsling)
+                  </label>
+                  <input 
+                    type="email"
+                    value={formData.clientEmail}
+                    onChange={(e) => setFormData({ ...formData, clientEmail: e.target.value })}
+                    className="w-full bg-slate-50 border border-slate-200 rounded-xl py-3 px-4 text-sm font-medium text-navy-900 focus:bg-white focus:ring-2 focus:ring-electric-500/20 focus:border-electric-500 outline-none transition-all"
+                    placeholder="kunde@eksempel.no"
+                  />
+                </div>
+
+                {/* Startdato & Sluttdato */}
+                <div>
+                  <label className="block text-xs font-bold uppercase tracking-wider text-slate-500 mb-1.5">
+                    Startdato
+                  </label>
+                  <input 
+                    type="date"
+                    value={formData.startDate}
+                    onChange={(e) => setFormData({ ...formData, startDate: e.target.value })}
+                    className="w-full bg-slate-50 border border-slate-200 rounded-xl py-3 px-4 text-sm font-medium text-navy-900 focus:bg-white focus:ring-2 focus:ring-electric-500/20 focus:border-electric-500 outline-none transition-all"
+                  />
+                </div>
+
+                <div>
+                  <label className="block text-xs font-bold uppercase tracking-wider text-slate-500 mb-1.5">
+                    Estimert ferdigstillelse
+                  </label>
+                  <input 
+                    type="date"
+                    value={formData.endDate}
+                    onChange={(e) => setFormData({ ...formData, endDate: e.target.value })}
+                    className="w-full bg-slate-50 border border-slate-200 rounded-xl py-3 px-4 text-sm font-medium text-navy-900 focus:bg-white focus:ring-2 focus:ring-electric-500/20 focus:border-electric-500 outline-none transition-all"
+                  />
+                </div>
+
+                {/* Tagger */}
+                <div className="md:col-span-2">
+                  <label className="block text-xs font-bold uppercase tracking-wider text-slate-500 mb-1.5">
+                    Faggrupper & Nøkkelord (kommaseparert)
+                  </label>
+                  <input 
+                    type="text"
+                    value={formData.tags}
+                    onChange={(e) => setFormData({ ...formData, tags: e.target.value })}
+                    className="w-full bg-slate-50 border border-slate-200 rounded-xl py-3 px-4 text-sm font-medium text-navy-900 focus:bg-white focus:ring-2 focus:ring-electric-500/20 focus:border-electric-500 outline-none transition-all"
+                    placeholder="f.eks. tømrer, våtrom, elektro, rørlegger, tek17"
+                  />
+                </div>
+              </div>
+
+            </form>
+
+            {/* 3. FAST BUNN-FOOTER (Ligger rent og pent under rullefeltet) */}
+            <div className="px-5 sm:px-8 py-4 bg-slate-50 border-t border-slate-200 shrink-0 flex items-center justify-between gap-3">
+              <span className="text-[11px] text-slate-500 hidden sm:inline-flex items-center gap-1.5">
+                <Brain size={14} className="text-electric-500" />
+                Yr.no værsynk og TEK17-kontroll aktiveres ved opprettelse
               </span>
-              <div className="flex items-center gap-2.5 w-full sm:w-auto justify-end">
+              <div className="flex items-center gap-3 w-full sm:w-auto justify-end">
                 <button
                   type="button"
                   onClick={onClose}
@@ -546,12 +662,23 @@ export default function CreateProjectModal({ isOpen, onClose }: CreateProjectMod
                   form="create-project-form"
                   type="submit"
                   disabled={loading}
-                  className="px-5 sm:px-7 py-2.5 sm:py-3 bg-emerald-600 hover:bg-emerald-500 text-white rounded-xl font-bold text-xs sm:text-sm transition-all shadow-md shadow-emerald-200/50 flex items-center justify-center gap-2 disabled:opacity-50 cursor-pointer active:scale-95"
+                  className="px-6 py-2.5 bg-gradient-to-r from-electric-500 to-electric-400 hover:opacity-95 text-white rounded-xl font-black text-xs sm:text-sm transition-all shadow-purple-cta flex items-center justify-center gap-2 disabled:opacity-50 cursor-pointer active:scale-95"
                 >
-                  {loading ? <Loader2 className="animate-spin sm:w-4 sm:h-4" size={16} /> : t('create_project', 'Opprett prosjekt')}
+                  {loading ? (
+                    <>
+                      <Loader2 className="animate-spin" size={16} />
+                      <span>Oppretter prosjekt...</span>
+                    </>
+                  ) : (
+                    <>
+                      <Check size={16} />
+                      <span>Opprett prosjekt</span>
+                    </>
+                  )}
                 </button>
               </div>
             </div>
+
           </motion.div>
         </div>
       )}

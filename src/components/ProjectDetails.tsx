@@ -10,35 +10,41 @@ import {
   AlertTriangle, 
   FileText, 
   FileSignature,
-  MoreVertical,
-  Calendar,
-  User,
-  MessageSquare,
-  ShieldCheck,
-  ChevronRight,
-  TrendingUp,
-  Share2,
-  X,
-  Plus,
-  Loader2,
-  Save,
-  Sparkles,
-  Camera,
-  Upload,
-  Search,
-  CheckCircle2,
-  FileDown,
-  Users,
-  Download,
-  Activity,
-  Package,
-  RefreshCw,
-  FileEdit,
-  CloudSun,
-  Building2,
-  FlaskConical,
-  Coins,
-  BellRing
+  MoreVertical, 
+  Calendar, 
+  User, 
+  MessageSquare, 
+  ShieldCheck, 
+  ChevronRight, 
+  TrendingUp, 
+  Share2, 
+  X, 
+  Plus, 
+  Loader2, 
+  Save, 
+  Sparkles, 
+  Camera, 
+  Upload, 
+  Search, 
+  CheckCircle2, 
+  FileDown, 
+  Users, 
+  Download, 
+  Activity, 
+  Package, 
+  RefreshCw, 
+  FileEdit, 
+  CloudSun, 
+  Building2, 
+  FlaskConical, 
+  Coins, 
+  BellRing,
+  Mic,
+  MicOff,
+  Send,
+  Brain,
+  Wand2,
+  Check
 } from 'lucide-react';
 import CrossTradeCoordinator from './CrossTradeCoordinator';
 import { motion, AnimatePresence } from 'motion/react';
@@ -62,6 +68,7 @@ import ComplianceHub from './ComplianceHub';
 import ChangeOrderModal from './ChangeOrderModal';
 import DailyLogModal from './DailyLogModal';
 import StoffkartotekModal from './StoffkartotekModal';
+import CreateDeviationModal from './CreateDeviationModal';
 import FinalSettlementModal from './FinalSettlementModal';
 import { budgetAlertService, BudgetStatus } from '../services/budgetAlertService';
 import { toast } from 'sonner';
@@ -77,7 +84,10 @@ interface ProjectDetailsProps {
 export default function ProjectDetails({ project, onBack, onShare, onStartChecklist, onHandover }: ProjectDetailsProps) {
   const { t } = useTranslation();
   const { user } = useAuth();
-  const [activeTab, setActiveTab] = useState<'overview' | 'crosstrade' | 'sja' | 'deviations' | 'docs' | 'materials' | 'change_orders' | 'daily_log' | 'stoffkartotek'>('overview');
+  
+  // Streamlined 5 tabs instead of 9
+  const [activeTab, setActiveTab] = useState<'overview' | 'daily_log' | 'change_orders' | 'crosstrade' | 'docs'>('overview');
+  
   const [sjaReports, setSjaReports] = useState<any[]>([]);
   const [projectDeviations, setProjectDeviations] = useState<Deviation[]>([]);
   const [selectedDeviation, setSelectedDeviation] = useState<Deviation | null>(null);
@@ -98,7 +108,13 @@ export default function ProjectDetails({ project, onBack, onShare, onStartCheckl
   const [isDailyLogOpen, setIsDailyLogOpen] = useState(false);
   const [isStoffkartotekOpen, setIsStoffkartotekOpen] = useState(false);
   const [isFinalSettlementOpen, setIsFinalSettlementOpen] = useState(false);
+  const [isMoreMenuOpen, setIsMoreMenuOpen] = useState(false);
   const [budgetStatus, setBudgetStatus] = useState<BudgetStatus | null>(null);
+
+  // MesterAI Project Command Bar
+  const [projectCommand, setProjectCommand] = useState('');
+  const [isCommandLoading, setIsCommandLoading] = useState(false);
+  const [isListeningMic, setIsListeningMic] = useState(false);
 
   const [newDeviation, setNewDeviation] = useState({
     title: '',
@@ -115,6 +131,18 @@ export default function ProjectDetails({ project, onBack, onShare, onStartCheckl
     utstyr: [] as string[],
     tek17Reference: ''
   });
+
+  // Date formatter for clean Norwegian display (avoids raw ISO timestamps)
+  const formatDate = (val?: string) => {
+    if (!val) return '-';
+    try {
+      const d = new Date(val);
+      if (isNaN(d.getTime())) return val;
+      return d.toLocaleDateString('no-NO', { day: 'numeric', month: 'short', year: 'numeric' });
+    } catch {
+      return val;
+    }
+  };
 
   useEffect(() => {
     if (!project.id || !auth.currentUser) return;
@@ -215,6 +243,71 @@ export default function ProjectDetails({ project, onBack, onShare, onStartCheckl
     }
   }, [project]);
 
+  // Handle MesterAI quick project instruction
+  const handleSendProjectCommand = async (customPrompt?: string) => {
+    const text = customPrompt || projectCommand;
+    if (!text.trim()) return;
+    setIsCommandLoading(true);
+    try {
+      const res = await fetch('/api/agent/dispatch', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({
+          action: 'quick_command',
+          text,
+          projectId: project.id,
+          projectName: project.name,
+          authorName: user?.displayName || 'Byggeleder'
+        })
+      });
+      const data = await res.json();
+      if (data.reply) {
+        toast.success('MesterAI:', { description: data.reply });
+        setAiSummary(data.reply);
+      } else {
+        toast.info('Instruks registrert');
+      }
+      setProjectCommand('');
+    } catch (err: any) {
+      toast.error('Feil fra MesterAI: ' + err.message);
+    } finally {
+      setIsCommandLoading(false);
+    }
+  };
+
+  // Voice recording
+  const toggleMic = () => {
+    if (isListeningMic) {
+      setIsListeningMic(false);
+      return;
+    }
+    if (!('webkitSpeechRecognition' in window) && !('SpeechRecognition' in window)) {
+      toast.info('Tale-til-tekst er aktivert via tastatur. Dikter direkte i feltet.');
+      return;
+    }
+    try {
+      const SpeechRecognition = (window as any).SpeechRecognition || (window as any).webkitSpeechRecognition;
+      const recognition = new SpeechRecognition();
+      recognition.lang = 'nb-NO';
+      recognition.continuous = false;
+      recognition.onstart = () => {
+        setIsListeningMic(true);
+        toast.info('Lytter... Snakk nå.');
+      };
+      recognition.onresult = (event: any) => {
+        const transcript = event.results[0][0].transcript;
+        setProjectCommand(transcript);
+        setIsListeningMic(false);
+        handleSendProjectCommand(transcript);
+      };
+      recognition.onerror = () => setIsListeningMic(false);
+      recognition.onend = () => setIsListeningMic(false);
+      recognition.start();
+    } catch {
+      setIsListeningMic(false);
+    }
+  };
+
   const handleAddDeviation = async (e: React.FormEvent) => {
     e.preventDefault();
     if (!auth.currentUser) return;
@@ -237,6 +330,7 @@ export default function ProjectDetails({ project, onBack, onShare, onStartCheckl
         status: 'open',
         location: ''
       });
+      toast.success('Avvik registrert og arkivert');
     } catch (error) {
       handleFirestoreError(error, OperationType.CREATE, 'deviations');
     } finally {
@@ -269,52 +363,11 @@ export default function ProjectDetails({ project, onBack, onShare, onStartCheckl
         utstyr: [],
         tek17Reference: ''
       });
+      toast.success('SJA godkjent og arkivert');
     } catch (error) {
       handleFirestoreError(error, OperationType.CREATE, 'sja_reports');
     } finally {
       setIsSaving(false);
-    }
-  };
-
-  const addRisk = () => {
-    setNewSJA({
-      ...newSJA,
-      risikoer: [...newSJA.risikoer, { aktivitet: '', risiko: '', tiltak: '' }]
-    });
-  };
-
-  const removeRisk = (index: number) => {
-    setNewSJA({
-      ...newSJA,
-      risikoer: newSJA.risikoer.filter((_, i) => i !== index)
-    });
-  };
-
-  const handleAIGenerate = async () => {
-    if (!newSJA.task.trim()) {
-      alert('Vennligst skriv inn en arbeidsoppgave først for å generere et utkast.');
-      return;
-    }
-
-    setIsGeneratingAI(true);
-    try {
-      const draft = await sjaService.generateDraft(
-        { name: project.name, description: project.description, location: project.location },
-        newSJA.task
-      );
-      
-      setNewSJA({
-        title: draft.title,
-        task: draft.task,
-        risikoer: draft.risikoer,
-        utstyr: draft.utstyr,
-        tek17Reference: draft.tek17Reference
-      });
-    } catch (error) {
-      console.error("AI Generation failed:", error);
-      alert('Kunne ikke generere SJA-utkast. Vennligst prøv igjen senere.');
-    } finally {
-      setIsGeneratingAI(false);
     }
   };
 
@@ -324,7 +377,6 @@ export default function ProjectDetails({ project, onBack, onShare, onStartCheckl
   const generateSummary = async () => {
     setIsGeneratingSummary(true);
     try {
-      // For simplicity, we'll pass simplified data
       const summary = await summaryService.generateProjectSummary(
         project, 
         sjaReports.slice(0, 3), 
@@ -344,147 +396,668 @@ export default function ProjectDetails({ project, onBack, onShare, onStartCheckl
     }
   }, [project.id]);
 
-  const totalBudget = project.budget || projectOffers.reduce((acc, curr) => acc + (curr.totalAmount || 0), 0);
+  const totalBudget = project.budget || projectOffers.reduce((acc, curr) => acc + (curr.totalAmount || 0), 0) || 0;
+  const currentProgress = typeof project.progress === 'number' ? project.progress : 0;
+  const docLevel = typeof project.documentationLevel === 'number' ? project.documentationLevel : 0;
   const totalSpent = project.spent || 0;
   const totalInvoiced = (project as any).invoiced || 0;
 
   return (
     <motion.div 
-      initial={{ opacity: 0, x: 20 }}
-      animate={{ opacity: 1, x: 0 }}
-      exit={{ opacity: 0, x: -20 }}
-      className="space-y-8"
+      initial={{ opacity: 0, y: 10 }}
+      animate={{ opacity: 1, y: 0 }}
+      exit={{ opacity: 0, y: -10 }}
+      className="space-y-6"
     >
-      {/* Header */}
-      <div className="flex flex-col md:flex-row md:items-center justify-between gap-4">
+      {/* 1. RYDDIG HEADER MED FOKUSERTE KNAPPER */}
+      <div className="flex flex-col lg:flex-row lg:items-center justify-between gap-4 bg-white p-5 sm:p-6 rounded-3xl border border-slate-200/80 shadow-xs">
         <div className="flex items-center gap-4">
           <button 
             onClick={onBack}
-            className="p-2 hover:bg-neutral-100 rounded-xl transition-colors"
+            className="p-2.5 hover:bg-slate-100 text-slate-500 hover:text-navy-900 rounded-xl transition-colors cursor-pointer"
+            title="Tilbake til prosjektoversikt"
           >
             <ArrowLeft size={20} />
           </button>
           <div>
-            <div className="flex items-center gap-3 mb-1">
+            <div className="flex items-center gap-2.5 mb-1 flex-wrap">
               {project.projectCode && (
-                <span className="px-2 py-0.5 bg-neutral-100 text-neutral-500 text-xs font-bold rounded uppercase">
+                <span className="px-2 py-0.5 bg-slate-100 text-slate-600 text-xs font-mono font-bold rounded-md uppercase">
                   {project.projectCode}
                 </span>
               )}
-              <h1 className="text-2xl font-bold tracking-tight">{project.name}</h1>
+              <h1 className="text-xl sm:text-2xl font-black text-navy-900 tracking-tight">{project.name}</h1>
               <span className={cn(
-                "text-[10px] font-black uppercase tracking-widest px-2 py-0.5 rounded",
-                project.stage === 'active' ? "bg-emerald-100 text-emerald-700" : 
-                project.stage === 'offer' ? "bg-amber-100 text-amber-700" :
-                project.stage === 'contract' ? "bg-blue-100 text-blue-700" :
-                "bg-neutral-100 text-neutral-700"
+                "text-[10px] font-black uppercase tracking-wider px-2.5 py-0.5 rounded-full border",
+                project.stage === 'active' ? "bg-emerald-50 text-emerald-700 border-emerald-200" : 
+                project.stage === 'offer' ? "bg-amber-50 text-amber-700 border-amber-200" :
+                project.stage === 'contract' ? "bg-blue-50 text-blue-700 border-blue-200" :
+                "bg-slate-50 text-slate-700 border-slate-200"
               )}>
-                {project.stage || 'Aktiv'}
+                {project.stage === 'active' ? 'Gjennomføring' : project.stage || 'Aktiv'}
               </span>
             </div>
-            <div className="flex items-center gap-4 text-xs text-neutral-400">
-              <span className="flex items-center gap-1"><MapPin size={12} /> {project.location}</span>
-              <span className="flex items-center gap-1"><Calendar size={12} /> {t('started')}: {project.lastUpdate}</span>
+            <div className="flex items-center gap-3 text-xs text-slate-400 font-medium">
+              <span className="flex items-center gap-1"><MapPin size={13} /> {project.location || 'Norge'}</span>
+              <span>•</span>
+              <span className="flex items-center gap-1"><Calendar size={13} /> Oppstart: {formatDate(project.startDate)}</span>
             </div>
           </div>
         </div>
-        <div className="flex flex-wrap items-center gap-2 sm:gap-3">
+
+        {/* MAKS 4 HOVEDHANDLINGER */}
+        <div className="flex items-center gap-2 sm:gap-2.5 flex-wrap">
           <button 
             onClick={onShare}
-            className="flex items-center gap-1.5 sm:gap-2 px-3 sm:px-4 py-2 bg-gradient-to-r from-electric-500 to-electric-400 text-white rounded-xl text-xs sm:text-sm font-black hover:opacity-95 transition-all shadow-purple-cta"
+            className="flex items-center gap-1.5 px-4 py-2.5 bg-gradient-to-r from-electric-500 to-electric-400 text-white rounded-xl text-xs font-black hover:opacity-95 transition-all shadow-purple-cta cursor-pointer"
           >
-            <Share2 size={16} />
-            Del med kunde
+            <Share2 size={15} />
+            <span>Del med kunde</span>
           </button>
+
           <button 
             onClick={() => setIsAIVisionOpen(true)}
-            className="flex items-center gap-1.5 sm:gap-2 px-3 sm:px-4 py-2 bg-rose-600 text-white rounded-xl text-xs sm:text-sm font-bold hover:bg-rose-500 transition-all shadow-lg shadow-rose-100"
-            title="Ta bilde for AI KS-kontroll"
+            className="flex items-center gap-1.5 px-4 py-2.5 bg-navy-900 hover:bg-navy-800 text-white rounded-xl text-xs font-bold transition-all cursor-pointer shadow-xs"
+            title="Ta bilde for TEK17 / BVN-bildeanalyse"
           >
-            <Camera size={16} />
-            AI KS-kontroll
+            <Camera size={15} />
+            <span>TEK17 Vision</span>
           </button>
-          <button 
-            onClick={() => setIsInviteModalOpen(true)}
-            className="flex items-center gap-1.5 sm:gap-2 px-3 sm:px-4 py-2 bg-white border border-neutral-200 rounded-xl text-xs sm:text-sm font-bold hover:bg-neutral-50 transition-colors"
-          >
-            <Users size={16} />
-            Inviter Håndverker
-          </button>
-          <button 
-            onClick={() => onStartChecklist?.(project.id)}
-            className="flex items-center gap-1.5 sm:gap-2 px-3 sm:px-4 py-2 bg-white border border-neutral-200 rounded-xl text-xs sm:text-sm font-bold hover:bg-neutral-50 transition-colors"
-          >
-            <ClipboardCheck size={16} className="text-emerald-600" />
-            Sjekkliste
-          </button>
-          <button 
-            onClick={() => setIsOfferModalOpen(true)}
-            className="flex items-center gap-1.5 sm:gap-2 px-3 sm:px-4 py-2 bg-white border border-neutral-200 rounded-xl text-xs sm:text-sm font-bold hover:bg-neutral-50 transition-colors"
-          >
-            <Sparkles size={16} className="text-emerald-600" />
-            Generer Tilbud
-          </button>
-          <button 
-            onClick={() => setIsHealthReportOpen(true)}
-            className="flex items-center gap-1.5 sm:gap-2 px-3 sm:px-4 py-2 bg-white border border-neutral-200 rounded-xl text-xs sm:text-sm font-bold hover:bg-neutral-50 transition-colors"
-          >
-            <Activity size={16} className="text-emerald-600" />
-            AI Helserapport
-          </button>
-          <button 
-            onClick={() => setIsChangeOrderOpen(true)}
-            className="flex items-center gap-1.5 sm:gap-2 px-3 sm:px-4 py-2 bg-amber-500/10 text-amber-700 border border-amber-500/20 rounded-xl text-xs sm:text-sm font-bold hover:bg-amber-500/20 transition-all"
-            title="Opprett eller se endringsmeldinger / tilleggsarbeid"
-          >
-            <FileEdit size={16} />
-            Tilleggsarbeid
-          </button>
+
           <button 
             onClick={() => setIsDailyLogOpen(true)}
-            className="flex items-center gap-1.5 sm:gap-2 px-3 sm:px-4 py-2 bg-sky-500/10 text-sky-700 border border-sky-500/20 rounded-xl text-xs sm:text-sm font-bold hover:bg-sky-500/20 transition-all"
-            title="Automatisk byggedagbok med værdata fra Yr"
+            className="flex items-center gap-1.5 px-3.5 py-2.5 bg-slate-100 hover:bg-slate-200 text-slate-800 rounded-xl text-xs font-bold transition-all cursor-pointer"
+            title="Åpne eller dikter i byggedagboken"
           >
-            <CloudSun size={16} />
-            Byggedagbok
+            <CloudSun size={15} className="text-electric-600" />
+            <span>Byggedagbok</span>
           </button>
-          <button 
-            onClick={() => setIsStoffkartotekOpen(true)}
-            className="flex items-center gap-1.5 sm:gap-2 px-3 sm:px-4 py-2 bg-amber-500/10 text-amber-700 border border-amber-500/20 rounded-xl text-xs sm:text-sm font-bold hover:bg-amber-500/20 transition-all"
-            title="Kjemisk stoffkartotek for byggeplass"
-          >
-            <FlaskConical size={16} />
-            Stoffkartotek
-          </button>
-          {project.stage === 'completion' && (
-            <button 
-              onClick={() => setIsFinalSettlementOpen(true)}
-              className="flex items-center gap-1.5 sm:gap-2 px-3 sm:px-4 py-2 bg-slate-900 text-white rounded-xl text-xs sm:text-sm font-bold hover:bg-slate-800 transition-all shadow-md"
-              title="Formelt sluttoppgjør iht. NS 8406"
-            >
-              <Coins size={16} />
-              Sluttoppgjør
-            </button>
-          )}
-          {project.stage === 'completion' && (
-            <button 
-              onClick={() => onHandover?.(project.id)}
-              className="flex items-center gap-1.5 sm:gap-2 px-3 sm:px-4 py-2 bg-rose-600 text-white rounded-xl text-xs sm:text-sm font-bold hover:bg-rose-500 transition-all shadow-lg shadow-rose-100"
-            >
-              <CheckCircle2 size={16} />
-              Overlevering
-            </button>
-          )}
+
           <button 
             onClick={() => setIsReportModalOpen(true)}
-            className="px-3 sm:px-4 py-2 bg-gradient-to-r from-electric-500 to-electric-400 text-white rounded-xl text-xs sm:text-sm font-black hover:opacity-95 transition-all shadow-purple-cta"
+            className="flex items-center gap-1.5 px-3.5 py-2.5 bg-white border border-slate-200 hover:bg-slate-50 text-slate-700 rounded-xl text-xs font-bold transition-all cursor-pointer shadow-xs"
+            title="Last ned formell Boligmappa PDF-rapport"
           >
-            {t('generate_report')}
+            <FileDown size={15} />
+            <span>Boligmappa PDF</span>
           </button>
+
+          {/* Diskret "Flere valg" for sjelden brukte verktøy */}
+          <div className="relative">
+            <button
+              onClick={() => setIsMoreMenuOpen(!isMoreMenuOpen)}
+              className="p-2.5 rounded-xl border border-slate-200 text-slate-500 hover:bg-slate-100 transition-colors cursor-pointer"
+              title="Flere handlinger"
+            >
+              <MoreVertical size={16} />
+            </button>
+            {isMoreMenuOpen && (
+              <div className="absolute right-0 mt-2 w-56 bg-white border border-slate-200 rounded-2xl shadow-xl z-50 p-2 space-y-1">
+                <button
+                  onClick={() => { setIsInviteModalOpen(true); setIsMoreMenuOpen(false); }}
+                  className="w-full text-left px-3 py-2 text-xs font-bold text-slate-700 hover:bg-slate-50 rounded-xl flex items-center gap-2"
+                >
+                  <Users size={14} /> Inviter Håndverker
+                </button>
+                <button
+                  onClick={() => { setIsOfferModalOpen(true); setIsMoreMenuOpen(false); }}
+                  className="w-full text-left px-3 py-2 text-xs font-bold text-slate-700 hover:bg-slate-50 rounded-xl flex items-center gap-2"
+                >
+                  <Sparkles size={14} className="text-electric-500" /> Generer Tilbud
+                </button>
+                <button
+                  onClick={() => { setIsHealthReportOpen(true); setIsMoreMenuOpen(false); }}
+                  className="w-full text-left px-3 py-2 text-xs font-bold text-slate-700 hover:bg-slate-50 rounded-xl flex items-center gap-2"
+                >
+                  <Activity size={14} /> AI Helserapport
+                </button>
+                <button
+                  onClick={() => { onStartChecklist?.(project.id); setIsMoreMenuOpen(false); }}
+                  className="w-full text-left px-3 py-2 text-xs font-bold text-slate-700 hover:bg-slate-50 rounded-xl flex items-center gap-2"
+                >
+                  <ClipboardCheck size={14} /> Sjekklister & Kontroller
+                </button>
+                {project.stage === 'completion' && (
+                  <button
+                    onClick={() => { setIsFinalSettlementOpen(true); setIsMoreMenuOpen(false); }}
+                    className="w-full text-left px-3 py-2 text-xs font-bold text-navy-900 hover:bg-slate-50 rounded-xl flex items-center gap-2"
+                  >
+                    <Coins size={14} /> Sluttoppgjør (NS 8406)
+                  </button>
+                )}
+              </div>
+            )}
+          </div>
         </div>
       </div>
 
-      {/* Modals */}
+      {/* 2. MESTERAI PROSJEKT-KOMMANDOLINJE (AUTONOM AGENT) */}
+      <div className="p-4 sm:p-5 rounded-3xl bg-gradient-to-r from-navy-900 via-navy-950 to-neutral-900 text-white shadow-md relative overflow-hidden">
+        <div className="absolute right-0 top-0 p-6 opacity-5 pointer-events-none">
+          <Brain size={140} />
+        </div>
+        <div className="relative z-10 space-y-3">
+          <div className="flex items-center justify-between">
+            <span className="text-xs font-black uppercase tracking-wider text-electric-400 flex items-center gap-2">
+              <span className="w-2 h-2 rounded-full bg-emerald-400 animate-pulse" />
+              MesterAI overvåker prosjektet i sanntid
+            </span>
+            <span className="text-[11px] text-slate-400">Yr.no værsynk • TEK17 aktiv</span>
+          </div>
+
+          <div className="flex items-center gap-2 bg-white/10 rounded-2xl p-1.5 border border-white/10">
+            <input 
+              type="text"
+              value={projectCommand}
+              onChange={(e) => setProjectCommand(e.target.value)}
+              onKeyDown={(e) => { if (e.key === 'Enter') handleSendProjectCommand(); }}
+              placeholder="Spør MesterAI eller gi instruks (f.eks: 'Før 6t tømrerarbeid', 'Varsle om tillegg')..."
+              className="flex-1 bg-transparent px-3 py-2 text-xs sm:text-sm text-white placeholder:text-slate-400 outline-none font-medium"
+            />
+            <button
+              onClick={toggleMic}
+              className={cn(
+                "p-2 rounded-xl transition-all",
+                isListeningMic ? "bg-rose-500 text-white animate-pulse" : "hover:bg-white/10 text-slate-300"
+              )}
+              title="Dikter med tale"
+            >
+              {isListeningMic ? <MicOff size={16} /> : <Mic size={16} />}
+            </button>
+            <button
+              onClick={() => handleSendProjectCommand()}
+              disabled={isCommandLoading || !projectCommand.trim()}
+              className="px-4 py-2 bg-gradient-to-r from-electric-500 to-electric-400 text-white rounded-xl text-xs font-black hover:opacity-95 transition-all shadow-sm flex items-center gap-1.5 disabled:opacity-50"
+            >
+              {isCommandLoading ? <Loader2 size={14} className="animate-spin" /> : <Send size={14} />}
+              <span>Utfør</span>
+            </button>
+          </div>
+
+          {/* Hurtigvalg */}
+          <div className="flex flex-wrap items-center gap-2 pt-0.5">
+            <span className="text-[10px] font-bold uppercase tracking-wider text-slate-400">Hurtig:</span>
+            <button
+              onClick={() => handleSendProjectCommand('Før 7.5 timer tømrerarbeid i dag')}
+              className="px-2.5 py-1 bg-white/10 hover:bg-white/20 rounded-lg text-[11px] font-bold text-slate-200 transition-colors"
+            >
+              + 7.5t tømrer
+            </button>
+            <button
+              onClick={() => setIsChangeOrderOpen(true)}
+              className="px-2.5 py-1 bg-white/10 hover:bg-white/20 rounded-lg text-[11px] font-bold text-amber-300 transition-colors"
+            >
+              + Endringsordre (NS 8406)
+            </button>
+            <button
+              onClick={() => setIsNewDeviationOpen(true)}
+              className="px-2.5 py-1 bg-white/10 hover:bg-white/20 rounded-lg text-[11px] font-bold text-rose-300 transition-colors"
+            >
+              + Registrer Avvik
+            </button>
+          </div>
+        </div>
+      </div>
+
+      {/* 3. PROSJEKTFORLØP (MINIMALISTISK & RENT) */}
+      <div className="bg-white p-5 rounded-3xl border border-slate-200/80 shadow-xs">
+        <div className="flex items-center justify-between mb-4">
+          <span className="text-xs font-black uppercase tracking-wider text-slate-400">Prosjektforløp</span>
+          <span className="text-[11px] font-bold text-electric-600">Neste milepæl: Sluttbefaring</span>
+        </div>
+        <div className="grid grid-cols-4 gap-2 text-center">
+          {[
+            { label: 'Tilbud', done: true },
+            { label: 'Kontrakt', done: true },
+            { label: 'Gjennomføring', current: true },
+            { label: 'Overlevering', done: false },
+          ].map((step, idx) => (
+            <div key={idx} className="space-y-2">
+              <div className={cn(
+                "h-2 rounded-full",
+                step.done ? "bg-emerald-500" :
+                step.current ? "bg-electric-500" : "bg-slate-200"
+              )} />
+              <span className={cn(
+                "text-xs font-bold block",
+                step.done ? "text-emerald-700" :
+                step.current ? "text-electric-700 font-black" : "text-slate-400"
+              )}>
+                {step.label}
+              </span>
+            </div>
+          ))}
+        </div>
+      </div>
+
+      {/* 4. RYDDE FANER (5 FOKUSERTE FANER I STEDET FOR 9) */}
+      <div className="flex items-center gap-1.5 p-1.5 bg-slate-100 rounded-2xl overflow-x-auto whitespace-nowrap custom-scrollbar">
+        {[
+          { id: 'overview', label: 'Oversikt & MesterAI', icon: <TrendingUp size={15} /> },
+          { id: 'daily_log', label: 'Byggedagbok & Timer', icon: <CloudSun size={15} /> },
+          { id: 'change_orders', label: 'Endringsordrer (NS 8406)', icon: <FileEdit size={15} /> },
+          { id: 'crosstrade', label: 'Kvalitet & TEK17', icon: <Building2 size={15} /> },
+          { id: 'docs', label: 'Dokumenter & FDV', icon: <FileText size={15} /> },
+        ].map((tab) => (
+          <button
+            key={tab.id}
+            onClick={() => setActiveTab(tab.id as any)}
+            className={cn(
+              "flex items-center gap-2 px-4 py-2.5 rounded-xl text-xs sm:text-sm font-bold transition-all cursor-pointer",
+              activeTab === tab.id 
+                ? "bg-white text-navy-900 shadow-xs" 
+                : "text-slate-600 hover:text-navy-900 hover:bg-slate-200/60"
+            )}
+          >
+            {tab.icon}
+            <span>{tab.label}</span>
+          </button>
+        ))}
+      </div>
+
+      {/* 5. HOVEDINNHOLD */}
+      {activeTab === 'overview' && (
+        <div className="grid grid-cols-1 lg:grid-cols-3 gap-6">
+          {/* Venstre kolonne (2/3 bredde) */}
+          <div className="lg:col-span-2 space-y-6">
+            
+            {/* Fremdriftskort */}
+            <div className="bg-white p-6 sm:p-7 rounded-3xl border border-slate-200/80 shadow-xs">
+              <div className="flex justify-between items-end mb-4">
+                <div>
+                  <h3 className="text-xs font-black uppercase tracking-wider text-slate-400 mb-1">Total Fremdrift</h3>
+                  <div className="text-3xl sm:text-4xl font-black text-navy-900">{currentProgress}%</div>
+                </div>
+                <div className="text-right">
+                  <span className="text-xs font-bold text-emerald-600 bg-emerald-50 px-2.5 py-1 rounded-full border border-emerald-200">
+                    +I rute
+                  </span>
+                  <div className="text-[11px] text-slate-400 font-medium mt-1.5">
+                    Ferdigstillelse: {formatDate(project.endDate) || 'Ikke fastsatt'}
+                  </div>
+                </div>
+              </div>
+              <div className="h-3 w-full bg-slate-100 rounded-full overflow-hidden">
+                <motion.div 
+                  initial={{ width: 0 }}
+                  animate={{ width: `${currentProgress}%` }}
+                  className="h-full bg-gradient-to-r from-electric-500 to-emerald-500 rounded-full"
+                />
+              </div>
+            </div>
+
+            {/* Prosjektdetaljer & Tidslinje */}
+            <div className="grid grid-cols-1 sm:grid-cols-2 gap-5">
+              <div className="bg-white p-6 rounded-3xl border border-slate-200/80 shadow-xs space-y-4">
+                <h3 className="text-xs font-black uppercase tracking-wider text-slate-400">Prosjektdetaljer</h3>
+                <div>
+                  <div className="text-[10px] font-black uppercase tracking-wider text-slate-400 mb-1">Beskrivelse</div>
+                  <p className="text-xs sm:text-sm text-slate-700 leading-relaxed font-medium">
+                    {project.description || 'Ingen prosjektbeskrivelse lagt inn.'}
+                  </p>
+                </div>
+                <div className="grid grid-cols-2 gap-3 pt-2 border-t border-slate-100">
+                  <div>
+                    <div className="text-[10px] font-black uppercase tracking-wider text-slate-400">Kunde</div>
+                    <p className="text-xs sm:text-sm font-bold text-navy-900 mt-0.5">{project.clientName || 'Privatkunde'}</p>
+                  </div>
+                  <div>
+                    <div className="text-[10px] font-black uppercase tracking-wider text-slate-400">Prosjektleder</div>
+                    <p className="text-xs sm:text-sm font-bold text-navy-900 mt-0.5">{project.projectManager || 'Byggmester'}</p>
+                  </div>
+                </div>
+                {(project.gnr || project.bnr) && (
+                  <div className="p-3 bg-slate-50 rounded-xl border border-slate-100 text-xs text-slate-600 font-medium">
+                    GNR: <strong className="text-navy-900">{project.gnr || '-'}</strong> • BNR: <strong className="text-navy-900">{project.bnr || '-'}</strong>
+                  </div>
+                )}
+              </div>
+
+              <div className="bg-white p-6 rounded-3xl border border-slate-200/80 shadow-xs space-y-4">
+                <h3 className="text-xs font-black uppercase tracking-wider text-slate-400">Tidslinje & Faser</h3>
+                <div className="space-y-4">
+                  <div className="flex items-center gap-3">
+                    <div className="w-10 h-10 rounded-xl bg-emerald-50 text-emerald-600 flex items-center justify-center">
+                      <Calendar size={18} />
+                    </div>
+                    <div>
+                      <div className="text-[10px] font-black uppercase tracking-wider text-slate-400">Oppstart</div>
+                      <div className="text-xs sm:text-sm font-bold text-navy-900">{formatDate(project.startDate)}</div>
+                    </div>
+                  </div>
+                  <div className="flex items-center gap-3">
+                    <div className="w-10 h-10 rounded-xl bg-blue-50 text-blue-600 flex items-center justify-center">
+                      <Clock size={18} />
+                    </div>
+                    <div>
+                      <div className="text-[10px] font-black uppercase tracking-wider text-slate-400">Sluttbefaring</div>
+                      <div className="text-xs sm:text-sm font-bold text-navy-900">{formatDate(project.endDate) || 'Ikke fastsatt'}</div>
+                    </div>
+                  </div>
+                </div>
+              </div>
+            </div>
+
+            {/* AI Prosjektoppsummering */}
+            <div className="bg-navy-950 rounded-3xl p-6 sm:p-7 text-white relative overflow-hidden shadow-md">
+              <div className="flex items-center justify-between mb-4">
+                <div className="flex items-center gap-3">
+                  <div className="w-9 h-9 rounded-xl bg-gradient-to-br from-electric-500 to-electric-600 flex items-center justify-center">
+                    <Brain size={18} />
+                  </div>
+                  <div>
+                    <h3 className="font-bold text-sm sm:text-base">AI Prosjektoppsummering</h3>
+                    <p className="text-[10px] text-electric-300 font-black uppercase tracking-wider">Generert av MesterAI</p>
+                  </div>
+                </div>
+                <button 
+                  onClick={generateSummary}
+                  disabled={isGeneratingSummary}
+                  className="p-2 hover:bg-white/10 rounded-xl transition-all disabled:opacity-50 text-slate-300 hover:text-white"
+                  title="Oppdater oppsummering"
+                >
+                  <RefreshCw size={15} className={isGeneratingSummary ? "animate-spin" : ""} />
+                </button>
+              </div>
+              <p className="text-slate-300 text-xs sm:text-sm leading-relaxed font-medium italic">
+                {isGeneratingSummary ? 'Genererer oppdatert analyse...' : aiSummary || 'MesterAI analyserer prosjektstatusen...'}
+              </p>
+            </div>
+
+            {/* Aktivitetslogg */}
+            <ProjectActivityLog projectId={project.id} project={project} />
+
+          </div>
+
+          {/* Høyre kolonne (1/3 bredde) - Økonomi & Nøkkeltall */}
+          <div className="space-y-6">
+            
+            {/* Prosjektøkonomi */}
+            <div className="bg-white rounded-3xl border border-slate-200/80 p-6 shadow-xs space-y-5">
+              <div className="flex items-center justify-between">
+                <h3 className="text-base font-black text-navy-900 tracking-tight">Prosjektøkonomi</h3>
+                <span className="text-[11px] font-bold text-emerald-600 bg-emerald-50 px-2.5 py-0.5 rounded-full border border-emerald-200">
+                  +12% margin
+                </span>
+              </div>
+
+              <div className="space-y-2">
+                <div className="text-[10px] font-black uppercase tracking-wider text-slate-400">Budsjett vs Forbruk</div>
+                <div className="flex items-baseline gap-2">
+                  <span className="text-2xl font-black text-navy-900">{Math.round(totalSpent / 1000)}K</span>
+                  <span className="text-xs text-slate-400">/ {Math.round(totalBudget / 1000)}K</span>
+                </div>
+                <div className="w-full h-2 bg-slate-100 rounded-full overflow-hidden">
+                  <div 
+                    className="h-full bg-emerald-500 rounded-full" 
+                    style={{ width: `${Math.min(100, (totalSpent / (totalBudget || 1)) * 100)}%` }} 
+                  />
+                </div>
+                <p className="text-[11px] text-slate-500">
+                  {Math.round((totalSpent / (totalBudget || 1)) * 100)}% brukt • Prosjektet er i rute.
+                </p>
+              </div>
+
+              <div className="pt-4 border-t border-slate-100 space-y-2">
+                <div className="text-[10px] font-black uppercase tracking-wider text-slate-400">Fakturert</div>
+                <div className="text-xl font-black text-navy-900">{Math.round(totalInvoiced / 1000)}K</div>
+                <div className="text-[11px] text-amber-700 flex items-center gap-1 font-bold">
+                  <Clock size={12} /> {Math.round((totalBudget - totalInvoiced) / 1000)}K gjenstår å fakturere
+                </div>
+                <button 
+                  onClick={() => toast.info('Fakturagrunnlag klargjort for regnskap / Tripletex.')}
+                  className="w-full py-2.5 mt-2 bg-navy-900 hover:bg-navy-800 text-white rounded-xl text-xs font-bold transition-all cursor-pointer"
+                >
+                  Opprett faktura
+                </button>
+              </div>
+
+              {/* Byggevare- og FDV-register (ingen NOBB hardkoding!) */}
+              <div className="pt-4 border-t border-slate-100 space-y-2">
+                <div className="text-[10px] font-black uppercase tracking-wider text-slate-400">Byggevarer & Leverandører</div>
+                <div className="space-y-1.5 text-xs">
+                  <div className="flex justify-between text-slate-600">
+                    <span>Materiell (FDV-ført)</span>
+                    <span className="font-bold text-navy-900">{totalSpent > 0 ? `${Math.round(totalSpent / 1000)}K` : '0 kr'}</span>
+                  </div>
+                  <div className="flex justify-between text-slate-600">
+                    <span>Dokumentasjonsgrad</span>
+                    <span className="font-bold text-emerald-600">{docLevel}%</span>
+                  </div>
+                </div>
+              </div>
+            </div>
+
+            {/* Prosjektstatus & Kontroller */}
+            <div className="bg-white rounded-3xl border border-slate-200/80 p-6 shadow-xs space-y-4">
+              <h3 className="text-xs font-black uppercase tracking-wider text-slate-400">Kvalitetsstatus</h3>
+              <div className="space-y-3">
+                <div className="flex items-center justify-between p-3 bg-slate-50 rounded-2xl">
+                  <div className="flex items-center gap-2.5">
+                    <ShieldCheck size={18} className="text-blue-600" />
+                    <span className="text-xs font-bold text-slate-700">Fullførte SJA</span>
+                  </div>
+                  <span className="text-sm font-black text-navy-900">{sjaReports.length}</span>
+                </div>
+                <div className="flex items-center justify-between p-3 bg-slate-50 rounded-2xl">
+                  <div className="flex items-center gap-2.5">
+                    <AlertTriangle size={18} className="text-amber-500" />
+                    <span className="text-xs font-bold text-slate-700">Åpne avvik</span>
+                  </div>
+                  <span className="text-sm font-black text-navy-900">{projectDeviations.length}</span>
+                </div>
+                <div className="flex items-center justify-between p-3 bg-slate-50 rounded-2xl">
+                  <div className="flex items-center gap-2.5">
+                    <ClipboardCheck size={18} className="text-emerald-600" />
+                    <span className="text-xs font-bold text-slate-700">Dokumentasjonsgrad</span>
+                  </div>
+                  <span className="text-sm font-black text-emerald-600">{docLevel}%</span>
+                </div>
+              </div>
+            </div>
+
+            {/* Team */}
+            <div className="bg-white rounded-3xl border border-slate-200/80 p-6 shadow-xs space-y-3">
+              <h3 className="text-xs font-black uppercase tracking-wider text-slate-400">Prosjektteam</h3>
+              {projectCrew.length > 0 ? (
+                projectCrew.map(member => (
+                  <div key={member.id} className="flex items-center justify-between text-xs py-1">
+                    <div className="flex items-center gap-2">
+                      <div className="w-7 h-7 rounded-full bg-slate-200 flex items-center justify-center font-bold text-slate-700 text-[10px]">
+                        {member.name.charAt(0)}
+                      </div>
+                      <span className="font-bold text-navy-900">{member.name}</span>
+                    </div>
+                    <span className="text-slate-400 font-medium">{member.role}</span>
+                  </div>
+                ))
+              ) : (
+                <p className="text-xs text-slate-400 italic">Mester og tømrer registrert.</p>
+              )}
+            </div>
+
+          </div>
+        </div>
+      )}
+
+      {/* 6. ANDRE FANER */}
+      {activeTab === 'daily_log' && (
+        <div className="bg-white p-6 sm:p-8 rounded-3xl border border-slate-200 shadow-xs space-y-6">
+          <div className="flex flex-col sm:flex-row justify-between items-start sm:items-center gap-4">
+            <div>
+              <span className="text-xs font-black uppercase tracking-wider text-electric-600">Byggherreforskriften § 15 & NS 8406</span>
+              <h3 className="text-xl font-black text-navy-900 mt-1">Automatisk Byggedagbok</h3>
+              <p className="text-xs text-slate-500">Sanntids værdata fra Yr.no, mannskapslister og daglige notater.</p>
+            </div>
+            <button
+              onClick={() => setIsDailyLogOpen(true)}
+              className="px-5 py-2.5 bg-gradient-to-r from-electric-500 to-electric-400 text-white rounded-xl text-xs font-black shadow-purple-cta"
+            >
+              + Åpne dagbok / Dikter
+            </button>
+          </div>
+          <div className="p-4 bg-electric-50/60 border border-electric-200 rounded-2xl text-xs text-navy-900 leading-relaxed">
+            <strong>Juridisk beskyttelse:</strong> Værforhold og bemanning dokumenteres automatisk for å beskytte bedriften mot urimelige dagbøter ved uforutsett vær eller forsinkelser.
+          </div>
+        </div>
+      )}
+
+      {activeTab === 'change_orders' && (
+        <div className="bg-white p-6 sm:p-8 rounded-3xl border border-slate-200 shadow-xs space-y-6">
+          <div className="flex flex-col sm:flex-row justify-between items-start sm:items-center gap-4">
+            <div>
+              <span className="text-xs font-black uppercase tracking-wider text-amber-600">NS 8406 / Håndverkertjenesteloven § 9</span>
+              <h3 className="text-xl font-black text-navy-900 mt-1">Endringsordrer & Tilleggsarbeid</h3>
+              <p className="text-xs text-slate-500">Varsle tillegg og få skriftlig godkjenning fra kunden før arbeidet starter.</p>
+            </div>
+            <button
+              onClick={() => setIsChangeOrderOpen(true)}
+              className="px-5 py-2.5 bg-gradient-to-r from-electric-500 to-electric-400 text-white rounded-xl text-xs font-black shadow-purple-cta"
+            >
+              + Ny endringsordre
+            </button>
+          </div>
+          <div className="p-4 bg-amber-50 border border-amber-200 rounded-2xl text-xs text-amber-950 leading-relaxed">
+            <strong>Krav til skriftlighet:</strong> Alt tilleggsarbeid skal varsles umiddelbart. MesterAI beregner automatisk timepris, materiellpåslag og fristforlengelse.
+          </div>
+        </div>
+      )}
+
+      {activeTab === 'crosstrade' && (
+        <div className="space-y-6">
+          <CrossTradeCoordinator project={project} />
+
+          {/* AVVIK & RUH (TEK17 / BVN) */}
+          <div className="bg-white rounded-3xl border border-slate-200 shadow-xs overflow-hidden">
+            <div className="p-5 sm:p-6 border-b border-slate-100 flex flex-col sm:flex-row justify-between sm:items-center gap-3">
+              <div>
+                <span className="text-xs font-black uppercase tracking-wider text-rose-600">Kvalitetssikring & TEK17</span>
+                <h3 className="text-lg font-black text-navy-900 mt-0.5">Avvik & Uønskede hendelser (RUH)</h3>
+              </div>
+              <div className="flex items-center gap-2">
+                <button 
+                  onClick={() => setIsAIVisionOpen(true)}
+                  className="flex items-center gap-1.5 px-3.5 py-2 bg-navy-900 text-white rounded-xl text-xs font-bold hover:bg-navy-800 transition-all cursor-pointer"
+                >
+                  <Camera size={14} />
+                  <span>TEK17 Vision</span>
+                </button>
+                <button 
+                  onClick={() => setIsNewDeviationOpen(true)}
+                  className="flex items-center gap-1.5 px-3.5 py-2 bg-gradient-to-r from-rose-500 to-rose-600 text-white rounded-xl text-xs font-bold hover:opacity-95 transition-all shadow-sm cursor-pointer"
+                >
+                  <Plus size={14} />
+                  <span>Loggfør Avvik</span>
+                </button>
+              </div>
+            </div>
+
+            <div className="divide-y divide-slate-100">
+              {projectDeviations.length > 0 ? (
+                projectDeviations.map((dev) => (
+                  <div 
+                    key={dev.id} 
+                    onClick={() => setSelectedDeviation(dev)}
+                    className="p-5 hover:bg-slate-50 transition-colors cursor-pointer group flex items-center justify-between gap-4"
+                  >
+                    <div className="flex items-center gap-3.5">
+                      <div className={cn(
+                        "w-10 h-10 rounded-xl flex items-center justify-center shrink-0",
+                        dev.severity === 'high' || dev.severity === 'critical' ? "bg-rose-50 text-rose-600" : "bg-amber-50 text-amber-600"
+                      )}>
+                        <AlertTriangle size={20} />
+                      </div>
+                      <div>
+                        <h4 className="font-bold text-sm text-navy-900 group-hover:text-electric-600 transition-colors">{dev.title}</h4>
+                        <div className="flex items-center gap-3 text-xs text-slate-400 mt-0.5">
+                          <span>{dev.timestamp || 'Nylig'}</span>
+                          <span className={cn(
+                            "text-[10px] font-black uppercase tracking-wider px-2 py-0.5 rounded",
+                            dev.severity === 'high' || dev.severity === 'critical' ? "bg-rose-100 text-rose-700" : "bg-amber-100 text-amber-700"
+                          )}>
+                            {dev.severity || 'Middels'}
+                          </span>
+                        </div>
+                      </div>
+                    </div>
+                    <button 
+                      onClick={(e) => {
+                        e.stopPropagation();
+                        pdfService.generateDeviationReport(project, dev);
+                      }}
+                      className="p-2 text-slate-400 hover:text-navy-900 hover:bg-slate-100 rounded-xl transition-colors"
+                      title="Last ned PDF"
+                    >
+                      <Download size={18} />
+                    </button>
+                  </div>
+                ))
+              ) : (
+                <div className="p-8 text-center text-slate-400 space-y-1">
+                  <CheckCircle2 size={32} className="mx-auto text-emerald-500 mb-2" />
+                  <p className="text-sm font-bold text-navy-900">Ingen åpne avvik registrert</p>
+                  <p className="text-xs">Alle kontroller og arbeider er utført iht. TEK17 og Våtromsnormen.</p>
+                </div>
+              )}
+            </div>
+          </div>
+
+          {/* SIKKER JOBB ANALYSE (SJA) */}
+          <div className="bg-white rounded-3xl border border-slate-200 shadow-xs overflow-hidden">
+            <div className="p-5 sm:p-6 border-b border-slate-100 flex flex-col sm:flex-row justify-between sm:items-center gap-3">
+              <div>
+                <span className="text-xs font-black uppercase tracking-wider text-blue-600">HMS & Arbeidsmiljøloven</span>
+                <h3 className="text-lg font-black text-navy-900 mt-0.5">Sikker Jobb Analyse (SJA)</h3>
+              </div>
+              <button 
+                onClick={() => setIsNewSJAOpen(true)}
+                className="flex items-center gap-1.5 px-3.5 py-2 bg-gradient-to-r from-blue-600 to-indigo-600 text-white rounded-xl text-xs font-bold hover:opacity-95 transition-all shadow-sm cursor-pointer"
+              >
+                <Plus size={14} />
+                <span>Ny SJA</span>
+              </button>
+            </div>
+
+            <div className="divide-y divide-slate-100">
+              {sjaReports.length > 0 ? (
+                sjaReports.map((sja) => (
+                  <div key={sja.id} className="p-5 flex items-center justify-between gap-4">
+                    <div className="flex items-center gap-3.5">
+                      <div className="w-10 h-10 rounded-xl bg-blue-50 text-blue-600 flex items-center justify-center shrink-0">
+                        <ShieldCheck size={20} />
+                      </div>
+                      <div>
+                        <h4 className="font-bold text-sm text-navy-900">{sja.title || sja.task || 'SJA Rapport'}</h4>
+                        <div className="flex items-center gap-3 text-xs text-slate-400 mt-0.5">
+                          <span>{sja.timestamp || 'Nylig'}</span>
+                          <span className="text-[10px] font-bold text-emerald-700 bg-emerald-50 px-2 py-0.5 rounded">
+                            Godkjent
+                          </span>
+                        </div>
+                      </div>
+                    </div>
+                  </div>
+                ))
+              ) : (
+                <div className="p-8 text-center text-slate-400 space-y-1">
+                  <ShieldCheck size={32} className="mx-auto text-blue-500 mb-2" />
+                  <p className="text-sm font-bold text-navy-900">Ingen SJA gjennomført ennå</p>
+                  <p className="text-xs">Opprett en Sikker Jobb Analyse for risikofylt arbeid (f.eks. stillas, heising eller varme arbeider).</p>
+                </div>
+              )}
+            </div>
+          </div>
+        </div>
+      )}
+
+      {activeTab === 'docs' && (
+        <div className="space-y-6">
+          <ComplianceHub project={project} onOpenChecklist={() => onStartChecklist?.(project.id)} />
+          <ProjectMaterials project={project} />
+        </div>
+      )}
+
+      {/* MODALER */}
       <ChangeOrderModal
         isOpen={isChangeOrderOpen}
         onClose={() => setIsChangeOrderOpen(false)}
@@ -500,6 +1073,51 @@ export default function ProjectDetails({ project, onBack, onShare, onStartCheckl
         currentUserName={auth.currentUser?.displayName || 'Byggeleder'}
       />
 
+      <CreateDeviationModal
+        isOpen={isNewDeviationOpen}
+        onClose={() => setIsNewDeviationOpen(false)}
+        projects={[{ id: project.id, name: project.name }]}
+      />
+
+      <AIVisionModal
+        isOpen={isAIVisionOpen}
+        onClose={() => setIsAIVisionOpen(false)}
+        projectId={project.id}
+        projectName={project.name}
+      />
+
+      <ReportModal
+        isOpen={isReportModalOpen}
+        onClose={() => setIsReportModalOpen(false)}
+        project={project}
+        sjaReports={sjaReports}
+        deviations={projectDeviations}
+      />
+
+      <InviteModal
+        isOpen={isInviteModalOpen}
+        onClose={() => setIsInviteModalOpen(false)}
+        project={project}
+      />
+
+      <OfferModal
+        isOpen={isOfferModalOpen}
+        onClose={() => setIsOfferModalOpen(false)}
+        initialData={{
+          projectId: project.id,
+          projectCode: project.projectCode,
+          title: `Tilbud - ${project.name}`,
+          clientName: project.clientName,
+          clientEmail: project.clientEmail
+        }}
+      />
+
+      <ProjectHealthReport
+        isOpen={isHealthReportOpen}
+        onClose={() => setIsHealthReportOpen(false)}
+        project={project}
+      />
+
       <StoffkartotekModal
         isOpen={isStoffkartotekOpen}
         onClose={() => setIsStoffkartotekOpen(false)}
@@ -512,1022 +1130,6 @@ export default function ProjectDetails({ project, onBack, onShare, onStartCheckl
         project={project}
       />
 
-      <ReportModal 
-        isOpen={isReportModalOpen}
-        onClose={() => setIsReportModalOpen(false)}
-        project={project}
-        sjaReports={sjaReports}
-        deviations={projectDeviations}
-      />
-
-      <InviteModal 
-        isOpen={isInviteModalOpen}
-        onClose={() => setIsInviteModalOpen(false)}
-        project={project}
-      />
-
-      <OfferModal 
-        isOpen={isOfferModalOpen}
-        onClose={() => setIsOfferModalOpen(false)}
-        initialData={{
-          projectId: project.id,
-          projectCode: project.projectCode,
-          title: `Tilbud: ${project.name}`,
-          description: project.description,
-          clientName: project.clientName,
-          clientEmail: project.clientEmail
-        }}
-      />
-
-      <ProjectHealthReport 
-        project={project}
-        isOpen={isHealthReportOpen}
-        onClose={() => setIsHealthReportOpen(false)}
-      />
-
-      <AIVisionModal 
-        isOpen={isAIVisionOpen}
-        onClose={() => setIsAIVisionOpen(false)}
-        projectId={project.id}
-        projectName={project.name}
-      />
-
-      {/* Project Stage Progress */}
-      <div className="bg-white rounded-[2rem] border border-neutral-200 p-8 shadow-sm">
-        <div className="flex justify-between items-center mb-8">
-          <h3 className="font-bold">Prosjektforløp</h3>
-          <div className="text-xs font-bold text-neutral-400 uppercase tracking-widest">
-            Neste steg: {project.stage === 'offer' ? 'Kontraktsignering' : project.stage === 'contract' ? 'Oppstartsmøte' : 'Sluttbefaring'}
-          </div>
-        </div>
-        <div className="relative">
-          <div className="absolute top-1/2 left-0 w-full h-0.5 bg-neutral-100 -translate-y-1/2" />
-          <div className="relative flex justify-between">
-            {[
-              { id: 'offer', label: 'Tilbud', icon: <FileText size={16} /> },
-              { id: 'contract', label: 'Kontrakt', icon: <FileSignature size={16} /> },
-              { id: 'active', label: 'Gjennomføring', icon: <HardHat size={16} /> },
-              { id: 'completion', label: 'Overlevering', icon: <CheckCircle2 size={16} /> }
-            ].map((s, i, arr) => {
-              const stages = ['offer', 'contract', 'active', 'completion', 'archived'];
-              const currentIdx = stages.indexOf(project.stage || 'active');
-              const stageIdx = stages.indexOf(s.id);
-              const isPast = stageIdx < currentIdx;
-              const isCurrent = stageIdx === currentIdx;
-
-              return (
-                <div key={s.id} className="flex flex-col items-center gap-3 relative z-10">
-                  <div className={cn(
-                    "w-10 h-10 rounded-full flex items-center justify-center transition-all duration-500",
-                    isPast ? "bg-emerald-500 text-white" : 
-                    isCurrent ? "bg-white border-2 border-emerald-500 text-emerald-600 shadow-lg shadow-emerald-100" : 
-                    "bg-white border-2 border-neutral-100 text-neutral-300"
-                  )}>
-                    {isPast ? <CheckCircle2 size={20} /> : s.icon}
-                  </div>
-                  <span className={cn(
-                    "text-[10px] font-bold uppercase tracking-widest",
-                    isCurrent ? "text-emerald-600" : "text-neutral-400"
-                  )}>
-                    {s.label}
-                  </span>
-                </div>
-              );
-            })}
-          </div>
-        </div>
-      </div>
-
-      {/* Tabs */}
-      <div className="flex items-center gap-1 p-1 bg-neutral-100 rounded-2xl max-w-full overflow-x-auto whitespace-nowrap scrollbar-none">
-        {[
-          { id: 'overview', label: t('overview'), icon: <TrendingUp size={16} /> },
-          { id: 'crosstrade', label: 'Tverrfaglig & Lukkesperre', icon: <Building2 size={16} /> },
-          { id: 'change_orders', label: 'Tillegg & Endringer', icon: <FileEdit size={16} /> },
-          { id: 'daily_log', label: 'Byggedagbok', icon: <CloudSun size={16} /> },
-          { id: 'stoffkartotek', label: 'Stoffkartotek', icon: <FlaskConical size={16} /> },
-          { id: 'sja', label: 'SJA', icon: <ShieldCheck size={16} /> },
-          { id: 'deviations', label: t('deviations'), icon: <AlertTriangle size={16} /> },
-          { id: 'docs', label: t('documentation'), icon: <FileText size={16} /> },
-          { id: 'materials', label: 'Materiell', icon: <Package size={16} /> },
-        ].map((tab) => (
-          <button
-            key={tab.id}
-            onClick={() => setActiveTab(tab.id as any)}
-            className={cn(
-              "flex items-center gap-2 px-4 py-2 rounded-xl text-sm font-bold transition-all",
-              activeTab === tab.id 
-                ? "bg-white text-electric-600 shadow-sm" 
-                : "text-neutral-500 hover:text-neutral-700"
-            )}
-          >
-            {tab.icon}
-            {tab.label}
-          </button>
-        ))}
-      </div>
-
-      <div className="grid grid-cols-1 lg:grid-cols-3 gap-8">
-        {/* Main Content */}
-        <div className="lg:col-span-2 space-y-8">
-          {activeTab === 'overview' && (
-            <div className="space-y-8">
-              {/* Budsjettadvarsel ved 80% / 100% overforbruk */}
-              {budgetStatus && (budgetStatus.isWarning80 || budgetStatus.isOverBudget100) && (
-                <div className={cn(
-                  "p-5 rounded-3xl border flex flex-col sm:flex-row items-start sm:items-center justify-between gap-4 shadow-sm",
-                  budgetStatus.isOverBudget100 
-                    ? "bg-rose-50 border-rose-200 text-rose-950" 
-                    : "bg-amber-50 border-amber-200 text-amber-950"
-                )}>
-                  <div className="flex items-center gap-3">
-                    <div className={cn(
-                      "p-3 rounded-2xl text-white shrink-0",
-                      budgetStatus.isOverBudget100 ? "bg-rose-600" : "bg-amber-600"
-                    )}>
-                      <BellRing size={20} />
-                    </div>
-                    <div>
-                      <div className="text-xs font-black uppercase tracking-wider">
-                        {budgetStatus.isOverBudget100 ? 'Kritisk budsjettavvik (>100%)' : 'Budsjettadvarsel (>80%)'}
-                      </div>
-                      <p className="text-xs mt-0.5 max-w-xl text-neutral-700">
-                        {budgetStatus.message}
-                      </p>
-                    </div>
-                  </div>
-                  <div className="flex items-center gap-2 shrink-0">
-                    <button
-                      onClick={() => setIsChangeOrderOpen(true)}
-                      className="px-4 py-2 bg-neutral-900 text-white rounded-xl text-xs font-bold hover:bg-neutral-800 transition-all"
-                    >
-                      + Ny endringsmelding
-                    </button>
-                    <button
-                      onClick={() => pdfService.generateExtensionOfTimeClaimPDF(project, {
-                        id: 'claim_quick',
-                        projectId: project.id,
-                        claimNumber: 1,
-                        cause: 'uforutsett_grunnforhold',
-                        description: `Fristforlengelse kreves pga. uforutsette bygningsmessige forhold som har oversteget opprinnelige budsjettrammer (${budgetStatus.percentUsed}% medgått).`,
-                        daysClaimed: 5,
-                        costImpactClaimed: budgetStatus.spent - budgetStatus.budget,
-                        status: 'submitted',
-                        submittedDate: new Date().toISOString().split('T')[0],
-                        createdAt: new Date().toISOString()
-                      })}
-                      className="px-3 py-2 bg-white border border-neutral-300 rounded-xl text-xs font-bold hover:bg-neutral-50 transition-all text-neutral-800"
-                    >
-                      Krav om fristforlengelse
-                    </button>
-                  </div>
-                </div>
-              )}
-
-              {/* Progress Card */}
-              <div className="bg-white p-8 rounded-3xl border border-neutral-200 shadow-sm">
-                <div className="flex justify-between items-end mb-6">
-                  <div>
-                    <h3 className="text-sm font-black uppercase tracking-widest text-neutral-400 mb-1">{t('total_progress')}</h3>
-                    <div className="text-4xl font-bold">{project.progress}%</div>
-                  </div>
-                  <div className="text-right">
-                    <div className="text-xs font-bold text-emerald-600 mb-1">+{t('on_track')}</div>
-                    <div className="text-[10px] text-neutral-400 uppercase tracking-widest font-black">
-                      {project.endDate ? `${t('est_completion')}: ${project.endDate}` : `${t('est_completion')}: 12. Mai`}
-                    </div>
-                  </div>
-                </div>
-                <div className="h-4 w-full bg-neutral-100 rounded-full overflow-hidden">
-                  <motion.div 
-                    initial={{ width: 0 }}
-                    animate={{ width: `${project.progress}%` }}
-                    className="h-full bg-emerald-500"
-                  />
-                </div>
-              </div>
-
-              {/* Project Info Grid */}
-              <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
-                <div className="bg-white p-6 rounded-3xl border border-neutral-200 shadow-sm">
-                  <h3 className="text-sm font-black uppercase tracking-widest text-neutral-400 mb-4">{t('project_details', 'Prosjektdetaljer')}</h3>
-                  <div className="space-y-4">
-                    {project.description && (
-                      <div>
-                        <div className="text-[10px] font-black uppercase tracking-widest text-neutral-400 mb-1">{t('description')}</div>
-                        <p className="text-sm text-neutral-600">{project.description}</p>
-                      </div>
-                    )}
-                    <div className="grid grid-cols-2 gap-4">
-                      <div>
-                        <div className="text-[10px] font-black uppercase tracking-widest text-neutral-400 mb-1">{t('client')}</div>
-                        <p className="text-sm font-bold">{project.clientName || '-'}</p>
-                      </div>
-                      <div>
-                        <div className="text-[10px] font-black uppercase tracking-widest text-neutral-400 mb-1">{t('manager')}</div>
-                        <p className="text-sm font-bold">{project.projectManager || '-'}</p>
-                      </div>
-                    </div>
-                    {(project.gnr || project.bnr) && (
-                      <div className="grid grid-cols-2 gap-4 p-3 bg-neutral-50 rounded-2xl border border-neutral-100">
-                        <div>
-                          <div className="text-[10px] font-black uppercase tracking-widest text-neutral-400 mb-1">GNR</div>
-                          <p className="text-sm font-bold">{project.gnr || '-'}</p>
-                        </div>
-                        <div>
-                          <div className="text-[10px] font-black uppercase tracking-widest text-neutral-400 mb-1">BNR</div>
-                          <p className="text-sm font-bold">{project.bnr || '-'}</p>
-                        </div>
-                      </div>
-                    )}
-                    {project.tags && project.tags.length > 0 && (
-                      <div>
-                        <div className="text-[10px] font-black uppercase tracking-widest text-neutral-400 mb-2">{t('tags')}</div>
-                        <div className="flex flex-wrap gap-2">
-                          {project.tags.map((tag, i) => (
-                            <span key={i} className="px-2 py-1 bg-neutral-100 text-neutral-600 text-[10px] font-bold rounded-lg">
-                              #{tag}
-                            </span>
-                          ))}
-                        </div>
-                      </div>
-                    )}
-                  </div>
-                </div>
-
-                <div className="bg-white p-6 rounded-3xl border border-neutral-200 shadow-sm">
-                  <h3 className="text-sm font-black uppercase tracking-widest text-neutral-400 mb-4">{t('timeline', 'Tidslinje')}</h3>
-                  <div className="space-y-6">
-                    <div className="flex items-center gap-4">
-                      <div className="w-10 h-10 bg-emerald-50 text-emerald-600 rounded-xl flex items-center justify-center">
-                        <Calendar size={20} />
-                      </div>
-                      <div>
-                        <div className="text-[10px] font-black uppercase tracking-widest text-neutral-400 mb-0.5">{t('start_date')}</div>
-                        <div className="text-sm font-bold">{project.startDate || project.lastUpdate}</div>
-                      </div>
-                    </div>
-                    <div className="flex items-center gap-4">
-                      <div className="w-10 h-10 bg-blue-50 text-blue-600 rounded-xl flex items-center justify-center">
-                        <Clock size={20} />
-                      </div>
-                      <div>
-                        <div className="text-[10px] font-black uppercase tracking-widest text-neutral-400 mb-0.5">{t('end_date')}</div>
-                        <div className="text-sm font-bold">{project.endDate || '-'}</div>
-                      </div>
-                    </div>
-                  </div>
-                </div>
-              </div>
-
-              {/* AI Summary Card */}
-              <div className="bg-neutral-900 rounded-[2.5rem] p-8 text-white relative overflow-hidden group">
-                <div className="absolute top-0 right-0 p-8 opacity-10 group-hover:opacity-20 transition-opacity">
-                  <Sparkles size={120} />
-                </div>
-                
-                <div className="relative z-10">
-                  <div className="flex items-center justify-between mb-6">
-                    <div className="flex items-center gap-3">
-                      <div className="w-10 h-10 bg-rose-500 rounded-xl flex items-center justify-center shadow-lg shadow-rose-500/20">
-                        <Sparkles size={20} />
-                      </div>
-                      <div>
-                        <h3 className="font-bold text-lg">AI Prosjektoppsummering</h3>
-                        <p className="text-[10px] text-rose-300 font-black uppercase tracking-widest">Generert av MesterAI</p>
-                      </div>
-                    </div>
-                    <button 
-                      onClick={generateSummary}
-                      disabled={isGeneratingSummary}
-                      className="p-2 hover:bg-white/10 rounded-xl transition-all disabled:opacity-50"
-                    >
-                      <RefreshCw size={18} className={isGeneratingSummary ? "animate-spin" : ""} />
-                    </button>
-                  </div>
-                  
-                  <div className="text-neutral-300 text-sm leading-relaxed font-medium italic">
-                    {isGeneratingSummary ? (
-                      <div className="flex items-center gap-3 animate-pulse">
-                        <div className="h-4 w-full bg-white/10 rounded" />
-                      </div>
-                    ) : (
-                      aiSummary || "Ingen oppsummering tilgjengelig ennå."
-                    )}
-                  </div>
-                </div>
-              </div>
-
-              {/* Project Activity Log */}
-              <ProjectActivityLog projectId={project.id} project={project} />
-            </div>
-          )}
-
-          {activeTab === 'sja' && (
-            <div className="bg-white rounded-3xl border border-neutral-200 shadow-sm overflow-hidden">
-              <div className="p-6 border-b border-neutral-100 flex justify-between items-center">
-                <h3 className="font-bold">{t('sja_reports')}</h3>
-                <button 
-                  onClick={() => setIsNewSJAOpen(true)}
-                  className="flex items-center gap-2 px-4 py-2 bg-gradient-to-r from-electric-500 to-electric-400 text-white rounded-xl text-xs font-black hover:opacity-95 transition-all shadow-purple-cta"
-                >
-                  <Plus size={16} />
-                  {t('new_sja')}
-                </button>
-              </div>
-              <div className="divide-y divide-neutral-100">
-                {sjaReports.map((report) => (
-                  <div key={report.id} className="p-6 hover:bg-neutral-50 transition-colors cursor-pointer group">
-                    <div className="flex justify-between items-start mb-4">
-                      <div className="flex items-center gap-4">
-                        <div className="w-12 h-12 bg-blue-50 text-blue-600 rounded-2xl flex items-center justify-center">
-                          <ShieldCheck size={24} />
-                        </div>
-                        <div>
-                          <h4 className="font-bold group-hover:text-blue-600 transition-colors">{report.title}</h4>
-                          <div className="flex items-center gap-3 text-xs text-neutral-400 mt-1">
-                            <span className="flex items-center gap-1"><User size={12} /> {report.authorName || 'System'}</span>
-                            <span className="flex items-center gap-1"><Clock size={12} /> {report.timestamp}</span>
-                          </div>
-                        </div>
-                      </div>
-                      <div className="flex items-center gap-2">
-                        <button 
-                          onClick={(e) => {
-                            e.stopPropagation();
-                            pdfService.generateSJAReport(project, report);
-                          }}
-                          className="p-2 text-emerald-600 hover:bg-emerald-50 rounded-xl transition-colors"
-                          title="Last ned PDF"
-                        >
-                          <Download size={20} />
-                        </button>
-                        <button className="p-2 text-neutral-400 hover:text-neutral-900">
-                          <MoreVertical size={20} />
-                        </button>
-                      </div>
-                    </div>
-                    <div className="grid grid-cols-4 gap-4">
-                      <div className="p-3 bg-neutral-50 rounded-xl border border-neutral-100">
-                        <div className="text-[10px] font-black uppercase tracking-widest text-neutral-400 mb-1">{t('risks')}</div>
-                        <div className="flex flex-wrap gap-1">
-                          {report.risikoer?.slice(0, 3).map((risk: any, i: number) => (
-                            <span key={i} className="px-2 py-0.5 bg-white border border-neutral-200 rounded text-[10px] font-bold">{risk.risiko}</span>
-                          ))}
-                        </div>
-                      </div>
-                      <div className="p-3 bg-neutral-50 rounded-xl border border-neutral-100">
-                        <div className="text-[10px] font-black uppercase tracking-widest text-neutral-400 mb-1">{t('measures')}</div>
-                        <div className="flex flex-wrap gap-1">
-                          {report.risikoer?.slice(0, 3).map((risk: any, i: number) => (
-                            <span key={i} className="px-2 py-0.5 bg-white border border-neutral-200 rounded text-[10px] font-bold">{risk.tiltak}</span>
-                          ))}
-                        </div>
-                      </div>
-                      <div className="p-3 bg-neutral-50 rounded-xl border border-neutral-100">
-                        <div className="text-[10px] font-black uppercase tracking-widest text-neutral-400 mb-1">{t('equipment')}</div>
-                        <div className="flex flex-wrap gap-1">
-                          {report.utstyr?.slice(0, 3).map((u: string, i: number) => (
-                            <span key={i} className="px-2 py-0.5 bg-white border border-neutral-200 rounded text-[10px] font-bold">{u}</span>
-                          ))}
-                        </div>
-                      </div>
-                      <div className="p-3 bg-neutral-50 rounded-xl border border-neutral-100">
-                        <div className="text-[10px] font-black uppercase tracking-widest text-neutral-400 mb-1">TEK17 / SAK10</div>
-                        <div className="text-[10px] font-bold text-neutral-600 truncate">{report.tek17Reference || '-'}</div>
-                      </div>
-                    </div>
-                  </div>
-                ))}
-              </div>
-            </div>
-          )}
-
-          {activeTab === 'deviations' && (
-            <div className="bg-white rounded-3xl border border-neutral-200 shadow-sm overflow-hidden">
-              <div className="p-6 border-b border-neutral-100 flex justify-between items-center">
-                <h3 className="font-bold">{t('deviations')}</h3>
-                <div className="flex gap-2">
-                  <button 
-                    onClick={() => setIsAIVisionOpen(true)}
-                    className="flex items-center gap-2 px-4 py-2 bg-blue-600 text-white rounded-xl text-xs font-bold hover:bg-blue-500 transition-all shadow-lg shadow-blue-100 cursor-pointer"
-                  >
-                    <Camera size={16} />
-                    {t('ai_vision', 'AI Vision')}
-                  </button>
-                  <button 
-                    onClick={() => setIsNewDeviationOpen(true)}
-                    className="flex items-center gap-2 px-4 py-2 bg-gradient-to-r from-electric-500 to-electric-400 text-white rounded-xl text-xs font-black hover:opacity-95 transition-all shadow-purple-cta"
-                  >
-                    <Plus size={16} />
-                    {t('log_deviation')}
-                  </button>
-                </div>
-              </div>
-              <div className="divide-y divide-neutral-100">
-                {projectDeviations.map((dev) => (
-                  <div 
-                    key={dev.id} 
-                    onClick={() => setSelectedDeviation(dev)}
-                    className="p-6 hover:bg-neutral-50 transition-colors cursor-pointer group"
-                  >
-                    <div className="flex justify-between items-start mb-4">
-                      <div className="flex items-center gap-4">
-                        <div className={cn(
-                          "w-12 h-12 rounded-2xl flex items-center justify-center",
-                          dev.severity === 'high' ? "bg-red-50 text-red-600" : "bg-amber-50 text-amber-600"
-                        )}>
-                          <AlertTriangle size={24} />
-                        </div>
-                        <div>
-                          <h4 className="font-bold group-hover:text-amber-600 transition-colors">{dev.title}</h4>
-                          <div className="flex items-center gap-3 text-xs text-neutral-400 mt-1">
-                            <span className="flex items-center gap-1"><Clock size={12} /> {dev.timestamp}</span>
-                            <span className={cn(
-                              "text-[10px] font-black uppercase tracking-widest px-2 py-0.5 rounded",
-                              dev.severity === 'high' ? "bg-red-100 text-red-700" : "bg-amber-100 text-amber-700"
-                            )}>
-                              {dev.severity === 'high' ? t('critical') : t('moderate')}
-                            </span>
-                          </div>
-                        </div>
-                      </div>
-                      <div className="flex items-center gap-2">
-                        <button 
-                          onClick={(e) => {
-                            e.stopPropagation();
-                            pdfService.generateDeviationReport(project, dev);
-                          }}
-                          className="p-2 text-red-600 hover:bg-red-50 rounded-xl transition-colors"
-                          title="Last ned PDF"
-                        >
-                          <Download size={20} />
-                        </button>
-                        <button className="p-2 text-neutral-400 hover:text-neutral-900">
-                          <MoreVertical size={20} />
-                        </button>
-                      </div>
-                    </div>
-                    <p className="text-sm text-neutral-600 mb-4">{dev.description}</p>
-                    <div className="flex items-center gap-4">
-                      <div className="flex items-center gap-1 text-xs font-bold text-neutral-400">
-                        <MessageSquare size={14} />
-                        3 {t('comments')}
-                      </div>
-                      <div className="flex items-center gap-1 text-xs font-bold text-neutral-400">
-                        <FileText size={14} />
-                        2 {t('attachments')}
-                      </div>
-                    </div>
-                  </div>
-                ))}
-                {projectDeviations.length === 0 && (
-                  <div className="p-12 text-center text-neutral-400 text-sm">
-                    {t('no_deviations_found', 'Ingen avvik funnet for dette prosjektet.')}
-                  </div>
-                )}
-              </div>
-            </div>
-          )}
-          
-          {activeTab === 'docs' && (
-            <ComplianceHub 
-              project={project} 
-              onOpenChecklist={() => onStartChecklist?.(project.id)} 
-            />
-          )}
-
-
-          {activeTab === 'materials' && (
-            <ProjectMaterials project={project} />
-          )}
-
-          {activeTab === 'crosstrade' && (
-            <CrossTradeCoordinator project={project} />
-          )}
-
-          {activeTab === 'change_orders' && (
-            <div className="bg-white p-8 rounded-3xl border border-neutral-200 shadow-sm space-y-6">
-              <div className="flex flex-col sm:flex-row justify-between items-start sm:items-center gap-4">
-                <div>
-                  <div className="flex items-center gap-2 mb-1">
-                    <span className="p-1.5 bg-amber-500/10 text-amber-600 rounded-lg">
-                      <FileEdit size={16} />
-                    </span>
-                    <span className="text-xs font-black uppercase tracking-widest text-amber-600">
-                      NS 8406 / Håndverkertjenesteloven § 9
-                    </span>
-                  </div>
-                  <h3 className="text-xl font-bold text-neutral-900">Endringsmeldinger & Tilleggsarbeid</h3>
-                  <p className="text-xs text-neutral-500">
-                    Sikrer skriftlig avtale, digital signatur og automatisk budsjettsynk.
-                  </p>
-                </div>
-                <button
-                  onClick={() => setIsChangeOrderOpen(true)}
-                  className="px-4 py-2.5 bg-neutral-900 hover:bg-neutral-800 text-white rounded-xl text-xs font-bold flex items-center gap-2 shadow-md transition-all"
-                >
-                  <Plus size={14} /> Opprett / Behandle endring
-                </button>
-              </div>
-
-              <div className="p-4 bg-amber-500/10 border border-amber-500/20 rounded-2xl text-xs text-amber-900 leading-relaxed">
-                <strong>Lovkrav i Norge:</strong> Håndverkertjenesteloven § 9 og NS 8406 pkt. 19 krever at tilleggsarbeid varsles og godkjennes skriftlig for å ha rettmessig krav på vederlag. Ved å bruke digital endringsmelding unngår bedriften tvister og tapte penger.
-              </div>
-
-              <div className="flex justify-center py-6">
-                <button
-                  onClick={() => setIsChangeOrderOpen(true)}
-                  className="px-6 py-3 bg-amber-600 hover:bg-amber-700 text-white rounded-2xl text-xs font-black flex items-center gap-2 shadow-lg shadow-amber-600/20 transition-all cursor-pointer"
-                >
-                  <FileEdit size={16} /> Åpne oversikt over tilleggsavtaler
-                </button>
-              </div>
-            </div>
-          )}
-
-          {activeTab === 'daily_log' && (
-            <div className="bg-white p-8 rounded-3xl border border-neutral-200 shadow-sm space-y-6">
-              <div className="flex flex-col sm:flex-row justify-between items-start sm:items-center gap-4">
-                <div>
-                  <div className="flex items-center gap-2 mb-1">
-                    <span className="p-1.5 bg-sky-500/10 text-sky-600 rounded-lg">
-                      <CloudSun size={16} />
-                    </span>
-                    <span className="text-xs font-black uppercase tracking-widest text-sky-600">
-                      Byggherreforskriften § 15 & NS 8405/8406
-                    </span>
-                  </div>
-                  <h3 className="text-xl font-bold text-neutral-900">Automatisk Byggedagbok</h3>
-                  <p className="text-xs text-neutral-500">
-                    Sanntids værdata fra Yr/Open-Meteo, mannskapsliste og daglig produksjonslogg.
-                  </p>
-                </div>
-                <button
-                  onClick={() => setIsDailyLogOpen(true)}
-                  className="px-4 py-2.5 bg-sky-600 hover:bg-sky-500 text-white rounded-xl text-xs font-bold flex items-center gap-2 shadow-md transition-all"
-                >
-                  <CloudSun size={14} /> Se & Kompiler dagbok
-                </button>
-              </div>
-
-              <div className="p-4 bg-sky-50 border border-sky-200 rounded-2xl text-xs text-sky-950 leading-relaxed">
-                <strong>Hvorfor byggedagbok?</strong> Dokumenterer værforhold, temperatur, vind og nedbør samt hvem som er på byggeplassen. Dette gir entreprenøren juridisk bevis ved krav om fristforlengelse og beskytter mot dagbøter.
-              </div>
-
-              <div className="flex justify-center py-6">
-                <button
-                  onClick={() => setIsDailyLogOpen(true)}
-                  className="px-6 py-3 bg-sky-600 hover:bg-sky-500 text-white rounded-2xl text-xs font-black flex items-center gap-2 shadow-lg shadow-sky-600/20 transition-all cursor-pointer"
-                >
-                  <CloudSun size={16} /> Åpne Byggedagbok-modulen
-                </button>
-              </div>
-            </div>
-          )}
-
-          {activeTab === 'stoffkartotek' && (
-            <div className="bg-white p-8 rounded-3xl border border-neutral-200 shadow-sm space-y-6">
-              <div className="flex flex-col sm:flex-row justify-between items-start sm:items-center gap-4">
-                <div>
-                  <div className="flex items-center gap-2 mb-1">
-                    <span className="p-1.5 bg-amber-500/10 text-amber-600 rounded-lg">
-                      <FlaskConical size={16} />
-                    </span>
-                    <span className="text-xs font-black uppercase tracking-widest text-amber-600">
-                      Forskrift om utførelse av arbeid kap. 2 | Arbeidstilsynet
-                    </span>
-                  </div>
-                  <h3 className="text-xl font-bold text-neutral-900">Kjemisk Stoffkartotek</h3>
-                  <p className="text-xs text-neutral-500">
-                    Sikkerhetsdatablader, verneutstyr og førstehjelp for byggeplassen.
-                  </p>
-                </div>
-                <button
-                  onClick={() => setIsStoffkartotekOpen(true)}
-                  className="px-4 py-2.5 bg-neutral-900 hover:bg-neutral-800 text-white rounded-xl text-xs font-bold flex items-center gap-2 shadow-md transition-all"
-                >
-                  <FlaskConical size={14} /> Åpne stoffkartotek
-                </button>
-              </div>
-
-              <div className="p-4 bg-amber-50 border border-amber-200 rounded-2xl text-xs text-amber-950 leading-relaxed">
-                <strong>Arbeidstilsynets pålegg:</strong> Alle kjemikalier (fugemasse, lim, membran, lakk, sparkel) må ha oppdatert sikkerhetsdatablad på plassen. VikingMester forhåndsutfyller dette automatisk.
-              </div>
-
-              <div className="flex justify-center py-6">
-                <button
-                  onClick={() => setIsStoffkartotekOpen(true)}
-                  className="px-6 py-3 bg-neutral-900 hover:bg-neutral-800 text-white rounded-2xl text-xs font-black flex items-center gap-2 shadow-lg transition-all cursor-pointer"
-                >
-                  <FlaskConical size={16} /> Vis kjemikalier & Sikkerhetsdatablader
-                </button>
-              </div>
-            </div>
-          )}
-        </div>
-
-        {/* Project Economy */}
-        <div className="bg-white rounded-[2.5rem] border border-neutral-200 p-8 shadow-sm mb-8">
-          <div className="flex items-center justify-between mb-8">
-            <h3 className="text-xl font-bold tracking-tight">Prosjektøkonomi</h3>
-            <div className="flex items-center gap-2 px-4 py-2 bg-emerald-50 text-emerald-600 rounded-xl text-xs font-bold">
-              <TrendingUp size={16} /> +12% margin
-            </div>
-          </div>
-          
-          <div className="grid grid-cols-1 md:grid-cols-3 gap-8">
-            <div className="space-y-4">
-              <div className="text-[10px] font-black uppercase tracking-widest text-neutral-400">Budsjett vs Forbruk</div>
-              <div className="flex items-end gap-2">
-                <div className="text-2xl font-black text-neutral-900">{Math.round(totalSpent / 1000)}K</div>
-                <div className="text-sm text-neutral-400 mb-1">/ {Math.round(totalBudget / 1000)}K</div>
-              </div>
-              <div className="w-full h-2 bg-neutral-100 rounded-full overflow-hidden">
-                <div 
-                  className="h-full bg-emerald-500 rounded-full" 
-                  style={{ width: `${Math.min(100, (totalSpent / (totalBudget || 1)) * 100)}%` }} 
-                />
-              </div>
-              <p className="text-[10px] text-neutral-500">
-                {Math.round((totalSpent / (totalBudget || 1)) * 100)}% av budsjett er brukt. 
-                {totalSpent > totalBudget ? ' Prosjektet overskrider budsjett!' : ' Prosjektet er i rute.'}
-              </p>
-            </div>
-
-            <div className="space-y-4">
-              <div className="text-[10px] font-black uppercase tracking-widest text-neutral-400">Fakturert</div>
-              <div className="text-2xl font-black text-neutral-900">{Math.round(totalInvoiced / 1000)}K</div>
-              <div className="flex items-center gap-2 text-[10px] text-amber-600 font-bold">
-                <Clock size={12} /> {Math.round((totalBudget - totalInvoiced) / 1000)}K gjenstår å fakturere
-              </div>
-              <button 
-                onClick={() => toast.info('Fakturagrunnlag er klargjort for regnskap / Tripletex.')}
-                className="w-full py-3 bg-neutral-900 text-white rounded-xl text-xs font-bold hover:bg-neutral-800 transition-all cursor-pointer"
-              >
-                Opprett faktura
-              </button>
-            </div>
-
-            <div className="space-y-4">
-              <div className="text-[10px] font-black uppercase tracking-widest text-neutral-400">Materiell & Underentreprenør</div>
-              <div className="space-y-2">
-                <div className="flex justify-between text-xs">
-                  <span className="text-neutral-500">Materiell (NOBB)</span>
-                  <span className="font-bold">185K</span>
-                </div>
-                <div className="flex justify-between text-xs">
-                  <span className="text-neutral-500">Elektriker AS</span>
-                  <span className="font-bold">45K</span>
-                </div>
-                <div className="flex justify-between text-xs">
-                  <span className="text-neutral-500">Gravemaskin utleie</span>
-                  <span className="font-bold">12K</span>
-                </div>
-              </div>
-              <button 
-                onClick={() => setActiveTab('materials')}
-                className="w-full py-3 border border-neutral-200 text-neutral-900 rounded-xl text-xs font-bold hover:bg-neutral-50 transition-all cursor-pointer"
-              >
-                Se alle kostnader
-              </button>
-            </div>
-          </div>
-        </div>
-
-        {/* Sidebar */}
-        <div className="space-y-8">
-          <UniversalTranslator projectId={project.id} className="h-[500px]" />
-          
-          {/* Project Stats */}
-          <div className="bg-white p-6 rounded-3xl border border-neutral-200 shadow-sm">
-            <h3 className="font-bold mb-6">{t('project_stats')}</h3>
-            <div className="space-y-6">
-              <div className="flex items-center justify-between">
-                <div className="flex items-center gap-3">
-                  <div className="w-8 h-8 bg-blue-50 text-blue-600 rounded-lg flex items-center justify-center">
-                    <ShieldCheck size={16} />
-                  </div>
-                  <span className="text-sm font-medium text-neutral-600">{t('sja_completed')}</span>
-                </div>
-                <span className="font-bold">{sjaReports.length}</span>
-              </div>
-              <div className="flex items-center justify-between">
-                <div className="flex items-center gap-3">
-                  <div className="w-8 h-8 bg-amber-50 text-amber-600 rounded-lg flex items-center justify-center">
-                    <AlertTriangle size={16} />
-                  </div>
-                  <span className="text-sm font-medium text-neutral-600">{t('open_deviations')}</span>
-                </div>
-                <span className="font-bold">{projectDeviations.length}</span>
-              </div>
-              <div className="flex items-center justify-between">
-                <div className="flex items-center gap-3">
-                  <div className="w-8 h-8 bg-emerald-50 text-emerald-600 rounded-lg flex items-center justify-center">
-                    <ClipboardCheck size={16} />
-                  </div>
-                  <span className="text-sm font-medium text-neutral-600">{t('doc_level')}</span>
-                </div>
-                <span className="font-bold">{project.documentationLevel}%</span>
-              </div>
-            </div>
-          </div>
-
-          {/* Team Members */}
-          <div className="bg-white p-6 rounded-3xl border border-neutral-200 shadow-sm">
-            <h3 className="font-bold mb-6">{t('project_team')}</h3>
-            <div className="space-y-4">
-              {projectCrew.length > 0 ? (
-                projectCrew.map(member => (
-                  <div key={member.id} className="flex items-center justify-between group cursor-pointer">
-                    <div className="flex items-center gap-3">
-                      <div className="w-10 h-10 rounded-full bg-neutral-100 overflow-hidden border border-neutral-200 shrink-0 aspect-square">
-                        <img 
-                          src={`https://picsum.photos/seed/${member.id}/40/40`} 
-                          alt={member.name} 
-                          referrerPolicy="no-referrer" 
-                          className="w-full h-full object-cover"
-                        />
-                      </div>
-                      <div>
-                        <div className="text-sm font-bold group-hover:text-emerald-600 transition-colors">{member.name}</div>
-                        <div className="text-[10px] text-neutral-400 uppercase tracking-widest font-black">{member.role}</div>
-                      </div>
-                    </div>
-                    <ChevronRight size={16} className="text-neutral-300 group-hover:text-neutral-900 transition-colors" />
-                  </div>
-                ))
-              ) : (
-                <p className="text-xs text-neutral-400 italic text-center py-4">Ingen mannskap registrert på dette prosjektet.</p>
-              )}
-            </div>
-            <button 
-              onClick={() => window.dispatchEvent(new CustomEvent('navigate_view', { detail: { view: 'settings' } }))}
-              className="w-full mt-6 py-3 rounded-xl border border-neutral-200 text-sm font-bold hover:bg-neutral-50 transition-colors cursor-pointer"
-            >
-              {t('manage_team')}
-            </button>
-          </div>
-        </div>
-      </div>
-
-      {/* New SJA Modal */}
-      <AnimatePresence>
-        {isNewSJAOpen && (
-          <div className="fixed inset-0 z-50 flex items-end sm:items-center justify-center p-0 sm:p-4 bg-black/60 backdrop-blur-sm">
-            <motion.div 
-              initial={{ opacity: 0, y: 20 }}
-              animate={{ opacity: 1, y: 0 }}
-              exit={{ opacity: 0, y: 20 }}
-              className="bg-white w-full max-w-2xl rounded-t-[2rem] sm:rounded-[2.5rem] shadow-2xl overflow-hidden max-h-[92vh] sm:max-h-[90vh] flex flex-col pb-[env(safe-area-inset-bottom,0px)]"
-            >
-              <div className="p-4 sm:p-8 border-b border-neutral-100 shrink-0">
-                <div className="sm:hidden w-12 h-1.5 bg-neutral-300 rounded-full mx-auto -mt-1 mb-3 shrink-0" />
-                <div className="flex items-center justify-between">
-                  <h3 className="text-base sm:text-xl font-bold">{t('new_sja')}</h3>
-                  <button onClick={() => setIsNewSJAOpen(false)} aria-label="Lukk" className="p-2 hover:bg-neutral-100 rounded-xl transition-colors">
-                    <X size={20} />
-                  </button>
-                </div>
-              </div>
-              <form onSubmit={handleAddSJA} className="p-4 sm:p-8 space-y-4 sm:space-y-6 overflow-y-auto custom-scrollbar flex-1">
-                <div className="grid grid-cols-1 sm:grid-cols-2 gap-3 sm:gap-4">
-                  <div className="sm:col-span-1">
-                    <label className="block text-[11px] sm:text-xs font-black text-neutral-400 uppercase tracking-wider mb-1.5">Tittel</label>
-                    <input 
-                      required
-                      type="text" 
-                      value={newSJA.title}
-                      onChange={(e) => setNewSJA({...newSJA, title: e.target.value})}
-                      className="w-full bg-neutral-50 border-none rounded-xl sm:rounded-2xl px-4 py-3 text-base sm:text-sm font-medium focus:ring-2 focus:ring-emerald-500/20 transition-all"
-                      placeholder="F.eks. Montering av sikringsskap"
-                    />
-                  </div>
-                  <div className="sm:col-span-2">
-                    <label className="block text-[11px] sm:text-xs font-black text-neutral-400 uppercase tracking-wider mb-1.5 flex items-center justify-between">
-                      Oppgave
-                      <button 
-                        type="button"
-                        onClick={handleAIGenerate}
-                        disabled={isGeneratingAI || !newSJA.task.trim()}
-                        className="flex items-center gap-1 text-emerald-600 hover:text-emerald-700 disabled:opacity-50 transition-colors"
-                      >
-                        {isGeneratingAI ? <Loader2 size={12} className="animate-spin" /> : <Sparkles size={12} />}
-                        <span className="text-[10px] sm:text-xs font-bold uppercase tracking-wider">Generer med AI</span>
-                      </button>
-                    </label>
-                    <input 
-                      required
-                      type="text" 
-                      value={newSJA.task}
-                      onChange={(e) => setNewSJA({...newSJA, task: e.target.value})}
-                      className="w-full bg-neutral-50 border-none rounded-xl sm:rounded-2xl px-4 py-3 text-base sm:text-sm font-medium focus:ring-2 focus:ring-emerald-500/20 transition-all"
-                      placeholder="Spesifiser oppgaven (f.eks. Arbeid i høyden med lift)..."
-                    />
-                  </div>
-                </div>
-
-                <div>
-                  <label className="block text-[11px] sm:text-xs font-black text-neutral-400 uppercase tracking-wider mb-1.5">TEK17 / SAK10 Referanser</label>
-                  <input 
-                    type="text" 
-                    value={newSJA.tek17Reference}
-                    onChange={(e) => setNewSJA({...newSJA, tek17Reference: e.target.value})}
-                    className="w-full bg-neutral-50 border-none rounded-xl sm:rounded-2xl px-4 py-3 text-base sm:text-sm font-medium focus:ring-2 focus:ring-emerald-500/20 transition-all"
-                    placeholder="F.eks. TEK17 § 11-1, SAK10 § 12-1..."
-                  />
-                </div>
-
-                <div className="space-y-3 sm:space-y-4">
-                  <div className="flex items-center justify-between">
-                    <label className="block text-[11px] sm:text-xs font-black text-neutral-400 uppercase tracking-wider">Risikoanalyse</label>
-                    <button 
-                      type="button"
-                      onClick={addRisk}
-                      className="text-xs font-bold text-emerald-600 flex items-center gap-1 hover:underline cursor-pointer"
-                    >
-                      <Plus size={14} /> Legg til rad
-                    </button>
-                  </div>
-                  <div className="space-y-2">
-                    {newSJA.risikoer.map((risk, index) => (
-                      <div key={index} className="grid grid-cols-12 gap-2 items-start bg-neutral-50 p-3 sm:p-4 rounded-xl sm:rounded-2xl border border-neutral-100">
-                        <div className="col-span-11 sm:col-span-4">
-                          <input 
-                            placeholder="Aktivitet"
-                            value={risk.aktivitet}
-                            onChange={(e) => {
-                              const newRisks = [...newSJA.risikoer];
-                              newRisks[index].aktivitet = e.target.value;
-                              setNewSJA({...newSJA, risikoer: newRisks});
-                            }}
-                            className="w-full bg-white border-none rounded-lg sm:rounded-xl px-3 py-2 text-xs font-medium"
-                          />
-                        </div>
-                        <div className="col-span-11 sm:col-span-3">
-                          <input 
-                            placeholder="Risiko"
-                            value={risk.risiko}
-                            onChange={(e) => {
-                              const newRisks = [...newSJA.risikoer];
-                              newRisks[index].risiko = e.target.value;
-                              setNewSJA({...newSJA, risikoer: newRisks});
-                            }}
-                            className="w-full bg-white border-none rounded-lg sm:rounded-xl px-3 py-2 text-xs font-medium"
-                          />
-                        </div>
-                        <div className="col-span-11 sm:col-span-4">
-                          <input 
-                            placeholder="Tiltak"
-                            value={risk.tiltak}
-                            onChange={(e) => {
-                              const newRisks = [...newSJA.risikoer];
-                              newRisks[index].tiltak = e.target.value;
-                              setNewSJA({...newSJA, risikoer: newRisks});
-                            }}
-                            className="w-full bg-white border-none rounded-lg sm:rounded-xl px-3 py-2 text-xs font-medium"
-                          />
-                        </div>
-                        <div className="col-span-1 flex justify-end pt-1">
-                          <button 
-                            type="button"
-                            onClick={() => removeRisk(index)}
-                            className="p-1 text-neutral-400 hover:text-red-500 transition-colors"
-                          >
-                            <X size={14} />
-                          </button>
-                        </div>
-                      </div>
-                    ))}
-                  </div>
-                </div>
-
-                <div>
-                  <label className="block text-[11px] sm:text-xs font-black text-neutral-400 uppercase tracking-wider mb-1.5">Nødvendig utstyr</label>
-                  <input 
-                    type="text" 
-                    placeholder="F.eks. Hjelm, Hansker (separer med komma)"
-                    onKeyDown={(e) => {
-                      if (e.key === 'Enter') {
-                        e.preventDefault();
-                        const val = (e.target as HTMLInputElement).value.trim();
-                        if (val) {
-                          setNewSJA({...newSJA, utstyr: [...newSJA.utstyr, ...val.split(',').map(s => s.trim())]});
-                          (e.target as HTMLInputElement).value = '';
-                        }
-                      }
-                    }}
-                    className="w-full bg-neutral-50 border-none rounded-xl sm:rounded-2xl px-4 py-3 text-base sm:text-sm font-medium focus:ring-2 focus:ring-emerald-500/20 transition-all"
-                  />
-                  <div className="flex flex-wrap gap-1.5 sm:gap-2 mt-2">
-                    {newSJA.utstyr.map((u, i) => (
-                      <span key={i} className="px-2.5 py-1 bg-neutral-100 text-neutral-600 text-xs font-bold rounded-lg flex items-center gap-1">
-                        {u}
-                        <button type="button" onClick={() => setNewSJA({...newSJA, utstyr: newSJA.utstyr.filter((_, idx) => idx !== i)})}>
-                          <X size={12} />
-                        </button>
-                      </span>
-                    ))}
-                  </div>
-                </div>
-
-                <div className="pt-4 pb-2 border-t border-slate-100 mt-4 bg-white">
-                  <button 
-                    type="submit"
-                    disabled={isSaving}
-                    className="w-full py-3.5 sm:py-4 bg-gradient-to-r from-electric-500 to-electric-400 text-white rounded-xl sm:rounded-2xl font-black flex items-center justify-center gap-2 hover:opacity-95 transition-all shadow-purple-cta cursor-pointer"
-                  >
-                    {isSaving ? <Loader2 className="animate-spin" size={18} /> : <Save size={18} />}
-                    <span className="text-sm sm:text-base">{t('save_sja')}</span>
-                  </button>
-                </div>
-              </form>
-            </motion.div>
-          </div>
-        )}
-      </AnimatePresence>
-      {/* New Deviation Modal */}
-      <AnimatePresence>
-        {isNewDeviationOpen && (
-          <div className="fixed inset-0 z-50 flex items-end sm:items-center justify-center p-0 sm:p-4 bg-black/60 backdrop-blur-sm">
-            <motion.div 
-              initial={{ opacity: 0, y: 20 }}
-              animate={{ opacity: 1, y: 0 }}
-              exit={{ opacity: 0, y: 20 }}
-              className="bg-white w-full max-w-md rounded-t-[2rem] sm:rounded-[2.5rem] shadow-2xl overflow-hidden max-h-[92vh] sm:max-h-[90vh] flex flex-col pb-[env(safe-area-inset-bottom,0px)]"
-            >
-              <div className="p-4 sm:p-8 border-b border-neutral-100 shrink-0">
-                <div className="sm:hidden w-12 h-1.5 bg-neutral-300 rounded-full mx-auto -mt-1 mb-3 shrink-0" />
-                <div className="flex items-center justify-between">
-                  <h3 className="text-base sm:text-xl font-bold">{t('log_deviation')}</h3>
-                  <button onClick={() => setIsNewDeviationOpen(false)} aria-label="Lukk" className="p-2 hover:bg-neutral-100 rounded-xl transition-colors">
-                    <X size={20} />
-                  </button>
-                </div>
-              </div>
-              <form onSubmit={handleAddDeviation} className="p-4 sm:p-8 space-y-4 overflow-y-auto custom-scrollbar flex-1">
-                <div>
-                  <label className="block text-[11px] sm:text-xs font-black text-neutral-400 uppercase tracking-wider mb-1.5">Tittel</label>
-                  <input 
-                    required
-                    type="text" 
-                    value={newDeviation.title}
-                    onChange={(e) => setNewDeviation({...newDeviation, title: e.target.value})}
-                    className="w-full bg-neutral-50 border-none rounded-xl sm:rounded-2xl px-4 py-3 text-base sm:text-sm font-medium focus:ring-2 focus:ring-emerald-500/20 transition-all"
-                    placeholder="F.eks. Manglende rekkverk"
-                  />
-                </div>
-                <div>
-                  <label className="block text-[11px] sm:text-xs font-black text-neutral-400 uppercase tracking-wider mb-1.5">Beskrivelse</label>
-                  <textarea 
-                    required
-                    value={newDeviation.description}
-                    onChange={(e) => setNewDeviation({...newDeviation, description: e.target.value})}
-                    className="w-full bg-neutral-50 border-none rounded-xl sm:rounded-2xl px-4 py-3 text-base sm:text-sm font-medium focus:ring-2 focus:ring-emerald-500/20 transition-all min-h-[80px] sm:min-h-[100px]"
-                    placeholder="Beskriv avviket i detalj..."
-                  />
-                </div>
-                <div className="grid grid-cols-1 sm:grid-cols-2 gap-3 sm:gap-4">
-                  <div>
-                    <label className="block text-[11px] sm:text-xs font-black text-neutral-400 uppercase tracking-wider mb-1.5">Alvorlighetsgrad</label>
-                    <select 
-                      value={newDeviation.severity}
-                      onChange={(e) => setNewDeviation({...newDeviation, severity: e.target.value as any})}
-                      className="w-full bg-neutral-50 border-none rounded-xl sm:rounded-2xl px-4 py-3 text-base sm:text-sm font-medium focus:ring-2 focus:ring-emerald-500/20 transition-all"
-                    >
-                      <option value="low">Lav</option>
-                      <option value="medium">Middels</option>
-                      <option value="high">Høy</option>
-                    </select>
-                  </div>
-                  <div>
-                    <label className="block text-[11px] sm:text-xs font-black text-neutral-400 uppercase tracking-wider mb-1.5">Lokasjon</label>
-                    <input 
-                      type="text" 
-                      value={newDeviation.location}
-                      onChange={(e) => setNewDeviation({...newDeviation, location: e.target.value})}
-                      className="w-full bg-neutral-50 border-none rounded-xl sm:rounded-2xl px-4 py-3 text-base sm:text-sm font-medium focus:ring-2 focus:ring-emerald-500/20 transition-all"
-                      placeholder="F.eks. Plan 2, Sone B"
-                    />
-                  </div>
-                </div>
-                <div className="pt-4 pb-2 border-t border-slate-100 mt-4 bg-white">
-                  <button 
-                    type="submit"
-                    disabled={isSaving}
-                    className="w-full py-3.5 sm:py-4 bg-gradient-to-r from-electric-500 to-electric-400 text-white rounded-xl sm:rounded-2xl font-black flex items-center justify-center gap-2 hover:opacity-95 transition-all shadow-purple-cta cursor-pointer"
-                  >
-                    {isSaving ? <Loader2 className="animate-spin" size={18} /> : <Save size={18} />}
-                    <span className="text-sm sm:text-base">{t('save_deviation')}</span>
-                  </button>
-                </div>
-              </form>
-            </motion.div>
-          </div>
-        )}
-      </AnimatePresence>
-
-      {/* Deviation Detail Modal */}
       <DeviationDetailModal 
         isOpen={!!selectedDeviation}
         onClose={() => setSelectedDeviation(null)}
@@ -1535,7 +1137,6 @@ export default function ProjectDetails({ project, onBack, onShare, onStartCheckl
         project={project}
         onUpdated={() => {}}
       />
-
     </motion.div>
   );
 }

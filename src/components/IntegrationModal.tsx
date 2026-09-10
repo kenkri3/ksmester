@@ -1,6 +1,7 @@
 import React, { useState } from 'react';
 import { motion, AnimatePresence } from 'motion/react';
-import { X, RefreshCw, CheckCircle2, AlertCircle, Settings, ExternalLink, ShieldCheck, Database, Zap } from 'lucide-react';
+import { X, RefreshCw, CheckCircle2, AlertCircle, Settings, ExternalLink, ShieldCheck, Database, Zap, Building2, FileCheck, Layers } from 'lucide-react';
+import { toast } from 'sonner';
 
 interface IntegrationModalProps {
   isOpen: boolean;
@@ -9,116 +10,181 @@ interface IntegrationModalProps {
 
 const IntegrationModal: React.FC<IntegrationModalProps> = ({ isOpen, onClose }) => {
   const [isSyncing, setIsSyncing] = useState(false);
-  const [connectedIntegrations, setConnectedIntegrations] = useState<string[]>(['tripletex', 'nobb', 'boligmappa']);
+  const [connectedIntegrations, setConnectedIntegrations] = useState<string[]>(['tripletex', 'boligmappa', 'brreg']);
 
   const integrations = [
-    { id: 'tripletex', name: 'Tripletex', lastSync: '10 min siden', type: 'Regnskap' },
-    { id: 'fiken', name: 'Fiken', lastSync: '-', type: 'Regnskap' },
-    { id: 'nobb', name: 'FDV & Varedatabase (AI)', lastSync: 'Aktiv', type: 'Varedatabase' },
-    { id: 'boligmappa', name: 'Boligmappa', lastSync: 'I går', type: 'Dokumentasjon' },
+    { 
+      id: 'tripletex', 
+      name: 'Tripletex', 
+      desc: 'Automatisk overføring av fakturagrunnlag og timer',
+      lastSync: 'Aktiv synk', 
+      type: 'Regnskap & EHF',
+      status: 'Tilkoblet'
+    },
+    { 
+      id: 'fiken', 
+      name: 'Fiken', 
+      desc: 'Enkel bokføring av prosjektkostnader og bilag',
+      lastSync: 'Klar for oppsett', 
+      type: 'Regnskap',
+      status: 'Klar'
+    },
+    { 
+      id: 'boligmappa', 
+      name: 'Boligmappa', 
+      desc: '1-klikks overlevering av FDV og sluttdokumentasjon til boligeier',
+      lastSync: 'Sanntidssynk aktiv', 
+      type: 'Dokumentarkiv',
+      status: 'Tilkoblet'
+    },
+    { 
+      id: 'brreg', 
+      name: 'Brønnøysundregistrene', 
+      desc: 'Automatisk foretaksoppslag og verifisering av underentreprenører',
+      lastSync: 'Aktiv sanntid', 
+      type: 'Foretaksregister',
+      status: 'Tilkoblet'
+    },
+    { 
+      id: 'geonorge', 
+      name: 'Geonorge & Kartverket', 
+      desc: 'Automatisk oppslag av GNR, BNR og adressedata ved prosjektopprettelse',
+      lastSync: 'Aktiv API', 
+      type: 'Kart & Eiendom',
+      status: 'Tilkoblet'
+    },
+    { 
+      id: 'yr', 
+      name: 'Yr.no / Meteorologisk Institutt', 
+      desc: 'Automatisk værhistorikk (temperatur, vind, nedbør) til Byggedagbok',
+      lastSync: 'Aktiv værstasjon', 
+      type: 'Værsynk',
+      status: 'Tilkoblet'
+    }
   ];
 
   const handleSyncAll = () => {
     setIsSyncing(true);
-    setTimeout(() => setIsSyncing(false), 2000);
+    setTimeout(() => {
+      setIsSyncing(false);
+      toast.success('Alle integrasjoner er synkronisert!', {
+        description: 'VikingMester er fullt oppdatert mot Tripletex, Boligmappa og Yr.no'
+      });
+    }, 1200);
   };
 
   const toggleIntegration = (id: string) => {
-    setConnectedIntegrations(prev => 
-      prev.includes(id) ? prev.filter(i => i !== id) : [...prev, id]
-    );
+    setConnectedIntegrations(prev => {
+      const isConn = prev.includes(id);
+      if (isConn) {
+        toast.info('Integrasjon koblet fra');
+        return prev.filter(i => i !== id);
+      } else {
+        toast.success('Integrasjon aktivert!');
+        return [...prev, id];
+      }
+    });
   };
 
   if (!isOpen) return null;
 
   return (
-    <div className="fixed inset-0 z-50 flex items-end sm:items-center justify-center p-0 sm:p-4 bg-black/60 backdrop-blur-sm">
+    <div className="fixed inset-0 z-[70] flex items-end sm:items-center justify-center p-0 sm:p-4 bg-navy-950/60 backdrop-blur-md">
       <motion.div 
         initial={{ opacity: 0, y: 20 }}
         animate={{ opacity: 1, y: 0 }}
-        className="bg-neutral-50 w-full max-w-3xl rounded-t-[2rem] sm:rounded-[2.5rem] shadow-2xl overflow-hidden flex flex-col max-h-[92vh] sm:max-h-[90vh] pb-[env(safe-area-inset-bottom,0px)]"
+        exit={{ opacity: 0, y: 20 }}
+        className="bg-white w-full max-w-3xl rounded-t-[2.5rem] sm:rounded-3xl shadow-2xl border border-slate-200/80 overflow-hidden flex flex-col max-h-[92vh] sm:max-h-[90vh] pb-[env(safe-area-inset-bottom,0px)]"
       >
         {/* Header */}
-        <div className="p-4 sm:p-8 border-b border-neutral-200 bg-white shrink-0">
-          <div className="sm:hidden w-12 h-1.5 bg-neutral-300 rounded-full mx-auto -mt-1 mb-3 shrink-0" />
-          <div className="flex items-center justify-between">
-            <div className="flex items-center gap-3 sm:gap-4">
-              <div className="w-10 h-10 sm:w-12 sm:h-12 rounded-xl sm:rounded-2xl bg-neutral-900 flex items-center justify-center text-white shadow-lg shadow-neutral-200">
-                <RefreshCw size={20} className="sm:w-6 sm:h-6" />
-              </div>
-              <div>
-                <h2 className="text-lg sm:text-2xl font-bold tracking-tight">Integrasjonssenter</h2>
-                <p className="text-neutral-500 text-xs sm:text-sm font-medium">Koble VikingMester til dine favorittverktøy</p>
-              </div>
+        <div className="p-5 sm:p-7 border-b border-slate-100 bg-white shrink-0 flex items-center justify-between">
+          <div className="flex items-center gap-3 sm:gap-4">
+            <div className="w-10 h-10 sm:w-12 sm:h-12 rounded-2xl bg-gradient-to-br from-electric-500 to-electric-600 text-white flex items-center justify-center shadow-md shadow-electric-500/20">
+              <Layers size={22} />
             </div>
-            <button onClick={onClose} aria-label="Lukk" className="p-2 hover:bg-neutral-100 rounded-xl transition-colors shrink-0">
-              <X size={20} className="sm:w-6 sm:h-6" />
-            </button>
+            <div>
+              <div className="flex items-center gap-2">
+                <h2 className="text-lg sm:text-2xl font-black text-navy-900 tracking-tight">Integrasjoner & Koblinger</h2>
+                <span className="hidden sm:inline-block px-2 py-0.5 rounded-full text-[10px] font-black uppercase tracking-wider bg-electric-50 text-electric-600 border border-electric-200">
+                  VikingMester
+                </span>
+              </div>
+              <p className="text-slate-400 text-xs sm:text-sm font-medium">Koble fagsystemer, regnskap og dokumentarkiv direkte til agenten</p>
+            </div>
           </div>
+          <button 
+            onClick={onClose} 
+            aria-label="Lukk" 
+            className="p-2 hover:bg-slate-100 text-slate-400 hover:text-slate-700 rounded-xl transition-colors shrink-0 cursor-pointer"
+          >
+            <X size={20} />
+          </button>
         </div>
 
         {/* Content */}
-        <div className="flex-1 overflow-y-auto p-4 sm:p-8 custom-scrollbar">
-          <div className="flex items-center justify-between mb-8">
-            <div className="flex items-center gap-2 text-xs font-bold text-emerald-600 bg-emerald-50 px-3 py-1 rounded-full">
-              <ShieldCheck size={14} />
-              Sikker API-tilkobling aktiv
+        <div className="flex-1 overflow-y-auto p-5 sm:p-8 custom-scrollbar space-y-6">
+          <div className="flex items-center justify-between">
+            <div className="flex items-center gap-2 text-xs font-bold text-emerald-700 bg-emerald-50 px-3 py-1.5 rounded-full border border-emerald-200">
+              <ShieldCheck size={14} className="text-emerald-600" />
+              Sikker OAuth2 / API-synk aktiv
             </div>
             <button 
               onClick={handleSyncAll}
               disabled={isSyncing}
-              className="flex items-center gap-2 text-sm font-bold text-neutral-900 hover:bg-neutral-100 px-4 py-2 rounded-xl transition-all"
+              className="flex items-center gap-2 text-xs font-bold text-navy-900 hover:bg-slate-100 px-3.5 py-2 rounded-xl transition-all cursor-pointer border border-slate-200"
             >
-              <RefreshCw className={isSyncing ? 'animate-spin' : ''} size={16} />
-              Synkroniser alle nå
+              <RefreshCw className={isSyncing ? 'animate-spin text-electric-500' : ''} size={14} />
+              <span>Synkroniser alle nå</span>
             </button>
           </div>
 
-          <div className="grid grid-cols-1 gap-4">
+          <div className="grid grid-cols-1 gap-3.5">
             {integrations.map((int) => {
               const isConnected = connectedIntegrations.includes(int.id);
               return (
-                <div key={int.id} className="bg-white p-6 rounded-3xl border border-neutral-200 flex items-center justify-between group hover:border-neutral-900 transition-all">
-                  <div className="flex items-center gap-4">
-                    <div className={`w-14 h-14 rounded-2xl flex items-center justify-center ${
-                      isConnected ? 'bg-emerald-50 text-emerald-600' : 'bg-neutral-50 text-neutral-400'
+                <div 
+                  key={int.id} 
+                  className="bg-white p-4 sm:p-5 rounded-2xl border border-slate-200 flex items-center justify-between hover:border-slate-300 transition-all shadow-xs"
+                >
+                  <div className="flex items-center gap-3.5">
+                    <div className={`w-11 h-11 rounded-xl flex items-center justify-center shrink-0 ${
+                      isConnected ? 'bg-electric-50 text-electric-600 border border-electric-200' : 'bg-slate-100 text-slate-400'
                     }`}>
-                      {int.id === 'tripletex' || int.id === 'fiken' ? <Database size={24} /> : <Zap size={24} />}
+                      {int.id === 'tripletex' || int.id === 'fiken' ? <Database size={20} /> : 
+                       int.id === 'boligmappa' ? <FileCheck size={20} /> :
+                       int.id === 'brreg' ? <Building2 size={20} /> : <Zap size={20} />}
                     </div>
                     <div>
-                      <div className="flex items-center gap-2">
-                        <h3 className="font-bold text-neutral-900">{int.name}</h3>
-                        <span className="text-[10px] font-black uppercase tracking-widest text-neutral-400 bg-neutral-50 px-2 py-0.5 rounded-full">{int.type}</span>
+                      <div className="flex items-center gap-2 flex-wrap">
+                        <h3 className="font-bold text-sm text-navy-900">{int.name}</h3>
+                        <span className="text-[10px] font-black uppercase tracking-wider text-slate-500 bg-slate-100 px-2 py-0.5 rounded-md">
+                          {int.type}
+                        </span>
                       </div>
-                      <div className="flex items-center gap-3 mt-1">
-                        <div className="flex items-center gap-1">
-                          <div className={`w-1.5 h-1.5 rounded-full ${isConnected ? 'bg-emerald-500' : 'bg-neutral-300'}`} />
-                          <span className={`text-[10px] font-bold uppercase tracking-widest ${isConnected ? 'text-emerald-600' : 'text-neutral-400'}`}>
-                            {isConnected ? 'Tilkoblet' : 'Ikke tilkoblet'}
-                          </span>
-                        </div>
-                        <span className="w-1 h-1 rounded-full bg-neutral-200" />
-                        <span className="text-[10px] font-bold text-neutral-400 uppercase tracking-widest">Sist synket: {int.lastSync}</span>
+                      <p className="text-xs text-slate-500 font-medium mt-0.5 hidden sm:block">{int.desc}</p>
+                      <div className="flex items-center gap-2 mt-1 text-[11px] text-slate-400">
+                        <span className={`w-1.5 h-1.5 rounded-full ${isConnected ? 'bg-emerald-500' : 'bg-slate-300'}`} />
+                        <span className={isConnected ? 'text-emerald-700 font-bold' : 'text-slate-400'}>
+                          {isConnected ? 'Aktiv kobling' : 'Ikke tilkoblet'}
+                        </span>
+                        <span>•</span>
+                        <span>{int.lastSync}</span>
                       </div>
                     </div>
                   </div>
+
                   <div className="flex items-center gap-2">
                     {isConnected ? (
-                      <>
-                        <button className="p-3 text-neutral-400 hover:text-neutral-900 hover:bg-neutral-50 rounded-xl transition-all">
-                          <Settings size={20} />
-                        </button>
-                        <button 
-                          onClick={() => toggleIntegration(int.id)}
-                          className="p-3 text-rose-500 hover:bg-rose-50 rounded-xl transition-all"
-                        >
-                          <X size={20} />
-                        </button>
-                      </>
+                      <button 
+                        onClick={() => toggleIntegration(int.id)}
+                        className="px-3.5 py-1.5 rounded-xl border border-slate-200 text-slate-600 hover:bg-slate-100 text-xs font-bold transition-all cursor-pointer"
+                      >
+                        Koble fra
+                      </button>
                     ) : (
                       <button 
                         onClick={() => toggleIntegration(int.id)}
-                        className="px-6 py-2 bg-neutral-900 text-white rounded-xl text-xs font-bold hover:bg-neutral-800 transition-all shadow-lg shadow-neutral-200"
+                        className="px-4 py-2 bg-gradient-to-r from-electric-500 to-electric-400 text-white rounded-xl text-xs font-black hover:opacity-95 transition-all shadow-purple-cta cursor-pointer"
                       >
                         Koble til
                       </button>
@@ -129,17 +195,19 @@ const IntegrationModal: React.FC<IntegrationModalProps> = ({ isOpen, onClose }) 
             })}
           </div>
 
-          <div className="mt-8 sm:mt-12 p-6 sm:p-8 bg-neutral-900 rounded-3xl sm:rounded-[2.5rem] text-white relative overflow-hidden">
-            <div className="relative z-10">
-              <h3 className="text-xl font-bold mb-2">Trenger du en ny integrasjon?</h3>
-              <p className="text-neutral-400 text-sm mb-6 max-w-md">
-                Vår AI kan hjelpe deg med å koble til over 5000+ apper via Zapier eller direkte API-koblinger.
-              </p>
-              <button className="px-8 py-4 bg-emerald-500 hover:bg-emerald-400 text-white rounded-2xl font-bold transition-all shadow-lg shadow-emerald-500/20">
-                Kontakt AI-support
-              </button>
+          <div className="p-6 bg-navy-950 rounded-2xl text-white relative overflow-hidden shadow-sm">
+            <h3 className="text-sm sm:text-base font-bold mb-1">Egendefinerte API-er eller hemmeligheter?</h3>
+            <p className="text-slate-400 text-xs leading-relaxed max-w-lg mb-4">
+              Trenger din bedrift direkte overføring til et internt ERP-system eller skyarkiv? Våre autonome agenter kan kobles via sikre webhooks eller REST API.
+            </p>
+            <div className="flex items-center gap-3">
+              <a 
+                href="mailto:hei@vikingnet.no?subject=Integrasjon%20VikingMester"
+                className="px-4 py-2 bg-gradient-to-r from-electric-500 to-electric-400 text-white rounded-xl text-xs font-black shadow-purple-cta inline-block"
+              >
+                Kontakt agent-support (hei@vikingnet.no)
+              </a>
             </div>
-            <RefreshCw className="absolute -right-12 -bottom-12 text-white/5 w-64 h-64 rotate-12" />
           </div>
         </div>
       </motion.div>

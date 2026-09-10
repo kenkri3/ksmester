@@ -1,5 +1,6 @@
 import { getCollectionItems, saveCollectionItem } from './db';
 import { GoogleGenAI } from '@google/genai';
+import { processAutonomousNurtureSequence } from './nurtureEngine';
 
 export async function runDailyAudit() {
   const startTime = Date.now();
@@ -138,6 +139,14 @@ Prosjekter: ${activeProjects.map((p: any) => p.name).slice(0, 5).join(', ')}.
 
   await saveCollectionItem('daily_summaries', summaryRecord);
   console.log('✅ [Daily Audit] Fullført på', summaryRecord.executionDurationMs, 'ms med modell:', aiSource);
+
+  // 6. Autonomous Customer Nurture & Upsell Sequence (Dag 3, 7, 14, 21)
+  try {
+    const nurtureResult = await processAutonomousNurtureSequence();
+    console.log(`✉️ [Daily Nurture] Evaluert ${nurtureResult.processedCount} kunder, sendte ${nurtureResult.emailsSentCount} oppfølgingsmailer.`);
+  } catch (nurtureErr: any) {
+    console.warn('[Daily Nurture] Feil under nurture-kjøring:', nurtureErr.message);
+  }
 
   return summaryRecord;
 }

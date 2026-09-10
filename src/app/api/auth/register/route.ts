@@ -5,7 +5,8 @@ import { signToken } from '@/src/lib/server/auth';
 
 export async function POST(req: NextRequest) {
   try {
-    const { email, password, name, company, trade, gdprConsent } = await req.json();
+    const { email, password, name, company, orgnr, trade, gdprConsent } = await req.json();
+    const cleanOrgnr = (orgnr || '').toString().replace(/\s+/g, '').trim();
 
     if (!email || !password) {
       return NextResponse.json({ error: 'Både e-post og passord må fylles ut.' }, { status: 400 });
@@ -45,6 +46,7 @@ export async function POST(req: NextRequest) {
       role: isAdmin ? 'admin' : 'leader',
       trade: trade || 'Byggmester',
       company: company?.trim() || 'Ny Bedrift AS',
+      orgnr: cleanOrgnr || null,
       companyId: companyId,
       subscriptionStatus: 'trial',
       gdprConsent: true,

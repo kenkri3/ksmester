@@ -341,6 +341,7 @@ function TacticalHomeView({ onStartDemo, onGoToPricing, onViewChange }: { onStar
   const [workerCount, setWorkerCount] = useState<number>(4);
   const [leadEmail, setLeadEmail] = useState('');
   const [leadCompany, setLeadCompany] = useState('');
+  const [leadOrgnr, setLeadOrgnr] = useState('');
   const [leadPhone, setLeadPhone] = useState('');
   const [selectedTrade, setSelectedTrade] = useState('tomrer');
   const [isSubmittingLead, setIsSubmittingLead] = useState(false);
@@ -365,6 +366,7 @@ function TacticalHomeView({ onStartDemo, onGoToPricing, onViewChange }: { onStar
         headers: { 'Content-Type': 'application/json' },
         body: JSON.stringify({
           companyName: leadCompany,
+          orgnr: leadOrgnr,
           email: leadEmail,
           phone: leadPhone,
           trade: selectedTrade,
@@ -1082,18 +1084,34 @@ function TacticalHomeView({ onStartDemo, onGoToPricing, onViewChange }: { onStar
               </div>
             ) : (
               <form onSubmit={handleLeadSubmit} className="space-y-4 font-sans text-xs sm:text-sm">
-                <div>
-                  <label className="block text-xs font-bold text-slate-700 uppercase tracking-wider mb-1.5">
-                    BEDRIFTSNAVN / ENKELTPERSONFORETAK *
-                  </label>
-                  <input 
-                    type="text" 
-                    required
-                    placeholder="f.eks. Mesterbygg AS"
-                    value={leadCompany}
-                    onChange={(e) => setLeadCompany(e.target.value)}
-                    className="w-full bg-slate-50 border border-slate-200 rounded-xl px-4 py-3 text-slate-900 placeholder:text-slate-400 focus:bg-white focus:border-electric-500 focus:ring-2 focus:ring-electric-500/20 outline-none text-sm transition-all"
-                  />
+                <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
+                  <div>
+                    <label className="block text-xs font-bold text-slate-700 uppercase tracking-wider mb-1.5">
+                      BEDRIFTSNAVN / FORETAK *
+                    </label>
+                    <input 
+                      type="text" 
+                      required
+                      placeholder="f.eks. Mesterbygg AS"
+                      value={leadCompany}
+                      onChange={(e) => setLeadCompany(e.target.value)}
+                      className="w-full bg-slate-50 border border-slate-200 rounded-xl px-4 py-3 text-slate-900 placeholder:text-slate-400 focus:bg-white focus:border-electric-500 focus:ring-2 focus:ring-electric-500/20 outline-none text-sm transition-all"
+                    />
+                  </div>
+                  <div>
+                    <label className="block text-xs font-bold text-slate-700 uppercase tracking-wider mb-1.5">
+                      ORGANISASJONSNUMMER *
+                    </label>
+                    <input 
+                      type="text" 
+                      required
+                      placeholder="9 siffer (f.eks. 912 345 678)"
+                      value={leadOrgnr}
+                      onChange={(e) => setLeadOrgnr(e.target.value)}
+                      maxLength={12}
+                      className="w-full bg-slate-50 border border-slate-200 rounded-xl px-4 py-3 text-slate-900 placeholder:text-slate-400 focus:bg-white focus:border-electric-500 focus:ring-2 focus:ring-electric-500/20 outline-none text-sm transition-all font-mono"
+                    />
+                  </div>
                 </div>
 
                 <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
