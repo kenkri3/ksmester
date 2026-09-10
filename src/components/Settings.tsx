@@ -767,7 +767,7 @@ export default function Settings() {
                         onClick={() => {
                           toast.info('For oppgradering til Pro/Enterprise eller endring av abonnement, kontakt hei@vikingmester.no eller ring +47 22 33 44 55.');
                         }}
-                        className="px-6 py-2 bg-emerald-600 text-white rounded-xl text-sm font-bold hover:bg-emerald-500 transition-all cursor-pointer"
+                        className="px-6 py-2 bg-gradient-to-r from-electric-500 to-electric-400 hover:from-electric-400 hover:to-electric-300 text-white rounded-xl text-sm font-bold shadow-purple-cta transition-all cursor-pointer"
                       >
                         {subscriptionStatus === 'trial' ? t('upgrade_now', 'Oppgrader nå') : t('manage_billing', 'Administrer betaling')}
                       </button>

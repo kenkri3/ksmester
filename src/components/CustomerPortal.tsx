@@ -220,7 +220,7 @@ const CustomerPortal: React.FC<CustomerPortalProps> = ({ project }) => {
         <div className="max-w-5xl mx-auto">
           <div className="flex items-center gap-3 mb-4">
             <Logo size="md" className="text-white" />
-            <span className="text-xs font-black uppercase tracking-[0.2em] text-emerald-400">Kundeportal</span>
+            <span className="text-xs font-black uppercase tracking-[0.2em] text-electric-400">Kundeportal</span>
           </div>
           <h1 className="text-4xl font-black tracking-tight mb-2">{project.name}</h1>
           <div className="flex items-center gap-4 text-neutral-400 text-sm">
@@ -275,7 +275,7 @@ const CustomerPortal: React.FC<CustomerPortalProps> = ({ project }) => {
                   <button 
                     onClick={handleAcceptOffer}
                     disabled={actionLoading}
-                    className="flex-1 bg-emerald-600 text-white py-5 rounded-2xl font-black text-base sm:text-lg hover:bg-emerald-500 transition-all shadow-lg shadow-emerald-100 flex items-center justify-center gap-3 active:scale-95"
+                    className="flex-1 bg-gradient-to-r from-electric-500 to-electric-400 hover:from-electric-400 hover:to-electric-300 text-white py-5 rounded-2xl font-black text-base sm:text-lg transition-all shadow-purple-cta flex items-center justify-center gap-3 active:scale-95 cursor-pointer"
                   >
                     {actionLoading ? <div className="w-6 h-6 border-2 border-white/30 border-t-white rounded-full animate-spin" /> : <CheckCircle2 size={24} />}
                     Godta Tilbud
@@ -669,7 +669,7 @@ const CustomerPortal: React.FC<CustomerPortalProps> = ({ project }) => {
             <div className="bg-emerald-900 rounded-[2rem] p-6 text-white shadow-xl shadow-emerald-100">
               <div className="flex items-center gap-2 mb-3">
                 <div className="w-8 h-8 rounded-lg bg-emerald-800 flex items-center justify-center">
-                  <CheckCircle2 size={16} className="text-emerald-400" />
+                  <CheckCircle2 size={16} className="text-electric-400" />
                 </div>
                 <span className="text-[10px] font-black uppercase tracking-widest">Kvalitetssikret</span>
               </div>

@@ -143,7 +143,7 @@ export default function OfferPage({ token }: { token: string }) {
           <p className="text-neutral-600 mb-8">
             Tilbudet er akseptert og din bedriftskonto er opprettet. Vi har sendt en e-post til {offer?.recipientEmail} med innloggingsdetaljer.
           </p>
-          <a href="/login" className="inline-block w-full px-8 py-4 bg-emerald-600 text-white rounded-2xl font-bold hover:bg-emerald-500 transition-all shadow-lg shadow-emerald-100">
+          <a href="/login" className="inline-block w-full px-8 py-4 bg-gradient-to-r from-electric-500 to-electric-400 text-white rounded-2xl font-bold hover:from-electric-400 hover:to-electric-300 transition-all shadow-purple-cta text-center">
             Logg inn nå
           </a>
         </div>
@@ -221,13 +221,13 @@ export default function OfferPage({ token }: { token: string }) {
                   </div>
                 </div>
 
-                <div className="p-8 bg-emerald-600 rounded-[2rem] text-white shadow-xl shadow-emerald-100">
+                <div className="p-8 bg-gradient-to-r from-electric-600 to-electric-500 rounded-[2rem] text-white shadow-purple-cta">
                   <h3 className="font-bold mb-2">Klar til å starte?</h3>
                   <p className="text-sm text-emerald-100 mb-6">Ved å akseptere tilbudet får du umiddelbar tilgang til alle valgte moduler.</p>
                   <button 
                     onClick={handleAccept}
                     disabled={loading}
-                    className="w-full py-4 bg-white text-emerald-600 rounded-2xl font-black uppercase tracking-widest hover:bg-neutral-50 transition-all flex items-center justify-center gap-2 disabled:opacity-50"
+                    className="w-full py-4 bg-white text-electric-600 rounded-2xl font-bold uppercase tracking-wider hover:bg-slate-50 transition-all flex items-center justify-center gap-2 shadow-sm disabled:opacity-50 cursor-pointer"
                   >
                     {loading ? 'Behandler...' : 'Aksepter Tilbud'}
                     <ArrowRight size={18} />

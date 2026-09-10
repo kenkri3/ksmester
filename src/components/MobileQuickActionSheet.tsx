@@ -133,7 +133,7 @@ export default function MobileQuickActionSheet({
           <div className="flex items-center justify-between mb-5">
             <div>
               <div className="flex items-center gap-2">
-                <div className="w-7 h-7 rounded-xl bg-emerald-50 text-emerald-600 flex items-center justify-center">
+                <div className="w-7 h-7 rounded-xl bg-electric-50 text-electric-600 flex items-center justify-center">
                   <Zap size={16} />
                 </div>
                 <h3 className="text-lg font-bold tracking-tight text-neutral-900">
@@ -173,11 +173,11 @@ export default function MobileQuickActionSheet({
 
                 <div className="flex-1 min-w-0">
                   <div className="flex items-center gap-2">
-                    <span className="text-sm font-bold text-neutral-900 group-hover:text-emerald-700 transition-colors">
+                    <span className="text-sm font-bold text-neutral-900 group-hover:text-electric-600 transition-colors">
                       {action.label}
                     </span>
                     {action.badge && (
-                      <span className="px-2 py-0.5 rounded-full text-[9px] font-black uppercase tracking-wider bg-emerald-100 text-emerald-800">
+                      <span className="px-2 py-0.5 rounded-full text-[9px] font-black uppercase tracking-wider bg-electric-50 text-electric-700 border border-electric-200">
                         {action.badge}
                       </span>
                     )}
@@ -187,7 +187,7 @@ export default function MobileQuickActionSheet({
                   </p>
                 </div>
 
-                <div className="w-8 h-8 rounded-xl bg-white border border-neutral-200/80 flex items-center justify-center text-neutral-400 group-hover:text-emerald-600 group-hover:border-emerald-200 transition-all shrink-0">
+                <div className="w-8 h-8 rounded-xl bg-white border border-neutral-200/80 flex items-center justify-center text-neutral-400 group-hover:text-electric-600 group-hover:border-emerald-200 transition-all shrink-0">
                   <Plus size={16} />
                 </div>
               </button>

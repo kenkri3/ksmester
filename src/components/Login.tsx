@@ -1,7 +1,7 @@
 import React, { useState } from 'react';
 import { motion, AnimatePresence } from 'motion/react';
 import Logo from './Logo';
-import { ShieldCheck, LogIn, ArrowLeft, Mail, Lock, User, Building, ArrowRight, Loader2, CheckSquare, Square, Terminal } from 'lucide-react';
+import { ShieldCheck, LogIn, ArrowLeft, Mail, Lock, User, Building, ArrowRight, Loader2 } from 'lucide-react';
 import { useAuth } from '../hooks/useAuth';
 import { useTranslation } from 'react-i18next';
 
@@ -54,7 +54,7 @@ export default function Login({ onBack }: { onBack?: () => void }) {
   };
 
   return (
-    <div className="min-h-screen bg-white bg-grid-slate flex items-center justify-center p-4 relative overflow-hidden text-navy-900 font-sans">
+    <div className="min-h-screen bg-slate-50 flex items-center justify-center p-4 relative overflow-hidden text-navy-900 font-sans">
       {(onBack || mode !== 'login') && (
         <button 
           onClick={() => {
@@ -66,7 +66,7 @@ export default function Login({ onBack }: { onBack?: () => void }) {
               onBack();
             }
           }}
-          className="absolute top-6 left-6 flex items-center gap-2 text-slate-400 hover:text-electric-600 transition-colors text-xs uppercase tracking-wider font-bold z-10 cursor-pointer"
+          className="absolute top-6 left-6 flex items-center gap-2 text-slate-600 hover:text-navy-900 transition-colors text-xs uppercase tracking-wider font-bold z-10 cursor-pointer"
         >
           <ArrowLeft size={16} />
           {t('back', 'Tilbake til forsiden')}
@@ -76,20 +76,20 @@ export default function Login({ onBack }: { onBack?: () => void }) {
       <motion.div 
         initial={{ opacity: 0, y: 15 }}
         animate={{ opacity: 1, y: 0 }}
-        className="max-w-md w-full bg-white border border-slate-200 shadow-card-hover rounded-2xl shadow-2xl p-6 sm:p-10 relative overflow-hidden backdrop-blur-xl"
+        className="max-w-md w-full bg-white border border-slate-200 rounded-3xl shadow-card-hover p-6 sm:p-10 relative overflow-hidden backdrop-blur-xl"
       >
         {/* Terminal Header Bar */}
-        <div className="flex items-center justify-between pb-4 mb-6 border-b border-slate-200 text-[10px] text-slate-500">
-          <div className="flex items-center gap-1.5">
-            <span className="w-2 h-2 rounded-full bg-emerald-400 animate-pulse" />
-            <span className="text-slate-300 font-bold uppercase tracking-widest">VIKINGMESTER ADGANGS-TERMINAL</span>
+        <div className="flex items-center justify-between pb-4 mb-6 border-b border-slate-200 text-xs">
+          <div className="flex items-center gap-2">
+            <span className="w-2.5 h-2.5 rounded-full bg-emerald-500 animate-pulse" />
+            <span className="text-slate-700 font-bold uppercase tracking-widest text-[11px]">VIKINGMESTER ADGANGS-TERMINAL</span>
           </div>
-          <span className="text-electric-600">AES-256</span>
+          <span className="text-electric-600 font-bold text-xs bg-electric-50 px-2 py-0.5 rounded-full border border-electric-200">AES-256</span>
         </div>
 
         <div className="flex flex-col items-center mb-6">
           <Logo size="lg" className="mb-3" />
-          <p className="text-slate-400 text-xs text-center font-sans">
+          <p className="text-slate-600 text-xs sm:text-sm text-center font-sans leading-relaxed">
             {mode === 'login' 
               ? 'Logg inn med din autoriserte bedriftskonto.' 
               : mode === 'register'
@@ -98,7 +98,7 @@ export default function Login({ onBack }: { onBack?: () => void }) {
           </p>
         </div>
 
-        <form onSubmit={handleSubmit} className="space-y-4 text-xs">
+        <form onSubmit={handleSubmit} className="space-y-4 text-xs sm:text-sm">
           <AnimatePresence mode="wait">
             {mode === 'register' && (
               <motion.div
@@ -109,25 +109,25 @@ export default function Login({ onBack }: { onBack?: () => void }) {
                 className="space-y-4 overflow-hidden"
               >
                 <div className="relative">
-                  <User className="absolute left-3.5 top-1/2 -translate-y-1/2 text-slate-500" size={16} />
+                  <User className="absolute left-3.5 top-1/2 -translate-y-1/2 text-slate-400" size={17} />
                   <input
                     type="text"
                     placeholder="Fullt navn (daglig leder/kontaktperson)"
                     value={name}
                     onChange={(e) => setName(e.target.value)}
                     required
-                    className="w-full pl-10 pr-4 py-3 bg-black/60 border border-slate-200 rounded-xl text-white focus:border-amber-500 outline-none transition-all"
+                    className="w-full pl-10 pr-4 py-3 bg-slate-50 border border-slate-200 rounded-xl text-slate-900 placeholder:text-slate-400 focus:bg-white focus:border-electric-500 focus:ring-2 focus:ring-electric-500/20 outline-none text-sm transition-all"
                   />
                 </div>
                 <div className="relative">
-                  <Building className="absolute left-3.5 top-1/2 -translate-y-1/2 text-slate-500" size={16} />
+                  <Building className="absolute left-3.5 top-1/2 -translate-y-1/2 text-slate-400" size={17} />
                   <input
                     type="text"
                     placeholder="Bedriftsnavn (Foretak)"
                     value={company}
                     onChange={(e) => setCompany(e.target.value)}
                     required
-                    className="w-full pl-10 pr-4 py-3 bg-black/60 border border-slate-200 rounded-xl text-white focus:border-amber-500 outline-none transition-all"
+                    className="w-full pl-10 pr-4 py-3 bg-slate-50 border border-slate-200 rounded-xl text-slate-900 placeholder:text-slate-400 focus:bg-white focus:border-electric-500 focus:ring-2 focus:ring-electric-500/20 outline-none text-sm transition-all"
                   />
                 </div>
               </motion.div>
@@ -135,20 +135,20 @@ export default function Login({ onBack }: { onBack?: () => void }) {
           </AnimatePresence>
 
           <div className="relative">
-            <Mail className="absolute left-3.5 top-1/2 -translate-y-1/2 text-slate-500" size={16} />
+            <Mail className="absolute left-3.5 top-1/2 -translate-y-1/2 text-slate-400" size={17} />
             <input
               type="email"
               placeholder="E-postadresse (jobbadresse)"
               value={email}
               onChange={(e) => setEmail(e.target.value)}
               required
-              className="w-full pl-10 pr-4 py-3 bg-black/60 border border-slate-200 rounded-xl text-white focus:border-amber-500 outline-none transition-all"
+              className="w-full pl-10 pr-4 py-3 bg-slate-50 border border-slate-200 rounded-xl text-slate-900 placeholder:text-slate-400 focus:bg-white focus:border-electric-500 focus:ring-2 focus:ring-electric-500/20 outline-none text-sm transition-all"
             />
           </div>
 
           {mode !== 'forgot' && (
             <div className="relative">
-              <Lock className="absolute left-3.5 top-1/2 -translate-y-1/2 text-slate-500" size={16} />
+              <Lock className="absolute left-3.5 top-1/2 -translate-y-1/2 text-slate-400" size={17} />
               <input
                 type="password"
                 placeholder={mode === 'register' ? 'Passord (minst 8 tegn)' : 'Passord'}
@@ -156,14 +156,14 @@ export default function Login({ onBack }: { onBack?: () => void }) {
                 onChange={(e) => setPassword(e.target.value)}
                 required
                 minLength={mode === 'register' ? 8 : 1}
-                className="w-full pl-10 pr-4 py-3 bg-black/60 border border-slate-200 rounded-xl text-white focus:border-amber-500 outline-none transition-all"
+                className="w-full pl-10 pr-4 py-3 bg-slate-50 border border-slate-200 rounded-xl text-slate-900 placeholder:text-slate-400 focus:bg-white focus:border-electric-500 focus:ring-2 focus:ring-electric-500/20 outline-none text-sm transition-all"
               />
             </div>
           )}
 
           {mode === 'register' && (
-            <div className="bg-slate-50 p-3.5 rounded-xl border border-slate-100">
-              <label className="flex items-start gap-2.5 cursor-pointer select-none text-[11px] text-slate-400 leading-relaxed font-sans">
+            <div className="bg-slate-50 p-3.5 rounded-xl border border-slate-200">
+              <label className="flex items-start gap-2.5 cursor-pointer select-none text-xs text-slate-600 leading-relaxed font-sans">
                 <input
                   type="checkbox"
                   checked={gdprConsent}
@@ -183,7 +183,7 @@ export default function Login({ onBack }: { onBack?: () => void }) {
               <button 
                 type="button"
                 onClick={() => setMode('forgot')}
-                className="text-[11px] text-electric-600 hover:underline cursor-pointer"
+                className="text-xs text-electric-600 font-bold hover:underline cursor-pointer"
               >
                 Glemt passord?
               </button>
@@ -191,13 +191,13 @@ export default function Login({ onBack }: { onBack?: () => void }) {
           )}
 
           {error && (
-            <div className="p-2.5 rounded bg-red-950/40 border border-red-500/40 text-red-300 text-xs">
+            <div className="p-3 rounded-xl bg-rose-50 border border-rose-200 text-rose-700 text-xs font-medium">
               {error}
             </div>
           )}
 
           {success && (
-            <div className="p-2.5 rounded bg-amber-950/40 border border-amber-500/40 text-amber-300 text-xs">
+            <div className="p-3 rounded-xl bg-emerald-50 border border-emerald-200 text-emerald-800 text-xs font-medium">
               {success}
             </div>
           )}
@@ -212,19 +212,19 @@ export default function Login({ onBack }: { onBack?: () => void }) {
             ) : (
               <>
                 <span>{mode === 'login' ? 'Logg inn på Dashboard' : mode === 'register' ? 'Opprett Bedriftskonto' : 'Send Tilbakestilling'}</span>
-                <ArrowRight size={14} />
+                <ArrowRight size={16} />
               </>
             )}
           </button>
         </form>
 
-        <div className="mt-6 pt-4 border-t border-slate-200 text-center text-xs text-slate-400">
+        <div className="mt-6 pt-4 border-t border-slate-200 text-center text-xs text-slate-600">
           {mode === 'login' ? (
             <>
               Har du ikke konto ennå?{' '}
               <button 
                 onClick={() => setMode('register')}
-                className="text-electric-600 font-bold hover:underline cursor-pointer"
+                className="text-electric-600 font-bold hover:underline cursor-pointer ml-1"
               >
                 Registrer bedrift her
               </button>
@@ -234,7 +234,7 @@ export default function Login({ onBack }: { onBack?: () => void }) {
               Har du allerede en konto?{' '}
               <button 
                 onClick={() => setMode('login')}
-                className="text-electric-600 font-bold hover:underline cursor-pointer"
+                className="text-electric-600 font-bold hover:underline cursor-pointer ml-1"
               >
                 Logg inn her
               </button>

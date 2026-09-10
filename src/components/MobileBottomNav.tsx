@@ -45,7 +45,7 @@ export default function MobileBottomNav({
           onClick={() => onNavigate('dashboard', 'oversikt')}
           className={cn(
             "flex flex-col items-center justify-center flex-1 py-1 transition-all active:scale-90",
-            isHomeActive ? "text-emerald-600 font-bold" : "text-neutral-500 hover:text-neutral-800"
+            isHomeActive ? "text-electric-600 font-bold" : "text-neutral-500 hover:text-neutral-800"
           )}
         >
           <div className="relative">
@@ -53,7 +53,7 @@ export default function MobileBottomNav({
             {isHomeActive && (
               <motion.div
                 layoutId="activeBottomDot"
-                className="absolute -bottom-1 left-1/2 -translate-x-1/2 w-1 h-1 bg-emerald-600 rounded-full"
+                className="absolute -bottom-1 left-1/2 -translate-x-1/2 w-1 h-1 bg-electric-500 rounded-full"
               />
             )}
           </div>
@@ -65,7 +65,7 @@ export default function MobileBottomNav({
           onClick={() => onNavigate('dashboard', 'prosjekter')}
           className={cn(
             "flex flex-col items-center justify-center flex-1 py-1 transition-all active:scale-90",
-            isProjectsActive ? "text-emerald-600 font-bold" : "text-neutral-500 hover:text-neutral-800"
+            isProjectsActive ? "text-electric-600 font-bold" : "text-neutral-500 hover:text-neutral-800"
           )}
         >
           <div className="relative">
@@ -73,7 +73,7 @@ export default function MobileBottomNav({
             {isProjectsActive && (
               <motion.div
                 layoutId="activeBottomDot"
-                className="absolute -bottom-1 left-1/2 -translate-x-1/2 w-1 h-1 bg-emerald-600 rounded-full"
+                className="absolute -bottom-1 left-1/2 -translate-x-1/2 w-1 h-1 bg-electric-500 rounded-full"
               />
             )}
           </div>
@@ -84,7 +84,7 @@ export default function MobileBottomNav({
         <div className="flex-1 flex justify-center -mt-6">
           <button
             onClick={onOpenQuickActions}
-            className="w-13 h-13 rounded-2xl bg-gradient-to-tr from-emerald-600 to-teal-500 text-white flex items-center justify-center shadow-lg shadow-emerald-500/35 border-2 border-white active:scale-90 transition-all group"
+            className="w-13 h-13 rounded-2xl bg-gradient-to-tr from-electric-600 to-electric-400 text-white flex items-center justify-center shadow-purple-cta border-2 border-white active:scale-90 transition-all group"
             title="Åpne hurtighandlinger"
           >
             <Plus size={24} className="group-hover:rotate-90 transition-transform duration-200" strokeWidth={2.6} />
@@ -96,7 +96,7 @@ export default function MobileBottomNav({
           onClick={() => onNavigate('mobile')}
           className={cn(
             "flex flex-col items-center justify-center flex-1 py-1 transition-all active:scale-90",
-            isHmsActive ? "text-emerald-600 font-bold" : "text-neutral-500 hover:text-neutral-800"
+            isHmsActive ? "text-electric-600 font-bold" : "text-neutral-500 hover:text-neutral-800"
           )}
         >
           <div className="relative">
@@ -104,7 +104,7 @@ export default function MobileBottomNav({
             {isHmsActive && (
               <motion.div
                 layoutId="activeBottomDot"
-                className="absolute -bottom-1 left-1/2 -translate-x-1/2 w-1 h-1 bg-emerald-600 rounded-full"
+                className="absolute -bottom-1 left-1/2 -translate-x-1/2 w-1 h-1 bg-electric-500 rounded-full"
               />
             )}
           </div>
@@ -116,7 +116,7 @@ export default function MobileBottomNav({
           onClick={onOpenMenu}
           className={cn(
             "flex flex-col items-center justify-center flex-1 py-1 transition-all active:scale-90",
-            isMenuActive ? "text-emerald-600 font-bold" : "text-neutral-500 hover:text-neutral-800"
+            isMenuActive ? "text-electric-600 font-bold" : "text-neutral-500 hover:text-neutral-800"
           )}
         >
           <div className="relative">
@@ -133,7 +133,7 @@ export default function MobileBottomNav({
             {isMenuActive && (
               <motion.div
                 layoutId="activeBottomDot"
-                className="absolute -bottom-1 left-1/2 -translate-x-1/2 w-1 h-1 bg-emerald-600 rounded-full"
+                className="absolute -bottom-1 left-1/2 -translate-x-1/2 w-1 h-1 bg-electric-500 rounded-full"
               />
             )}
           </div>

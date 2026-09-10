@@ -24,14 +24,14 @@ const Logo: React.FC<LogoProps> = ({
   const iconSizes = {
     sm: 15,
     md: 19,
-    lg: 26,
-    xl: 36
+    lg: 25,
+    xl: 34
   };
 
   return (
     <div className={`flex items-center gap-3 ${className}`}>
       {/* Viking Shield + Craftsman Precision Hammer in Vikingnet signature Navy & Electric */}
-      <div className={`${sizes[size]} bg-gradient-to-br from-navy-900 via-navy-850 to-navy-950 border border-electric-500/40 rounded-xl flex items-center justify-center text-electric-400 shadow-purple-cta relative overflow-hidden group shrink-0`}>
+      <div className={`${sizes[size]} bg-gradient-to-br from-navy-900 via-navy-850 to-navy-950 border border-electric-500/30 rounded-xl flex items-center justify-center text-electric-300 shadow-sm relative overflow-hidden group shrink-0`}>
         {/* Geometric Norse Precision Grid */}
         <svg 
           viewBox="0 0 100 100" 
@@ -47,11 +47,11 @@ const Logo: React.FC<LogoProps> = ({
         
         {/* Precision Laser Hammer */}
         <div className="relative z-10 flex items-center justify-center group-hover:scale-110 transition-transform duration-300">
-          <Hammer size={iconSizes[size]} className="text-electric-300 drop-shadow-[0_2px_10px_rgba(157,0,255,0.6)] -rotate-12" />
+          <Hammer size={iconSizes[size]} className="text-electric-300 drop-shadow-[0_2px_8px_rgba(157,0,255,0.4)] -rotate-12" />
         </div>
 
-        {/* Ambient Electric Glow Highlight */}
-        <div className="absolute -top-3 -right-3 w-8 h-8 bg-electric-500/30 rounded-full blur-md pointer-events-none" />
+        {/* Subtle Ambient Electric Glow Highlight */}
+        <div className="absolute -top-2 -right-2 w-6 h-6 bg-electric-500/20 rounded-full blur-sm pointer-events-none" />
       </div>
 
       <div className="flex flex-col">
@@ -68,7 +68,7 @@ const Logo: React.FC<LogoProps> = ({
           </span>
         </div>
         {showSubtitle && (
-          <span className="text-[10px] font-semibold text-slate-500 uppercase tracking-widest mt-1">
+          <span className="text-[10px] font-bold text-slate-500 uppercase tracking-widest mt-1">
             En del av Vikingnet
           </span>
         )}

@@ -183,8 +183,8 @@ export const PricingPage = () => {
               className={cn(
                 "p-8 rounded-3xl flex flex-col justify-between transition-all relative",
                 plan.popular 
-                  ? "bg-neutral-900 text-navy-900 border-2 border-emerald-500 shadow-2xl ring-4 ring-emerald-500/10" 
-                  : "bg-white text-navy-900 border border-slate-200 shadow-sm hover:shadow-xl"
+                  ? "bg-white text-navy-900 border-2 border-electric-500 shadow-purple-cta ring-4 ring-electric-500/10" 
+                  : "bg-white text-navy-900 border border-slate-200 shadow-card-soft hover:shadow-card-hover"
               )}
             >
               {plan.popular && (
@@ -194,21 +194,21 @@ export const PricingPage = () => {
               )}
 
               <div>
-                <div className={cn("text-xs font-bold uppercase tracking-wider mb-1", plan.popular ? "text-emerald-400" : "text-slate-500")}>
+                <div className={cn("text-xs font-bold uppercase tracking-wider mb-1", plan.popular ? "text-electric-600" : "text-slate-500")}>
                   {plan.tag}
                 </div>
                 <h3 className="text-2xl font-bold mb-2">{plan.name}</h3>
-                <p className={cn("text-xs mb-6", plan.popular ? "text-neutral-400" : "text-slate-500")}>
+                <p className={cn("text-xs mb-6", plan.popular ? "text-slate-600" : "text-slate-600")}>
                   {plan.desc}
                 </p>
 
                 <div className="mb-6">
                   {typeof price === 'number' ? (
                     <div>
-                      <span className={cn("text-4xl font-black", plan.popular ? "text-emerald-400" : "text-navy-900")}>
+                      <span className={cn("text-4xl font-black", plan.popular ? "text-electric-600" : "text-navy-900")}>
                         {price} kr
                       </span>
-                      <span className={cn("text-xs font-medium", plan.popular ? "text-neutral-400" : "text-slate-500")}>
+                      <span className={cn("text-xs font-medium", plan.popular ? "text-slate-500" : "text-slate-500")}>
                         {" "}/ mnd ekskl. mva
                       </span>
                     </div>
@@ -220,8 +220,8 @@ export const PricingPage = () => {
                 <ul className="space-y-3 text-xs mb-8 font-medium">
                   {plan.features.map((feat, idx) => (
                     <li key={idx} className="flex items-start gap-2.5">
-                      <CheckCircle2 size={16} className={cn("shrink-0 mt-0.5", plan.popular ? "text-emerald-400" : "text-electric-600")} />
-                      <span className={plan.popular ? "text-neutral-200" : "text-neutral-700"}>{feat}</span>
+                      <CheckCircle2 size={16} className="shrink-0 mt-0.5 text-emerald-600" />
+                      <span className={plan.popular ? "text-slate-800 font-medium" : "text-slate-700"}>{feat}</span>
                     </li>
                   ))}
                 </ul>
@@ -232,8 +232,8 @@ export const PricingPage = () => {
                 className={cn(
                   "w-full py-4 rounded-xl font-bold text-xs transition-all shadow-md active:scale-95 cursor-pointer",
                   plan.popular 
-                    ? "bg-electric-500 hover:bg-emerald-400 text-navy-900 font-black" 
-                    : "bg-neutral-900 hover:bg-neutral-800 text-navy-900"
+                    ? "bg-gradient-to-r from-electric-500 to-electric-400 hover:from-electric-400 hover:to-electric-300 text-white font-bold shadow-purple-cta hover:shadow-purple-hover" 
+                    : "bg-slate-100 hover:bg-slate-200 text-navy-900 font-bold border border-slate-200"
                 )}
               >
                 {plan.id === 'enterprise' ? 'Kontakt salg' : `Velg ${plan.name}`}
@@ -331,22 +331,22 @@ export const AboutPage = () => {
         </div>
 
         {/* Stats Strip */}
-        <div className="bg-neutral-900 rounded-3xl p-8 sm:p-12 text-navy-900 grid grid-cols-2 md:grid-cols-4 gap-6 text-center border border-neutral-800">
+        <div className="bg-navy-900 rounded-3xl p-8 sm:p-12 text-white grid grid-cols-2 md:grid-cols-4 gap-6 text-center border border-navy-800 shadow-card-hover">
           <div>
-            <div className="text-3xl sm:text-4xl font-black text-emerald-400 mb-1">450+</div>
-            <div className="text-xs text-neutral-400 font-bold uppercase tracking-wider">Aktive håndverkerbedrifter</div>
+            <div className="text-3xl sm:text-4xl font-black text-electric-400 mb-1">450+</div>
+            <div className="text-xs text-slate-300 font-bold uppercase tracking-wider">Aktive håndverkerbedrifter</div>
           </div>
           <div>
-            <div className="text-3xl sm:text-4xl font-black text-emerald-400 mb-1">12 000+</div>
-            <div className="text-xs text-neutral-400 font-bold uppercase tracking-wider">SJA-analyser utført</div>
+            <div className="text-3xl sm:text-4xl font-black text-electric-400 mb-1">12 000+</div>
+            <div className="text-xs text-slate-300 font-bold uppercase tracking-wider">SJA-analyser utført</div>
           </div>
           <div>
-            <div className="text-3xl sm:text-4xl font-black text-emerald-400 mb-1">99.8%</div>
-            <div className="text-xs text-neutral-400 font-bold uppercase tracking-wider">Godkjent i tilsyn</div>
+            <div className="text-3xl sm:text-4xl font-black text-electric-400 mb-1">99.8%</div>
+            <div className="text-xs text-slate-300 font-bold uppercase tracking-wider">Godkjent i tilsyn</div>
           </div>
           <div>
-            <div className="text-3xl sm:text-4xl font-black text-emerald-400 mb-1">4.5 timer</div>
-            <div className="text-xs text-neutral-400 font-bold uppercase tracking-wider">Spart per arbeider/uke</div>
+            <div className="text-3xl sm:text-4xl font-black text-electric-400 mb-1">4.5 timer</div>
+            <div className="text-xs text-slate-300 font-bold uppercase tracking-wider">Spart per arbeider/uke</div>
           </div>
         </div>
       </div>
@@ -485,7 +485,7 @@ export const ContactPage = () => {
                   value={name}
                   onChange={(e) => setName(e.target.value)}
                   placeholder="Ola Nordmann"
-                  className="w-full px-4 py-3 bg-slate-50 border border-slate-200 rounded-xl text-sm focus:ring-2 focus:ring-emerald-500 focus:bg-white outline-none transition-all" 
+                  className="w-full px-4 py-3 bg-slate-50 border border-slate-200 rounded-xl text-sm focus:ring-2 focus:ring-electric-500/20 focus:border-electric-500 focus:bg-white outline-none transition-all" 
                 />
               </div>
 
@@ -500,7 +500,7 @@ export const ContactPage = () => {
                     value={email}
                     onChange={(e) => setEmail(e.target.value)}
                     placeholder="ola@byggmester.no"
-                    className="w-full px-4 py-3 bg-slate-50 border border-slate-200 rounded-xl text-sm focus:ring-2 focus:ring-emerald-500 focus:bg-white outline-none transition-all" 
+                    className="w-full px-4 py-3 bg-slate-50 border border-slate-200 rounded-xl text-sm focus:ring-2 focus:ring-electric-500/20 focus:border-electric-500 focus:bg-white outline-none transition-all" 
                   />
                 </div>
 
@@ -513,7 +513,7 @@ export const ContactPage = () => {
                     value={phone}
                     onChange={(e) => setPhone(e.target.value)}
                     placeholder="+47 900 00 000"
-                    className="w-full px-4 py-3 bg-slate-50 border border-slate-200 rounded-xl text-sm focus:ring-2 focus:ring-emerald-500 focus:bg-white outline-none transition-all" 
+                    className="w-full px-4 py-3 bg-slate-50 border border-slate-200 rounded-xl text-sm focus:ring-2 focus:ring-electric-500/20 focus:border-electric-500 focus:bg-white outline-none transition-all" 
                   />
                 </div>
               </div>
@@ -528,13 +528,13 @@ export const ContactPage = () => {
                   value={message}
                   onChange={(e) => setMessage(e.target.value)}
                   placeholder="Fortell oss gjerne litt om din bedrift, antall ansatte og hva dere ser etter..."
-                  className="w-full px-4 py-3 bg-slate-50 border border-slate-200 rounded-xl text-sm focus:ring-2 focus:ring-emerald-500 focus:bg-white outline-none transition-all resize-none" 
+                  className="w-full px-4 py-3 bg-slate-50 border border-slate-200 rounded-xl text-sm focus:ring-2 focus:ring-electric-500/20 focus:border-electric-500 focus:bg-white outline-none transition-all resize-none" 
                 />
               </div>
 
               <button 
                 disabled={loading}
-                className="w-full bg-amber-500 hover:bg-electric-500 text-navy-900 py-4 rounded-xl font-bold text-sm transition-all shadow-lg shadow-emerald-600/20 active:scale-95 disabled:opacity-50 cursor-pointer"
+                className="w-full py-4 rounded-xl bg-gradient-to-r from-electric-500 to-electric-400 hover:from-electric-400 hover:to-electric-300 text-white font-bold text-sm tracking-wide shadow-purple-cta hover:shadow-purple-hover transition-all disabled:opacity-50 cursor-pointer"
               >
                 {loading ? 'Sender henvendelse...' : 'Send henvendelse'}
               </button>
