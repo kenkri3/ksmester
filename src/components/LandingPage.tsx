@@ -295,7 +295,7 @@ export default function LandingPage({
             <div className="space-y-3 text-xs text-slate-300">
               <p className="flex items-center gap-2">
                 <Mail size={14} className="text-amber-400" />
-                <a href="mailto:support@vikingmester.no" className="hover:text-amber-300">support@vikingmester.no</a>
+                <a href="mailto:hei@vikingmester.no" className="hover:text-amber-300">hei@vikingmester.no</a>
               </p>
               <p className="text-slate-400 text-[11px] leading-relaxed">
                 Man-Fre 07:00 - 17:00.<br/>Autonom e-postagent svarer døgnet rundt på henvendelser og tilbud.
@@ -373,7 +373,7 @@ function TacticalHomeView({ onStartDemo, onGoToPricing, onViewChange }: { onStar
         toast.error(data.message || 'Kunne ikke sende registrering.');
       }
     } catch {
-      toast.error('Nettverksfeil. Ta kontakt på support@vikingmester.no');
+      toast.error('Nettverksfeil. Ta kontakt på hei@vikingmester.no');
     } finally {
       setIsSubmittingLead(false);
     }

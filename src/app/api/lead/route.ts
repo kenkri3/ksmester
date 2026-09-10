@@ -90,7 +90,7 @@ export async function POST(req: NextRequest) {
     const resendKey = process.env.RESEND_API_KEY;
     if (resendKey && leadRecord.email) {
       try {
-        const fromEmail = process.env.EMAIL_FROM || 'VikingMester <varsel@vikingmester.no>';
+        const fromEmail = process.env.EMAIL_FROM || 'VikingMester <hei@vikingmester.no>';
         await fetch('https://api.resend.com/emails', {
           method: 'POST',
           headers: {

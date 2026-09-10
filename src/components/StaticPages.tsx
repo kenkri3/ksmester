@@ -421,7 +421,7 @@ export const ContactPage = () => {
               </a>
 
               <a 
-                href="mailto:post@vikingmester.no" 
+                href="mailto:hei@vikingmester.no" 
                 className="flex items-center gap-4 p-4 rounded-2xl hover:bg-[#0a0c12] border border-white/5 transition-colors group"
               >
                 <div className="w-12 h-12 bg-blue-100 text-blue-700 rounded-2xl flex items-center justify-center shrink-0 group-hover:bg-blue-600 group-hover:text-white transition-colors">
@@ -429,7 +429,7 @@ export const ContactPage = () => {
                 </div>
                 <div>
                   <p className="text-[10px] font-black uppercase tracking-widest text-neutral-400">E-post</p>
-                  <p className="text-base font-bold text-white">post@vikingmester.no</p>
+                  <p className="text-base font-bold text-white">hei@vikingmester.no</p>
                 </div>
               </a>
 

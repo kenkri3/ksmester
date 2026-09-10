@@ -765,7 +765,7 @@ export default function Settings() {
                     <div className="flex items-center gap-4">
                       <button 
                         onClick={() => {
-                          toast.info('For oppgradering til Pro/Enterprise eller endring av abonnement, kontakt support@vikingmester.no eller ring +47 22 33 44 55.');
+                          toast.info('For oppgradering til Pro/Enterprise eller endring av abonnement, kontakt hei@vikingmester.no eller ring +47 22 33 44 55.');
                         }}
                         className="px-6 py-2 bg-emerald-600 text-white rounded-xl text-sm font-bold hover:bg-emerald-500 transition-all cursor-pointer"
                       >
