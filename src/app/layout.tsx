@@ -4,15 +4,15 @@ import { Providers } from './providers';
 import { Toaster } from 'sonner';
 
 export const metadata: Metadata = {
-  title: 'VikingMester - Byggeplassens råeste kraftverktøy | Autonom HMS, KS & Fagledelse',
-  description: 'Byggeplassens råeste kraftverktøy for norske håndverkere og entreprenører. Snakk inn dagboken, knips avvikene, og la VikingMester ta resten. En del av Vikingnet.',
+  title: 'VikingMester — Byggeplassens råeste kraftverktøy | En del av Vikingnet',
+  description: 'Byggeplassens råeste kraftverktøy for norske håndverkere og entreprenører. Snakk inn dagboken, knips avvikene med TEK17-visjon, og lås inn ekstraarbeider på sekunder. En del av Vikingnet.',
   manifest: '/manifest.json',
   metadataBase: new URL(process.env.APP_URL || 'https://vikingmester.no'),
   alternates: {
     canonical: '/',
   },
   openGraph: {
-    title: 'VikingMester - Byggeplassens råeste kraftverktøy',
+    title: 'VikingMester — Byggeplassens råeste kraftverktøy',
     description: 'Autonom HMS, TEK17-avvik og byggedagbok på sekunder. Bygget for norske håndverkere og entreprenører av Vikingnet.',
     url: 'https://vikingmester.no',
     siteName: 'VikingMester',
@@ -21,8 +21,8 @@ export const metadata: Metadata = {
   },
   twitter: {
     card: 'summary_large_image',
-    title: 'VikingMester - Byggeplassens råeste kraftverktøy',
-    description: 'Autonom HMS, TEK17-avvik og byggedagbok for norske håndverkere.',
+    title: 'VikingMester — Byggeplassens råeste kraftverktøy',
+    description: 'Autonom HMS, TEK17-avvik og byggedagbok for norske håndverkere. En del av Vikingnet.',
   },
   icons: {
     icon: '/icon.svg',
@@ -37,7 +37,7 @@ export const viewport: Viewport = {
   maximumScale: 1.0,
   userScalable: false,
   viewportFit: 'cover',
-  themeColor: '#0F1115',
+  themeColor: '#0A192F',
 };
 
 const jsonLd = {
@@ -65,8 +65,14 @@ export default function RootLayout({
   children: React.ReactNode;
 }) {
   return (
-    <html lang="no">
+    <html lang="nb">
       <head>
+        <link rel="preconnect" href="https://fonts.googleapis.com" />
+        <link rel="preconnect" href="https://fonts.gstatic.com" crossOrigin="anonymous" />
+        <link
+          href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700&family=Plus+Jakarta+Sans:wght@500;600;700;800;900&display=swap"
+          rel="stylesheet"
+        />
         <script
           type="application/ld+json"
           dangerouslySetInnerHTML={{ __html: JSON.stringify(jsonLd) }}
@@ -91,7 +97,7 @@ export default function RootLayout({
           }}
         />
       </head>
-      <body>
+      <body className="bg-white text-navy-900 antialiased selection:bg-electric-500/20 selection:text-electric-700">
         <Providers>
           {children}
           <Toaster richColors position="top-right" />

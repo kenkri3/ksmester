@@ -54,7 +54,7 @@ export default function Login({ onBack }: { onBack?: () => void }) {
   };
 
   return (
-    <div className="min-h-screen bg-[#08090d] bg-tactical-grid bg-radial-amber flex items-center justify-center p-4 relative overflow-hidden text-slate-100 font-mono">
+    <div className="min-h-screen bg-white bg-grid-slate flex items-center justify-center p-4 relative overflow-hidden text-navy-900 font-sans">
       {(onBack || mode !== 'login') && (
         <button 
           onClick={() => {
@@ -66,7 +66,7 @@ export default function Login({ onBack }: { onBack?: () => void }) {
               onBack();
             }
           }}
-          className="absolute top-6 left-6 flex items-center gap-2 text-slate-400 hover:text-amber-400 transition-colors text-xs uppercase tracking-wider font-bold z-10 cursor-pointer"
+          className="absolute top-6 left-6 flex items-center gap-2 text-slate-400 hover:text-electric-600 transition-colors text-xs uppercase tracking-wider font-bold z-10 cursor-pointer"
         >
           <ArrowLeft size={16} />
           {t('back', 'Tilbake til forsiden')}
@@ -76,15 +76,15 @@ export default function Login({ onBack }: { onBack?: () => void }) {
       <motion.div 
         initial={{ opacity: 0, y: 15 }}
         animate={{ opacity: 1, y: 0 }}
-        className="max-w-md w-full bg-[#0d1017]/95 border border-amber-500/30 rounded-2xl shadow-2xl p-6 sm:p-10 relative overflow-hidden backdrop-blur-xl"
+        className="max-w-md w-full bg-white border border-slate-200 shadow-card-hover rounded-2xl shadow-2xl p-6 sm:p-10 relative overflow-hidden backdrop-blur-xl"
       >
         {/* Terminal Header Bar */}
-        <div className="flex items-center justify-between pb-4 mb-6 border-b border-white/10 text-[10px] text-slate-500">
+        <div className="flex items-center justify-between pb-4 mb-6 border-b border-slate-200 text-[10px] text-slate-500">
           <div className="flex items-center gap-1.5">
             <span className="w-2 h-2 rounded-full bg-emerald-400 animate-pulse" />
             <span className="text-slate-300 font-bold uppercase tracking-widest">VIKINGMESTER ADGANGS-TERMINAL</span>
           </div>
-          <span className="text-amber-400">AES-256</span>
+          <span className="text-electric-600">AES-256</span>
         </div>
 
         <div className="flex flex-col items-center mb-6">
@@ -116,7 +116,7 @@ export default function Login({ onBack }: { onBack?: () => void }) {
                     value={name}
                     onChange={(e) => setName(e.target.value)}
                     required
-                    className="w-full pl-10 pr-4 py-3 bg-black/60 border border-white/10 rounded-xl text-white focus:border-amber-500 outline-none transition-all"
+                    className="w-full pl-10 pr-4 py-3 bg-black/60 border border-slate-200 rounded-xl text-white focus:border-amber-500 outline-none transition-all"
                   />
                 </div>
                 <div className="relative">
@@ -127,7 +127,7 @@ export default function Login({ onBack }: { onBack?: () => void }) {
                     value={company}
                     onChange={(e) => setCompany(e.target.value)}
                     required
-                    className="w-full pl-10 pr-4 py-3 bg-black/60 border border-white/10 rounded-xl text-white focus:border-amber-500 outline-none transition-all"
+                    className="w-full pl-10 pr-4 py-3 bg-black/60 border border-slate-200 rounded-xl text-white focus:border-amber-500 outline-none transition-all"
                   />
                 </div>
               </motion.div>
@@ -142,7 +142,7 @@ export default function Login({ onBack }: { onBack?: () => void }) {
               value={email}
               onChange={(e) => setEmail(e.target.value)}
               required
-              className="w-full pl-10 pr-4 py-3 bg-black/60 border border-white/10 rounded-xl text-white focus:border-amber-500 outline-none transition-all"
+              className="w-full pl-10 pr-4 py-3 bg-black/60 border border-slate-200 rounded-xl text-white focus:border-amber-500 outline-none transition-all"
             />
           </div>
 
@@ -156,20 +156,20 @@ export default function Login({ onBack }: { onBack?: () => void }) {
                 onChange={(e) => setPassword(e.target.value)}
                 required
                 minLength={mode === 'register' ? 8 : 1}
-                className="w-full pl-10 pr-4 py-3 bg-black/60 border border-white/10 rounded-xl text-white focus:border-amber-500 outline-none transition-all"
+                className="w-full pl-10 pr-4 py-3 bg-black/60 border border-slate-200 rounded-xl text-white focus:border-amber-500 outline-none transition-all"
               />
             </div>
           )}
 
           {mode === 'register' && (
-            <div className="bg-black/40 p-3.5 rounded-xl border border-white/5">
+            <div className="bg-slate-50 p-3.5 rounded-xl border border-slate-100">
               <label className="flex items-start gap-2.5 cursor-pointer select-none text-[11px] text-slate-400 leading-relaxed font-sans">
                 <input
                   type="checkbox"
                   checked={gdprConsent}
                   onChange={(e) => setGdprConsent(e.target.checked)}
                   required
-                  className="mt-0.5 accent-amber-500"
+                  className="mt-0.5 accent-electric-500"
                 />
                 <span>
                   Jeg godtar VikingMester sine forretningsvilkår, databehandleravtale (DPA) og personvernerklæring.
@@ -183,7 +183,7 @@ export default function Login({ onBack }: { onBack?: () => void }) {
               <button 
                 type="button"
                 onClick={() => setMode('forgot')}
-                className="text-[11px] text-amber-400 hover:underline cursor-pointer"
+                className="text-[11px] text-electric-600 hover:underline cursor-pointer"
               >
                 Glemt passord?
               </button>
@@ -205,7 +205,7 @@ export default function Login({ onBack }: { onBack?: () => void }) {
           <button
             type="submit"
             disabled={isSubmitting}
-            className="w-full py-3.5 rounded-xl bg-gradient-to-r from-amber-500 to-orange-500 hover:from-amber-400 hover:to-orange-400 text-black font-black uppercase tracking-wider text-xs shadow-lg shadow-amber-500/20 transition-all flex items-center justify-center gap-2 cursor-pointer disabled:opacity-50"
+            className="w-full py-3.5 rounded-xl bg-gradient-to-r from-electric-500 to-electric-400 hover:from-electric-400 hover:to-electric-300 text-white font-bold text-sm shadow-purple-cta hover:shadow-purple-hover transition-all flex items-center justify-center gap-2 cursor-pointer disabled:opacity-50"
           >
             {isSubmitting ? (
               <Loader2 className="animate-spin" size={18} />
@@ -218,13 +218,13 @@ export default function Login({ onBack }: { onBack?: () => void }) {
           </button>
         </form>
 
-        <div className="mt-6 pt-4 border-t border-white/10 text-center text-xs text-slate-400">
+        <div className="mt-6 pt-4 border-t border-slate-200 text-center text-xs text-slate-400">
           {mode === 'login' ? (
             <>
               Har du ikke konto ennå?{' '}
               <button 
                 onClick={() => setMode('register')}
-                className="text-amber-400 font-bold hover:underline cursor-pointer"
+                className="text-electric-600 font-bold hover:underline cursor-pointer"
               >
                 Registrer bedrift her
               </button>
@@ -234,7 +234,7 @@ export default function Login({ onBack }: { onBack?: () => void }) {
               Har du allerede en konto?{' '}
               <button 
                 onClick={() => setMode('login')}
-                className="text-amber-400 font-bold hover:underline cursor-pointer"
+                className="text-electric-600 font-bold hover:underline cursor-pointer"
               >
                 Logg inn her
               </button>

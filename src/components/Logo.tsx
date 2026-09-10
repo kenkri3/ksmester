@@ -5,9 +5,15 @@ interface LogoProps {
   className?: string;
   size?: 'sm' | 'md' | 'lg' | 'xl';
   showSubtitle?: boolean;
+  theme?: 'light' | 'dark';
 }
 
-const Logo: React.FC<LogoProps> = ({ className = '', size = 'md', showSubtitle = false }) => {
+const Logo: React.FC<LogoProps> = ({ 
+  className = '', 
+  size = 'md', 
+  showSubtitle = false,
+  theme = 'light'
+}) => {
   const sizes = {
     sm: 'w-7 h-7',
     md: 'w-9 h-9',
@@ -24,12 +30,12 @@ const Logo: React.FC<LogoProps> = ({ className = '', size = 'md', showSubtitle =
 
   return (
     <div className={`flex items-center gap-3 ${className}`}>
-      {/* Heavy-duty Viking Shield + Craftsman Precision Hammer Emblem */}
-      <div className={`${sizes[size]} bg-gradient-to-br from-zinc-900 via-[#12151f] to-[#0a0c12] border border-amber-500/40 rounded-xl flex items-center justify-center text-amber-500 shadow-xl shadow-amber-500/10 relative overflow-hidden group shrink-0`}>
-        {/* Norse Geometric / Precision Grid Lines */}
+      {/* Viking Shield + Craftsman Precision Hammer in Vikingnet signature Navy & Electric */}
+      <div className={`${sizes[size]} bg-gradient-to-br from-navy-900 via-navy-850 to-navy-950 border border-electric-500/40 rounded-xl flex items-center justify-center text-electric-400 shadow-purple-cta relative overflow-hidden group shrink-0`}>
+        {/* Geometric Norse Precision Grid */}
         <svg 
           viewBox="0 0 100 100" 
-          className="absolute inset-0 w-full h-full opacity-25 text-amber-500"
+          className="absolute inset-0 w-full h-full opacity-20 text-electric-300"
           fill="none" 
           stroke="currentColor" 
           strokeWidth="2.5"
@@ -41,11 +47,11 @@ const Logo: React.FC<LogoProps> = ({ className = '', size = 'md', showSubtitle =
         
         {/* Precision Laser Hammer */}
         <div className="relative z-10 flex items-center justify-center group-hover:scale-110 transition-transform duration-300">
-          <Hammer size={iconSizes[size]} className="text-amber-400 drop-shadow-[0_2px_10px_rgba(245,158,11,0.6)] -rotate-12" />
+          <Hammer size={iconSizes[size]} className="text-electric-300 drop-shadow-[0_2px_10px_rgba(157,0,255,0.6)] -rotate-12" />
         </div>
 
-        {/* Ambient gold glow highlight */}
-        <div className="absolute -top-4 -right-4 w-8 h-8 bg-amber-500/30 rounded-full blur-md" />
+        {/* Ambient Electric Glow Highlight */}
+        <div className="absolute -top-3 -right-3 w-8 h-8 bg-electric-500/30 rounded-full blur-md pointer-events-none" />
       </div>
 
       <div className="flex flex-col">
@@ -55,15 +61,15 @@ const Logo: React.FC<LogoProps> = ({ className = '', size = 'md', showSubtitle =
           size === 'lg' ? 'text-3xl' : 
           'text-4xl'
         }`}>
-          <span className="text-white font-black tracking-tight">Viking</span>
-          <span className="text-amber-400 font-black ml-0.5">Mester</span>
-          <span className="text-[10px] uppercase font-mono font-bold tracking-widest px-1.5 py-0.5 ml-2 rounded bg-amber-500/15 text-amber-400 border border-amber-500/30">
+          <span className={`${theme === 'dark' ? 'text-white' : 'text-navy-900'} font-extrabold tracking-tight`}>Viking</span>
+          <span className="text-gradient-purple font-black ml-0.5">Mester</span>
+          <span className="text-[10px] uppercase font-bold tracking-widest px-2 py-0.5 ml-2 rounded-full bg-electric-50 text-electric-600 border border-electric-300/40 shadow-xs">
             PRO
           </span>
         </div>
         {showSubtitle && (
-          <span className="text-[10px] font-mono font-semibold text-zinc-400 uppercase tracking-widest mt-1">
-            Powered by Vikingnet
+          <span className="text-[10px] font-semibold text-slate-500 uppercase tracking-widest mt-1">
+            En del av Vikingnet
           </span>
         )}
       </div>
