@@ -1,4 +1,6 @@
-import { useState, useEffect, useMemo } from 'react';
+'use client';
+
+import { useState, useEffect, useMemo, useRef } from 'react';
 import { motion, AnimatePresence } from 'motion/react';
 import { 
   BarChart3, 
@@ -34,24 +36,29 @@ import {
   Brain,
   Calendar,
   Building2,
-  Copy
+  Copy,
+  Mic,
+  MicOff,
+  Send,
+  Sparkles,
+  ArrowRight,
+  Check,
+  X,
+  Lock,
+  Unlock,
+  ExternalLink,
+  Layers,
+  ThumbsUp,
+  ThumbsDown,
+  CloudSun
 } from 'lucide-react';
 import { cn } from '@/src/lib/utils';
-import { Project, Deviation, UserProfile, ProjectMaterial, InventoryItem, Offer } from '../types';
-import { db, auth, collection, onSnapshot, query, orderBy, where, getDocs, OperationType, handleFirestoreError, getUserProfile, updateUserProfile } from '../services/firebase';
+import { Project, Deviation, UserProfile } from '../types';
+import { db, collection, onSnapshot, query, orderBy, where, getDocs, OperationType, handleFirestoreError } from '../services/firebase';
 import { useTranslation } from 'react-i18next';
 import { toast } from 'sonner';
-import { dashboardAiService, DashboardInsight } from '../services/dashboardAiService';
-import { TrendingUp as TrendingIcon, Cloud, Sun, CloudRain, CloudSnow, Wind, CloudLightning, FileText as FileIcon, BarChart3 as ChartIcon, Settings2, Sparkles } from 'lucide-react';
-import { weatherService, WeatherData } from '../services/weatherService';
-import { fdvService, FDVDocument } from '../services/fdvService';
-import { deviationAiService, DeviationAnalysis } from '../services/deviationAiService';
-import { reportService, ExecutiveSummary } from '../services/reportService';
-import { resourceService, ResourceEstimation } from '../services/resourceService';
-import AiReportModal from './AiReportModal';
 import { useDashboardData } from '../hooks/useDashboardData';
 import { useAuth } from '../hooks/useAuth';
-import UniversalTranslator from './UniversalTranslator';
 import ActivityLogModal from './ActivityLogModal';
 import CreateProjectModal from './CreateProjectModal';
 import CreateDeviationModal from './CreateDeviationModal';
@@ -62,555 +69,281 @@ import ContractModal from './ContractModal';
 import DocumentationArchive from './DocumentationArchive';
 import TimeRegistrationModal from './TimeRegistrationModal';
 import BuildingApplicationModal from './BuildingApplicationModal';
-import ApprenticeModule from './ApprenticeModule';
 import IntegrationModal from './IntegrationModal';
 import HandoverModal from './HandoverModal';
 import InventoryModal from './InventoryModal';
 import VehicleModal from './VehicleModal';
 import HMSModal from './HMSModal';
-import HMSModule from './HMSModule';
 import ProjectDetails from './ProjectDetails';
 import SmartSearch from './SmartSearch';
-import { 
-  BarChart, 
-  Bar, 
-  XAxis, 
-  YAxis, 
-  CartesianGrid, 
-  Tooltip, 
-  ResponsiveContainer, 
-  LineChart, 
-  Line, 
-  AreaChart, 
-  Area,
-  PieChart,
-  Pie,
-  Cell
-} from 'recharts';
+
+interface DashboardProps {
+  initialTab?: any;
+  isDemo?: boolean;
+  onTabChange?: (tab: string) => void;
+  onOpenPortal?: (project: Project) => void;
+}
 
 export default function Dashboard({ 
-  isDemo = false, 
-  onOpenPortal,
-  initialTab = 'oversikt',
-  onTabChange
-}: { 
-  isDemo?: boolean, 
-  onOpenPortal?: (project: Project) => void,
-  initialTab?: 'oversikt' | 'prosjekter' | 'tilbud' | 'avvik' | 'ai' | 'finans' | 'laerling' | 'hms',
-  onTabChange?: (tab: string) => void
-}) {
-  const { t, i18n } = useTranslation();
-  const { user, companyModules } = useAuth();
-  const { projects, deviations, stats, loading } = useDashboardData();
-  const [activeTab, setActiveTab] = useState<'oversikt' | 'prosjekter' | 'tilbud' | 'avvik' | 'ai' | 'finans' | 'laerling' | 'hms'>(initialTab);
+  initialTab = 'cockpit', 
+  isDemo = false,
+  onTabChange,
+  onOpenPortal 
+}: DashboardProps) {
+  const { t } = useTranslation();
+  const { user } = useAuth();
+  const { projects, deviations, stats, loading: dataLoading } = useDashboardData();
 
-  useEffect(() => {
-    if (initialTab && initialTab !== activeTab) {
-      setActiveTab(initialTab);
-    }
-  }, [initialTab]);
+  // Primary active tab
+  const [activeTab, setActiveTab] = useState<'cockpit' | 'prosjekter' | 'endringsordrer' | 'kvalitet' | 'agent'>(
+    'cockpit'
+  );
 
-  const handleTabSelect = (tab: any) => {
+  const handleTabSelect = (tab: 'cockpit' | 'prosjekter' | 'endringsordrer' | 'kvalitet' | 'agent') => {
     setActiveTab(tab);
     onTabChange?.(tab);
   };
-  const [offers, setOffers] = useState<Offer[]>([]);
-  const [offerSearchTerm, setOfferSearchTerm] = useState('');
-  const [offerStatusFilter, setOfferStatusFilter] = useState<string>('alle');
-  const [isActivityLogModalOpen, setIsActivityLogModalOpen] = useState(false);
+
+  useEffect(() => {
+    if (!initialTab) return;
+    if (initialTab === 'prosjekter') setActiveTab('prosjekter');
+    else if (initialTab === 'finans' || initialTab === 'tilbud' || initialTab === 'endringsordrer') setActiveTab('endringsordrer');
+    else if (initialTab === 'avvik' || initialTab === 'hms' || initialTab === 'kvalitet') setActiveTab('kvalitet');
+    else if (initialTab === 'ai' || initialTab === 'agent') setActiveTab('agent');
+    else setActiveTab('cockpit');
+  }, [initialTab]);
+
+  // Selected project for details view
+  const [selectedProject, setSelectedProject] = useState<Project | null>(null);
+
+  // Modals state
   const [isCreateModalOpen, setIsCreateModalOpen] = useState(false);
   const [isDeviationModalOpen, setIsDeviationModalOpen] = useState(false);
   const [isChecklistModalOpen, setIsChecklistModalOpen] = useState(false);
-  const [checklistProjectId, setChecklistProjectId] = useState<string | undefined>(undefined);
+  const [checklistProjectId, setChecklistProjectId] = useState<string | undefined>();
   const [isAIVisionModalOpen, setIsAIVisionModalOpen] = useState(false);
   const [isOfferModalOpen, setIsOfferModalOpen] = useState(false);
-  const [offerInitialData, setOfferInitialData] = useState<any>(null);
   const [isContractModalOpen, setIsContractModalOpen] = useState(false);
   const [isArchiveModalOpen, setIsArchiveModalOpen] = useState(false);
   const [isTimeModalOpen, setIsTimeModalOpen] = useState(false);
   const [isBuildingAppModalOpen, setIsBuildingAppModalOpen] = useState(false);
   const [isIntegrationModalOpen, setIsIntegrationModalOpen] = useState(false);
   const [isHandoverModalOpen, setIsHandoverModalOpen] = useState(false);
-  const [handoverProjectId, setHandoverProjectId] = useState<string | undefined>(undefined);
+  const [handoverProjectId, setHandoverProjectId] = useState<string | undefined>();
   const [isInventoryModalOpen, setIsInventoryModalOpen] = useState(false);
   const [isVehicleModalOpen, setIsVehicleModalOpen] = useState(false);
   const [isHMSModalOpen, setIsHMSModalOpen] = useState(false);
   const [isSmartSearchOpen, setIsSmartSearchOpen] = useState(false);
-  const [projectSearchTerm, setProjectSearchTerm] = useState('');
-  const [userProfile, setUserProfile] = useState<UserProfile | null>(null);
-  const [selectedProject, setSelectedProject] = useState<Project | null>(null);
-  const [deviationAnalysis, setDeviationAnalysis] = useState<DeviationAnalysis | null>(null);
-  const [aiInsights, setAiInsights] = useState<DashboardInsight[]>([]);
-  const [inventoryStats, setInventoryStats] = useState({ total: 0, lowStock: 0 });
-  const [inventoryItems, setInventoryItems] = useState<InventoryItem[]>([]);
-  const [materials, setMaterials] = useState<ProjectMaterial[]>([]);
+  const [isActivityLogModalOpen, setIsActivityLogModalOpen] = useState(false);
+
+  // Agent State & Live Dispatch
+  const [agentStatus, setAgentStatus] = useState<any>({
+    name: 'VikingMester Autonom Agent',
+    status: 'online',
+    email: 'hei@vikingmester.no',
+    channels: ['E-post lytter (hei@vikingmester.no)', 'Tale & Diktering i felt', 'TEK17 Vision-skanner'],
+    lastPing: new Date().toISOString()
+  });
+
+  const [pendingApprovals, setPendingApprovals] = useState<any[]>([]);
+  const [recentActivities, setRecentActivities] = useState<any[]>([]);
+  const [agentMetrics, setAgentMetrics] = useState<any>({
+    todayActionsCount: 14,
+    pendingApprovalsCount: 2,
+    activeBlockersCount: 1,
+    securedRevenue: 42500
+  });
+
+  const [isLoadingAgent, setIsLoadingAgent] = useState(true);
+
+  // Command prompt state
+  const [commandText, setCommandText] = useState('');
+  const [isDispatching, setIsDispatching] = useState(false);
+  const [lastAgentReply, setLastAgentReply] = useState<string | null>(null);
+  const [isListeningMic, setIsListeningMic] = useState(false);
+
+  // Fetch live agent state from backend
+  const fetchAgentState = async () => {
+    try {
+      setIsLoadingAgent(true);
+      const res = await fetch('/api/agent/dispatch');
+      if (res.ok) {
+        const data = await res.json();
+        if (data.agentStatus) setAgentStatus(data.agentStatus);
+        if (data.pendingApprovals) setPendingApprovals(data.pendingApprovals);
+        if (data.recentActivities) setRecentActivities(data.recentActivities);
+        if (data.metrics) setAgentMetrics(data.metrics);
+      }
+    } catch (err) {
+      console.warn('Could not fetch agent state:', err);
+    } finally {
+      setIsLoadingAgent(false);
+    }
+  };
 
   useEffect(() => {
-    const unsubInventory = onSnapshot(collection(db, 'inventory'), (snapshot) => {
-      const items = snapshot.docs.map(doc => doc.data() as InventoryItem);
-      setInventoryItems(items);
-      setInventoryStats({
-        total: items.length,
-        lowStock: items.filter((item: any) => item.minQuantity && item.quantity < item.minQuantity).length
+    fetchAgentState();
+  }, []);
+
+  // Handle Quick Command / Voice prompt
+  const handleSendCommand = async (customPrompt?: string) => {
+    const textToSend = customPrompt || commandText;
+    if (!textToSend.trim()) return;
+
+    try {
+      setIsDispatching(true);
+      setLastAgentReply(null);
+
+      const res = await fetch('/api/agent/dispatch', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({
+          action: 'quick_command',
+          text: textToSend,
+          projectId: projects[0]?.id || 'proj-101',
+          projectName: projects[0]?.name || 'Nyebakken 14 - Totalrenovering',
+          authorName: user?.displayName || 'Admin / Byggmester'
+        })
       });
-    });
 
-    const unsubMaterials = onSnapshot(collection(db, 'project_materials'), (snapshot) => {
-      setMaterials(snapshot.docs.map(doc => doc.data() as ProjectMaterial));
-    });
-
-    const unsubOffers = onSnapshot(query(collection(db, 'offers'), orderBy('createdAt', 'desc')), (snapshot) => {
-      const list = snapshot.docs.map(doc => ({ id: doc.id, ...doc.data() } as Offer));
-      setOffers(list);
-    }, (err) => console.error("Offers subscription error:", err));
-
-    return () => {
-      unsubInventory();
-      unsubMaterials();
-      unsubOffers();
-    };
-  }, []);
-  const [projectAnalysis, setProjectAnalysis] = useState<any>(null);
-  const [isAiReportOpen, setIsAiReportOpen] = useState(false);
-  const [aiReport, setAiReport] = useState<any>(null);
-  const [isReportLoading, setIsReportLoading] = useState(false);
-  const [reportType, setReportType] = useState<string>('');
-  const [isAiReportModalOpen, setIsAiReportModalOpen] = useState(false);
-  const [reportData, setReportData] = useState<ExecutiveSummary | null>(null);
-  const [fdvData, setFdvData] = useState<FDVDocument[] | null>(null);
-  const [reportProjectName, setReportProjectName] = useState<string>('');
-  const [automationSettings, setAutomationSettings] = useState([
-    { id: 'fdv', label: 'Automatisk FDV-generering', desc: 'Henter dokumentasjon fra leverandører automatisk.', active: true },
-    { id: 'ruh', label: 'AI-drevet RUH-klassifisering', desc: 'Kategoriserer avvik basert på bilder og tekst.', active: true },
-    { id: 'report', label: 'Ukentlig leder-rapport', desc: 'Genererer oppsummering til daglig leder hver fredag.', active: false },
-    { id: 'safety', label: 'Sikkerhetsvarsling', desc: 'Varsler ved mønstre som tyder på økt risiko.', active: true },
-  ]);
-
-  const toggleAutomation = (id: string) => {
-    setAutomationSettings(prev => prev.map(item => 
-      item.id === id ? { ...item, active: !item.active } : item
-    ));
-  };
-
-  const handleAnalyzeDeviations = async () => {
-    setIsReportLoading(true);
-    setReportType('deviation_analysis');
-    setIsAiReportModalOpen(true);
-    try {
-      const analysis = await deviationAiService.analyzeDeviations(deviations);
-      setDeviationAnalysis(analysis);
-    } catch (error) {
-      console.error("Failed to analyze deviations:", error);
-    } finally {
-      setIsReportLoading(false);
-    }
-  };
-  const handleAnalyzeProject = async (project: Project) => {
-    setIsReportLoading(true);
-    setReportType('project_analysis');
-    setReportProjectName(project.name);
-    setIsAiReportModalOpen(true);
-    try {
-      // Fetch time entries for the project (simulated for now or fetch from Firestore)
-      // In a real app, we'd query the 'time_entries' collection
-      const timeEntries: any[] = []; 
-      
-      const materialsQuery = query(
-        collection(db, 'project_materials'),
-        where('projectId', '==', project.id)
-      );
-      const materialsSnapshot = await getDocs(materialsQuery);
-      const materials = materialsSnapshot.docs.map(doc => doc.data() as ProjectMaterial);
-      
-      const analysis = await dashboardAiService.analyzeProjectHealth(project, deviations.filter(d => d.projectId === project.id), timeEntries, materials);
-      setProjectAnalysis(analysis);
-    } catch (error) {
-      console.error("Failed to analyze project:", error);
-    } finally {
-      setIsReportLoading(false);
-    }
-  };
-
-  const handleGenerateWeeklyReport = async () => {
-    setIsReportLoading(true);
-    setReportType('weekly_report');
-    setIsAiReportModalOpen(true);
-    try {
-      const data = await reportService.generateWeeklyReport(projects, deviations);
-      setReportData(data);
-    } catch (error) {
-      console.error("Failed to generate weekly report:", error);
-    } finally {
-      setIsReportLoading(false);
-    }
-  };
-
-  const handleGenerateFDV = async (project: Project) => {
-    setIsReportLoading(true);
-    setReportType('fdv');
-    setReportProjectName(project.name);
-    setIsAiReportModalOpen(true);
-    try {
-      const materialsQuery = query(
-        collection(db, 'project_materials'),
-        where('projectId', '==', project.id)
-      );
-      const materialsSnapshot = await getDocs(materialsQuery);
-      const materials = materialsSnapshot.docs.map(doc => doc.data() as ProjectMaterial);
-
-      const data = await fdvService.generateFDV(project, materials);
-      setFdvData(data);
-    } catch (error) {
-      console.error("Failed to generate FDV:", error);
-    } finally {
-      setIsReportLoading(false);
-    }
-  };
-
-  const [isAiLoading, setIsAiLoading] = useState(false);
-  const [projectWeather, setProjectWeather] = useState<Record<string, WeatherData>>({});
-  
-  const lifecycleStages = [
-    { id: 'offer', label: t('phase_offer', 'Tilbud'), icon: <Calculator size={16} />, color: 'bg-blue-500' },
-    { id: 'contract', label: t('phase_contract', 'Kontrakt'), icon: <FileSignature size={16} />, color: 'bg-indigo-500' },
-    { id: 'active', label: t('phase_execution', 'Gjennomføring'), icon: <HardHat size={16} />, color: 'bg-emerald-500' },
-    { id: 'completion', label: t('phase_handover', 'Overlevering'), icon: <CheckCircle2 size={16} />, color: 'bg-rose-500' },
-    { id: 'archived', label: t('phase_archive', 'Arkiv'), icon: <Library size={16} />, color: 'bg-neutral-500' },
-  ];
-
-  const actionGroups = [
-    {
-      title: t('group_planning_sales', 'Planlegging & Salg'),
-      actions: [
-        { id: 'new_project', label: t('new_project', 'Nytt Prosjekt'), icon: <Plus size={18} />, color: 'bg-blue-600', module: 'projects' },
-        { id: 'offers', label: t('create_offer', 'Opprett Tilbud'), icon: <Calculator size={18} />, color: 'bg-blue-600', module: 'economy' },
-        { id: 'contracts', label: t('contracts', 'Kontrakter'), icon: <FileSignature size={18} />, color: 'bg-blue-600', module: 'economy' },
-        { id: 'building_app', label: t('building_application', 'Byggesøknad'), icon: <Building2 size={18} />, color: 'bg-blue-600', module: 'building_app' },
-      ]
-    },
-    {
-      title: t('group_daily_operations', 'Daglig Drift'),
-      actions: [
-        { id: 'start_checklist', label: t('ks_hms_checklist', 'KS/HMS Sjekkliste'), icon: <ListChecks size={18} />, color: 'bg-emerald-600', module: 'checklists' },
-        { id: 'hms', label: t('hms_crew', 'HMS & Mannskap'), icon: <ShieldCheck size={18} />, color: 'bg-emerald-600', module: 'checklists' },
-        { id: 'log_deviation', label: t('log_deviation_ruh', 'Logg Avvik/RUH'), icon: <AlertTriangle size={18} />, color: 'bg-orange-600', module: 'deviations' },
-        { id: 'take_photo', label: t('ai_vision_control', 'AI Vision Kontroll'), icon: <Camera size={18} />, color: 'bg-rose-600', module: 'ai' },
-        { id: 'apprentice', label: t('apprentice_module', 'Lærlingmodul'), icon: <GraduationCap size={18} />, color: 'bg-emerald-600', module: 'apprentice' },
-      ]
-    },
-    {
-      title: t('group_automation_doc', 'Automatisering & Dokumentasjon'),
-      actions: [
-        { id: 'ai_analysis', label: t('ai_analysis', 'AI Analyse'), icon: <Brain size={18} />, color: 'bg-neutral-900', module: 'ai' },
-        { id: 'library', label: t('fdv_archive', 'FDV Arkiv'), icon: <Library size={18} />, color: 'bg-neutral-900', module: 'fdv' },
-        { id: 'integrations', label: t('integrations', 'Integrasjoner'), icon: <RefreshCw size={18} />, color: 'bg-neutral-900', module: 'fdv' },
-        { id: 'handover', label: t('handover_fdv', 'Overlevering / FDV'), icon: <CheckCircle2 size={18} />, color: 'bg-neutral-900', module: 'fdv' },
-        { id: 'inventory', label: t('inventory_module', 'Lager & Verktøy'), icon: <Package size={18} />, color: 'bg-neutral-900', module: 'inventory' },
-        { id: 'vehicle', label: t('vehicle_module', 'Kjørebok'), icon: <Car size={18} />, color: 'bg-neutral-900', module: 'vehicle' },
-        { id: 'time_registration', label: t('time_registration', 'Timeføring'), icon: <Timer size={18} />, color: 'bg-neutral-900', module: 'time' },
-      ]
-    }
-  ].map(group => ({
-    ...group,
-    actions: group.actions.filter(action => !companyModules || companyModules.includes(action.module))
-  })).filter(group => group.actions.length > 0);
-
-  useEffect(() => {
-    const unsubscribe = auth.onAuthStateChanged(async (user) => {
-      if (user) {
-        const profile = await getUserProfile(user.uid);
-        if (profile) {
-          setUserProfile(profile);
-        } else {
-          const newProfile: UserProfile = {
-            id: user.uid,
-            name: user.displayName || 'Anonym',
-            email: user.email || '',
-            role: 'admin',
-            companyId: 'demo-company',
-            companyName: 'Demo Entreprenør AS'
-          };
-          await updateUserProfile(user.uid, newProfile);
-          setUserProfile(newProfile);
-        }
-      } else {
-        setUserProfile(null);
+      const data = await res.json();
+      if (data.reply) {
+        setLastAgentReply(data.reply);
+        toast.success('Agent utførte oppgaven!', {
+          description: data.reply
+        });
+      } else if (data.error) {
+        toast.error('Feil fra agent:', { description: data.error });
       }
-    });
-    return () => unsubscribe();
-  }, []);
 
-  useEffect(() => {
-    if (loading || projects.length === 0) return;
+      setCommandText('');
+      // Refresh state to reflect new activity / approvals
+      fetchAgentState();
+    } catch (err: any) {
+      toast.error('Kunne ikke nå agenten: ' + err.message);
+    } finally {
+      setIsDispatching(false);
+    }
+  };
 
-    const fetchWeatherAndInsights = async () => {
-      setIsAiLoading(true);
-      try {
-        // Fetch weather for all projects
-        const weatherMap: Record<string, WeatherData> = {};
-        await Promise.all(projects.map(async (p) => {
-          try {
-            const w = await weatherService.getWeather(p.location);
-            weatherMap[p.id] = w;
-          } catch (e) {
-            console.error(`Failed to fetch weather for ${p.location}`, e);
-          }
+  // 1-Click Approve Change Order
+  const handleApproveChangeOrder = async (changeOrderId: string) => {
+    try {
+      const res = await fetch('/api/agent/dispatch', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({
+          action: 'approve_change_order',
+          changeOrderId,
+          authorName: user?.displayName || 'Byggmester / Admin'
+        })
+      });
+
+      if (res.ok) {
+        toast.success('Endringsordre godkjent!', {
+          description: 'Varsel og godkjenningsdokument (NS 8406) er klargjort for kunden.'
+        });
+        // Remove from pending
+        setPendingApprovals(prev => prev.filter(item => item.id !== changeOrderId));
+        setAgentMetrics((prev: any) => ({
+          ...prev,
+          pendingApprovalsCount: Math.max(0, prev.pendingApprovalsCount - 1)
         }));
-        setProjectWeather(weatherMap);
-
-        // Generate insights with weather and inventory context
-        const insights = await dashboardAiService.generateInsights(projects, deviations, weatherMap, inventoryItems, i18n.language);
-        if (insights && insights.length > 0) {
-          setAiInsights(insights);
-        }
-      } catch (error) {
-        console.error("Failed to fetch AI insights:", error);
-      } finally {
-        setIsAiLoading(false);
+        fetchAgentState();
       }
-    };
-
-    fetchWeatherAndInsights();
-  }, [projects, deviations, loading, inventoryItems]);
-
-  const getInsightIcon = (iconName?: string, type?: string) => {
-    switch (iconName) {
-      case 'alert': return <AlertTriangle className="text-orange-600" size={20} />;
-      case 'zap': return <Zap className="text-blue-600" size={20} />;
-      case 'camera': return <Camera className="text-rose-600" size={20} />;
-      case 'check': return <CheckCircle2 className="text-emerald-600" size={20} />;
-      case 'trending': return <TrendingIcon className="text-indigo-600" size={20} />;
-      case 'cloud': return <Cloud className="text-blue-500" size={20} />;
-      default: 
-        if (type === 'predictive') return <Brain className="text-purple-600" size={20} />;
-        return type === 'warning' 
-          ? <AlertTriangle className="text-orange-600" size={20} />
-          : <Zap className="text-blue-600" size={20} />;
+    } catch (err: any) {
+      toast.error('Feil ved godkjenning: ' + err.message);
     }
   };
 
-  const getWeatherIcon = (iconName?: string) => {
-    switch (iconName) {
-      case 'sun': return <Sun size={14} className="text-amber-500" />;
-      case 'rain': return <CloudRain size={14} className="text-blue-500" />;
-      case 'snow': return <CloudSnow size={14} className="text-sky-400" />;
-      case 'wind': return <Wind size={14} className="text-neutral-400" />;
-      case 'cloud-lightning': return <CloudLightning size={14} className="text-purple-500" />;
-      default: return <Cloud size={14} className="text-neutral-400" />;
+  // 1-Click Reject Change Order
+  const handleRejectChangeOrder = async (changeOrderId: string) => {
+    try {
+      const res = await fetch('/api/agent/dispatch', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({
+          action: 'reject_change_order',
+          changeOrderId
+        })
+      });
+
+      if (res.ok) {
+        toast.info('Endringsordre avvist / satt på vent');
+        setPendingApprovals(prev => prev.filter(item => item.id !== changeOrderId));
+        fetchAgentState();
+      }
+    } catch (err: any) {
+      toast.error('Feil: ' + err.message);
     }
   };
 
-  const isActionVisible = (actionId: string) => {
-    if (!userProfile) return true;
-    if (userProfile.industry === 'general' || !userProfile.industry) return true;
-    
-    // Define which actions are "core" and which are "industry-specific"
-    const coreActions = ['new_project', 'start_checklist', 'hms', 'log_deviation', 'take_photo', 'library', 'time_registration'];
-    
-    // If the user has explicitly ordered modules, check them
-    if (userProfile.modules && userProfile.modules.length > 0) {
-      return userProfile.modules.includes(actionId) || coreActions.includes(actionId);
+  // Voice recording mock / speech recognition
+  const toggleMic = () => {
+    if (isListeningMic) {
+      setIsListeningMic(false);
+      return;
     }
-    
-    // Otherwise, filter based on industry defaults
-    const industryDefaults: Record<string, string[]> = {
-      'carpenter': ['offers', 'contracts', 'inventory', 'vehicle', 'apprentice'],
-      'plumber': ['offers', 'contracts', 'inventory', 'vehicle', 'apprentice'],
-      'electrician': ['offers', 'contracts', 'inventory', 'vehicle', 'apprentice'],
-      'mason': ['offers', 'contracts', 'inventory', 'vehicle'],
-      'painter': ['offers', 'contracts', 'inventory'],
-    };
 
-    const allowed = industryDefaults[userProfile.industry] || [];
-    return coreActions.includes(actionId) || allowed.includes(actionId);
-  };
+    if (!('webkitSpeechRecognition' in window) && !('SpeechRecognition' in window)) {
+      toast.info('Tale-til-tekst er aktivert via tastatur. Dikter direkte i feltet.');
+      return;
+    }
 
-  useEffect(() => {
-    const handleKeyDown = (e: KeyboardEvent) => {
-      if ((e.metaKey || e.ctrlKey) && e.key === 'k') {
-        e.preventDefault();
-        setIsSmartSearchOpen(true);
-      }
-    };
-    window.addEventListener('keydown', handleKeyDown);
-    return () => window.removeEventListener('keydown', handleKeyDown);
-  }, []);
+    try {
+      const SpeechRecognition = (window as any).SpeechRecognition || (window as any).webkitSpeechRecognition;
+      const recognition = new SpeechRecognition();
+      recognition.lang = 'nb-NO';
+      recognition.continuous = false;
+      recognition.interimResults = false;
 
-  const handleSmartNavigate = (type: string, id?: string) => {
-    if (type === 'project' && id) {
-      const p = projects.find(p => p.id === id);
-      if (p) setSelectedProject(p);
-    } else if (type === 'create_deviation') {
-      setIsDeviationModalOpen(true);
-    } else if (type === 'start_checklist') {
-      setIsChecklistModalOpen(true);
-      if (id) setChecklistProjectId(id);
+      recognition.onstart = () => {
+        setIsListeningMic(true);
+        toast.info('Lytter... Snakk inn dagbok eller endring nå.');
+      };
+
+      recognition.onresult = (event: any) => {
+        const transcript = event.results[0][0].transcript;
+        setCommandText(transcript);
+        setIsListeningMic(false);
+        toast.success('Tale oppfattet!');
+      };
+
+      recognition.onerror = () => {
+        setIsListeningMic(false);
+      };
+
+      recognition.onend = () => {
+        setIsListeningMic(false);
+      };
+
+      recognition.start();
+    } catch {
+      setIsListeningMic(false);
     }
   };
-
-  const handleQuickAction = (id: string) => {
-    switch (id) {
-      case 'new_project':
-        setIsCreateModalOpen(true);
-        break;
-      case 'offers':
-        setIsOfferModalOpen(true);
-        break;
-      case 'contracts':
-        setIsContractModalOpen(true);
-        break;
-      case 'library':
-        setIsArchiveModalOpen(true);
-        break;
-      case 'time_registration':
-        setIsTimeModalOpen(true);
-        break;
-      case 'building_app':
-        setIsBuildingAppModalOpen(true);
-        break;
-      case 'apprentice':
-        setActiveTab('laerling');
-        break;
-      case 'integrations':
-        setIsIntegrationModalOpen(true);
-        break;
-      case 'handover':
-        setIsHandoverModalOpen(true);
-        break;
-      case 'inventory':
-        setIsInventoryModalOpen(true);
-        break;
-      case 'vehicle':
-        setIsVehicleModalOpen(true);
-        break;
-      case 'hms':
-        setIsHMSModalOpen(true);
-        break;
-      case 'log_deviation':
-        setIsDeviationModalOpen(true);
-        break;
-      case 'start_checklist':
-        setIsChecklistModalOpen(true);
-        break;
-      case 'take_photo':
-        setIsAIVisionModalOpen(true);
-        break;
-      case 'ai_analysis':
-        setActiveTab('ai');
-        break;
-      case 'prosjekter':
-        setActiveTab('prosjekter');
-        break;
-      case 'avvik':
-        setActiveTab('avvik');
-        break;
-      default:
-        console.log('Action not implemented:', id);
-    }
-  };
-
-  useEffect(() => {
-    const handleTrigger = (e: any) => {
-      if (e.detail?.actionId) {
-        handleQuickAction(e.detail.actionId);
-      }
-    };
-    window.addEventListener('trigger_dashboard_action', handleTrigger);
-    return () => window.removeEventListener('trigger_dashboard_action', handleTrigger);
-  }, []);
-
-  // Memoized derived data to prevent unnecessary recalculations on re-renders
-  const memoizedOfferStats = useMemo(() => {
-    const draft = offers.filter(o => o.status === 'draft');
-    const sent = offers.filter(o => o.status === 'sent');
-    const accepted = offers.filter(o => o.status === 'accepted');
-
-    return {
-      draft: {
-        count: draft.length,
-        sum: draft.reduce((s, o) => s + (o.totalAmount || 0), 0)
-      },
-      sent: {
-        count: sent.length,
-        sum: sent.reduce((s, o) => s + (o.totalAmount || 0), 0)
-      },
-      accepted: {
-        count: accepted.length,
-        sum: accepted.reduce((s, o) => s + (o.totalAmount || 0), 0)
-      }
-    };
-  }, [offers]);
-
-  const filteredOffersList = useMemo(() => {
-    return offers.filter(offer => {
-      const matchesSearch = !offerSearchTerm ||
-        (offer.title && offer.title.toLowerCase().includes(offerSearchTerm.toLowerCase())) ||
-        (offer.clientName && offer.clientName.toLowerCase().includes(offerSearchTerm.toLowerCase())) ||
-        (offer.projectCode && offer.projectCode.toLowerCase().includes(offerSearchTerm.toLowerCase()));
-      const matchesStatus = offerStatusFilter === 'alle' || offer.status === offerStatusFilter;
-      return matchesSearch && matchesStatus;
-    });
-  }, [offers, offerSearchTerm, offerStatusFilter]);
-
-  const filteredProjectsList = useMemo(() => {
-    return projects.filter(p =>
-      p.name.toLowerCase().includes(projectSearchTerm.toLowerCase()) ||
-      p.projectCode?.toLowerCase().includes(projectSearchTerm.toLowerCase()) ||
-      p.location.toLowerCase().includes(projectSearchTerm.toLowerCase())
-    );
-  }, [projects, projectSearchTerm]);
-
-  const memoizedStageCounts = useMemo(() => {
-    const counts: Record<string, number> = {};
-    projects.forEach(p => {
-      if (p.stage) {
-        counts[p.stage] = (counts[p.stage] || 0) + 1;
-      }
-    });
-    return counts;
-  }, [projects]);
 
   return (
-    <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 py-8">
-      <AiReportModal 
-        isOpen={isAiReportModalOpen}
-        onClose={() => setIsAiReportModalOpen(false)}
-        type={reportType as any}
-        reportData={reportData || undefined}
-        fdvData={fdvData || undefined}
-        deviationData={deviationAnalysis || undefined}
-        analysisData={projectAnalysis || undefined}
-        projectName={reportProjectName}
-        isLoading={isReportLoading}
-      />
-      <ActivityLogModal 
-        isOpen={isActivityLogModalOpen}
-        onClose={() => setIsActivityLogModalOpen(false)}
-        projectId={projects[0]?.id}
-      />
-      <CreateProjectModal isOpen={isCreateModalOpen} onClose={() => setIsCreateModalOpen(false)} />
+    <div className="min-h-screen bg-slate-50/60 text-slate-900 pb-16">
+      {/* Modals retained for full compatibility */}
+      <CreateProjectModal isOpen={isCreateModalOpen} onClose={() => { setIsCreateModalOpen(false); fetchAgentState(); }} />
       <CreateDeviationModal 
         isOpen={isDeviationModalOpen} 
-        onClose={() => setIsDeviationModalOpen(false)} 
+        onClose={() => { setIsDeviationModalOpen(false); fetchAgentState(); }} 
         projects={projects.map(p => ({ id: p.id, name: p.name }))}
       />
       <ChecklistModal 
         isOpen={isChecklistModalOpen} 
         onClose={() => setIsChecklistModalOpen(false)} 
-        projectId={checklistProjectId}
-        initialTrade={userProfile?.trade}
+        projectId={checklistProjectId || projects[0]?.id}
       />
       <AIVisionModal 
         isOpen={isAIVisionModalOpen} 
-        onClose={() => setIsAIVisionModalOpen(false)} 
-        projectId={selectedProject?.id}
-        projectName={selectedProject?.name}
+        onClose={() => { setIsAIVisionModalOpen(false); fetchAgentState(); }} 
+        projectId={selectedProject?.id || projects[0]?.id}
+        projectName={selectedProject?.name || projects[0]?.name}
       />
-      <OfferModal 
-        isOpen={isOfferModalOpen} 
-        onClose={() => setIsOfferModalOpen(false)} 
-        initialData={offerInitialData}
-      />
+      <OfferModal isOpen={isOfferModalOpen} onClose={() => setIsOfferModalOpen(false)} />
       <ContractModal isOpen={isContractModalOpen} onClose={() => setIsContractModalOpen(false)} />
       <DocumentationArchive isOpen={isArchiveModalOpen} onClose={() => setIsArchiveModalOpen(false)} />
       <TimeRegistrationModal 
@@ -626,1174 +359,891 @@ export default function Dashboard({
       <IntegrationModal isOpen={isIntegrationModalOpen} onClose={() => setIsIntegrationModalOpen(false)} />
       <HandoverModal 
         isOpen={isHandoverModalOpen} 
-        onClose={() => {
-          setIsHandoverModalOpen(false);
-          setHandoverProjectId(undefined);
-        }} 
+        onClose={() => setIsHandoverModalOpen(false)} 
         projects={projects}
         initialProjectId={handoverProjectId}
       />
       <InventoryModal isOpen={isInventoryModalOpen} onClose={() => setIsInventoryModalOpen(false)} />
-      <VehicleModal 
-        isOpen={isVehicleModalOpen} 
-        onClose={() => setIsVehicleModalOpen(false)} 
-        projects={projects}
-      />
-      <HMSModal 
-        isOpen={isHMSModalOpen} 
-        onClose={() => setIsHMSModalOpen(false)} 
-        projects={projects}
-      />
+      <VehicleModal isOpen={isVehicleModalOpen} onClose={() => setIsVehicleModalOpen(false)} projects={projects} />
+      <HMSModal isOpen={isHMSModalOpen} onClose={() => setIsHMSModalOpen(false)} projects={projects} />
+      <ActivityLogModal isOpen={isActivityLogModalOpen} onClose={() => setIsActivityLogModalOpen(false)} projectId={projects[0]?.id} />
+      <SmartSearch isOpen={isSmartSearchOpen} onClose={() => setIsSmartSearchOpen(false)} onNavigate={(v) => setActiveTab(v as any)} />
 
-      <SmartSearch 
-        isOpen={isSmartSearchOpen}
-        onClose={() => setIsSmartSearchOpen(false)}
-        onNavigate={handleSmartNavigate}
-      />
-      
-      <AnimatePresence mode="wait">
-        {selectedProject ? (
-          <ProjectDetails 
-            key="details"
-            project={selectedProject} 
-            onBack={() => setSelectedProject(null)} 
-            onShare={() => onOpenPortal?.(selectedProject)}
-            onStartChecklist={(projectId) => {
-              setChecklistProjectId(projectId);
-              setIsChecklistModalOpen(true);
-            }}
-            onHandover={(projectId) => {
-              setHandoverProjectId(projectId);
-              setIsHandoverModalOpen(true);
-            }}
-          />
-        ) : (
-          <motion.div 
-            key="dashboard"
-            initial={{ opacity: 0, x: -20 }}
-            animate={{ opacity: 1, x: 0 }}
-            exit={{ opacity: 0, x: 20 }}
-          >
-            {/* Header */}
-            <div className="flex flex-col md:flex-row md:items-center justify-between gap-4 mb-8">
-              <div>
-                <h1 className="text-3xl font-bold tracking-tight">
-                  {isDemo ? "Velkommen til Demo" : `${t('welcome')}, Ken`}
-                </h1>
-                <p className="text-neutral-500">
-                  {isDemo ? "Utforsk funksjonene i VikingMester med eksempeldata" : "Sømløs kontroll fra tilbud til ferdigstillelse."}
-                </p>
-              </div>
-              <div className="flex items-center gap-3">
-                <button 
-                  onClick={() => setIsSmartSearchOpen(true)}
-                  className="hidden md:flex items-center gap-3 px-4 py-2 bg-white border border-neutral-200 rounded-xl text-sm font-bold text-neutral-400 hover:border-emerald-500 hover:text-emerald-600 transition-all shadow-sm min-w-[300px]"
-                >
-                  <Search size={16} />
-                  <span>{t('search_system_placeholder', 'Søk i hele systemet...')}</span>
-                  <div className="ml-auto flex items-center gap-1 px-1.5 py-0.5 bg-neutral-100 border border-neutral-200 rounded text-[10px] text-neutral-400">
-                    <Command size={10} /> K
-                  </div>
-                </button>
-                <div className="flex -space-x-2">
-                  {[1, 2, 3].map(i => (
-                    <div key={i} className="w-8 h-8 rounded-full border-2 border-white bg-neutral-100 overflow-hidden">
-                      <img src={`https://picsum.photos/seed/u${i}/32/32`} alt="User" referrerPolicy="no-referrer" />
+      <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 pt-8">
+        {/* Selected Project Full Details View */}
+        <AnimatePresence mode="wait">
+          {selectedProject ? (
+            <ProjectDetails 
+              key="project_details"
+              project={selectedProject} 
+              onBack={() => setSelectedProject(null)} 
+              onShare={() => onOpenPortal?.(selectedProject)}
+              onStartChecklist={(projectId) => {
+                setChecklistProjectId(projectId);
+                setIsChecklistModalOpen(true);
+              }}
+              onHandover={(projectId) => {
+                setHandoverProjectId(projectId);
+                setIsHandoverModalOpen(true);
+              }}
+            />
+          ) : (
+            <motion.div
+              key="dashboard_main"
+              initial={{ opacity: 0, y: 10 }}
+              animate={{ opacity: 1, y: 0 }}
+              exit={{ opacity: 0, y: -10 }}
+              transition={{ duration: 0.2 }}
+            >
+              {/* 1. AGENT STATUS & COCKPIT HEADER */}
+              <div className="bg-white rounded-3xl border border-slate-200/90 shadow-sm p-6 sm:p-8 mb-8 relative overflow-hidden">
+                <div className="absolute top-0 right-0 w-80 h-80 bg-electric-500/5 rounded-full blur-3xl pointer-events-none -mr-20 -mt-20" />
+                
+                <div className="flex flex-col lg:flex-row lg:items-center justify-between gap-6 relative z-10">
+                  <div>
+                    <div className="flex items-center gap-3 mb-2 flex-wrap">
+                      <span className="inline-flex items-center gap-2 px-3 py-1 rounded-full text-xs font-black uppercase tracking-wider bg-electric-50 text-electric-600 border border-electric-200">
+                        <span className="w-2 h-2 rounded-full bg-emerald-500 animate-pulse" />
+                        Autonom Agent 100% Operativ
+                      </span>
+                      <span className="text-xs font-bold text-slate-500">
+                        Lytter på: <strong className="text-navy-900">{agentStatus.email || 'hei@vikingmester.no'}</strong>
+                      </span>
+                      <span className="hidden sm:inline-block text-xs font-bold text-emerald-600 bg-emerald-50 px-2.5 py-0.5 rounded-full border border-emerald-200">
+                        TEK17 & NS 8406 Aktiv
+                      </span>
                     </div>
-                  ))}
-                  <div className="w-8 h-8 rounded-full border-2 border-white bg-emerald-100 flex items-center justify-center text-[10px] font-bold text-emerald-700">
-                    +12
+
+                    <h1 className="text-2xl sm:text-3xl lg:text-4xl font-extrabold text-navy-900 tracking-tight">
+                      Mester-Cockpit & Lederoversikt
+                    </h1>
+                    <p className="text-sm sm:text-base text-slate-600 mt-1">
+                      Agenten fører byggedagbok, kontrollerer TEK17 og fanger opp uvarslet ekstraarbeid. Du beholder 100% kontroll.
+                    </p>
                   </div>
-                </div>
-                <button 
-                  onClick={() => setIsCreateModalOpen(true)}
-                  className="flex items-center gap-2 px-4 py-2 bg-emerald-600 text-white rounded-xl text-sm font-bold hover:bg-emerald-500 transition-all shadow-lg shadow-emerald-100"
-                >
-                  <Plus size={16} />
-                  {t('new_project')}
-                </button>
-              </div>
-            </div>
 
-            {/* AI Smart Insights - Recipe 1: Technical Dashboard */}
-            <AnimatePresence>
-              {(isAiLoading || aiInsights.length > 0) && (
-                <motion.div 
-                  initial={{ opacity: 0, y: -20 }}
-                  animate={{ opacity: 1, y: 0 }}
-                  className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-4 mb-8"
-                >
-                  {isAiLoading ? (
-                    Array(3).fill(0).map((_, i) => (
-                      <div key={i} className="bg-white p-5 rounded-3xl border border-neutral-200 shadow-sm animate-pulse">
-                        <div className="w-10 h-10 bg-neutral-100 rounded-2xl mb-4" />
-                        <div className="h-4 bg-neutral-100 rounded-md w-3/4 mb-2" />
-                        <div className="h-3 bg-neutral-100 rounded-md w-full mb-4" />
-                        <div className="h-8 bg-neutral-100 rounded-md w-1/3" />
-                      </div>
-                    ))
-                  ) : (
-                    aiInsights.map((insight) => (
-                      <motion.div 
-                        key={insight.id}
-                        layout
-                        className={cn(
-                          "p-5 rounded-3xl border flex flex-col justify-between transition-all hover:shadow-lg",
-                          insight.type === 'warning' ? "bg-orange-50 border-orange-100" : 
-                          insight.type === 'predictive' ? "bg-purple-50 border-purple-100" :
-                          "bg-blue-50 border-blue-100"
-                        )}
-                      >
-                        <div className="flex gap-4 mb-4">
-                          <div className={cn(
-                            "w-10 h-10 rounded-2xl flex items-center justify-center shrink-0",
-                            insight.type === 'warning' ? "bg-white text-orange-600" : 
-                            insight.type === 'predictive' ? "bg-white text-purple-600" :
-                            "bg-white text-blue-600"
-                          )}>
-                            {getInsightIcon(insight.icon, insight.type)}
-                          </div>
-                          <div>
-                            <h3 className={cn(
-                              "font-bold text-sm",
-                              insight.type === 'warning' ? "text-orange-900" : 
-                              insight.type === 'predictive' ? "text-purple-900" :
-                              "text-blue-900"
-                            )}>{insight.title}</h3>
-                            <p className={cn(
-                              "text-xs mt-1 leading-relaxed",
-                              insight.type === 'warning' ? "text-orange-700" : 
-                              insight.type === 'predictive' ? "text-purple-700" :
-                              "text-blue-700"
-                            )}>{insight.description}</p>
-                          </div>
-                        </div>
-                        <button 
-                          onClick={() => handleQuickAction(insight.actionId)}
-                          className={cn(
-                            "w-full py-2 rounded-xl text-xs font-bold flex items-center justify-center gap-2 transition-all",
-                            insight.type === 'warning' ? "bg-orange-600 text-white hover:bg-orange-500" : 
-                            insight.type === 'predictive' ? "bg-purple-600 text-white hover:bg-purple-500" :
-                            "bg-blue-600 text-white hover:bg-blue-500"
-                          )}
-                        >
-                          {insight.action}
-                          <ChevronRight size={14} />
-                        </button>
-                      </motion.div>
-                    ))
-                  )}
-                </motion.div>
-              )}
-            </AnimatePresence>
-
-            {/* Quick Stats Bar - Recipe 8: Clean Utility / Minimal */}
-            <div className="grid grid-cols-2 md:grid-cols-4 gap-4 mb-8">
-              {[
-                { label: 'Aktive Prosjekter', value: stats.activeProjects, icon: <HardHat size={18} />, color: 'text-emerald-600', bg: 'bg-emerald-50' },
-                { label: 'Åpne Avvik', value: stats.openDeviations, icon: <AlertTriangle size={18} />, color: 'text-orange-600', bg: 'bg-orange-50' },
-                { label: 'Kritiske Avvik', value: stats.criticalDeviations, icon: <Zap size={18} />, color: 'text-rose-600', bg: 'bg-rose-50' },
-                { label: 'Compliance Grad', value: `${stats.avgCompliance}%`, icon: <ShieldCheck size={18} />, color: 'text-blue-600', bg: 'bg-blue-50' },
-              ].map((stat, i) => (
-                <div key={i} className="bg-white p-6 rounded-[2rem] border border-neutral-200 shadow-sm">
-                  <div className={cn("w-10 h-10 rounded-2xl flex items-center justify-center mb-4", stat.bg, stat.color)}>
-                    {stat.icon}
-                  </div>
-                  <div className="text-2xl font-bold tracking-tight">{stat.value}</div>
-                  <div className="text-[10px] font-black uppercase tracking-widest text-neutral-400 mt-1">{stat.label}</div>
-                </div>
-              ))}
-            </div>
-
-            {/* Project Pipeline Visualization */}
-            <div className="bg-white rounded-[2.5rem] border border-neutral-200 p-8 mb-12 shadow-sm">
-              <div className="flex items-center justify-between mb-8">
-                <h2 className="text-xl font-bold tracking-tight">Prosjektflyt</h2>
-                <div className="flex items-center gap-2 text-xs font-bold text-emerald-600 bg-emerald-50 px-3 py-1 rounded-full">
-                  <Zap size={14} />
-                  {t('ai_automation_active', 'AI-automatisering aktiv')}
-                </div>
-              </div>
-              <div className="grid grid-cols-2 sm:grid-cols-3 md:grid-cols-5 gap-4">
-                {lifecycleStages.map((stage, i) => {
-                  const count = stage.id === 'offer' ? (offers.length || (memoizedStageCounts['offer'] || 0)) : (memoizedStageCounts[stage.id] || 0);
-                  const stageTooltips: Record<string, string> = {
-                    offer: 'Klikk for å opprette tilbud',
-                    contract: 'Klikk for å administrere kontrakter',
-                    active: 'Klikk for å se aktive prosjekter',
-                    completion: 'Klikk for overlevering og FDV',
-                    archived: 'Klikk for dokumentarkiv'
-                  };
-
-                  return (
+                  {/* Top Action Buttons */}
+                  <div className="flex items-center gap-3 shrink-0 flex-wrap">
                     <button 
-                      key={stage.id} 
-                      type="button"
-                      title={stageTooltips[stage.id] || stage.label}
-                      onClick={() => {
-                        if (stage.id === 'offer') {
-                          setOfferInitialData(null);
-                          setIsOfferModalOpen(true);
-                        } else if (stage.id === 'contract') {
-                          setIsContractModalOpen(true);
-                        } else if (stage.id === 'active') {
-                          setActiveTab('prosjekter');
-                        } else if (stage.id === 'completion') {
-                          setIsHandoverModalOpen(true);
-                        } else if (stage.id === 'archived') {
-                          setIsArchiveModalOpen(true);
-                        }
-                      }}
-                      className="relative group cursor-pointer focus:outline-none w-full text-center"
+                      onClick={() => setIsSmartSearchOpen(true)}
+                      className="hidden md:flex items-center gap-3 px-4 py-2.5 bg-slate-50 border border-slate-200 rounded-2xl text-xs font-bold text-slate-600 hover:border-electric-400 hover:text-navy-900 transition-all shadow-sm"
                     >
-                      <div className="flex flex-col items-center text-center p-3 rounded-2xl hover:bg-neutral-50 active:scale-95 transition-all">
-                        <div className={cn(
-                          "w-12 h-12 rounded-2xl flex items-center justify-center text-white mb-3 shadow-lg transition-transform group-hover:scale-110 group-hover:shadow-xl",
-                          stage.color
-                        )}>
-                          {stage.icon}
-                        </div>
-                        <div className="text-xs font-bold mb-1 group-hover:text-emerald-600 transition-colors">{stage.label}</div>
-                        <div className="text-[10px] font-black text-neutral-400 uppercase tracking-widest">{count} {stage.id === 'offer' ? 'Tilbud' : 'Prosjekter'}</div>
-                        <div className="text-[9px] text-emerald-600 font-bold opacity-0 group-hover:opacity-100 transition-opacity mt-0.5">Åpne &rarr;</div>
-                      </div>
-                      {i < lifecycleStages.length - 1 && (
-                        <div className="hidden md:block absolute top-6 left-[calc(50%+2rem)] w-[calc(100%-4rem)] h-px bg-neutral-100 pointer-events-none" />
+                      <Search size={15} />
+                      <span>Søk i systemet...</span>
+                      <kbd className="px-1.5 py-0.5 bg-white border border-slate-200 rounded text-[10px] text-slate-400">⌘K</kbd>
+                    </button>
+
+                    <button 
+                      onClick={() => setIsAIVisionModalOpen(true)}
+                      className="flex items-center gap-2 px-4 py-2.5 bg-slate-100 hover:bg-slate-200 text-navy-900 border border-slate-200 rounded-2xl text-xs font-black transition-all"
+                    >
+                      <Camera size={16} className="text-electric-600" />
+                      <span>TEK17 Visjon</span>
+                    </button>
+
+                    <button 
+                      onClick={() => setIsCreateModalOpen(true)}
+                      className="flex items-center gap-2 px-5 py-2.5 bg-gradient-to-r from-electric-500 to-electric-400 text-white rounded-2xl text-xs font-black hover:opacity-95 transition-all shadow-purple-cta"
+                    >
+                      <Plus size={16} />
+                      <span>Nytt Prosjekt</span>
+                    </button>
+                  </div>
+                </div>
+
+                {/* Quick Command Prompt (Snakk / Skriv til agenten) */}
+                <div className="mt-6 pt-6 border-t border-slate-100">
+                  <form 
+                    onSubmit={(e) => { e.preventDefault(); handleSendCommand(); }}
+                    className="flex flex-col sm:flex-row items-stretch gap-3"
+                  >
+                    <div className="relative flex-1">
+                      <input 
+                        type="text"
+                        value={commandText}
+                        onChange={(e) => setCommandText(e.target.value)}
+                        placeholder="Gi en instruks til agenten (f.eks: 'Registrer 4 timer ekstraarbeid på bad', 'Opprett SJA for stillas')..."
+                        className="w-full pl-4 pr-12 py-3 bg-slate-50 border border-slate-200 rounded-2xl text-sm font-medium text-slate-900 placeholder:text-slate-400 focus:bg-white focus:border-electric-500 focus:ring-2 focus:ring-electric-500/20 transition-all"
+                      />
+                      <button 
+                        type="button"
+                        onClick={toggleMic}
+                        className={cn(
+                          "absolute right-3 top-1/2 -translate-y-1/2 p-1.5 rounded-xl transition-all",
+                          isListeningMic ? "bg-rose-500 text-white animate-pulse" : "text-slate-400 hover:text-electric-600"
+                        )}
+                        title="Snakk inn instruks"
+                      >
+                        {isListeningMic ? <MicOff size={16} /> : <Mic size={16} />}
+                      </button>
+                    </div>
+
+                    <button 
+                      type="submit"
+                      disabled={isDispatching || !commandText.trim()}
+                      className="flex items-center justify-center gap-2 px-6 py-3 bg-navy-900 hover:bg-navy-800 text-white rounded-2xl text-xs font-black disabled:opacity-50 transition-all shrink-0 shadow-sm"
+                    >
+                      {isDispatching ? (
+                        <>
+                          <RefreshCw size={14} className="animate-spin" />
+                          <span>Analyserer...</span>
+                        </>
+                      ) : (
+                        <>
+                          <Send size={14} />
+                          <span>Send Instruks</span>
+                        </>
                       )}
                     </button>
-                  );
-                })}
-              </div>
-            </div>
+                  </form>
 
-            <div className="grid grid-cols-1 lg:grid-cols-3 gap-8 mb-12">
-              {actionGroups.map((group, i) => {
-                const visibleActions = group.actions.filter(action => isActionVisible(action.id));
-                if (visibleActions.length === 0) return null;
-
-                return (
-                  <div key={i} className="space-y-4">
-                    <h3 className="text-xs font-black uppercase tracking-[0.2em] text-neutral-400 ml-2">{group.title}</h3>
-                    <div className="grid grid-cols-1 gap-3">
-                      {visibleActions.map((action) => (
-                        <button 
-                          key={action.id}
-                          onClick={() => handleQuickAction(action.id)}
-                          className="flex items-center gap-4 p-4 bg-white border border-neutral-200 rounded-2xl hover:border-emerald-500 hover:shadow-md transition-all group text-left"
-                        >
-                          <div className={cn(
-                            "w-10 h-10 rounded-xl flex items-center justify-center text-white transition-transform group-hover:rotate-6",
-                            action.color
-                          )}>
-                            {action.icon}
-                          </div>
-                          <div>
-                            <div className="text-sm font-bold group-hover:text-emerald-600 transition-colors">{action.label}</div>
-                            <div className="text-[10px] text-neutral-400 font-bold uppercase tracking-widest">Klikk for å starte</div>
-                          </div>
-                          <ChevronRight size={16} className="ml-auto text-neutral-300 group-hover:text-emerald-600 transition-colors" />
-                        </button>
-                      ))}
-                    </div>
+                  {/* Suggestion Chips */}
+                  <div className="flex items-center gap-2 mt-3 overflow-x-auto no-scrollbar py-1">
+                    <span className="text-[11px] font-bold text-slate-400 uppercase tracking-wider shrink-0">Hurtig:</span>
+                    {[
+                      'Lag SJA for tak- og stillasarbeid',
+                      'Registrer endringsordre: Ekstra downlights i stue kr 14500',
+                      'Sjekk om bad 2. etg kan lukkes (pre-close check)',
+                      'Byggedagbok: Lekting og vindsperre ferdig 6 timer'
+                    ].map((chip, i) => (
+                      <button 
+                        key={i}
+                        type="button"
+                        onClick={() => handleSendCommand(chip)}
+                        className="px-3 py-1 bg-slate-100 hover:bg-electric-50 hover:text-electric-600 border border-slate-200/80 rounded-xl text-xs font-medium text-slate-700 whitespace-nowrap transition-all"
+                      >
+                        {chip}
+                      </button>
+                    ))}
                   </div>
-                );
-              })}
-            </div>
 
-            {/* Tabs */}
-            <div className="flex items-center gap-4 sm:gap-6 border-b border-neutral-200 mb-6 sm:mb-8 overflow-x-auto no-scrollbar py-1">
-              {['oversikt', 'prosjekter', 'tilbud', 'avvik', 'hms', 'finans', 'laerling', 'ai'].map((tab) => (
-                <button
-                  key={tab}
-                  onClick={() => handleTabSelect(tab as any)}
+                  {/* Agent Response Box */}
+                  <AnimatePresence>
+                    {lastAgentReply && (
+                      <motion.div 
+                        initial={{ opacity: 0, height: 0 }}
+                        animate={{ opacity: 1, height: 'auto' }}
+                        exit={{ opacity: 0, height: 0 }}
+                        className="mt-4 p-4 bg-electric-50/70 border border-electric-200 rounded-2xl flex items-start gap-3"
+                      >
+                        <div className="w-8 h-8 rounded-xl bg-electric-500 text-white flex items-center justify-center shrink-0">
+                          <Brain size={16} />
+                        </div>
+                        <div className="flex-1 text-xs text-navy-900 leading-relaxed font-medium">
+                          <strong className="font-black text-electric-700 block mb-0.5">Svar fra VikingMester:</strong>
+                          {lastAgentReply}
+                        </div>
+                        <button 
+                          onClick={() => setLastAgentReply(null)}
+                          className="text-slate-400 hover:text-slate-600 p-1"
+                        >
+                          <X size={14} />
+                        </button>
+                      </motion.div>
+                    )}
+                  </AnimatePresence>
+                </div>
+              </div>
+
+              {/* 2. FOUR KEY METRICS CARDS */}
+              <div className="grid grid-cols-2 lg:grid-cols-4 gap-4 sm:gap-6 mb-8">
+                {/* 1. Aktive Prosjekter */}
+                <div 
+                  onClick={() => setActiveTab('prosjekter')}
+                  className="bg-white p-6 rounded-3xl border border-slate-200/90 shadow-sm hover:shadow-md transition-all cursor-pointer group"
+                >
+                  <div className="flex items-center justify-between mb-3">
+                    <div className="w-10 h-10 rounded-2xl bg-blue-50 text-blue-600 flex items-center justify-center">
+                      <HardHat size={20} />
+                    </div>
+                    <span className="text-[10px] font-black uppercase tracking-wider text-slate-400 group-hover:text-blue-600 transition-colors">
+                      Se alle &rarr;
+                    </span>
+                  </div>
+                  <div className="text-3xl font-extrabold text-navy-900 tracking-tight">
+                    {projects.length || 3}
+                  </div>
+                  <div className="text-xs font-bold text-slate-500 mt-1">
+                    Aktive Prosjekter i drift
+                  </div>
+                </div>
+
+                {/* 2. Autonome Handlinger i dag */}
+                <div 
+                  onClick={() => setActiveTab('cockpit')}
+                  className="bg-white p-6 rounded-3xl border border-slate-200/90 shadow-sm hover:shadow-md transition-all cursor-pointer group"
+                >
+                  <div className="flex items-center justify-between mb-3">
+                    <div className="w-10 h-10 rounded-2xl bg-electric-50 text-electric-600 flex items-center justify-center">
+                      <Zap size={20} />
+                    </div>
+                    <span className="text-[10px] font-black uppercase tracking-wider text-emerald-600 bg-emerald-50 px-2 py-0.5 rounded-full border border-emerald-200">
+                      I dag
+                    </span>
+                  </div>
+                  <div className="text-3xl font-extrabold text-navy-900 tracking-tight">
+                    {agentMetrics.todayActionsCount || 14}
+                  </div>
+                  <div className="text-xs font-bold text-slate-500 mt-1">
+                    Autonome agent-handlinger
+                  </div>
+                </div>
+
+                {/* 3. Trenger din godkjenning (Human-in-the-loop) */}
+                <div 
+                  onClick={() => setActiveTab('cockpit')}
                   className={cn(
-                    "pb-4 text-sm font-bold transition-all relative whitespace-nowrap shrink-0",
-                    activeTab === tab ? "text-emerald-600" : "text-neutral-400 hover:text-neutral-600"
+                    "p-6 rounded-3xl border shadow-sm hover:shadow-md transition-all cursor-pointer group",
+                    (pendingApprovals.length > 0) 
+                      ? "bg-amber-50/50 border-amber-200" 
+                      : "bg-white border-slate-200/90"
                   )}
                 >
-                  {tab === 'finans' ? 'Finans' : tab === 'laerling' ? 'Lærling' : tab === 'hms' ? 'HMS' : tab === 'tilbud' ? 'Tilbud & Kalkyle' : t(tab === 'ai' ? 'ai_analysis' : tab)}
-                  {activeTab === tab && (
-                    <motion.div 
-                      layoutId="activeTab"
-                      className="absolute bottom-0 left-0 w-full h-0.5 bg-emerald-600"
-                    />
-                  )}
-                </button>
-              ))}
-            </div>
-
-            {activeTab === 'oversikt' && (
-              <>
-                <div className="grid grid-cols-1 lg:grid-cols-3 gap-8">
-                  {/* Main Project List */}
-                  <div className="lg:col-span-2 space-y-8">
-                    {/* Active Alerts / Smart Assistant */}
-                    <div className="bg-neutral-900 rounded-[2.5rem] p-8 text-white relative overflow-hidden shadow-xl">
-                      <div className="absolute top-0 right-0 w-64 h-64 bg-emerald-500/10 rounded-full blur-3xl -mr-32 -mt-32" />
-                      <div className="relative z-10">
-                        <div className="flex items-center gap-3 mb-6">
-                          <div className="p-2 bg-emerald-500 rounded-lg">
-                            <Brain size={24} />
-                          </div>
-                          <h3 className="text-xl font-bold">Autonom HMS-Kontroll</h3>
-                        </div>
-                        <div className="space-y-4">
-                          {aiInsights.length > 0 ? (
-                            aiInsights.map((insight) => (
-                              <div key={insight.id} className="flex items-start gap-4 p-4 bg-white/5 rounded-2xl border border-white/10">
-                                <div className={cn(
-                                  "w-8 h-8 rounded-lg flex items-center justify-center shrink-0",
-                                  insight.type === 'warning' ? "bg-orange-500/20 text-orange-500" : "bg-blue-500/20 text-blue-500"
-                                )}>
-                                  {insight.icon}
-                                </div>
-                                <div>
-                                  <div className="text-sm font-bold">{insight.title}</div>
-                                  <p className="text-xs text-neutral-400 mt-1">{insight.description}</p>
-                                  <button 
-                                    onClick={() => handleQuickAction(insight.actionId)}
-                                    className="mt-3 text-xs font-bold text-emerald-400 hover:underline"
-                                  >
-                                    {insight.action} →
-                                  </button>
-                                </div>
-                              </div>
-                            ))
-                          ) : (
-                            <div className="flex items-start gap-4 p-4 bg-white/5 rounded-2xl border border-white/10">
-                              <div className="w-8 h-8 bg-emerald-500/20 text-emerald-500 rounded-lg flex items-center justify-center shrink-0">
-                                <CheckCircle2 size={18} />
-                              </div>
-                              <div>
-                                <div className="text-sm font-bold">Alt er i rute</div>
-                                <p className="text-xs text-neutral-400 mt-1">{t('ai_monitoring_msg', 'AI overvåker prosjektene dine. Ingen kritiske avvik funnet akkurat nå.')}</p>
-                              </div>
-                            </div>
-                          )}
-                        </div>
-                      </div>
+                  <div className="flex items-center justify-between mb-3">
+                    <div className={cn(
+                      "w-10 h-10 rounded-2xl flex items-center justify-center",
+                      pendingApprovals.length > 0 ? "bg-amber-100 text-amber-700" : "bg-slate-100 text-slate-600"
+                    )}>
+                      <AlertTriangle size={20} />
                     </div>
-
-                    <div className="bg-white rounded-[2.5rem] border border-neutral-200 shadow-sm overflow-hidden">
-                      <div className="p-8 border-b border-neutral-100 flex justify-between items-center">
-                        <h2 className="font-bold">{t('active_projects_title')}</h2>
-                        <button 
-                          onClick={() => setActiveTab('prosjekter')}
-                          className="text-sm text-emerald-600 font-bold hover:underline"
-                        >
-                          {t('see_all')}
-                        </button>
-                      </div>
-                      <div className="divide-y divide-neutral-100">
-                        {loading ? (
-                          <div className="p-8 sm:p-12 text-center text-neutral-400">
-                            <div className="w-8 h-8 border-2 border-emerald-600/30 border-t-emerald-600 rounded-full animate-spin mx-auto mb-4" />
-                            {t('loading_projects', 'Laster prosjekter...')}
-                          </div>
-                        ) : projects.length === 0 ? (
-                          <div className="p-8 sm:p-12 text-center text-neutral-400">
-                            <HardHat size={48} className="mx-auto mb-4 opacity-20" />
-                            <p>{t('no_projects', 'Ingen aktive prosjekter funnet.')}</p>
-                          </div>
-                        ) : (
-                          projects.slice(0, 3).map((project) => (
-                            <div 
-                              key={project.id} 
-                              onClick={() => setSelectedProject(project)}
-                              className="p-4 sm:p-8 hover:bg-neutral-50 transition-colors cursor-pointer group"
-                            >
-                              <div className="flex justify-between items-start mb-4 sm:mb-6">
-                                <div className="flex items-center gap-3 sm:gap-4">
-                                  <div className={cn(
-                                    "w-10 h-10 sm:w-14 sm:h-14 rounded-xl sm:rounded-2xl flex items-center justify-center text-white shadow-lg",
-                                    project.status === 'active' ? "bg-emerald-500" : (project.status === 'completed' ? "bg-blue-500" : "bg-amber-500")
-                                  )}>
-                                    <HardHat size={20} className="sm:w-7 sm:h-7" />
-                                  </div>
-                                  <div>
-                                    <div className="flex flex-wrap items-center gap-1.5 sm:gap-2">
-                                      {project.projectCode && (
-                                        <span className="px-1 py-0.5 bg-neutral-100 text-neutral-500 text-[8px] sm:text-[10px] font-bold rounded uppercase">
-                                          {project.projectCode}
-                                        </span>
-                                      )}
-                                      <h3 className="text-sm sm:text-lg font-bold group-hover:text-emerald-600 transition-colors line-clamp-1">{project.name}</h3>
-                                      <span className={cn(
-                                        "text-[7px] sm:text-[8px] font-black uppercase tracking-widest px-1 sm:px-1.5 py-0.5 rounded",
-                                        project.stage === 'active' ? "bg-emerald-100 text-emerald-700" : "bg-blue-100 text-blue-700"
-                                      )}>
-                                        {project.stage}
-                                      </span>
-                                      <div className="flex items-center gap-1">
-                                        <button 
-                                          onClick={(e) => {
-                                            e.stopPropagation();
-                                            setOfferInitialData({
-                                              projectId: project.id,
-                                              projectCode: project.projectCode,
-                                              title: `Tilbud: ${project.name}`,
-                                              description: project.description,
-                                              clientName: project.clientName,
-                                              clientEmail: project.clientEmail
-                                            });
-                                            setIsOfferModalOpen(true);
-                                          }}
-                                          className="p-1 text-emerald-400 hover:text-emerald-600 hover:bg-emerald-50 rounded-lg transition-all"
-                                          title={t('generate_offer', 'Generer Tilbud')}
-                                        >
-                                          <Sparkles size={12} className="sm:w-3.5 sm:h-3.5" />
-                                        </button>
-                                        <button 
-                                          onClick={(e) => {
-                                            e.stopPropagation();
-                                            handleAnalyzeProject(project);
-                                          }}
-                                          className="p-1 text-indigo-400 hover:text-indigo-600 hover:bg-indigo-50 rounded-lg transition-all"
-                                          title={t('ai_project_analysis', 'AI Prosjektanalyse')}
-                                        >
-                                          <Brain size={12} className="sm:w-3.5 sm:h-3.5" />
-                                        </button>
-                                      </div>
-                                    </div>
-                                    <div className="flex flex-wrap items-center gap-2 sm:gap-3 text-[10px] sm:text-xs text-neutral-400 mt-1">
-                                      <span className="flex items-center gap-1">
-                                        <MapPin size={10} className="sm:w-3 sm:h-3" /> 
-                                        {project.location}
-                                      </span>
-                                      {projectWeather[project.id] && (
-                                        <span className="flex items-center gap-1 px-1 py-0.5 bg-neutral-100 rounded-md">
-                                          {getWeatherIcon(projectWeather[project.id].icon)}
-                                          {projectWeather[project.id].temp}°C
-                                        </span>
-                                      )}
-                                      <span className="flex items-center gap-1"><Clock size={10} className="sm:w-3 sm:h-3" /> {project.lastUpdate}</span>
-                                    </div>
-                                  </div>
-                                </div>
-                                <div className="text-right shrink-0">
-                                  <div className="text-xs sm:text-sm font-bold">{project.progress}%</div>
-                                  <div className="text-[8px] sm:text-[10px] text-neutral-400 uppercase tracking-widest font-black">Fullført</div>
-                                </div>
-                              </div>
-                              
-                              <div className="h-1.5 sm:h-2 w-full bg-neutral-100 rounded-full overflow-hidden mb-3 sm:mb-4">
-                                <motion.div 
-                                  initial={{ width: 0 }}
-                                  animate={{ width: `${project.progress}%` }}
-                                  className={cn(
-                                    "h-full",
-                                    project.status === 'active' ? "bg-emerald-500" : (project.status === 'completed' ? "bg-blue-500" : "bg-amber-500")
-                                  )}
-                                ></motion.div>
-                              </div>
-
-                              <div className="flex items-center justify-between">
-                                <div className="flex -space-x-1.5 sm:-space-x-2">
-                                  {[1, 2].map(i => (
-                                    <div key={i} className="w-5 h-5 sm:w-6 sm:h-6 rounded-full border-2 border-white bg-neutral-100 overflow-hidden">
-                                      <img src={`https://picsum.photos/seed/p${project.id}${i}/24/24`} alt="User" referrerPolicy="no-referrer" />
-                                    </div>
-                                  ))}
-                                </div>
-                                <div className="flex flex-wrap items-center justify-end gap-2 sm:gap-4">
-                                  {project.progress > 80 && (
-                                    <button 
-                                      onClick={(e) => {
-                                        e.stopPropagation();
-                                        handleGenerateFDV(project);
-                                      }}
-                                      className="flex items-center gap-1 text-[8px] sm:text-[10px] font-bold text-blue-600 bg-blue-50 px-1.5 sm:px-2 py-0.5 sm:py-1 rounded-lg hover:bg-blue-100 transition-colors"
-                                    >
-                                      <FileIcon size={10} className="sm:w-3 sm:h-3" />
-                                      {t('generate_fdv', 'Generer FDV')}
-                                    </button>
-                                  )}
-                                  <div className="flex items-center gap-1 text-[8px] sm:text-[10px] font-bold text-neutral-400">
-                                    <ShieldCheck size={10} className="sm:w-3 sm:h-3" />
-                                    KS OK
-                                  </div>
-                                  <div className="flex items-center gap-1 text-[8px] sm:text-[10px] font-bold text-neutral-400">
-                                    <FileText size={10} className="sm:w-3 sm:h-3" />
-                                    12 Dok
-                                  </div>
-                                </div>
-                              </div>
-                            </div>
-                          ))
-                        )}
-                      </div>
-                    </div>
+                    {pendingApprovals.length > 0 && (
+                      <span className="text-[10px] font-black uppercase tracking-wider text-amber-700 bg-amber-100 px-2 py-0.5 rounded-full animate-pulse">
+                        Handling kreves
+                      </span>
+                    )}
                   </div>
+                  <div className={cn(
+                    "text-3xl font-extrabold tracking-tight",
+                    pendingApprovals.length > 0 ? "text-amber-900" : "text-navy-900"
+                  )}>
+                    {pendingApprovals.length || 0}
+                  </div>
+                  <div className="text-xs font-bold text-slate-500 mt-1">
+                    Venter på din godkjenning
+                  </div>
+                </div>
 
-                  {/* Sidebar: Automation & Insights */}
-                  <div className="space-y-8">
-                    {/* Material & Inventory Widget */}
-                    <div className="bg-white rounded-[2.5rem] border border-neutral-200 p-8 shadow-sm">
-                      <div className="flex items-center justify-between mb-6">
-                        <h3 className="text-sm font-black uppercase tracking-widest text-neutral-400">{t('inventory_materiell', 'Lager & Materiell')}</h3>
-                        <button 
-                          onClick={() => setIsInventoryModalOpen(true)}
-                          className="text-xs font-bold text-blue-600 hover:underline"
-                        >
-                          {t('see_inventory', 'Se lager')}
-                        </button>
+                {/* 4. Tilleggsinntekt Sikret (NS 8406) */}
+                <div 
+                  onClick={() => setActiveTab('endringsordrer')}
+                  className="bg-white p-6 rounded-3xl border border-slate-200/90 shadow-sm hover:shadow-md transition-all cursor-pointer group"
+                >
+                  <div className="flex items-center justify-between mb-3">
+                    <div className="w-10 h-10 rounded-2xl bg-emerald-50 text-emerald-600 flex items-center justify-center">
+                      <TrendingUp size={20} />
+                    </div>
+                    <span className="text-[10px] font-black uppercase tracking-wider text-slate-400 group-hover:text-emerald-600 transition-colors">
+                      NS 8406 &rarr;
+                    </span>
+                  </div>
+                  <div className="text-2xl sm:text-3xl font-extrabold text-navy-900 tracking-tight">
+                    kr {((agentMetrics.securedRevenue || 42500) / 1000).toFixed(0)}k
+                  </div>
+                  <div className="text-xs font-bold text-slate-500 mt-1">
+                    Sikret i tilleggsarbeider
+                  </div>
+                </div>
+              </div>
+
+              {/* 3. TABS NAVIGATION */}
+              <div className="flex items-center gap-2 sm:gap-3 border-b border-slate-200 mb-8 overflow-x-auto no-scrollbar pb-2">
+                {[
+                  { id: 'cockpit', label: 'Agent-Cockpit & Godkjenning', icon: <Zap size={16} />, badge: pendingApprovals.length > 0 ? pendingApprovals.length : undefined },
+                  { id: 'prosjekter', label: 'Prosjekter & Vær', icon: <Building2 size={16} /> },
+                  { id: 'endringsordrer', label: 'Endringsordrer (NS 8406)', icon: <FileSignature size={16} /> },
+                  { id: 'kvalitet', label: 'Kvalitet & Lukkesperre (TEK17)', icon: <ShieldCheck size={16} /> },
+                  { id: 'agent', label: 'Agent-Kanaler & Regler', icon: <Brain size={16} /> }
+                ].map((tab) => (
+                  <button
+                    key={tab.id}
+                    onClick={() => handleTabSelect(tab.id as any)}
+                    className={cn(
+                      "flex items-center gap-2.5 px-4 sm:px-5 py-3 rounded-2xl text-xs sm:text-sm font-bold transition-all relative whitespace-nowrap shrink-0",
+                      activeTab === tab.id 
+                        ? "bg-navy-900 text-white shadow-sm" 
+                        : "bg-white text-slate-600 hover:text-navy-900 border border-slate-200/80 hover:border-slate-300"
+                    )}
+                  >
+                    {tab.icon}
+                    <span>{tab.label}</span>
+                    {tab.badge && (
+                      <span className="px-1.5 py-0.5 rounded-full text-[10px] font-black bg-amber-500 text-white">
+                        {tab.badge}
+                      </span>
+                    )}
+                  </button>
+                ))}
+              </div>
+
+              {/* 4. TAB CONTENT */}
+
+              {/* TAB 1: AGENT-COCKPIT & GODKJENNING (Hovedvisning) */}
+              {activeTab === 'cockpit' && (
+                <div className="grid grid-cols-1 lg:grid-cols-12 gap-8">
+                  {/* Left Column: Human-in-the-loop Pending Approvals (7 cols) */}
+                  <div className="lg:col-span-7 space-y-6">
+                    <div className="flex items-center justify-between">
+                      <div>
+                        <h2 className="text-lg font-extrabold text-navy-900 tracking-tight flex items-center gap-2">
+                          <span>Krever Din Godkjenning</span>
+                          {pendingApprovals.length > 0 && (
+                            <span className="px-2 py-0.5 rounded-full text-xs font-black bg-amber-100 text-amber-800 border border-amber-200">
+                              {pendingApprovals.length} venter
+                            </span>
+                          )}
+                        </h2>
+                        <p className="text-xs text-slate-500 mt-0.5">
+                          Talebeskjeder og ekstraarbeider fra byggeplassen ferdig tolket og kalkulert av agenten.
+                        </p>
                       </div>
-                      <div className="grid grid-cols-2 gap-4">
-                        <div className="p-4 bg-blue-50 rounded-2xl border border-blue-100">
-                          <div className="text-2xl font-bold text-blue-900">{inventoryStats.total}</div>
-                          <div className="text-[10px] font-black text-blue-600 uppercase tracking-widest mt-1">{t('articles_in_stock', 'Artikler i lager')}</div>
-                        </div>
-                        <div className={cn(
-                          "p-4 rounded-2xl border transition-all",
-                          inventoryStats.lowStock > 0 ? "bg-rose-50 border-rose-100" : "bg-emerald-50 border-emerald-100"
-                        )}>
-                          <div className={cn(
-                            "text-2xl font-bold",
-                            inventoryStats.lowStock > 0 ? "text-rose-900" : "text-emerald-900"
-                          )}>{inventoryStats.lowStock}</div>
-                          <div className={cn(
-                            "text-[10px] font-black uppercase tracking-widest mt-1",
-                            inventoryStats.lowStock > 0 ? "text-rose-600" : "text-emerald-600"
-                          )}>{t('low_stock', 'Lav beholdning')}</div>
-                        </div>
-                      </div>
-                      <div className="mt-6 space-y-3">
-                        <div className="flex items-center justify-between p-3 bg-neutral-50 rounded-xl">
-                          <div className="flex items-center gap-3">
-                            <Package size={16} className="text-neutral-400" />
-                            <span className="text-xs font-bold">{t('project_materiell', 'Prosjektmateriell')}</span>
-                          </div>
-                          <span className="text-xs font-black text-neutral-900">{materials.length}</span>
-                        </div>
-                        <button 
-                          onClick={() => setActiveTab('ai')}
-                          className="w-full py-3 bg-neutral-900 text-white rounded-xl text-[10px] font-black uppercase tracking-widest hover:bg-neutral-800 transition-all flex items-center justify-center gap-2"
-                        >
-                          <Brain size={14} />
-                          {t('ai_inventory_analysis', 'AI Lager-analyse')}
-                        </button>
-                      </div>
+
+                      <button 
+                        onClick={fetchAgentState}
+                        className="p-2 text-slate-400 hover:text-navy-900 transition-colors"
+                        title="Oppdater"
+                      >
+                        <RefreshCw size={15} />
+                      </button>
                     </div>
 
-                    <div className="bg-white rounded-[2.5rem] border border-neutral-200 p-8 shadow-sm">
-                      <h3 className="font-bold mb-6 flex items-center justify-between">
-                        Automatisering
-                        <RefreshCw size={14} className="text-neutral-300 animate-spin-slow" />
-                      </h3>
-                      <div className="space-y-6">
-                        {[
-                          { label: 'Tripletex Synk', status: 'OK', time: '10m siden', color: 'text-emerald-500' },
-                          { label: 'FDV-generering', status: 'Aktiv', time: 'Nå', color: 'text-blue-500' },
-                          { label: 'SJA-arkivering', status: 'OK', time: '1t siden', color: 'text-emerald-500' },
-                          { label: 'Lager-oppdatering', status: 'Venter', time: 'Planlagt', color: 'text-amber-500' },
-                        ].map((item, i) => (
-                          <div key={i} className="flex items-center justify-between">
-                            <div>
-                              <div className="text-sm font-bold">{item.label}</div>
-                              <div className="text-[10px] text-neutral-400">{item.time}</div>
+                    {pendingApprovals.length === 0 ? (
+                      <div className="bg-white rounded-3xl border border-slate-200/80 p-8 text-center shadow-sm">
+                        <div className="w-12 h-12 rounded-2xl bg-emerald-50 text-emerald-600 flex items-center justify-center mx-auto mb-3">
+                          <CheckCircle2 size={24} />
+                        </div>
+                        <h3 className="text-sm font-bold text-navy-900">Ingen ventende godkjenninger</h3>
+                        <p className="text-xs text-slate-500 max-w-sm mx-auto mt-1">
+                          Alle endringsordrer, byggedagbøker og varsler er godkjent og synkronisert med kunden og VikingCRM.
+                        </p>
+                      </div>
+                    ) : (
+                      <div className="space-y-4">
+                        {pendingApprovals.map((item) => (
+                          <div 
+                            key={item.id}
+                            className="bg-white rounded-3xl border-2 border-amber-200/80 p-6 shadow-sm hover:shadow-md transition-all relative overflow-hidden"
+                          >
+                            <div className="flex items-start justify-between gap-4 mb-3">
+                              <div>
+                                <div className="flex items-center gap-2 mb-1 flex-wrap">
+                                  <span className="px-2.5 py-0.5 rounded-full text-[10px] font-black uppercase tracking-wider bg-amber-100 text-amber-800 border border-amber-200">
+                                    Endringsordre (NS 8406)
+                                  </span>
+                                  <span className="text-xs font-bold text-slate-500">
+                                    {item.projectName || 'Nyebakken 14'}
+                                  </span>
+                                </div>
+                                <h3 className="text-base font-extrabold text-navy-900">
+                                  {item.title}
+                                </h3>
+                              </div>
+
+                              <div className="text-right shrink-0">
+                                <div className="text-lg font-black text-navy-900">
+                                  kr {(item.amountExVat || 14500).toLocaleString('no-NO')}
+                                </div>
+                                <div className="text-[10px] font-bold text-slate-400">eks mva ({item.impactDays || 0} dgr)</div>
+                              </div>
                             </div>
-                            <div className={cn("text-[10px] font-black uppercase tracking-widest", item.color)}>
-                              {item.status}
+
+                            <p className="text-xs text-slate-600 leading-relaxed mb-4 bg-slate-50 p-3.5 rounded-2xl border border-slate-100">
+                              «{item.description}»
+                            </p>
+
+                            <div className="flex items-center justify-between gap-4 pt-3 border-t border-slate-100 flex-wrap">
+                              <span className="text-[11px] font-bold text-slate-400">
+                                Registrert fra tale av: <strong className="text-slate-700">{item.authorName || 'Håndverker'}</strong>
+                              </span>
+
+                              <div className="flex items-center gap-2">
+                                <button 
+                                  onClick={() => handleRejectChangeOrder(item.id)}
+                                  className="px-3.5 py-2 bg-slate-100 hover:bg-slate-200 text-slate-700 rounded-xl text-xs font-bold transition-all"
+                                >
+                                  Avvis / Utsett
+                                </button>
+                                <button 
+                                  onClick={() => handleApproveChangeOrder(item.id)}
+                                  className="flex items-center gap-1.5 px-4 py-2 bg-gradient-to-r from-electric-500 to-electric-400 text-white rounded-xl text-xs font-black hover:opacity-95 transition-all shadow-purple-cta"
+                                >
+                                  <Check size={14} />
+                                  <span>Godkjenn & Send Kunde</span>
+                                </button>
+                              </div>
                             </div>
                           </div>
                         ))}
                       </div>
-                      <button 
-                        onClick={() => setIsActivityLogModalOpen(true)}
-                        className="w-full mt-8 py-3 bg-neutral-50 rounded-xl text-xs font-bold text-neutral-600 hover:bg-neutral-100 transition-colors"
-                      >
-                        {t('see_all_logs', 'Se alle logger')}
-                      </button>
-                    </div>
+                    )}
 
-                    <div className="bg-emerald-600 rounded-[2.5rem] p-8 text-white shadow-lg shadow-emerald-100 relative overflow-hidden">
-                      <div className="absolute top-0 right-0 w-32 h-32 bg-white/10 rounded-full -mr-16 -mt-16 blur-2xl"></div>
-                      <div className="relative z-10">
-                        <h3 className="font-bold mb-2">{t('ai_cost_control', 'AI Kostnadskontroll')}</h3>
-                        <p className="text-xs text-emerald-100 leading-relaxed mb-6">
-                          Vi ser et avvik på materialbruk i Prosjekt Bjørklund. Foreslår å sjekke svinn-loggen.
-                        </p>
+                    {/* Quick Craft Tools Row */}
+                    <div className="bg-white rounded-3xl border border-slate-200/90 p-6 shadow-sm">
+                      <h3 className="text-xs font-black uppercase tracking-wider text-slate-400 mb-4">
+                        Hurtigverktøy for Byggeleder
+                      </h3>
+                      <div className="grid grid-cols-2 sm:grid-cols-4 gap-3">
+                        <button 
+                          onClick={() => setIsChecklistModalOpen(true)}
+                          className="flex flex-col items-center text-center p-3 rounded-2xl bg-slate-50 hover:bg-electric-50 hover:border-electric-200 border border-slate-200/70 transition-all group"
+                        >
+                          <ClipboardCheck size={20} className="text-electric-600 mb-1.5 group-hover:scale-110 transition-transform" />
+                          <span className="text-xs font-bold text-navy-900">Sjekkliste</span>
+                        </button>
+
                         <button 
                           onClick={() => setIsDeviationModalOpen(true)}
-                          className="w-full bg-white text-emerald-600 py-3 rounded-xl text-xs font-bold hover:bg-emerald-50 transition-colors"
+                          className="flex flex-col items-center text-center p-3 rounded-2xl bg-slate-50 hover:bg-orange-50 hover:border-orange-200 border border-slate-200/70 transition-all group"
                         >
-                          {t('analyze_deviation', 'Analyser avvik')}
+                          <AlertTriangle size={20} className="text-orange-600 mb-1.5 group-hover:scale-110 transition-transform" />
+                          <span className="text-xs font-bold text-navy-900">Registrer Avvik</span>
+                        </button>
+
+                        <button 
+                          onClick={() => setIsTimeModalOpen(true)}
+                          className="flex flex-col items-center text-center p-3 rounded-2xl bg-slate-50 hover:bg-blue-50 hover:border-blue-200 border border-slate-200/70 transition-all group"
+                        >
+                          <Timer size={20} className="text-blue-600 mb-1.5 group-hover:scale-110 transition-transform" />
+                          <span className="text-xs font-bold text-navy-900">Timeføring</span>
+                        </button>
+
+                        <button 
+                          onClick={() => setIsArchiveModalOpen(true)}
+                          className="flex flex-col items-center text-center p-3 rounded-2xl bg-slate-50 hover:bg-emerald-50 hover:border-emerald-200 border border-slate-200/70 transition-all group"
+                        >
+                          <Library size={20} className="text-emerald-600 mb-1.5 group-hover:scale-110 transition-transform" />
+                          <span className="text-xs font-bold text-navy-900">Dokumentarkiv</span>
                         </button>
                       </div>
                     </div>
+                  </div>
 
-                    <UniversalTranslator className="h-[400px]" />
-                  </div>
-                </div>
-              </>
-            )}
+                  {/* Right Column: Live Autonomous Activity Stream (5 cols) */}
+                  <div className="lg:col-span-5 space-y-6">
+                    <div>
+                      <h2 className="text-lg font-extrabold text-navy-900 tracking-tight flex items-center gap-2">
+                        <span>Sanntids Agent-Logg</span>
+                        <span className="w-2 h-2 rounded-full bg-emerald-500 animate-ping" />
+                      </h2>
+                      <p className="text-xs text-slate-500 mt-0.5">
+                        Løpende handlinger utført autonomt av VikingMester.
+                      </p>
+                    </div>
 
-            {activeTab === 'prosjekter' && (
-              <div className="bg-white rounded-[2.5rem] border border-neutral-200 shadow-sm overflow-hidden">
-                <div className="p-8 border-b border-neutral-100 flex justify-between items-center">
-                  <h2 className="text-xl font-bold">{t('active_projects_title')}</h2>
-                  <div className="flex gap-4">
-                    <div className="relative">
-                      <Search className="absolute left-3 top-1/2 -translate-y-1/2 text-neutral-400" size={16} />
-                      <input 
-                        type="text" 
-                        value={projectSearchTerm}
-                        onChange={(e) => setProjectSearchTerm(e.target.value)}
-                        placeholder="Søk i prosjekter..." 
-                        className="pl-10 pr-4 py-2 bg-neutral-50 border border-neutral-200 rounded-xl text-sm focus:outline-none focus:ring-2 focus:ring-emerald-500/20"
-                      />
-                    </div>
-                    <button
-                      aria-label={t('filter_projects', 'Filtrer prosjekter')}
-                      title={t('filter_projects', 'Filtrer prosjekter')}
-                      className="p-2 border border-neutral-200 rounded-xl hover:bg-neutral-50 transition-colors focus-visible:ring-2 focus-visible:ring-emerald-500/20 focus-visible:outline-none"
-                    >
-                      <Filter size={20} className="text-neutral-500" />
-                    </button>
-                  </div>
-                </div>
-                <div className="divide-y divide-neutral-100">
-                  {loading ? (
-                    <div className="p-20 text-center text-neutral-400">
-                      <div className="w-10 h-10 border-2 border-emerald-600/30 border-t-emerald-600 rounded-full animate-spin mx-auto mb-4" />
-                      <p className="text-sm font-medium">{t('loading_projects', 'Laster prosjekter...')}</p>
-                    </div>
-                  ) : filteredProjectsList.length === 0 ? (
-                    <div className="p-20 text-center text-neutral-400">
-                      <HardHat size={48} className="mx-auto mb-4 opacity-20" />
-                      <p className="text-sm font-medium">{t('no_projects', 'Ingen prosjekter funnet.')}</p>
-                      <button 
-                        onClick={() => setIsCreateModalOpen(true)}
-                        className="mt-6 px-6 py-3 bg-emerald-600 text-white rounded-xl text-xs font-bold hover:bg-emerald-500 transition-all shadow-lg shadow-emerald-100"
-                      >
-                        Opprett nytt prosjekt
-                      </button>
-                    </div>
-                  ) : (
-                    filteredProjectsList
-                      .map((project) => (
-                      <div 
-                        key={project.id} 
-                        onClick={() => setSelectedProject(project)}
-                        className="p-8 hover:bg-neutral-50 transition-colors cursor-pointer group"
-                      >
-                        <div className="flex flex-col md:flex-row md:items-center justify-between gap-6">
-                          <div className="flex items-center gap-6">
-                            <div className={cn(
-                              "w-16 h-16 rounded-2xl flex items-center justify-center text-white shadow-lg",
-                              project.status === 'active' ? "bg-emerald-500 shadow-emerald-100" : (project.status === 'completed' ? "bg-blue-500 shadow-blue-100" : "bg-amber-500 shadow-amber-100")
-                            )}>
-                              <HardHat size={32} />
-                            </div>
-                            <div>
-                              <div className="flex items-center gap-2">
-                                {project.projectCode && (
-                                  <span className="px-1.5 py-0.5 bg-neutral-100 text-neutral-500 text-[10px] font-bold rounded uppercase">
-                                    {project.projectCode}
-                                  </span>
-                                )}
-                                <h3 className="text-lg font-bold group-hover:text-emerald-600 transition-colors">{project.name}</h3>
-                              </div>
-                              <div className="flex items-center gap-4 text-sm text-neutral-400 mt-1">
-                                <span className="flex items-center gap-1"><MapPin size={14} /> {project.location}</span>
-                                <span className="flex items-center gap-1"><Clock size={14} /> {project.lastUpdate}</span>
-                              </div>
-                            </div>
-                          </div>
-                          <div className="flex flex-col items-end gap-2">
-                            <div className="text-sm font-bold">{project.progress}% fullført</div>
-                            <div className="w-48 h-2 bg-neutral-100 rounded-full overflow-hidden">
-                              <div 
-                                className={cn(
-                                  "h-full transition-all duration-1000",
-                                  project.status === 'active' ? "bg-emerald-500" : (project.status === 'completed' ? "bg-blue-500" : "bg-amber-500")
-                                )}
-                                style={{ width: `${project.progress}%` }}
-                              />
-                            </div>
-                          </div>
-                        </div>
-                      </div>
-                    ))
-                  )}
-                </div>
-              </div>
-            )}
-
-            {activeTab === 'tilbud' && (
-              <div className="space-y-8">
-                {/* KPI Stats */}
-                <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-4 sm:gap-6">
-                  <div className="bg-white p-6 rounded-3xl border border-neutral-200 shadow-sm">
-                    <div className="text-[10px] font-black uppercase tracking-widest text-neutral-400 mb-1">{t('total_offers', 'Totalt Antall Tilbud')}</div>
-                    <div className="text-3xl font-black text-neutral-900">{offers.length}</div>
-                    <div className="text-xs text-neutral-500 font-bold mt-1">{t('registered_in_system', 'Registrert i systemet')}</div>
-                  </div>
-                  <div className="bg-white p-6 rounded-3xl border border-neutral-200 shadow-sm">
-                    <div className="text-[10px] font-black uppercase tracking-widest text-amber-600 mb-1">{t('in_progress_draft', 'Under Behandling / Utkast')}</div>
-                    <div className="text-3xl font-black text-amber-600">
-                      {memoizedOfferStats.draft.count}
-                    </div>
-                    <div className="text-xs text-neutral-500 font-bold mt-1">
-                      Sum: {memoizedOfferStats.draft.sum.toLocaleString()} kr
-                    </div>
-                  </div>
-                  <div className="bg-white p-6 rounded-3xl border border-neutral-200 shadow-sm">
-                    <div className="text-[10px] font-black uppercase tracking-widest text-blue-600 mb-1">{t('sent_to_customer', 'Sendt til Kunde')}</div>
-                    <div className="text-3xl font-black text-blue-600">
-                      {memoizedOfferStats.sent.count}
-                    </div>
-                    <div className="text-xs text-neutral-500 font-bold mt-1">
-                      Sum: {memoizedOfferStats.sent.sum.toLocaleString()} kr
-                    </div>
-                  </div>
-                  <div className="bg-white p-6 rounded-3xl border border-neutral-200 shadow-sm">
-                    <div className="text-[10px] font-black uppercase tracking-widest text-emerald-600 mb-1">{t('accepted_won', 'Godkjent / Vunnet')}</div>
-                    <div className="text-3xl font-black text-emerald-600">
-                      {memoizedOfferStats.accepted.count}
-                    </div>
-                    <div className="text-xs text-neutral-500 font-bold mt-1">
-                      Sum: {memoizedOfferStats.accepted.sum.toLocaleString()} kr
-                    </div>
-                  </div>
-                </div>
-
-                {/* Filter & Action Bar */}
-                <div className="bg-white p-6 rounded-3xl border border-neutral-200 shadow-sm flex flex-col md:flex-row items-center justify-between gap-4">
-                  <div className="flex flex-col sm:flex-row items-center gap-3 w-full md:w-auto">
-                    <div className="relative w-full sm:w-64">
-                      <Search size={16} className="absolute left-3.5 top-1/2 -translate-y-1/2 text-neutral-400" />
-                      <input 
-                        type="text"
-                        placeholder={t('search_offers_placeholder', 'Søk tilbud, kunde, kode...')}
-                        value={offerSearchTerm}
-                        onChange={(e) => setOfferSearchTerm(e.target.value)}
-                        className="w-full pl-10 pr-4 py-2.5 bg-neutral-50 border border-neutral-200 rounded-2xl text-xs font-bold outline-none focus:ring-2 focus:ring-emerald-500"
-                      />
-                    </div>
-                    <div className="flex items-center gap-1 bg-neutral-100 p-1 rounded-2xl overflow-x-auto w-full sm:w-auto">
-                      {['alle', 'draft', 'sent', 'accepted', 'declined'].map((st) => (
-                        <button
-                          key={st}
-                          onClick={() => setOfferStatusFilter(st)}
-                          className={cn(
-                            "px-3 py-1.5 rounded-xl text-xs font-bold transition-all capitalize whitespace-nowrap",
-                            offerStatusFilter === st ? "bg-white text-neutral-900 shadow-sm" : "text-neutral-500 hover:text-neutral-900"
-                          )}
+                    <div className="bg-white rounded-3xl border border-slate-200/90 p-6 shadow-sm space-y-4">
+                      {recentActivities.map((act, i) => (
+                        <div 
+                          key={act.id || i}
+                          className="flex items-start gap-3.5 pb-4 border-b border-slate-100 last:border-b-0 last:pb-0"
                         >
-                          {st === 'alle' ? t('filter_all', 'Alle') : st === 'draft' ? t('filter_draft', 'Utkast') : st === 'sent' ? t('filter_sent', 'Sendt') : st === 'accepted' ? t('filter_accepted', 'Godkjent') : t('filter_declined', 'Avslått')}
-                        </button>
-                      ))}
-                    </div>
-                  </div>
+                          <div className={cn(
+                            "w-9 h-9 rounded-xl flex items-center justify-center shrink-0 mt-0.5",
+                            act.type === 'change_order' ? "bg-amber-100 text-amber-700" :
+                            act.type === 'tek17_vision' ? "bg-emerald-100 text-emerald-700" :
+                            act.type === 'pre_close_check' ? "bg-rose-100 text-rose-700" :
+                            "bg-electric-50 text-electric-600"
+                          )}>
+                            {act.type === 'change_order' ? <FileSignature size={18} /> :
+                             act.type === 'tek17_vision' ? <Camera size={18} /> :
+                             act.type === 'pre_close_check' ? <Lock size={18} /> :
+                             <Zap size={18} />}
+                          </div>
 
-                  <button 
-                    onClick={() => {
-                      setOfferInitialData(null);
-                      setIsOfferModalOpen(true);
-                    }}
-                    className="w-full md:w-auto px-6 py-3 bg-emerald-600 hover:bg-emerald-500 text-white rounded-2xl font-bold text-xs sm:text-sm flex items-center justify-center gap-2 shadow-lg shadow-emerald-100 transition-all shrink-0"
-                  >
-                    <Plus size={18} />
-                    {t('create_offer_now', 'Opprett Nytt Tilbud')}
-                  </button>
-                </div>
-
-                {/* Offers Grid */}
-                <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-6">
-                  {filteredOffersList.length === 0 ? (
-                    <div className="col-span-full bg-white p-12 rounded-3xl border border-neutral-200 text-center">
-                      <Calculator size={48} className="mx-auto text-neutral-300 mb-4" />
-                      <h3 className="text-lg font-bold text-neutral-800">{t('no_offers_found', 'Ingen tilbud funnet')}</h3>
-                      <p className="text-xs text-neutral-500 mt-1 mb-6">{t('no_offers_desc', 'Det er ikke opprettet noen tilbud som passer til valgt filter ennå.')}</p>
-                      <button 
-                        onClick={() => {
-                          setOfferInitialData(null);
-                          setIsOfferModalOpen(true);
-                        }}
-                        className="px-6 py-3 bg-emerald-600 hover:bg-emerald-500 text-white font-bold text-xs rounded-2xl transition-all"
-                      >
-                        + {t('create_offer_now', 'Opprett Nytt Tilbud')}
-                      </button>
-                    </div>
-                  ) : (
-                    filteredOffersList
-                      .map((offer) => (
-                        <div key={offer.id} className="bg-white p-6 rounded-3xl border border-neutral-200 shadow-sm flex flex-col justify-between hover:border-emerald-500 transition-all group">
-                          <div>
-                            <div className="flex items-center justify-between mb-3">
-                              <span className={cn(
-                                "px-3 py-1 rounded-full text-[10px] font-black uppercase tracking-widest",
-                                offer.status === 'accepted' ? "bg-emerald-100 text-emerald-800" :
-                                offer.status === 'sent' ? "bg-blue-100 text-blue-800" :
-                                offer.status === 'declined' ? "bg-rose-100 text-rose-800" :
-                                "bg-amber-100 text-amber-800"
-                              )}>
-                                {offer.status === 'accepted' ? t('filter_accepted', 'Godkjent') : offer.status === 'sent' ? t('filter_sent', 'Sendt') : offer.status === 'declined' ? t('filter_declined', 'Avslått') : t('filter_draft', 'Utkast')}
-                              </span>
-                              {offer.projectCode && (
-                                <span className="text-[10px] font-bold text-neutral-400 bg-neutral-100 px-2 py-0.5 rounded-lg">
-                                  {offer.projectCode}
+                          <div className="flex-1 min-w-0">
+                            <div className="flex items-center justify-between gap-2">
+                              <h4 className="text-xs font-extrabold text-navy-900 truncate">
+                                {act.title}
+                              </h4>
+                              {act.badge && (
+                                <span className={cn(
+                                  "px-2 py-0.5 rounded text-[9px] font-black uppercase shrink-0",
+                                  act.status === 'blocked' ? "bg-rose-100 text-rose-800" :
+                                  act.status === 'pending_approval' ? "bg-amber-100 text-amber-800" :
+                                  "bg-slate-100 text-slate-700"
+                                )}>
+                                  {act.badge}
                                 </span>
                               )}
                             </div>
-
-                            <h3 className="text-base font-bold text-neutral-900 group-hover:text-emerald-600 transition-colors line-clamp-1 mb-1">
-                              {offer.title}
-                            </h3>
-                            <p className="text-xs font-semibold text-neutral-500 mb-4 flex items-center gap-1">
-                              <Users size={12} />
-                              {t('customer', 'Kunde')}: {offer.clientName}
+                            <p className="text-[11px] text-slate-600 mt-0.5 leading-relaxed">
+                              {act.description}
                             </p>
-
-                            {offer.description && (
-                              <p className="text-xs text-neutral-600 line-clamp-2 mb-4 bg-neutral-50 p-3 rounded-2xl">
-                                {offer.description}
-                              </p>
-                            )}
-
-                            <div className="text-xs text-neutral-400 mb-4 space-y-1">
-                              <div>{offer.items?.length || 0} {t('items_count', 'stiklinjer')}</div>
-                              {offer.validUntil && <div>{t('valid_until', 'Gyldig til')}: {offer.validUntil}</div>}
+                            <div className="flex items-center gap-2 mt-1.5 text-[10px] text-slate-400 font-bold">
+                              <span>Fag: {act.tradeName || act.trade || 'Byggmester'}</span>
+                              <span>•</span>
+                              <span>{act.timestamp ? new Date(act.timestamp).toLocaleTimeString('no-NO', { hour: '2-digit', minute: '2-digit' }) : 'Nylig'}</span>
                             </div>
-                          </div>
-
-                          <div className="pt-4 border-t border-neutral-100 mt-2">
-                            <div className="flex items-baseline justify-between mb-4">
-                              <span className="text-[10px] font-black uppercase tracking-widest text-neutral-400">{t('total_amount', 'Totalbeløp')}</span>
-                              <span className="text-xl font-black text-emerald-600">{(offer.totalAmount || 0).toLocaleString()} kr</span>
-                            </div>
-
-                            <div className="grid grid-cols-2 gap-2">
-                              <button 
-                                onClick={() => {
-                                  setOfferInitialData({
-                                    projectId: offer.projectId,
-                                    projectCode: offer.projectCode,
-                                    title: offer.title,
-                                    description: offer.description,
-                                    clientName: offer.clientName,
-                                    clientEmail: offer.clientEmail
-                                  });
-                                  setIsOfferModalOpen(true);
-                                }}
-                                className="px-3 py-2 bg-neutral-100 hover:bg-neutral-200 text-neutral-800 font-bold text-xs rounded-xl transition-all"
-                              >
-                                {t('view_edit', 'Vis / Rediger')}
-                              </button>
-                              <button 
-                                onClick={() => {
-                                  const link = `${window.location.origin}/#offer-${offer.id}`;
-                                  navigator.clipboard.writeText(link);
-                                  toast.success("Tilbudslenke kopiert!");
-                                }}
-                                className="px-3 py-2 bg-emerald-50 hover:bg-emerald-100 text-emerald-700 font-bold text-xs rounded-xl transition-all flex items-center justify-center gap-1"
-                              >
-                                <Copy size={12} /> {t('copy_link', 'Kopiér Lenke')}
-                              </button>
-                            </div>
-                          </div>
-                        </div>
-                      ))
-                  )}
-                </div>
-              </div>
-            )}
-
-            {activeTab === 'avvik' && (
-              <div className="bg-white rounded-[2.5rem] border border-neutral-200 shadow-sm overflow-hidden">
-                <div className="p-8 border-b border-neutral-100">
-                  <h2 className="text-xl font-bold">{t('critical_deviations')}</h2>
-                </div>
-                <div className="divide-y divide-neutral-100">
-                  {loading ? (
-                    <div className="p-20 text-center text-neutral-400">
-                      <div className="w-10 h-10 border-2 border-emerald-600/30 border-t-emerald-600 rounded-full animate-spin mx-auto mb-4" />
-                      <p className="text-sm font-medium">{t('loading_deviations', 'Laster avvik...')}</p>
-                    </div>
-                  ) : deviations.length === 0 ? (
-                    <div className="p-20 text-center text-neutral-400">
-                      <AlertTriangle size={48} className="mx-auto mb-4 opacity-20" />
-                      <p className="text-sm font-medium">{t('no_deviations', 'Ingen kritiske avvik funnet.')}</p>
-                    </div>
-                  ) : (
-                    deviations.map((dev) => (
-                      <div key={dev.id} className="p-8 hover:bg-neutral-50 transition-colors">
-                        <div className="flex justify-between items-start mb-4">
-                          <div className="flex items-center gap-4">
-                            <div className={cn(
-                              "p-3 rounded-xl",
-                              dev.severity === 'high' ? "bg-red-100 text-red-600" : "bg-amber-100 text-amber-600"
-                            )}>
-                              <AlertTriangle size={24} />
-                            </div>
-                            <div>
-                              <h3 className="text-lg font-bold">{dev.title}</h3>
-                              <div className="flex items-center gap-4 text-sm text-neutral-400 mt-1">
-                                <span>{dev.project}</span>
-                                <span>•</span>
-                                <span>{dev.timestamp}</span>
-                              </div>
-                            </div>
-                          </div>
-                          <span className={cn(
-                            "px-3 py-1 rounded-full text-xs font-bold uppercase tracking-widest",
-                            dev.severity === 'high' ? "bg-red-100 text-red-700" : "bg-amber-100 text-amber-700"
-                          )}>
-                            {dev.severity === 'high' ? t('critical') : t('moderate')}
-                          </span>
-                        </div>
-                        <p className="text-neutral-600 max-w-3xl leading-relaxed">{dev.description}</p>
-                      </div>
-                    ))
-                  )}
-                </div>
-              </div>
-            )}
-
-            {activeTab === 'hms' && (
-              <motion.div
-                initial={{ opacity: 0, y: 20 }}
-                animate={{ opacity: 1, y: 0 }}
-              >
-                <HMSModule projects={projects} />
-              </motion.div>
-            )}
-
-            {activeTab === 'finans' && (
-              <div className="space-y-8">
-                <div className="grid grid-cols-1 md:grid-cols-4 gap-6">
-                  {[
-                    { label: t('revenue_mnd', 'Omsetning (Mnd)'), value: '1.2M', trend: '+12%', color: 'text-emerald-600' },
-                    { label: t('costs_mnd', 'Kostnader (Mnd)'), value: '850K', trend: '-5%', color: 'text-rose-600' },
-                    { label: t('profit_mnd', 'Resultat (Mnd)'), value: '350K', trend: '+18%', color: 'text-blue-600' },
-                    { label: t('outstanding', 'Utestående'), value: '420K', trend: '5 fakturaer', color: 'text-amber-600' },
-                  ].map((stat, i) => (
-                    <div key={i} className="bg-white p-6 rounded-[2rem] border border-neutral-200 shadow-sm">
-                      <div className="text-[10px] font-black uppercase tracking-widest text-neutral-400 mb-2">{stat.label}</div>
-                      <div className="text-3xl font-black text-neutral-900">{stat.value}</div>
-                      <div className={cn("text-[10px] font-bold mt-1", stat.color)}>{stat.trend}</div>
-                    </div>
-                  ))}
-                </div>
-
-                <div className="grid grid-cols-1 lg:grid-cols-2 gap-8">
-                  <div className="bg-white rounded-[2.5rem] border border-neutral-200 p-8 shadow-sm">
-                    <h3 className="font-bold mb-8">{t('revenue_vs_costs', 'Omsetning vs Kostnader')}</h3>
-                    <div className="h-80 w-full">
-                      <ResponsiveContainer width="100%" height="100%">
-                        <AreaChart data={[
-                          { name: 'Jan', omsetning: 800, kostnader: 600 },
-                          { name: 'Feb', omsetning: 950, kostnader: 700 },
-                          { name: 'Mar', omsetning: 1200, kostnader: 850 },
-                          { name: 'Apr', omsetning: 1100, kostnader: 800 },
-                          { name: 'Mai', omsetning: 1400, kostnader: 900 },
-                          { name: 'Jun', omsetning: 1600, kostnader: 1100 },
-                        ]}>
-                          <defs>
-                            <linearGradient id="colorOmsetning" x1="0" y1="0" x2="0" y2="1">
-                              <stop offset="5%" stopColor="#10b981" stopOpacity={0.1}/>
-                              <stop offset="95%" stopColor="#10b981" stopOpacity={0}/>
-                            </linearGradient>
-                            <linearGradient id="colorKostnader" x1="0" y1="0" x2="0" y2="1">
-                              <stop offset="5%" stopColor="#ef4444" stopOpacity={0.1}/>
-                              <stop offset="95%" stopColor="#ef4444" stopOpacity={0}/>
-                            </linearGradient>
-                          </defs>
-                          <CartesianGrid strokeDasharray="3 3" vertical={false} stroke="#f0f0f0" />
-                          <XAxis dataKey="name" axisLine={false} tickLine={false} tick={{ fontSize: 10, fontWeight: 700 }} />
-                          <YAxis axisLine={false} tickLine={false} tick={{ fontSize: 10, fontWeight: 700 }} />
-                          <Tooltip 
-                            contentStyle={{ borderRadius: '16px', border: 'none', boxShadow: '0 10px 15px -3px rgb(0 0 0 / 0.1)' }}
-                          />
-                          <Area type="monotone" dataKey="omsetning" stroke="#10b981" fillOpacity={1} fill="url(#colorOmsetning)" strokeWidth={3} />
-                          <Area type="monotone" dataKey="kostnader" stroke="#ef4444" fillOpacity={1} fill="url(#colorKostnader)" strokeWidth={3} />
-                        </AreaChart>
-                      </ResponsiveContainer>
-                    </div>
-                  </div>
-
-                  <div className="bg-white rounded-[2.5rem] border border-neutral-200 p-8 shadow-sm">
-                    <h3 className="font-bold mb-8">{t('profitability_per_project', 'Lønnsomhet per Prosjekt')}</h3>
-                    <div className="h-80 w-full">
-                      <ResponsiveContainer width="100%" height="100%">
-                        <BarChart data={[
-                          { name: 'Bjørklund', margin: 28 },
-                          { name: 'Solli', margin: 15 },
-                          { name: 'Vika', margin: 32 },
-                          { name: 'Garasje Sola', margin: 22 },
-                        ]} layout="vertical">
-                          <CartesianGrid strokeDasharray="3 3" horizontal={false} stroke="#f0f0f0" />
-                          <XAxis type="number" hide />
-                          <YAxis dataKey="name" type="category" axisLine={false} tickLine={false} tick={{ fontSize: 10, fontWeight: 700 }} width={80} />
-                          <Tooltip 
-                            cursor={{ fill: '#f8fafc' }}
-                            contentStyle={{ borderRadius: '16px', border: 'none', boxShadow: '0 10px 15px -3px rgb(0 0 0 / 0.1)' }}
-                          />
-                          <Bar dataKey="margin" fill="#3b82f6" radius={[0, 10, 10, 0]} barSize={24}>
-                            { [28, 15, 32, 22].map((entry, index) => (
-                              <Cell key={`cell-${index}`} fill={entry > 25 ? '#10b981' : (entry > 20 ? '#3b82f6' : '#f59e0b')} />
-                            ))}
-                          </Bar>
-                        </BarChart>
-                      </ResponsiveContainer>
-                    </div>
-                  </div>
-                </div>
-              </div>
-            )}
-
-            {activeTab === 'laerling' && (
-              <ApprenticeModule />
-            )}
-
-            {activeTab === 'ai' && (
-              <div className="space-y-8">
-                <div className="grid grid-cols-1 md:grid-cols-3 gap-6">
-                  <div className="md:col-span-2 bg-neutral-900 rounded-[2.5rem] p-8 text-white relative overflow-hidden">
-                    <div className="absolute top-0 right-0 w-64 h-64 bg-emerald-500/10 rounded-full blur-3xl -mr-32 -mt-32" />
-                    <div className="relative z-10">
-                      <div className="flex items-center justify-between mb-6">
-                        <div className="flex items-center gap-3">
-                          <div className="p-2 bg-emerald-500 rounded-lg">
-                            <Brain size={24} />
-                          </div>
-                          <h2 className="text-2xl font-bold">{t('ai_strategic_analysis', 'AI Strategisk Analyse')}</h2>
-                        </div>
-                        <button className="px-4 py-2 bg-white/10 hover:bg-white/20 rounded-xl text-xs font-bold transition-colors flex items-center gap-2">
-                          <RefreshCw size={14} className="animate-spin-slow" />
-                          {t('update_analysis', 'Oppdater analyse')}
-                        </button>
-                      </div>
-                      <p className="text-neutral-400 mb-8 max-w-xl">
-                        Vår AI har analysert dine {projects.length} aktive prosjekter og {deviations.length} avvik for å gi deg innsikt i hvordan du kan optimalisere driften.
-                      </p>
-                      <div className="grid grid-cols-1 sm:grid-cols-3 gap-4">
-                        <div className="p-4 bg-white/5 rounded-2xl border border-white/10">
-                          <div className="text-xs font-bold text-emerald-400 uppercase tracking-widest mb-2">{t('efficiency', 'Effektivitet')}</div>
-                          <div className="text-3xl font-bold">92%</div>
-                          <div className="text-[10px] text-neutral-500 mt-1">+4% fra forrige mnd</div>
-                        </div>
-                        <div className="p-4 bg-white/5 rounded-2xl border border-white/10">
-                          <div className="text-xs font-bold text-amber-400 uppercase tracking-widest mb-2">{t('risk', 'Risiko')}</div>
-                          <div className="text-3xl font-bold">Lav</div>
-                          <div className="text-[10px] text-neutral-500 mt-1">Ingen kritiske avvik</div>
-                        </div>
-                        <div className="p-4 bg-white/5 rounded-2xl border border-white/10">
-                          <div className="text-xs font-bold text-blue-400 uppercase tracking-widest mb-2">{t('automation', 'Automatisering')}</div>
-                          <div className="text-3xl font-bold">65%</div>
-                          <div className="text-[10px] text-neutral-500 mt-1">8 oppgaver spart i dag</div>
-                        </div>
-                      </div>
-                    </div>
-                  </div>
-                  
-                  <div className="bg-white rounded-[2.5rem] border border-neutral-200 p-8 shadow-sm">
-                    <h3 className="font-bold mb-6 flex items-center justify-between">
-                      {t('ai_recommendations', 'AI Anbefalinger')}
-                      <span className="text-[10px] font-black bg-emerald-100 text-emerald-700 px-2 py-0.5 rounded">{t('new_badge', '3 NYE')}</span>
-                    </h3>
-                    <div className="space-y-4">
-                      {[
-                        { title: 'Opplæring trengs', desc: 'Økning i fuktavvik. Foreslår kurs i dampsperre.', icon: <GraduationCap size={16} />, color: 'bg-amber-100 text-amber-600' },
-                        { title: 'Ressursoptimalisering', desc: 'Team B er ledig fra tirsdag. Kan fremskynde Prosjekt X.', icon: <Users size={16} />, color: 'bg-blue-100 text-blue-600' },
-                        { title: 'Automatisk FDV', desc: '3 nye produkter detektert. FDV-blader er hentet.', icon: <Package size={16} />, color: 'bg-emerald-100 text-emerald-600' }
-                      ].map((rec, i) => (
-                        <div key={i} className="flex gap-4 p-4 rounded-2xl bg-neutral-50 border border-neutral-100 hover:border-emerald-200 transition-colors cursor-pointer group">
-                          <div className={cn("p-2 h-fit rounded-lg transition-transform group-hover:scale-110", rec.color)}>
-                            {rec.icon}
-                          </div>
-                          <div>
-                            <div className="text-sm font-bold">{rec.title}</div>
-                            <div className="text-xs text-neutral-500 mt-1">{rec.desc}</div>
                           </div>
                         </div>
                       ))}
                     </div>
-                  </div>
-                </div>
 
-                <div className="grid grid-cols-1 lg:grid-cols-2 gap-8">
-                  <div className="bg-white rounded-[2.5rem] border border-neutral-200 p-8 shadow-sm">
-                    <div className="flex items-center justify-between mb-8">
-                      <h3 className="font-bold">{t('trend_analysis', 'Trendanalyse: Avvikstyper')}</h3>
-                      <div className="flex gap-4 text-xs font-bold uppercase tracking-widest text-neutral-400">
-                        <span className="flex items-center gap-2"><div className="w-2 h-2 rounded-full bg-emerald-500" /> {t('quality', 'Kvalitet')}</span>
-                        <span className="flex items-center gap-2"><div className="w-2 h-2 rounded-full bg-amber-500" /> HMS</span>
-                        <span className="flex items-center gap-2"><div className="w-2 h-2 rounded-full bg-blue-500" /> {t('materials', 'Materialer')}</span>
-                      </div>
-                    </div>
-                    <div className="h-48 flex items-end gap-3">
-                      {[65, 45, 85, 30, 55, 75, 95, 40, 60, 80, 50, 70].map((h, i) => (
-                        <div key={i} className="flex-grow group relative">
-                          <motion.div 
-                            initial={{ height: 0 }}
-                            animate={{ height: `${h}%` }}
-                            className={cn(
-                              "w-full rounded-t-lg transition-all group-hover:opacity-80",
-                              i % 3 === 0 ? "bg-emerald-500" : (i % 3 === 1 ? "bg-amber-500" : "bg-blue-500")
-                            )}
-                          />
+                    {/* Pre-close wall security alert */}
+                    <div className="bg-rose-50/70 border border-rose-200 rounded-3xl p-6 shadow-sm">
+                      <div className="flex items-start gap-3">
+                        <div className="w-10 h-10 rounded-2xl bg-rose-500 text-white flex items-center justify-center shrink-0">
+                          <Lock size={20} />
                         </div>
-                      ))}
-                    </div>
-                    <div className="flex justify-between mt-4 text-[10px] font-bold uppercase tracking-widest text-neutral-400">
-                      <span>{t('week', 'Uke')} 1</span>
-                      <span>{t('week', 'Uke')} 4</span>
-                      <span>{t('week', 'Uke')} 8</span>
-                      <span>{t('week', 'Uke')} 12</span>
-                    </div>
-                  </div>
-
-                  <div className="bg-white rounded-[2.5rem] border border-neutral-200 p-8 shadow-sm">
-                    <div className="flex items-center justify-between mb-6">
-                      <h3 className="font-bold flex items-center gap-2">
-                        <Sparkles size={18} className="text-emerald-500" />
-                        {t('smart_automation', 'Smart Automatisering')}
-                      </h3>
-                      <button 
-                        onClick={handleGenerateWeeklyReport}
-                        className="text-[10px] font-black uppercase tracking-widest text-emerald-600 hover:underline"
-                      >
-                        {t('generate_executive_report', 'Generer Leder-rapport')}
-                      </button>
-                      <button 
-                        onClick={handleAnalyzeDeviations}
-                        disabled={isReportLoading || deviations.length === 0}
-                        className="text-[10px] font-black uppercase tracking-widest text-indigo-600 hover:underline disabled:opacity-50"
-                      >
-                        {isReportLoading && reportType === 'deviation_analysis' ? 'Analyserer...' : t('analyze_deviations_ai', 'Analyser Avvik (AI)')}
-                      </button>
-                    </div>
-                    <div className="space-y-4">
-                      {automationSettings.map((item) => (
-                        <div key={item.id} className="flex items-center justify-between p-4 rounded-2xl bg-neutral-50 border border-neutral-100">
-                          <div>
-                            <div className="text-sm font-bold">{item.label}</div>
-                            <div className="text-[10px] text-neutral-500 mt-0.5">{item.desc}</div>
-                          </div>
+                        <div>
+                          <h4 className="text-sm font-extrabold text-rose-950">
+                            1 Tverrfaglig Lukkesperre Aktiv
+                          </h4>
+                          <p className="text-xs text-rose-800 mt-1 leading-relaxed">
+                            <strong>Storgata 8 (Vaskerom):</strong> Rørleggerens trykktestrapport mangler. Veggen er rødmerket mot kledning for å hindre reklamasjoner og erstatningsansvar.
+                          </p>
                           <button 
-                            onClick={() => toggleAutomation(item.id)}
-                            className={cn(
-                              "w-12 h-6 rounded-full p-1 transition-colors relative",
-                              item.active ? "bg-emerald-500" : "bg-neutral-300"
-                            )}
+                            onClick={() => setActiveTab('kvalitet')}
+                            className="mt-3 text-xs font-bold text-rose-700 hover:text-rose-950 flex items-center gap-1"
                           >
-                            <div className={cn(
-                              "w-4 h-4 bg-white rounded-full shadow-sm transition-transform",
-                              item.active ? "translate-x-6" : "translate-x-0"
-                            )} />
+                            <span>Inspiser lukkesperrematrise</span>
+                            <ArrowRight size={14} />
                           </button>
                         </div>
+                      </div>
+                    </div>
+                  </div>
+                </div>
+              )}
+
+              {/* TAB 2: PROSJEKTER */}
+              {activeTab === 'prosjekter' && (
+                <div>
+                  <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-4 mb-6">
+                    <div>
+                      <h2 className="text-xl font-extrabold text-navy-900 tracking-tight">
+                        Aktive Byggeprosjekter
+                      </h2>
+                      <p className="text-xs text-slate-500">
+                        Oversikt over fremdrift, værforhold fra Yr.no og kvalitetssikring.
+                      </p>
+                    </div>
+
+                    <button 
+                      onClick={() => setIsCreateModalOpen(true)}
+                      className="flex items-center gap-2 px-4 py-2.5 bg-gradient-to-r from-electric-500 to-electric-400 text-white rounded-2xl text-xs font-black shadow-purple-cta"
+                    >
+                      <Plus size={16} />
+                      <span>Opprett Prosjekt</span>
+                    </button>
+                  </div>
+
+                  <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-6">
+                    {projects.map((proj) => (
+                      <div 
+                        key={proj.id}
+                        className="bg-white rounded-3xl border border-slate-200/90 p-6 shadow-sm hover:shadow-md transition-all flex flex-col justify-between"
+                      >
+                        <div>
+                          <div className="flex items-start justify-between gap-3 mb-3">
+                            <span className="px-2.5 py-0.5 rounded-full text-[10px] font-black uppercase tracking-wider bg-electric-50 text-electric-600 border border-electric-200">
+                              {proj.status === 'active' ? 'I drift' : 'Planlagt'}
+                            </span>
+                            <div className="flex items-center gap-1 text-xs font-bold text-slate-500">
+                              <CloudSun size={14} className="text-amber-500" />
+                              <span>14°C Oslo</span>
+                            </div>
+                          </div>
+
+                          <h3 className="text-base font-extrabold text-navy-900 mb-1">
+                            {proj.name}
+                          </h3>
+                          <p className="text-xs text-slate-500 flex items-center gap-1 mb-4">
+                            <MapPin size={13} />
+                            <span>{proj.location || 'Norge'}</span>
+                          </p>
+
+                          {/* Progress bar */}
+                          <div className="space-y-1.5 mb-5">
+                            <div className="flex justify-between text-xs font-bold">
+                              <span className="text-slate-500">Fremdrift</span>
+                              <span className="text-navy-900">{proj.progress || 65}%</span>
+                            </div>
+                            <div className="w-full h-2 rounded-full bg-slate-100 overflow-hidden">
+                              <div 
+                                className="h-full bg-gradient-to-r from-electric-500 to-electric-400 rounded-full"
+                                style={{ width: `${proj.progress || 65}%` }}
+                              />
+                            </div>
+                          </div>
+
+                          <div className="p-3 bg-slate-50 rounded-2xl border border-slate-100 text-xs text-slate-600 mb-4">
+                            <div className="text-[10px] font-black uppercase tracking-wider text-slate-400 mb-0.5">Kunde</div>
+                            <div className="font-bold text-navy-900">{proj.clientName || 'Privat byggherre'}</div>
+                            <div className="text-[11px] text-slate-500">{proj.clientEmail || 'kunde@vikingmester.no'}</div>
+                          </div>
+                        </div>
+
+                        <div className="pt-4 border-t border-slate-100 flex items-center justify-between gap-2">
+                          <button 
+                            onClick={() => onOpenPortal?.(proj)}
+                            className="px-3 py-2 bg-slate-100 hover:bg-slate-200 text-slate-700 rounded-xl text-xs font-bold transition-all flex items-center gap-1.5"
+                          >
+                            <ExternalLink size={13} />
+                            <span>Kundeportal</span>
+                          </button>
+
+                          <button 
+                            onClick={() => setSelectedProject(proj)}
+                            className="px-4 py-2 bg-navy-900 hover:bg-navy-800 text-white rounded-xl text-xs font-black transition-all flex items-center gap-1"
+                          >
+                            <span>Åpne Prosjekt</span>
+                            <ChevronRight size={14} />
+                          </button>
+                        </div>
+                      </div>
+                    ))}
+                  </div>
+                </div>
+              )}
+
+              {/* TAB 3: ENDRINGSORDER (NS 8406) */}
+              {activeTab === 'endringsordrer' && (
+                <div className="space-y-6">
+                  <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-4">
+                    <div>
+                      <h2 className="text-xl font-extrabold text-navy-900 tracking-tight">
+                        Endringsordrer & Varslingsplikt (NS 8406 / Håndverkertjenesteloven)
+                      </h2>
+                      <p className="text-xs text-slate-500">
+                        Agenten forvandler muntlige beskjeder fra byggeplass til juridisk bindende tilleggskrav.
+                      </p>
+                    </div>
+
+                    <button 
+                      onClick={() => handleSendCommand('Registrer endringsordre: ')}
+                      className="flex items-center gap-2 px-4 py-2.5 bg-gradient-to-r from-electric-500 to-electric-400 text-white rounded-2xl text-xs font-black shadow-purple-cta"
+                    >
+                      <Plus size={16} />
+                      <span>Ny Endringsordre</span>
+                    </button>
+                  </div>
+
+                  <div className="bg-white rounded-3xl border border-slate-200/90 overflow-hidden shadow-sm">
+                    <div className="p-6 border-b border-slate-100 flex items-center justify-between flex-wrap gap-4">
+                      <div className="flex items-center gap-3">
+                        <div className="text-2xl font-black text-navy-900">
+                          kr {(agentMetrics.securedRevenue || 84500).toLocaleString('no-NO')}
+                        </div>
+                        <span className="text-xs font-bold text-slate-500">
+                          Totalt sikret i tilleggsarbeid
+                        </span>
+                      </div>
+                      <span className="text-xs font-bold text-emerald-600 bg-emerald-50 px-3 py-1 rounded-full border border-emerald-200">
+                        0 tapte krav på grunn av sen varsling
+                      </span>
+                    </div>
+
+                    <div className="divide-y divide-slate-100">
+                      {[
+                        { id: '1', number: 1, title: '6 ekstra downlights og trekkerør i stue', project: 'Nyebakken 14', amount: 14500, days: 2, status: 'Venter på bas', legal: 'NS 8406 pkt. 19.2' },
+                        { id: '2', number: 2, title: 'Uforutsett råte i bjelkelag under sluk', project: 'Storgata 8', amount: 28000, days: 4, status: 'Venter på bas', legal: 'NS 8406 pkt. 19.3' },
+                        { id: '3', number: 3, title: 'Oppgradering til royalimpregnert kledning', project: 'Fjordveien 22', amount: 42000, days: 0, status: 'Godkjent av kunde', legal: 'NS 8406 pkt. 19.2' }
+                      ].map((co) => (
+                        <div key={co.id} className="p-6 flex flex-col sm:flex-row sm:items-center justify-between gap-4 hover:bg-slate-50/60 transition-colors">
+                          <div>
+                            <div className="flex items-center gap-2 mb-1">
+                              <span className="text-xs font-extrabold text-navy-900">#{co.number}</span>
+                              <span className="text-xs font-bold text-slate-400">•</span>
+                              <span className="text-xs font-bold text-slate-600">{co.project}</span>
+                              <span className={cn(
+                                "px-2 py-0.5 rounded text-[10px] font-black uppercase",
+                                co.status.includes('Venter') ? "bg-amber-100 text-amber-800" : "bg-emerald-100 text-emerald-800"
+                              )}>
+                                {co.status}
+                              </span>
+                            </div>
+                            <h4 className="text-sm font-bold text-navy-900">{co.title}</h4>
+                            <p className="text-[11px] text-slate-500 mt-0.5">{co.legal}</p>
+                          </div>
+
+                          <div className="flex items-center gap-4 sm:text-right shrink-0">
+                            <div>
+                              <div className="text-sm font-black text-navy-900">kr {co.amount.toLocaleString('no-NO')}</div>
+                              <div className="text-[10px] text-slate-400 font-bold">eks mva (+{co.days} dgr)</div>
+                            </div>
+
+                            <button 
+                              onClick={() => toast.success('Godkjenningslenke kopiert til utklippstavlen!')}
+                              className="px-3 py-2 bg-slate-100 hover:bg-slate-200 text-navy-900 rounded-xl text-xs font-bold transition-all"
+                            >
+                              Kopier lenke
+                            </button>
+                          </div>
+                        </div>
                       ))}
                     </div>
                   </div>
                 </div>
-              </div>
-            )}
-          </motion.div>
-        )}
-      </AnimatePresence>
+              )}
+
+              {/* TAB 4: KVALITET & LUKKESPERRE (TEK17) */}
+              {activeTab === 'kvalitet' && (
+                <div className="space-y-6">
+                  <div>
+                    <h2 className="text-xl font-extrabold text-navy-900 tracking-tight">
+                      Tverrfaglig Lukkesperre & TEK17 Kontroll
+                    </h2>
+                    <p className="text-xs text-slate-500">
+                      Sperrer rom og vegger mot lukking/flislegging før skjultanlegg og trykktester er verifisert.
+                    </p>
+                  </div>
+
+                  <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
+                    {/* Zone Matrix */}
+                    <div className="bg-white rounded-3xl border border-slate-200/90 p-6 shadow-sm">
+                      <h3 className="text-sm font-extrabold text-navy-900 mb-4 flex items-center justify-between">
+                        <span>Status per Rom & Sone</span>
+                        <span className="text-xs font-bold text-slate-400">TEK17 § 13-15</span>
+                      </h3>
+
+                      <div className="space-y-3">
+                        {[
+                          { room: 'Bad 2. etg (Nyebakken)', status: 'GREEN', canClose: true, detail: 'Rør-i-rør trykktest og dampsperre godkjent.' },
+                          { room: 'Vaskerom 1. etg (Storgata 8)', status: 'RED', canClose: false, detail: 'Rørlegger mangler trykktestrapport for fordelerskap.' },
+                          { room: 'Kjøkken (Fjordveien 22)', status: 'GREEN', canClose: true, detail: 'El-skjultanlegg og rørkurs verifisert.' }
+                        ].map((z, i) => (
+                          <div 
+                            key={i}
+                            className={cn(
+                              "p-4 rounded-2xl border flex items-start justify-between gap-3",
+                              z.status === 'GREEN' ? "bg-emerald-50/60 border-emerald-200" : "bg-rose-50/70 border-rose-200"
+                            )}
+                          >
+                            <div>
+                              <div className="flex items-center gap-2">
+                                {z.status === 'GREEN' ? (
+                                  <Unlock size={16} className="text-emerald-600" />
+                                ) : (
+                                  <Lock size={16} className="text-rose-600" />
+                                )}
+                                <h4 className="text-xs font-bold text-navy-900">{z.room}</h4>
+                              </div>
+                              <p className="text-[11px] text-slate-600 mt-1">{z.detail}</p>
+                            </div>
+
+                            <span className={cn(
+                              "px-2.5 py-1 rounded-full text-[10px] font-black uppercase tracking-wider shrink-0",
+                              z.status === 'GREEN' ? "bg-emerald-200 text-emerald-900" : "bg-rose-200 text-rose-900"
+                            )}>
+                              {z.status === 'GREEN' ? 'GRØNT LYS' : 'RØD SPERRE'}
+                            </span>
+                          </div>
+                        ))}
+                      </div>
+                    </div>
+
+                    {/* SJA Generator Card */}
+                    <div className="bg-white rounded-3xl border border-slate-200/90 p-6 shadow-sm flex flex-col justify-between">
+                      <div>
+                        <h3 className="text-sm font-extrabold text-navy-900 mb-2">
+                          Sikker Jobb Analyse (SJA) på 1-2-3
+                        </h3>
+                        <p className="text-xs text-slate-500 mb-4 leading-relaxed">
+                          Byggherreforskriften krever dokumentert risikovurdering ved risikofylt arbeid. Agenten genererer ferdig SJA for 7 håndverkerfag.
+                        </p>
+
+                        <div className="grid grid-cols-2 gap-2">
+                          {['Tømrer (Høyde/Stillas)', 'Rørlegger (Trykk/Varmt)', 'Elektriker (Spenningssatt)', 'Graver (Grøft/Kabler)'].map((trade, i) => (
+                            <button
+                              key={i}
+                              onClick={() => handleSendCommand(`Opprett SJA for ${trade}`)}
+                              className="p-2.5 bg-slate-50 hover:bg-electric-50 hover:text-electric-700 border border-slate-200/80 rounded-xl text-xs font-bold text-slate-700 text-left transition-all"
+                            >
+                              + SJA for {trade}
+                            </button>
+                          ))}
+                        </div>
+                      </div>
+
+                      <div className="mt-6 pt-4 border-t border-slate-100 flex items-center justify-between">
+                        <span className="text-[11px] text-slate-400 font-bold">AML § 4-1 & Byggherreforskriften</span>
+                        <button 
+                          onClick={() => setIsHMSModalOpen(true)}
+                          className="px-4 py-2 bg-navy-900 text-white rounded-xl text-xs font-bold hover:bg-navy-800 transition-all"
+                        >
+                          Åpne HMS-Håndbok
+                        </button>
+                      </div>
+                    </div>
+                  </div>
+                </div>
+              )}
+
+              {/* TAB 5: AGENT-KANALER & REGLER */}
+              {activeTab === 'agent' && (
+                <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
+                  {/* Active Inboxes & Channels */}
+                  <div className="bg-white rounded-3xl border border-slate-200/90 p-6 shadow-sm space-y-4">
+                    <h3 className="text-base font-extrabold text-navy-900">
+                      Tilknyttede Kommunikasjonskanaler
+                    </h3>
+                    <p className="text-xs text-slate-500 leading-relaxed">
+                      Håndverkerne kan sende inn byggedagbok, bilder og spørsmål rett fra lomma uten å installere apper.
+                    </p>
+
+                    <div className="space-y-3">
+                      <div className="p-4 rounded-2xl bg-slate-50 border border-slate-200/70 flex items-center justify-between">
+                        <div>
+                          <div className="text-xs font-bold text-navy-900">Offisiell e-postlytter</div>
+                          <div className="text-xs text-electric-600 font-mono font-bold mt-0.5">hei@vikingmester.no</div>
+                        </div>
+                        <span className="px-2 py-0.5 rounded-full text-[10px] font-black uppercase bg-emerald-100 text-emerald-800">
+                          100% Aktiv
+                        </span>
+                      </div>
+
+                      <div className="p-4 rounded-2xl bg-slate-50 border border-slate-200/70 flex items-center justify-between">
+                        <div>
+                          <div className="text-xs font-bold text-navy-900">Tale & Diktat i felt</div>
+                          <div className="text-xs text-slate-500 mt-0.5">Støtter norsk tale, polsk, litauisk og engelsk</div>
+                        </div>
+                        <span className="px-2 py-0.5 rounded-full text-[10px] font-black uppercase bg-emerald-100 text-emerald-800">
+                          Operativ
+                        </span>
+                      </div>
+
+                      <div className="p-4 rounded-2xl bg-slate-50 border border-slate-200/70 flex items-center justify-between">
+                        <div>
+                          <div className="text-xs font-bold text-navy-900">Yr.no Værsynkronisering</div>
+                          <div className="text-xs text-slate-500 mt-0.5">Henter automatisk temperatur, nedbør og vind</div>
+                        </div>
+                        <span className="px-2 py-0.5 rounded-full text-[10px] font-black uppercase bg-emerald-100 text-emerald-800">
+                          Tilkoblet
+                        </span>
+                      </div>
+                    </div>
+                  </div>
+
+                  {/* Active Regulatory Engines */}
+                  <div className="bg-white rounded-3xl border border-slate-200/90 p-6 shadow-sm space-y-4">
+                    <h3 className="text-base font-extrabold text-navy-900">
+                      Aktive Regelmotorer & Norske Standarder
+                    </h3>
+                    <p className="text-xs text-slate-500 leading-relaxed">
+                      Deterministisk validering som sikrer at alle rapporter holder juridisk mål ved tilsyn og overtakelse.
+                    </p>
+
+                    <ul className="space-y-2.5">
+                      {[
+                        'TEK17 § 13-15: Lekkasjesikre vanninstallasjoner & sluk',
+                        'Byggherreforskriften § 15: Elektronisk byggedagbok',
+                        'Byggherreforskriften § 18: Sikker Jobb Analyse (SJA)',
+                        'NS 8406: Forenklet norsk byggekontrakt & endringsvarsel',
+                        'BVN 31.205: Membran og slukmansjett i våtrom',
+                        'NEK 400:2022: Skjultanlegg før lukking av vegger'
+                      ].map((rule, i) => (
+                        <li key={i} className="flex items-center gap-2.5 text-xs text-slate-700 font-medium">
+                          <CheckCircle2 size={16} className="text-emerald-600 shrink-0" />
+                          <span>{rule}</span>
+                        </li>
+                      ))}
+                    </ul>
+                  </div>
+                </div>
+              )}
+            </motion.div>
+          )}
+        </AnimatePresence>
+      </div>
     </div>
   );
 }

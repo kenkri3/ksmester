@@ -20,7 +20,7 @@ export async function POST(req: NextRequest) {
     const emailLog = {
       id: 'email-' + Date.now() + '-' + Math.random().toString(36).substring(2, 7),
       to,
-      subject: subject || 'Melding fra VikingMesterAI',
+      subject: subject || 'Melding fra VikingMester',
       text: text || '',
       type,
       status: 'sent',
@@ -38,9 +38,9 @@ export async function POST(req: NextRequest) {
             'Authorization': `Bearer ${process.env.RESEND_API_KEY}`
           },
           body: JSON.stringify({
-            from: process.env.EMAIL_FROM || 'VikingMesterAI <hei@vikingmester.no>',
+            from: process.env.EMAIL_FROM || 'VikingMester <hei@vikingmester.no>',
             to: Array.isArray(to) ? to : [to],
-            subject: subject || 'Melding fra VikingMesterAI',
+            subject: subject || 'Melding fra VikingMester',
             html: html || `<p>${text}</p>`
           })
         });

@@ -394,7 +394,7 @@ export default function SuperAdmin() {
           </button>
           <button 
             onClick={() => setIsCreateModalOpen(true)}
-            className="flex items-center gap-2 px-6 py-3 bg-emerald-600 text-white rounded-2xl font-bold hover:bg-emerald-500 transition-all shadow-lg shadow-emerald-100"
+            className="flex items-center gap-2 px-6 py-3 bg-gradient-to-r from-electric-500 to-electric-400 text-white rounded-2xl font-black hover:opacity-95 transition-all shadow-purple-cta"
           >
             <Plus size={20} />
             Opprett ny kunde
@@ -464,7 +464,7 @@ export default function SuperAdmin() {
                   placeholder="Søk etter kundenavn eller org.nr..."
                   value={searchTerm}
                   onChange={(e) => setSearchTerm(e.target.value)}
-                  className="w-full pl-12 pr-4 py-3 bg-neutral-50 border border-neutral-200 rounded-2xl focus:ring-2 focus:ring-emerald-500 outline-none transition-all"
+                  className="w-full pl-12 pr-4 py-3 bg-neutral-50 border border-neutral-200 rounded-2xl focus:ring-2 focus:ring-electric-500 outline-none transition-all"
                 />
               </div>
             </div>
@@ -488,7 +488,7 @@ export default function SuperAdmin() {
                     <tr key={company.id} className="hover:bg-neutral-50 transition-colors group">
                       <td className="px-8 py-6">
                         <div className="flex items-center gap-4">
-                          <div className="w-12 h-12 bg-neutral-100 rounded-2xl flex items-center justify-center text-neutral-400 group-hover:bg-emerald-100 group-hover:text-emerald-600 transition-all">
+                          <div className="w-12 h-12 bg-neutral-100 rounded-2xl flex items-center justify-center text-neutral-400 group-hover:bg-emerald-100 group-hover:text-electric-600 transition-all">
                             <Building2 size={24} />
                           </div>
                           <div>
@@ -540,7 +540,7 @@ export default function SuperAdmin() {
                           </button>
                           <button 
                             onClick={() => { setSelectedCompany(company); setIsEditModalOpen(true); }}
-                            className="p-2 text-neutral-400 hover:text-emerald-600 hover:bg-emerald-50 rounded-xl transition-all"
+                            className="p-2 text-neutral-400 hover:text-electric-600 hover:bg-electric-50 rounded-xl transition-all"
                             title="Rediger moduler"
                           >
                             <Settings size={18} />
@@ -620,7 +620,7 @@ export default function SuperAdmin() {
                           disabled={isAnalyzingLead === lead.id}
                           className={cn(
                             "p-2 rounded-xl transition-all",
-                            lead.aiScore ? "text-emerald-600 bg-emerald-50" : "text-neutral-400 hover:text-emerald-600 hover:bg-emerald-50"
+                            lead.aiScore ? "text-emerald-600 bg-emerald-50" : "text-neutral-400 hover:text-electric-600 hover:bg-electric-50"
                           )}
                           title="AI Analyse"
                         >
@@ -635,7 +635,7 @@ export default function SuperAdmin() {
                             setSelectedLead(lead);
                             setIsResponseModalOpen(true);
                           }}
-                          className="p-2 text-neutral-400 hover:text-emerald-600 hover:bg-emerald-50 rounded-xl transition-all"
+                          className="p-2 text-neutral-400 hover:text-electric-600 hover:bg-electric-50 rounded-xl transition-all"
                           title="Svar"
                         >
                           <Mail size={18} />
@@ -829,13 +829,13 @@ export default function SuperAdmin() {
                       className={cn(
                         "flex items-center gap-4 p-4 rounded-2xl border-2 transition-all text-left",
                         isActive 
-                          ? "border-emerald-600 bg-emerald-50 text-emerald-900" 
+                          ? "border-electric-500 bg-electric-50 text-electric-950" 
                           : "border-neutral-100 bg-neutral-50 text-neutral-500 hover:border-neutral-200"
                       )}
                     >
                       <div className={cn(
                         "w-10 h-10 rounded-xl flex items-center justify-center shadow-sm",
-                        isActive ? "bg-emerald-600 text-white" : "bg-white text-neutral-400"
+                        isActive ? "bg-electric-500 text-white" : "bg-white text-neutral-400"
                       )}>
                         {module.icon}
                       </div>
@@ -857,7 +857,7 @@ export default function SuperAdmin() {
                     handleUpdateModules(selectedCompany.id, selectedCompany.modules);
                     setIsEditModalOpen(false);
                   }}
-                  className="flex-1 bg-emerald-600 text-white py-4 rounded-2xl font-bold hover:bg-emerald-500 transition-all shadow-lg shadow-emerald-100"
+                  className="flex-1 bg-gradient-to-r from-electric-500 to-electric-400 text-white py-4 rounded-2xl font-black hover:opacity-95 transition-all shadow-purple-cta"
                 >
                   Lagre endringer
                 </button>
@@ -997,7 +997,7 @@ export default function SuperAdmin() {
                       <p className="text-xs font-black uppercase text-emerald-700">AI Forslag til svar</p>
                     </div>
                     <textarea 
-                      className="w-full h-48 p-6 bg-white border border-emerald-100 rounded-2xl text-sm text-neutral-700 outline-none focus:ring-2 focus:ring-emerald-500 transition-all"
+                      className="w-full h-48 p-6 bg-white border border-emerald-100 rounded-2xl text-sm text-neutral-700 outline-none focus:ring-2 focus:ring-electric-500 transition-all"
                       defaultValue={leadAnalysis[selectedLead.id].suggestedResponse}
                     />
                   </div>
@@ -1007,7 +1007,7 @@ export default function SuperAdmin() {
                   <div className="text-center py-12">
                     <button 
                       onClick={() => handleAnalyzeLead(selectedLead)}
-                      className="inline-flex items-center gap-2 px-6 py-3 bg-emerald-600 text-white rounded-2xl font-bold hover:bg-emerald-500 transition-all"
+                      className="inline-flex items-center gap-2 px-6 py-3 bg-gradient-to-r from-electric-500 to-electric-400 text-white rounded-2xl font-black hover:opacity-95 transition-all shadow-purple-cta"
                     >
                       <Sparkles size={18} />
                       Generer AI-svar
@@ -1363,7 +1363,7 @@ function CreateCompanyModal({ onClose, onSuccess }: { onClose: () => void, onSuc
               type="text"
               value={name}
               onChange={(e) => setName(e.target.value)}
-              className="w-full px-4 py-3 bg-neutral-50 border border-neutral-200 rounded-2xl focus:ring-2 focus:ring-emerald-500 outline-none transition-all"
+              className="w-full px-4 py-3 bg-neutral-50 border border-neutral-200 rounded-2xl focus:ring-2 focus:ring-electric-500 outline-none transition-all"
               placeholder="F.eks. Mesterbygg AS"
             />
           </div>
@@ -1373,7 +1373,7 @@ function CreateCompanyModal({ onClose, onSuccess }: { onClose: () => void, onSuc
               type="text"
               value={orgNumber}
               onChange={(e) => setOrgNumber(e.target.value)}
-              className="w-full px-4 py-3 bg-neutral-50 border border-neutral-200 rounded-2xl focus:ring-2 focus:ring-emerald-500 outline-none transition-all"
+              className="w-full px-4 py-3 bg-neutral-50 border border-neutral-200 rounded-2xl focus:ring-2 focus:ring-electric-500 outline-none transition-all"
               placeholder="9 siffer"
             />
           </div>
@@ -1405,7 +1405,7 @@ function CreateCompanyModal({ onClose, onSuccess }: { onClose: () => void, onSuc
 
           <button 
             disabled={loading}
-            className="w-full bg-emerald-600 text-white py-4 rounded-2xl font-bold hover:bg-emerald-500 transition-all shadow-lg shadow-emerald-100 disabled:opacity-50"
+            className="w-full bg-gradient-to-r from-electric-500 to-electric-400 text-white py-4 rounded-2xl font-black hover:opacity-95 transition-all shadow-purple-cta disabled:opacity-50"
           >
             {loading ? 'Oppretter...' : 'Opprett kunde'}
           </button>

@@ -149,7 +149,7 @@ export async function createAutonomousChangeOrder(params: {
   const changeNumber = projectOrders.length + 1;
 
   const token = 'co_' + Math.random().toString(36).substring(2, 10) + Date.now().toString(36);
-  const shareUrl = `https://VikingMester.no/?view=public-change-order&token=${token}`;
+  const shareUrl = `https://vikingmester.no/?view=public-change-order&token=${token}`;
 
   const changeOrder = {
     projectId: params.projectId,
@@ -162,7 +162,8 @@ export async function createAutonomousChangeOrder(params: {
     totalAmount: parsed.totalAmount,
     impactDays: parsed.impactDays,
     legalHjemmel: parsed.legalHjemmel,
-    status: 'pending_customer',
+    status: 'pending_approval',
+    projectName: params.projectName || 'Nyebakken 14 - Totalrenovering',
     token,
     shareUrl,
     clientName: params.clientName || 'Kunde',

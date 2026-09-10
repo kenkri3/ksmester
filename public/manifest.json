@@ -2,13 +2,13 @@
   "id": "/?source=pwa",
   "name": "VikingMester Pro",
   "short_name": "VikingMester",
-  "description": "Byggeplassens råeste kraftverktøy. Autonom HMS/KS, TEK17 og byggedagbok.",
+  "description": "Byggeplassens råeste kraftverktøy. Autonom HMS/KS, TEK17 og byggedagbok. En del av Vikingnet.",
   "start_url": "/?source=pwa",
   "scope": "/",
   "display": "standalone",
   "orientation": "portrait-primary",
-  "background_color": "#0F1115",
-  "theme_color": "#0F1115",
+  "background_color": "#0A192F",
+  "theme_color": "#0A192F",
   "categories": ["business", "productivity", "utilities"],
   "icons": [
     {
@@ -16,6 +16,18 @@
       "sizes": "192x192 512x512",
       "type": "image/svg+xml",
       "purpose": "any maskable"
+    },
+    {
+      "src": "/icon-192.png",
+      "sizes": "192x192",
+      "type": "image/png",
+      "purpose": "any"
+    },
+    {
+      "src": "/icon-512.png",
+      "sizes": "512x512",
+      "type": "image/png",
+      "purpose": "any"
     }
   ]
 }

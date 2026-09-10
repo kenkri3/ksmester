@@ -391,7 +391,7 @@ export default function ProjectDetails({ project, onBack, onShare, onStartCheckl
         <div className="flex flex-wrap items-center gap-2 sm:gap-3">
           <button 
             onClick={onShare}
-            className="flex items-center gap-1.5 sm:gap-2 px-3 sm:px-4 py-2 bg-emerald-600 text-white rounded-xl text-xs sm:text-sm font-bold hover:bg-emerald-500 transition-all shadow-lg shadow-emerald-100"
+            className="flex items-center gap-1.5 sm:gap-2 px-3 sm:px-4 py-2 bg-gradient-to-r from-electric-500 to-electric-400 text-white rounded-xl text-xs sm:text-sm font-black hover:opacity-95 transition-all shadow-purple-cta"
           >
             <Share2 size={16} />
             Del med kunde
@@ -477,7 +477,7 @@ export default function ProjectDetails({ project, onBack, onShare, onStartCheckl
           )}
           <button 
             onClick={() => setIsReportModalOpen(true)}
-            className="px-3 sm:px-4 py-2 bg-emerald-600 text-white rounded-xl text-xs sm:text-sm font-bold hover:bg-emerald-500 transition-all shadow-lg shadow-emerald-100"
+            className="px-3 sm:px-4 py-2 bg-gradient-to-r from-electric-500 to-electric-400 text-white rounded-xl text-xs sm:text-sm font-black hover:opacity-95 transition-all shadow-purple-cta"
           >
             {t('generate_report')}
           </button>
@@ -617,7 +617,7 @@ export default function ProjectDetails({ project, onBack, onShare, onStartCheckl
             className={cn(
               "flex items-center gap-2 px-4 py-2 rounded-xl text-sm font-bold transition-all",
               activeTab === tab.id 
-                ? "bg-white text-emerald-600 shadow-sm" 
+                ? "bg-white text-electric-600 shadow-sm" 
                 : "text-neutral-500 hover:text-neutral-700"
             )}
           >
@@ -829,7 +829,7 @@ export default function ProjectDetails({ project, onBack, onShare, onStartCheckl
                 <h3 className="font-bold">{t('sja_reports')}</h3>
                 <button 
                   onClick={() => setIsNewSJAOpen(true)}
-                  className="flex items-center gap-2 px-4 py-2 bg-emerald-600 text-white rounded-xl text-xs font-bold hover:bg-emerald-500 transition-all shadow-lg shadow-emerald-100"
+                  className="flex items-center gap-2 px-4 py-2 bg-gradient-to-r from-electric-500 to-electric-400 text-white rounded-xl text-xs font-black hover:opacity-95 transition-all shadow-purple-cta"
                 >
                   <Plus size={16} />
                   {t('new_sja')}
@@ -917,7 +917,7 @@ export default function ProjectDetails({ project, onBack, onShare, onStartCheckl
                   </button>
                   <button 
                     onClick={() => setIsNewDeviationOpen(true)}
-                    className="flex items-center gap-2 px-4 py-2 bg-emerald-600 text-white rounded-xl text-xs font-bold hover:bg-emerald-500 transition-all shadow-lg shadow-emerald-100"
+                    className="flex items-center gap-2 px-4 py-2 bg-gradient-to-r from-electric-500 to-electric-400 text-white rounded-xl text-xs font-black hover:opacity-95 transition-all shadow-purple-cta"
                   >
                     <Plus size={16} />
                     {t('log_deviation')}
@@ -1435,7 +1435,7 @@ export default function ProjectDetails({ project, onBack, onShare, onStartCheckl
                   <button 
                     type="submit"
                     disabled={isSaving}
-                    className="w-full py-3.5 sm:py-4 bg-emerald-600 text-white rounded-xl sm:rounded-2xl font-bold flex items-center justify-center gap-2 hover:bg-emerald-500 transition-all shadow-lg shadow-emerald-100 cursor-pointer"
+                    className="w-full py-3.5 sm:py-4 bg-gradient-to-r from-electric-500 to-electric-400 text-white rounded-xl sm:rounded-2xl font-black flex items-center justify-center gap-2 hover:opacity-95 transition-all shadow-purple-cta cursor-pointer"
                   >
                     {isSaving ? <Loader2 className="animate-spin" size={18} /> : <Save size={18} />}
                     <span className="text-sm sm:text-base">{t('save_sja')}</span>
@@ -1515,7 +1515,7 @@ export default function ProjectDetails({ project, onBack, onShare, onStartCheckl
                   <button 
                     type="submit"
                     disabled={isSaving}
-                    className="w-full py-3.5 sm:py-4 bg-emerald-600 text-white rounded-xl sm:rounded-2xl font-bold flex items-center justify-center gap-2 hover:bg-emerald-500 transition-all shadow-lg shadow-emerald-100 cursor-pointer"
+                    className="w-full py-3.5 sm:py-4 bg-gradient-to-r from-electric-500 to-electric-400 text-white rounded-xl sm:rounded-2xl font-black flex items-center justify-center gap-2 hover:opacity-95 transition-all shadow-purple-cta cursor-pointer"
                   >
                     {isSaving ? <Loader2 className="animate-spin" size={18} /> : <Save size={18} />}
                     <span className="text-sm sm:text-base">{t('save_deviation')}</span>
