@@ -85,8 +85,9 @@ export async function POST(req: NextRequest) {
     }
 
     // 2. Lagre lead i databasen
+    const leadId = `lead-${Date.now()}-${Math.random().toString(36).substring(2, 7)}`;
     const leadRecord = {
-      id: `lead-${Date.now()}-${Math.random().toString(36).substring(2, 7)}`,
+      id: leadId,
       name: rawName || brregInfo?.navn || rawCompany || 'Interessert håndverker',
       company: brregInfo?.navn || rawCompany || 'Ukjent firma',
       orgnr: brregInfo?.orgnr || (rawOrgnr && /^\d{9}$/.test(rawOrgnr) ? rawOrgnr : null),
@@ -107,7 +108,7 @@ export async function POST(req: NextRequest) {
     await saveCollectionItem('leads', leadRecord);
 
     // 3. Synkroniser til VikingCRM via Webhook hvis konfigurert
-    const crmWebhook = process.env.VIKINGCRM_WEBHOOK_URL;
+    const crmWebhook = process.env.VIKINGCRM_WEBHOOK_URL || process.env.LEAD_WEBHOOK_URL;
     if (crmWebhook) {
       try {
         await fetch(crmWebhook, {
@@ -115,6 +116,7 @@ export async function POST(req: NextRequest) {
           headers: { 'Content-Type': 'application/json' },
           body: JSON.stringify({
             event: 'lead.created',
+            leadId: leadRecord.id,
             contactName: leadRecord.name,
             companyName: leadRecord.company,
             orgNumber: leadRecord.orgnr,
@@ -127,7 +129,7 @@ export async function POST(req: NextRequest) {
             source: 'vikingmester.no-bestilling',
             notes: `Bestilling fra nettside. Foretrukket kanal: ${leadRecord.channel}. Antall brukere: ${workers}. Brreg: ${brregInfo?.antallAnsatte || workers} ansatte, adresse: ${brregInfo?.forretningsadresse || 'Ukjent'}.`
           }),
-          signal: AbortSignal.timeout(4000)
+          signal: AbortSignal.timeout(10000)
         });
       } catch (crmErr) {
         console.warn('VikingCRM sync error:', crmErr);
@@ -135,7 +137,7 @@ export async function POST(req: NextRequest) {
     }
 
     // 4. Send automatisk onboarding og FAKTURAGRUNNLAG via Resend
-    const resendKey = process.env.RESEND_API_KEY || process.env.RESEND_API || process.env.RESEND_KEY;
+    const resendKey = process.env.RESEND_API_KEY || process.env.RESEND_API || process.env.RESEND_KEY || process.env.RESEND_TOKEN || process.env.RESEND || process.env.RESEND_APIKEY;
     const fromEmail = process.env.EMAIL_FROM || process.env.RESEND_FROM || 'VikingMester <hei@vikingnet.no>';
 
     if (resendKey) {
@@ -188,19 +190,19 @@ export async function POST(req: NextRequest) {
                   <div style="margin-top: 30px; padding-top: 16px; border-top: 1px solid #E2E8F0; font-size: 12px; color: #64748B;">
                     Med vennlig hilsen,<br>
                     <strong>VikingMester Teamet</strong><br>
-                    AIChat Norge AS / Vikingnet • Org.nr: 933 649 768 MVA
+                    AIChat Norge AS / Vikingnet • Org.nr: 933 851 222 MVA
                   </div>
                 </div>
               `
             }),
-            signal: AbortSignal.timeout(4000)
+            signal: AbortSignal.timeout(15000)
           });
         } catch (mailErr) {
           console.warn('Customer onboarding email notice:', mailErr);
         }
       }
 
-      // 4B. Send autoritativt FAKTURAGRUNNLAG til Kenneth og Fredrik
+      // 4B. Send autoritativt FAKTURAGRUNNLAG til Kenneth, Fredrik og aichatnorge@gmail.com
       try {
         const timestampStr = new Date().toLocaleString('nb-NO', { timeZone: 'Europe/Oslo' });
         await fetch('https://api.resend.com/emails', {
@@ -212,12 +214,12 @@ export async function POST(req: NextRequest) {
           body: JSON.stringify({
             from: fromEmail,
             reply_to: leadRecord.email || 'hei@vikingnet.no',
-            to: ['kenkri3@gmail.com', 'fredrik.r.ellingsen@gmail.com'],
-            subject: `🔥 FAKTURAGRUNNLAG: ${leadRecord.company} – ${leadRecord.plan}`,
+            to: ['kenkri3@gmail.com', 'fredrik.r.ellingsen@gmail.com', 'aichatnorge@gmail.com'],
+            subject: `🔥 FAKTURAGRUNNLAG [${leadRecord.id}]: ${leadRecord.company} – ${leadRecord.plan}`,
             html: `
               <div style="font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, sans-serif; max-width: 600px; margin: 0 auto; color: #0F172A; line-height: 1.6; padding: 24px; border: 1px solid #CBD5E1; border-radius: 12px;">
                 <div style="background: #10B981; color: white; padding: 12px 16px; border-radius: 8px; font-weight: bold; font-size: 16px; margin-bottom: 20px;">
-                  ✓ NY BEDRIFTSBESTILLING – VIKINGMESTER
+                  ✓ NY BEDRIFTSBESTILLING – VIKINGMESTER (50/50 PARTNERSKAP)
                 </div>
 
                 <h3 style="margin-top: 0; color: #0F172A;">FAKTURAGRUNNLAG (EHF / E-POST)</h3>
@@ -259,6 +261,10 @@ export async function POST(req: NextRequest) {
                     <td style="padding: 8px 0; font-weight: bold; color: #64748B;">Fagområde:</td>
                     <td style="padding: 8px 0;">${leadRecord.trade}</td>
                   </tr>
+                  <tr style="border-bottom: 1px solid #E2E8F0;">
+                    <td style="padding: 8px 0; font-weight: bold; color: #64748B;">Lead ID / Ref:</td>
+                    <td style="padding: 8px 0; font-family: monospace; color: #64748B;">${leadRecord.id}</td>
+                  </tr>
                   <tr>
                     <td style="padding: 8px 0; font-weight: bold; color: #64748B;">Tidspunkt:</td>
                     <td style="padding: 8px 0; color: #64748B;">${timestampStr}</td>
@@ -267,11 +273,13 @@ export async function POST(req: NextRequest) {
 
                 <div style="background: #F1F5F9; padding: 12px; border-radius: 8px; font-size: 13px; color: #334155;">
                   <strong>Neste steg:</strong> Send EHF / bedriftsfaktura på <strong>kr ${monthlyPrice.toLocaleString('nb-NO')},- eks. mva</strong> for første måned med 14 dagers forfall.
+                  <br><br>
+                  <em style="color: #64748B;">Merk: Inntekter og direkte driftskostnader for dette abonnementet inngår i 50/50-avregningen for VikingMester.</em>
                 </div>
               </div>
             `
           }),
-          signal: AbortSignal.timeout(4000)
+          signal: AbortSignal.timeout(15000)
         });
       } catch (adminMailErr) {
         console.warn('Admin invoice basis email notice:', adminMailErr);

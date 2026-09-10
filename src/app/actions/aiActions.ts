@@ -4,6 +4,7 @@ import { hashAiRequest, getCachedAiResponse, setCachedAiResponse } from '@/src/l
 import { tryResolveDeterministicSja } from '@/src/lib/server/ruleEngine';
 import { getCollectionItems } from '@/src/lib/server/db';
 import { GoogleGenAI } from '@google/genai';
+import { trackTokenCost } from '@/src/lib/server/costTracker';
 
 export async function generateSJAAction(taskDescription: string, weatherContext?: string) {
   if (!taskDescription || taskDescription.trim().length === 0) {
@@ -73,6 +74,16 @@ export async function generateSJAAction(taskDescription: string, weatherContext?
           }
         }
       });
+
+      const promptTokens = aiResponse.usageMetadata?.promptTokenCount || 350;
+      const completionTokens = aiResponse.usageMetadata?.candidatesTokenCount || 250;
+      trackTokenCost({
+        model: 'gemini-3.8-flash',
+        promptTokens,
+        completionTokens,
+        operation: 'sja_generation',
+        notes: `SJA generated for task: ${taskDescription.slice(0, 50)}`
+      }).catch(() => {});
 
       const text = aiResponse.text || '{}';
       await setCachedAiResponse(cacheKey, text, 'gemini-3.8-flash');

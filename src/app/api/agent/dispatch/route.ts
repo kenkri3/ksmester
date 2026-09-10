@@ -4,6 +4,7 @@ import { evaluatePreCloseWall } from '@/src/lib/server/crossTradeEngine';
 import { createAutonomousChangeOrder } from '@/src/lib/server/changeOrderAgent';
 import { saveCollectionItem, getCollectionItems, updateCollectionItem } from '@/src/lib/server/db';
 import { GoogleGenAI } from '@google/genai';
+import { trackTokenCost } from '@/src/lib/server/costTracker';
 
 /**
  * GET /api/agent/dispatch
@@ -255,6 +256,15 @@ Kontekst: Prosjekt "${projectName || 'Nyebakken 14'}", fag: "${trade}".
 Svar kort, faglig og handlingsorientert (maks 2-3 setninger). Bekreft hvilke tiltak som er iverksatt iht. norsk standard (TEK17, NS 8406, Byggherreforskriften).`
           });
           replyText = res.text?.trim() || replyText;
+          const promptTokens = res.usageMetadata?.promptTokenCount || Math.round(text.length / 4);
+          const completionTokens = res.usageMetadata?.candidatesTokenCount || Math.round(replyText.length / 4);
+          trackTokenCost({
+            model: 'gemini-3.8-flash',
+            promptTokens,
+            completionTokens,
+            operation: 'agent_dispatch_instruction',
+            notes: `Dispatch command on project ${projectName || 'unknown'}`
+          }).catch(() => {});
         } catch (err) {
           console.warn('Gemini dispatch error:', err);
         }

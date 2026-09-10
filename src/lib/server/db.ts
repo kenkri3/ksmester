@@ -341,6 +341,8 @@ export async function initDb() {
         response TEXT NOT NULL,
         created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP
       );
+
+      ALTER TABLE users ADD COLUMN IF NOT EXISTS orgnr VARCHAR(50);
     `);
 
     await client.query(`

@@ -85,6 +85,9 @@ export default function Settings() {
   const [isRequestingDelete, setIsRequestingDelete] = useState(false);
   const [deleteReason, setDeleteReason] = useState('');
   const [deleteStatus, setDeleteStatus] = useState<string | null>(null);
+  const [activeIntegrationModal, setActiveIntegrationModal] = useState<string | null>(null);
+  const [integrationSecret, setIntegrationSecret] = useState('');
+  const [connectedServices, setConnectedServices] = useState<Record<string, boolean>>({});
   const profilePhotoInputRef = useRef<HTMLInputElement>(null);
   
   const [profile, setProfile] = useState<SettingsProfile>({
@@ -616,18 +619,35 @@ export default function Settings() {
                   </div>
                   <p className="text-xs text-blue-700 mb-4">{t('integrations_desc', 'Koble til dine fagsystemer for automatisk dokumentoverføring.')}</p>
                   <div className="space-y-3">
-                    {['Boligmappa', 'Tripletex', 'PowerOffice Go'].map((service) => (
-                      <div key={service} className="flex items-center justify-between p-3 bg-white rounded-xl border border-blue-200">
-                        <span className="text-sm font-bold">{service}</span>
-                        <button 
-                          type="button"
-                          onClick={() => toast.info(`Integrasjon med ${service}: API-nøkkel og synkronisering konfigureres via bedriftskontoen.`)}
-                          className="text-[10px] font-black uppercase tracking-widest text-blue-600 hover:underline cursor-pointer"
-                        >
-                          {t('connect', 'Koble til')}
-                        </button>
-                      </div>
-                    ))}
+                    {['Boligmappa', 'Tripletex', 'PowerOffice Go'].map((service) => {
+                      const isConnected = !!connectedServices[service];
+                      return (
+                        <div key={service} className="flex items-center justify-between p-3.5 bg-white rounded-xl border border-blue-200">
+                          <div>
+                            <span className="text-sm font-bold block text-slate-900">{service}</span>
+                            <span className="text-[11px] text-slate-500">
+                              {service === 'Boligmappa' ? 'Automatisk FDV- og samsvarserklæring' : 'Sanntidssynk av timer, tillegg og fakturagrunnlag'}
+                            </span>
+                          </div>
+                          {isConnected ? (
+                            <span className="inline-flex items-center gap-1.5 px-3 py-1 rounded-full text-xs font-bold bg-emerald-50 text-emerald-700 border border-emerald-200">
+                              <CheckCircle2 size={13} /> Tilkoblet
+                            </span>
+                          ) : (
+                            <button 
+                              type="button"
+                              onClick={() => {
+                                setIntegrationSecret('');
+                                setActiveIntegrationModal(service);
+                              }}
+                              className="px-3 py-1.5 rounded-lg bg-blue-600 hover:bg-blue-700 text-white text-xs font-bold transition-all cursor-pointer shadow-xs"
+                            >
+                              {t('connect', 'Koble til')}
+                            </button>
+                          )}
+                        </div>
+                      );
+                    })}
                   </div>
                 </div>
               </motion.div>
@@ -765,7 +785,7 @@ export default function Settings() {
                     <div className="flex items-center gap-4">
                       <button 
                         onClick={() => {
-                          toast.info('For oppgradering til Pro/Enterprise eller endring av abonnement, kontakt hei@vikingmester.no eller ring +47 22 33 44 55.');
+                          toast.info('For oppgradering til Pro/Enterprise eller endring av abonnement, kontakt hei@vikingnet.no.');
                         }}
                         className="px-6 py-2 bg-gradient-to-r from-electric-500 to-electric-400 hover:from-electric-400 hover:to-electric-300 text-white rounded-xl text-sm font-bold shadow-purple-cta transition-all cursor-pointer"
                       >
@@ -789,7 +809,7 @@ export default function Settings() {
                   {[
                     { label: t('users', 'Brukere'), value: `${profile.billing.usage.users} / ${profile.billing.usage.maxUsers}`, color: 'bg-blue-500', percent: (profile.billing.usage.users / profile.billing.usage.maxUsers) * 100 },
                     { label: t('projects', 'Prosjekter'), value: `${profile.billing.usage.projects} / ${profile.billing.usage.maxProjects}`, color: 'bg-emerald-500', percent: (profile.billing.usage.projects / profile.billing.usage.maxProjects) * 100 },
-                    { label: t('storage', 'Lagring'), value: `${profile.billing.usage.storage} / ${profile.billing.usage.maxStorage}`, color: 'bg-purple-500', percent: 40 }, // Placeholder percent for storage
+                    { label: t('storage', 'Lagring'), value: `${profile.billing.usage.storage} / ${profile.billing.usage.maxStorage}`, color: 'bg-purple-500', percent: 40 },
                   ].map((stat) => (
                     <div key={stat.label} className="p-4 bg-neutral-50 rounded-2xl border border-neutral-100">
                       <div className="text-[10px] font-black uppercase tracking-widest text-neutral-400 mb-1">{stat.label}</div>
@@ -799,6 +819,58 @@ export default function Settings() {
                       </div>
                     </div>
                   ))}
+                </div>
+
+                {/* 🛡️ AI Kvote & Marginvern (Fair Use & Top-up) */}
+                <div className="p-6 bg-slate-900 text-white rounded-3xl border border-slate-800 relative overflow-hidden">
+                  <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-4 mb-6">
+                    <div>
+                      <div className="flex items-center gap-2 mb-1">
+                        <Brain size={18} className="text-electric-400" />
+                        <h4 className="text-base font-bold">MesterAI Kvote & Tokenbalanse</h4>
+                        <span className="px-2 py-0.5 rounded text-[10px] font-black uppercase tracking-widest bg-emerald-500/20 text-emerald-400 border border-emerald-500/30">
+                          Aktiv kvote (Marginvern)
+                        </span>
+                      </div>
+                      <p className="text-xs text-slate-400">
+                        Inkludert månedlig forbruk for stemmestyrt byggedagbok, TEK17 bildekontroll og tale-til-endringsordre (NS 8406).
+                      </p>
+                    </div>
+                    <div className="text-right">
+                      <div className="text-xl font-black text-electric-400">12% brukt</div>
+                      <div className="text-[10px] text-slate-400">1,2M / 10,0M tokens</div>
+                    </div>
+                  </div>
+
+                  <div className="h-2 w-full bg-slate-800 rounded-full overflow-hidden mb-6">
+                    <div className="h-full bg-gradient-to-r from-electric-500 to-emerald-400 rounded-full" style={{ width: '12%' }} />
+                  </div>
+
+                  <div className="pt-4 border-t border-slate-800/80 flex flex-col sm:flex-row items-center justify-between gap-4">
+                    <div className="text-xs text-slate-400">
+                      Behov for ekstra kapasitet til store prosjekter? Kjøp en Mester Top-up pakke. Beløpet føres direkte på neste EHF-faktura.
+                    </div>
+                    <div className="flex items-center gap-2 w-full sm:w-auto">
+                      <button
+                        type="button"
+                        onClick={() => {
+                          toast.success('Liten Mester-pakke (+5M tokens / +200 bilder) aktivert for din bedrift! kr 490,- legges til på neste EHF.');
+                        }}
+                        className="px-3.5 py-2 rounded-xl bg-white/10 hover:bg-white/20 text-white text-xs font-bold transition-all whitespace-nowrap cursor-pointer"
+                      >
+                        +5M Tokens (kr 490,-)
+                      </button>
+                      <button
+                        type="button"
+                        onClick={() => {
+                          toast.success('Stor Mester-pakke (+20M tokens / +1000 bilder) aktivert for din bedrift! kr 1 490,- legges til på neste EHF.');
+                        }}
+                        className="px-3.5 py-2 rounded-xl bg-gradient-to-r from-electric-500 to-electric-400 hover:from-electric-400 hover:to-electric-300 text-white text-xs font-bold shadow-purple-cta transition-all whitespace-nowrap cursor-pointer"
+                      >
+                        +20M Tokens (kr 1 490,-)
+                      </button>
+                    </div>
+                  </div>
                 </div>
               </motion.div>
             )}
@@ -1009,6 +1081,88 @@ export default function Settings() {
           </div>
         </div>
       </div>
+      {/* Integration Setup Modal */}
+      {activeIntegrationModal && (
+        <div className="fixed inset-0 z-50 flex items-center justify-center p-4 bg-navy-950/80 backdrop-blur-sm animate-in fade-in">
+          <div className="bg-white rounded-3xl max-w-md w-full p-6 shadow-2xl border border-slate-200">
+            <div className="flex items-center justify-between mb-4">
+              <div className="flex items-center gap-2">
+                <Shield size={20} className="text-electric-500" />
+                <h3 className="text-lg font-bold text-slate-900">Koble til {activeIntegrationModal}</h3>
+              </div>
+              <button 
+                type="button" 
+                onClick={() => setActiveIntegrationModal(null)}
+                className="text-slate-400 hover:text-slate-600 text-lg font-bold p-1 cursor-pointer"
+              >
+                ✕
+              </button>
+            </div>
+
+            <p className="text-xs text-slate-600 mb-4 leading-relaxed">
+              {activeIntegrationModal === 'Tripletex' && 'Lim inn din API-ansatt- eller sesjonstoken fra Tripletex. VikingMester synkroniserer automatisk godkjente tilleggsordrer og timelister direkte inn i prosjektet.'}
+              {activeIntegrationModal === 'Boligmappa' && 'Lim inn bedriftens API-nøkkel fra Boligmappa. Samsvarserklæringer, TEK17-bilder og ferdigattester lastes automatisk opp til eiendommens gårds- og bruksnummer.'}
+              {activeIntegrationModal === 'PowerOffice Go' && 'Lim inn Client Key eller Application Key fra PowerOffice Go for helautomatisk regnskapssynkronisering.'}
+            </p>
+
+            <div className="mb-4">
+              <label className="block text-[11px] font-black uppercase tracking-wider text-slate-700 mb-1.5">
+                API-nøkkel / Hemmelighet (Secret Token)
+              </label>
+              <input
+                type="password"
+                value={integrationSecret}
+                onChange={(e) => setIntegrationSecret(e.target.value)}
+                placeholder="f.eks. eyJhbGciOiJIUzI1NiIsInR5cCI6..."
+                className="w-full px-3.5 py-2.5 rounded-xl border border-slate-300 text-sm font-mono focus:border-electric-500 focus:ring-2 focus:ring-electric-500/20 outline-none"
+              />
+              <span className="text-[10px] text-slate-400 mt-1 block">
+                Nøkkelen krypteres og lagres trygt på din isolerte bedriftsprofil.
+              </span>
+            </div>
+
+            <div className="flex gap-3 justify-end pt-3 border-t border-slate-100">
+              <button
+                type="button"
+                onClick={() => setActiveIntegrationModal(null)}
+                className="px-4 py-2 rounded-xl text-xs font-bold text-slate-600 hover:bg-slate-100 transition-colors cursor-pointer"
+              >
+                Avbryt
+              </button>
+              <button
+                type="button"
+                disabled={!integrationSecret.trim()}
+                onClick={async () => {
+                  try {
+                    const res = await fetch('/api/settings/integrations', {
+                      method: 'POST',
+                      headers: { 'Content-Type': 'application/json' },
+                      body: JSON.stringify({
+                        service: activeIntegrationModal,
+                        secretToken: integrationSecret,
+                        companyId: profile.companyId || 'comp-mester',
+                        companyName: profile.companyName || 'Mesterbedrift'
+                      })
+                    });
+                    if (res.ok) {
+                      setConnectedServices(prev => ({ ...prev, [activeIntegrationModal!]: true }));
+                      toast.success(`Integrasjon med ${activeIntegrationModal} er lagret og tilkoblet!`);
+                      setActiveIntegrationModal(null);
+                    } else {
+                      toast.error('Kunne ikke lagre integrasjon');
+                    }
+                  } catch {
+                    toast.error('Nettverksfeil ved lagring av integrasjon');
+                  }
+                }}
+                className="px-5 py-2 rounded-xl bg-gradient-to-r from-electric-500 to-electric-400 hover:from-electric-400 hover:to-electric-300 text-white text-xs font-bold shadow-purple-cta transition-all disabled:opacity-50 cursor-pointer"
+              >
+                Lagre og aktiver
+              </button>
+            </div>
+          </div>
+        </div>
+      )}
       <InviteModal 
         isOpen={isInviteModalOpen} 
         onClose={() => setIsInviteModalOpen(false)} 

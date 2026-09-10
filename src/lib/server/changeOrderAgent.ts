@@ -9,6 +9,7 @@
 
 import { GoogleGenAI } from '@google/genai';
 import { saveCollectionItem, getCollectionItems } from './db';
+import { trackTokenCost } from './costTracker';
 
 export interface ParsedVoiceChangeOrder {
   title: string;
@@ -65,6 +66,17 @@ Returner KUN et gyldig JSON-objekt med følgende felter:
           responseMimeType: 'application/json'
         }
       });
+
+      // Track token costs for 50/50 accounting
+      const promptTokens = aiResponse.usageMetadata?.promptTokenCount || Math.round(prompt.length / 4);
+      const completionTokens = aiResponse.usageMetadata?.candidatesTokenCount || 200;
+      trackTokenCost({
+        model: 'gemini-3.8-flash',
+        promptTokens,
+        completionTokens,
+        operation: 'voice_to_change_order',
+        notes: `Change order generated for project ${projectContext?.projectName || 'unknown'}`
+      }).catch(() => {});
 
       const text = aiResponse.text || '{}';
       const parsed = JSON.parse(text);

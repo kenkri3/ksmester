@@ -56,9 +56,9 @@ export async function POST(req: NextRequest) {
     };
 
     await dbQuery(
-      `INSERT INTO users (id, email, password, display_name, role, trade, company, company_id, subscription_status)
-       VALUES ($1, $2, $3, $4, $5, $6, $7, $8, $9)`,
-      [userObj.id, userObj.email, hashedPassword, userObj.displayName, userObj.role, userObj.trade, userObj.company, userObj.companyId, userObj.subscriptionStatus]
+      `INSERT INTO users (id, email, password, display_name, role, trade, company, company_id, subscription_status, orgnr)
+       VALUES ($1, $2, $3, $4, $5, $6, $7, $8, $9, $10)`,
+      [userObj.id, userObj.email, hashedPassword, userObj.displayName, userObj.role, userObj.trade, userObj.company, userObj.companyId, userObj.subscriptionStatus, userObj.orgnr]
     ).catch(() => {});
 
     inMemoryStore.users.push({ ...userObj, password: hashedPassword });

@@ -1,6 +1,7 @@
 import { NextRequest, NextResponse } from 'next/server';
 import { GoogleGenAI } from '@google/genai';
 import { getUserFromRequest } from '@/src/lib/server/auth';
+import { trackTokenCost, checkCompanyQuota } from '@/src/lib/server/costTracker';
 
 export async function POST(req: NextRequest) {
   const user = getUserFromRequest(req);
@@ -19,11 +20,22 @@ export async function POST(req: NextRequest) {
 
   try {
     const body = await req.json();
-    let { prompt, contents, model = 'gemini-3.8-flash', systemInstruction, responseMimeType, responseSchema, images, inlineData } = body;
+    let { prompt, contents, model = 'gemini-3.8-flash', systemInstruction, responseMimeType, responseSchema, images, inlineData, operation = 'ai_generate' } = body;
 
     if (!user && isPortalAccess) {
       if (!prompt || typeof prompt !== 'string' || prompt.length > 5000) {
         return NextResponse.json({ error: 'Ugyldig portalforespørsel' }, { status: 400 });
+      }
+    }
+
+    // 🛡️ Sjekk bedriftens tokenkvote (100% marginvern)
+    if (user?.companyId) {
+      const quota = await checkCompanyQuota(user.companyId);
+      if (quota.needsTopUp) {
+        return NextResponse.json({
+          error: 'Månedlig inkludert AI-kvote er nådd. Kjøp en Mester Top-up pakke under Innstillinger → Fakturering for å fortsette uten avbrudd.',
+          needsTopUp: true
+        }, { status: 429 });
       }
     }
 
@@ -71,7 +83,6 @@ export async function POST(req: NextRequest) {
       if (responseMimeType) config.responseMimeType = responseMimeType;
       if (responseSchema) config.responseSchema = responseSchema;
 
-      // Robust candidate model list: prioritize gemini-3.8-flash, with automatic resilient fallbacks
       const candidateModels = [
         model || 'gemini-3.8-flash',
         'gemini-2.5-flash',
@@ -79,11 +90,11 @@ export async function POST(req: NextRequest) {
         'gemini-1.5-flash'
       ];
 
-      // Remove duplicate models if any
       const uniqueModels = Array.from(new Set(candidateModels));
 
       let aiResponse: any = null;
       let lastError: any = null;
+      let executedModel = 'gemini-3.8-flash';
 
       for (const cand of uniqueModels) {
         try {
@@ -93,6 +104,7 @@ export async function POST(req: NextRequest) {
             config: Object.keys(config).length > 0 ? config : undefined
           });
           if (aiResponse && aiResponse.text) {
+            executedModel = cand;
             break;
           }
         } catch (err: any) {
@@ -105,7 +117,27 @@ export async function POST(req: NextRequest) {
         throw lastError || new Error('Gemini generering feilet for alle modeller');
       }
 
-      return NextResponse.json({ text: aiResponse.text || '' });
+      // 📊 Presis registrering av tokenforbruk for 50/50 partnerskapsregnskap
+      const promptTokens = aiResponse.usageMetadata?.promptTokenCount || 
+        (typeof prompt === 'string' ? Math.round(prompt.length / 4) : 250);
+      const completionTokens = aiResponse.usageMetadata?.candidatesTokenCount || 
+        (aiResponse.text ? Math.round(aiResponse.text.length / 4) : 100);
+
+      // Asynkron logging (blokkerer ikke klientens respons)
+      trackTokenCost({
+        model: executedModel,
+        promptTokens,
+        completionTokens,
+        operation: operation || 'ai_generate',
+        companyId: user?.companyId,
+        companyName: (user as any)?.company,
+        notes: `AI request by ${user?.email || 'portal'}`
+      }).catch(err => console.warn('trackTokenCost error:', err));
+
+      return NextResponse.json({ 
+        text: aiResponse.text || '',
+        usage: { promptTokens, completionTokens, totalTokens: promptTokens + completionTokens }
+      });
     } else if (deepseekKey) {
       const userPrompt = typeof prompt === 'string' ? prompt : (typeof contents === 'string' ? contents : JSON.stringify(contents));
       const messages: any[] = [];
@@ -138,7 +170,23 @@ export async function POST(req: NextRequest) {
       }
 
       const dsData = await dsRes.json();
-      return NextResponse.json({ text: dsData.choices?.[0]?.message?.content || '' });
+      const promptTokens = dsData.usage?.prompt_tokens || 200;
+      const completionTokens = dsData.usage?.completion_tokens || 100;
+
+      trackTokenCost({
+        model: 'deepseek-chat',
+        promptTokens,
+        completionTokens,
+        operation: operation || 'ai_generate_deepseek',
+        companyId: user?.companyId,
+        companyName: (user as any)?.company,
+        notes: `DeepSeek request by ${user?.email || 'portal'}`
+      }).catch(err => console.warn('trackTokenCost error:', err));
+
+      return NextResponse.json({ 
+        text: dsData.choices?.[0]?.message?.content || '',
+        usage: { promptTokens, completionTokens, totalTokens: promptTokens + completionTokens }
+      });
     }
 
     return NextResponse.json({ error: 'Ingen AI-tilbyder er tilgjengelig' }, { status: 500 });
