@@ -14,7 +14,8 @@ import {
   FolderPlus,
   ShieldAlert,
   Car,
-  Package
+  Package,
+  PhoneCall
 } from 'lucide-react';
 import { cn } from '@/src/lib/utils';
 
@@ -32,6 +33,14 @@ export default function MobileQuickActionSheet({
   if (!isOpen) return null;
 
   const quickActions = [
+    {
+      id: 'contacts',
+      label: 'Telefonliste / Kolleger',
+      sublabel: 'Ring eller send SMS til kolleger',
+      icon: <PhoneCall size={22} />,
+      color: 'bg-gradient-to-br from-blue-600 to-indigo-700 text-white',
+      badge: 'Nyhet'
+    },
     {
       id: 'take_photo',
       label: 'AI Bildeanalyse',

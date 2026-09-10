@@ -134,6 +134,13 @@ function AppContent() {
       setView('mobile');
       return;
     }
+    if (actionId === 'contacts') {
+      setView('mobile');
+      setTimeout(() => {
+        window.dispatchEvent(new CustomEvent('open_mobile_contacts'));
+      }, 100);
+      return;
+    }
     if (view !== 'dashboard') {
       setView('dashboard');
       setTimeout(() => {

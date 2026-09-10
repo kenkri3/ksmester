@@ -21,7 +21,16 @@ import {
   ListChecks,
   GraduationCap,
   Cloud,
-  Smartphone
+  Smartphone,
+  Phone,
+  PhoneCall,
+  MessageSquare,
+  Mail,
+  Search,
+  Plus,
+  Users,
+  ArrowLeft,
+  Siren
 } from 'lucide-react';
 import { cn } from '@/src/lib/utils';
 import { generateAiContent } from '../services/aiClient';
@@ -111,7 +120,7 @@ async function analyzeImage(base64Image: string, trade?: Trade): Promise<ImageAn
 
 export default function MobileApp() {
   const { t, i18n } = useTranslation();
-  const [activeScreen, setActiveScreen] = useState<'home' | 'camera' | 'voice' | 'report' | 'imageResult' | 'translator' | 'laerling' | 'dailyLog' | 'activity'>('home');
+  const [activeScreen, setActiveScreen] = useState<'home' | 'camera' | 'voice' | 'report' | 'imageResult' | 'translator' | 'laerling' | 'dailyLog' | 'activity' | 'contacts'>('home');
   const [isAnalyzing, setIsAnalyzing] = useState(false);
   const [dailyLog, setDailyLog] = useState<any>(null);
   const [currentReportId, setCurrentReportId] = useState<string | null>(null);
@@ -150,6 +159,228 @@ export default function MobileApp() {
   const fileInputRef = useRef<HTMLInputElement>(null);
   const apprenticeFileInputRef = useRef<HTMLInputElement>(null);
   const [apprenticeImage, setApprenticeImage] = useState<string | null>(null);
+interface ColleagueContact {
+  id: string;
+  name: string;
+  role: string;
+  company: string;
+  trade?: Trade | string;
+  phone: string;
+  email?: string;
+  isOnSiteToday?: boolean;
+  isKeyPersonnel?: boolean;
+  projectId?: string;
+}
+
+  // --- Telefonliste & Kolleger State ---
+  const [colleagues, setColleagues] = useState<ColleagueContact[]>([
+    {
+      id: 'colleague_1',
+      name: 'Trond Even',
+      role: 'Maskinfører / Grunnarbeid',
+      company: 'VikingMester Maskin AS',
+      trade: 'general',
+      phone: '982 34 567',
+      email: 'trond.even@vikingmester.no',
+      isOnSiteToday: true,
+      isKeyPersonnel: true
+    },
+    {
+      id: 'colleague_2',
+      name: 'Elisabeth H.',
+      role: 'HMS-ansvarlig / Verneombud',
+      company: 'VikingMester AS',
+      trade: 'general',
+      phone: '915 67 890',
+      email: 'elisabeth@vikingmester.no',
+      isOnSiteToday: true,
+      isKeyPersonnel: true
+    },
+    {
+      id: 'colleague_3',
+      name: 'Evalill S.',
+      role: 'Kontorleder & Prosjektøkonomi',
+      company: 'VikingMester AS',
+      trade: 'general',
+      phone: '908 12 345',
+      email: 'evalill@vikingmester.no',
+      isOnSiteToday: false,
+      isKeyPersonnel: true
+    },
+    {
+      id: 'colleague_4',
+      name: 'Jonas Berg',
+      role: 'Tømrerbas / Formann',
+      company: 'VikingMester AS',
+      trade: 'carpenter',
+      phone: '476 54 321',
+      email: 'jonas@vikingmester.no',
+      isOnSiteToday: true,
+      isKeyPersonnel: false
+    },
+    {
+      id: 'colleague_5',
+      name: 'Henrik Strøm',
+      role: 'Elektriker / Installatør',
+      company: 'Viking El-Partner AS',
+      trade: 'electrician',
+      phone: '934 56 789',
+      email: 'henrik@elpartner.no',
+      isOnSiteToday: true,
+      isKeyPersonnel: false
+    },
+    {
+      id: 'colleague_6',
+      name: 'Marius Rørvik',
+      role: 'Rørlegger / VVS',
+      company: 'VVS Mesteren AS',
+      trade: 'plumber',
+      phone: '412 98 765',
+      email: 'marius@vvsmesteren.no',
+      isOnSiteToday: false,
+      isKeyPersonnel: false
+    },
+    {
+      id: 'colleague_7',
+      name: 'Piotr Kowalski',
+      role: 'Betong & Murer',
+      company: 'VikingMester Mur',
+      trade: 'mason',
+      phone: '923 11 445',
+      email: 'piotr@vikingmester.no',
+      isOnSiteToday: true,
+      isKeyPersonnel: false
+    }
+  ]);
+  const [contactsSearch, setContactsSearch] = useState('');
+  const [contactsFilter, setContactsFilter] = useState<'all' | 'onsite' | 'key' | 'emergency'>('all');
+  const [showAddContactModal, setShowAddContactModal] = useState(false);
+  const [newContact, setNewContact] = useState({
+    name: '',
+    role: 'Tømrer',
+    company: '',
+    phone: '',
+    email: '',
+    trade: 'carpenter' as Trade,
+    isOnSiteToday: true
+  });
+
+  // Hent team og kolleger fra Firestore
+  useEffect(() => {
+    async function loadTeamMembers() {
+      try {
+        const usersRef = collection(db, 'users');
+        const q = userProfile?.companyId 
+          ? query(usersRef, where('companyId', '==', userProfile.companyId))
+          : query(usersRef, limit(100));
+        const snap = await getDocs(q);
+        if (!snap.empty) {
+          const fetched: ColleagueContact[] = snap.docs.map(doc => {
+            const d = doc.data();
+            return {
+              id: doc.id,
+              name: d.name || d.displayName || d.email?.split('@')[0] || 'Kollega',
+              role: d.role === 'admin' ? 'Prosjektleder' : d.role === 'manager' ? 'Byggeplassleder' : d.trade ? String(d.trade) : 'Fagarbeider',
+              company: d.companyName || userProfile?.companyName || 'VikingMester AS',
+              trade: d.trade || 'general',
+              phone: d.phone || '900 00 000',
+              email: d.email || '',
+              isOnSiteToday: true,
+              isKeyPersonnel: d.role === 'admin' || d.role === 'manager'
+            };
+          });
+          if (fetched.length > 0) {
+            setColleagues(prev => {
+              const ids = new Set(fetched.map(c => c.id));
+              return [...fetched, ...prev.filter(c => !ids.has(c.id))];
+            });
+          }
+        }
+      } catch (err) {
+        console.warn('Lokal telefonliste benyttes:', err);
+      }
+    }
+    loadTeamMembers();
+  }, [userProfile?.companyId]);
+
+  // Lytt på åpning av telefonliste fra hurtigmenyen
+  useEffect(() => {
+    const handleOpenContacts = () => {
+      setActiveScreen('contacts');
+    };
+    window.addEventListener('open_mobile_contacts', handleOpenContacts);
+    return () => window.removeEventListener('open_mobile_contacts', handleOpenContacts);
+  }, []);
+
+  const handleCreateContact = async (e: React.FormEvent) => {
+    e.preventDefault();
+    if (!newContact.name.trim() || !newContact.phone.trim()) {
+      toast.error('Vennligst fyll ut navn og telefonnummer');
+      return;
+    }
+    const created: ColleagueContact = {
+      id: 'contact_' + Date.now(),
+      name: newContact.name.trim(),
+      role: newContact.role.trim(),
+      company: newContact.company.trim() || userProfile?.companyName || 'VikingMester AS',
+      trade: newContact.trade,
+      phone: newContact.phone.trim(),
+      email: newContact.email.trim(),
+      isOnSiteToday: newContact.isOnSiteToday,
+      isKeyPersonnel: newContact.role.toLowerCase().includes('leder') || newContact.role.toLowerCase().includes('hms')
+    };
+
+    setColleagues(prev => [created, ...prev]);
+    setShowAddContactModal(false);
+    setNewContact({
+      name: '',
+      role: 'Tømrer',
+      company: '',
+      phone: '',
+      email: '',
+      trade: 'carpenter',
+      isOnSiteToday: true
+    });
+    toast.success(created.name + ' er lagt til i telefonlisten!');
+
+    try {
+      await addDoc(collection(db, 'users'), {
+        name: created.name,
+        role: 'worker',
+        trade: created.trade,
+        phone: created.phone,
+        email: created.email || '',
+        companyId: userProfile?.companyId || 'vikingmester',
+        companyName: created.company,
+        createdAt: serverTimestamp()
+      });
+    } catch (e) {
+      console.warn('Lagret kun i aktiv sesjon');
+    }
+  };
+
+  const emergencyContacts = [
+    { title: 'Medisinsk Nødhjelp', number: '113', desc: 'Akutt ulykke / livstruende skade', color: 'bg-red-600', icon: '🚑' },
+    { title: 'Brann & Redning', number: '110', desc: 'Brann, røykutvikling og redning', color: 'bg-orange-600', icon: '🚒' },
+    { title: 'Politi', number: '112', desc: 'Politi og orden på byggeplass', color: 'bg-blue-600', icon: '👮' },
+    { title: 'Giftinformasjonen', number: '22 59 13 00', desc: 'Kjemikaliesøl / akutt forgiftning', color: 'bg-amber-600', icon: '☣️' },
+    { title: 'Arbeidstilsynet Vakt', number: '73 19 97 00', desc: 'Varsling av alvorlige arbeidsulykker', color: 'bg-purple-600', icon: '⚠️' }
+  ];
+
+  const filteredColleagues = colleagues.filter(c => {
+    const term = contactsSearch.toLowerCase();
+    const matchSearch = 
+      c.name.toLowerCase().includes(term) ||
+      c.role.toLowerCase().includes(term) ||
+      c.company.toLowerCase().includes(term) ||
+      c.phone.replace(/\s+/g, '').includes(term.replace(/\s+/g, ''));
+
+    if (!matchSearch) return false;
+    if (contactsFilter === 'onsite') return c.isOnSiteToday;
+    if (contactsFilter === 'key') return c.isKeyPersonnel;
+    return true;
+  });
+
 
   // Fetch user profile
   useEffect(() => {
@@ -952,6 +1183,233 @@ export default function MobileApp() {
                     className="w-full py-4 bg-neutral-900 text-white rounded-2xl font-bold"
                   >
                     Tilbake
+                  </button>
+                </div>
+              </motion.div>
+            )}
+
+            
+            {activeScreen === 'contacts' && (
+              <motion.div 
+                key="contacts"
+                initial={{ opacity: 0, x: 20 }}
+                animate={{ opacity: 1, x: 0 }}
+                exit={{ opacity: 0, x: -20 }}
+                className="space-y-5 pb-16"
+              >
+                {/* Header */}
+                <div className="flex items-center justify-between pb-2 border-b border-neutral-100">
+                  <div className="flex items-center gap-3">
+                    <button
+                      onClick={() => setActiveScreen('home')}
+                      className="w-10 h-10 rounded-2xl bg-neutral-100 text-neutral-600 hover:text-neutral-900 flex items-center justify-center active:scale-90 transition-all cursor-pointer"
+                      title="Tilbake til oversikt"
+                    >
+                      <ArrowLeft size={20} />
+                    </button>
+                    <div>
+                      <h2 className="text-lg font-bold text-neutral-900 leading-tight">Telefonliste & Kolleger</h2>
+                      <p className="text-[11px] text-neutral-500 font-medium">
+                        {filteredColleagues.length} kolleger • 1-klikks anrop & SMS
+                      </p>
+                    </div>
+                  </div>
+
+                  <button
+                    onClick={() => setShowAddContactModal(true)}
+                    className="px-3 py-2 rounded-xl bg-blue-600 hover:bg-blue-700 active:scale-95 text-white flex items-center gap-1.5 text-xs font-bold shadow-sm transition-all cursor-pointer"
+                  >
+                    <Plus size={16} />
+                    <span>Ny kollega</span>
+                  </button>
+                </div>
+
+                {/* Søkefelt i sanntid */}
+                <div className="relative">
+                  <Search size={18} className="absolute left-3.5 top-1/2 -translate-y-1/2 text-neutral-400" />
+                  <input
+                    type="text"
+                    value={contactsSearch}
+                    onChange={(e) => setContactsSearch(e.target.value)}
+                    placeholder="Søk navn, rolle (maskinfører, bas...), firma eller tlf..."
+                    className="w-full pl-10 pr-10 py-3 bg-neutral-100/90 border border-neutral-200/80 rounded-2xl text-xs sm:text-sm font-medium focus:outline-none focus:ring-2 focus:ring-blue-500/30 focus:bg-white transition-all"
+                  />
+                  {contactsSearch && (
+                    <button 
+                      onClick={() => setContactsSearch('')}
+                      className="absolute right-3.5 top-1/2 -translate-y-1/2 text-neutral-400 hover:text-neutral-700"
+                    >
+                      <X size={16} />
+                    </button>
+                  )}
+                </div>
+
+                {/* Filter-tabs */}
+                <div className="flex items-center gap-1.5 overflow-x-auto pb-1 scrollbar-none text-xs font-bold">
+                  <button
+                    onClick={() => setContactsFilter('all')}
+                    className={cn(
+                      "px-3 py-1.5 rounded-xl transition-all shrink-0 cursor-pointer",
+                      contactsFilter === 'all'
+                        ? "bg-neutral-900 text-white shadow-sm"
+                        : "bg-neutral-100 text-neutral-600 hover:bg-neutral-200"
+                    )}
+                  >
+                    Alle ({colleagues.length})
+                  </button>
+                  <button
+                    onClick={() => setContactsFilter('onsite')}
+                    className={cn(
+                      "px-3 py-1.5 rounded-xl transition-all shrink-0 flex items-center gap-1.5 cursor-pointer",
+                      contactsFilter === 'onsite'
+                        ? "bg-emerald-600 text-white shadow-sm"
+                        : "bg-emerald-50 text-emerald-800 hover:bg-emerald-100"
+                    )}
+                  >
+                    <span className="w-1.5 h-1.5 rounded-full bg-emerald-400 animate-pulse" />
+                    På plassen ({colleagues.filter(c => c.isOnSiteToday).length})
+                  </button>
+                  <button
+                    onClick={() => setContactsFilter('key')}
+                    className={cn(
+                      "px-3 py-1.5 rounded-xl transition-all shrink-0 cursor-pointer",
+                      contactsFilter === 'key'
+                        ? "bg-blue-600 text-white shadow-sm"
+                        : "bg-blue-50 text-blue-800 hover:bg-blue-100"
+                    )}
+                  >
+                    Nøkkelpersoner ({colleagues.filter(c => c.isKeyPersonnel).length})
+                  </button>
+                  <button
+                    onClick={() => setContactsFilter('emergency')}
+                    className={cn(
+                      "px-3 py-1.5 rounded-xl transition-all shrink-0 flex items-center gap-1 cursor-pointer",
+                      contactsFilter === 'emergency'
+                        ? "bg-red-600 text-white shadow-sm"
+                        : "bg-red-50 text-red-800 hover:bg-red-100"
+                    )}
+                  >
+                    <Siren size={14} />
+                    Nødnumre
+                  </button>
+                </div>
+
+                {/* Nødnumre Vises dersom filter er emergency eller øverst */}
+                {contactsFilter === 'emergency' ? (
+                  <div className="space-y-3">
+                    <div className="p-3 bg-red-50 border border-red-200 rounded-2xl flex items-center gap-2 text-xs text-red-800 font-medium">
+                      <Siren size={18} className="text-red-600 shrink-0" />
+                      <span>Akutte nødnumre for byggeplassen og hendelser iht. HMS-forskriften.</span>
+                    </div>
+
+                    <div className="grid grid-cols-1 gap-2.5">
+                      {emergencyContacts.map((em, idx) => (
+                        <div key={idx} className="p-4 rounded-2xl bg-white border border-neutral-200 shadow-sm flex items-center justify-between">
+                          <div className="flex items-center gap-3">
+                            <span className="text-2xl">{em.icon}</span>
+                            <div>
+                              <h4 className="text-sm font-bold text-neutral-900">{em.title}</h4>
+                              <p className="text-xs text-neutral-500">{em.desc}</p>
+                              <p className="text-xs font-mono font-bold text-neutral-800 mt-0.5">{em.number}</p>
+                            </div>
+                          </div>
+                          <a
+                            href={'tel:' + em.number.replace(/\s+/g, '')}
+                            className={'px-4 py-2 rounded-xl text-white font-bold text-xs flex items-center gap-1.5 shadow-sm active:scale-95 transition-all ' + em.color}
+                          >
+                            <Phone size={15} />
+                            <span>Ring {em.number}</span>
+                          </a>
+                        </div>
+                      ))}
+                    </div>
+                  </div>
+                ) : (
+                  /* Kontaktliste */
+                  <div className="space-y-2.5">
+                    {filteredColleagues.length === 0 ? (
+                      <div className="p-12 text-center rounded-2xl bg-neutral-50 border border-dashed border-neutral-200 space-y-3">
+                        <Users size={36} className="text-neutral-300 mx-auto" />
+                        <p className="text-sm font-bold text-neutral-700">Ingen kolleger matchet søket</p>
+                        <p className="text-xs text-neutral-400">Prøv et annet navn, fag eller trykk «Ny kollega» for å legge til.</p>
+                      </div>
+                    ) : (
+                      filteredColleagues.map((contact) => (
+                        <div
+                          key={contact.id}
+                          className="p-4 rounded-2xl bg-white border border-neutral-200/90 shadow-sm hover:shadow-md transition-all flex flex-col sm:flex-row sm:items-center justify-between gap-3 group"
+                        >
+                          <div className="flex items-start gap-3.5 min-w-0">
+                            <div className="w-11 h-11 rounded-2xl bg-gradient-to-tr from-neutral-800 to-neutral-700 text-white flex items-center justify-center font-bold text-xs shrink-0 shadow-sm">
+                              {contact.name.split(' ').map(n => n[0]).join('').slice(0, 2).toUpperCase()}
+                            </div>
+                            <div className="min-w-0 flex-1">
+                              <div className="flex items-center gap-2 flex-wrap">
+                                <span className="font-bold text-sm text-neutral-900 truncate">{contact.name}</span>
+                                {contact.isOnSiteToday && (
+                                  <span className="inline-flex items-center gap-1 px-2 py-0.5 rounded-full text-[9px] font-bold bg-emerald-50 text-emerald-700 border border-emerald-200">
+                                    <span className="w-1.5 h-1.5 rounded-full bg-emerald-500 animate-pulse" />
+                                    På plassen
+                                  </span>
+                                )}
+                                {contact.isKeyPersonnel && (
+                                  <span className="px-1.5 py-0.5 rounded text-[9px] font-black uppercase tracking-wider bg-blue-50 text-blue-700 border border-blue-200">
+                                    Nøkkelperson
+                                  </span>
+                                )}
+                              </div>
+                              <p className="text-xs font-semibold text-neutral-600 truncate mt-0.5">
+                                {contact.role} <span className="text-neutral-400 font-normal">• {contact.company}</span>
+                              </p>
+                              <p className="text-[11px] text-neutral-400 font-mono mt-0.5">
+                                {contact.phone}
+                              </p>
+                            </div>
+                          </div>
+
+                          {/* Handlingsknapper (Ring & SMS) */}
+                          <div className="flex items-center gap-2 pt-2 sm:pt-0 border-t sm:border-t-0 border-neutral-100 shrink-0">
+                            <a
+                              href={'tel:' + contact.phone.replace(/\s+/g, '')}
+                              className="flex-1 sm:flex-none flex items-center justify-center gap-1.5 px-3.5 py-2.5 rounded-xl bg-emerald-600 hover:bg-emerald-700 active:scale-95 text-white font-bold text-xs shadow-sm transition-all"
+                              title={'Ring ' + contact.name}
+                            >
+                              <Phone size={15} />
+                              <span>Ring</span>
+                            </a>
+
+                            <a
+                              href={'sms:' + contact.phone.replace(/\s+/g, '')}
+                              className="flex-1 sm:flex-none flex items-center justify-center gap-1.5 px-3.5 py-2.5 rounded-xl bg-blue-600 hover:bg-blue-700 active:scale-95 text-white font-bold text-xs shadow-sm transition-all"
+                              title={'Send SMS til ' + contact.name}
+                            >
+                              <MessageSquare size={15} />
+                              <span>SMS</span>
+                            </a>
+
+                            {contact.email && (
+                              <a
+                                href={'mailto:' + contact.email}
+                                className="p-2.5 rounded-xl bg-neutral-100 hover:bg-neutral-200 text-neutral-600 active:scale-95 transition-all hidden xs:flex items-center justify-center"
+                                title={'E-post til ' + contact.name}
+                              >
+                                <Mail size={15} />
+                              </a>
+                            )}
+                          </div>
+                        </div>
+                      ))
+                    )}
+                  </div>
+                )}
+
+                {/* Hurtigknapp for å gå tilbake */}
+                <div className="pt-4">
+                  <button
+                    onClick={() => setActiveScreen('home')}
+                    className="w-full py-3.5 bg-neutral-100 hover:bg-neutral-200 text-neutral-800 rounded-2xl font-bold text-xs transition-all cursor-pointer"
+                  >
+                    Tilbake til hovedoversikt
                   </button>
                 </div>
               </motion.div>
