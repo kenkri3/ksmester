@@ -652,7 +652,7 @@ export default function Settings() {
                 <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
                   {[
                     { id: 'offers', label: 'Tilbud & Kalkulasjon', icon: <Calculator size={18} />, desc: 'Opprett profesjonelle tilbud raskt.' },
-                    { id: 'contracts', label: 'Kontrakter & Signering', icon: <FileSignature size={18} />, desc: 'Digital signering med BankID.' },
+                    { id: 'contracts', label: 'Kontrakter & Signering', icon: <FileSignature size={18} />, desc: 'Digital signering og e-signaturbekreftelse.' },
                     { id: 'building_app', label: 'Byggesøknad', icon: <Building2 size={18} />, desc: 'Forenklet innsending til kommunen.' },
                     { id: 'apprentice', label: 'Lærlingmodul', icon: <GraduationCap size={18} />, desc: 'Oppfølging av lærlinger og mål.' },
                     { id: 'inventory', label: 'Lager & Verktøy', icon: <Package size={18} />, desc: 'Full kontroll på utstyr og materiell.' },

@@ -140,7 +140,7 @@ const DocumentationArchive: React.FC<DocumentationArchiveProps> = ({ isOpen, onC
             </div>
             <div>
               <h2 className="text-2xl font-bold tracking-tight">FDV Arkiv & Dokumentasjon</h2>
-              <p className="text-neutral-500 text-sm font-medium">Automatisert dokumenthåndtering med NOBB-integrasjon</p>
+              <p className="text-neutral-500 text-sm font-medium">Automatisert FDV- og produktdokumentasjon</p>
             </div>
           </div>
           <button onClick={onClose} aria-label="Lukk" title="Lukk" className="p-2 hover:bg-neutral-100 rounded-xl transition-colors">
@@ -175,7 +175,7 @@ const DocumentationArchive: React.FC<DocumentationArchiveProps> = ({ isOpen, onC
                 className="flex-1 md:flex-none flex items-center justify-center gap-2 px-6 py-3 bg-emerald-600 text-white rounded-2xl text-sm font-bold hover:bg-emerald-500 transition-all shadow-lg shadow-emerald-100 disabled:opacity-50"
               >
                 {isSyncing ? <RefreshCw className="animate-spin" size={16} /> : <Sparkles size={16} />}
-                {syncSuccess ? 'Synkronisert!' : 'Hent fra NOBB'}
+                {syncSuccess ? 'Synkronisert!' : 'Hent FDV-dokumenter'}
               </button>
               <button 
                 onClick={() => fileInputRef.current?.click()}
@@ -230,7 +230,7 @@ const DocumentationArchive: React.FC<DocumentationArchiveProps> = ({ isOpen, onC
                     </div>
                     <div className="flex items-center gap-2 mt-3">
                       {doc.source === 'nobb' && (
-                        <span className="px-2 py-0.5 bg-blue-50 text-blue-600 rounded-full text-[9px] font-black uppercase tracking-tighter">NOBB Automatikk</span>
+                        <span className="px-2 py-0.5 bg-blue-50 text-blue-600 rounded-full text-[9px] font-black uppercase tracking-tighter">FDV Automatikk</span>
                       )}
                       {doc.source === 'system' && (
                         <span className="px-2 py-0.5 bg-indigo-50 text-indigo-600 rounded-full text-[9px] font-black uppercase tracking-tighter">Systemgenerert</span>

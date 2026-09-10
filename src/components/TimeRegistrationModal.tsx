@@ -192,7 +192,7 @@ const TimeRegistrationModal: React.FC<TimeRegistrationModalProps> = ({ isOpen, o
                   </div>
                 </div>
 
-                <div className="sticky bottom-0 bg-neutral-50 pt-2 pb-2 sm:pb-0">
+                <div className="pt-4 pb-2 border-t border-neutral-200 mt-4 bg-neutral-50">
                   <button 
                     onClick={handleSave}
                     disabled={!selectedProjectId || !hours || isSaving}

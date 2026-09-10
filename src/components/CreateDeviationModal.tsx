@@ -221,8 +221,7 @@ export default function CreateDeviationModal({ isOpen, onClose, projects }: Crea
               </button>
             </div>
 
-            <div className="flex-1 overflow-y-auto custom-scrollbar">
-              <form onSubmit={handleSubmit} className="p-4 sm:p-8 space-y-4 sm:space-y-6">
+            <form id="create-deviation-form" onSubmit={handleSubmit} className="flex-1 overflow-y-auto custom-scrollbar p-4 sm:p-8 space-y-4 sm:space-y-6">
               <div className="space-y-4">
                 <div>
                   <label className="block text-xs font-bold text-neutral-500 uppercase tracking-widest mb-1.5">Tittel på avvik</label>
@@ -406,24 +405,38 @@ export default function CreateDeviationModal({ isOpen, onClose, projects }: Crea
                 </div>
               </div>
 
-              <div className="pt-3 sticky bottom-0 bg-white pb-2">
+            </form>
+
+            {/* FAST FOOTER */}
+            <div className="px-5 sm:px-8 py-3.5 sm:py-4 bg-slate-50 border-t border-neutral-100 shrink-0 flex items-center justify-between gap-3">
+              <span className="text-[11px] text-slate-400 hidden sm:inline">
+                Avviket loggføres og analyseres automatisk av MesterAI
+              </span>
+              <div className="flex items-center gap-2.5 w-full sm:w-auto justify-end">
                 <button
+                  type="button"
+                  onClick={onClose}
+                  className="px-4 py-2 rounded-xl text-xs font-bold text-slate-600 hover:bg-slate-200 transition-colors cursor-pointer"
+                >
+                  Avbryt
+                </button>
+                <button
+                  form="create-deviation-form"
                   disabled={loading}
                   type="submit"
-                  className="w-full py-3.5 sm:py-4 bg-orange-600 text-white rounded-xl sm:rounded-2xl font-bold flex items-center justify-center gap-2 hover:bg-orange-500 transition-all shadow-xl shadow-orange-100 disabled:opacity-50 text-sm sm:text-base active:scale-95"
+                  className="px-5 sm:px-7 py-2.5 sm:py-3 bg-orange-600 hover:bg-orange-500 text-white rounded-xl font-bold text-xs sm:text-sm flex items-center justify-center gap-2 transition-all shadow-md shadow-orange-200/50 disabled:opacity-50 active:scale-95 cursor-pointer"
                 >
                   {loading ? (
-                    <div className="w-5 h-5 border-2 border-white/30 border-t-white rounded-full animate-spin" />
+                    <div className="w-4 h-4 border-2 border-white/30 border-t-white rounded-full animate-spin" />
                   ) : (
                     <>
-                      <Send size={16} />
+                      <Send size={15} />
                       Send inn rapport
                     </>
                   )}
                 </button>
               </div>
-            </form>
-          </div>
+            </div>
         </motion.div>
       </div>
     )}

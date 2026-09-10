@@ -198,7 +198,7 @@ export default function ProjectMaterials({ project }: ProjectMaterialsProps) {
                   activeTab === 'search' ? "bg-white text-emerald-600 shadow-sm" : "text-neutral-400 hover:text-neutral-600"
                 )}
               >
-                NOBB Søk
+                Byggevare Søk
               </button>
               <button
                 onClick={() => setActiveTab('url')}
@@ -229,7 +229,7 @@ export default function ProjectMaterials({ project }: ProjectMaterialsProps) {
           <form onSubmit={handleSearch} className="relative mb-6">
             <input
               type="text"
-              placeholder="Søk i NOBB etter produkter (navn eller NOBB-nr)..."
+              placeholder="Søk etter byggevarer eller FDV (navn eller varenummer)..."
               value={searchQuery}
               onChange={(e) => setSearchQuery(e.target.value)}
               className="w-full pl-12 pr-4 py-4 bg-neutral-50 border border-neutral-200 rounded-2xl focus:ring-2 focus:ring-emerald-500 focus:border-emerald-500 outline-none transition-all"
@@ -369,7 +369,7 @@ export default function ProjectMaterials({ project }: ProjectMaterialsProps) {
             <div className="text-center py-12 bg-neutral-50 rounded-3xl border border-dashed border-neutral-200">
               <Package className="mx-auto text-neutral-300 mb-3" size={48} />
               <p className="text-sm text-neutral-500">Ingen materiell er lagt til ennå.</p>
-              <p className="text-xs text-neutral-400 mt-1">Søk i NOBB over for å legge til produkter.</p>
+              <p className="text-xs text-neutral-400 mt-1">Søk etter byggevarer eller lim inn produkt-URL over for å hente FDV automatisk.</p>
             </div>
           )}
         </div>

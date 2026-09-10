@@ -62,7 +62,7 @@ Systemet er bygget som en moderne **Full-Stack Enterprise Cloud-Native** applika
 - Prosjektdashboard med økonomioversikt, faggruppehåndtering og avviksstatistikk.
 
 ### FDV & Sluttkontroll
-- Automatisk henting av produktdata og miljødokumentasjon via NOBB API.
+- Automatisk henting av produktdata og miljødokumentasjon via AI-skanning og leverandøroppslag.
 - Generering av FDV-dokumentasjon og overleveringsprotokoller for Boligmappa.no.
 
 ## 3. Personvern, GDPR & Norsk Lovgivning
@@ -154,8 +154,8 @@ export default function TechnicalSpec() {
                     {[
                       { icon: <Zap className="text-emerald-400" />, label: "Gemini 3.8 Flash" },
                       { icon: <Database className="text-blue-400" />, label: "PostgreSQL" },
-                      { icon: <Lock className="text-purple-400" />, label: "BankID" },
-                      { icon: <Globe className="text-amber-400" />, label: "NOBB API" }
+                      { icon: <Lock className="text-purple-400" />, label: "Digital e-Sign" },
+                      { icon: <Globe className="text-amber-400" />, label: "Byggevare AI" }
                     ].map((tech, i) => (
                       <div key={i} className="flex flex-col items-center gap-3">
                         <div className="w-12 h-12 bg-white/5 rounded-2xl flex items-center justify-center">

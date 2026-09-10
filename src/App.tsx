@@ -482,7 +482,7 @@ function AppContent() {
                       </div>
                       <div>
                         <p className="text-xs font-bold text-navy-900">FDV & Boligmappa</p>
-                        <p className="text-[10px] text-slate-400 leading-tight">Automatisk NOBB-ark & 1-klikks eksport</p>
+                        <p className="text-[10px] text-slate-400 leading-tight">Automatisk FDV-ark & 1-klikks eksport</p>
                       </div>
                     </button>
                   </div>
@@ -635,30 +635,7 @@ function AppContent() {
                   {t('mobile_app', 'Mobil-app')}
                 </button>
 
-                <button 
-                  onClick={() => setView('spec')}
-                  className={cn(
-                    "px-3.5 py-2 rounded-xl text-xs font-bold transition-all text-slate-600 hover:text-navy-900 hover:bg-slate-100 cursor-pointer",
-                    view === 'spec' && "bg-white/5 text-navy-900 font-black"
-                  )}
-                >
-                  {t('specification', 'Spesifikasjon')}
-                </button>
 
-                {user && (user.role === 'admin' || user.email === 'kenkri3@gmail.com') && (
-                  <button 
-                    onClick={() => setView('super-admin')}
-                    className={cn(
-                      "text-xs font-bold transition-all flex items-center gap-1.5 px-3 py-1.5 rounded-xl border ml-1 cursor-pointer",
-                      view === 'super-admin' 
-                        ? "bg-red-600 text-navy-900 border-red-600 shadow-sm font-black" 
-                        : "bg-red-50 text-red-700 border-red-200 hover:bg-red-100"
-                    )}
-                  >
-                    <Shield size={14} />
-                    Admin Kontroll
-                  </button>
-                )}
               </div>
 
               {/* Desktop Right: Install Shortcut, Language, Notifications, Unified Profile */}
@@ -1044,15 +1021,7 @@ function AppContent() {
                         <span>Innstillinger</span>
                       </button>
 
-                      {(user.role === 'admin' || user.email === 'kenkri3@gmail.com') && (
-                        <button 
-                          onClick={() => { setView('super-admin'); setIsMenuOpen(false); }} 
-                          className={cn("col-span-2 flex items-center gap-2 p-2.5 rounded-xl text-xs font-bold cursor-pointer", view === 'super-admin' ? "bg-rose-50 text-rose-700" : "text-rose-600 hover:bg-rose-50")}
-                        >
-                          <Shield size={15} />
-                          <span>SuperAdmin Kontrollpanel</span>
-                        </button>
-                      )}
+
                     </div>
 
                     <button 

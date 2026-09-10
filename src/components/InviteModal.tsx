@@ -213,7 +213,7 @@ const InviteModal: React.FC<InviteModalProps> = ({ isOpen, onClose, project }) =
                 </p>
               </div>
 
-              <div className="sticky bottom-0 bg-white pt-3 pb-2 sm:pb-0">
+              <div className="pt-4 pb-2 border-t border-neutral-100 mt-4 bg-white">
                 <button
                   disabled={loading || !userProfile}
                   type="submit"

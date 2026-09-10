@@ -141,7 +141,7 @@ const CustomerPortal: React.FC<CustomerPortalProps> = ({ project }) => {
       const signatureCertificate = {
         signedBy: project.clientName || contract.clientName || 'Kunde',
         signedAt: new Date().toISOString(),
-        authMethod: 'BankID / Digital e-Sign',
+        authMethod: 'Digital e-Signatur (NS 8406)',
         ipAddress: '127.0.0.1',
         verificationHash: 'SHA256:' + Math.random().toString(36).substring(2) + Date.now().toString(36)
       };
@@ -163,7 +163,7 @@ const CustomerPortal: React.FC<CustomerPortalProps> = ({ project }) => {
         updatedAt: serverTimestamp()
       });
 
-      toast.success("Kontrakten er signert med BankID! Prosjektet er nå i gang.");
+      toast.success("Kontrakten er signert med digital e-signatur! Prosjektet er nå i gang.");
       window.location.reload();
     } catch (error) {
       console.error("Error signing contract:", error);
@@ -305,7 +305,7 @@ const CustomerPortal: React.FC<CustomerPortalProps> = ({ project }) => {
                 
                 <h2 className="text-3xl font-black mb-4">Signer Kontrakt</h2>
                 <p className="text-neutral-500 mb-8 max-w-lg">
-                  Tilbudet er godkjent. For å starte arbeidet må vi ha en signert kontrakt. Du kan signere digitalt med BankID her.
+                  Tilbudet er godkjent. For å starte arbeidet må vi ha en signert kontrakt. Du kan signere digitalt her med ett klikk.
                 </p>
 
                 <div className="p-8 bg-neutral-50 rounded-3xl mb-8 border border-neutral-200">
@@ -320,7 +320,7 @@ const CustomerPortal: React.FC<CustomerPortalProps> = ({ project }) => {
                   </div>
                   <div className="flex items-center gap-2 text-xs text-emerald-700 bg-emerald-50 px-3 py-2 rounded-xl border border-emerald-200">
                     <ShieldCheck size={16} />
-                    <span>Klar for sikker BankID-verifisering og digital signatur</span>
+                    <span>Klar for juridisk gyldig digital e-signatur (NS 8406 / Håndverkertjenesteloven)</span>
                   </div>
                 </div>
 
@@ -331,7 +331,7 @@ const CustomerPortal: React.FC<CustomerPortalProps> = ({ project }) => {
                     className="flex-1 bg-blue-600 text-white py-5 rounded-2xl font-black text-base sm:text-lg hover:bg-blue-500 transition-all shadow-lg shadow-blue-100 flex items-center justify-center gap-3 active:scale-95"
                   >
                     {actionLoading ? <div className="w-6 h-6 border-2 border-white/30 border-t-white rounded-full animate-spin" /> : <FileSignature size={24} />}
-                    Signer med BankID
+                    Signer og Godkjenn Digitalt
                   </button>
                   <button 
                     onClick={() => pdfService.generateContractPDF(contract, { name: 'Mester Entreprenør AS' })}

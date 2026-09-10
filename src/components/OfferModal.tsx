@@ -448,7 +448,7 @@ const OfferModal: React.FC<OfferModalProps> = ({ isOpen, onClose, initialData })
                   />
                 </div>
 
-                <div className="flex justify-end sticky bottom-0 bg-neutral-50 pt-2 pb-2 sm:pb-0">
+                <div className="flex justify-end pt-4 pb-2 border-t border-neutral-200 mt-4 bg-neutral-50">
                   <button 
                     onClick={() => {
                       if (!clientName || !title) {
@@ -554,7 +554,7 @@ const OfferModal: React.FC<OfferModalProps> = ({ isOpen, onClose, initialData })
                   </div>
                 </div>
 
-                <div className="bg-neutral-900 rounded-xl sm:rounded-3xl p-4 sm:p-8 text-white flex flex-col md:flex-row items-center justify-between gap-4 sm:gap-6 shadow-xl mt-2 sm:mt-4 sticky bottom-0 z-20">
+                <div className="bg-neutral-900 rounded-xl sm:rounded-3xl p-4 sm:p-8 text-white flex flex-col md:flex-row items-center justify-between gap-4 sm:gap-6 shadow-xl mt-4 sm:mt-6 z-20">
                   <div className="text-center md:text-left">
                     <div className="text-neutral-400 text-[10px] sm:text-xs font-black uppercase tracking-widest mb-0.5 sm:mb-1">Total sum eks. mva</div>
                     <div className="text-xl sm:text-4xl font-black text-emerald-400">{totalAmount.toLocaleString()} kr</div>

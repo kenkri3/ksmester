@@ -14,7 +14,7 @@ const IntegrationModal: React.FC<IntegrationModalProps> = ({ isOpen, onClose }) 
   const integrations = [
     { id: 'tripletex', name: 'Tripletex', lastSync: '10 min siden', type: 'Regnskap' },
     { id: 'fiken', name: 'Fiken', lastSync: '-', type: 'Regnskap' },
-    { id: 'nobb', name: 'NOBB', lastSync: '1 time siden', type: 'Varedatabase' },
+    { id: 'nobb', name: 'FDV & Varedatabase (AI)', lastSync: 'Aktiv', type: 'Varedatabase' },
     { id: 'boligmappa', name: 'Boligmappa', lastSync: 'I går', type: 'Dokumentasjon' },
   ];
 

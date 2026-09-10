@@ -149,6 +149,20 @@ export default function CreateProjectModal({ isOpen, onClose }: CreateProjectMod
         lastUpdate: Timestamp.now(),
         imageUrl: ""
       });
+      // Logg autonom agent-aktivitet
+      try {
+        await setDoc(doc(db, 'agent_activities', `act-${Date.now()}`), {
+          type: 'project_created',
+          title: `Nytt prosjekt opprettet: ${formData.name}`,
+          description: `Prosjekt ${formData.projectCode || ''} registrert (${formData.location || 'Norge'}). Autonom overvåking av TEK17, byggedagbok og HMS igangsatt.`,
+          projectId,
+          createdAt: new Date().toISOString(),
+          status: 'active'
+        });
+      } catch (actErr) {
+        console.warn('Agent activity log notice:', actErr);
+      }
+
       onClose();
       setFormData({ 
         name: '', 
@@ -194,14 +208,31 @@ export default function CreateProjectModal({ isOpen, onClose }: CreateProjectMod
             {/* Mobile Grab Handle */}
             <div className="sm:hidden w-12 h-1.5 bg-neutral-300 rounded-full mx-auto mt-3 mb-1" />
 
-            <div className="p-4 sm:p-8 lg:p-10 flex-1 overflow-y-auto custom-scrollbar">
-              <div className="flex justify-between items-center mb-4 sm:mb-8 sticky top-0 bg-white z-10 pb-2">
-                <h2 className="text-lg sm:text-2xl font-bold tracking-tight">{t('new_project_title', 'Opprett nytt prosjekt')}</h2>
-                <button onClick={onClose} aria-label="Lukk" className="p-1.5 sm:p-2 hover:bg-neutral-100 rounded-full transition-colors">
-                  <X size={18} className="sm:w-5 sm:h-5" />
-                </button>
+            {/* 1. FAST HEADER */}
+            <div className="px-5 sm:px-8 py-4 sm:py-5 border-b border-neutral-100 flex justify-between items-center bg-white shrink-0">
+              <div className="flex items-center gap-2.5">
+                <div className="w-8 h-8 rounded-xl bg-emerald-50 text-emerald-700 flex items-center justify-center font-bold">
+                  <HardHat size={18} />
+                </div>
+                <div>
+                  <h2 className="text-base sm:text-xl font-black text-navy-900 tracking-tight leading-tight">
+                    {t('new_project_title', 'Opprett nytt prosjekt')}
+                  </h2>
+                  <p className="text-[11px] text-slate-400 font-medium">Overvåkes og føres automatisk av MesterAI</p>
+                </div>
               </div>
-              <form onSubmit={handleSubmit} className="space-y-4 sm:space-y-6">
+              <button 
+                type="button"
+                onClick={onClose} 
+                aria-label="Lukk" 
+                className="p-1.5 sm:p-2 hover:bg-neutral-100 text-slate-400 hover:text-slate-700 rounded-full transition-colors cursor-pointer"
+              >
+                <X size={18} className="sm:w-5 sm:h-5" />
+              </button>
+            </div>
+
+            {/* 2. RULLBAR SKJEMA-KROPP (Går aldri bak knappen) */}
+            <form id="create-project-form" onSubmit={handleSubmit} className="flex-1 overflow-y-auto custom-scrollbar p-5 sm:p-8 space-y-4 sm:space-y-6">
                 <div className="grid grid-cols-1 md:grid-cols-2 gap-4 sm:gap-6">
                   <div className="md:col-span-2">
                     <label className="block text-xs font-bold uppercase tracking-widest text-neutral-500 mb-1.5">
@@ -495,16 +526,31 @@ export default function CreateProjectModal({ isOpen, onClose }: CreateProjectMod
                   </div>
                 </div>
 
-                <div className="sticky bottom-0 bg-white pt-2 pb-2 sm:pb-4">
-                  <button 
-                    type="submit"
-                    disabled={loading}
-                    className="w-full bg-emerald-600 text-white py-3.5 sm:py-4 rounded-xl sm:rounded-2xl font-bold hover:bg-emerald-500 transition-all shadow-lg shadow-emerald-100 flex items-center justify-center gap-2 disabled:opacity-50 text-sm sm:text-base active:scale-95"
-                  >
-                    {loading ? <Loader2 className="animate-spin sm:w-5 sm:h-5" size={16} /> : t('create_project', 'Opprett prosjekt')}
-                  </button>
-                </div>
               </form>
+
+            {/* 3. FAST BUNN-FOOTER (Ligger utenfor rullefeltet, dekker ALDRI felter) */}
+            <div className="px-5 sm:px-8 py-3.5 sm:py-4 bg-slate-50 border-t border-neutral-100 shrink-0 flex items-center justify-between gap-3">
+              <span className="text-[11px] text-slate-400 hidden sm:inline-flex items-center gap-1.5">
+                <Sparkles size={13} className="text-emerald-600" />
+                TEK17- og fremdriftsregler aktiveres automatisk
+              </span>
+              <div className="flex items-center gap-2.5 w-full sm:w-auto justify-end">
+                <button
+                  type="button"
+                  onClick={onClose}
+                  className="px-4 py-2.5 rounded-xl text-xs font-bold text-slate-600 hover:bg-slate-200 transition-colors cursor-pointer"
+                >
+                  Avbryt
+                </button>
+                <button 
+                  form="create-project-form"
+                  type="submit"
+                  disabled={loading}
+                  className="px-5 sm:px-7 py-2.5 sm:py-3 bg-emerald-600 hover:bg-emerald-500 text-white rounded-xl font-bold text-xs sm:text-sm transition-all shadow-md shadow-emerald-200/50 flex items-center justify-center gap-2 disabled:opacity-50 cursor-pointer active:scale-95"
+                >
+                  {loading ? <Loader2 className="animate-spin sm:w-4 sm:h-4" size={16} /> : t('create_project', 'Opprett prosjekt')}
+                </button>
+              </div>
             </div>
           </motion.div>
         </div>

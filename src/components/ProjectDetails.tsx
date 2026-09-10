@@ -1431,7 +1431,7 @@ export default function ProjectDetails({ project, onBack, onShare, onStartCheckl
                   </div>
                 </div>
 
-                <div className="sticky bottom-0 bg-white pt-3 pb-2 sm:pb-0">
+                <div className="pt-4 pb-2 border-t border-slate-100 mt-4 bg-white">
                   <button 
                     type="submit"
                     disabled={isSaving}
@@ -1511,7 +1511,7 @@ export default function ProjectDetails({ project, onBack, onShare, onStartCheckl
                     />
                   </div>
                 </div>
-                <div className="sticky bottom-0 bg-white pt-3 pb-2 sm:pb-0">
+                <div className="pt-4 pb-2 border-t border-slate-100 mt-4 bg-white">
                   <button 
                     type="submit"
                     disabled={isSaving}
