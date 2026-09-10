@@ -1,4 +1,4 @@
-import { saveCollectionItem, getCollectionItems } from './db';
+import { saveCollectionItem, getCollectionItems, getCollectionItemById } from './db';
 
 export interface CostLogRecord {
   id: string;
@@ -134,11 +134,60 @@ export async function trackTokenCost({
  * Sjekker om bedriften er innenfor sin trygge token-kvote (Marginvern).
  * Forhindrer at noen kunde påfører oss tap eller overforbruk.
  */
-export async function checkCompanyQuota(companyId?: string, planKey = 'team') {
-  if (!companyId) return { allowed: true, percentUsed: 0, isWarning: false };
+export async function checkCompanyQuota(companyId?: string, planKey?: string) {
+  if (!companyId) return { allowed: true, percentUsed: 0, isWarning: false, needsTopUp: false, plan: 'unrestricted' };
+
+  let resolvedPlanKey = planKey?.toLowerCase().trim();
+
+  // Hvis planKey ikke er spesifisert, slår vi opp bedriften direkte i databasen
+  if (!resolvedPlanKey) {
+    try {
+      // 1. Sjekk companies-samlingen
+      const company = await getCollectionItemById('companies', companyId);
+      if (company?.plan) {
+        resolvedPlanKey = String(company.plan).toLowerCase();
+      } else {
+        // 2. Sjekk alle bedrifter (hvis companyId matcher navn eller orgnr)
+        const allCompanies = await getCollectionItems('companies');
+        const matchedCompany = allCompanies.find((c: any) => 
+          c.id === companyId || c.name === companyId || c.orgNumber === companyId || c.orgnr === companyId
+        );
+        if (matchedCompany?.plan) {
+          resolvedPlanKey = String(matchedCompany.plan).toLowerCase();
+        } else {
+          // 3. Sjekk leads-samlingen
+          const allLeads = await getCollectionItems('leads');
+          const matchedLead = allLeads.find((l: any) => 
+            l.companyId === companyId || l.company === companyId || l.orgnr === companyId
+          );
+          if (matchedLead?.plan) {
+            resolvedPlanKey = String(matchedLead.plan).toLowerCase();
+          }
+        }
+      }
+    } catch (err) {
+      console.warn('[Cost Tracker] Kunne ikke slå opp bedrift for kvotesjekk:', err);
+    }
+  }
+
+  // Normaliser plan-nøkkel: f.eks. "entreprenør" -> "entreprenor"
+  if (resolvedPlanKey?.includes('entrepren')) {
+    resolvedPlanKey = 'entreprenor';
+  } else if (resolvedPlanKey?.includes('team')) {
+    resolvedPlanKey = 'team';
+  } else if (resolvedPlanKey?.includes('solo')) {
+    resolvedPlanKey = 'solo';
+  }
+
+  // 🛡️ Marginvern: Hvis bedriftens plan er ukjent eller udefinert,
+  // faller vi ALLTID tilbake på 'solo' (2.5M tokens), aldri 'team' (10M tokens).
+  // Dette forhindrer 4x utilsiktet overforbruk og beskytter 98% bruttomargin.
+  if (!resolvedPlanKey || !PLAN_LIMITS[resolvedPlanKey]) {
+    resolvedPlanKey = 'solo';
+  }
 
   const currentMonthPrefix = new Date().toISOString().substring(0, 7);
-  const planInfo = PLAN_LIMITS[planKey.toLowerCase()] || PLAN_LIMITS['team'];
+  const planInfo = PLAN_LIMITS[resolvedPlanKey];
 
   try {
     const allCosts = await getCollectionItems('token_costs');
@@ -158,10 +207,12 @@ export async function checkCompanyQuota(companyId?: string, planKey = 'team') {
       limitTokens,
       percentUsed,
       isWarning: percentUsed >= 80,
-      needsTopUp: percentUsed >= 100
+      needsTopUp: percentUsed >= 100,
+      plan: resolvedPlanKey,
+      planMonthlyPrice: planInfo.monthlyPrice
     };
   } catch {
-    return { allowed: true, percentUsed: 0, isWarning: false };
+    return { allowed: true, percentUsed: 0, isWarning: false, needsTopUp: false, plan: resolvedPlanKey };
   }
 }
 

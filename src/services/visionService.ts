@@ -42,6 +42,7 @@ export const visionService = {
       const response = await generateAiContent({
         model: "gemini-3.8-flash", 
         prompt: prompt,
+        operation: "vision_analysis",
         images: [
           {
             inlineData: {

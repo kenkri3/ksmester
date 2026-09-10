@@ -246,6 +246,7 @@ export async function getDocs(queryRef: any) {
 
 export async function addDoc(colRef: any, data: any) {
   const res = await api.addDoc(colRef.collectionName, data);
+  notifyCollectionChanged(colRef.collectionName);
   return { id: res.id || 'id-' + Math.random().toString(36).substring(2, 7), collectionName: colRef.collectionName };
 }
 
@@ -253,73 +254,149 @@ export async function setDoc(docRef: any, data: any, options?: any) {
   const col = docRef.collectionName;
   const id = docRef.id;
   await api.updateDoc(col, id, data);
+  notifyCollectionChanged(col);
 }
 
 export async function updateDoc(docRef: any, data: any, extra?: any) {
   const col = docRef.collectionName;
   const id = docRef.id;
   await api.updateDoc(col, id, data);
+  notifyCollectionChanged(col);
 }
 
 export async function deleteDoc(docRef: any, extra?: any) {
   const col = docRef.collectionName;
   const id = docRef.id;
   await api.deleteDoc(col, id);
+  notifyCollectionChanged(col);
+}
+
+// 🛡️ Sentralisert samlings-multiplekser for redusert database- og pollbelastning
+// Erstatter 19 uavhengige setInterval-kall med én felles syklus per aktiv tabell.
+interface CollectionSubscriber {
+  id: string;
+  queryOrColRef: any;
+  callback: (snapshot: any) => void;
+  onError?: (err: any) => void;
+  lastDataHash: string;
+}
+
+interface CollectionState {
+  timer: any;
+  subscribers: Set<CollectionSubscriber>;
+  lastFetchedAt: number;
+}
+
+const collectionPollers = new Map<string, CollectionState>();
+const DEFAULT_POLL_INTERVAL = 20000; // 20 sekunder (stabil og skalerbar bakgrunnsbelastning)
+
+async function fetchAndBroadcastCollection(collectionName: string, specificSubscriber?: CollectionSubscriber) {
+  // Stopp bakgrunnshenting når fanen er skjult for å spare CPU og Postgres-tilkoblinger
+  if (typeof document !== 'undefined' && document.hidden) {
+    return;
+  }
+
+  const state = collectionPollers.get(collectionName);
+  if (!state || state.subscribers.size === 0) return;
+
+  try {
+    const rawItems = await api.getCollection(collectionName);
+    state.lastFetchedAt = Date.now();
+
+    const targets = specificSubscriber ? [specificSubscriber] : Array.from(state.subscribers);
+
+    for (const sub of targets) {
+      try {
+        let items = rawItems;
+        if (sub.queryOrColRef.constraints) {
+          items = applyQueryConstraints(items, sub.queryOrColRef.constraints);
+        }
+
+        // Unngå unødvendige re-renders hvis data er identisk
+        const currentHash = items.map((i: any) => `${i.id}_${i.updatedAt || i.createdAt || ''}`).join('|') + `_${items.length}`;
+        if (currentHash === sub.lastDataHash) {
+          continue;
+        }
+        sub.lastDataHash = currentHash;
+
+        const docs = items.map((i: any) => ({
+          id: i.id,
+          ref: { collectionName, id: i.id },
+          data: () => i
+        }));
+
+        sub.callback({
+          docs,
+          empty: docs.length === 0,
+          size: docs.length
+        });
+      } catch (subErr) {
+        if (sub.onError) sub.onError(subErr);
+      }
+    }
+  } catch (err) {
+    for (const sub of state.subscribers) {
+      if (sub.onError) sub.onError(err);
+    }
+  }
+}
+
+// Varsle alle aktive lyttere om en samling umiddelbart ved lokale endringer (0 ms sanntid)
+export function notifyCollectionChanged(collectionName: string) {
+  if (collectionPollers.has(collectionName)) {
+    fetchAndBroadcastCollection(collectionName).catch(() => {});
+  }
+}
+
+// Global lytter for fokus og fane-synlighet (kun én felles lytter for hele appen)
+if (typeof window !== 'undefined') {
+  const handleGlobalRefresh = () => {
+    if (document.hidden) return;
+    for (const col of collectionPollers.keys()) {
+      fetchAndBroadcastCollection(col).catch(() => {});
+    }
+  };
+
+  window.addEventListener('focus', handleGlobalRefresh);
+  window.addEventListener('visibilitychange', handleGlobalRefresh);
+  window.addEventListener('ks_queue_updated', handleGlobalRefresh);
 }
 
 export function onSnapshot(queryOrColRef: any, callback: (snapshot: any) => void, onError?: any) {
   const col = queryOrColRef.collectionName;
-  let lastDataHash = '';
-
-  const fetchData = async () => {
-    // If page is hidden in background, don't waste CPU/network
-    if (typeof document !== 'undefined' && document.hidden) {
-      return;
-    }
-
-    try {
-      let items = await api.getCollection(col);
-      if (queryOrColRef.constraints) {
-        items = applyQueryConstraints(items, queryOrColRef.constraints);
-      }
-
-      // Fast check: serialize ids + updated timestamps or string representation
-      const currentHash = items.map((i: any) => `${i.id}_${i.updatedAt || i.createdAt || ''}`).join('|') + `_${items.length}`;
-      if (currentHash === lastDataHash) {
-        return; // Data has not changed, skip re-render
-      }
-      lastDataHash = currentHash;
-
-      const docs = items.map((i: any) => ({
-        id: i.id,
-        ref: { collectionName: col, id: i.id },
-        data: () => i
-      }));
-      callback({
-        docs,
-        empty: docs.length === 0,
-        size: docs.length
-      });
-    } catch (e) {
-      if (onError) onError(e);
-    }
+  const subscriber: CollectionSubscriber = {
+    id: 'sub_' + Math.random().toString(36).substring(2, 9),
+    queryOrColRef,
+    callback,
+    onError,
+    lastDataHash: ''
   };
 
-  fetchData();
-  const interval = setInterval(fetchData, 10000);
-
-  // Re-fetch immediately when window gains focus or local data changes
-  const handleDataChange = () => { fetchData(); };
-  if (typeof window !== 'undefined') {
-    window.addEventListener('focus', handleDataChange);
-    window.addEventListener('ks_queue_updated', handleDataChange);
+  let state = collectionPollers.get(col);
+  if (!state) {
+    state = {
+      timer: setInterval(() => {
+        fetchAndBroadcastCollection(col).catch(() => {});
+      }, DEFAULT_POLL_INTERVAL),
+      subscribers: new Set(),
+      lastFetchedAt: 0
+    };
+    collectionPollers.set(col, state);
   }
 
+  state.subscribers.add(subscriber);
+
+  // Umiddelbar førstegangshendelse for den nye lytteren
+  fetchAndBroadcastCollection(col, subscriber).catch(() => {});
+
   return () => {
-    clearInterval(interval);
-    if (typeof window !== 'undefined') {
-      window.removeEventListener('focus', handleDataChange);
-      window.removeEventListener('ks_queue_updated', handleDataChange);
+    const currentState = collectionPollers.get(col);
+    if (currentState) {
+      currentState.subscribers.delete(subscriber);
+      if (currentState.subscribers.size === 0) {
+        clearInterval(currentState.timer);
+        collectionPollers.delete(col);
+      }
     }
   };
 }

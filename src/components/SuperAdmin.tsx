@@ -1317,6 +1317,7 @@ function CreateCompanyModal({ onClose, onSuccess }: { onClose: () => void, onSuc
   const [name, setName] = useState('');
   const [orgNumber, setOrgNumber] = useState('');
   const [status, setStatus] = useState<'trial' | 'active'>('trial');
+  const [plan, setPlan] = useState<'solo' | 'team' | 'entreprenor'>('team');
   const [loading, setLoading] = useState(false);
 
   const handleSubmit = async (e: React.FormEvent) => {
@@ -1327,12 +1328,13 @@ function CreateCompanyModal({ onClose, onSuccess }: { onClose: () => void, onSuc
         name,
         orgNumber,
         subscriptionStatus: status,
+        plan,
         modules: ['projects', 'checklists', 'deviations', 'ai', 'economy', 'fdv', 'inventory', 'vehicle', 'time', 'apprentice', 'building_app'], // All default modules enabled
         createdAt: serverTimestamp(),
         updatedAt: serverTimestamp(),
         userCount: 0
       });
-      toast.success(`Kunde "${name}" ble opprettet!`);
+      toast.success(`Kunde "${name}" (${plan}) ble opprettet!`);
       onSuccess();
     } catch (error) {
       handleFirestoreError(error, OperationType.CREATE, 'companies');
@@ -1377,6 +1379,20 @@ function CreateCompanyModal({ onClose, onSuccess }: { onClose: () => void, onSuc
               placeholder="9 siffer"
             />
           </div>
+
+          <div className="space-y-2">
+            <label className="text-xs font-black uppercase tracking-widest text-neutral-400 ml-1">Abonnementsplan (Kvote & Marginvern)</label>
+            <select
+              value={plan}
+              onChange={(e) => setPlan(e.target.value as any)}
+              className="w-full px-4 py-3 bg-neutral-50 border border-neutral-200 rounded-2xl focus:ring-2 focus:ring-electric-500 outline-none transition-all font-medium text-sm text-neutral-800"
+            >
+              <option value="solo">Solo (2.5M tokens/mnd - kr 1 490,-)</option>
+              <option value="team">Team (10M tokens/mnd - kr 3 490,-)</option>
+              <option value="entreprenor">Totalentreprenør (30M tokens/mnd - kr 6 900,-)</option>
+            </select>
+          </div>
+
           <div className="space-y-2">
             <label className="text-xs font-black uppercase tracking-widest text-neutral-400 ml-1">Status</label>
             <div className="grid grid-cols-2 gap-2">

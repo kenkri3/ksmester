@@ -33,7 +33,8 @@ import {
   Siren
 } from 'lucide-react';
 import { cn } from '@/src/lib/utils';
-import { generateAiContent } from '../services/aiClient';
+import { sjaService } from '../services/sjaService';
+import { visionService } from '../services/visionService';
 import { ImageAnalysisResult, Project as ProjectType, UserProfile, Trade } from '../types';
 import InstallGuide from './InstallGuide';
 import ChecklistModal from './ChecklistModal';
@@ -49,74 +50,6 @@ import WeatherWidget from './WeatherWidget';
 import { logAiService } from '../services/logAiService';
 import { locationService } from '../services/locationService';
 import { Sparkles, ClipboardList } from 'lucide-react';
-
-// AI Services
-async function analyzeVoice(text: string, uiLanguage: string = 'no', trade?: Trade, weather?: WeatherData) {
-  const tradeContext = trade ? `Håndverkeren er en ${trade}. ` : '';
-  const weatherContext = weather ? `
-    VÆRFORHOLD PÅ PLASSEN:
-    Temperatur: ${weather.temp}°C, Tilstand: ${weather.condition}, Vind: ${weather.windSpeed} m/s.
-    Vurder hvordan dette påvirker sikkerheten for oppgaven.
-  ` : '';
-
-  try {
-    const response = await generateAiContent({
-      prompt: `Du er en ekspert på norsk HMS og SJA (Sikker Jobb Analyse) i henhold til TEK17 og SAK10. 
-      ${tradeContext}${weatherContext}Håndverkeren har sagt følgende (kan være på et hvilket som helst språk i verden, f.eks. ukrainsk, rumensk, polsk, litauisk, engelsk, spansk, tysk osv.): "${text}".
-      
-      OPPGAVE:
-      1. Identifiser språket som er brukt.
-      2. Generer en komplett, profesjonell SJA-rapport på NORSK (bokmål) for dokumentasjon.
-      3. Generer også en versjon av de viktigste punktene på språket til brukeren (${uiLanguage}) slik at de forstår hva som er logget.
-      
-      JSON-strukturen skal være: 
-      {
-        "tittel": "string (NORSK)",
-        "arbeidsoppgave": "string (NORSK)",
-        "risikoer": [{"aktivitet": "string (NORSK)", "risiko": "string (NORSK)", "tiltak": "string (NORSK)"}],
-        "utstyr": ["string (NORSK)"],
-        "tek17_referanse": "string (NORSK)",
-        "weather_impact": "string (NORSK - hvordan været påvirker oppgaven)",
-        "user_feedback": {
-          "tittel": "string (${uiLanguage})",
-          "hovedrisiko": "string (${uiLanguage})"
-        }
-      }
-      Svar KUN med JSON.`,
-      responseMimeType: "application/json"
-    });
-    return JSON.parse(response.text);
-  } catch (e) {
-    console.error(e);
-    return null;
-  }
-}
-
-async function analyzeImage(base64Image: string, trade?: Trade): Promise<ImageAnalysisResult | null> {
-  const tradeContext = trade ? `Håndverkeren er en ${trade}. ` : '';
-  try {
-    const response = await generateAiContent({
-      prompt: `Du er en ekspert på byggeteknisk kontroll i Norge (KS/HMS). 
-      ${tradeContext}Analyser dette bildet fra en byggeplass. Identifiser bygningselementer (f.eks. dampsperre, kledning, isolasjon, stenderverk).
-      Vurder om det er utført i henhold til god byggeskikk eller om det er avvik.
-      Svar i JSON-format:
-      {
-        "elements": ["string"],
-        "status": "approved" | "deviation",
-        "description": "string",
-        "confidence": number (0-1),
-        "recommendation": "string"
-      }
-      Svar KUN med JSON.`,
-      inlineData: { data: base64Image.split(',')[1], mimeType: "image/jpeg" },
-      responseMimeType: "application/json"
-    });
-    return JSON.parse(response.text);
-  } catch (e) {
-    console.error(e);
-    return null;
-  }
-}
 
 export default function MobileApp() {
   const { t, i18n } = useTranslation();
@@ -505,7 +438,16 @@ interface ColleagueContact {
       }
     }
 
-    const result = await analyzeVoice(transcript, i18n.language, userProfile?.trade, weather);
+    const result = await sjaService.generateDraft(
+      {
+        name: project?.name || 'Byggeplass',
+        description: project?.description,
+        location: project?.location || 'Oslo'
+      },
+      transcript,
+      weather,
+      i18n.language
+    );
     setIsAnalyzing(false);
     if (result) {
       setReport(result);
@@ -587,7 +529,7 @@ interface ColleagueContact {
     if (!selectedProjectId) return;
     setIsAnalyzing(true);
     setActiveScreen('camera');
-    const result = await analyzeImage(base64, userProfile?.trade);
+    const result = await visionService.analyzeImage(base64, 'image/jpeg');
     setIsAnalyzing(false);
     if (result) {
       setImageAnalysis(result);

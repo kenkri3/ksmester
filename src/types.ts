@@ -1,4 +1,5 @@
 export type Trade = 'carpenter' | 'plumber' | 'electrician' | 'mason' | 'painter' | 'general';
+export type SubscriptionPlan = 'solo' | 'team' | 'entreprenor';
 
 export interface Company {
   id: string;
@@ -6,6 +7,9 @@ export interface Company {
   industry: Trade | 'multi';
   modules: string[]; // e.g., ['hms', 'ks', 'inventory', 'apprentice']
   logoUrl?: string;
+  plan?: SubscriptionPlan;
+  subscriptionStatus?: 'trial' | 'active' | 'cancelled';
+  userCount?: number;
 }
 
 export interface Invitation {
@@ -37,6 +41,7 @@ export interface UserProfile {
   accessibleProjects?: string[]; // For external workers
   modules?: string[]; // e.g., ['hms', 'ks', 'inventory', 'apprentice']
   industry?: string;
+  plan?: SubscriptionPlan;
   notifications?: {
     deviations: boolean;
     sja: boolean;

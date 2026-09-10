@@ -10,6 +10,9 @@ export interface GenerateAiOptions {
   images?: any[];
   inlineData?: any;
   isPortal?: boolean;
+  operation?: string;
+  taskDescription?: string;
+  weatherContext?: string;
 }
 
 export async function generateAiContent(options: GenerateAiOptions): Promise<{ text: string }> {

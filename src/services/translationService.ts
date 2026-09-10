@@ -32,6 +32,7 @@ export const translationService = {
     try {
       const response = await generateAiContent({
         prompt: prompt,
+        operation: "translation",
         responseMimeType: "application/json"
       });
 

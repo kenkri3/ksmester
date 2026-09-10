@@ -2,6 +2,25 @@ import { NextRequest, NextResponse } from 'next/server';
 import { GoogleGenAI } from '@google/genai';
 import { getUserFromRequest } from '@/src/lib/server/auth';
 import { trackTokenCost, checkCompanyQuota } from '@/src/lib/server/costTracker';
+import { getCachedAiResponse, setCachedAiResponse } from '@/src/lib/server/aiCache';
+import { tryResolveDeterministicSja } from '@/src/lib/server/ruleEngine';
+import { createHash } from 'crypto';
+
+function computeCacheKey(promptOrContents: any, systemInstruction?: string, model = 'gemini-3.8-flash', images?: any[], inlineData?: any): string {
+  const textPart = typeof promptOrContents === 'string' ? promptOrContents.trim().toLowerCase() : JSON.stringify(promptOrContents || '');
+  let imageParts = '';
+  if (inlineData?.data) {
+    imageParts += createHash('sha256').update(String(inlineData.data).slice(0, 500) + String(inlineData.data).length).digest('hex');
+  }
+  if (images && Array.isArray(images) && images.length > 0) {
+    imageParts += ':' + images.map(img => {
+      const data = img?.inlineData?.data || img?.data || (typeof img === 'string' ? img : '');
+      return createHash('sha256').update(String(data).slice(0, 500) + String(data).length).digest('hex');
+    }).join(':');
+  }
+  const payload = `${model}:::${systemInstruction || ''}:::${textPart}:::${imageParts}`;
+  return createHash('sha256').update(payload).digest('hex');
+}
 
 export async function POST(req: NextRequest) {
   const user = getUserFromRequest(req);
@@ -28,15 +47,58 @@ export async function POST(req: NextRequest) {
       }
     }
 
-    // 🛡️ Sjekk bedriftens tokenkvote (100% marginvern)
+    // 🛡️ Sjekk bedriftens faktiske tokenkvote og abonnementsplan (100% marginvern)
     if (user?.companyId) {
       const quota = await checkCompanyQuota(user.companyId);
       if (quota.needsTopUp) {
         return NextResponse.json({
-          error: 'Månedlig inkludert AI-kvote er nådd. Kjøp en Mester Top-up pakke under Innstillinger → Fakturering for å fortsette uten avbrudd.',
-          needsTopUp: true
+          error: `Månedlig inkludert AI-kvote (${quota.plan?.toUpperCase()} - ${(quota.limitTokens / 1_000_000).toFixed(1)}M tokens) er nådd. Kjøp en Mester Top-up pakke under Innstillinger → Fakturering for å fortsette uten avbrudd.`,
+          needsTopUp: true,
+          quota
         }, { status: 429 });
       }
+    }
+
+    // ⚡ 1. SJA Regelmotor (0 kr, 0 ms for standard byggeoppgaver)
+    if (operation === 'sja_generation' || operation === 'sja') {
+      const taskText = body.taskDescription || body.task || (typeof prompt === 'string' ? prompt : '');
+      const ruleMatch = tryResolveDeterministicSja(taskText, body.weatherContext);
+      if (ruleMatch) {
+        const formatted = {
+          title: ruleMatch.title,
+          tittel: ruleMatch.title,
+          task: ruleMatch.task,
+          arbeidsoppgave: ruleMatch.task,
+          risikoer: ruleMatch.risikoer,
+          utstyr: ruleMatch.utstyr,
+          tek17Reference: ruleMatch.tek17Reference,
+          tek17_referanse: ruleMatch.tek17Reference,
+          weatherImpact: ruleMatch.weatherImpact,
+          weather_impact: ruleMatch.weatherImpact,
+          user_feedback: {
+            tittel: ruleMatch.title,
+            hovedrisiko: ruleMatch.risikoer[0]?.risiko || 'Følg standard sikkerhetsrutiner'
+          }
+        };
+        return NextResponse.json({
+          text: JSON.stringify(formatted),
+          usage: { promptTokens: 0, completionTokens: 0, totalTokens: 0 },
+          source: 'rule_engine',
+          cached: false
+        });
+      }
+    }
+
+    // ⚡ 2. Server-side AI Cache (0 kr for gjentatte oppgaver, bilder og oversettelser)
+    const cacheKey = computeCacheKey(prompt || contents, systemInstruction, model, images, inlineData);
+    const cachedText = await getCachedAiResponse(cacheKey);
+    if (cachedText) {
+      return NextResponse.json({
+        text: cachedText,
+        usage: { promptTokens: 0, completionTokens: 0, totalTokens: 0 },
+        source: 'ai_cache',
+        cached: true
+      });
     }
 
     if (apiKey) {
@@ -134,8 +196,17 @@ export async function POST(req: NextRequest) {
         notes: `AI request by ${user?.email || 'portal'}`
       }).catch(err => console.warn('trackTokenCost error:', err));
 
+      const resultText = aiResponse.text || '';
+
+      // ⚡ Lagre i server-cache for fremtidige identiske henvendelser (0 kr)
+      if (resultText) {
+        setCachedAiResponse(cacheKey, resultText, executedModel).catch(err => 
+          console.warn('[AI Cache] Feil ved lagring:', err)
+        );
+      }
+
       return NextResponse.json({ 
-        text: aiResponse.text || '',
+        text: resultText,
         usage: { promptTokens, completionTokens, totalTokens: promptTokens + completionTokens }
       });
     } else if (deepseekKey) {
@@ -172,6 +243,7 @@ export async function POST(req: NextRequest) {
       const dsData = await dsRes.json();
       const promptTokens = dsData.usage?.prompt_tokens || 200;
       const completionTokens = dsData.usage?.completion_tokens || 100;
+      const resultText = dsData.choices?.[0]?.message?.content || '';
 
       trackTokenCost({
         model: 'deepseek-chat',
@@ -183,8 +255,14 @@ export async function POST(req: NextRequest) {
         notes: `DeepSeek request by ${user?.email || 'portal'}`
       }).catch(err => console.warn('trackTokenCost error:', err));
 
+      if (resultText) {
+        setCachedAiResponse(cacheKey, resultText, 'deepseek-chat').catch(err => 
+          console.warn('[AI Cache] Feil ved lagring:', err)
+        );
+      }
+
       return NextResponse.json({ 
-        text: dsData.choices?.[0]?.message?.content || '',
+        text: resultText,
         usage: { promptTokens, completionTokens, totalTokens: promptTokens + completionTokens }
       });
     }

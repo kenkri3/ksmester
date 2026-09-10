@@ -92,9 +92,11 @@ export default function OfferPage({ token }: { token: string }) {
       });
 
       // 2. Create the company
+      const companyPlan = (offer as any).plan || (offer.customPrice >= 6000 ? 'entreprenor' : offer.customPrice <= 2000 ? 'solo' : 'team');
       const companyRef = await addDoc(collection(db, 'companies'), {
         name: offer.companyName,
         subscriptionStatus: 'trial',
+        plan: companyPlan,
         modules: offer.modules,
         customPrice: offer.customPrice,
         trialDays: offer.trialDays,
