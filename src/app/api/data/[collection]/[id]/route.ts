@@ -1,5 +1,5 @@
 import { NextRequest, NextResponse } from 'next/server';
-import { getCollectionItems, updateCollectionItem, deleteCollectionItem, saveCollectionItem } from '@/src/lib/server/db';
+import { getCollectionItemById, updateCollectionItem, deleteCollectionItem, saveCollectionItem } from '@/src/lib/server/db';
 import { getUserFromRequest } from '@/src/lib/server/auth';
 
 export async function GET(
@@ -12,8 +12,8 @@ export async function GET(
     const url = new URL(req.url);
     const token = url.searchParams.get('token');
 
-    const allItems = await getCollectionItems(collection);
-    const item = allItems.find((i: any) => i.id === id);
+    // ⚡ Direct indexed lookup instead of full collection memory scan
+    const item = await getCollectionItemById(collection, id);
 
     if (!item) {
       return NextResponse.json({ error: 'Elementet ble ikke funnet' }, { status: 404 });
@@ -66,11 +66,17 @@ export async function PUT(
       return NextResponse.json({ error: 'Uautorisert' }, { status: 401 });
     }
 
-    const allItems = await getCollectionItems(collection);
-    const existing = allItems.find((i: any) => i.id === id);
+    // ⚡ Direct indexed lookup
+    const existing = await getCollectionItemById(collection, id);
 
     // Upsert: If item doesn't exist, create it for this tenant
     if (!existing) {
+      // 🛡️ SECURITY: Prevent non-admin users from escalating privileges
+      if (collection === 'users' && user.role !== 'admin') {
+        delete body.role;
+        delete body.is_admin;
+      }
+
       const newItem = {
         ...body,
         id,
@@ -93,6 +99,12 @@ export async function PUT(
 
       if (!isOwner) {
         return NextResponse.json({ error: 'Ingen tilgang til å oppdatere dette objektet (IDOR-beskyttelse)' }, { status: 403 });
+      }
+
+      // 🛡️ SECURITY: Prevent non-admin users from escalating privileges on update
+      if (collection === 'users') {
+        delete body.role;
+        delete body.is_admin;
       }
     }
 
@@ -123,8 +135,7 @@ export async function DELETE(
 
     // IDOR / Authorization Check: Verify permission to delete
     if (user.role !== 'admin') {
-      const allItems = await getCollectionItems(collection);
-      const existing = allItems.find((i: any) => i.id === id);
+      const existing = await getCollectionItemById(collection, id);
       if (existing) {
         const isOwner =
           (existing.companyId && existing.companyId === user.companyId) ||

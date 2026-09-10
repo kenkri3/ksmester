@@ -1,7 +1,11 @@
+'use client';
+
 import React, { useState, useEffect } from 'react';
 import { motion, AnimatePresence } from 'motion/react';
 import { ShieldCheck, Cookie, Settings2, Check, X, Info, Lock } from 'lucide-react';
 import { cn } from '../lib/utils';
+
+import { useConsent } from './ConsentProvider';
 
 export interface CookiePreferences {
   necessary: boolean; // Always true
@@ -23,12 +27,19 @@ export default function CookieBanner({ onOpenPrivacyPolicy }: { onOpenPrivacyPol
   const [isOpen, setIsOpen] = useState(false);
   const [showDetails, setShowDetails] = useState(false);
   const [preferences, setPreferences] = useState<CookiePreferences>(DEFAULT_PREFERENCES);
+  const { setConsent } = useConsent();
 
   useEffect(() => {
     const saved = localStorage.getItem('gdpr_cookie_consent_v1');
     if (saved) {
       try {
-        setPreferences(JSON.parse(saved));
+        const parsed = JSON.parse(saved);
+        setPreferences(parsed);
+        if (parsed.analytics) {
+          setConsent('granted');
+        } else {
+          setConsent('denied');
+        }
       } catch (e) {
         setIsOpen(true);
       }
@@ -44,12 +55,17 @@ export default function CookieBanner({ onOpenPrivacyPolicy }: { onOpenPrivacyPol
     };
     window.addEventListener('open_cookie_settings', handleReopen);
     return () => window.removeEventListener('open_cookie_settings', handleReopen);
-  }, []);
+  }, [setConsent]);
 
   const saveConsent = (prefs: CookiePreferences) => {
     const updated = { ...prefs, consentedAt: new Date().toISOString() };
     setPreferences(updated);
     localStorage.setItem('gdpr_cookie_consent_v1', JSON.stringify(updated));
+    if (prefs.analytics) {
+      setConsent('granted');
+    } else {
+      setConsent('denied');
+    }
     setIsOpen(false);
     setShowDetails(false);
   };
@@ -108,7 +124,7 @@ export default function CookieBanner({ onOpenPrivacyPolicy }: { onOpenPrivacyPol
                 </div>
 
                 {/* Optional close if previously consented */}
-                {localStorage.getItem('gdpr_cookie_consent_v1') && (
+                {Boolean(preferences.consentedAt) && (
                   <button
                     onClick={() => setIsOpen(false)}
                     className="p-2 text-neutral-400 hover:text-neutral-600 rounded-lg hover:bg-neutral-100 transition-colors"

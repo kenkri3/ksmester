@@ -1,20 +1,32 @@
 import { NextRequest, NextResponse } from 'next/server';
 import { saveCollectionItem } from '@/src/lib/server/db';
 import { enrollCustomerInNurture } from '@/src/lib/server/nurtureEngine';
+import { sanitize, sanitizeEmail, sanitizePhone, sanitizeHeader } from '@/src/lib/sanitize';
+import { checkRateLimit, getClientIp } from '@/src/lib/server/rateLimit';
 
 export async function POST(req: NextRequest) {
   try {
+    // 🛡️ SECURITY: Rate limiting (maks 10 leads per minutt per IP)
+    const clientIp = getClientIp(req);
+    const rateCheck = checkRateLimit(`lead:${clientIp}`, { limit: 10, windowMs: 60000 });
+    if (!rateCheck.success) {
+      return NextResponse.json(
+        { error: 'For mange henvendelser på kort tid. Vennligst vent litt.' },
+        { status: 429, headers: { 'Retry-After': String(rateCheck.reset) } }
+      );
+    }
+
     const body = await req.json();
-    const rawCompany = body.company || body.companyName || '';
-    const rawOrgnr = (body.orgnr || body.organizationNumber || '').toString().replace(/\s+/g, '').trim();
-    const rawName = body.name || body.contactName || '';
-    const email = (body.email || '').toLowerCase().trim();
-    const phone = body.phone || '';
-    const trade = body.trade || 'Byggmester / Tømrer';
+    const rawCompany = sanitize(body.company || body.companyName || '');
+    const rawOrgnr = sanitizeHeader((body.orgnr || body.organizationNumber || '').toString().replace(/\s+/g, '').trim());
+    const rawName = sanitize(body.name || body.contactName || '');
+    const email = sanitizeEmail(body.email || '');
+    const phone = sanitizePhone(body.phone || '');
+    const trade = sanitize(body.trade || 'Byggmester / Tømrer');
     const workers = Number(body.workers) || (body.plan === 'solo' ? 1 : body.plan === 'entreprenor' ? 10 : 3);
-    const planRaw = (body.plan || (workers <= 1 ? 'solo' : workers <= 5 ? 'team' : 'entreprenor')).toLowerCase();
-    const channel = body.channel || 'Microsoft Teams / Web';
-    const message = body.message || '';
+    const planRaw = sanitize((body.plan || (workers <= 1 ? 'solo' : workers <= 5 ? 'team' : 'entreprenor')).toLowerCase());
+    const channel = sanitize(body.channel || 'Microsoft Teams / Web');
+    const message = sanitize(body.message || '');
 
     if (!email && !phone) {
       return NextResponse.json({ error: 'Minst e-post eller telefonnummer må oppgis.' }, { status: 400 });

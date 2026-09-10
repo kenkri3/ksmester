@@ -1,3 +1,5 @@
+'use client';
+
 import React, { createContext, useContext, useEffect, useState } from 'react';
 import { api } from '../services/api';
 import { setCurrentAuthUser } from '../services/dbAdapter';
@@ -50,8 +52,19 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
   const [loading, setLoading] = useState(true);
   const [isAuthReady, setIsAuthReady] = useState(false);
 
-  const [impersonatedCompanyId, setImpersonatedCompanyId] = useState<string | null>(localStorage.getItem('impersonatedCompanyId'));
-  const [impersonatedRole, setImpersonatedRole] = useState<string | null>(localStorage.getItem('impersonatedRole'));
+  const [impersonatedCompanyId, setImpersonatedCompanyId] = useState<string | null>(null);
+  const [impersonatedRole, setImpersonatedRole] = useState<string | null>(null);
+
+  useEffect(() => {
+    if (typeof window !== 'undefined') {
+      try {
+        setImpersonatedCompanyId(localStorage.getItem('impersonatedCompanyId'));
+        setImpersonatedRole(localStorage.getItem('impersonatedRole'));
+      } catch (e) {
+        // Ignore localStorage access issues
+      }
+    }
+  }, []);
 
   useEffect(() => {
     const initAuth = async () => {

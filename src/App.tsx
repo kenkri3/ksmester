@@ -5,7 +5,7 @@
  * SPDX-License-Identifier: Apache-2.0
  */
 
-import { useState, useEffect } from 'react';
+import { useState, useEffect, lazy, Suspense } from 'react';
 import { motion, AnimatePresence } from 'motion/react';
 import { 
   ShieldCheck, 
@@ -48,34 +48,39 @@ import { cn } from '@/src/lib/utils';
 import { Toaster } from 'sonner';
 import { View, Project, SJAReport, Deviation } from './types';
 import LandingPage, { LandingTab } from './components/LandingPage';
-import Dashboard from './components/Dashboard';
-import MobileApp from './components/MobileApp';
-import IntegrationModal from './components/IntegrationModal';
-import ArchitecturePhase1 from './components/ArchitecturePhase1';
-import ArchitecturePhase2 from './components/ArchitecturePhase2';
-import ArchitecturePhase3 from './components/ArchitecturePhase3';
-import ArchitecturePhase4 from './components/ArchitecturePhase4';
-import ArchitecturePhase5 from './components/ArchitecturePhase5';
-import ArchitecturePhase6 from './components/ArchitecturePhase6';
 import Login from './components/Login';
-import SettingsPage from './components/Settings';
-import CustomerPortal from './components/CustomerPortal';
-import SuperAdmin from './components/SuperAdmin';
-import OfferPage from './components/OfferPage';
-import InviteAcceptancePage from './components/InviteAcceptancePage';
-import PublicOfferFlow from './components/PublicOfferFlow';
-import PublicChangeOrderFlow from './components/PublicChangeOrderFlow';
-import PartnerPortal from './components/PartnerPortal';
 import { PricingPage, AboutPage, ContactPage, PrivacyPage, TermsPage } from './components/StaticPages';
 import Logo from './components/Logo';
 import { NotificationBell } from './components/NotificationBell';
 import { AuthProvider, useAuth } from './hooks/useAuth';
-import InstallGuide from './components/InstallGuide';
 import NetworkStatusBadge from './components/NetworkStatusBadge';
 import CookieBanner from './components/CookieBanner';
 import { ErrorBoundary } from './components/ErrorBoundary';
 import MobileBottomNav from './components/MobileBottomNav';
 import MobileQuickActionSheet from './components/MobileQuickActionSheet';
+
+// 🚀 CODE SPLITTING: Lazy load heavy app modules to keep the landing bundle lightweight and fast
+const Dashboard = lazy(() => import('./components/Dashboard'));
+const MobileApp = lazy(() => import('./components/MobileApp'));
+const SettingsPage = lazy(() => import('./components/Settings'));
+const CustomerPortal = lazy(() => import('./components/CustomerPortal'));
+const SuperAdmin = lazy(() => import('./components/SuperAdmin'));
+const OfferPage = lazy(() => import('./components/OfferPage'));
+const InviteAcceptancePage = lazy(() => import('./components/InviteAcceptancePage'));
+const InstallGuide = lazy(() => import('./components/InstallGuide'));
+const PublicOfferFlow = lazy(() => import('./components/PublicOfferFlow'));
+const PublicChangeOrderFlow = lazy(() => import('./components/PublicChangeOrderFlow'));
+const PartnerPortal = lazy(() => import('./components/PartnerPortal'));
+const IntegrationModal = lazy(() => import('./components/IntegrationModal'));
+
+function ModuleLoader() {
+  return (
+    <div className="flex flex-col items-center justify-center min-h-[50vh] p-8 space-y-4">
+      <div className="w-10 h-10 border-4 border-electric-200 border-t-electric-600 rounded-full animate-spin" />
+      <span className="text-xs font-bold text-slate-500 uppercase tracking-widest">Laster inn modul...</span>
+    </div>
+  );
+}
 
 import './i18n';
 import { getStandardLang } from './i18n';
@@ -355,30 +360,36 @@ function AppContent() {
   // Direct full-screen Customer Offer & Contract flow (Mesterhjernen)
   if (view === 'public-offer') {
     return (
-      <PublicOfferFlow 
-        token={offerToken || undefined} 
-        onNavigateToPortal={(id) => handleOpenPortal(id)} 
-        onBackToApp={() => setView('landing')} 
-      />
+      <Suspense fallback={<ModuleLoader />}>
+        <PublicOfferFlow 
+          token={offerToken || undefined} 
+          onNavigateToPortal={(id) => handleOpenPortal(id)} 
+          onBackToApp={() => setView('landing')} 
+        />
+      </Suspense>
     );
   }
 
   // Direct full-screen Customer Change Order flow
   if (view === 'public-change-order' && changeOrderToken) {
     return (
-      <PublicChangeOrderFlow 
-        token={changeOrderToken} 
-        onNavigateToPortal={(id) => handleOpenPortal(id)} 
-      />
+      <Suspense fallback={<ModuleLoader />}>
+        <PublicChangeOrderFlow 
+          token={changeOrderToken} 
+          onNavigateToPortal={(id) => handleOpenPortal(id)} 
+        />
+      </Suspense>
     );
   }
 
   // Direct full-screen Partner Onboarding & Lead Portal (50/50 Joint Venture)
   if (view === 'partner') {
     return (
-      <PartnerPortal 
-        onBackToApp={() => setView(user ? 'dashboard' : 'landing')} 
-      />
+      <Suspense fallback={<ModuleLoader />}>
+        <PartnerPortal 
+          onBackToApp={() => setView(user ? 'dashboard' : 'landing')} 
+        />
+      </Suspense>
     );
   }
 
@@ -1144,69 +1155,71 @@ function AppContent() {
             transition={{ duration: 0.2 }}
             onAnimationComplete={() => scrollToTop()}
           >
-            {view === 'landing' && (
-              <LandingPage 
-                onStartDemo={handleStartDemo} 
-                onOpenPortal={handleOpenPortal}
-                onViewChange={setView}
-                currentTab={landingTab}
-                onTabChange={setLandingTab}
-              />
-            )}
-            {view === 'login' && <Login onBack={() => setView('landing')} onSuccess={() => setView('dashboard')} />}
-            {view === 'dashboard' && (
-              <Dashboard 
-                isDemo={false} 
-                initialTab={dashboardTab}
-                onTabChange={(tab) => setDashboardTab(tab as any)}
-                onOpenPortal={(p) => {
-                  setPortalProject(p);
-                  setView('customer-portal');
-                }}
-              />
-            )}
-            {view === 'mobile' && <MobileApp />}
-            {view === 'spec' && (
-              <Dashboard 
-                isDemo={false} 
-                initialTab={dashboardTab}
-                onTabChange={(tab) => setDashboardTab(tab as any)}
-                onOpenPortal={(p) => {
-                  setPortalProject(p);
-                  setView('customer-portal');
-                }}
-              />
-            )}
-            {view === 'settings' && <SettingsPage />}
-            {view === 'super-admin' && (
-              (user?.role === 'admin' || user?.email === 'kenkri3@gmail.com' || user?.email === 'aichatnorge@gmail.com' || user?.email === 'kenneth@aichatnorge.no') ? (
-                <SuperAdmin />
-              ) : (
-                <div className="max-w-md mx-auto my-20 p-8 bg-white rounded-3xl shadow-xl border border-red-100 text-center">
-                  <div className="w-16 h-16 bg-red-100 text-red-600 rounded-2xl flex items-center justify-center mx-auto mb-4">
-                    <Shield size={32} />
+            <Suspense fallback={<ModuleLoader />}>
+              {view === 'landing' && (
+                <LandingPage 
+                  onStartDemo={handleStartDemo} 
+                  onOpenPortal={handleOpenPortal}
+                  onViewChange={setView}
+                  currentTab={landingTab}
+                  onTabChange={setLandingTab}
+                />
+              )}
+              {view === 'login' && <Login onBack={() => setView('landing')} onSuccess={() => setView('dashboard')} />}
+              {view === 'dashboard' && (
+                <Dashboard 
+                  isDemo={false} 
+                  initialTab={dashboardTab}
+                  onTabChange={(tab) => setDashboardTab(tab as any)}
+                  onOpenPortal={(p) => {
+                    setPortalProject(p);
+                    setView('customer-portal');
+                  }}
+                />
+              )}
+              {view === 'mobile' && <MobileApp />}
+              {view === 'spec' && (
+                <Dashboard 
+                  isDemo={false} 
+                  initialTab={dashboardTab}
+                  onTabChange={(tab) => setDashboardTab(tab as any)}
+                  onOpenPortal={(p) => {
+                    setPortalProject(p);
+                    setView('customer-portal');
+                  }}
+                />
+              )}
+              {view === 'settings' && <SettingsPage />}
+              {view === 'super-admin' && (
+                (user?.role === 'admin' || user?.email === 'kenkri3@gmail.com' || user?.email === 'aichatnorge@gmail.com' || user?.email === 'kenneth@aichatnorge.no') ? (
+                  <SuperAdmin />
+                ) : (
+                  <div className="max-w-md mx-auto my-20 p-8 bg-white rounded-3xl shadow-xl border border-red-100 text-center">
+                    <div className="w-16 h-16 bg-red-100 text-red-600 rounded-2xl flex items-center justify-center mx-auto mb-4">
+                      <Shield size={32} />
+                    </div>
+                    <h2 className="text-xl font-bold text-navy-900 mb-2">Ingen tilgang til Admin</h2>
+                    <p className="text-slate-400 text-sm mb-6">
+                      Denne modulen krever administrator-rettigheter. Vennligst logg inn med en admin-konto.
+                    </p>
+                    <button 
+                      onClick={() => logout().then(() => setView('dashboard'))} 
+                      className="w-full bg-emerald-600 text-navy-900 py-3 rounded-xl font-bold text-sm hover:bg-slate-500 transition-all shadow-md"
+                    >
+                      Logg inn som Admin
+                    </button>
                   </div>
-                  <h2 className="text-xl font-bold text-navy-900 mb-2">Ingen tilgang til Admin</h2>
-                  <p className="text-slate-400 text-sm mb-6">
-                    Denne modulen krever administrator-rettigheter. Vennligst logg inn med en admin-konto.
-                  </p>
-                  <button 
-                    onClick={() => logout().then(() => setView('dashboard'))} 
-                    className="w-full bg-emerald-600 text-navy-900 py-3 rounded-xl font-bold text-sm hover:bg-slate-500 transition-all shadow-md"
-                  >
-                    Logg inn som Admin
-                  </button>
-                </div>
-              )
-            )}
-            {view === 'offer' && offerToken && <OfferPage token={offerToken} />}
-            {view === 'invite' && inviteToken && <InviteAcceptancePage token={inviteToken} />}
-            {view === 'customer-portal' && portalProject && <CustomerPortal project={portalProject} />}
-            {view === 'pricing' && <PricingPage />}
-            {view === 'about' && <AboutPage />}
-            {view === 'contact' && <ContactPage />}
-            {view === 'privacy' && <PrivacyPage />}
-            {view === 'terms' && <TermsPage />}
+                )
+              )}
+              {view === 'offer' && offerToken && <OfferPage token={offerToken} />}
+              {view === 'invite' && inviteToken && <InviteAcceptancePage token={inviteToken} />}
+              {view === 'customer-portal' && portalProject && <CustomerPortal project={portalProject} />}
+              {view === 'pricing' && <PricingPage />}
+              {view === 'about' && <AboutPage />}
+              {view === 'contact' && <ContactPage />}
+              {view === 'privacy' && <PrivacyPage />}
+              {view === 'terms' && <TermsPage />}
+            </Suspense>
           </motion.div>
         </AnimatePresence>
       </main>
@@ -1237,7 +1250,9 @@ function AppContent() {
             animate={{ opacity: 1, y: 0 }}
             className="w-full max-w-3xl max-h-[92vh] sm:max-h-[90vh] overflow-y-auto rounded-t-[2.5rem] sm:rounded-[2.5rem] pb-[env(safe-area-inset-bottom,0px)]"
           >
-            <InstallGuide onClose={() => setShowInstallGuide(false)} />
+            <Suspense fallback={<div className="p-8 text-center text-white font-bold">Laster inn veileder...</div>}>
+              <InstallGuide onClose={() => setShowInstallGuide(false)} />
+            </Suspense>
           </motion.div>
         </div>
       )}
@@ -1359,7 +1374,9 @@ function AppContent() {
       )}
 
       {/* Integration Modal */}
-      <IntegrationModal isOpen={isIntegrationModalOpen} onClose={() => setIsIntegrationModalOpen(false)} />
+      <Suspense fallback={null}>
+        <IntegrationModal isOpen={isIntegrationModalOpen} onClose={() => setIsIntegrationModalOpen(false)} />
+      </Suspense>
 
       {/* GDPR Cookie Banner */}
       <CookieBanner onOpenPrivacyPolicy={() => setView('privacy')} />

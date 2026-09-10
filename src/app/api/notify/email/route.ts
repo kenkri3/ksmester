@@ -1,9 +1,21 @@
 import { NextRequest, NextResponse } from 'next/server';
 import { dbQuery, inMemoryStore } from '@/src/lib/server/db';
 import { getUserFromRequest } from '@/src/lib/server/auth';
+import { sanitizeHeader } from '@/src/lib/sanitize';
+import { checkRateLimit, getClientIp } from '@/src/lib/server/rateLimit';
 
 export async function POST(req: NextRequest) {
   try {
+    // 🛡️ SECURITY: Rate limiting per IP (maks 15 e-poster per minutt)
+    const clientIp = getClientIp(req);
+    const rateCheck = checkRateLimit(`email:${clientIp}`, { limit: 15, windowMs: 60000 });
+    if (!rateCheck.success) {
+      return NextResponse.json(
+        { error: 'For mange henvendelser. Vennligst vent litt før du prøver igjen.' },
+        { status: 429, headers: { 'Retry-After': String(rateCheck.reset) } }
+      );
+    }
+
     // 🛡️ SECURITY FIX: Added authentication check to prevent unauthorized email sending (Spam/Phishing Relay)
     const user = getUserFromRequest(req);
     if (!user) {
@@ -17,10 +29,14 @@ export async function POST(req: NextRequest) {
       return NextResponse.json({ error: 'Mottaker (to) og innhold (subject/body) er påkrevd.' }, { status: 400 });
     }
 
+    // 🛡️ SECURITY: Sanitize headers to eliminate CRLF injection
+    const sanitizedTo = Array.isArray(to) ? to.map((t) => sanitizeHeader(String(t))) : sanitizeHeader(String(to));
+    const sanitizedSubject = sanitizeHeader(String(subject || 'Melding fra VikingMester'));
+
     const emailLog = {
       id: 'email-' + Date.now() + '-' + Math.random().toString(36).substring(2, 7),
-      to,
-      subject: subject || 'Melding fra VikingMester',
+      to: sanitizedTo,
+      subject: sanitizedSubject,
       text: text || '',
       type,
       status: 'sent',

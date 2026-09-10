@@ -41,3 +41,29 @@ export function verifyInternalSecret(req: NextRequest): boolean {
   if (!provided || provided.length !== expected.length) return false;
   return timingSafeEqual(Buffer.from(provided), Buffer.from(expected));
 }
+
+export function verifyCronOrInternalSecret(req: NextRequest): boolean {
+  const secret = process.env.CRON_SECRET || process.env.INTERNAL_API_SECRET;
+  const host = req.headers.get('host') || '';
+  const isDev = process.env.NODE_ENV !== 'production' && (host.includes('localhost') || host.includes('127.0.0.1'));
+
+  if (!secret) {
+    return isDev;
+  }
+
+  const authHeader = req.headers.get('authorization');
+  const internalHeader = req.headers.get('x-internal-secret');
+  const querySecret = req.nextUrl.searchParams.get('secret');
+
+  const provided = (authHeader?.replace(/^Bearer\s+/i, '') || internalHeader || querySecret || '').trim();
+  if (!provided || provided.length !== secret.length) {
+    return false;
+  }
+
+  try {
+    return timingSafeEqual(Buffer.from(provided), Buffer.from(secret));
+  } catch {
+    return false;
+  }
+}
+

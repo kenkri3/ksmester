@@ -463,6 +463,50 @@ export async function getCollectionItems(collectionName: string): Promise<any[]>
   return inMemoryStore[collectionName] || [];
 }
 
+export async function getCollectionItemById(collectionName: string, id: string): Promise<any | null> {
+  await initDb();
+  if (pool) {
+    try {
+      if (collectionName === 'users') {
+        const users = await dbQuery(
+          `SELECT id, email, password, display_name, role, trade, company, company_id, subscription_status, created_at, updated_at
+           FROM users WHERE id = $1 OR LOWER(email) = LOWER($1) LIMIT 1`,
+          [id]
+        );
+        if (users.length > 0) {
+          const r = users[0];
+          return {
+            id: r.id,
+            email: r.email,
+            password: r.password,
+            displayName: r.display_name || r.email.split('@')[0],
+            role: r.role || 'worker',
+            trade: r.trade || 'Tømrer',
+            company: r.company || 'Mester Entreprenør AS',
+            companyId: r.company_id || 'comp-001',
+            subscriptionStatus: r.subscription_status || 'active',
+            createdAt: r.created_at,
+            updatedAt: r.updated_at
+          };
+        }
+      }
+
+      const rows = await dbQuery(
+        'SELECT id, data FROM items_store WHERE collection_name = $1 AND id = $2 LIMIT 1',
+        [collectionName, id]
+      );
+      if (rows.length > 0) {
+        return { id: rows[0].id, ...rows[0].data };
+      }
+    } catch (e) {
+      console.warn('Error fetching item by ID from DB, fallback to memory:', e);
+    }
+  }
+
+  const items = inMemoryStore[collectionName] || [];
+  return items.find((i: any) => i.id === id || (collectionName === 'users' && i.email?.toLowerCase() === id.toLowerCase())) || null;
+}
+
 export async function saveCollectionItem(collectionName: string, item: any): Promise<any> {
   await initDb();
   const id = item.id || 'item-' + Math.random().toString(36).substring(2, 9);
