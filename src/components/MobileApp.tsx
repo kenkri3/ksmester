@@ -39,7 +39,7 @@ import InstallGuide from './InstallGuide';
 import ChecklistModal from './ChecklistModal';
 import ProjectActivityLog from './ProjectActivityLog';
 import { toast } from 'sonner';
-import { promptPWAInstall, isPWAInstalled, triggerAppDownloadOrInstall } from '../lib/pwa';
+import { promptPWAInstall, isPWAInstalled, triggerAppDownloadOrInstall, downloadMobileShortcut } from '../lib/pwa';
 import { useTranslation } from 'react-i18next';
 import UniversalTranslator from './UniversalTranslator';
 import { db, auth, collection, onSnapshot, addDoc, Timestamp, handleFirestoreError, OperationType, query, orderBy, limit, where, updateDoc, doc, getUserProfile, updateUserProfile, serverTimestamp, getDocs } from '../services/firebase';
@@ -653,14 +653,82 @@ interface ColleagueContact {
   };
 
   return (
-    <div className="flex items-center justify-center py-0 sm:py-12 bg-neutral-100 min-h-screen sm:min-h-[80vh]">
-      {/* Phone Frame */}
-      <div className="relative w-full sm:w-[320px] h-screen sm:h-[640px] bg-white sm:bg-neutral-900 sm:rounded-[3rem] sm:border-[8px] border-neutral-800 shadow-2xl overflow-hidden">
-        {/* Notch */}
-        <div className="hidden sm:block absolute top-0 left-1/2 -translate-x-1/2 w-32 h-6 bg-neutral-800 rounded-b-2xl z-20"></div>
-        
-        {/* Screen Content */}
-        <div className="relative h-full bg-white overflow-y-auto pt-4 sm:pt-8 pb-20 px-4 sm:px-6">
+    <div className="min-h-screen bg-slate-100 py-3 sm:py-6 px-2 sm:px-4">
+      <div className="max-w-2xl mx-auto space-y-4">
+        {/* Navigation & Header */}
+        <div className="flex items-center justify-between bg-white px-4 py-3 rounded-2xl border border-slate-200/80 shadow-xs">
+          <button
+            onClick={() => window.dispatchEvent(new CustomEvent('navigate_view', { detail: { view: 'dashboard' } }))}
+            className="flex items-center gap-2 text-xs font-bold text-slate-700 hover:text-navy-900 bg-slate-100 hover:bg-slate-200 px-3 py-1.5 rounded-xl transition-all cursor-pointer"
+          >
+            <ArrowLeft size={14} />
+            <span>Tilbake til oversikt</span>
+          </button>
+          <div className="flex items-center gap-2">
+            <span className="w-2 h-2 rounded-full bg-emerald-500 animate-pulse" />
+            <span className="text-xs font-bold text-slate-800">Byggeplass Mobilapp</span>
+          </div>
+        </div>
+
+        {/* 1-Klikk Direkte Nedlasting Banner */}
+        <div className="bg-gradient-to-br from-navy-950 via-navy-900 to-slate-900 text-white p-4 sm:p-5 rounded-2xl border border-slate-800 shadow-lg">
+          <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-3">
+            <div>
+              <div className="inline-flex items-center gap-1.5 px-2.5 py-0.5 rounded-full bg-emerald-500/20 text-emerald-300 text-[10px] font-black uppercase tracking-wider mb-1 border border-emerald-500/30">
+                <Smartphone size={12} />
+                <span>Lynrask mobil-tilgang</span>
+              </div>
+              <h2 className="text-sm sm:text-base font-bold text-white">
+                Last ned VikingMester til din mobil
+              </h2>
+              <p className="text-xs text-slate-300 max-w-sm mt-0.5">
+                1-klikk direkte nedlasting. Legg appen rett på hjemskjermen uten ventetid.
+              </p>
+            </div>
+            <div className="flex flex-wrap items-center gap-1.5 shrink-0">
+              <button
+                type="button"
+                onClick={() => {
+                  downloadMobileShortcut('ios');
+                  toast.success('Laster ned Apple-profil (.mobileconfig) til iPhone/iPad!');
+                }}
+                className="px-3 py-2 bg-white/10 hover:bg-white/20 text-white rounded-xl text-xs font-bold border border-white/20 flex items-center gap-1.5 transition-all cursor-pointer active:scale-95"
+                title="Last ned Apple profil for iPhone og iPad"
+              >
+                <Download size={13} className="text-emerald-400" />
+                <span>iPhone profil</span>
+              </button>
+              <button
+                type="button"
+                onClick={() => {
+                  downloadMobileShortcut('shortcut');
+                  toast.success('Laster ned mobil-snarvei (.html)!');
+                }}
+                className="px-3.5 py-2 bg-emerald-600 hover:bg-emerald-500 text-white rounded-xl text-xs font-bold shadow-md flex items-center gap-1.5 transition-all cursor-pointer active:scale-95"
+                title="Last ned snarvei for Android og mobil"
+              >
+                <Download size={13} />
+                <span>Android snarvei</span>
+              </button>
+              <button
+                type="button"
+                onClick={() => {
+                  downloadMobileShortcut('windows');
+                  toast.success('Laster ned PC-snarvei (.url)!');
+                }}
+                className="px-2.5 py-2 bg-white/5 hover:bg-white/10 text-slate-400 hover:text-white rounded-xl text-xs font-bold border border-white/10 flex items-center gap-1.5 transition-all cursor-pointer"
+                title="Last ned Windows snarvei"
+              >
+                <Download size={12} />
+                <span>PC snarvei</span>
+              </button>
+            </div>
+          </div>
+        </div>
+
+        {/* Real App Container */}
+        <div className="bg-white rounded-2xl sm:rounded-3xl border border-slate-200/90 shadow-xl overflow-hidden min-h-[600px] flex flex-col">
+          <div className="relative flex-1 bg-white overflow-y-auto pt-4 sm:pt-6 pb-20 px-4 sm:px-6">
           <AnimatePresence mode="wait">
             {activeScreen === 'home' && (
               <motion.div 
@@ -1541,104 +1609,47 @@ interface ColleagueContact {
             )}
           </AnimatePresence>
         </div>
-
-        {/* Home Indicator */}
-        <div className="hidden sm:block absolute bottom-2 left-1/2 -translate-x-1/2 w-32 h-1.5 bg-neutral-800 rounded-full z-20"></div>
-        
-        {/* Install Guide Modal Overlay */}
-        {showInstallGuide && (
-          <div className="absolute inset-0 z-50 bg-neutral-900/60 backdrop-blur-sm flex items-end sm:items-center justify-center p-0 sm:p-4">
-            <motion.div 
-              initial={{ y: "100%" }}
-              animate={{ y: 0 }}
-              className="w-full max-h-[90%] overflow-y-auto"
-            >
-              <InstallGuide onClose={() => setShowInstallGuide(false)} />
-            </motion.div>
-          </div>
-        )}
-
-        {/* Checklist Modal */}
-        <ChecklistModal 
-          isOpen={showChecklistModal} 
-          onClose={() => setShowChecklistModal(false)} 
-          projectId={checklistProjectId}
-          initialTrade={userProfile?.trade}
-        />
-
-        {/* Trade Selector Modal (First time) */}
-        {showTradeSelector && (
-          <div className="absolute inset-0 z-50 bg-neutral-900/60 backdrop-blur-sm flex items-center justify-center p-4">
-            <motion.div 
-              initial={{ scale: 0.9, opacity: 0 }}
-              animate={{ scale: 1, opacity: 1 }}
-              className="bg-white rounded-3xl p-6 w-full max-w-xs shadow-2xl"
-            >
-              <h3 className="text-lg font-bold mb-4">{t('select_your_trade', 'Velg ditt fag')}</h3>
-              <div className="grid grid-cols-2 gap-3">
-                {(['carpenter', 'plumber', 'electrician', 'mason', 'painter', 'general'] as Trade[]).map((trade) => (
-                  <button
-                    key={trade}
-                    onClick={async () => {
-                      if (userProfile) {
-                        const updated = { ...userProfile, trade };
-                        await updateUserProfile(userProfile.id, { trade });
-                        setUserProfile(updated);
-                        setShowTradeSelector(false);
-                      }
-                    }}
-                    className="p-3 bg-neutral-50 rounded-2xl border border-neutral-100 text-xs font-bold hover:bg-emerald-50 hover:border-emerald-100 transition-colors"
-                  >
-                    {t(`trade_${trade}`, trade.charAt(0).toUpperCase() + trade.slice(1))}
-                  </button>
-                ))}
-              </div>
-            </motion.div>
-          </div>
-        )}
       </div>
+    </div>
 
-      {/* Demo Instructions */}
-      <div className="hidden lg:block ml-12 max-w-xs space-y-6">
-        <div className="p-6 bg-white rounded-3xl border border-neutral-200 shadow-sm">
-          <h3 className="font-bold mb-4 flex items-center gap-2">
-            <Camera size={18} className="text-blue-600" />
-            {t('ai_vision_test_title')}
-          </h3>
-          <p className="text-xs text-neutral-500 leading-relaxed mb-4">
-            {t('ai_vision_test_desc1')}
-          </p>
-          <p className="text-xs text-neutral-500 leading-relaxed">
-            {t('ai_vision_test_desc2')}
-          </p>
-        </div>
-        
-        <div className="p-6 bg-white rounded-3xl border border-neutral-200 shadow-sm">
-          <h3 className="font-bold mb-4 flex items-center gap-2">
-            <Mic size={18} className="text-emerald-600" />
-            {t('smart_sja_test_title')}
-          </h3>
-          <p className="text-xs text-neutral-500 leading-relaxed mb-4">
-            {t('smart_sja_test_desc1')}
-          </p>
-          <p className="text-xs text-neutral-500 leading-relaxed">
-            {t('smart_sja_test_desc2')}
-          </p>
-        </div>
+      {/* Checklist Modal */}
+      <ChecklistModal 
+        isOpen={showChecklistModal} 
+        onClose={() => setShowChecklistModal(false)} 
+        projectId={checklistProjectId}
+        initialTrade={userProfile?.trade}
+      />
 
-        <div className="p-6 bg-white rounded-3xl border border-neutral-200 shadow-sm">
-          <h3 className="font-bold mb-4 flex items-center gap-2">
-            <Languages size={18} className="text-blue-600" />
-            {t('realtime_translation')}
-          </h3>
-          <p className="text-xs text-neutral-500 leading-relaxed mb-4">
-            {t('translator_test_desc1', 'Skriv eller dikter på valgfritt språk (ukrainsk, rumensk, polsk, litauisk, engelsk, spansk, tysk osv.).')}
-          </p>
-          <p className="text-xs text-neutral-500 leading-relaxed">
-            {t('translator_test_desc2', 'AI-en oversetter til ditt valgte språk og lager en profesjonell norsk versjon for dokumentasjon.')}
-          </p>
+      {/* Trade Selector Modal (First time) */}
+      {showTradeSelector && (
+        <div className="fixed inset-0 z-50 bg-neutral-900/60 backdrop-blur-sm flex items-center justify-center p-4">
+          <motion.div 
+            initial={{ scale: 0.9, opacity: 0 }}
+            animate={{ scale: 1, opacity: 1 }}
+            className="bg-white rounded-3xl p-6 w-full max-w-xs shadow-2xl"
+          >
+            <h3 className="text-lg font-bold mb-4">{t('select_your_trade', 'Velg ditt fag')}</h3>
+            <div className="grid grid-cols-2 gap-3">
+              {(['carpenter', 'plumber', 'electrician', 'mason', 'painter', 'general'] as Trade[]).map((trade) => (
+                <button
+                  key={trade}
+                  onClick={async () => {
+                    if (userProfile) {
+                      const updated = { ...userProfile, trade };
+                      await updateUserProfile(userProfile.id, { trade });
+                      setUserProfile(updated);
+                      setShowTradeSelector(false);
+                    }
+                  }}
+                  className="p-3 bg-neutral-50 rounded-2xl border border-neutral-100 text-xs font-bold hover:bg-emerald-50 hover:border-emerald-100 transition-colors"
+                >
+                  {t(`trade_${trade}`, trade.charAt(0).toUpperCase() + trade.slice(1))}
+                </button>
+              ))}
+            </div>
+          </motion.div>
         </div>
-      </div>
+      )}
     </div>
   );
 }

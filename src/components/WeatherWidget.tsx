@@ -36,17 +36,17 @@ export const WeatherWidget: React.FC<WeatherWidgetProps> = ({
   const [isExpanded, setIsExpanded] = useState<boolean>(false);
   const [errorMsg, setErrorMsg] = useState<string | null>(null);
 
-  const fetchWeather = async () => {
+  const fetchWeather = async (forceGps = false) => {
     setLoading(true);
     setErrorMsg(null);
 
-    // Try browser geolocation first
-    if ('geolocation' in navigator) {
+    // Only attempt geolocation if specifically requested by user gesture
+    if (forceGps && typeof navigator !== 'undefined' && 'geolocation' in navigator) {
       try {
         const position = await new Promise<GeolocationPosition>((resolve, reject) => {
           navigator.geolocation.getCurrentPosition(resolve, reject, { 
-            timeout: 6000, 
-            maximumAge: 60000 
+            timeout: 3000, 
+            maximumAge: 120000 
           });
         });
 
@@ -72,11 +72,11 @@ export const WeatherWidget: React.FC<WeatherWidgetProps> = ({
         setLoading(false);
         return;
       } catch (e) {
-        console.log('Geolocation not available or denied, falling back to project location:', e);
+        console.log('Geolocation unavailable, using project location:', e);
       }
     }
 
-    // Fallback to project location string
+    // Default fast load by project location without blocking
     setUsingGps(false);
     try {
       const data = await weatherService.getWeather(projectLocation || 'Oslo');
@@ -158,7 +158,7 @@ export const WeatherWidget: React.FC<WeatherWidgetProps> = ({
           </div>
 
           <button 
-            onClick={fetchWeather}
+            onClick={() => fetchWeather()}
             disabled={loading}
             title="Oppdater vær"
             className="p-2 text-neutral-400 hover:text-white bg-white/5 hover:bg-white/10 rounded-xl transition-all active:scale-95"

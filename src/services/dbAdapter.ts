@@ -269,13 +269,27 @@ export async function deleteDoc(docRef: any, extra?: any) {
 
 export function onSnapshot(queryOrColRef: any, callback: (snapshot: any) => void, onError?: any) {
   const col = queryOrColRef.collectionName;
+  let lastDataHash = '';
 
   const fetchData = async () => {
+    // If page is hidden in background, don't waste CPU/network
+    if (typeof document !== 'undefined' && document.hidden) {
+      return;
+    }
+
     try {
       let items = await api.getCollection(col);
       if (queryOrColRef.constraints) {
         items = applyQueryConstraints(items, queryOrColRef.constraints);
       }
+
+      // Fast check: serialize ids + updated timestamps or string representation
+      const currentHash = items.map((i: any) => `${i.id}_${i.updatedAt || i.createdAt || ''}`).join('|') + `_${items.length}`;
+      if (currentHash === lastDataHash) {
+        return; // Data has not changed, skip re-render
+      }
+      lastDataHash = currentHash;
+
       const docs = items.map((i: any) => ({
         id: i.id,
         ref: { collectionName: col, id: i.id },
@@ -292,8 +306,22 @@ export function onSnapshot(queryOrColRef: any, callback: (snapshot: any) => void
   };
 
   fetchData();
-  const interval = setInterval(fetchData, 4000);
-  return () => clearInterval(interval);
+  const interval = setInterval(fetchData, 10000);
+
+  // Re-fetch immediately when window gains focus or local data changes
+  const handleDataChange = () => { fetchData(); };
+  if (typeof window !== 'undefined') {
+    window.addEventListener('focus', handleDataChange);
+    window.addEventListener('ks_queue_updated', handleDataChange);
+  }
+
+  return () => {
+    clearInterval(interval);
+    if (typeof window !== 'undefined') {
+      window.removeEventListener('focus', handleDataChange);
+      window.removeEventListener('ks_queue_updated', handleDataChange);
+    }
+  };
 }
 
 export function writeBatch(dbRef: any) {

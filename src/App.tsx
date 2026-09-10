@@ -202,7 +202,9 @@ function AppContent() {
     await triggerAppDownloadOrInstall({
       onInstalled: () => toast.info('VikingMester er allerede installert som app på denne enheten!'),
       onAccepted: () => toast.success('Laster ned og installerer VikingMester på telefonen...'),
-      onFallback: () => setShowInstallGuide(true)
+      onFallback: () => {
+        toast.success('Laster ned snarvei til VikingMester...');
+      }
     });
   };
 
@@ -252,28 +254,15 @@ function AppContent() {
     }
   };
 
-  // Scroll to top helper - Rock-solid across all view & tab transitions
+  // Scroll to top helper - Instant and smooth without freezing the thread
   const scrollToTop = () => {
     if (typeof window === 'undefined') return;
     window.scrollTo({ top: 0, left: 0, behavior: 'instant' });
-    if (document.documentElement) document.documentElement.scrollTop = 0;
-    if (document.body) document.body.scrollTop = 0;
   };
 
   // Scroll to top on view and landingTab change
   useEffect(() => {
     scrollToTop();
-    const rAF = requestAnimationFrame(scrollToTop);
-    const t1 = setTimeout(scrollToTop, 50);
-    const t2 = setTimeout(scrollToTop, 150);
-    const t3 = setTimeout(scrollToTop, 350);
-
-    return () => {
-      cancelAnimationFrame(rAF);
-      clearTimeout(t1);
-      clearTimeout(t2);
-      clearTimeout(t3);
-    };
   }, [view, landingTab]);
 
   // Check for offer token, invite token, or portal link in URL
@@ -487,7 +476,10 @@ function AppContent() {
                   </button>
 
                   {/* Dropdown Menu */}
-                  <div className="absolute top-full left-0 mt-1.5 w-80 bg-white rounded-2xl shadow-card-hover border border-slate-200 p-2 hidden group-hover:block z-50 animate-in fade-in-50 slide-in-from-top-1 duration-150">
+                  <div className={cn(
+                    "absolute top-full left-0 mt-1.5 w-80 bg-white rounded-2xl shadow-card-hover border border-slate-200 p-2 z-50 animate-in fade-in-50 slide-in-from-top-1 duration-150",
+                    isSolutionsDropdownOpen ? "block" : "hidden group-hover:block"
+                  )}>
                     <Link 
                       href="/ks-system"
                       className="w-full text-left p-2.5 rounded-xl hover:bg-slate-50 transition-colors flex items-start gap-3 group/item"
