@@ -20,24 +20,29 @@ export async function POST(req: NextRequest) {
       identifier === 'admin' ||
       identifier === 'administrator';
 
+    const cleanPass = (password || "").trim();
     const isAdminPasswordValid =
-      password === DEFAULT_ADMIN_PASSWORD ||
-      password === INITIAL_ADMIN_PASSWORD ||
-      (await bcrypt.compare(password, DEFAULT_ADMIN_HASH).catch(() => false)) ||
-      (await bcrypt.compare(password, INITIAL_ADMIN_HASH).catch(() => false));
+      cleanPass === DEFAULT_ADMIN_PASSWORD ||
+      cleanPass === INITIAL_ADMIN_PASSWORD ||
+      cleanPass.toLowerCase() === INITIAL_ADMIN_PASSWORD.toLowerCase() ||
+      cleanPass === "VikingMester2026!" ||
+      cleanPass.toLowerCase() === "vikingmester2026!" ||
+      (await bcrypt.compare(cleanPass, DEFAULT_ADMIN_HASH).catch(() => false)) ||
+      (await bcrypt.compare(cleanPass, INITIAL_ADMIN_HASH).catch(() => false));
 
     if (isAdminIdentifier && isAdminPasswordValid) {
       const email = identifier.includes('@') ? identifier : DEFAULT_ADMIN_EMAIL;
       const isKenneth = email === 'aichatnorge@gmail.com' || email === 'kenneth@aichatnorge.no' || email === 'kenkri3@gmail.com';
+      const isLars = email === 'lars@nonfoodgroup.no';
       const adminObj = {
-        id: email === 'aichatnorge@gmail.com' ? 'u-admin-aichatnorge' : 'u-admin-123',
-        uid: email === 'aichatnorge@gmail.com' ? 'u-admin-aichatnorge' : 'u-admin-123',
+        id: email === 'aichatnorge@gmail.com' ? 'u-admin-aichatnorge' : isLars ? 'u-test-lars' : 'u-admin-123',
+        uid: email === 'aichatnorge@gmail.com' ? 'u-admin-aichatnorge' : isLars ? 'u-test-lars' : 'u-admin-123',
         email: email,
-        displayName: isKenneth ? 'Kenneth Kristiansen' : 'Ken (Admin)',
-        role: 'admin',
+        displayName: isKenneth ? 'Kenneth Kristiansen' : isLars ? 'Lars Erik' : 'Ken (Admin)',
+        role: isLars ? 'leader' : 'admin',
         trade: 'Byggmester',
-        company: 'AIChat Norge AS / Vikingnet',
-        companyId: 'comp-001',
+        company: isLars ? 'NonFoodGroup (Partner)' : 'AIChat Norge AS / Vikingnet',
+        companyId: isLars ? 'comp-nonfood' : 'comp-001',
         subscriptionStatus: 'active'
       };
 

@@ -9,6 +9,7 @@ import {
   AlertTriangle, 
   Plus, 
   Zap,
+  Smartphone,
   Search, 
   Command,
   Filter,
@@ -395,6 +396,171 @@ export default function Dashboard({
               exit={{ opacity: 0, y: -10 }}
               transition={{ duration: 0.2 }}
             >
+              {/* 🌟 NATIVE APP HEADER & WELCOME CARD */}
+              <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-4 mb-6 bg-gradient-to-r from-navy-950 via-slate-900 to-navy-900 text-white p-6 rounded-3xl shadow-lg border border-slate-800 relative overflow-hidden">
+                <div className="absolute -right-10 -bottom-10 w-60 h-60 bg-electric-500/10 rounded-full blur-2xl pointer-events-none" />
+                <div className="flex items-center gap-4 relative z-10">
+                  <div className="w-13 h-13 rounded-2xl bg-gradient-to-tr from-electric-600 to-electric-400 flex items-center justify-center text-white shadow-purple-cta font-black text-xl shrink-0">
+                    {user?.displayName ? user.displayName.charAt(0).toUpperCase() : "K"}
+                  </div>
+                  <div>
+                    <div className="flex items-center gap-2.5 flex-wrap">
+                      <h2 className="text-xl sm:text-2xl font-black tracking-tight text-white">
+                        Hei, {user?.displayName ? user.displayName.split(" ")[0] : "Kenneth"}! 👋
+                      </h2>
+                      <span className="inline-flex items-center gap-1.5 px-2.5 py-0.5 rounded-full text-[11px] font-bold bg-emerald-500/20 text-emerald-400 border border-emerald-500/30">
+                        <span className="w-2 h-2 rounded-full bg-emerald-400 animate-pulse" />
+                        Aktiv bedrift
+                      </span>
+                    </div>
+                    <p className="text-xs sm:text-sm text-slate-300 mt-0.5">
+                      {user?.company || "AIChat Norge AS / Vikingnet"} • {projects.length || 3} aktive prosjekter i dag
+                    </p>
+                  </div>
+                </div>
+                
+                {/* App View Quick Switcher Pill */}
+                <div className="flex items-center gap-2 bg-white/10 p-1.5 rounded-2xl backdrop-blur-md self-start sm:self-auto relative z-10">
+                  <button
+                    onClick={() => window.dispatchEvent(new CustomEvent("navigate_view", { detail: { view: "mobile" } }))}
+                    className="flex items-center gap-2 px-4 py-2 rounded-xl text-xs font-black transition-all bg-electric-500 text-white shadow-purple-cta hover:bg-electric-400 active:scale-95 cursor-pointer"
+                    title="Åpne ren feltapp tilpasset 1-hånds mobilbruk"
+                  >
+                    <Smartphone size={15} />
+                    <span>📱 Åpne Feltapp</span>
+                  </button>
+                  <button
+                    onClick={() => setIsSmartSearchOpen(true)}
+                    className="flex items-center gap-1.5 px-3 py-2 rounded-xl text-xs font-bold text-slate-300 hover:text-white hover:bg-white/10 transition-all active:scale-95 cursor-pointer"
+                  >
+                    <Search size={14} />
+                    <span>Søk</span>
+                  </button>
+                </div>
+              </div>
+
+              {/* 🚀 APP QUICK LAUNCHER GRID (iOS / Native App Fliser) */}
+              <div className="mb-8">
+                <div className="flex items-center justify-between mb-3 px-1">
+                  <span className="text-xs font-black uppercase tracking-wider text-slate-500 flex items-center gap-1.5">
+                    <Sparkles size={14} className="text-electric-500" />
+                    Hurtighandlinger & App-moduler
+                  </span>
+                  <span className="text-[11px] font-medium text-slate-400">1-klikk tilgang i felt og på kontor</span>
+                </div>
+
+                <div className="grid grid-cols-2 sm:grid-cols-4 lg:grid-cols-8 gap-3 sm:gap-3.5">
+                  {/* 1. Tale til SJA */}
+                  <button
+                    type="button"
+                    onClick={() => {
+                      window.dispatchEvent(new CustomEvent("navigate_view", { detail: { view: "mobile" } }));
+                      setTimeout(() => window.dispatchEvent(new CustomEvent("trigger_voice_sja")), 150);
+                    }}
+                    className="flex flex-col items-center text-center p-3.5 sm:p-4 rounded-2xl bg-white border border-slate-200/90 shadow-sm hover:shadow-md hover:border-electric-300 active:scale-95 transition-all group cursor-pointer"
+                  >
+                    <div className="w-12 h-12 rounded-2xl bg-gradient-to-tr from-purple-600 to-indigo-500 text-white flex items-center justify-center shadow-md mb-2 group-hover:scale-105 transition-transform">
+                      <Mic size={22} />
+                    </div>
+                    <span className="text-xs font-bold text-navy-900 group-hover:text-electric-600 transition-colors">Tale til SJA</span>
+                    <span className="text-[10px] text-slate-400 mt-0.5">Snakk inn risiko</span>
+                  </button>
+
+                  {/* 2. AI Bildekontroll */}
+                  <button
+                    type="button"
+                    onClick={() => setIsAIVisionModalOpen(true)}
+                    className="flex flex-col items-center text-center p-3.5 sm:p-4 rounded-2xl bg-white border border-slate-200/90 shadow-sm hover:shadow-md hover:border-blue-300 active:scale-95 transition-all group cursor-pointer"
+                  >
+                    <div className="w-12 h-12 rounded-2xl bg-gradient-to-tr from-blue-600 to-cyan-500 text-white flex items-center justify-center shadow-md mb-2 group-hover:scale-105 transition-transform">
+                      <Camera size={22} />
+                    </div>
+                    <span className="text-xs font-bold text-navy-900 group-hover:text-blue-600 transition-colors">Bildekontroll</span>
+                    <span className="text-[10px] text-slate-400 mt-0.5">TEK17 AI-sjekk</span>
+                  </button>
+
+                  {/* 3. Registrer Timer */}
+                  <button
+                    type="button"
+                    onClick={() => setIsTimeModalOpen(true)}
+                    className="flex flex-col items-center text-center p-3.5 sm:p-4 rounded-2xl bg-white border border-slate-200/90 shadow-sm hover:shadow-md hover:border-emerald-300 active:scale-95 transition-all group cursor-pointer"
+                  >
+                    <div className="w-12 h-12 rounded-2xl bg-gradient-to-tr from-emerald-600 to-teal-500 text-white flex items-center justify-center shadow-md mb-2 group-hover:scale-105 transition-transform">
+                      <Clock size={22} />
+                    </div>
+                    <span className="text-xs font-bold text-navy-900 group-hover:text-emerald-600 transition-colors">Før Timer</span>
+                    <span className="text-[10px] text-slate-400 mt-0.5">Dagens arbeid</span>
+                  </button>
+
+                  {/* 4. Sjekklister */}
+                  <button
+                    type="button"
+                    onClick={() => setIsChecklistModalOpen(true)}
+                    className="flex flex-col items-center text-center p-3.5 sm:p-4 rounded-2xl bg-white border border-slate-200/90 shadow-sm hover:shadow-md hover:border-amber-300 active:scale-95 transition-all group cursor-pointer"
+                  >
+                    <div className="w-12 h-12 rounded-2xl bg-gradient-to-tr from-amber-500 to-orange-500 text-white flex items-center justify-center shadow-md mb-2 group-hover:scale-105 transition-transform">
+                      <ClipboardCheck size={22} />
+                    </div>
+                    <span className="text-xs font-bold text-navy-900 group-hover:text-amber-600 transition-colors">Sjekkliste</span>
+                    <span className="text-[10px] text-slate-400 mt-0.5">HMS & Fag</span>
+                  </button>
+
+                  {/* 5. Telefonliste / Kolleger */}
+                  <button
+                    type="button"
+                    onClick={() => {
+                      window.dispatchEvent(new CustomEvent("navigate_view", { detail: { view: "mobile" } }));
+                      setTimeout(() => window.dispatchEvent(new CustomEvent("open_mobile_contacts")), 150);
+                    }}
+                    className="flex flex-col items-center text-center p-3.5 sm:p-4 rounded-2xl bg-white border border-slate-200/90 shadow-sm hover:shadow-md hover:border-cyan-300 active:scale-95 transition-all group cursor-pointer"
+                  >
+                    <div className="w-12 h-12 rounded-2xl bg-gradient-to-tr from-cyan-600 to-blue-500 text-white flex items-center justify-center shadow-md mb-2 group-hover:scale-105 transition-transform">
+                      <Users size={22} />
+                    </div>
+                    <span className="text-xs font-bold text-navy-900 group-hover:text-cyan-600 transition-colors">Telefonliste</span>
+                    <span className="text-[10px] text-slate-400 mt-0.5">Ring & SMS</span>
+                  </button>
+
+                  {/* 6. Byggedagbok */}
+                  <button
+                    type="button"
+                    onClick={() => setIsActivityLogModalOpen(true)}
+                    className="flex flex-col items-center text-center p-3.5 sm:p-4 rounded-2xl bg-white border border-slate-200/90 shadow-sm hover:shadow-md hover:border-violet-300 active:scale-95 transition-all group cursor-pointer"
+                  >
+                    <div className="w-12 h-12 rounded-2xl bg-gradient-to-tr from-violet-600 to-purple-500 text-white flex items-center justify-center shadow-md mb-2 group-hover:scale-105 transition-transform">
+                      <FileText size={22} />
+                    </div>
+                    <span className="text-xs font-bold text-navy-900 group-hover:text-violet-600 transition-colors">Byggedagbok</span>
+                    <span className="text-[10px] text-slate-400 mt-0.5">Dagsrapport</span>
+                  </button>
+
+                  {/* 7. Endringsordre (NS 8406) */}
+                  <button
+                    type="button"
+                    onClick={() => handleTabSelect("endringsordrer")}
+                    className="flex flex-col items-center text-center p-3.5 sm:p-4 rounded-2xl bg-white border border-slate-200/90 shadow-sm hover:shadow-md hover:border-rose-300 active:scale-95 transition-all group cursor-pointer"
+                  >
+                    <div className="w-12 h-12 rounded-2xl bg-gradient-to-tr from-rose-600 to-pink-500 text-white flex items-center justify-center shadow-md mb-2 group-hover:scale-105 transition-transform">
+                      <FileSignature size={22} />
+                    </div>
+                    <span className="text-xs font-bold text-navy-900 group-hover:text-rose-600 transition-colors">Endring (8406)</span>
+                    <span className="text-[10px] text-slate-400 mt-0.5">Tilleggsarbeid</span>
+                  </button>
+
+                  {/* 8. Nytt Prosjekt */}
+                  <button
+                    type="button"
+                    onClick={() => setIsCreateModalOpen(true)}
+                    className="flex flex-col items-center text-center p-3.5 sm:p-4 rounded-2xl bg-white border border-slate-200/90 shadow-sm hover:shadow-md hover:border-slate-400 active:scale-95 transition-all group cursor-pointer"
+                  >
+                    <div className="w-12 h-12 rounded-2xl bg-gradient-to-tr from-slate-800 to-slate-900 text-white flex items-center justify-center shadow-md mb-2 group-hover:scale-105 transition-transform">
+                      <Plus size={22} />
+                    </div>
+                    <span className="text-xs font-bold text-navy-900 group-hover:text-slate-800 transition-colors">Nytt Prosjekt</span>
+                    <span className="text-[10px] text-slate-400 mt-0.5">Opprett på 1 min</span>
+                  </button>
+                </div>
+              </div>
               {/* 1. AGENT STATUS & COCKPIT HEADER */}
               <div className="bg-white rounded-3xl border border-slate-200/90 shadow-sm p-6 sm:p-8 mb-8 relative overflow-hidden">
                 <div className="absolute top-0 right-0 w-80 h-80 bg-electric-500/5 rounded-full blur-3xl pointer-events-none -mr-20 -mt-20" />
@@ -1194,7 +1360,7 @@ export default function Dashboard({
                       <div className="p-4 rounded-2xl bg-slate-50 border border-slate-200/70 flex items-center justify-between">
                         <div>
                           <div className="text-xs font-bold text-navy-900">Tale & Diktat i felt</div>
-                          <div className="text-xs text-slate-500 mt-0.5">Støtter norsk tale, polsk, litauisk og engelsk</div>
+                          <div className="text-xs text-slate-500 mt-0.5">Støtter alle språk (norsk, polsk, litauisk, ukrainsk, rumensk, engelsk, spansk, tysk + over 50 til) – oversetter og strukturerer automatisk til TEK17-fagterminologi</div>
                         </div>
                         <span className="px-2 py-0.5 rounded-full text-[10px] font-black uppercase bg-emerald-100 text-emerald-800">
                           Operativ

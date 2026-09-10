@@ -15,7 +15,8 @@ export const ADMIN_EMAILS = [
   'aichatnorge@gmail.com',
   'kenneth@aichatnorge.no',
   'fredrik.r.ellingsen@gmail.com',
-  'fredrik@aichatnorge.no'
+  'fredrik@aichatnorge.no',
+  'lars@nonfoodgroup.no'
 ];
 export const INITIAL_ADMIN_PASSWORD = process.env.INITIAL_ADMIN_PASSWORD || 'VikingMester2026!';
 export const INITIAL_ADMIN_HASH = bcrypt.hashSync(INITIAL_ADMIN_PASSWORD, 10);

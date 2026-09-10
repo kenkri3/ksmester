@@ -62,7 +62,7 @@ async function analyzeVoice(text: string, uiLanguage: string = 'no', trade?: Tra
   try {
     const response = await generateAiContent({
       prompt: `Du er en ekspert på norsk HMS og SJA (Sikker Jobb Analyse) i henhold til TEK17 og SAK10. 
-      ${tradeContext}${weatherContext}Håndverkeren har sagt følgende (kan være på et hvilket som helst europeisk språk): "${text}".
+      ${tradeContext}${weatherContext}Håndverkeren har sagt følgende (kan være på et hvilket som helst språk i verden, f.eks. ukrainsk, rumensk, polsk, litauisk, engelsk, spansk, tysk osv.): "${text}".
       
       OPPGAVE:
       1. Identifiser språket som er brukt.
@@ -1631,7 +1631,7 @@ interface ColleagueContact {
             {t('realtime_translation')}
           </h3>
           <p className="text-xs text-neutral-500 leading-relaxed mb-4">
-            {t('translator_test_desc1', 'Skriv på polsk, litauisk eller engelsk.')}
+            {t('translator_test_desc1', 'Skriv eller dikter på valgfritt språk (ukrainsk, rumensk, polsk, litauisk, engelsk, spansk, tysk osv.).')}
           </p>
           <p className="text-xs text-neutral-500 leading-relaxed">
             {t('translator_test_desc2', 'AI-en oversetter til ditt valgte språk og lager en profesjonell norsk versjon for dokumentasjon.')}

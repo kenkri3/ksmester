@@ -121,6 +121,13 @@ function AppContent() {
     return () => window.removeEventListener('navigate_view', handleNav);
   }, []);
 
+  // 🚀 Auto-route into dashboard whenever user is authenticated and on login screen
+  useEffect(() => {
+    if (user && view === 'login') {
+      setView('dashboard');
+    }
+  }, [user, view]);
+
   const handleMobileNavigate = (targetView: string, tab?: string) => {
     if (tab) {
       setDashboardTab(tab as any);
@@ -358,7 +365,7 @@ function AppContent() {
 
   // If trying to access a private view without being logged in, show login
   if (!user && !isPublicView) {
-    return <Login onBack={() => setView('landing')} />;
+    return <Login onBack={() => setView('landing')} onSuccess={() => setView('dashboard')} />;
   }
 
 
@@ -1087,7 +1094,7 @@ function AppContent() {
                 onTabChange={setLandingTab}
               />
             )}
-            {view === 'login' && <Login onBack={() => setView('landing')} />}
+            {view === 'login' && <Login onBack={() => setView('landing')} onSuccess={() => setView('dashboard')} />}
             {view === 'dashboard' && (
               <Dashboard 
                 isDemo={false} 

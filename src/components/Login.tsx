@@ -1,3 +1,4 @@
+import { toast } from "sonner";
 import React, { useState } from 'react';
 import { motion, AnimatePresence } from 'motion/react';
 import Logo from './Logo';
@@ -5,7 +6,7 @@ import { ShieldCheck, LogIn, ArrowLeft, Mail, Lock, User, Building, ArrowRight, 
 import { useAuth } from '../hooks/useAuth';
 import { useTranslation } from 'react-i18next';
 
-export default function Login({ onBack }: { onBack?: () => void }) {
+export default function Login({ onBack, onSuccess }: { onBack?: () => void; onSuccess?: () => void }) {
   const { loginWithEmail, registerWithEmail, resetPassword, loading } = useAuth();
   const { t } = useTranslation();
   
@@ -41,8 +42,22 @@ export default function Login({ onBack }: { onBack?: () => void }) {
     try {
       if (mode === 'login') {
         await loginWithEmail(email, password);
+        toast.success(t('welcome_back', 'Velkommen inn! Sender deg til arbeidsflaten...'));
+        if (onSuccess) {
+          onSuccess();
+        } else {
+          window.dispatchEvent(new CustomEvent('navigate_view', { detail: { view: 'dashboard' } }));
+        }
+        return;
       } else if (mode === 'register') {
         await registerWithEmail(email, password, name, company, gdprConsent, orgnr);
+        toast.success(t('register_success', 'Bedriftskonto opprettet! Velkommen til VikingMester.'));
+        if (onSuccess) {
+          onSuccess();
+        } else {
+          window.dispatchEvent(new CustomEvent('navigate_view', { detail: { view: 'dashboard' } }));
+        }
+        return;
       } else if (mode === 'forgot') {
         await resetPassword(email);
         setSuccess(t('reset_email_sent', 'E-post for tilbakestilling av passord er sendt. Sjekk innboksen din.'));
