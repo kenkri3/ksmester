@@ -29,16 +29,19 @@ export async function POST(req: NextRequest) {
     };
 
     // If RESEND_API_KEY is configured, send real email via Resend
-    if (process.env.RESEND_API_KEY) {
+    const resendKey = process.env.RESEND_API_KEY || process.env.RESEND_API || process.env.RESEND_KEY;
+    if (resendKey) {
       try {
+        const fromEmail = process.env.EMAIL_FROM || process.env.RESEND_FROM || 'VikingMester <hei@vikingnet.no>';
         const resendRes = await fetch('https://api.resend.com/emails', {
           method: 'POST',
           headers: {
             'Content-Type': 'application/json',
-            'Authorization': `Bearer ${process.env.RESEND_API_KEY}`
+            'Authorization': `Bearer ${resendKey}`
           },
           body: JSON.stringify({
-            from: process.env.EMAIL_FROM || 'VikingMester <hei@vikingmester.no>',
+            from: fromEmail,
+            reply_to: 'hei@vikingnet.no',
             to: Array.isArray(to) ? to : [to],
             subject: subject || 'Melding fra VikingMester',
             html: html || `<p>${text}</p>`

@@ -302,7 +302,7 @@ export default function LandingPage({
             <div className="space-y-3 text-xs text-slate-300">
               <p className="flex items-center gap-2">
                 <Mail size={14} className="text-electric-400" />
-                <a href="mailto:hei@vikingmester.no" className="text-electric-300 font-bold hover:underline">hei@vikingmester.no</a>
+                <a href="mailto:hei@vikingnet.no" className="text-electric-300 font-bold hover:underline">hei@vikingmester.no</a>
               </p>
               <p className="text-slate-400 text-xs leading-relaxed">
                 Man-Fre 07:00 - 17:00.<br/>Autonom e-postagent svarer døgnet rundt på henvendelser og tilbud.
@@ -1056,12 +1056,29 @@ function TacticalHomeView({ onStartDemo, onGoToPricing, onViewChange }: { onStar
             </div>
 
             {leadSuccess ? (
-              <div className="p-6 rounded-2xl bg-emerald-50 border border-emerald-200 text-center font-sans">
-                <CheckCircle2 size={40} className="text-emerald-600 mx-auto mb-3" />
-                <h3 className="text-xl font-bold text-navy-900 mb-2">Takk for bestillingen!</h3>
-                <p className="text-sm text-slate-700 leading-relaxed">
-                  Vi verifiserer foretaket mot Brønnøysundregistrene og sender ordrebekreftelse til din innboks om få minutter.
+              <div className="p-6 sm:p-8 rounded-2xl bg-emerald-50 border border-emerald-200 text-center font-sans">
+                <CheckCircle2 size={44} className="text-emerald-600 mx-auto mb-3" />
+                <h3 className="text-xl sm:text-2xl font-bold text-navy-900 mb-2">Takk for bestillingen!</h3>
+                <p className="text-sm text-slate-700 leading-relaxed max-w-lg mx-auto">
+                  Vi verifiserer foretaket mot Brønnøysundregistrene og har sendt ordrebekreftelse til <strong className="text-navy-900">{leadEmail}</strong>. Fakturagrunnlag klargjøres automatisk.
                 </p>
+                <div className="mt-6 flex flex-col sm:flex-row items-center justify-center gap-3">
+                  <button
+                    type="button"
+                    onClick={() => onStartDemo()}
+                    className="w-full sm:w-auto px-6 py-3.5 rounded-xl bg-electric-600 hover:bg-electric-500 text-white font-bold text-xs uppercase tracking-wider transition-all shadow-md cursor-pointer flex items-center justify-center gap-2"
+                  >
+                    <span>Åpne Mester-Dashboardet nå</span>
+                    <ArrowRight size={16} />
+                  </button>
+                  <button
+                    type="button"
+                    onClick={() => onViewChange("mobile")}
+                    className="w-full sm:w-auto px-6 py-3.5 rounded-xl bg-white hover:bg-slate-100 text-slate-800 border border-slate-300 font-bold text-xs uppercase tracking-wider transition-all cursor-pointer flex items-center justify-center gap-2"
+                  >
+                    <span>Åpne Mobil App</span>
+                  </button>
+                </div>
               </div>
             ) : (
               <form onSubmit={handleLeadSubmit} className="space-y-4 font-sans text-xs sm:text-sm">
