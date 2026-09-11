@@ -151,10 +151,10 @@ export default function Dashboard({
   const [pendingApprovals, setPendingApprovals] = useState<any[]>([]);
   const [recentActivities, setRecentActivities] = useState<any[]>([]);
   const [agentMetrics, setAgentMetrics] = useState<any>({
-    todayActionsCount: 14,
-    pendingApprovalsCount: 2,
-    activeBlockersCount: 1,
-    securedRevenue: 42500
+    todayActionsCount: 0,
+    pendingApprovalsCount: 0,
+    activeBlockersCount: 0,
+    securedRevenue: 0
   });
 
   const [isLoadingAgent, setIsLoadingAgent] = useState(true);
@@ -191,6 +191,51 @@ export default function Dashboard({
 
   useEffect(() => {
     fetchAgentState();
+
+    const handleAction = (e: any) => {
+      const actionId = e.detail?.actionId;
+      if (!actionId) return;
+      switch (actionId) {
+        case 'new_project':
+          setIsCreateModalOpen(true);
+          break;
+        case 'log_deviation':
+          setIsDeviationModalOpen(true);
+          break;
+        case 'start_checklist':
+          setIsChecklistModalOpen(true);
+          break;
+        case 'take_photo':
+          setIsAIVisionModalOpen(true);
+          break;
+        case 'offers':
+          setIsOfferModalOpen(true);
+          break;
+        case 'time_registration':
+          setIsTimeModalOpen(true);
+          break;
+        case 'vehicle':
+          setIsVehicleModalOpen(true);
+          break;
+        case 'inventory':
+          setIsInventoryModalOpen(true);
+          break;
+        case 'hms':
+          setIsHMSModalOpen(true);
+          break;
+        case 'building_app':
+          setIsBuildingAppModalOpen(true);
+          break;
+        case 'change_order':
+          setIsChangeOrderModalOpen(true);
+          break;
+        default:
+          break;
+      }
+    };
+
+    window.addEventListener('trigger_dashboard_action', handleAction as EventListener);
+    return () => window.removeEventListener('trigger_dashboard_action', handleAction as EventListener);
   }, []);
 
   // Handle Quick Command / Voice prompt
@@ -202,6 +247,8 @@ export default function Dashboard({
       setIsDispatching(true);
       setLastAgentReply(null);
 
+      const activeProj = selectedProject || projects[0];
+
       const res = await fetch('/api/agent/dispatch', {
         method: 'POST',
         // FIX (11.09.2026): Send med Authorization-token – /api/agent/dispatch krever nå pålogging.
@@ -209,9 +256,9 @@ export default function Dashboard({
         body: JSON.stringify({
           action: 'quick_command',
           text: textToSend,
-          projectId: projects[0]?.id || 'proj-101',
-          projectName: projects[0]?.name || 'Nyebakken 14 - Totalrenovering',
-          authorName: user?.displayName || 'Admin / Byggmester'
+          projectId: activeProj?.id || '',
+          projectName: activeProj?.name || 'Byggeprosjekt',
+          authorName: user?.displayName || user?.email?.split('@')[0] || 'Admin / Byggmester'
         })
       });
 
@@ -771,7 +818,7 @@ export default function Dashboard({
                     </span>
                   </div>
                   <div className="text-3xl font-extrabold text-navy-900 tracking-tight">
-                    {projects.length || 3}
+                    {projects.length}
                   </div>
                   <div className="text-xs font-bold text-slate-500 mt-1">
                     Aktive Prosjekter i drift
@@ -792,7 +839,7 @@ export default function Dashboard({
                     </span>
                   </div>
                   <div className="text-3xl font-extrabold text-navy-900 tracking-tight">
-                    {agentMetrics.todayActionsCount || 14}
+                    {agentMetrics.todayActionsCount ?? 0}
                   </div>
                   <div className="text-xs font-bold text-slate-500 mt-1">
                     Autonome agent-handlinger
@@ -826,7 +873,7 @@ export default function Dashboard({
                     "text-3xl font-extrabold tracking-tight",
                     pendingApprovals.length > 0 ? "text-amber-900" : "text-navy-900"
                   )}>
-                    {pendingApprovals.length || 0}
+                    {pendingApprovals.length}
                   </div>
                   <div className="text-xs font-bold text-slate-500 mt-1">
                     Venter på din godkjenning
@@ -847,7 +894,7 @@ export default function Dashboard({
                     </span>
                   </div>
                   <div className="text-2xl sm:text-3xl font-extrabold text-navy-900 tracking-tight">
-                    kr {((agentMetrics.securedRevenue || 42500) / 1000).toFixed(0)}k
+                    kr {Math.round((agentMetrics.securedRevenue || 0) / 1000)}k
                   </div>
                   <div className="text-xs font-bold text-slate-500 mt-1">
                     Sikret i tilleggsarbeider
@@ -950,7 +997,7 @@ export default function Dashboard({
 
                               <div className="text-right shrink-0">
                                 <div className="text-lg font-black text-navy-900">
-                                  kr {(item.amountExVat || 14500).toLocaleString('no-NO')}
+                                  kr {(item.amountExVat ?? 0).toLocaleString('no-NO')}
                                 </div>
                                 <div className="text-[10px] font-bold text-slate-400">eks mva ({item.impactDays || 0} dgr)</div>
                               </div>
@@ -1040,7 +1087,18 @@ export default function Dashboard({
                     </div>
 
                     <div className="bg-white rounded-3xl border border-slate-200/90 p-6 shadow-sm space-y-4">
-                      {recentActivities.map((act, i) => (
+                      {recentActivities.length === 0 ? (
+                        <div className="py-8 text-center">
+                          <div className="w-10 h-10 rounded-2xl bg-electric-50 text-electric-600 flex items-center justify-center mx-auto mb-3">
+                            <Brain size={20} />
+                          </div>
+                          <h4 className="text-xs font-bold text-navy-900">Agenten er aktiv og lytter</h4>
+                          <p className="text-[11px] text-slate-500 max-w-xs mx-auto mt-1 leading-relaxed">
+                            Handlinger som byggedagbok via tale, TEK17 bildeanalyser og endringsordrer loggføres her i sanntid.
+                          </p>
+                        </div>
+                      ) : (
+                        recentActivities.map((act, i) => (
                         <div 
                           key={act.id || i}
                           className="flex items-start gap-3.5 pb-4 border-b border-slate-100 last:border-b-0 last:pb-0"
@@ -1084,7 +1142,8 @@ export default function Dashboard({
                             </div>
                           </div>
                         </div>
-                      ))}
+                      ))
+                    )}
                     </div>
 
                     {/* Pre-close wall security alert */}
