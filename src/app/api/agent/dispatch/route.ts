@@ -86,10 +86,8 @@ export async function GET(req: NextRequest) {
         lastPing: new Date().toISOString()
       },
       metrics: {
-        todayActionsCount: Math.max(todayLogs.length + todayActivities.length, 14),
+        todayActionsCount: todayLogs.length + todayActivities.length,
         pendingApprovalsCount: pendingChangeOrders.length,
-        // FIX (11.09.2026): Var hardkodet til "1" uansett faktisk antall - ga et falskt
-        // konstant tall i dashboard/rapporter i stedet for reelt antall kritiske avvik.
         activeBlockersCount: pendingDeviations.length,
         activeProjectsCount: allProjects.filter((p: any) => p.status === 'active' || !p.status).length,
         securedRevenue
@@ -269,6 +267,17 @@ Svar kort, faglig og handlingsorientert (maks 2-3 setninger). Bekreft hvilke til
         }
       }
 
+      await saveCollectionItem('daily_logs', {
+        projectId: projectId || 'proj-101',
+        projectName: projectName || 'Byggeprosjekt',
+        authorName: authorName || 'Håndverker',
+        note: text,
+        trade: trade || 'general',
+        createdAt: new Date().toISOString(),
+        verified: true,
+        source: 'agent_instruction'
+      });
+
       await saveCollectionItem('agent_activities', {
         type: 'daily_log',
         title: 'Instruks registrert i byggedagbok',
@@ -276,7 +285,8 @@ Svar kort, faglig og handlingsorientert (maks 2-3 setninger). Bekreft hvilke til
         trade: trade || 'general',
         tradeName: authorName,
         status: 'verified',
-        badge: 'Dagbok'
+        badge: 'Dagbok',
+        createdAt: new Date().toISOString()
       });
 
       return NextResponse.json({
