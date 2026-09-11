@@ -161,7 +161,9 @@ export async function createAutonomousChangeOrder(params: {
   const changeNumber = projectOrders.length + 1;
 
   const token = 'co_' + Math.random().toString(36).substring(2, 10) + Date.now().toString(36);
-  const shareUrl = `https://vikingmester.no/?view=public-change-order&token=${token}`;
+  // FIX (11.09.2026): App.tsx leser kun `changeOrderToken`/`endring`, aldri `view`/`token`.
+  // Det gamle formatet sendte kunden til forsiden i stedet for godkjenningssiden.
+  const shareUrl = `https://vikingmester.no/?changeOrderToken=${token}`;
 
   const changeOrder = {
     projectId: params.projectId,

@@ -1,17 +1,45 @@
 import { getCollectionItems, saveCollectionItem } from './db';
-import { GoogleGenAI } from '@google/genai';
 import { processAutonomousNurtureSequence } from './nurtureEngine';
+// FIX (11.09.2026): GoogleGenAI-import fjernet – ikke lenger brukt her, se begrunnelse i
+// runDailyAudit() under (deterministisk morgen-brief, fjernet fabrikkert byggedagbok-generator).
 
-export async function runDailyAudit() {
+export async function runDailyAudit(options?: { force?: boolean }) {
   const startTime = Date.now();
+  const todayStr = new Date().toISOString().split('T')[0];
+
+  // FIX (11.09.2026) - Idempotens/token-sparing: Flere uavhengige triggere (innebygd
+  // bakgrunnsscheduler, GitHub Actions daily-audit.yml, evt. egen Railway cron-worker, og
+  // eksterne kall til /api/cron/daily-summary) kunne alle utløse en FULL ny kjøring samme
+  // morgen - med duplisert Gemini/DeepSeek-tokenbruk hver gang. Denne sperren gjør at kun
+  // den første reelle kjøringen per dag utfører AI-kallet og byggedagbok-generering; senere
+  // kall samme dag returnerer bare det som allerede ble generert (med mindre force=true).
+  // Kundeoppfølgingen i processAutonomousNurtureSequence() har uansett sin egen 18-timers
+  // sperre og steg-gating, så den var allerede beskyttet mot dobbel utsendelse.
+  if (!options?.force) {
+    try {
+      const existingSummaries = await getCollectionItems('daily_summaries');
+      const todaysSummary = existingSummaries.find((s: any) => s.id === `daily-summary-${todayStr}`);
+      if (todaysSummary) {
+        console.log(`⏭️ [Daily Audit] Allerede kjørt i dag (${todaysSummary.timestamp}) - hopper over duplisert AI-kall og byggedagbok-generering.`);
+        return todaysSummary;
+      }
+    } catch (e: any) {
+      console.warn('[Daily Audit] Kunne ikke sjekke idempotens, fortsetter uansett:', e.message);
+    }
+  }
+
   console.log('🚀 [Daily Audit] Starter daglig KS & HMS bakgrunnsrevisjon...');
 
   const projects = await getCollectionItems('projects');
   const deviations = await getCollectionItems('deviations');
 
   const activeProjects = projects.filter((p: any) => p.status === 'active' || !p.status);
-  const openDeviations = deviations.filter((d: any) => d.status === 'åpen' || d.status === 'under_behandling');
-  const criticalDeviations = openDeviations.filter((d: any) => d.severity === 'kritisk' || d.severity === 'høy');
+  // FIX (11.09.2026): Ekte avvik lagres med ENGELSKE verdier ('open'/'in-progress',
+  // severity 'high'/'critical') per src/types.ts og CreateDeviationModal.tsx. De gamle
+  // norske strengene ('åpen'/'kritisk'/'høy') matchet aldri reelle avviksposter, så kritiske
+  // avvik ble aldri fanget opp i denne revisjonen. Støtter begge for bakoverkompatibilitet.
+  const openDeviations = deviations.filter((d: any) => ['open', 'in-progress', 'åpen', 'under_behandling'].includes(d.status));
+  const criticalDeviations = openDeviations.filter((d: any) => ['high', 'critical', 'kritisk', 'høy'].includes(d.severity));
 
   const metrics = {
     timestamp: new Date().toISOString(),
@@ -25,107 +53,28 @@ export async function runDailyAudit() {
   let aiSource = 'deterministic';
   let tokensUsed = 0;
 
-  const geminiKey = process.env.GEMINI_API_KEY || process.env.GOOGLE_API_KEY || process.env.GOOGLE_GENAI_API_KEY;
-  const deepseekKey = process.env.DEEP_SEEK_API || process.env.DEEPSEEK_API_KEY;
+  // FIX (11.09.2026) - Token-sparing uten kvalitetstap: Denne AI-genererte teksten er kun en
+  // 2-3 setnings "motiverende morgen-brief" for ledelsen (ikke juridisk/HMS-kritisk innhold),
+  // og koden hadde ALLEREDE en fullgod deterministisk setning klar over (aiSummaryText). Å kjøre
+  // et Gemini-kall (med inntil 4 modell-forsøk i kjede) og deretter et DeepSeek-fallback-kall
+  // for denne ene setningen ga unødvendig token-/kostnadsbruk hver dag uten merkbar kvalitetsheving.
+  // AI brukes fortsatt fullt ut der presisjon faktisk er kritisk (SJA, endringsordrer/NS 8406,
+  // TEK17-bildeanalyse) – kun denne lavverdi-oppsummeringen er gjort deterministisk.
+  // Den forrige AI-koden er bevisst fjernet i sin helhet (ikke bare kommentert ut) for å unngå
+  // forvirring om hvilken vei som faktisk kjører; se git-historikk for full gjenoppretting ved behov.
 
-  if (activeProjects.length > 0 || openDeviations.length > 0) {
-    const prompt = `Generer en kortfattet, motiverende og profesjonell morgen-brief (maks 3 setninger) for en norsk byggmester:
-Prosjekter: ${activeProjects.map((p: any) => p.name).slice(0, 5).join(', ')}.
-Åpne avvik: ${openDeviations.length} (Kritiske: ${criticalDeviations.map((d: any) => d.title).slice(0, 3).join(', ') || 'Ingen'}).`;
-
-    // 1. Try Gemini 3.8 Flash primary
-    if (geminiKey) {
-      try {
-        const ai = new GoogleGenAI({ apiKey: geminiKey });
-        const candidateModels = ['gemini-3.8-flash', 'gemini-2.5-flash', 'gemini-2.0-flash', 'gemini-1.5-flash'];
-      let aiResponse: any = null;
-      for (const m of candidateModels) {
-        try {
-          aiResponse = await ai.models.generateContent({
-            model: m,
-            contents: `Oppsummer denne daglige KS/HMS-revisjonen for ledelsen på 2-3 setninger:\n${JSON.stringify(metrics)}`,
-          });
-          if (aiResponse && aiResponse.text) break;
-        } catch (e) {}
-      }
-        if (aiResponse.text) {
-          aiSummaryText = aiResponse.text.trim();
-          aiSource = 'gemini-3.8-flash';
-        }
-      } catch (err: any) {
-        console.warn('[Daily Audit] Gemini brief notice, trying fallback:', err.message);
-      }
-    }
-
-    // 2. Fallback to DeepSeek if Gemini was not used or failed
-    if (aiSource === 'deterministic' && deepseekKey) {
-      try {
-        const dsRes = await fetch('https://api.deepseek.com/chat/completions', {
-          method: 'POST',
-          headers: {
-            'Content-Type': 'application/json',
-            'Authorization': `Bearer ${deepseekKey}`
-          },
-          body: JSON.stringify({
-            model: 'deepseek-chat',
-            messages: [
-              {
-                role: 'system',
-                content: 'Du er VikingMester. Skriv en presis og oppmuntrende morgen-brief til byggeledelsen på profesjonelt norsk.'
-              },
-              { role: 'user', content: prompt }
-            ],
-            max_tokens: 200,
-            temperature: 0.3
-          }),
-          signal: AbortSignal.timeout(8000)
-        });
-
-        if (dsRes.ok) {
-          const aiData = await dsRes.json();
-          aiSummaryText = aiData.choices?.[0]?.message?.content?.trim() || aiSummaryText;
-          aiSource = 'deepseek-chat';
-          tokensUsed = aiData.usage?.total_tokens || 0;
-        }
-      } catch (err: any) {
-        console.warn('[Daily Audit] DeepSeek fallback notice:', err.message);
-      }
-    }
-  }
-
-  // 4. Automated Byggedagbok generator (Byggherreforskriften § 15 & NS 8405/8406)
-  const todayStr = new Date().toISOString().split('T')[0];
-  for (const p of activeProjects.slice(0, 15)) {
-    try {
-      const logId = `log_${p.id}_${todayStr}`;
-      const autoLog = {
-        id: logId,
-        projectId: p.id,
-        date: todayStr,
-        temperatureMin: 8,
-        temperatureMax: 14,
-        windSpeedMax: 4,
-        precipitationMm: 0,
-        weatherCondition: 'Opphold / Varierende skydekke',
-        weatherDescription: 'Opphold og stabile arbeidsforhold for bygge- og anleggsarbeid.',
-        workAdvice: 'Gode og stabile arbeidsforhold for utendørs- og innendørsentreprenørskap.',
-        crewCount: 2,
-        crewMembers: [p.projectManager || 'Byggeleder', 'Fagarbeider'],
-        totalHoursWorked: 15,
-        completedTasks: ['Ordinær produksjon og kvalitetssikring iht. TEK17 KS.'],
-        checklistsCompleted: ['Daglig HMS & fremdrift kontrollert'],
-        deviationsRegistered: [],
-        deliveryNotes: 'Byggevarer mottatt og kontrollert iht. mottakskontroll.',
-        generalNotes: `Automatisk loggført via daglig revisjon ${new Date().toLocaleTimeString('nb-NO')}.`,
-        inspectedBy: p.projectManager || 'Byggeleder',
-        autoGenerated: true,
-        createdAt: new Date().toISOString()
-      };
-      await saveCollectionItem('daily_logs', autoLog);
-    } catch (err) {
-      console.warn('Could not auto-generate daily log for project:', p.id, err);
-    }
-  }
+  // FIX (11.09.2026) - KRITISK DATAKVALITET: Denne seksjonen fabrikkerte tidligere en KOMPLETT
+  // "automatisk byggedagbok" hver dag for hvert aktive prosjekt, med FASTE oppdiktede tall
+  // (temperatur 8-14°C, vind 4 m/s, 0 mm nedbør, 2 personer på laget, 15 arbeidstimer, faste
+  // oppgavetekster) uavhengig av hva som faktisk skjedde på byggeplassen. Disse postene ble
+  // lagret i databasen som ordinære byggedagbok-oppføringer (Byggherreforskriften § 15 / NS
+  // 8405/8406) – altså juridisk relevant dokumentasjon – og gjorde at ettermiddagssjekken for
+  // "manglende byggedagbok" ALDRI slo ut, siden en (fiktiv) oppføring alltid fantes.
+  // Automatisk byggedagbok-generering er derfor fjernet inntil den kan bygges riktig: med ekte
+  // værdata for prosjektets faktiske adresse (krever geokoding, ikke implementert her) og uten
+  // å dikte opp bemanning/timer/oppgaver som ingen håndverker faktisk har rapportert. Inntil
+  // videre må/skal byggedagbok fylles inn av et menneske (tale, tekst eller app), slik at
+  // ettermiddagssjekken korrekt fanger opp reelt manglende føring.
 
   // 5. Save summary to DB
   const summaryRecord = {

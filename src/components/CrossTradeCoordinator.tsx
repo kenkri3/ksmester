@@ -132,7 +132,8 @@ export default function CrossTradeCoordinator({ project }: CrossTradeCoordinator
     try {
       const res = await fetch('/api/agent/dispatch', {
         method: 'POST',
-        headers: { 'Content-Type': 'application/json' },
+        // FIX (11.09.2026): Send med Authorization-token – /api/agent/dispatch krever nå pålogging.
+        headers: { 'Content-Type': 'application/json', ...(typeof window !== 'undefined' && localStorage.getItem('token') ? { 'Authorization': `Bearer ${localStorage.getItem('token')}` } : {}) },
         body: JSON.stringify({
           action: 'change_order',
           text: voiceText,

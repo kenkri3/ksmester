@@ -90,6 +90,9 @@ export default function MobileApp() {
     color: string;
     description: string;
   } | null>(null);
+  // FIX (11.09.2026): Lar brukeren lukke forslagsboblen for resten av økten i stedet for
+  // at den blokkerer skjermen uten mulighet til å fjerne den.
+  const [smartActionDismissed, setSmartActionDismissed] = useState(false);
   const fileInputRef = useRef<HTMLInputElement>(null);
   const apprenticeFileInputRef = useRef<HTMLInputElement>(null);
   const [apprenticeImage, setApprenticeImage] = useState<string | null>(null);
@@ -345,7 +348,14 @@ interface ColleagueContact {
   }, []);
 
   // Contextual Smart Action Logic
+  // FIX (11.09.2026): Boblen var fastlåst på skjermen (uten lukkeknapp) i 15 av 24 timer i
+  // døgnet (15:00-06:00), inkludert sent på kvelden. Den er nå begrenset til et smalere,
+  // arbeidsrelevant tidsvindu på ettermiddagen, og respekterer at brukeren har lukket den.
   useEffect(() => {
+    if (smartActionDismissed) {
+      setSmartAction(null);
+      return;
+    }
     const hour = new Date().getHours();
     
     if (hour >= 6 && hour < 9) {
@@ -364,7 +374,7 @@ interface ColleagueContact {
         color: 'bg-neutral-900',
         description: 'Tid for en rask KS-sjekk med AI?'
       });
-    } else {
+    } else if (hour >= 15 && hour < 19) {
       setSmartAction({
         id: 'deviation',
         label: 'Logg Avvik',
@@ -372,8 +382,10 @@ interface ColleagueContact {
         color: 'bg-orange-600',
         description: 'Noe som ikke stemmer? Logg et raskt avvik.'
       });
+    } else {
+      setSmartAction(null);
     }
-  }, [activeScreen]);
+  }, [activeScreen, smartActionDismissed]);
 
   // Fetch projects
   useEffect(() => {
@@ -843,29 +855,43 @@ interface ColleagueContact {
                     animate={{ opacity: 1, y: 0 }}
                     className="fixed bottom-24 left-4 right-4 sm:absolute sm:bottom-24 sm:left-6 sm:right-6 z-30"
                   >
-                    <button 
-                      onClick={() => {
-                        if (smartAction.id === 'camera') fileInputRef.current?.click();
-                        else setActiveScreen(smartAction.id as any);
-                      }}
-                      className={cn(
-                        "w-full p-4 rounded-[2.5rem] flex items-center gap-4 shadow-2xl transition-all active:scale-95 group",
-                        smartAction.color,
-                        "text-white"
-                      )}
-                    >
-                      <div className="w-14 h-14 bg-white/20 rounded-[1.5rem] flex items-center justify-center shrink-0 group-hover:rotate-6 transition-transform">
-                        {smartAction.icon}
-                      </div>
-                      <div className="text-left">
-                        <div className="text-[10px] font-black uppercase tracking-widest opacity-70 mb-1">Anbefalt Handling</div>
-                        <div className="text-lg font-bold leading-tight">{smartAction.label}</div>
-                        <div className="text-[10px] opacity-80 mt-1">{smartAction.description}</div>
-                      </div>
-                      <div className="ml-auto w-10 h-10 bg-white/10 rounded-full flex items-center justify-center">
-                        <ChevronRight size={20} />
-                      </div>
-                    </button>
+                    <div className="relative">
+                      <button 
+                        onClick={() => {
+                          if (smartAction.id === 'camera') fileInputRef.current?.click();
+                          else setActiveScreen(smartAction.id as any);
+                        }}
+                        className={cn(
+                          "w-full p-4 rounded-[2.5rem] flex items-center gap-4 shadow-2xl transition-all active:scale-95 group",
+                          smartAction.color,
+                          "text-white"
+                        )}
+                      >
+                        <div className="w-14 h-14 bg-white/20 rounded-[1.5rem] flex items-center justify-center shrink-0 group-hover:rotate-6 transition-transform">
+                          {smartAction.icon}
+                        </div>
+                        <div className="text-left">
+                          <div className="text-[10px] font-black uppercase tracking-widest opacity-70 mb-1">Anbefalt Handling</div>
+                          <div className="text-lg font-bold leading-tight">{smartAction.label}</div>
+                          <div className="text-[10px] opacity-80 mt-1">{smartAction.description}</div>
+                        </div>
+                        <div className="ml-auto w-10 h-10 bg-white/10 rounded-full flex items-center justify-center">
+                          <ChevronRight size={20} />
+                        </div>
+                      </button>
+                      {/* FIX (11.09.2026): Lukkeknapp så boblen ikke blokkerer skjermen resten av økten. */}
+                      <button
+                        onClick={(e) => {
+                          e.stopPropagation();
+                          setSmartActionDismissed(true);
+                        }}
+                        aria-label="Lukk forslag"
+                        title="Lukk forslag"
+                        className="absolute -top-2 -right-2 w-7 h-7 rounded-full bg-white text-neutral-500 border border-neutral-200 shadow-md flex items-center justify-center active:scale-90 transition-all"
+                      >
+                        <X size={14} strokeWidth={2.5} />
+                      </button>
+                    </div>
                   </motion.div>
                 )}
               </motion.div>

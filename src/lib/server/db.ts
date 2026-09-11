@@ -19,7 +19,13 @@ export const ADMIN_EMAILS = [
   'lars@nonfoodgroup.no',
   'jm@nonfoodgroup.no'
 ];
-export const INITIAL_ADMIN_PASSWORD = process.env.INITIAL_ADMIN_PASSWORD || 'VikingMester2026!';
+// 🛡️ SECURITY FIX (11.09.2026): Fjernet hardkodet fallback-passord i klartekst ('VikingMester2026!').
+// Et fast passord i kildekoden gir full admin-tilgang til alle som noensinne har hatt lesetilgang
+// til repoet. Genererer nå et tilfeldig passord i stedet, samme mønster som DEFAULT_ADMIN_PASSWORD
+// over. Sett INITIAL_ADMIN_PASSWORD i Railway-miljøvariablene for et kjent, valgt passord ved
+// førstegangs admin-oppsett. VIKTIG: Hvis den ekte kontoen din noen gang kan ha blitt opprettet med
+// det gamle hardkodede passordet, bør du bytte passord i appen med det samme.
+export const INITIAL_ADMIN_PASSWORD = process.env.INITIAL_ADMIN_PASSWORD || randomBytes(16).toString('hex');
 export const INITIAL_ADMIN_HASH = bcrypt.hashSync(INITIAL_ADMIN_PASSWORD, 10);
 
 let pool: Pool | null = null;
@@ -461,7 +467,13 @@ export async function getCollectionItems(collectionName: string): Promise<any[]>
       console.warn('Error fetching collection from DB, fallback to memory:', e);
     }
   }
-  return inMemoryStore[collectionName] || [];
+  // FIX (11.09.2026): Returner et ærlig tomt resultat når en database faktisk er tilkoblet.
+  // Tidligere falt koden her tilbake til hardkodede eksempeldata (Nyebakken 14, Storgata 8,
+  // Fjordveien 22, falske avvik/endringsordrer/agent-aktiviteter) hver gang en ekte samling var
+  // tom – og disse ble deretter vist/rapportert som om de var ekte, gjeldende produksjonsdata
+  // (dashboard, daglig KS/HMS-revisjon, /api/agent/dispatch). Eksempeldata skal kun brukes når
+  // INGEN database i det hele tatt er konfigurert (lokal utvikling uten DATABASE_URL).
+  return pool ? [] : (inMemoryStore[collectionName] || []);
 }
 
 export async function getCollectionItemById(collectionName: string, id: string): Promise<any | null> {
@@ -504,7 +516,9 @@ export async function getCollectionItemById(collectionName: string, id: string):
     }
   }
 
-  const items = inMemoryStore[collectionName] || [];
+  // FIX (11.09.2026): Se tilsvarende fiks i getCollectionItems() over – ikke server falske
+  // eksempeldata når en database faktisk er tilkoblet, men fikk null/tomt treff.
+  const items = pool ? [] : (inMemoryStore[collectionName] || []);
   return items.find((i: any) => i.id === id || (collectionName === 'users' && i.email?.toLowerCase() === id.toLowerCase())) || null;
 }
 

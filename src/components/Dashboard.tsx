@@ -94,7 +94,7 @@ export default function Dashboard({
 }: DashboardProps) {
   const { t } = useTranslation();
   const { user } = useAuth();
-  const { projects, deviations, stats, loading: dataLoading } = useDashboardData();
+  const { projects, deviations, stats, loading: dataLoading, dataUnavailable } = useDashboardData();
 
   // Primary active tab
   const [activeTab, setActiveTab] = useState<'cockpit' | 'prosjekter' | 'endringsordrer' | 'kvalitet' | 'agent'>(
@@ -169,7 +169,12 @@ export default function Dashboard({
   const fetchAgentState = async () => {
     try {
       setIsLoadingAgent(true);
-      const res = await fetch('/api/agent/dispatch');
+      // FIX (11.09.2026): /api/agent/dispatch krever nå gyldig pålogging (se sikkerhetsfiks i
+      // route.ts) – send med brukerens token slik at det faktisk fungerer for innloggede brukere.
+      const dispatchToken = typeof window !== 'undefined' ? localStorage.getItem('token') : null;
+      const res = await fetch('/api/agent/dispatch', {
+        headers: dispatchToken ? { 'Authorization': `Bearer ${dispatchToken}` } : {}
+      });
       if (res.ok) {
         const data = await res.json();
         if (data.agentStatus) setAgentStatus(data.agentStatus);
@@ -199,7 +204,8 @@ export default function Dashboard({
 
       const res = await fetch('/api/agent/dispatch', {
         method: 'POST',
-        headers: { 'Content-Type': 'application/json' },
+        // FIX (11.09.2026): Send med Authorization-token – /api/agent/dispatch krever nå pålogging.
+        headers: { 'Content-Type': 'application/json', ...(typeof window !== 'undefined' && localStorage.getItem('token') ? { 'Authorization': `Bearer ${localStorage.getItem('token')}` } : {}) },
         body: JSON.stringify({
           action: 'quick_command',
           text: textToSend,
@@ -234,7 +240,8 @@ export default function Dashboard({
     try {
       const res = await fetch('/api/agent/dispatch', {
         method: 'POST',
-        headers: { 'Content-Type': 'application/json' },
+        // FIX (11.09.2026): Send med Authorization-token – /api/agent/dispatch krever nå pålogging.
+        headers: { 'Content-Type': 'application/json', ...(typeof window !== 'undefined' && localStorage.getItem('token') ? { 'Authorization': `Bearer ${localStorage.getItem('token')}` } : {}) },
         body: JSON.stringify({
           action: 'approve_change_order',
           changeOrderId,
@@ -264,7 +271,8 @@ export default function Dashboard({
     try {
       const res = await fetch('/api/agent/dispatch', {
         method: 'POST',
-        headers: { 'Content-Type': 'application/json' },
+        // FIX (11.09.2026): Send med Authorization-token – /api/agent/dispatch krever nå pålogging.
+        headers: { 'Content-Type': 'application/json', ...(typeof window !== 'undefined' && localStorage.getItem('token') ? { 'Authorization': `Bearer ${localStorage.getItem('token')}` } : {}) },
         body: JSON.stringify({
           action: 'reject_change_order',
           changeOrderId
@@ -1128,6 +1136,34 @@ export default function Dashboard({
                     </button>
                   </div>
 
+                  {/* FIX (11.09.2026): Tydelig tilbakemelding i stedet for et stille tomt rutenett,
+                      slik at "ingen prosjekter" eller "mangler firmatilknytning" ikke oppleves
+                      som en ødelagt knapp. */}
+                  {dataLoading ? (
+                    <div className="flex flex-col items-center justify-center py-16 text-center">
+                      <div className="w-8 h-8 border-4 border-electric-500/30 border-t-electric-500 rounded-full animate-spin mb-4" />
+                      <p className="text-sm font-bold text-slate-500">Henter prosjekter...</p>
+                    </div>
+                  ) : dataUnavailable ? (
+                    <div className="flex flex-col items-center justify-center py-16 text-center bg-amber-50 border border-amber-200 rounded-3xl">
+                      <AlertTriangle size={32} className="text-amber-500 mb-3" />
+                      <p className="text-sm font-black text-amber-900 mb-1">Fant ingen firmatilknytning for kontoen din</p>
+                      <p className="text-xs text-amber-700 max-w-sm">Vi kunne derfor ikke hente prosjektene dine. Kontakt support på hei@vikingmester.no så ordner vi dette raskt.</p>
+                    </div>
+                  ) : projects.length === 0 ? (
+                    <div className="flex flex-col items-center justify-center py-16 text-center bg-slate-50 border border-slate-200 rounded-3xl">
+                      <Building2 size={32} className="text-slate-300 mb-3" />
+                      <p className="text-sm font-black text-navy-900 mb-1">Ingen prosjekter ennå</p>
+                      <p className="text-xs text-slate-500 max-w-sm mb-4">Kom i gang ved å opprette ditt første byggeprosjekt.</p>
+                      <button
+                        onClick={() => setIsCreateModalOpen(true)}
+                        className="flex items-center gap-2 px-4 py-2.5 bg-gradient-to-r from-electric-500 to-electric-400 text-white rounded-2xl text-xs font-black shadow-purple-cta"
+                      >
+                        <Plus size={16} />
+                        <span>Opprett Prosjekt</span>
+                      </button>
+                    </div>
+                  ) : (
                   <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-6">
                     {projects.map((proj) => (
                       <div 
@@ -1194,6 +1230,7 @@ export default function Dashboard({
                       </div>
                     ))}
                   </div>
+                  )}
                 </div>
               )}
 

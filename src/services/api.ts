@@ -92,8 +92,11 @@ export const api = {
     const token = typeof window !== 'undefined' ? localStorage.getItem('token') : null;
     if (!token) return null;
     try {
+      // FIX (11.09.2026): Uten timeout kunne dette kallet henge i det uendelige på dårlig
+      // mobildekning på byggeplass, og hele appen ble stående bak innloggings-spinneren.
       const res = await fetch('/api/auth/me', {
-        headers: getHeaders()
+        headers: getHeaders(),
+        signal: AbortSignal.timeout(8000)
       });
       if (!res.ok) return null;
       return await res.json();

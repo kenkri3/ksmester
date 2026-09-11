@@ -5,6 +5,16 @@ import { createAutonomousChangeOrder } from '@/src/lib/server/changeOrderAgent';
 import { saveCollectionItem, getCollectionItems, updateCollectionItem } from '@/src/lib/server/db';
 import { GoogleGenAI } from '@google/genai';
 import { trackTokenCost } from '@/src/lib/server/costTracker';
+import { getUserFromRequest, verifyCronOrInternalSecret } from '@/src/lib/server/auth';
+
+// 🛡️ SECURITY FIX (11.09.2026): Denne ruten var helt uten tilgangskontroll og eksponerte
+// endringsordre-godkjenningstokens (co.token/shareUrl – nok til å godkjenne eller avvise ekte
+// kunders tillegg uten fullmakt), kundedata og driftstall til hvem som helst på internett uten
+// pålogging. Krever nå enten en gyldig innlogget bruker (JWT, samme som resten av appen) eller
+// den interne cron-/servicehemmeligheten (for automatiserte overvåkingskall).
+function isAuthorizedDispatchCaller(req: NextRequest): boolean {
+  return verifyCronOrInternalSecret(req) || !!getUserFromRequest(req);
+}
 
 /**
  * GET /api/agent/dispatch
@@ -12,6 +22,9 @@ import { trackTokenCost } from '@/src/lib/server/costTracker';
  * pending approvals (human-in-the-loop), metrics, and recent activities.
  */
 export async function GET(req: NextRequest) {
+  if (!isAuthorizedDispatchCaller(req)) {
+    return NextResponse.json({ error: 'Uautorisert' }, { status: 401 });
+  }
   try {
     const url = new URL(req.url);
     const projectId = url.searchParams.get('projectId');
@@ -33,8 +46,13 @@ export async function GET(req: NextRequest) {
       c.status === 'pending_approval' || c.status === 'pending_customer' || !c.status
     );
 
+    // FIX (11.09.2026): Ekte avvik lagres med ENGELSKE verdier ('open'/'in-progress',
+    // severity 'high'/'critical') per src/types.ts og CreateDeviationModal.tsx. De gamle
+    // norske strengene ('åpen'/'kritisk'/'høy') matchet aldri reelle avviksposter, så
+    // kritiske avvik ble aldri fanget opp her. Støtter begge for bakoverkompatibilitet.
     const pendingDeviations = deviations.filter((d: any) => 
-      (d.status === 'åpen' || d.status === 'under_behandling') && (d.severity === 'kritisk' || d.severity === 'høy')
+      ['open', 'in-progress', 'åpen', 'under_behandling'].includes(d.status) &&
+      ['high', 'critical', 'kritisk', 'høy'].includes(d.severity)
     );
 
     // 2. Metrics calculation
@@ -44,53 +62,11 @@ export async function GET(req: NextRequest) {
     
     const securedRevenue = changeOrders.reduce((sum: number, co: any) => sum + (Number(co.amountExVat) || 0), 0);
 
-    // If no activities exist yet, provide realistic agent activity log
-    const recentActivities = allActivities.length > 0 ? allActivities.slice(0, 20) : [
-      {
-        id: 'act-1',
-        type: 'daily_log',
-        title: 'Byggedagbok ført autonomt',
-        description: 'Tolkede stemmenotat fra tømrer på Nyebakken 14. Værdata hentet fra Yr.no (14°C, overskyet).',
-        timestamp: new Date(Date.now() - 25 * 60 * 1000).toISOString(),
-        trade: 'carpenter',
-        tradeName: 'Tømrer',
-        status: 'verified',
-        badge: 'Yr.no synkronisert'
-      },
-      {
-        id: 'act-2',
-        type: 'change_order',
-        title: 'Tale-til-Endringsordre generert (NS 8406)',
-        description: 'Ekstraarbeid registrert: 6 ekstra downlights og trekkerør i stue (kr 14 500,- eks mva). Venter på din godkjenning.',
-        timestamp: new Date(Date.now() - 75 * 60 * 1000).toISOString(),
-        trade: 'electrician',
-        tradeName: 'Elektriker',
-        status: 'pending_approval',
-        badge: 'NS 8406 pkt. 19.2'
-      },
-      {
-        id: 'act-3',
-        type: 'tek17_vision',
-        title: 'TEK17 Bildeanalyse godkjent',
-        description: 'Slukmansjett og klemring på Bad 2. etg kontrollert mot BVN 31.205. Ingen avvik detektert.',
-        timestamp: new Date(Date.now() - 150 * 60 * 1000).toISOString(),
-        trade: 'plumber',
-        tradeName: 'Rørlegger',
-        status: 'approved',
-        badge: 'BVN 31.205'
-      },
-      {
-        id: 'act-4',
-        type: 'pre_close_check',
-        title: 'Tverrfaglig lukkesperre aktivert',
-        description: 'Vegg i Vaskerom rødmerket: Rørlegger må fullføre trykkprøving før tømrer kan gipse.',
-        timestamp: new Date(Date.now() - 240 * 60 * 1000).toISOString(),
-        trade: 'general',
-        tradeName: 'Totalentreprenør',
-        status: 'blocked',
-        badge: 'Lukkesperre RØD'
-      }
-    ];
+    // FIX (11.09.2026): Fjernet hardkodet eksempel-aktivitetslogg. Denne ble vist i dashboardet
+    // og rapportert videre (bl.a. i eksterne morgen-/ettermiddagsrapporter) som om det var ekte,
+    // fersk aktivitet, selv når det ikke fantes noen reell aktivitet ennå. Et ærlig tomt resultat
+    // lar UI vise en tydelig "ingen aktivitet ennå"-tilstand i stedet.
+    const recentActivities = allActivities.slice(0, 20);
 
     return NextResponse.json({
       success: true,
@@ -112,10 +88,28 @@ export async function GET(req: NextRequest) {
       metrics: {
         todayActionsCount: Math.max(todayLogs.length + todayActivities.length, 14),
         pendingApprovalsCount: pendingChangeOrders.length,
-        activeBlockersCount: 1,
+        // FIX (11.09.2026): Var hardkodet til "1" uansett faktisk antall - ga et falskt
+        // konstant tall i dashboard/rapporter i stedet for reelt antall kritiske avvik.
+        activeBlockersCount: pendingDeviations.length,
         activeProjectsCount: allProjects.filter((p: any) => p.status === 'active' || !p.status).length,
         securedRevenue
       },
+      // FIX (11.09.2026): Additive, skrivebeskyttede felter slik at eksterne rapporter (f.eks.
+      // morgen-/ettermiddagsvakten) kan vise ekte prosjekter og ekte kritiske avvik i stedet for
+      // eksempeldata. Ingen eksisterende felter er endret eller fjernet.
+      activeProjectsSummary: allProjects
+        .filter((p: any) => p.status === 'active' || !p.status)
+        .slice(0, 25)
+        .map((p: any) => ({ id: p.id, name: p.name, location: p.location || null, progress: p.progress ?? null })),
+      criticalDeviations: pendingDeviations.slice(0, 25).map((d: any) => ({
+        id: d.id,
+        projectId: d.projectId,
+        projectName: d.project || null,
+        title: d.title,
+        description: d.description,
+        severity: d.severity,
+        location: d.location || null
+      })),
       pendingApprovals: pendingChangeOrders.map((co: any) => ({
         id: co.id,
         type: 'change_order',
@@ -126,7 +120,9 @@ export async function GET(req: NextRequest) {
         totalAmount: co.totalAmount,
         impactDays: co.impactDays,
         legalHjemmel: co.legalHjemmel,
-        projectName: co.projectName || 'Nyebakken 14',
+        // FIX (11.09.2026): Nøytral fallback i stedet for et spesifikt (og potensielt feil) ekte
+        // prosjektnavn, som ga inntrykk av at endringsordren tilhørte et bestemt prosjekt.
+        projectName: co.projectName || 'Ukjent prosjekt',
         authorName: co.authorName || 'Håndverker',
         createdAt: co.createdAt,
         token: co.token,
@@ -145,6 +141,9 @@ export async function GET(req: NextRequest) {
  * Handles instructions, quick commands, voice-to-action, approvals, and validations.
  */
 export async function POST(req: NextRequest) {
+  if (!isAuthorizedDispatchCaller(req)) {
+    return NextResponse.json({ error: 'Uautorisert' }, { status: 401 });
+  }
   try {
     const body = await req.json();
     const { 

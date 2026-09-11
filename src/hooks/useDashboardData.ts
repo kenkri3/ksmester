@@ -7,6 +7,10 @@ export function useDashboardData() {
   const [projects, setProjects] = useState<Project[]>([]);
   const [deviations, setDeviations] = useState<Deviation[]>([]);
   const [loading, setLoading] = useState(true);
+  // FIX (11.09.2026): Skiller "ingen firmatilknytning funnet" fra "0 prosjekter" slik at
+  // UI kan vise en tydelig melding i stedet for et stille tomt rutenett (så det ikke ser
+  // ut som en ødelagt knapp for brukeren).
+  const [dataUnavailable, setDataUnavailable] = useState(false);
   const { user, role, company } = useAuth();
 
   useEffect(() => {
@@ -25,9 +29,12 @@ export function useDashboardData() {
         projectsQuery = query(collection(db, projectsPath), where('company', '==', company), orderBy('lastUpdate', 'desc'));
       }
     } else if (role !== 'admin') {
+      console.warn('[useDashboardData] Mangler firmatilknytning (company) for innlogget bruker – kan ikke hente prosjekter/avvik.');
       setLoading(false);
+      setDataUnavailable(true);
       return;
     }
+    setDataUnavailable(false);
 
     const unsubscribeProjects = onSnapshot(projectsQuery, (snapshot) => {
       const projectsData = snapshot.docs.map(doc => {
@@ -94,6 +101,7 @@ export function useDashboardData() {
     deviations, 
     stats,
     recentDeviations,
-    loading 
+    loading,
+    dataUnavailable
   };
 }
