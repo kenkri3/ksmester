@@ -1200,7 +1200,15 @@ function AppContent() {
                         <span>Innstillinger</span>
                       </button>
 
-
+                      {(user?.role === 'admin' || user?.email === 'kenkri3@gmail.com' || user?.email === 'aichatnorge@gmail.com' || user?.email === 'kenneth@aichatnorge.no' || user?.email === 'post@vikingent.no') && (
+                        <button 
+                          onClick={() => { setView('super-admin'); setIsMenuOpen(false); }} 
+                          className={cn("col-span-2 flex items-center justify-center gap-2 p-2.5 rounded-xl text-xs font-bold cursor-pointer transition-all", view === 'super-admin' ? "bg-rose-50 text-rose-600 border border-rose-200" : "bg-neutral-900 text-white hover:bg-neutral-800")}
+                        >
+                          <Shield size={15} className="text-rose-400" />
+                          <span>SuperAdmin & Autonom Agent</span>
+                        </button>
+                      )}
                     </div>
 
                     <button 

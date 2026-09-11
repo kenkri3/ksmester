@@ -31,7 +31,17 @@ import {
   DollarSign,
   Sparkles,
   BrainCircuit,
-  Copy
+  Copy,
+  BookOpen,
+  Camera,
+  FileSignature,
+  TrendingUp,
+  HardHat,
+  Brain,
+  RefreshCw,
+  Layers,
+  Check,
+  ChevronRight
 } from 'lucide-react';
 import { generateAiContent } from '../services/aiClient';
 import { db, collection, onSnapshot, query, where, doc, updateDoc, deleteDoc, addDoc, serverTimestamp, handleFirestoreError, OperationType, orderBy } from '../services/firebase';
@@ -76,7 +86,25 @@ export default function SuperAdmin() {
   const [templates, setTemplates] = useState<any[]>([]);
   const [loading, setLoading] = useState(true);
   const [searchTerm, setSearchTerm] = useState('');
-  const [activeTab, setActiveTab] = useState<'companies' | 'leads' | 'offers' | 'templates'>('companies');
+  const [activeTab, setActiveTab] = useState<'agent' | 'projects' | 'deviations' | 'logs' | 'companies' | 'leads' | 'offers' | 'templates'>('agent');
+  const [agentActivities, setAgentActivities] = useState<any[]>([]);
+  const [allProjects, setAllProjects] = useState<any[]>([]);
+  const [allDeviations, setAllDeviations] = useState<any[]>([]);
+  const [allDailyLogs, setAllDailyLogs] = useState<any[]>([]);
+  const [allChangeOrders, setAllChangeOrders] = useState<any[]>([]);
+  const [agentMetrics, setAgentMetrics] = useState<any>({
+    todayActionsCount: 0,
+    pendingApprovalsCount: 0,
+    activeBlockersCount: 0,
+    securedRevenue: 0
+  });
+  const [adminCommandText, setAdminCommandText] = useState('');
+  const [isAdminDispatching, setIsAdminDispatching] = useState(false);
+  const [adminAgentReply, setAdminAgentReply] = useState<string | null>(null);
+  const [deviationSeverityFilter, setDeviationSeverityFilter] = useState<'all' | 'critical' | 'open' | 'closed'>('all');
+  const [adminProjectSearch, setAdminProjectSearch] = useState('');
+  const [adminDeviationSearch, setAdminDeviationSearch] = useState('');
+  const [adminLogSearch, setAdminLogSearch] = useState('');
   const [selectedCompany, setSelectedCompany] = useState<Company | null>(null);
   const [selectedLead, setSelectedLead] = useState<any | null>(null);
   const [isEditModalOpen, setIsEditModalOpen] = useState(false);
@@ -167,11 +195,61 @@ export default function SuperAdmin() {
       setTemplates(data);
     });
 
+    // Sanntids agent-aktiviteter
+    const agentActQ = query(collection(db, 'agent_activities'), orderBy('createdAt', 'desc'));
+    const unsubscribeAgentAct = onSnapshot(agentActQ, (snapshot) => {
+      setAgentActivities(snapshot.docs.map(doc => ({ id: doc.id, ...doc.data() })));
+    });
+
+    // Alle prosjekter globalt
+    const projectsQ = query(collection(db, 'projects'), orderBy('createdAt', 'desc'));
+    const unsubscribeProjects = onSnapshot(projectsQ, (snapshot) => {
+      setAllProjects(snapshot.docs.map(doc => ({ id: doc.id, ...doc.data() })));
+    });
+
+    // Alle avvik globalt
+    const deviationsQ = query(collection(db, 'deviations'), orderBy('createdAt', 'desc'));
+    const unsubscribeDeviations = onSnapshot(deviationsQ, (snapshot) => {
+      setAllDeviations(snapshot.docs.map(doc => ({ id: doc.id, ...doc.data() })));
+    });
+
+    // Alle byggedagbøker
+    const dailyLogsQ = query(collection(db, 'daily_logs'), orderBy('createdAt', 'desc'));
+    const unsubscribeDailyLogs = onSnapshot(dailyLogsQ, (snapshot) => {
+      setAllDailyLogs(snapshot.docs.map(doc => ({ id: doc.id, ...doc.data() })));
+    });
+
+    // Alle endringsordrer
+    const changeOrdersQ = query(collection(db, 'change_orders'), orderBy('createdAt', 'desc'));
+    const unsubscribeChangeOrders = onSnapshot(changeOrdersQ, (snapshot) => {
+      setAllChangeOrders(snapshot.docs.map(doc => ({ id: doc.id, ...doc.data() })));
+    });
+
+    // Hent live metrics fra agent dispatch
+    const fetchAgentMetrics = async () => {
+      try {
+        const token = typeof window !== 'undefined' ? localStorage.getItem('token') : null;
+        const res = await fetch('/api/agent/dispatch', {
+          headers: token ? { 'Authorization': 'Bearer ' + token } : {}
+        });
+        if (res.ok) {
+          const data = await res.json();
+          if (data.metrics) setAgentMetrics(data.metrics);
+        }
+      } catch (e) {}
+    };
+    fetchAgentMetrics();
+
     return () => {
       unsubscribeCompanies();
       unsubscribeLeads();
       unsubscribeOffers();
       unsubscribeTemplates();
+      unsubscribeAgentAct();
+      unsubscribeProjects();
+      unsubscribeDeviations();
+      unsubscribeDailyLogs();
+      unsubscribeChangeOrders();
     };
   }, [user, isSuperAdmin]);
 
@@ -350,13 +428,83 @@ export default function SuperAdmin() {
     }
   };
 
-  // ⚡ Bolt: Memoize filteredCompanies to prevent expensive O(N) recalculations on every render
+  const handleAdminDispatch = async (e?: React.FormEvent) => {
+    if (e) e.preventDefault();
+    if (!adminCommandText.trim() || isAdminDispatching) return;
+    setIsAdminDispatching(true);
+    setAdminAgentReply(null);
+    try {
+      const token = typeof window !== 'undefined' ? localStorage.getItem('token') : null;
+      const res = await fetch('/api/agent/dispatch', {
+        method: 'POST',
+        headers: {
+          'Content-Type': 'application/json',
+          ...(token ? { 'Authorization': 'Bearer ' + token } : {})
+        },
+        body: JSON.stringify({
+          instruction: adminCommandText,
+          actionType: 'quick_command',
+          companyId: selectedCompany?.id || 'all'
+        })
+      });
+      const data = await res.json();
+      if (res.ok) {
+        toast.success('Agentinstruks utført!');
+        setAdminAgentReply(data.response || data.message || 'Instruksen er behandlet av den autonome agenten.');
+        setAdminCommandText('');
+        if (data.metrics) setAgentMetrics(data.metrics);
+      } else {
+        toast.error(data.error || 'Feil ved sending av instruks til agenten');
+      }
+    } catch (err: any) {
+      toast.error('Kunne ikke kontakte agenten: ' + err.message);
+    } finally {
+      setIsAdminDispatching(false);
+    }
+  };
+
+  // ⚡ Bolt: Memoize filtered lists to prevent expensive O(N) recalculations on every render
   const filteredCompanies = useMemo(() => {
     return companies.filter(c =>
       c.name.toLowerCase().includes(searchTerm.toLowerCase()) ||
       c.orgNumber?.includes(searchTerm)
     );
   }, [companies, searchTerm]);
+
+  const filteredProjects = useMemo(() => {
+    return allProjects.filter(p =>
+      !adminProjectSearch ||
+      p.name?.toLowerCase().includes(adminProjectSearch.toLowerCase()) ||
+      p.projectNumber?.toLowerCase().includes(adminProjectSearch.toLowerCase()) ||
+      p.client?.toLowerCase().includes(adminProjectSearch.toLowerCase()) ||
+      p.clientName?.toLowerCase().includes(adminProjectSearch.toLowerCase())
+    );
+  }, [allProjects, adminProjectSearch]);
+
+  const filteredDeviations = useMemo(() => {
+    return allDeviations.filter(d => {
+      const matchesSearch = !adminDeviationSearch ||
+        d.title?.toLowerCase().includes(adminDeviationSearch.toLowerCase()) ||
+        d.description?.toLowerCase().includes(adminDeviationSearch.toLowerCase()) ||
+        d.projectTitle?.toLowerCase().includes(adminDeviationSearch.toLowerCase()) ||
+        d.id?.toLowerCase().includes(adminDeviationSearch.toLowerCase());
+      
+      if (!matchesSearch) return false;
+      if (deviationSeverityFilter === 'critical') return d.severity === 'critical' || d.severity === 'high';
+      if (deviationSeverityFilter === 'open') return d.status !== 'closed' && d.status !== 'resolved';
+      if (deviationSeverityFilter === 'closed') return d.status === 'closed' || d.status === 'resolved';
+      return true;
+    });
+  }, [allDeviations, adminDeviationSearch, deviationSeverityFilter]);
+
+  const filteredDailyLogs = useMemo(() => {
+    return allDailyLogs.filter(l =>
+      !adminLogSearch ||
+      l.projectName?.toLowerCase().includes(adminLogSearch.toLowerCase()) ||
+      l.workPerformed?.toLowerCase().includes(adminLogSearch.toLowerCase()) ||
+      l.authorName?.toLowerCase().includes(adminLogSearch.toLowerCase())
+    );
+  }, [allDailyLogs, adminLogSearch]);
 
   if (!isSuperAdmin) {
     return (
@@ -405,6 +553,10 @@ export default function SuperAdmin() {
       {/* Tabs */}
       <div className="flex flex-wrap gap-2 mb-8 pb-2">
         {[
+          { id: 'agent', label: 'Autonom Agent & Logg', icon: <BrainCircuit size={18} /> },
+          { id: 'projects', label: 'Alle Prosjekter', icon: <Layers size={18} /> },
+          { id: 'deviations', label: 'Avvik & HMS', icon: <AlertTriangle size={18} /> },
+          { id: 'logs', label: 'Byggedagbøker', icon: <BookOpen size={18} /> },
           { id: 'companies', label: 'Kunder', icon: <Building2 size={18} /> },
           { id: 'leads', label: 'Henvendelser', icon: <MessageSquare size={18} /> },
           { id: 'offers', label: 'Sendte tilbud', icon: <Send size={18} /> },
@@ -414,30 +566,38 @@ export default function SuperAdmin() {
             key={tab.id}
             onClick={() => setActiveTab(tab.id as any)}
             className={cn(
-              "flex items-center gap-2 px-6 py-3 rounded-2xl font-bold transition-all whitespace-nowrap",
+              "flex items-center gap-2 px-5 py-3 rounded-2xl font-bold transition-all whitespace-nowrap text-sm",
               activeTab === tab.id 
-                ? "bg-neutral-900 text-white shadow-lg" 
-                : "bg-white text-neutral-500 hover:bg-neutral-50 border border-neutral-200"
+                ? "bg-neutral-900 text-white shadow-lg shadow-neutral-900/20" 
+                : "bg-white text-neutral-600 hover:bg-neutral-50 border border-neutral-200"
             )}
           >
             {tab.icon}
             {tab.label}
             {tab.id === 'leads' && leads.filter(l => l.status === 'new').length > 0 && (
-              <span className="ml-2 px-2 py-0.5 bg-red-500 text-white text-[10px] rounded-full">
+              <span className="ml-1.5 px-2 py-0.5 bg-red-500 text-white text-[10px] rounded-full">
                 {leads.filter(l => l.status === 'new').length}
               </span>
+            )}
+            {tab.id === 'deviations' && allDeviations.filter(d => d.status !== 'closed' && d.status !== 'resolved').length > 0 && (
+              <span className="ml-1.5 px-2 py-0.5 bg-amber-500 text-white text-[10px] rounded-full">
+                {allDeviations.filter(d => d.status !== 'closed' && d.status !== 'resolved').length}
+              </span>
+            )}
+            {tab.id === 'agent' && (
+              <span className="ml-1.5 w-2 h-2 rounded-full bg-emerald-500 animate-ping inline-block" />
             )}
           </button>
         ))}
       </div>
 
       {/* Stats */}
-      <div className="grid grid-cols-1 md:grid-cols-4 gap-6 mb-12">
+      <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-6 mb-12">
         {[
-          { label: 'Totalt antall kunder', value: companies.length, icon: <Building2 className="text-blue-600" />, bg: 'bg-blue-50' },
-          { label: 'Aktive abonnement', value: companies.filter(c => c.subscriptionStatus === 'active').length, icon: <CheckCircle2 className="text-emerald-600" />, bg: 'bg-emerald-50' },
-          { label: 'Prøveperioder', value: companies.filter(c => c.subscriptionStatus === 'trial').length, icon: <Zap className="text-orange-600" />, bg: 'bg-orange-50' },
-          { label: 'Systemstatus', value: 'Operativ', icon: <Shield className="text-amber-600" />, bg: 'bg-amber-50' },
+          { label: 'Agenthandlinger i dag', value: agentMetrics.todayActionsCount || agentActivities.length, icon: <BrainCircuit className="text-purple-600" />, bg: 'bg-purple-50' },
+          { label: 'Aktive Prosjekter', value: allProjects.filter(p => p.status !== 'completed').length || allProjects.length, icon: <Layers className="text-blue-600" />, bg: 'bg-blue-50' },
+          { label: 'Åpne Avvik & HMS', value: allDeviations.filter(d => d.status !== 'closed' && d.status !== 'resolved').length, icon: <AlertTriangle className="text-amber-600" />, bg: 'bg-amber-50' },
+          { label: 'Kunder / Bedrifter', value: companies.length, icon: <Building2 className="text-emerald-600" />, bg: 'bg-emerald-50' },
         ].map((stat, i) => (
           <div key={i} className={cn("p-6 rounded-[2rem] border border-neutral-200 shadow-sm", stat.bg)}>
             <div className="flex items-center justify-between mb-4">
@@ -445,11 +605,542 @@ export default function SuperAdmin() {
                 {stat.icon}
               </div>
             </div>
-            <div className="text-2xl font-black text-neutral-900">{stat.value}</div>
+            <div className="text-3xl font-black text-neutral-900">{stat.value}</div>
             <div className="text-xs font-bold text-neutral-500 uppercase tracking-widest mt-1">{stat.label}</div>
           </div>
         ))}
       </div>
+
+      {/* Content based on active tab */}
+      {activeTab === 'agent' && (
+        <div className="space-y-8 mb-12">
+          {/* Autonomous Status Banner */}
+          <div className="bg-gradient-to-r from-neutral-900 via-purple-950 to-neutral-900 rounded-[2.5rem] p-8 text-white border border-purple-500/20 shadow-xl relative overflow-hidden">
+            <div className="absolute top-0 right-0 w-96 h-96 bg-purple-500/10 rounded-full blur-3xl pointer-events-none" />
+            <div className="relative z-10 flex flex-col md:flex-row md:items-center justify-between gap-6">
+              <div>
+                <div className="flex items-center gap-3 mb-3">
+                  <span className="flex h-3 w-3 relative">
+                    <span className="animate-ping absolute inline-flex h-full w-full rounded-full bg-emerald-400 opacity-75"></span>
+                    <span className="relative inline-flex rounded-full h-3 w-3 bg-emerald-500"></span>
+                  </span>
+                  <span className="text-xs font-black uppercase tracking-widest text-purple-300">100% Autonom Agent Operativ</span>
+                  <span className="text-xs px-2.5 py-0.5 rounded-full bg-purple-500/20 text-purple-200 border border-purple-500/30 font-mono">Gemini 2.5 Multi-Agent</span>
+                </div>
+                <h2 className="text-3xl font-black text-white mb-2 tracking-tight">VikingMester Autonom Byggeleder</h2>
+                <p className="text-sm text-neutral-300 max-w-2xl leading-relaxed">
+                  Agenten overvåker kontinuerlig byggedagbøker, fanger opp endringsbehov og varsler om avvik. Den genererer automatisk juridisk forankrede endringsordrer, kalkulerer time-/materialkostnader og sender signaturlenker til byggherre.
+                </p>
+              </div>
+              <div className="flex flex-col sm:flex-row gap-3">
+                <button
+                  onClick={() => {
+                    setAdminCommandText('Kjør full systemsjekk på alle aktive prosjekter, oppsummer åpne avvik og beregn uavhentet endringsverdi.');
+                  }}
+                  className="px-4 py-2.5 bg-purple-500/20 hover:bg-purple-500/30 text-purple-200 border border-purple-500/30 rounded-xl text-xs font-bold transition-all flex items-center gap-2"
+                >
+                  <RefreshCw size={14} /> Full systemsjekk
+                </button>
+              </div>
+            </div>
+
+            {/* Admin Command Prompt */}
+            <form onSubmit={handleAdminDispatch} className="mt-8 relative z-10">
+              <label className="block text-xs font-bold uppercase tracking-widest text-purple-200 mb-2">
+                Send direkte instruks til den autonome agenten
+              </label>
+              <div className="flex flex-col sm:flex-row gap-3">
+                <input
+                  type="text"
+                  value={adminCommandText}
+                  onChange={(e) => setAdminCommandText(e.target.value)}
+                  placeholder="F.eks: 'Inspiser alle byggedagbøker fra i dag og meld eventuelle nye avvik'..."
+                  className="flex-1 bg-white/10 border border-purple-400/30 rounded-2xl px-5 py-3.5 text-sm text-white placeholder-neutral-400 focus:outline-none focus:ring-2 focus:ring-purple-400 backdrop-blur-md"
+                  disabled={isAdminDispatching}
+                />
+                <button
+                  type="submit"
+                  disabled={isAdminDispatching || !adminCommandText.trim()}
+                  className="px-6 py-3.5 bg-gradient-to-r from-purple-500 to-indigo-500 text-white rounded-2xl font-bold text-sm hover:opacity-95 transition-all shadow-lg disabled:opacity-50 flex items-center justify-center gap-2 shrink-0"
+                >
+                  {isAdminDispatching ? (
+                    <>
+                      <RefreshCw size={16} className="animate-spin" />
+                      Agenten jobber...
+                    </>
+                  ) : (
+                    <>
+                      <Send size={16} />
+                      Kjør Agent
+                    </>
+                  )}
+                </button>
+              </div>
+            </form>
+
+            {/* Agent Reply Notification */}
+            {adminAgentReply && (
+              <motion.div
+                initial={{ opacity: 0, y: 10 }}
+                animate={{ opacity: 1, y: 0 }}
+                className="mt-4 p-4 rounded-2xl bg-purple-900/40 border border-purple-400/30 text-sm text-purple-100 flex items-start justify-between gap-4"
+              >
+                <div className="flex items-start gap-3">
+                  <Brain className="text-purple-300 shrink-0 mt-0.5" size={18} />
+                  <div>
+                    <div className="text-xs font-black uppercase tracking-widest text-purple-300 mb-1">Agentsvar:</div>
+                    <p className="text-sm whitespace-pre-wrap leading-relaxed">{adminAgentReply}</p>
+                  </div>
+                </div>
+                <button onClick={() => setAdminAgentReply(null)} className="text-purple-300 hover:text-white">
+                  <X size={16} />
+                </button>
+              </motion.div>
+            )}
+          </div>
+
+          {/* Autonomous Metrics Grid */}
+          <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-6">
+            <div className="bg-white rounded-[2rem] border border-neutral-200 p-6 shadow-sm">
+              <div className="flex items-center justify-between mb-2">
+                <span className="text-xs font-black uppercase tracking-widest text-neutral-400">Handlinger i dag</span>
+                <div className="w-8 h-8 rounded-lg bg-purple-50 text-purple-600 flex items-center justify-center">
+                  <Zap size={16} />
+                </div>
+              </div>
+              <div className="text-3xl font-black text-neutral-900">{agentMetrics.todayActionsCount || agentActivities.length}</div>
+              <p className="text-xs text-neutral-500 mt-1">Autonome sjekker & beslutninger</p>
+            </div>
+
+            <div className="bg-white rounded-[2rem] border border-neutral-200 p-6 shadow-sm">
+              <div className="flex items-center justify-between mb-2">
+                <span className="text-xs font-black uppercase tracking-widest text-neutral-400">Venter Godkjenning</span>
+                <div className="w-8 h-8 rounded-lg bg-amber-50 text-amber-600 flex items-center justify-center">
+                  <Clock size={16} />
+                </div>
+              </div>
+              <div className="text-3xl font-black text-amber-600">
+                {agentMetrics.pendingApprovalsCount || allChangeOrders.filter(c => c.status === 'sent' || c.status === 'pending_signature').length}
+              </div>
+              <p className="text-xs text-neutral-500 mt-1">Endringsordrer hos byggherre</p>
+            </div>
+
+            <div className="bg-white rounded-[2rem] border border-neutral-200 p-6 shadow-sm">
+              <div className="flex items-center justify-between mb-2">
+                <span className="text-xs font-black uppercase tracking-widest text-neutral-400">Aktive Blokkeringer</span>
+                <div className="w-8 h-8 rounded-lg bg-red-50 text-red-600 flex items-center justify-center">
+                  <AlertTriangle size={16} />
+                </div>
+              </div>
+              <div className="text-3xl font-black text-red-600">
+                {agentMetrics.activeBlockersCount || allDeviations.filter(d => d.severity === 'critical' && d.status !== 'closed').length}
+              </div>
+              <p className="text-xs text-neutral-500 mt-1">Kritiske avvik som stopper fremdrift</p>
+            </div>
+
+            <div className="bg-white rounded-[2rem] border border-neutral-200 p-6 shadow-sm">
+              <div className="flex items-center justify-between mb-2">
+                <span className="text-xs font-black uppercase tracking-widest text-neutral-400">Sikret Ekstrainntekt</span>
+                <div className="w-8 h-8 rounded-lg bg-emerald-50 text-emerald-600 flex items-center justify-center">
+                  <DollarSign size={16} />
+                </div>
+              </div>
+              <div className="text-3xl font-black text-emerald-600">
+                {(agentMetrics.securedRevenue || allChangeOrders.reduce((sum, c) => sum + (Number(c.totalPrice || c.amount || 0)), 0)).toLocaleString('no-NO')} kr
+              </div>
+              <p className="text-xs text-neutral-500 mt-1">Identifisert & fakturert via agent</p>
+            </div>
+          </div>
+
+          {/* Real-time Agent Log Stream */}
+          <div className="bg-white rounded-[2.5rem] border border-neutral-200 p-8 shadow-sm">
+            <div className="flex items-center justify-between mb-6">
+              <div>
+                <h3 className="text-xl font-bold text-neutral-900">Sanntids Agentaktivitet & Handlingslogg</h3>
+                <p className="text-xs text-neutral-500">Live-feed over alt den autonome agenten utfører, sjekker og genererer.</p>
+              </div>
+              <span className="px-3 py-1 bg-purple-50 text-purple-700 text-xs font-black uppercase tracking-widest rounded-full flex items-center gap-2">
+                <span className="w-2 h-2 rounded-full bg-purple-500 animate-pulse" />
+                {agentActivities.length} hendelser registrert
+              </span>
+            </div>
+
+            {agentActivities.length === 0 ? (
+              <div className="text-center py-12 border-2 border-dashed border-neutral-100 rounded-3xl">
+                <BrainCircuit className="mx-auto text-neutral-300 mb-3" size={40} />
+                <p className="text-neutral-500 font-medium">Ingen agentaktiviteter registrert enda.</p>
+                <p className="text-xs text-neutral-400 mt-1">Når håndverkere logger arbeid eller endringer oppstår, dokumenterer agenten det her automatisk.</p>
+              </div>
+            ) : (
+              <div className="divide-y divide-neutral-100 max-h-[500px] overflow-y-auto">
+                {agentActivities.map((act) => (
+                  <div key={act.id} className="py-4 flex items-start justify-between gap-4 hover:bg-neutral-50 px-3 rounded-2xl transition-colors">
+                    <div className="flex items-start gap-3">
+                      <div className={cn(
+                        "w-9 h-9 rounded-xl flex items-center justify-center shrink-0 mt-0.5",
+                        act.status === 'failed' ? "bg-red-50 text-red-600" :
+                        act.actionType?.includes('change_order') ? "bg-emerald-50 text-emerald-600" :
+                        act.actionType?.includes('deviation') ? "bg-amber-50 text-amber-600" :
+                        "bg-purple-50 text-purple-600"
+                      )}>
+                        {act.actionType?.includes('change_order') ? <FileSignature size={16} /> :
+                         act.actionType?.includes('deviation') ? <AlertTriangle size={16} /> :
+                         <Sparkles size={16} />}
+                      </div>
+                      <div>
+                        <div className="flex items-center gap-2">
+                          <span className="text-sm font-bold text-neutral-900">{act.description || act.actionType || 'Autonom handling'}</span>
+                          {act.status && (
+                            <span className={cn(
+                              "text-[10px] font-black uppercase tracking-widest px-2 py-0.5 rounded-full",
+                              act.status === 'completed' || act.status === 'success' ? "bg-emerald-100 text-emerald-700" :
+                              act.status === 'failed' ? "bg-red-100 text-red-700" :
+                              "bg-neutral-100 text-neutral-600"
+                            )}>
+                              {act.status}
+                            </span>
+                          )}
+                        </div>
+                        {act.details && <p className="text-xs text-neutral-500 mt-0.5">{act.details}</p>}
+                        <div className="flex items-center gap-3 mt-1.5 text-[11px] text-neutral-400">
+                          {act.projectName && <span>Prosjekt: <strong className="text-neutral-600">{act.projectName}</strong></span>}
+                          {act.companyName && <span>Bedrift: <strong className="text-neutral-600">{act.companyName}</strong></span>}
+                          <span>{act.createdAt?.toDate ? act.createdAt.toDate().toLocaleTimeString('no-NO') : 'Nylig'}</span>
+                        </div>
+                      </div>
+                    </div>
+                  </div>
+                ))}
+              </div>
+            )}
+          </div>
+
+          {/* Autonome Endringsordrer Tabell */}
+          <div className="bg-white rounded-[2.5rem] border border-neutral-200 p-8 shadow-sm">
+            <div className="flex items-center justify-between mb-6">
+              <div>
+                <h3 className="text-xl font-bold text-neutral-900">Endringsordrer & Byggherregodkjenninger</h3>
+                <p className="text-xs text-neutral-500">Endringsarbeid automatisk kalkulert og sendt til kunde for digital signering.</p>
+              </div>
+              <span className="text-xs font-bold text-neutral-400">{allChangeOrders.length} ordrer totalt</span>
+            </div>
+
+            {allChangeOrders.length === 0 ? (
+              <div className="text-center py-8 text-neutral-400 text-sm">
+                Ingen endringsordrer registrert enda.
+              </div>
+            ) : (
+              <div className="overflow-x-auto">
+                <table className="w-full text-left">
+                  <thead>
+                    <tr className="bg-neutral-50 border-b border-neutral-200">
+                      <th className="px-6 py-3 text-xs font-black uppercase tracking-widest text-neutral-400">Ordrer</th>
+                      <th className="px-6 py-3 text-xs font-black uppercase tracking-widest text-neutral-400">Prosjekt</th>
+                      <th className="px-6 py-3 text-xs font-black uppercase tracking-widest text-neutral-400">Beløp eks. mva</th>
+                      <th className="px-6 py-3 text-xs font-black uppercase tracking-widest text-neutral-400">Status</th>
+                      <th className="px-6 py-3 text-xs font-black uppercase tracking-widest text-neutral-400">Dato</th>
+                    </tr>
+                  </thead>
+                  <tbody className="divide-y divide-neutral-100">
+                    {allChangeOrders.map((co) => (
+                      <tr key={co.id} className="hover:bg-neutral-50 transition-colors">
+                        <td className="px-6 py-4">
+                          <div className="font-bold text-sm text-neutral-900">{co.title || co.changeNumber || 'Endringsordre'}</div>
+                          <div className="text-xs text-neutral-500 line-clamp-1">{co.description}</div>
+                        </td>
+                        <td className="px-6 py-4 text-xs font-medium text-neutral-700">
+                          {co.projectTitle || co.projectName || co.projectId || 'Ikke angitt'}
+                        </td>
+                        <td className="px-6 py-4 font-bold text-neutral-900 text-sm">
+                          {(Number(co.totalPrice || co.amount || 0)).toLocaleString('no-NO')} kr
+                        </td>
+                        <td className="px-6 py-4">
+                          <span className={cn(
+                            "px-2.5 py-1 rounded-full text-[10px] font-black uppercase tracking-widest",
+                            co.status === 'approved' || co.status === 'godkjent' ? "bg-emerald-100 text-emerald-700" :
+                            co.status === 'declined' || co.status === 'avvist' ? "bg-red-100 text-red-700" :
+                            "bg-blue-100 text-blue-700"
+                          )}>
+                            {co.status === 'approved' ? 'Godkjent' : co.status === 'sent' ? 'Sendt til kunde' : co.status || 'Behandles'}
+                          </span>
+                        </td>
+                        <td className="px-6 py-4 text-xs text-neutral-400">
+                          {co.createdAt?.toDate ? co.createdAt.toDate().toLocaleDateString('no-NO') : 'Nylig'}
+                        </td>
+                      </tr>
+                    ))}
+                  </tbody>
+                </table>
+              </div>
+            )}
+          </div>
+        </div>
+      )}
+
+      {activeTab === 'projects' && (
+        <div className="space-y-8 mb-12">
+          <div className="bg-white rounded-[2.5rem] border border-neutral-200 p-8 shadow-sm">
+            <div className="flex flex-col md:flex-row gap-4 items-center justify-between">
+              <div className="relative w-full md:w-96">
+                <Search className="absolute left-4 top-1/2 -translate-y-1/2 text-neutral-400" size={20} />
+                <input 
+                  type="text"
+                  placeholder="Søk i alle prosjekter, kunde, nummer..."
+                  value={adminProjectSearch}
+                  onChange={(e) => setAdminProjectSearch(e.target.value)}
+                  className="w-full pl-12 pr-4 py-3 bg-neutral-50 border border-neutral-200 rounded-2xl focus:ring-2 focus:ring-purple-500 outline-none transition-all text-sm"
+                />
+              </div>
+              <div className="text-xs font-bold text-neutral-400">
+                Viser {filteredProjects.length} av {allProjects.length} prosjekter
+              </div>
+            </div>
+          </div>
+
+          <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-6">
+            {filteredProjects.map((proj) => {
+              const projectDevs = allDeviations.filter(d => d.projectId === proj.id);
+              const projectLogs = allDailyLogs.filter(l => l.projectId === proj.id);
+              const projectOrders = allChangeOrders.filter(c => c.projectId === proj.id);
+
+              return (
+                <div key={proj.id} className="bg-white rounded-[2rem] border border-neutral-200 p-6 shadow-sm hover:shadow-md transition-all flex flex-col justify-between">
+                  <div>
+                    <div className="flex items-start justify-between gap-2 mb-3">
+                      <span className="text-[10px] font-black uppercase tracking-widest text-neutral-400">
+                        {proj.projectNumber || 'Uten ref.'}
+                      </span>
+                      <span className={cn(
+                        "px-2.5 py-0.5 rounded-full text-[10px] font-black uppercase tracking-widest",
+                        proj.status === 'completed' ? "bg-neutral-100 text-neutral-600" :
+                        proj.status === 'paused' ? "bg-amber-100 text-amber-700" :
+                        "bg-emerald-100 text-emerald-700"
+                      )}>
+                        {proj.status === 'completed' ? 'Fullført' : proj.status === 'paused' ? 'På vent' : 'Aktiv'}
+                      </span>
+                    </div>
+                    <h3 className="text-lg font-bold text-neutral-900 mb-1 line-clamp-1">{proj.name || 'Navnløst prosjekt'}</h3>
+                    <p className="text-xs text-neutral-500 mb-4">{proj.client || 'Ingen oppdragsgiver angitt'}</p>
+
+                    <div className="grid grid-cols-3 gap-2 py-3 border-y border-neutral-100 mb-4 text-center">
+                      <div>
+                        <div className="text-xs font-black text-neutral-900">{projectLogs.length}</div>
+                        <div className="text-[10px] font-bold text-neutral-400 uppercase">Dagbøker</div>
+                      </div>
+                      <div>
+                        <div className="text-xs font-black text-neutral-900">{projectDevs.length}</div>
+                        <div className="text-[10px] font-bold text-neutral-400 uppercase">Avvik</div>
+                      </div>
+                      <div>
+                        <div className="text-xs font-black text-neutral-900">{projectOrders.length}</div>
+                        <div className="text-[10px] font-bold text-neutral-400 uppercase">Endringer</div>
+                      </div>
+                    </div>
+                  </div>
+
+                  <div className="flex items-center justify-between text-xs text-neutral-400 pt-2">
+                    <span>Budsjett: <strong className="text-neutral-700">{proj.budget ? Number(proj.budget).toLocaleString('no-NO') + ' kr' : 'Ikke satt'}</strong></span>
+                    <span>{proj.startDate || 'Startet'}</span>
+                  </div>
+                </div>
+              );
+            })}
+          </div>
+        </div>
+      )}
+
+      {activeTab === 'deviations' && (
+        <div className="space-y-8 mb-12">
+          <div className="bg-white rounded-[2.5rem] border border-neutral-200 p-8 shadow-sm">
+            <div className="flex flex-col md:flex-row gap-4 items-center justify-between">
+              <div className="relative w-full md:w-96">
+                <Search className="absolute left-4 top-1/2 -translate-y-1/2 text-neutral-400" size={20} />
+                <input 
+                  type="text"
+                  placeholder="Søk i avvik, prosjekt eller beskrivelse..."
+                  value={adminDeviationSearch}
+                  onChange={(e) => setAdminDeviationSearch(e.target.value)}
+                  className="w-full pl-12 pr-4 py-3 bg-neutral-50 border border-neutral-200 rounded-2xl focus:ring-2 focus:ring-purple-500 outline-none transition-all text-sm"
+                />
+              </div>
+              <div className="flex gap-2">
+                {[
+                  { id: 'all', label: 'Alle' },
+                  { id: 'open', label: 'Åpne' },
+                  { id: 'critical', label: 'Kritiske' },
+                  { id: 'closed', label: 'Lukkede' },
+                ].map(f => (
+                  <button
+                    key={f.id}
+                    onClick={() => setDeviationSeverityFilter(f.id as any)}
+                    className={cn(
+                      "px-4 py-2 rounded-xl text-xs font-bold transition-all",
+                      deviationSeverityFilter === f.id
+                        ? "bg-neutral-900 text-white"
+                        : "bg-neutral-100 text-neutral-600 hover:bg-neutral-200"
+                    )}
+                  >
+                    {f.label}
+                  </button>
+                ))}
+              </div>
+            </div>
+          </div>
+
+          <div className="bg-white rounded-[2.5rem] border border-neutral-200 shadow-sm overflow-hidden">
+            <div className="overflow-x-auto">
+              <table className="w-full text-left">
+                <thead>
+                  <tr className="bg-neutral-50 border-b border-neutral-200">
+                    <th className="px-6 py-4 text-xs font-black uppercase tracking-widest text-neutral-400">Avvik</th>
+                    <th className="px-6 py-4 text-xs font-black uppercase tracking-widest text-neutral-400">Prosjekt</th>
+                    <th className="px-6 py-4 text-xs font-black uppercase tracking-widest text-neutral-400">Alvorlighet</th>
+                    <th className="px-6 py-4 text-xs font-black uppercase tracking-widest text-neutral-400">Status</th>
+                    <th className="px-6 py-4 text-xs font-black uppercase tracking-widest text-neutral-400">Dato</th>
+                    <th className="px-6 py-4 text-xs font-black uppercase tracking-widest text-neutral-400">Handling</th>
+                  </tr>
+                </thead>
+                <tbody className="divide-y divide-neutral-100">
+                  {filteredDeviations.length === 0 ? (
+                    <tr>
+                      <td colSpan={6} className="px-6 py-12 text-center text-neutral-400 text-sm">
+                        Ingen avvik funnet som matcher søkekriteriene.
+                      </td>
+                    </tr>
+                  ) : (
+                    filteredDeviations.map((dev) => (
+                      <tr key={dev.id} className="hover:bg-neutral-50 transition-colors">
+                        <td className="px-6 py-4">
+                          <div className="font-bold text-sm text-neutral-900">{dev.title || 'Avvik uten tittel'}</div>
+                          <p className="text-xs text-neutral-500 line-clamp-1">{dev.description}</p>
+                        </td>
+                        <td className="px-6 py-4 text-xs font-medium text-neutral-700">
+                          {dev.projectTitle || dev.projectName || dev.projectId || 'Ikke spesifisert'}
+                        </td>
+                        <td className="px-6 py-4">
+                          <span className={cn(
+                            "px-2.5 py-1 rounded-full text-[10px] font-black uppercase tracking-widest",
+                            dev.severity === 'critical' ? "bg-red-100 text-red-700 font-bold" :
+                            dev.severity === 'high' ? "bg-orange-100 text-orange-700" :
+                            dev.severity === 'medium' ? "bg-amber-100 text-amber-700" :
+                            "bg-neutral-100 text-neutral-600"
+                          )}>
+                            {dev.severity || 'Normal'}
+                          </span>
+                        </td>
+                        <td className="px-6 py-4">
+                          <span className={cn(
+                            "px-2.5 py-1 rounded-full text-[10px] font-black uppercase tracking-widest",
+                            dev.status === 'closed' || dev.status === 'resolved' ? "bg-emerald-100 text-emerald-700" :
+                            "bg-blue-100 text-blue-700"
+                          )}>
+                            {dev.status === 'closed' || dev.status === 'resolved' ? 'Lukket' : 'Åpen'}
+                          </span>
+                        </td>
+                        <td className="px-6 py-4 text-xs text-neutral-400">
+                          {dev.createdAt?.toDate ? dev.createdAt.toDate().toLocaleDateString('no-NO') : 'Nylig'}
+                        </td>
+                        <td className="px-6 py-4">
+                          {dev.status !== 'closed' && dev.status !== 'resolved' ? (
+                            <button
+                              onClick={async () => {
+                                try {
+                                  await updateDoc(doc(db, 'deviations', dev.id), {
+                                    status: 'closed',
+                                    resolvedAt: serverTimestamp()
+                                  });
+                                  toast.success('Avvik markert som lukket!');
+                                } catch (e) {
+                                  toast.error('Kunne ikke lukke avvik');
+                                }
+                              }}
+                              className="px-3 py-1.5 bg-emerald-50 hover:bg-emerald-100 text-emerald-700 text-xs font-bold rounded-xl transition-all"
+                            >
+                              Lukk avvik
+                            </button>
+                          ) : (
+                            <span className="text-xs text-neutral-400 font-medium">Behandlet</span>
+                          )}
+                        </td>
+                      </tr>
+                    ))
+                  )}
+                </tbody>
+              </table>
+            </div>
+          </div>
+        </div>
+      )}
+
+      {activeTab === 'logs' && (
+        <div className="space-y-8 mb-12">
+          <div className="bg-white rounded-[2.5rem] border border-neutral-200 p-8 shadow-sm">
+            <div className="flex flex-col md:flex-row gap-4 items-center justify-between">
+              <div className="relative w-full md:w-96">
+                <Search className="absolute left-4 top-1/2 -translate-y-1/2 text-neutral-400" size={20} />
+                <input 
+                  type="text"
+                  placeholder="Søk i byggedagbøker, utført arbeid, forfatter..."
+                  value={adminLogSearch}
+                  onChange={(e) => setAdminLogSearch(e.target.value)}
+                  className="w-full pl-12 pr-4 py-3 bg-neutral-50 border border-neutral-200 rounded-2xl focus:ring-2 focus:ring-purple-500 outline-none transition-all text-sm"
+                />
+              </div>
+              <div className="text-xs font-bold text-neutral-400">
+                {filteredDailyLogs.length} dagbokføringer
+              </div>
+            </div>
+          </div>
+
+          <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
+            {filteredDailyLogs.length === 0 ? (
+              <div className="col-span-2 text-center py-12 bg-white rounded-[2rem] border border-neutral-200 text-neutral-400 text-sm">
+                Ingen byggedagbøker funnet.
+              </div>
+            ) : (
+              filteredDailyLogs.map((log) => (
+                <div key={log.id} className="bg-white rounded-[2rem] border border-neutral-200 p-6 shadow-sm hover:shadow-md transition-all flex flex-col justify-between">
+                  <div>
+                    <div className="flex items-center justify-between mb-3">
+                      <span className="px-3 py-1 bg-purple-50 text-purple-700 text-xs font-black uppercase tracking-widest rounded-full">
+                        {log.projectName || 'Prosjekt'}
+                      </span>
+                      <span className="text-xs text-neutral-400">
+                        {log.date || (log.createdAt?.toDate ? log.createdAt.toDate().toLocaleDateString('no-NO') : 'Nylig')}
+                      </span>
+                    </div>
+
+                    <div className="text-sm font-bold text-neutral-900 mb-1 flex items-center gap-2">
+                      <HardHat size={16} className="text-amber-500" />
+                      {log.authorName || 'Håndverker'}
+                    </div>
+
+                    <p className="text-sm text-neutral-600 bg-neutral-50 p-4 rounded-2xl mt-2 leading-relaxed whitespace-pre-wrap">
+                      {log.workPerformed || log.description || 'Ingen arbeidsbeskrivelse.'}
+                    </p>
+
+                    {log.weather && (
+                      <div className="mt-3 text-xs text-neutral-400 flex items-center gap-2">
+                        <span>Værforhold: {log.weather}</span>
+                        {log.temperature && <span>({log.temperature}°C)</span>}
+                      </div>
+                    )}
+                  </div>
+
+                  <div className="mt-4 pt-3 border-t border-neutral-100 flex items-center justify-between text-xs text-neutral-400">
+                    <span>Timer: <strong className="text-neutral-700">{log.hoursWorked || log.hours || '8'} t</strong></span>
+                    {log.photos && log.photos.length > 0 && (
+                      <span className="text-purple-600 font-bold flex items-center gap-1">
+                        <Camera size={14} /> {log.photos.length} bilder vedlagt
+                      </span>
+                    )}
+                  </div>
+                </div>
+              ))
+            )}
+          </div>
+        </div>
+      )}
 
       {/* Content based on active tab */}
       {activeTab === 'companies' && (

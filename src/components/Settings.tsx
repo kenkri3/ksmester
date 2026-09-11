@@ -853,8 +853,26 @@ export default function Settings() {
                     <div className="flex items-center gap-2 w-full sm:w-auto">
                       <button
                         type="button"
-                        onClick={() => {
-                          toast.success('Liten Mester-pakke (+5M tokens / +200 bilder) aktivert for din bedrift! kr 490,- legges til på neste EHF.');
+                        onClick={async () => {
+                          try {
+                            const token = typeof window !== 'undefined' ? localStorage.getItem('token') : null;
+                            const res = await fetch('/api/settings/topup', {
+                              method: 'POST',
+                              headers: {
+                                'Content-Type': 'application/json',
+                                ...(token ? { 'Authorization': 'Bearer ' + token } : {})
+                              },
+                              body: JSON.stringify({ packageType: 'small' })
+                            });
+                            const data = await res.json();
+                            if (res.ok) {
+                              toast.success(data.message || 'Liten Mester-pakke (+5M tokens / +200 bilder) aktivert for din bedrift! kr 490,- legges til på neste EHF.');
+                            } else {
+                              toast.error(data.error || 'Kunne ikke bestille top-up');
+                            }
+                          } catch (e: any) {
+                            toast.error('Feil ved bestilling: ' + e.message);
+                          }
                         }}
                         className="px-3.5 py-2 rounded-xl bg-white/10 hover:bg-white/20 text-white text-xs font-bold transition-all whitespace-nowrap cursor-pointer"
                       >
@@ -862,8 +880,26 @@ export default function Settings() {
                       </button>
                       <button
                         type="button"
-                        onClick={() => {
-                          toast.success('Stor Mester-pakke (+20M tokens / +1000 bilder) aktivert for din bedrift! kr 1 490,- legges til på neste EHF.');
+                        onClick={async () => {
+                          try {
+                            const token = typeof window !== 'undefined' ? localStorage.getItem('token') : null;
+                            const res = await fetch('/api/settings/topup', {
+                              method: 'POST',
+                              headers: {
+                                'Content-Type': 'application/json',
+                                ...(token ? { 'Authorization': 'Bearer ' + token } : {})
+                              },
+                              body: JSON.stringify({ packageType: 'large' })
+                            });
+                            const data = await res.json();
+                            if (res.ok) {
+                              toast.success(data.message || 'Stor Mester-pakke (+20M tokens / +1000 bilder) aktivert for din bedrift! kr 1 490,- legges til på neste EHF.');
+                            } else {
+                              toast.error(data.error || 'Kunne ikke bestille top-up');
+                            }
+                          } catch (e: any) {
+                            toast.error('Feil ved bestilling: ' + e.message);
+                          }
                         }}
                         className="px-3.5 py-2 rounded-xl bg-gradient-to-r from-electric-500 to-electric-400 hover:from-electric-400 hover:to-electric-300 text-white text-xs font-bold shadow-purple-cta transition-all whitespace-nowrap cursor-pointer"
                       >

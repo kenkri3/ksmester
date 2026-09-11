@@ -37,18 +37,31 @@ export default function ReportModal({ isOpen, onClose, project, sjaReports, devi
   const handleBoligmappaExport = async () => {
     setIsExporting(true);
     setExportStep('preparing');
-    
-    // Simulate export process
-    await new Promise(resolve => setTimeout(resolve, 1500));
-    setExportStep('sending');
-    await new Promise(resolve => setTimeout(resolve, 2000));
-    setExportStep('success');
-    
-    setTimeout(() => {
-      setIsExporting(false);
+    try {
+      await new Promise(resolve => setTimeout(resolve, 600));
+      setExportStep('sending');
+      
+      await pdfService.generateBoligmappaPDF(
+        project,
+        {
+          name: (project as any).companyName || project.clientName || 'Fagbedrift AS',
+          orgNumber: (project as any).companyOrgNumber || (project as any).clientOrgNumber || '999 888 777'
+        },
+        (project as any).checklists || []
+      );
+      
+      setExportStep('success');
+      toast.success('Boligmappa-underlag generert og lastet ned!');
+    } catch (error) {
+      console.error('Boligmappa export error:', error);
+      toast.error('Kunne ikke generere Boligmappa-dokument.');
       setExportStep('idle');
-      onClose();
-    }, 3000);
+    } finally {
+      setTimeout(() => {
+        setIsExporting(false);
+        setExportStep('idle');
+      }, 2500);
+    }
   };
 
   const handleDownloadPDF = async () => {

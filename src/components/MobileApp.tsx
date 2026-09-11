@@ -38,19 +38,18 @@ import { visionService } from '../services/visionService';
 import { ImageAnalysisResult, Project as ProjectType, UserProfile, Trade } from '../types';
 import InstallGuide from './InstallGuide';
 import ChecklistModal from './ChecklistModal';
+import CreateDeviationModal from './CreateDeviationModal';
 import ProjectActivityLog from './ProjectActivityLog';
 import { toast } from 'sonner';
 import { promptPWAInstall, isPWAInstalled, triggerAppDownloadOrInstall, downloadMobileShortcut } from '../lib/pwa';
 import { useTranslation } from 'react-i18next';
 import UniversalTranslator from './UniversalTranslator';
 import { db, auth, collection, onSnapshot, addDoc, Timestamp, handleFirestoreError, OperationType, query, orderBy, limit, where, updateDoc, doc, getUserProfile, updateUserProfile, serverTimestamp, getDocs } from '../services/firebase';
-
 import { weatherService, WeatherData } from '../services/weatherService';
 import WeatherWidget from './WeatherWidget';
 import { logAiService } from '../services/logAiService';
 import { locationService } from '../services/locationService';
 import { Sparkles, ClipboardList } from 'lucide-react';
-
 export default function MobileApp() {
   const { t, i18n } = useTranslation();
   const [activeScreen, setActiveScreen] = useState<'home' | 'camera' | 'voice' | 'report' | 'imageResult' | 'translator' | 'laerling' | 'dailyLog' | 'activity' | 'contacts'>('home');
@@ -65,7 +64,6 @@ export default function MobileApp() {
   const [selectedProjectId, setSelectedProjectId] = useState<string>("");
   const [recentEvents, setRecentEvents] = useState<any[]>([]);
   const [showInstallGuide, setShowInstallGuide] = useState(false);
-
   const handleInstallApp = async () => {
     if (isPWAInstalled()) {
       toast.info('VikingMester er allerede installert som app på denne enheten!');
@@ -80,6 +78,7 @@ export default function MobileApp() {
     });
   };
   const [showChecklistModal, setShowChecklistModal] = useState(false);
+  const [showDeviationModal, setShowDeviationModal] = useState(false);
   const [checklistProjectId, setChecklistProjectId] = useState<string | undefined>(undefined);
   const [userProfile, setUserProfile] = useState<UserProfile | null>(null);
   const [showTradeSelector, setShowTradeSelector] = useState(false);
@@ -108,7 +107,6 @@ interface ColleagueContact {
   isKeyPersonnel?: boolean;
   projectId?: string;
 }
-
   // --- Telefonliste & Kolleger State ---
   const [colleagues, setColleagues] = useState<ColleagueContact[]>([
     {
@@ -201,7 +199,6 @@ interface ColleagueContact {
     trade: 'carpenter' as Trade,
     isOnSiteToday: true
   });
-
   // Hent team og kolleger fra Firestore
   useEffect(() => {
     async function loadTeamMembers() {
@@ -227,10 +224,7 @@ interface ColleagueContact {
             };
           });
           if (fetched.length > 0) {
-            setColleagues(prev => {
-              const ids = new Set(fetched.map(c => c.id));
-              return [...fetched, ...prev.filter(c => !ids.has(c.id))];
-            });
+            setColleagues(fetched);
           }
         }
       } catch (err) {
@@ -239,7 +233,6 @@ interface ColleagueContact {
     }
     loadTeamMembers();
   }, [userProfile?.companyId]);
-
   // Lytt på åpning av telefonliste fra hurtigmenyen
   useEffect(() => {
     const handleOpenContacts = () => {
@@ -248,7 +241,6 @@ interface ColleagueContact {
     window.addEventListener('open_mobile_contacts', handleOpenContacts);
     return () => window.removeEventListener('open_mobile_contacts', handleOpenContacts);
   }, []);
-
   const handleCreateContact = async (e: React.FormEvent) => {
     e.preventDefault();
     if (!newContact.name.trim() || !newContact.phone.trim()) {
@@ -266,7 +258,6 @@ interface ColleagueContact {
       isOnSiteToday: newContact.isOnSiteToday,
       isKeyPersonnel: newContact.role.toLowerCase().includes('leder') || newContact.role.toLowerCase().includes('hms')
     };
-
     setColleagues(prev => [created, ...prev]);
     setShowAddContactModal(false);
     setNewContact({
@@ -279,7 +270,6 @@ interface ColleagueContact {
       isOnSiteToday: true
     });
     toast.success(created.name + ' er lagt til i telefonlisten!');
-
     try {
       await addDoc(collection(db, 'users'), {
         name: created.name,
@@ -295,7 +285,6 @@ interface ColleagueContact {
       console.warn('Lagret kun i aktiv sesjon');
     }
   };
-
   const emergencyContacts = [
     { title: 'Medisinsk Nødhjelp', number: '113', desc: 'Akutt ulykke / livstruende skade', color: 'bg-red-600', icon: '🚑' },
     { title: 'Brann & Redning', number: '110', desc: 'Brann, røykutvikling og redning', color: 'bg-orange-600', icon: '🚒' },
@@ -303,7 +292,6 @@ interface ColleagueContact {
     { title: 'Giftinformasjonen', number: '22 59 13 00', desc: 'Kjemikaliesøl / akutt forgiftning', color: 'bg-amber-600', icon: '☣️' },
     { title: 'Arbeidstilsynet Vakt', number: '73 19 97 00', desc: 'Varsling av alvorlige arbeidsulykker', color: 'bg-purple-600', icon: '⚠️' }
   ];
-
   const filteredColleagues = colleagues.filter(c => {
     const term = contactsSearch.toLowerCase();
     const matchSearch = 
@@ -311,14 +299,11 @@ interface ColleagueContact {
       c.role.toLowerCase().includes(term) ||
       c.company.toLowerCase().includes(term) ||
       c.phone.replace(/\s+/g, '').includes(term.replace(/\s+/g, ''));
-
     if (!matchSearch) return false;
     if (contactsFilter === 'onsite') return c.isOnSiteToday;
     if (contactsFilter === 'key') return c.isKeyPersonnel;
     return true;
   });
-
-
   // Fetch user profile
   useEffect(() => {
     const unsubscribe = auth.onAuthStateChanged(async (user) => {
@@ -346,7 +331,6 @@ interface ColleagueContact {
     });
     return () => unsubscribe();
   }, []);
-
   // Contextual Smart Action Logic
   // FIX (11.09.2026): Boblen var fastlåst på skjermen (uten lukkeknapp) i 15 av 24 timer i
   // døgnet (15:00-06:00), inkludert sent på kvelden. Den er nå begrenset til et smalere,
@@ -386,7 +370,6 @@ interface ColleagueContact {
       setSmartAction(null);
     }
   }, [activeScreen, smartActionDismissed]);
-
   // Fetch projects
   useEffect(() => {
     const q = query(collection(db, 'projects'), orderBy('name'));
@@ -404,11 +387,9 @@ interface ColleagueContact {
     });
     return () => unsubscribe();
   }, []);
-
   // Fetch recent events (SJA and Deviations)
   useEffect(() => {
     if (!selectedProjectId) return;
-
     // This is a bit complex for a single snapshot, so we'll just fetch SJA reports for now
     // In a real app, we might use a cloud function or aggregate collection
     const q = query(
@@ -417,7 +398,6 @@ interface ColleagueContact {
       orderBy('createdAt', 'desc'),
       limit(5)
     );
-
     const unsubscribe = onSnapshot(q, (snapshot) => {
       const events = snapshot.docs.map(doc => ({
         id: doc.id,
@@ -431,10 +411,8 @@ interface ColleagueContact {
     }, (error) => {
       handleFirestoreError(error, OperationType.LIST, 'sja_reports');
     });
-
     return () => unsubscribe();
   }, [selectedProjectId]);
-
   const handleVoiceSubmit = async () => {
     if (!transcript || !selectedProjectId) return;
     setIsAnalyzing(true);
@@ -449,7 +427,6 @@ interface ColleagueContact {
         console.error("Failed to fetch weather for SJA", e);
       }
     }
-
     const result = await sjaService.generateDraft(
       {
         name: project?.name || 'Byggeplass',
@@ -486,7 +463,6 @@ interface ColleagueContact {
       }
     }
   };
-
   const handleGenerateDailyLog = async () => {
     if (!selectedProjectId) return;
     setIsAnalyzing(true);
@@ -497,11 +473,9 @@ interface ColleagueContact {
       const timesQ = query(collection(db, 'time_registrations'), where('projectId', '==', selectedProjectId));
       const timesSnap = await getDocs(timesQ);
       const timeEntries = timesSnap.docs.map(doc => doc.data());
-
       const devsQ = query(collection(db, 'deviations'), where('projectId', '==', selectedProjectId));
       const devsSnap = await getDocs(devsQ);
       const deviations = devsSnap.docs.map(doc => doc.data());
-
       const log = await logAiService.generateDailyLog(timeEntries, deviations, weather.description);
       setDailyLog(log);
       setActiveScreen('dailyLog');
@@ -523,7 +497,6 @@ interface ColleagueContact {
       handleFirestoreError(error, OperationType.UPDATE, `sja_reports/${currentReportId}`);
     }
   };
-
   const handleImageUpload = (e: React.ChangeEvent<HTMLInputElement>) => {
     const file = e.target.files?.[0];
     if (file) {
@@ -536,7 +509,6 @@ interface ColleagueContact {
       reader.readAsDataURL(file);
     }
   };
-
   const startImageAnalysis = async (base64: string) => {
     if (!selectedProjectId) return;
     setIsAnalyzing(true);
@@ -546,7 +518,6 @@ interface ColleagueContact {
     if (result) {
       setImageAnalysis(result);
       setActiveScreen('imageResult');
-
       // Save analysis result to project_photos
       try {
         let locationData = {};
@@ -572,7 +543,6 @@ interface ColleagueContact {
             console.warn("Geolocation failed:", geoError);
           }
         }
-
         // Save to project_photos
         await addDoc(collection(db, 'project_photos'), {
           projectId: selectedProjectId,
@@ -582,7 +552,6 @@ interface ColleagueContact {
           createdBy: auth.currentUser?.uid,
           ...locationData
         });
-
         // Save as deviation if status is 'deviation'
         if (result.status === 'deviation') {
           await addDoc(collection(db, 'deviations'), {
@@ -605,7 +574,6 @@ interface ColleagueContact {
       }
     }
   };
-
   return (
     <div className="min-h-screen bg-slate-100 py-3 sm:py-6 px-2 sm:px-4">
       <div className="max-w-2xl mx-auto space-y-4">
@@ -623,7 +591,6 @@ interface ColleagueContact {
             <span className="text-xs font-bold text-slate-800">Byggeplass Mobilapp</span>
           </div>
         </div>
-
         {/* 1-Klikk Direkte Nedlasting Banner */}
         <div className="bg-gradient-to-br from-navy-950 via-navy-900 to-slate-900 text-white p-4 sm:p-5 rounded-2xl border border-slate-800 shadow-lg">
           <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-3">
@@ -679,7 +646,6 @@ interface ColleagueContact {
             </div>
           </div>
         </div>
-
         {/* Real App Container */}
         <div className="bg-white rounded-2xl sm:rounded-3xl border border-slate-200/90 shadow-xl overflow-hidden min-h-[600px] flex flex-col">
           <div className="relative flex-1 bg-white overflow-y-auto pt-4 sm:pt-6 pb-20 px-4 sm:px-6">
@@ -713,12 +679,10 @@ interface ColleagueContact {
                     <MapPin size={18} className="text-neutral-400" />
                   </div>
                 </div>
-
                 {/* Weather Widget */}
                 <WeatherWidget 
                   projectLocation={projects.find(p => p.id === selectedProjectId)?.location || 'Oslo'} 
                 />
-
                 <button
                   onClick={handleInstallApp}
                   className="w-full py-2.5 px-3.5 bg-neutral-100/90 hover:bg-emerald-50 text-neutral-800 hover:text-emerald-900 rounded-2xl text-xs font-bold flex items-center justify-between border border-neutral-200 transition-all cursor-pointer"
@@ -726,7 +690,6 @@ interface ColleagueContact {
                   <span className="flex items-center gap-2"><Download size={15} className="text-emerald-600" /> Last ned app / snarvei</span>
                   <span className="text-[10px] uppercase font-black text-emerald-800 bg-emerald-100/80 px-2 py-0.5 rounded-full">Offline OK</span>
                 </button>
-
                 <div className="p-4 bg-emerald-50 rounded-2xl border border-emerald-100">
                   <div className="flex items-center gap-3 mb-2">
                     <ShieldCheck size={20} className="text-emerald-600" />
@@ -736,7 +699,6 @@ interface ColleagueContact {
                     {t('ai_monitoring_active')}
                   </p>
                 </div>
-
                 {/* Quick Buttons */}
                 <div className="grid grid-cols-2 gap-4">
                   <button 
@@ -783,7 +745,7 @@ interface ColleagueContact {
                     <span className="text-xs font-bold uppercase tracking-widest">Lærling</span>
                   </button>
                   <button 
-                    onClick={() => window.dispatchEvent(new CustomEvent('trigger_dashboard_action', { detail: { actionId: 'log_deviation' } }))}
+                    onClick={() => setShowDeviationModal(true)}
                     className="flex flex-col items-center justify-center p-6 bg-white border-2 border-neutral-100 text-neutral-900 rounded-[2rem] gap-3 active:scale-95 transition-all cursor-pointer"
                   >
                     <div className="w-12 h-12 bg-neutral-50 rounded-2xl flex items-center justify-center">
@@ -828,7 +790,6 @@ interface ColleagueContact {
                     <span className="text-xs font-bold uppercase tracking-widest">Prosjektlogg</span>
                   </button>
                 </div>
-
                 <div className="space-y-4">
                   <h3 className="text-xs font-black uppercase tracking-[0.2em] text-neutral-400">{t('recent_events')}</h3>
                   {recentEvents.length > 0 ? (
@@ -847,7 +808,6 @@ interface ColleagueContact {
                     </div>
                   )}
                 </div>
-
                 {/* Smart Contextual Action Button - Recipe 3: Hardware / Specialist Tool */}
                 {smartAction && activeScreen === 'home' && (
                   <motion.div 
@@ -896,7 +856,6 @@ interface ColleagueContact {
                 )}
               </motion.div>
             )}
-
             {activeScreen === 'camera' && (
               <motion.div 
                 key="camera"
@@ -933,7 +892,6 @@ interface ColleagueContact {
                 </div>
               </motion.div>
             )}
-
             {activeScreen === 'imageResult' && imageAnalysis && (
               <motion.div 
                 key="imageResult"
@@ -951,11 +909,9 @@ interface ColleagueContact {
                     {imageAnalysis.status === 'approved' ? t('approved') : t('deviation_detected')}
                   </h2>
                 </div>
-
                 <div className="rounded-2xl overflow-hidden border border-neutral-100 mb-4">
                   <img src={previewImage!} alt="Analyzed" className="w-full h-32 object-cover" referrerPolicy="no-referrer" />
                 </div>
-
                 <div className="space-y-4">
                   <div className="p-4 bg-neutral-50 rounded-2xl border border-neutral-100">
                     <div className="text-[10px] font-black uppercase tracking-widest text-neutral-400 mb-2">{t('detected_elements')}</div>
@@ -965,12 +921,10 @@ interface ColleagueContact {
                       ))}
                     </div>
                   </div>
-
                   <div className="p-4 bg-neutral-50 rounded-2xl border border-neutral-100">
                     <div className="text-[10px] font-black uppercase tracking-widest text-neutral-400 mb-1">{t('description')}</div>
                     <p className="text-xs leading-relaxed">{imageAnalysis.description}</p>
                   </div>
-
                   {imageAnalysis.recommendation && (
                     <div className="p-4 bg-amber-50 rounded-2xl border border-amber-100">
                       <div className="flex items-center gap-2 mb-1">
@@ -981,7 +935,6 @@ interface ColleagueContact {
                     </div>
                   )}
                 </div>
-
                 <div className="py-8 space-y-4">
                   <button 
                     onClick={() => setActiveScreen('home')}
@@ -993,7 +946,6 @@ interface ColleagueContact {
                 </div>
               </motion.div>
             )}
-
             {activeScreen === 'voice' && (
               <motion.div 
                 key="voice"
@@ -1014,7 +966,6 @@ interface ColleagueContact {
                   <h2 className="text-xl font-bold mb-2">{t('smart_sja_voice')}</h2>
                   <p className="text-xs text-neutral-400">{t('voice_desc')}</p>
                 </div>
-
                 <div className="flex-grow">
                   <textarea 
                     value={transcript}
@@ -1023,7 +974,6 @@ interface ColleagueContact {
                     className="w-full h-40 p-4 bg-neutral-50 rounded-2xl border border-neutral-100 text-sm focus:outline-none focus:ring-2 focus:ring-emerald-500/20"
                   />
                 </div>
-
                 <div className="py-8 space-y-4">
                   <button 
                     onClick={handleVoiceSubmit}
@@ -1037,7 +987,6 @@ interface ColleagueContact {
                 </div>
               </motion.div>
             )}
-
             {activeScreen === 'report' && report && (
               <motion.div 
                 key="report"
@@ -1049,7 +998,6 @@ interface ColleagueContact {
                   <CheckCircle2 size={24} />
                   <h2 className="text-xl font-bold">{t('smart_sja_ready')}</h2>
                 </div>
-
                 {report.user_feedback && i18n.language !== 'no' && (
                   <div className="p-4 bg-blue-50 rounded-2xl border border-blue-100 mb-4">
                     <div className="text-[10px] font-black uppercase tracking-widest text-blue-700 mb-1">
@@ -1059,7 +1007,6 @@ interface ColleagueContact {
                     <p className="text-xs text-blue-800 mt-1">{report.user_feedback.hovedrisiko}</p>
                   </div>
                 )}
-
                 <div className="p-6 bg-neutral-900 text-white rounded-[2rem] space-y-4">
                   <div className="flex items-center gap-2 mb-2">
                     <div className="w-2 h-2 bg-emerald-500 rounded-full"></div>
@@ -1070,7 +1017,6 @@ interface ColleagueContact {
                     <div className="text-sm font-bold">{report.tittel}</div>
                     <p className="text-[10px] text-emerald-400 mt-1">{report.tek17_referanse}</p>
                   </div>
-
                   {report.weather_impact && (
                     <div className="p-3 bg-blue-500/10 rounded-xl border border-blue-500/20">
                       <div className="flex items-center gap-2 mb-1">
@@ -1093,7 +1039,6 @@ interface ColleagueContact {
                       ))}
                     </div>
                   </div>
-
                   <div>
                     <div className="text-[10px] font-black uppercase tracking-widest opacity-50 mb-2">{t('necessary_equipment')}</div>
                     <div className="flex flex-wrap gap-2">
@@ -1103,7 +1048,6 @@ interface ColleagueContact {
                     </div>
                   </div>
                 </div>
-
                 <div className="py-8 space-y-4">
                   <button 
                     onClick={handleApproveReport}
@@ -1121,7 +1065,6 @@ interface ColleagueContact {
                 </div>
               </motion.div>
             )}
-
             {activeScreen === 'dailyLog' && dailyLog && (
               <motion.div 
                 key="dailyLog"
@@ -1133,13 +1076,11 @@ interface ColleagueContact {
                   <ClipboardList size={24} />
                   <h2 className="text-xl font-bold">AI Dagsrapport</h2>
                 </div>
-
                 <div className="p-6 bg-neutral-900 text-white rounded-[2rem] space-y-6">
                   <div>
                     <div className="text-[10px] font-black uppercase tracking-widest opacity-50 mb-1">Oppsummering</div>
                     <p className="text-sm leading-relaxed">{dailyLog.summary}</p>
                   </div>
-
                   <div className="grid grid-cols-2 gap-4">
                     <div className="p-3 bg-white/5 rounded-xl border border-white/10">
                       <div className="text-[10px] font-bold text-indigo-400 mb-1">Totaltimer</div>
@@ -1150,7 +1091,6 @@ interface ColleagueContact {
                       <div className="text-lg font-bold">{dailyLog.progress}%</div>
                     </div>
                   </div>
-
                   <div>
                     <div className="text-[10px] font-black uppercase tracking-widest opacity-50 mb-2">Viktige Hendelser</div>
                     <ul className="space-y-2">
@@ -1162,13 +1102,11 @@ interface ColleagueContact {
                       ))}
                     </ul>
                   </div>
-
                   <div className="p-4 bg-blue-500/10 rounded-2xl border border-blue-500/20">
                     <div className="text-[10px] font-black uppercase tracking-widest text-blue-400 mb-1">Værpåvirkning</div>
                     <p className="text-xs text-blue-100 italic">{dailyLog.weatherImpact}</p>
                   </div>
                 </div>
-
                 <div className="py-8 space-y-4">
                   <button 
                     onClick={() => setActiveScreen('home')}
@@ -1185,7 +1123,6 @@ interface ColleagueContact {
                 </div>
               </motion.div>
             )}
-
             {activeScreen === 'activity' && (
               <motion.div 
                 key="activity"
@@ -1202,7 +1139,6 @@ interface ColleagueContact {
                     <X size={20} />
                   </button>
                 </div>
-
                 {selectedProjectId ? (
                   <ProjectActivityLog projectId={selectedProjectId} />
                 ) : (
@@ -1213,7 +1149,6 @@ interface ColleagueContact {
                     <p className="text-sm text-neutral-500 font-medium">Velg et prosjekt for å se loggen</p>
                   </div>
                 )}
-
                 <div className="py-8">
                   <button 
                     onClick={() => setActiveScreen('home')}
@@ -1224,7 +1159,6 @@ interface ColleagueContact {
                 </div>
               </motion.div>
             )}
-
             
             {activeScreen === 'contacts' && (
               <motion.div 
@@ -1251,7 +1185,6 @@ interface ColleagueContact {
                       </p>
                     </div>
                   </div>
-
                   <button
                     onClick={() => setShowAddContactModal(true)}
                     className="px-3 py-2 rounded-xl bg-blue-600 hover:bg-blue-700 active:scale-95 text-white flex items-center gap-1.5 text-xs font-bold shadow-sm transition-all cursor-pointer"
@@ -1260,7 +1193,6 @@ interface ColleagueContact {
                     <span>Ny kollega</span>
                   </button>
                 </div>
-
                 {/* Søkefelt i sanntid */}
                 <div className="relative">
                   <Search size={18} className="absolute left-3.5 top-1/2 -translate-y-1/2 text-neutral-400" />
@@ -1280,7 +1212,6 @@ interface ColleagueContact {
                     </button>
                   )}
                 </div>
-
                 {/* Filter-tabs */}
                 <div className="flex items-center gap-1.5 overflow-x-auto pb-1 scrollbar-none text-xs font-bold">
                   <button
@@ -1330,7 +1261,6 @@ interface ColleagueContact {
                     Nødnumre
                   </button>
                 </div>
-
                 {/* Nødnumre Vises dersom filter er emergency eller øverst */}
                 {contactsFilter === 'emergency' ? (
                   <div className="space-y-3">
@@ -1338,7 +1268,6 @@ interface ColleagueContact {
                       <Siren size={18} className="text-red-600 shrink-0" />
                       <span>Akutte nødnumre for byggeplassen og hendelser iht. HMS-forskriften.</span>
                     </div>
-
                     <div className="grid grid-cols-1 gap-2.5">
                       {emergencyContacts.map((em, idx) => (
                         <div key={idx} className="p-4 rounded-2xl bg-white border border-neutral-200 shadow-sm flex items-center justify-between">
@@ -1403,7 +1332,6 @@ interface ColleagueContact {
                               </p>
                             </div>
                           </div>
-
                           {/* Handlingsknapper (Ring & SMS) */}
                           <div className="flex items-center gap-2 pt-2 sm:pt-0 border-t sm:border-t-0 border-neutral-100 shrink-0">
                             <a
@@ -1414,7 +1342,6 @@ interface ColleagueContact {
                               <Phone size={15} />
                               <span>Ring</span>
                             </a>
-
                             <a
                               href={'sms:' + contact.phone.replace(/\s+/g, '')}
                               className="flex-1 sm:flex-none flex items-center justify-center gap-1.5 px-3.5 py-2.5 rounded-xl bg-blue-600 hover:bg-blue-700 active:scale-95 text-white font-bold text-xs shadow-sm transition-all"
@@ -1423,7 +1350,6 @@ interface ColleagueContact {
                               <MessageSquare size={15} />
                               <span>SMS</span>
                             </a>
-
                             {contact.email && (
                               <a
                                 href={'mailto:' + contact.email}
@@ -1439,7 +1365,6 @@ interface ColleagueContact {
                     )}
                   </div>
                 )}
-
                 {/* Hurtigknapp for å gå tilbake */}
                 <div className="pt-4">
                   <button
@@ -1451,7 +1376,6 @@ interface ColleagueContact {
                 </div>
               </motion.div>
             )}
-
             {activeScreen === 'laerling' && (
                 <motion.div key="laerling" initial={{ opacity: 0, x: 20 }} animate={{ opacity: 1, x: 0 }} className="flex flex-col h-full bg-white">
                 <div className="p-6 border-b border-neutral-100 flex items-center justify-between">
@@ -1472,7 +1396,6 @@ interface ColleagueContact {
                       Logg dagens arbeid for å dokumentere din kompetanseutvikling.
                     </p>
                   </div>
-
                   <div>
                     <label className="block text-[10px] font-black text-neutral-400 uppercase tracking-widest mb-2">Hva har du gjort i dag?</label>
                     <textarea 
@@ -1480,7 +1403,6 @@ interface ColleagueContact {
                       className="w-full bg-neutral-50 border-none rounded-2xl p-4 text-sm min-h-[120px] focus:ring-2 focus:ring-amber-500/20"
                     />
                   </div>
-
                   <div>
                     <label className="block text-[10px] font-black text-neutral-400 uppercase tracking-widest mb-2">Bildebevis</label>
                     <input 
@@ -1521,7 +1443,6 @@ interface ColleagueContact {
                       </button>
                     )}
                   </div>
-
                   <div>
                     <label className="block text-[10px] font-black text-neutral-400 uppercase tracking-widest mb-2">Kompetansemål</label>
                     <select className="w-full bg-neutral-50 border-none rounded-2xl p-4 text-sm focus:ring-2 focus:ring-amber-500/20">
@@ -1532,7 +1453,6 @@ interface ColleagueContact {
                     </select>
                   </div>
                 </div>
-
                 <div className="p-6 border-t border-neutral-100">
                   <button 
                     onClick={() => setActiveScreen('home')}
@@ -1543,7 +1463,6 @@ interface ColleagueContact {
                 </div>
               </motion.div>
             )}
-
             {activeScreen === 'translator' && (
               <motion.div 
                 key="translator"
@@ -1575,7 +1494,6 @@ interface ColleagueContact {
         </div>
       </div>
     </div>
-
       {/* Checklist Modal */}
       <ChecklistModal 
         isOpen={showChecklistModal} 
@@ -1584,6 +1502,12 @@ interface ColleagueContact {
         initialTrade={userProfile?.trade}
       />
 
+      {/* Deviation Modal */}
+      <CreateDeviationModal
+        isOpen={showDeviationModal}
+        onClose={() => setShowDeviationModal(false)}
+        projects={projects}
+      />
       {/* Trade Selector Modal (First time) */}
       {showTradeSelector && (
         <div className="fixed inset-0 z-50 bg-neutral-900/60 backdrop-blur-sm flex items-center justify-center p-4">
@@ -1617,4 +1541,3 @@ interface ColleagueContact {
     </div>
   );
 }
-
