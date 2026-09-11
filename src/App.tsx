@@ -573,15 +573,6 @@ function AppContent() {
                   Priser
                 </Link>
 
-                {/* Partner 50/50 */}
-                <Link
-                  href="/partner"
-                  className="px-3 py-1.5 rounded-xl text-xs font-bold text-emerald-700 hover:text-emerald-800 bg-emerald-50 hover:bg-emerald-100 border border-emerald-200 transition-all flex items-center gap-1.5"
-                  title="50/50 provisjon for partnere"
-                >
-                  <span className="w-2 h-2 rounded-full bg-emerald-500 animate-pulse" />
-                  <span>Partner 50/50</span>
-                </Link>
 
                 {/* FAQ */}
                 <Link
@@ -747,14 +738,6 @@ function AppContent() {
                   <span>Innstillinger</span>
                 </button>
 
-                <button 
-                  onClick={() => setView('partner')}
-                  className="px-3.5 py-2 rounded-xl text-xs font-bold transition-all flex items-center gap-1.5 cursor-pointer text-slate-600 hover:text-purple-700 hover:bg-purple-50"
-                  title="50/50 Partner Lead-portal"
-                >
-                  <Users size={15} />
-                  <span>Partnerportal</span>
-                </button>
 
                 {user.role === 'admin' && (
                   <button 
@@ -993,14 +976,7 @@ function AppContent() {
                       >
                         Priser & Pakker
                       </Link>
-                      <Link 
-                        href="/partner"
-                        onClick={() => setIsMenuOpen(false)}
-                        className="text-left p-2.5 rounded-xl bg-emerald-50 text-xs font-bold text-emerald-800 hover:bg-emerald-100 border border-emerald-200 flex items-center gap-1.5"
-                      >
-                        <span className="w-1.5 h-1.5 rounded-full bg-emerald-500 animate-pulse" />
-                        <span>Partner 50/50</span>
-                      </Link>
+
                       <Link 
                         href="/faq"
                         onClick={() => setIsMenuOpen(false)}

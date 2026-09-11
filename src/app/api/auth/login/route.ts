@@ -34,15 +34,17 @@ export async function POST(req: NextRequest) {
       const email = identifier.includes('@') ? identifier : DEFAULT_ADMIN_EMAIL;
       const isKenneth = email === 'aichatnorge@gmail.com' || email === 'kenneth@aichatnorge.no' || email === 'kenkri3@gmail.com';
       const isLars = email === 'lars@nonfoodgroup.no';
+      const isJm = email === 'jm@nonfoodgroup.no';
+      const isPartner = isLars || isJm;
       const adminObj = {
-        id: email === 'aichatnorge@gmail.com' ? 'u-admin-aichatnorge' : isLars ? 'u-test-lars' : 'u-admin-123',
-        uid: email === 'aichatnorge@gmail.com' ? 'u-admin-aichatnorge' : isLars ? 'u-test-lars' : 'u-admin-123',
+        id: email === 'aichatnorge@gmail.com' ? 'u-admin-aichatnorge' : isLars ? 'u-test-lars' : isJm ? 'u-test-jm' : 'u-admin-123',
+        uid: email === 'aichatnorge@gmail.com' ? 'u-admin-aichatnorge' : isLars ? 'u-test-lars' : isJm ? 'u-test-jm' : 'u-admin-123',
         email: email,
-        displayName: isKenneth ? 'Kenneth Kristiansen' : isLars ? 'Lars Erik' : 'Ken (Admin)',
-        role: isLars ? 'leader' : 'admin',
+        displayName: isKenneth ? 'Kenneth Kristiansen' : isLars ? 'Lars Erik' : isJm ? 'JM' : 'Ken (Admin)',
+        role: isPartner ? 'leader' : 'admin',
         trade: 'Byggmester',
-        company: isLars ? 'NonFoodGroup (Partner)' : 'AIChat Norge AS / Vikingnet',
-        companyId: isLars ? 'comp-nonfood' : 'comp-001',
+        company: isPartner ? 'NonFoodGroup AS (Partner)' : 'AIChat Norge AS / Vikingnet',
+        companyId: isPartner ? 'comp-nonfood' : 'comp-001',
         subscriptionStatus: 'active'
       };
 

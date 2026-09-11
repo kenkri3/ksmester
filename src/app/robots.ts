@@ -15,17 +15,19 @@ export default function robots(): MetadataRoute.Robots {
           '/innlogget/',
           '/_next/',
           '/private/',
+          '/partner',
+          '/partner/',
         ],
       },
       {
         userAgent: 'Googlebot',
         allow: '/',
-        disallow: ['/api/', '/admin/', '/dashboard/'],
+        disallow: ['/api/', '/admin/', '/dashboard/', '/partner', '/partner/'],
       },
       {
         userAgent: 'Bingbot',
         allow: '/',
-        disallow: ['/api/', '/admin/', '/dashboard/'],
+        disallow: ['/api/', '/admin/', '/dashboard/', '/partner', '/partner/'],
       },
       // AI Crawlers & Answer Engines (AEO)
       {
@@ -40,7 +42,7 @@ export default function robots(): MetadataRoute.Robots {
           'cohere-ai',
         ],
         allow: '/',
-        disallow: ['/api/', '/admin/', '/dashboard/'],
+        disallow: ['/api/', '/admin/', '/dashboard/', '/partner', '/partner/'],
       },
     ],
     sitemap: `${baseUrl}/sitemap.xml`,

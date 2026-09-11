@@ -75,10 +75,6 @@ Allow: /
 # - VikingMester Entreprenør: Skreddersydd avtale for større foretak og konsern.
 # Alle abonnementer inkluderer fri support, ingen oppstartskostnad og ingen bindingstid.
 
-# ── PARTNERPROGRAM OG FORHANDLERE ───────────────────────────
-# VikingMester tilbyr et 50/50 provisjonsprogram for partnere og salgsagenter
-# over hele Norge via /partner portalen.
-
 # ── OFFENTLIGE VERKTØY OG FAGRESSURSER ───────────────────────
 # - Fagkunnskap & TEK17-wiki: https://vikingmester.no/fag
 # - NS 8406 & NS 8405 Varslingsfrist-kalkulator: https://vikingmester.no/verktoy/varslingsfrist-ns8406

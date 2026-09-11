@@ -3,6 +3,12 @@ import bcrypt from 'bcrypt';
 import { getCollectionItems, saveCollectionItem } from '@/src/lib/server/db';
 import { signToken } from '@/src/lib/server/auth';
 
+// 🔒 SIKKERHETSSPERRE: Kun autoriserte adresser fra samarbeidspartner NonFoodGroup AS har adgang til å registrere seg
+const ALLOWED_PARTNER_EMAILS = [
+  'jm@nonfoodgroup.no',
+  'lars@nonfoodgroup.no'
+];
+
 export async function POST(req: NextRequest) {
   try {
     const body = await req.json();
@@ -10,10 +16,16 @@ export async function POST(req: NextRequest) {
     const email = (body.email || '').toLowerCase().trim();
     const password = (body.password || '').trim();
     const phone = (body.phone || '').trim();
-    const firm = (body.firm || '50% Partner (VikingMester)').trim();
+    const firm = 'NonFoodGroup AS';
 
     if (!name || !email || !password) {
       return NextResponse.json({ error: 'Navn, e-post og passord er påkrevd.' }, { status: 400 });
+    }
+
+    if (!ALLOWED_PARTNER_EMAILS.includes(email)) {
+      return NextResponse.json({ 
+        error: 'Registrering i partnerportalen er strengt forbeholdt NonFoodGroup AS (kun jm@nonfoodgroup.no og lars@nonfoodgroup.no).' 
+      }, { status: 403 });
     }
 
     if (password.length < 6) {
@@ -45,7 +57,7 @@ export async function POST(req: NextRequest) {
       id: sellerRecord.id,
       email: sellerRecord.email,
       role: 'partner_seller',
-      companyId: 'partner-5050'
+      companyId: 'comp-nonfood'
     });
 
     const safeSeller = {
@@ -59,7 +71,7 @@ export async function POST(req: NextRequest) {
 
     return NextResponse.json({
       success: true,
-      message: `Velkommen som selger for VikingMester, ${name}!`,
+      message: `Velkommen som partner for VikingMester, ${name} (NonFoodGroup AS)!`,
       token,
       seller: safeSeller
     });

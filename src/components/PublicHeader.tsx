@@ -77,10 +77,7 @@ export function PublicHeader() {
           <Link href="/priser" className="hover:text-electric-600 transition-colors">
             Priser
           </Link>
-          <Link href="/partner" className="hover:text-electric-600 transition-colors flex items-center gap-1 text-emerald-700 font-bold">
-            <span className="w-2 h-2 rounded-full bg-emerald-500 animate-pulse"></span>
-            Partner 50/50
-          </Link>
+
           <Link href="/faq" className="hover:text-electric-600 transition-colors">
             FAQ
           </Link>
@@ -174,13 +171,7 @@ export function PublicHeader() {
             >
               Priser
             </Link>
-            <Link
-              href="/partner"
-              onClick={() => setMobileMenuOpen(false)}
-              className="block text-sm font-bold text-emerald-700 py-1"
-            >
-              Bli partner (50/50 provisjon)
-            </Link>
+
             <Link
               href="/faq"
               onClick={() => setMobileMenuOpen(false)}

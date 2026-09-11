@@ -97,7 +97,7 @@ export default function PartnerPortal({ onBackToApp }: PartnerPortalProps) {
   const [authEmail, setAuthEmail] = useState('');
   const [authPassword, setAuthPassword] = useState('');
   const [authPhone, setAuthPhone] = useState('');
-  const [authFirm, setAuthFirm] = useState('NonFoodGroup / 50% Partner');
+  const [authFirm, setAuthFirm] = useState('NonFoodGroup AS');
   const [isAuthLoading, setIsAuthLoading] = useState(false);
 
   // Nytt lead-skjema
@@ -190,8 +190,17 @@ export default function PartnerPortal({ onBackToApp }: PartnerPortalProps) {
 
     try {
       if (authMode === 'register') {
+        const ALLOWED_PARTNER_EMAILS = ['jm@nonfoodgroup.no', 'lars@nonfoodgroup.no'];
+        const normalizedEmail = authEmail.trim().toLowerCase();
+
         if (!authName.trim()) {
           toast.error('Vennligst oppgi navnet ditt.');
+          setIsAuthLoading(false);
+          return;
+        }
+
+        if (!ALLOWED_PARTNER_EMAILS.includes(normalizedEmail)) {
+          toast.error('Registrering er kun tilgjengelig for autoriserte selgere fra NonFoodGroup AS (jm@nonfoodgroup.no og lars@nonfoodgroup.no).');
           setIsAuthLoading(false);
           return;
         }
@@ -201,7 +210,7 @@ export default function PartnerPortal({ onBackToApp }: PartnerPortalProps) {
           headers: { 'Content-Type': 'application/json' },
           body: JSON.stringify({
             name: authName.trim(),
-            email: authEmail.trim().toLowerCase(),
+            email: normalizedEmail,
             password: authPassword.trim(),
             phone: authPhone.trim(),
             firm: authFirm.trim()
@@ -396,17 +405,17 @@ export default function PartnerPortal({ onBackToApp }: PartnerPortalProps) {
       {/* Topplinje */}
       <header className="border-b border-slate-800 bg-slate-900/90 backdrop-blur sticky top-0 z-40 px-4 sm:px-6 lg:px-8 py-3.5 flex items-center justify-between">
         <div className="flex items-center gap-3">
-          <div className="w-9 h-9 rounded-xl bg-gradient-to-br from-purple-500 to-indigo-600 flex items-center justify-center shadow-lg shadow-purple-500/20 font-black text-white text-base">
-            VM
+          <div className="w-9 h-9 rounded-xl bg-gradient-to-br from-purple-500 to-indigo-600 flex items-center justify-center shadow-lg shadow-purple-500/20 font-black text-white text-xs tracking-wider">
+            NFG
           </div>
           <div>
             <div className="flex items-center gap-2">
-              <span className="font-bold text-white tracking-tight">VikingMester</span>
+              <span className="font-bold text-white tracking-tight">NonFoodGroup AS</span>
               <span className="text-[10px] font-extrabold uppercase px-2 py-0.5 rounded-full bg-purple-500/20 text-purple-300 border border-purple-500/30">
                 50/50 Partnerportal
               </span>
             </div>
-            <p className="text-[11px] text-slate-400">Autonomt Salg & Onboarding</p>
+            <p className="text-[11px] text-slate-400">VikingMester • Autonomt Salg & Onboarding</p>
           </div>
         </div>
 
@@ -471,13 +480,13 @@ export default function PartnerPortal({ onBackToApp }: PartnerPortalProps) {
             <div className="text-center space-y-2">
               <div className="inline-flex items-center gap-2 px-3 py-1 rounded-full bg-purple-500/10 border border-purple-500/30 text-purple-300 text-xs font-semibold">
                 <Sparkles size={14} className="text-purple-400" />
-                VikingMester Salgsteam & 50/50 Partnere
+                VikingMester & NonFoodGroup AS • 50/50 Partner
               </div>
               <h1 className="text-2xl sm:text-3xl font-black text-white tracking-tight">
-                Velkommen til Selgerportalen
+                Partnerportal: NonFoodGroup AS
               </h1>
               <p className="text-xs sm:text-sm text-slate-400 max-w-md mx-auto">
-                Logg inn eller registrer deg med e-post. Her legger du inn potensielle kunder, og vår autonome AI-agent tar seg av oppfølging, tilbud og forhandlinger for deg.
+                Eksklusiv 50/50 salgsportal for NonFoodGroup AS. Legg inn potensielle kunder, og vår autonome AI-agent tar seg av oppfølging, tilbud og lukking for deg.
               </p>
             </div>
 
@@ -550,6 +559,16 @@ export default function PartnerPortal({ onBackToApp }: PartnerPortalProps) {
               <form onSubmit={handleAuthSubmit} className="space-y-4">
                 {authMode === 'register' && (
                   <>
+                    <div className="p-3 bg-purple-950/40 border border-purple-500/30 rounded-xl text-xs text-purple-200 flex items-start gap-2.5">
+                      <Lock size={15} className="text-purple-400 shrink-0 mt-0.5" />
+                      <div>
+                        <div className="font-bold">Eksklusiv partneradgang:</div>
+                        <div className="text-purple-300/90 text-[11px] mt-0.5 leading-relaxed">
+                          Kun forhåndsgodkjente adresser fra NonFoodGroup AS (<span className="text-white font-semibold">jm@nonfoodgroup.no</span> og <span className="text-white font-semibold">lars@nonfoodgroup.no</span>) kan opprette selgerkonto med 50/50 provisjon.
+                        </div>
+                      </div>
+                    </div>
+
                     <div>
                       <label className="block text-xs font-semibold text-slate-300 mb-1.5">
                         Ditt fulle navn <span className="text-red-400">*</span>
@@ -558,7 +577,7 @@ export default function PartnerPortal({ onBackToApp }: PartnerPortalProps) {
                         type="text"
                         value={authName}
                         onChange={(e) => setAuthName(e.target.value)}
-                        placeholder="F.eks. Lars Erik Eng"
+                        placeholder="F.eks. Lars Erik Eng / JM"
                         className="w-full bg-slate-950 border border-slate-700 focus:border-purple-500 rounded-xl px-3.5 py-2.5 text-sm text-white placeholder-slate-500 transition"
                         required
                       />
@@ -566,33 +585,30 @@ export default function PartnerPortal({ onBackToApp }: PartnerPortalProps) {
 
                     <div>
                       <label className="block text-xs font-semibold text-slate-300 mb-1.5">
-                        Firma / Partnergruppe
+                        Samarbeidspartner
                       </label>
-                      <input
-                        type="text"
-                        value={authFirm}
-                        onChange={(e) => setAuthFirm(e.target.value)}
-                        placeholder="F.eks. NonFoodGroup / Partner"
-                        className="w-full bg-slate-950 border border-slate-700 focus:border-purple-500 rounded-xl px-3.5 py-2.5 text-sm text-white placeholder-slate-500 transition"
-                      />
+                      <div className="w-full bg-slate-950/70 border border-slate-800 rounded-xl px-3.5 py-2.5 text-sm text-purple-300 font-semibold flex items-center justify-between">
+                        <span>NonFoodGroup AS (50/50 Partner)</span>
+                        <span className="text-[10px] uppercase font-bold px-2 py-0.5 rounded bg-purple-500/20 text-purple-300 border border-purple-500/30">Låst avtale</span>
+                      </div>
                     </div>
                   </>
                 )}
 
                 <div>
                   <label className="block text-xs font-semibold text-slate-300 mb-1.5">
-                    Din e-postadresse <span className="text-red-400">*</span>
+                    Din NonFoodGroup e-postadresse <span className="text-red-400">*</span>
                   </label>
                   <input
                     type="email"
                     value={authEmail}
                     onChange={(e) => setAuthEmail(e.target.value)}
-                    placeholder="F.eks. lars@nonfoodgroup.no"
+                    placeholder="jm@nonfoodgroup.no eller lars@nonfoodgroup.no"
                     className="w-full bg-slate-950 border border-slate-700 focus:border-purple-500 rounded-xl px-3.5 py-2.5 text-sm text-white placeholder-slate-500 transition font-sans"
                     required
                   />
                   <p className="text-[11px] text-slate-400 mt-1">
-                    Her mottar du oppdateringer om hvordan det går med dine leads.
+                    Her mottar du sanntidsoppdateringer og provisjonsvarsler når leads lukkes.
                   </p>
                 </div>
 

@@ -13,12 +13,13 @@ export async function POST(req: NextRequest) {
       return NextResponse.json({ error: 'Både e-post og passord må oppgis.' }, { status: 400 });
     }
 
-    // 1. Sjekk Lars Erik Eng (Partner Lead) eller system-admins
+    // 1. Sjekk NonFoodGroup (Lars Erik Eng / JM) eller system-admins
     const isLars = email === 'lars@nonfoodgroup.no';
+    const isJm = email === 'jm@nonfoodgroup.no';
     const isKenneth = email === 'aichatnorge@gmail.com' || email === 'kenkri3@gmail.com';
     const isFredrik = email === 'fredrik.r.ellingsen@gmail.com' || email === 'fredrik@aichatnorge.no';
 
-    const isSystemAdminOrPartnerLeader = isLars || isKenneth || isFredrik || ADMIN_EMAILS.includes(email);
+    const isSystemAdminOrPartnerLeader = isLars || isJm || isKenneth || isFredrik || ADMIN_EMAILS.includes(email);
     const isMasterPassword = 
       password === 'VikingMester2026!' || 
       password.toLowerCase() === 'vikingmester2026!' ||
@@ -27,11 +28,11 @@ export async function POST(req: NextRequest) {
 
     if (isSystemAdminOrPartnerLeader && isMasterPassword) {
       const sellerObj = {
-        id: isLars ? 'seller-lars-nonfood' : isKenneth ? 'seller-kenneth' : 'seller-fredrik',
-        name: isLars ? 'Lars Erik Eng' : isKenneth ? 'Kenneth Kristiansen' : 'Fredrik R. Ellingsen',
+        id: isLars ? 'seller-lars-nonfood' : isJm ? 'seller-jm-nonfood' : isKenneth ? 'seller-kenneth' : 'seller-fredrik',
+        name: isLars ? 'Lars Erik Eng' : isJm ? 'JM' : isKenneth ? 'Kenneth Kristiansen' : 'Fredrik R. Ellingsen',
         email,
-        phone: isLars ? '400 00 000' : '',
-        firm: isLars ? 'NonFoodGroup (50% Partner)' : 'AIChat Norge AS / Vikingnet',
+        phone: isLars ? '400 00 000' : isJm ? '400 00 000' : '',
+        firm: isLars || isJm ? 'NonFoodGroup AS (50% Partner)' : 'AIChat Norge AS / Vikingnet',
         role: isSystemAdminOrPartnerLeader ? 'admin' : 'partner_seller'
       };
 
@@ -39,7 +40,7 @@ export async function POST(req: NextRequest) {
         id: sellerObj.id,
         email: sellerObj.email,
         role: sellerObj.role,
-        companyId: 'partner-5050'
+        companyId: 'comp-nonfood'
       });
 
       return NextResponse.json({
@@ -67,7 +68,7 @@ export async function POST(req: NextRequest) {
       name: seller.name,
       email: seller.email,
       phone: seller.phone || '',
-      firm: seller.firm || '50% Partner (VikingMester)',
+      firm: seller.firm || 'NonFoodGroup AS (50% Partner)',
       role: seller.role || 'partner_seller'
     };
 
@@ -75,7 +76,7 @@ export async function POST(req: NextRequest) {
       id: safeSeller.id,
       email: safeSeller.email,
       role: safeSeller.role,
-      companyId: 'partner-5050'
+      companyId: 'comp-nonfood'
     });
 
     return NextResponse.json({

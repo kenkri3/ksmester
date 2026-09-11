@@ -1,4 +1,4 @@
-﻿import { MetadataRoute } from 'next';
+import { MetadataRoute } from 'next';
 import { TRADES_SEO_DATA } from '@/src/constants/tradesSeoData';
 import { getAllSeoArticles } from '@/src/lib/server/autonomousSeoEngine';
 
@@ -73,12 +73,7 @@ export default async function sitemap(): Promise<MetadataRoute.Sitemap> {
       changeFrequency: 'monthly',
       priority: 0.8,
     },
-    {
-      url: `${baseUrl}/partner`,
-      lastModified: now,
-      changeFrequency: 'weekly',
-      priority: 0.8,
-    },
+
     {
       url: `${baseUrl}/fag`,
       lastModified: now,

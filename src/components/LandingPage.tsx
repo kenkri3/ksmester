@@ -878,10 +878,7 @@ function TacticalHomeView({ onStartDemo, onGoToPricing, onViewChange }: { onStar
             <Link href="/priser" className="px-4 py-2 bg-white hover:bg-slate-100 text-slate-800 rounded-full border border-slate-200 transition-colors">
               Priser & Rammer
             </Link>
-            <Link href="/partner" className="px-4 py-2 bg-emerald-50 hover:bg-emerald-100 text-emerald-800 rounded-full border border-emerald-200 transition-colors flex items-center gap-1.5">
-              <span className="w-2 h-2 rounded-full bg-emerald-500 animate-pulse" />
-              Bli Partner (50/50 provisjon)
-            </Link>
+
             <Link href="/faq" className="px-4 py-2 bg-white hover:bg-slate-100 text-slate-800 rounded-full border border-slate-200 transition-colors">
               Ofte stilte spørsmål (FAQ)
             </Link>

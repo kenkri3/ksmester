@@ -80,11 +80,7 @@ export function PublicFooter() {
                   Priser & Pakker
                 </Link>
               </li>
-              <li>
-                <Link href="/partner" className="text-emerald-400 font-semibold hover:text-emerald-300 transition-colors">
-                  Bli Partner (50/50 provisjon)
-                </Link>
-              </li>
+
               <li>
                 <Link href="/faq" className="hover:text-white transition-colors">
                   Ofte stilte spørsmål (FAQ)

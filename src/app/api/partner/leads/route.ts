@@ -204,7 +204,7 @@ export async function POST(req: NextRequest) {
       sellerName,
       sellerEmail: sellerEmail || null,
       partnerRep: sellerName,
-      partnerFirm: '50/50 Partner (VikingMester)',
+      partnerFirm: 'NonFoodGroup AS (50% Partner)',
       name: contactName,
       company: companyName,
       orgnr: orgNumber,
