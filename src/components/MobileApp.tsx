@@ -1453,11 +1453,7 @@ interface ColleagueContact {
             )}
 
             {activeScreen === 'laerling' && (
-              <motion.div 
-                initial={{ opacity: 0, x: 20 }}
-                animate={{ opacity: 1, x: 0 }}
-                className="flex flex-col h-full bg-white"
-              >
+                <motion.div key="laerling" initial={{ opacity: 0, x: 20 }} animate={{ opacity: 1, x: 0 }} className="flex flex-col h-full bg-white">
                 <div className="p-6 border-b border-neutral-100 flex items-center justify-between">
                   <div className="flex items-center gap-3">
                     <div className="w-10 h-10 rounded-xl bg-amber-50 text-amber-600 flex items-center justify-center">
@@ -1621,3 +1617,4 @@ interface ColleagueContact {
     </div>
   );
 }
+

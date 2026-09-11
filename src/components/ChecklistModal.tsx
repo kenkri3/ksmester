@@ -240,13 +240,11 @@ export default function ChecklistModal({ isOpen, onClose, projectId, initialTrad
   const completedItems = currentChecklist?.items.filter(i => i.status === 'passed' || i.status === 'na').length || 0;
   const progress = totalItems > 0 ? (completedItems / totalItems) * 100 : 0;
 
-  if (!isOpen) return null;
-
-
   return (
     <AnimatePresence>
-      <div className="fixed inset-0 z-50 flex items-end sm:items-center justify-center p-0 sm:p-4 bg-black/70 backdrop-blur-sm">
-        <motion.div
+      {isOpen && (
+        <motion.div key="checklist-backdrop" className="fixed inset-0 z-50 flex items-end sm:items-center justify-center p-0 sm:p-4 bg-black/70 backdrop-blur-sm">
+          <motion.div
           initial={{ opacity: 0, scale: 0.98, y: 20 }}
           animate={{ opacity: 1, scale: 1, y: 0 }}
           exit={{ opacity: 0, scale: 0.98, y: 20 }}
@@ -527,15 +525,19 @@ export default function ChecklistModal({ isOpen, onClose, projectId, initialTrad
             )}
           </div>
         </motion.div>
-      </div>
+      </motion.div>
+    )}
 
-      <AIVisionModal 
-        isOpen={isAiVisionOpen}
-        onClose={() => setIsAiVisionOpen(false)}
-        projectId={projectId}
-        checklistItemId={activeChecklistItem?.id}
-        checklistItemName={activeChecklistItem?.name}
-      />
-    </AnimatePresence>
+    <AIVisionModal 
+      isOpen={isAiVisionOpen}
+      onClose={() => setIsAiVisionOpen(false)}
+      projectId={projectId}
+      checklistItemId={activeChecklistItem?.id}
+      checklistItemName={activeChecklistItem?.name}
+    />
+  </AnimatePresence>
   );
 }
+
+
+

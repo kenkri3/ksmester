@@ -29,6 +29,13 @@ export const changeOrderService = {
    */
   async getChangeOrderByToken(token: string): Promise<ChangeOrder | null> {
     try {
+      const res = await fetch(`/api/data/change_orders?token=${encodeURIComponent(token)}`);
+      if (res.ok) {
+        const data = await res.json();
+        if (Array.isArray(data) && data.length > 0) {
+          return data[0];
+        }
+      }
       const items = await api.getDocs<ChangeOrder>('change_orders');
       return items.find(item => item.token === token) || null;
     } catch (e) {

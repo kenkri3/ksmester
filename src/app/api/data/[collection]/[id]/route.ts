@@ -62,12 +62,51 @@ export async function PUT(
     const body = await req.json();
     const user = getUserFromRequest(req);
 
-    if (!user) {
-      return NextResponse.json({ error: 'Uautorisert' }, { status: 401 });
-    }
+    const url = new URL(req.url);
+    const queryToken = url.searchParams.get('token');
+    const headerToken = req.headers.get('x-token');
+    const providedToken = queryToken || headerToken || body.token;
 
     // ⚡ Direct indexed lookup
     const existing = await getCollectionItemById(collection, id);
+
+    // 1. Handle secure public token approvals (e.g. client signing change order or contract via link)
+    if (!user) {
+      const allowedPublicCollections = ['change_orders', 'contracts', 'offers'];
+      if (!allowedPublicCollections.includes(collection) || !existing || !providedToken) {
+        return NextResponse.json({ error: 'Uautorisert' }, { status: 401 });
+      }
+
+      if (existing.token !== providedToken && existing.portalToken !== providedToken) {
+        return NextResponse.json({ error: 'Ugyldig sikkerhetstoken' }, { status: 403 });
+      }
+
+      // Safe whitelisted customer fields for token signing
+      const safePublicUpdate: any = {
+        updatedAt: new Date().toISOString()
+      };
+
+      if (collection === 'change_orders') {
+        if (body.status) safePublicUpdate.status = body.status;
+        if (body.clientSignatureUrl) safePublicUpdate.clientSignatureUrl = body.clientSignatureUrl;
+        if (body.signedByClientAt) safePublicUpdate.signedByClientAt = body.signedByClientAt;
+        if (body.clientName) safePublicUpdate.clientName = body.clientName;
+        if (body.rejectionReason) safePublicUpdate.rejectionReason = body.rejectionReason;
+      } else if (collection === 'contracts') {
+        if (body.status) safePublicUpdate.status = body.status;
+        if (body.signedAt) safePublicUpdate.signedAt = body.signedAt;
+        if (body.signatureData) safePublicUpdate.signatureData = body.signatureData;
+        if (body.signerName) safePublicUpdate.signerName = body.signerName;
+        if (body.signerIp) safePublicUpdate.signerIp = body.signerIp;
+      } else if (collection === 'offers') {
+        if (body.status) safePublicUpdate.status = body.status;
+        if (body.acceptedAt) safePublicUpdate.acceptedAt = body.acceptedAt;
+        if (body.contractId) safePublicUpdate.contractId = body.contractId;
+      }
+
+      const updated = await updateCollectionItem(collection, id, safePublicUpdate);
+      return NextResponse.json(updated);
+    }
 
     // Upsert: If item doesn't exist, create it for this tenant
     if (!existing) {

@@ -314,7 +314,7 @@ Tolk dette og returner KUN gyldig JSON i følgende format (uten markdown-formate
   return (
     <AnimatePresence>
       {isOpen && (
-        <div className="fixed inset-0 z-[70] flex items-end sm:items-center justify-center p-0 sm:p-4">
+        <motion.div key="create-project-backdrop" className="fixed inset-0 z-[70] flex items-end sm:items-center justify-center p-0 sm:p-4">
           <motion.div 
             initial={{ opacity: 0 }}
             animate={{ opacity: 1 }}
@@ -680,8 +680,9 @@ Tolk dette og returner KUN gyldig JSON i følgende format (uten markdown-formate
             </div>
 
           </motion.div>
-        </div>
+        </motion.div>
       )}
     </AnimatePresence>
   );
 }
+

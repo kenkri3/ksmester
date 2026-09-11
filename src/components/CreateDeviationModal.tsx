@@ -196,7 +196,7 @@ export default function CreateDeviationModal({ isOpen, onClose, projects }: Crea
   return (
     <AnimatePresence>
       {isOpen && (
-        <div className="fixed inset-0 z-50 flex items-end sm:items-center justify-center p-0 sm:p-4 bg-black/60 backdrop-blur-sm">
+        <motion.div key="create-deviation-backdrop" className="fixed inset-0 z-50 flex items-end sm:items-center justify-center p-0 sm:p-4 bg-black/60 backdrop-blur-sm">
           <motion.div
             initial={{ opacity: 0, scale: 0.98, y: 20 }}
             animate={{ opacity: 1, scale: 1, y: 0 }}
@@ -438,8 +438,8 @@ export default function CreateDeviationModal({ isOpen, onClose, projects }: Crea
               </div>
             </div>
         </motion.div>
-      </div>
-    )}
-  </AnimatePresence>
+        </motion.div>
+      )}
+    </AnimatePresence>
   );
 }

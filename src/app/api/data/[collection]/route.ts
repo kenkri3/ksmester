@@ -13,9 +13,9 @@ export async function GET(
     const token = url.searchParams.get('token');
     const portalToken = url.searchParams.get('portalToken');
 
-    // 1. Handle secure public token lookups (e.g. for customer portal or signed offer view)
+    // 1. Handle secure public token lookups (e.g. for customer portal, change order approval or signed offer view)
     if (!user) {
-      if (token && (collection === 'offers' || collection === 'invites' || collection === 'contracts')) {
+      if (token && (collection === 'offers' || collection === 'invites' || collection === 'contracts' || collection === 'change_orders')) {
         const items = await getCollectionItems(collection);
         const match = items.find((i: any) => i.token === token);
         if (match) {
@@ -24,9 +24,9 @@ export async function GET(
         return NextResponse.json({ error: 'Ugyldig eller utløpt token' }, { status: 404 });
       }
 
-      if (portalToken && collection === 'projects') {
+      if ((portalToken || token) && collection === 'projects') {
         const items = await getCollectionItems(collection);
-        const match = items.find((p: any) => p.portalToken === portalToken);
+        const match = items.find((p: any) => p.portalToken === portalToken || p.portalToken === token || p.token === token);
         if (match) {
           return NextResponse.json([match]);
         }
