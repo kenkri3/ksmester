@@ -25,3 +25,6 @@
 ## 2024-05-18 - [Use Debounce hook]
 **Learning:** React inputs that trigger an async function on change can cause performance issues if not debounced.
 **Action:** When working with async search functions, use a `useDebounce` hook to ensure the function is only executed after a short delay.
+## 2024-05-19 - Removed redundant `toLowerCase()` calls in array filtering
+**Learning:** Found multiple instances where `.toLowerCase()` was called on the search string on every iteration of a `.filter()` array method. This means `toLowerCase()` was repeatedly executed O(N) times during every filter run, leading to unnecessary CPU cycles.
+**Action:** Always compute string mutations (like `toLowerCase()`) for search variables once outside the `filter()` loop, rather than on every array iteration, especially in large components rendering lists.

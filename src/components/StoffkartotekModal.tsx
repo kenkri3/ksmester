@@ -1,4 +1,4 @@
-import React, { useState, useEffect } from 'react';
+import React, { useState, useEffect, useMemo } from 'react';
 import { motion, AnimatePresence } from 'motion/react';
 import { 
   X, 
@@ -18,6 +18,7 @@ import { Project, SafetyDataSheet } from '../types';
 import { stoffkartotekService } from '../services/stoffkartotekService';
 import { pdfService } from '../services/pdfService';
 import { toast } from 'sonner';
+import { useDebounce } from '../hooks/useDebounce';
 
 interface StoffkartotekModalProps {
   isOpen: boolean;
@@ -33,6 +34,7 @@ export default function StoffkartotekModal({
   const [sheets, setSheets] = useState<SafetyDataSheet[]>([]);
   const [loading, setLoading] = useState(true);
   const [searchQuery, setSearchQuery] = useState('');
+  const debouncedSearchQuery = useDebounce(searchQuery, 300);
   const [selectedSheet, setSelectedSheet] = useState<SafetyDataSheet | null>(null);
 
   useEffect(() => {
@@ -56,11 +58,15 @@ export default function StoffkartotekModal({
     }
   };
 
-  const filteredSheets = sheets.filter(s =>
-    s.productName.toLowerCase().includes(searchQuery.toLowerCase()) ||
-    s.usageArea.toLowerCase().includes(searchQuery.toLowerCase()) ||
-    s.manufacturer.toLowerCase().includes(searchQuery.toLowerCase())
-  );
+  // ⚡ Bolt: Memoize filtered sheets and debounce search query to prevent expensive O(N) recalculations on every keystroke
+  const filteredSheets = useMemo(() => {
+    const query = debouncedSearchQuery.toLowerCase();
+    return sheets.filter(s =>
+      s.productName.toLowerCase().includes(query) ||
+      s.usageArea.toLowerCase().includes(query) ||
+      s.manufacturer.toLowerCase().includes(query)
+    );
+  }, [sheets, debouncedSearchQuery]);
 
   if (!isOpen) return null;
 
