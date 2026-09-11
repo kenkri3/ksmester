@@ -1,10 +1,12 @@
-import { MetadataRoute } from 'next';
+﻿import { MetadataRoute } from 'next';
+import { TRADES_SEO_DATA } from '@/src/constants/tradesSeoData';
+import { getAllSeoArticles } from '@/src/lib/server/autonomousSeoEngine';
 
-export default function sitemap(): MetadataRoute.Sitemap {
+export default async function sitemap(): Promise<MetadataRoute.Sitemap> {
   const baseUrl = process.env.NEXT_PUBLIC_APP_URL || 'https://vikingmester.no';
   const now = new Date();
 
-  return [
+  const coreRoutes: MetadataRoute.Sitemap = [
     {
       url: baseUrl,
       lastModified: now,
@@ -77,5 +79,54 @@ export default function sitemap(): MetadataRoute.Sitemap {
       changeFrequency: 'weekly',
       priority: 0.8,
     },
+    {
+      url: `${baseUrl}/fag`,
+      lastModified: now,
+      changeFrequency: 'daily',
+      priority: 0.9,
+    },
+    // Gratis verktøy
+    {
+      url: `${baseUrl}/verktoy/varslingsfrist-ns8406`,
+      lastModified: now,
+      changeFrequency: 'weekly',
+      priority: 0.85,
+    },
+    {
+      url: `${baseUrl}/verktoy/fall-kalkulator-tek17`,
+      lastModified: now,
+      changeFrequency: 'weekly',
+      priority: 0.85,
+    },
+    {
+      url: `${baseUrl}/verktoy/sja-generator`,
+      lastModified: now,
+      changeFrequency: 'weekly',
+      priority: 0.85,
+    },
   ];
+
+  // Programmatiske bransjesider
+  const tradeRoutes: MetadataRoute.Sitemap = Object.keys(TRADES_SEO_DATA).map((trade) => ({
+    url: `${baseUrl}/for/${trade}`,
+    lastModified: now,
+    changeFrequency: 'weekly',
+    priority: 0.85,
+  }));
+
+  // Dynamiske fagartikler (seeded + AI generert)
+  let articleRoutes: MetadataRoute.Sitemap = [];
+  try {
+    const articles = await getAllSeoArticles();
+    articleRoutes = articles.map((art) => ({
+      url: `${baseUrl}/fag/${art.slug}`,
+      lastModified: new Date(art.updatedAt || art.createdAt),
+      changeFrequency: 'monthly',
+      priority: 0.8,
+    }));
+  } catch (err) {
+    console.warn('Sitemap article loading warning:', err);
+  }
+
+  return [...coreRoutes, ...tradeRoutes, ...articleRoutes];
 }
