@@ -2,18 +2,28 @@ import { NextRequest, NextResponse } from 'next/server';
 import { getCollectionItems, saveCollectionItem } from '@/src/lib/server/db';
 import { getUserFromRequest } from '@/src/lib/server/auth';
 
+const ALLOWED_COLLECTIONS = [
+  'users', 'projects', 'deviations', 'sja_reports',
+  'offers', 'invites', 'contracts', 'change_orders'
+];
+
 export async function GET(
   req: NextRequest,
   { params }: { params: Promise<{ collection: string }> }
 ) {
   try {
     const { collection } = await params;
+
+    if (!ALLOWED_COLLECTIONS.includes(collection)) {
+      return NextResponse.json({ error: 'Ugyldig samling' }, { status: 400 });
+    }
+
     const user = getUserFromRequest(req);
     const url = new URL(req.url);
     const token = url.searchParams.get('token');
     const portalToken = url.searchParams.get('portalToken');
 
-    // 1. Handle secure public token lookups (e.g. for customer portal, change order approval or signed offer view)
+    // 1. Handle secure public token lookups
     if (!user) {
       if (token && (collection === 'offers' || collection === 'invites' || collection === 'contracts' || collection === 'change_orders')) {
         const items = await getCollectionItems(collection);
@@ -48,7 +58,7 @@ export async function GET(
       );
     }
 
-    // 3. Strip sensitive internal fields (passwords, audit hashes) from users collection
+    // 3. Strip sensitive internal fields from users collection
     if (collection === 'users') {
       items = items.map((u: any) => {
         const { password, ...safeUser } = u;
@@ -69,6 +79,13 @@ export async function POST(
 ) {
   try {
     const { collection } = await params;
+
+    // Also allow leads and contact_messages strictly for public POST
+    const EXTENDED_ALLOWED_COLLECTIONS = [...ALLOWED_COLLECTIONS, 'leads', 'contact_messages'];
+    if (!EXTENDED_ALLOWED_COLLECTIONS.includes(collection)) {
+       return NextResponse.json({ error: 'Ugyldig samling' }, { status: 400 });
+    }
+
     const body = await req.json();
     const user = getUserFromRequest(req);
 

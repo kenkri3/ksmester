@@ -79,31 +79,31 @@ export async function POST(req: NextRequest) {
 
     if (geminiKey) {
       const ai = new GoogleGenAI({ apiKey: geminiKey });
-      const aiResponse = await ai.models.generateContent({
-        model: 'gemini-3.8-flash',
-        contents: `Ekstraher produktinformasjon for en norsk byggevare fra denne nettsideteksten:
-Tittel: ${ogTitle}
-Beskrivelse: ${ogDesc}
-Innhold: ${cleanText}`,
-        config: {
-          systemInstruction: 'Du er en ekspert på byggevarer og FDV-dokumentasjon i Norge. Ekstraher produktinformasjon og returner som JSON.',
-          responseMimeType: 'application/json',
-          responseSchema: {
-            type: 'OBJECT',
-            properties: {
-              nobbNumber: { type: 'STRING' },
-              name: { type: 'STRING' },
-              description: { type: 'STRING' },
-              gtin: { type: 'STRING' },
-              supplier: { type: 'STRING' },
-              category: { type: 'STRING' },
-              fdvUrl: { type: 'STRING' },
-              imageUrl: { type: 'STRING' }
-            },
-            required: ['name']
+      const aiResponse = await Promise.race([
+        ai.models.generateContent({
+          model: 'gemini-3.8-flash',
+          contents: `Ekstraher produktinformasjon for en norsk byggevare fra denne nettsideteksten:\nTittel: ${ogTitle}\nBeskrivelse: ${ogDesc}\nInnhold: ${cleanText}`,
+          config: {
+            systemInstruction: 'Du er en ekspert på byggevarer og FDV-dokumentasjon i Norge. Ekstraher produktinformasjon og returner som JSON.',
+            responseMimeType: 'application/json',
+            responseSchema: {
+              type: 'OBJECT',
+              properties: {
+                nobbNumber: { type: 'STRING' },
+                name: { type: 'STRING' },
+                description: { type: 'STRING' },
+                gtin: { type: 'STRING' },
+                supplier: { type: 'STRING' },
+                category: { type: 'STRING' },
+                fdvUrl: { type: 'STRING' },
+                imageUrl: { type: 'STRING' }
+              },
+              required: ['name']
+            }
           }
-        }
-      });
+        }),
+        new Promise((_, reject) => setTimeout(() => reject(new Error('AI Request timed out')), 10000))
+      ]) as any;
 
       const parsed = JSON.parse(aiResponse.text || '{}');
       if (!parsed.imageUrl && ogImage) parsed.imageUrl = ogImage;

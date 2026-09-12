@@ -1,6 +1,6 @@
 import { NextRequest, NextResponse } from 'next/server';
 import bcrypt from 'bcrypt';
-import { dbQuery, inMemoryStore, DEFAULT_ADMIN_EMAIL, DEFAULT_ADMIN_PASSWORD, DEFAULT_ADMIN_HASH, ADMIN_EMAILS, INITIAL_ADMIN_PASSWORD, INITIAL_ADMIN_HASH } from '@/src/lib/server/db';
+import { dbQuery, inMemoryStore, ADMIN_EMAILS } from '@/src/lib/server/db';
 import { signToken } from '@/src/lib/server/auth';
 
 export async function POST(req: NextRequest) {
@@ -13,52 +13,7 @@ export async function POST(req: NextRequest) {
       return NextResponse.json({ error: 'Både e-post/brukernavn og passord må fylles ut.' }, { status: 400 });
     }
 
-    // 1. Direct match against configured ADMIN credentials (ENV variables or initial admin password)
-    const isAdminIdentifier =
-      ADMIN_EMAILS.includes(identifier) ||
-      identifier === DEFAULT_ADMIN_EMAIL.toLowerCase() ||
-      identifier === 'admin' ||
-      identifier === 'administrator';
-
-    const cleanPass = (password || "").trim();
-    const isAdminPasswordValid =
-      cleanPass === DEFAULT_ADMIN_PASSWORD ||
-      cleanPass === INITIAL_ADMIN_PASSWORD ||
-      cleanPass.toLowerCase() === INITIAL_ADMIN_PASSWORD.toLowerCase() ||
-      cleanPass === "VikingMester2026!" ||
-      cleanPass.toLowerCase() === "vikingmester2026!" ||
-      (await bcrypt.compare(cleanPass, DEFAULT_ADMIN_HASH).catch(() => false)) ||
-      (await bcrypt.compare(cleanPass, INITIAL_ADMIN_HASH).catch(() => false));
-
-    if (isAdminIdentifier && isAdminPasswordValid) {
-      const email = identifier.includes('@') ? identifier : DEFAULT_ADMIN_EMAIL;
-      const isKenneth = email === 'aichatnorge@gmail.com' || email === 'kenneth@aichatnorge.no' || email === 'kenkri3@gmail.com';
-      const isLars = email === 'lars@nonfoodgroup.no';
-      const isJm = email === 'jm@nonfoodgroup.no';
-      const isPartner = isLars || isJm;
-      const adminObj = {
-        id: email === 'aichatnorge@gmail.com' ? 'u-admin-aichatnorge' : isLars ? 'u-test-lars' : isJm ? 'u-test-jm' : 'u-admin-123',
-        uid: email === 'aichatnorge@gmail.com' ? 'u-admin-aichatnorge' : isLars ? 'u-test-lars' : isJm ? 'u-test-jm' : 'u-admin-123',
-        email: email,
-        displayName: isKenneth ? 'Kenneth Kristiansen' : isLars ? 'Lars Erik' : isJm ? 'JM' : 'Ken (Admin)',
-        role: isPartner ? 'leader' : 'admin',
-        trade: 'Byggmester',
-        company: isPartner ? 'NonFoodGroup AS (Partner)' : 'AIChat Norge AS / Vikingnet',
-        companyId: isPartner ? 'comp-nonfood' : 'comp-001',
-        subscriptionStatus: 'active'
-      };
-
-      dbQuery(`
-        INSERT INTO users (id, email, password, display_name, role, trade, company, company_id, subscription_status)
-        VALUES ($1, $2, $3, $4, $5, $6, $7, $8, $9)
-        ON CONFLICT (email) DO UPDATE SET password = EXCLUDED.password, role = 'admin', subscription_status = 'active'
-      `, [adminObj.id, adminObj.email, INITIAL_ADMIN_HASH, adminObj.displayName, adminObj.role, adminObj.trade, adminObj.company, adminObj.companyId, adminObj.subscriptionStatus]).catch(() => {});
-
-      const token = signToken({ id: adminObj.id, email: adminObj.email, role: adminObj.role, companyId: adminObj.companyId });
-      return NextResponse.json({ token, user: adminObj });
-    }
-
-    // 2. Otherwise search DB / memory store for registered users
+    // Search DB / memory store for registered users
     let userRecord: any = null;
     const rows = await dbQuery(
       'SELECT * FROM users WHERE LOWER(email) = $1 OR LOWER(id) = $1 OR LOWER(display_name) = $1',
@@ -68,7 +23,7 @@ export async function POST(req: NextRequest) {
     if (rows && rows.length > 0) {
       userRecord = rows[0];
     } else {
-      userRecord = inMemoryStore.users.find(u =>
+      userRecord = inMemoryStore.users?.find(u =>
         u.email.toLowerCase() === identifier ||
         (u.id && u.id.toLowerCase() === identifier) ||
         (u.displayName && u.displayName.toLowerCase() === identifier)
@@ -79,9 +34,8 @@ export async function POST(req: NextRequest) {
       return NextResponse.json({ error: 'Ugyldig e-post/brukernavn eller passord.' }, { status: 401 });
     }
 
-    const passwordValid = 
-      (await bcrypt.compare(password, userRecord.password).catch(() => false)) ||
-      (ADMIN_EMAILS.includes(identifier) && (password === INITIAL_ADMIN_PASSWORD || await bcrypt.compare(password, INITIAL_ADMIN_HASH).catch(() => false)));
+    // Verify password strictly against hashed value in DB
+    const passwordValid = await bcrypt.compare(password, userRecord.password).catch(() => false);
     
     if (!passwordValid) {
       return NextResponse.json({ error: 'Ugyldig e-post/brukernavn eller passord.' }, { status: 401 });
