@@ -506,6 +506,14 @@ export default function SuperAdmin() {
     );
   }, [allDailyLogs, adminLogSearch]);
 
+  // ⚡ Bolt: Memoize derived metrics to prevent expensive O(N) recalculations on every render
+  const newLeadsCount = useMemo(() => leads.filter(l => l.status === 'new').length, [leads]);
+  const activeDeviationsCount = useMemo(() => allDeviations.filter(d => d.status !== 'closed' && d.status !== 'resolved').length, [allDeviations]);
+  const activeProjectsCount = useMemo(() => allProjects.filter(p => p.status !== 'completed').length || allProjects.length, [allProjects]);
+  const pendingApprovalsCount = useMemo(() => allChangeOrders.filter(c => c.status === 'sent' || c.status === 'pending_signature').length, [allChangeOrders]);
+  const criticalDeviationsCount = useMemo(() => allDeviations.filter(d => d.severity === 'critical' && d.status !== 'closed').length, [allDeviations]);
+  const totalSecuredRevenue = useMemo(() => allChangeOrders.reduce((sum, c) => sum + (Number(c.totalPrice || c.amount || 0)), 0), [allChangeOrders]);
+
   if (!isSuperAdmin) {
     return (
       <div className="min-h-screen flex items-center justify-center bg-neutral-50">
@@ -574,14 +582,14 @@ export default function SuperAdmin() {
           >
             {tab.icon}
             {tab.label}
-            {tab.id === 'leads' && leads.filter(l => l.status === 'new').length > 0 && (
+            {tab.id === 'leads' && newLeadsCount > 0 && (
               <span className="ml-1.5 px-2 py-0.5 bg-red-500 text-white text-[10px] rounded-full">
-                {leads.filter(l => l.status === 'new').length}
+                {newLeadsCount}
               </span>
             )}
-            {tab.id === 'deviations' && allDeviations.filter(d => d.status !== 'closed' && d.status !== 'resolved').length > 0 && (
+            {tab.id === 'deviations' && activeDeviationsCount > 0 && (
               <span className="ml-1.5 px-2 py-0.5 bg-amber-500 text-white text-[10px] rounded-full">
-                {allDeviations.filter(d => d.status !== 'closed' && d.status !== 'resolved').length}
+                {activeDeviationsCount}
               </span>
             )}
             {tab.id === 'agent' && (
@@ -595,8 +603,8 @@ export default function SuperAdmin() {
       <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-6 mb-12">
         {[
           { label: 'Agenthandlinger i dag', value: agentMetrics.todayActionsCount || agentActivities.length, icon: <BrainCircuit className="text-purple-600" />, bg: 'bg-purple-50' },
-          { label: 'Aktive Prosjekter', value: allProjects.filter(p => p.status !== 'completed').length || allProjects.length, icon: <Layers className="text-blue-600" />, bg: 'bg-blue-50' },
-          { label: 'Åpne Avvik & HMS', value: allDeviations.filter(d => d.status !== 'closed' && d.status !== 'resolved').length, icon: <AlertTriangle className="text-amber-600" />, bg: 'bg-amber-50' },
+          { label: 'Aktive Prosjekter', value: activeProjectsCount, icon: <Layers className="text-blue-600" />, bg: 'bg-blue-50' },
+          { label: 'Åpne Avvik & HMS', value: activeDeviationsCount, icon: <AlertTriangle className="text-amber-600" />, bg: 'bg-amber-50' },
           { label: 'Kunder / Bedrifter', value: companies.length, icon: <Building2 className="text-emerald-600" />, bg: 'bg-emerald-50' },
         ].map((stat, i) => (
           <div key={i} className={cn("p-6 rounded-[2rem] border border-neutral-200 shadow-sm", stat.bg)}>
@@ -720,7 +728,7 @@ export default function SuperAdmin() {
                 </div>
               </div>
               <div className="text-3xl font-black text-amber-600">
-                {agentMetrics.pendingApprovalsCount || allChangeOrders.filter(c => c.status === 'sent' || c.status === 'pending_signature').length}
+                {agentMetrics.pendingApprovalsCount || pendingApprovalsCount}
               </div>
               <p className="text-xs text-neutral-500 mt-1">Endringsordrer hos byggherre</p>
             </div>
@@ -733,7 +741,7 @@ export default function SuperAdmin() {
                 </div>
               </div>
               <div className="text-3xl font-black text-red-600">
-                {agentMetrics.activeBlockersCount || allDeviations.filter(d => d.severity === 'critical' && d.status !== 'closed').length}
+                {agentMetrics.activeBlockersCount || criticalDeviationsCount}
               </div>
               <p className="text-xs text-neutral-500 mt-1">Kritiske avvik som stopper fremdrift</p>
             </div>
@@ -746,7 +754,7 @@ export default function SuperAdmin() {
                 </div>
               </div>
               <div className="text-3xl font-black text-emerald-600">
-                {(agentMetrics.securedRevenue || allChangeOrders.reduce((sum, c) => sum + (Number(c.totalPrice || c.amount || 0)), 0)).toLocaleString('no-NO')} kr
+                {(agentMetrics.securedRevenue || totalSecuredRevenue).toLocaleString('no-NO')} kr
               </div>
               <p className="text-xs text-neutral-500 mt-1">Identifisert & fakturert via agent</p>
             </div>
