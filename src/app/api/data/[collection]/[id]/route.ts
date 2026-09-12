@@ -2,24 +2,32 @@ import { NextRequest, NextResponse } from 'next/server';
 import { getCollectionItemById, updateCollectionItem, deleteCollectionItem, saveCollectionItem } from '@/src/lib/server/db';
 import { getUserFromRequest } from '@/src/lib/server/auth';
 
+const ALLOWED_COLLECTIONS = [
+  'users', 'projects', 'deviations', 'sja_reports',
+  'offers', 'invites', 'contracts', 'change_orders'
+];
+
 export async function GET(
   req: NextRequest,
   { params }: { params: Promise<{ collection: string; id: string }> }
 ) {
   try {
     const { collection, id } = await params;
+
+    if (!ALLOWED_COLLECTIONS.includes(collection)) {
+      return NextResponse.json({ error: 'Ugyldig samling' }, { status: 400 });
+    }
+
     const user = getUserFromRequest(req);
     const url = new URL(req.url);
     const token = url.searchParams.get('token');
 
-    // ⚡ Direct indexed lookup instead of full collection memory scan
     const item = await getCollectionItemById(collection, id);
 
     if (!item) {
       return NextResponse.json({ error: 'Elementet ble ikke funnet' }, { status: 404 });
     }
 
-    // Allow access if valid public token matches
     if (!user && token && (item.token === token || item.portalToken === token)) {
       return NextResponse.json(item);
     }
@@ -28,7 +36,6 @@ export async function GET(
       return NextResponse.json({ error: 'Uautorisert tilgang. Vennligst logg inn.' }, { status: 401 });
     }
 
-    // IDOR verification
     if (user.role !== 'admin') {
       const isOwner = 
         (item.companyId && item.companyId === user.companyId) ||
@@ -59,6 +66,11 @@ export async function PUT(
 ) {
   try {
     const { collection, id } = await params;
+
+    if (!ALLOWED_COLLECTIONS.includes(collection)) {
+      return NextResponse.json({ error: 'Ugyldig samling' }, { status: 400 });
+    }
+
     const body = await req.json();
     const user = getUserFromRequest(req);
 
@@ -67,10 +79,8 @@ export async function PUT(
     const headerToken = req.headers.get('x-token');
     const providedToken = queryToken || headerToken || body.token;
 
-    // ⚡ Direct indexed lookup
     const existing = await getCollectionItemById(collection, id);
 
-    // 1. Handle secure public token approvals (e.g. client signing change order or contract via link)
     if (!user) {
       const allowedPublicCollections = ['change_orders', 'contracts', 'offers'];
       if (!allowedPublicCollections.includes(collection) || !existing || !providedToken) {
@@ -81,7 +91,6 @@ export async function PUT(
         return NextResponse.json({ error: 'Ugyldig sikkerhetstoken' }, { status: 403 });
       }
 
-      // Safe whitelisted customer fields for token signing
       const safePublicUpdate: any = {
         updatedAt: new Date().toISOString()
       };
@@ -108,9 +117,7 @@ export async function PUT(
       return NextResponse.json(updated);
     }
 
-    // Upsert: If item doesn't exist, create it for this tenant
     if (!existing) {
-      // 🛡️ SECURITY: Prevent non-admin users from escalating privileges
       if (collection === 'users' && user.role !== 'admin') {
         delete body.role;
         delete body.is_admin;
@@ -128,7 +135,6 @@ export async function PUT(
       return NextResponse.json(saved);
     }
 
-    // IDOR / Authorization Check: Verify tenant ownership for existing items
     if (user.role !== 'admin') {
       const isOwner =
         (existing.companyId && existing.companyId === user.companyId) ||
@@ -140,7 +146,6 @@ export async function PUT(
         return NextResponse.json({ error: 'Ingen tilgang til å oppdatere dette objektet (IDOR-beskyttelse)' }, { status: 403 });
       }
 
-      // 🛡️ SECURITY: Prevent non-admin users from escalating privileges on update
       if (collection === 'users') {
         delete body.role;
         delete body.is_admin;
@@ -166,13 +171,17 @@ export async function DELETE(
 ) {
   try {
     const { collection, id } = await params;
+
+    if (!ALLOWED_COLLECTIONS.includes(collection)) {
+      return NextResponse.json({ error: 'Ugyldig samling' }, { status: 400 });
+    }
+
     const user = getUserFromRequest(req);
 
     if (!user) {
       return NextResponse.json({ error: 'Uautorisert' }, { status: 401 });
     }
 
-    // IDOR / Authorization Check: Verify permission to delete
     if (user.role !== 'admin') {
       const existing = await getCollectionItemById(collection, id);
       if (existing) {

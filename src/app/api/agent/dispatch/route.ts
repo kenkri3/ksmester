@@ -2,7 +2,7 @@ import { NextRequest, NextResponse } from 'next/server';
 import { generateSJAAction } from '@/src/app/actions/aiActions';
 import { evaluatePreCloseWall } from '@/src/lib/server/crossTradeEngine';
 import { createAutonomousChangeOrder } from '@/src/lib/server/changeOrderAgent';
-import { saveCollectionItem, getCollectionItems, updateCollectionItem } from '@/src/lib/server/db';
+import { saveCollectionItem, getCollectionItems, updateCollectionItem, getCollectionItemById } from '@/src/lib/server/db';
 import { GoogleGenAI } from '@google/genai';
 import { trackTokenCost } from '@/src/lib/server/costTracker';
 import { getUserFromRequest, verifyCronOrInternalSecret } from '@/src/lib/server/auth';
@@ -302,6 +302,15 @@ Svar kort, faglig og handlingsorientert (maks 2-3 setninger). Bekreft hvilke til
         return NextResponse.json({ error: 'Mangler changeOrderId' }, { status: 400 });
       }
 
+      const existingCo = await getCollectionItemById('change_orders', changeOrderId);
+      if (existingCo && existingCo.status === 'approved_by_admin') {
+        return NextResponse.json({
+          success: true,
+          message: 'Endringsordre var allerede godkjent.',
+          changeOrder: existingCo
+        });
+      }
+
       const updated = await updateCollectionItem('change_orders', changeOrderId, {
         status: 'approved_by_admin',
         approvedAt: new Date().toISOString(),
@@ -329,6 +338,15 @@ Svar kort, faglig og handlingsorientert (maks 2-3 setninger). Bekreft hvilke til
     if (action === 'reject_change_order') {
       if (!changeOrderId) {
         return NextResponse.json({ error: 'Mangler changeOrderId' }, { status: 400 });
+      }
+
+      const existingCo = await getCollectionItemById('change_orders', changeOrderId);
+      if (existingCo && existingCo.status === 'rejected') {
+        return NextResponse.json({
+          success: true,
+          message: 'Endringsordre var allerede avvist.',
+          changeOrder: existingCo
+        });
       }
 
       const updated = await updateCollectionItem('change_orders', changeOrderId, {

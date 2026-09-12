@@ -43,37 +43,40 @@ export async function generateSJAAction(taskDescription: string, weatherContext?
   if (geminiKey) {
     try {
       const ai = new GoogleGenAI({ apiKey: geminiKey });
-      const aiResponse = await ai.models.generateContent({
-        model: 'gemini-3.8-flash',
-        contents: `Generer et SJA-utkast som JSON for følgende oppgave: ${taskDescription}. Værforhold: ${weatherContext || 'Normalt innendørs/utendørs'}.`,
-        config: {
-          systemInstruction: 'Du er en ekspert på Sikker Jobb Analyse (SJA) i Norge. Returner KUN et gyldig JSON-objekt med feltene: title, task, risikoer (liste med aktivitet, risiko, tiltak), utstyr (liste), tek17Reference, weatherImpact.',
-          responseMimeType: 'application/json',
-          responseSchema: {
-            type: 'OBJECT',
-            properties: {
-              title: { type: 'STRING' },
-              task: { type: 'STRING' },
-              risikoer: {
-                type: 'ARRAY',
-                items: {
-                  type: 'OBJECT',
-                  properties: {
-                    aktivitet: { type: 'STRING' },
-                    risiko: { type: 'STRING' },
-                    tiltak: { type: 'STRING' }
-                  },
-                  required: ['aktivitet', 'risiko', 'tiltak']
-                }
+      const aiResponse = await Promise.race([
+        ai.models.generateContent({
+          model: 'gemini-3.8-flash',
+          contents: `Generer et SJA-utkast som JSON for følgende oppgave: ${taskDescription}. Værforhold: ${weatherContext || 'Normalt innendørs/utendørs'}.`,
+          config: {
+            systemInstruction: 'Du er en ekspert på Sikker Jobb Analyse (SJA) i Norge. Returner KUN et gyldig JSON-objekt med feltene: title, task, risikoer (liste med aktivitet, risiko, tiltak), utstyr (liste), tek17Reference, weatherImpact.',
+            responseMimeType: 'application/json',
+            responseSchema: {
+              type: 'OBJECT',
+              properties: {
+                title: { type: 'STRING' },
+                task: { type: 'STRING' },
+                risikoer: {
+                  type: 'ARRAY',
+                  items: {
+                    type: 'OBJECT',
+                    properties: {
+                      aktivitet: { type: 'STRING' },
+                      risiko: { type: 'STRING' },
+                      tiltak: { type: 'STRING' }
+                    },
+                    required: ['aktivitet', 'risiko', 'tiltak']
+                  }
+                },
+                utstyr: { type: 'ARRAY', items: { type: 'STRING' } },
+                tek17Reference: { type: 'STRING' },
+                weatherImpact: { type: 'STRING' }
               },
-              utstyr: { type: 'ARRAY', items: { type: 'STRING' } },
-              tek17Reference: { type: 'STRING' },
-              weatherImpact: { type: 'STRING' }
-            },
-            required: ['title', 'task', 'risikoer', 'utstyr', 'tek17Reference', 'weatherImpact']
+              required: ['title', 'task', 'risikoer', 'utstyr', 'tek17Reference', 'weatherImpact']
+            }
           }
-        }
-      });
+        }),
+        new Promise((_, reject) => setTimeout(() => reject(new Error('AI Request timed out')), 10000))
+      ]) as any;
 
       const promptTokens = aiResponse.usageMetadata?.promptTokenCount || 350;
       const completionTokens = aiResponse.usageMetadata?.candidatesTokenCount || 250;

@@ -1,5 +1,5 @@
 import { NextResponse } from 'next/server';
-import { isDbConnected } from '@/src/lib/server/db';
+import { dbQuery, isDbConnected } from '@/src/lib/server/db';
 
 export async function GET() {
   const geminiConfigured = !!(process.env.GEMINI_API_KEY || process.env.GOOGLE_API_KEY || process.env.GOOGLE_GENAI_API_KEY);
@@ -13,10 +13,27 @@ export async function GET() {
     process.env.RESEND_APIKEY
   );
 
+  let dbHealthy = false;
+
+  if (process.env.DATABASE_URL) {
+    try {
+      const result = await dbQuery('SELECT 1');
+      dbHealthy = result && result.length > 0;
+    } catch (e) {
+      dbHealthy = false;
+    }
+  } else {
+    // If no DATABASE_URL is configured, consider in-memory "healthy" for local dev
+    dbHealthy = true;
+  }
+
+  const isHealthy = dbHealthy;
+
   return NextResponse.json({
-    status: 'ok',
+    status: isHealthy ? 'ok' : 'error',
     framework: 'next.js',
     database: isDbConnected() ? 'postgresql' : 'in-memory',
+    databaseHealthy: dbHealthy,
     renderReady: true,
     nobbConfigured: !!process.env.NOBB_API_KEY,
     resendConfigured,
@@ -27,5 +44,5 @@ export async function GET() {
     deepseekConfigured,
     aiModel: geminiConfigured ? 'gemini-3.8-flash' : (deepseekConfigured ? 'deepseek-chat' : 'none'),
     timestamp: new Date().toISOString()
-  });
+  }, { status: isHealthy ? 200 : 503 });
 }

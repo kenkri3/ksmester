@@ -23,3 +23,20 @@
 **Vulnerability:** The GDPR export endpoint (`/api/gdpr/export`) used truthiness-agnostic equality checks for filtering data (e.g., `item.companyId === user.companyId`). If both `item.companyId` and `user.companyId` were `undefined`, the check returned true, exposing other tenants' data that lacked an explicitly assigned `companyId`.
 **Learning:** This is a recurrence of the previously logged "Authorization Bypass via Undefined Property Matching" vulnerability, but found in a different file (`gdpr/export/route.ts`). Destructuring and loose matching of optional/undefined IDs in JS arrays often leads to data leaks.
 **Prevention:** Always verify the truthiness of ownership properties (e.g., `item.companyId && item.companyId === user.companyId`) before equality checks in data filtering and authorization logic.
+## 2026-09-12 - Fixed Hardcoded Credentials in Auth
+**Vulnerability:** Hardcoded administrative passwords and privilege escalation via email match in register route.
+**Learning:** Always verify credentials strictly against hashed values stored in the database without backdoor checks. Do not grant admin privileges automatically based on email match during registration.
+**Prevention:** Rely strictly on bcrypt.compare for authentication and remove dynamic admin granting in registration endpoints.
+
+## 2026-09-12 - Whitelisted Database Collections
+**Vulnerability:** The data endpoints allowed arbitrary collection names from the route parameter, which could lead to interacting with unintended database tables or memory stores.
+**Learning:** Always validate and whitelist dynamic route parameters that map directly to database tables or collections to prevent unauthorized data access or pollution.
+**Prevention:** Added a strict `ALLOWED_COLLECTIONS` whitelist array in the data endpoints and return a 400 status if an unknown collection is requested.
+
+## 2026-09-12 - Idempotency in Agent Actions
+**Learning:** The agent dispatch route originally processed "approve_change_order" and "reject_change_order" blindly. If a request was retried (e.g. network timeout or double-click), it would redundantly update the database and spam the "agent_activities" log.
+**Prevention:** Added idempotency checks. By fetching the object via `getCollectionItemById` first, we can immediately return early if the object is already in the target state, preventing duplicated work and logs.
+
+## 2026-09-12 - Added Timeouts to AI Actions
+**Learning:** The `GoogleGenAI` SDK generateContent calls in server actions (`aiActions.ts` and `scrape/route.ts`) did not have explicit timeouts, which could cause requests to hang indefinitely if the API stalled.
+**Prevention:** Wrapped the external AI calls in a `Promise.race` with a 10000ms timeout rejection to ensure robust error handling and avoid hanging server processes.
