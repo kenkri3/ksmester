@@ -1,6 +1,6 @@
 'use client';
 
-import React, { useState, useEffect } from 'react';
+import React, { useState, useEffect, useMemo } from 'react';
 import { 
   Building2, 
   Users, 
@@ -388,17 +388,19 @@ export default function PartnerPortal({ onBackToApp }: PartnerPortalProps) {
     setTimeout(() => setCopiedLink(false), 3000);
   };
 
-  // Filtrerte leads
-  const filteredLeads = leads.filter(l => {
-    if (!searchFilter.trim()) return true;
-    const q = searchFilter.toLowerCase();
-    return (
-      l.company.toLowerCase().includes(q) ||
-      l.name.toLowerCase().includes(q) ||
-      (l.email && l.email.toLowerCase().includes(q)) ||
-      (l.orgnr && l.orgnr.includes(q))
-    );
-  });
+  // ⚡ Bolt: Filtrerte leads memoized to avoid O(N) recalculations on every render
+  const filteredLeads = useMemo(() => {
+    return leads.filter(l => {
+      if (!searchFilter.trim()) return true;
+      const q = searchFilter.toLowerCase();
+      return (
+        l.company.toLowerCase().includes(q) ||
+        l.name.toLowerCase().includes(q) ||
+        (l.email && l.email.toLowerCase().includes(q)) ||
+        (l.orgnr && l.orgnr.includes(q))
+      );
+    });
+  }, [leads, searchFilter]);
 
   return (
     <div className="min-h-screen bg-slate-950 text-slate-100 selection:bg-purple-500/30 selection:text-purple-300">

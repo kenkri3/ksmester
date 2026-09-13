@@ -25,3 +25,6 @@
 ## 2024-05-18 - [Use Debounce hook]
 **Learning:** React inputs that trigger an async function on change can cause performance issues if not debounced.
 **Action:** When working with async search functions, use a `useDebounce` hook to ensure the function is only executed after a short delay.
+## 2025-05-19 - Extracted unmemoized list filters to useMemo
+**Learning:** Found several components (`AIVisionModal`, `ComplianceHub`, `PartnerPortal`, `StoffkartotekModal`) that filtered arrays containing lists inline during render phase. Since string comparison and traversal is an O(N) operation, performing this on every keystroke in a form/search leads to performance bottlenecks and unnecessary recalculation overhead as datasets grow.
+**Action:** Extract these into `useMemo` blocks to share the computation logically across identical component re-renders. Check the rest of the codebase and memoize large mappings / filtering directly in render cycles.

@@ -1,4 +1,4 @@
-import React, { useState, useEffect } from 'react';
+import React, { useState, useEffect, useMemo } from 'react';
 import { motion } from 'motion/react';
 import { 
   ShieldCheck, 
@@ -29,6 +29,15 @@ export default function ComplianceHub({ project, onOpenChecklist }: ComplianceHu
   const [data, setData] = useState<CompliancePackageData | null>(null);
   const [loading, setLoading] = useState(true);
   const [downloadingDoc, setDownloadingDoc] = useState<string | null>(null);
+
+  // ⚡ Bolt: Memoize filtered deviations to avoid O(N) recalculations on every render
+  const { openDeviationsCount, closedDeviationsCount } = useMemo(() => {
+    if (!data?.deviations) return { openDeviationsCount: 0, closedDeviationsCount: 0 };
+    return {
+      openDeviationsCount: data.deviations.filter(d => d.status === 'open').length,
+      closedDeviationsCount: data.deviations.filter(d => d.status === 'closed').length
+    };
+  }, [data?.deviations]);
 
   useEffect(() => {
     async function loadComplianceData() {
@@ -201,10 +210,10 @@ export default function ComplianceHub({ project, onOpenChecklist }: ComplianceHu
         <div className="p-5 bg-white rounded-2xl border border-neutral-200 shadow-sm space-y-1">
           <div className="text-[10px] font-black uppercase tracking-widest text-neutral-400">Avvik & Egenkontroll</div>
           <div className="text-2xl font-black text-neutral-900">
-            {data?.deviations.filter(d => d.status === 'open').length || 0} åpne
+            {openDeviationsCount} åpne
           </div>
           <p className="text-[10px] text-neutral-500">
-            {data?.deviations.filter(d => d.status === 'closed').length || 0} avvik lukket
+            {closedDeviationsCount} avvik lukket
           </p>
         </div>
       </div>

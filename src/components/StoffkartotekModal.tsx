@@ -1,4 +1,4 @@
-import React, { useState, useEffect } from 'react';
+import React, { useState, useEffect, useMemo } from 'react';
 import { motion, AnimatePresence } from 'motion/react';
 import { 
   X, 
@@ -56,11 +56,14 @@ export default function StoffkartotekModal({
     }
   };
 
-  const filteredSheets = sheets.filter(s =>
-    s.productName.toLowerCase().includes(searchQuery.toLowerCase()) ||
-    s.usageArea.toLowerCase().includes(searchQuery.toLowerCase()) ||
-    s.manufacturer.toLowerCase().includes(searchQuery.toLowerCase())
-  );
+  // ⚡ Bolt: Memoize filtered sheets to avoid O(N) recalculations on every render
+  const filteredSheets = useMemo(() => {
+    return sheets.filter(s =>
+      s.productName.toLowerCase().includes(searchQuery.toLowerCase()) ||
+      s.usageArea.toLowerCase().includes(searchQuery.toLowerCase()) ||
+      s.manufacturer.toLowerCase().includes(searchQuery.toLowerCase())
+    );
+  }, [sheets, searchQuery]);
 
   if (!isOpen) return null;
 

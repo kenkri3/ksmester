@@ -1,4 +1,4 @@
-import { useState, useRef, useEffect } from 'react';
+import { useState, useRef, useEffect, useMemo } from 'react';
 import { motion, AnimatePresence } from 'motion/react';
 import { X, Camera, Upload, Brain, CheckCircle2, AlertTriangle, RefreshCw, Scan, Save, Loader2, Building2, ListChecks, Search, Lightbulb, ArrowRight } from 'lucide-react';
 import { useTranslation } from 'react-i18next';
@@ -47,6 +47,11 @@ export default function AIVisionModal({ isOpen, onClose, projectId: initialProje
       return () => unsub();
     }
   }, [isOpen, initialProjectId]);
+
+  // ⚡ Bolt: Memoize filtered projects to avoid O(N) recalculations on every render during typing
+  const filteredProjects = useMemo(() => {
+    return projects.filter(p => p.name.toLowerCase().includes(projectSearch.toLowerCase()));
+  }, [projects, projectSearch]);
 
   const handleFileChange = (e: React.ChangeEvent<HTMLInputElement>) => {
     const file = e.target.files?.[0];
@@ -186,9 +191,7 @@ export default function AIVisionModal({ isOpen, onClose, projectId: initialProje
                     </div>
                   </div>
                   <div className="grid grid-cols-1 sm:grid-cols-2 gap-2 sm:gap-3">
-                    {projects
-                      .filter(p => p.name.toLowerCase().includes(projectSearch.toLowerCase()))
-                      .map(p => (
+                    {filteredProjects.map(p => (
                       <button
                         key={p.id}
                         onClick={() => {
