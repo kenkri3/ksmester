@@ -50,6 +50,7 @@ import WeatherWidget from './WeatherWidget';
 import { logAiService } from '../services/logAiService';
 import { locationService } from '../services/locationService';
 import { Sparkles, ClipboardList } from 'lucide-react';
+import { api } from '../services/api';
 export default function MobileApp() {
   const { t, i18n } = useTranslation();
   const [activeScreen, setActiveScreen] = useState<'home' | 'camera' | 'voice' | 'report' | 'imageResult' | 'translator' | 'laerling' | 'dailyLog' | 'activity' | 'contacts'>('home');
@@ -108,85 +109,7 @@ interface ColleagueContact {
   projectId?: string;
 }
   // --- Telefonliste & Kolleger State ---
-  const [colleagues, setColleagues] = useState<ColleagueContact[]>([
-    {
-      id: 'colleague_1',
-      name: 'Trond Even',
-      role: 'Maskinfører / Grunnarbeid',
-      company: 'VikingMester Maskin AS',
-      trade: 'general',
-      phone: '982 34 567',
-      email: 'trond.even@vikingmester.no',
-      isOnSiteToday: true,
-      isKeyPersonnel: true
-    },
-    {
-      id: 'colleague_2',
-      name: 'Elisabeth H.',
-      role: 'HMS-ansvarlig / Verneombud',
-      company: 'VikingMester AS',
-      trade: 'general',
-      phone: '915 67 890',
-      email: 'elisabeth@vikingmester.no',
-      isOnSiteToday: true,
-      isKeyPersonnel: true
-    },
-    {
-      id: 'colleague_3',
-      name: 'Evalill S.',
-      role: 'Kontorleder & Prosjektøkonomi',
-      company: 'VikingMester AS',
-      trade: 'general',
-      phone: '908 12 345',
-      email: 'evalill@vikingmester.no',
-      isOnSiteToday: false,
-      isKeyPersonnel: true
-    },
-    {
-      id: 'colleague_4',
-      name: 'Jonas Berg',
-      role: 'Tømrerbas / Formann',
-      company: 'VikingMester AS',
-      trade: 'carpenter',
-      phone: '476 54 321',
-      email: 'jonas@vikingmester.no',
-      isOnSiteToday: true,
-      isKeyPersonnel: false
-    },
-    {
-      id: 'colleague_5',
-      name: 'Henrik Strøm',
-      role: 'Elektriker / Installatør',
-      company: 'Viking El-Partner AS',
-      trade: 'electrician',
-      phone: '934 56 789',
-      email: 'henrik@elpartner.no',
-      isOnSiteToday: true,
-      isKeyPersonnel: false
-    },
-    {
-      id: 'colleague_6',
-      name: 'Marius Rørvik',
-      role: 'Rørlegger / VVS',
-      company: 'VVS Mesteren AS',
-      trade: 'plumber',
-      phone: '412 98 765',
-      email: 'marius@vvsmesteren.no',
-      isOnSiteToday: false,
-      isKeyPersonnel: false
-    },
-    {
-      id: 'colleague_7',
-      name: 'Piotr Kowalski',
-      role: 'Betong & Murer',
-      company: 'VikingMester Mur',
-      trade: 'mason',
-      phone: '923 11 445',
-      email: 'piotr@vikingmester.no',
-      isOnSiteToday: true,
-      isKeyPersonnel: false
-    }
-  ]);
+  const [colleagues, setColleagues] = useState<ColleagueContact[]>([]);
   const [contactsSearch, setContactsSearch] = useState('');
   const [contactsFilter, setContactsFilter] = useState<'all' | 'onsite' | 'key' | 'emergency'>('all');
   const [showAddContactModal, setShowAddContactModal] = useState(false);
@@ -199,10 +122,27 @@ interface ColleagueContact {
     trade: 'carpenter' as Trade,
     isOnSiteToday: true
   });
-  // Hent team og kolleger fra Firestore
+  // Hent team og kolleger fra PostgreSQL API og Firestore
   useEffect(() => {
     async function loadTeamMembers() {
       try {
+        const users = await api.getDocs<any>('users');
+        if (users && users.length > 0) {
+          const fetched: ColleagueContact[] = users.map((u: any) => ({
+            id: u.id,
+            name: u.name || u.displayName || u.email?.split('@')[0] || 'Kollega',
+            role: u.role === 'admin' ? 'Prosjektleder' : u.role === 'manager' ? 'Byggeplassleder' : u.trade ? String(u.trade) : (u.role || 'Fagarbeider'),
+            company: u.companyName || u.company || userProfile?.companyName || 'VikingMester AS',
+            trade: u.trade || 'general',
+            phone: u.phone || '900 00 000',
+            email: u.email || '',
+            isOnSiteToday: u.isOnSiteToday ?? true,
+            isKeyPersonnel: u.isKeyPersonnel ?? (u.role === 'admin' || u.role === 'manager')
+          }));
+          setColleagues(fetched);
+          return;
+        }
+
         const usersRef = collection(db, 'users');
         const q = userProfile?.companyId 
           ? query(usersRef, where('companyId', '==', userProfile.companyId))
@@ -233,13 +173,39 @@ interface ColleagueContact {
     }
     loadTeamMembers();
   }, [userProfile?.companyId]);
-  // Lytt på åpning av telefonliste fra hurtigmenyen
+  // Lytt på åpning av telefonliste og mobile handlinger
   useEffect(() => {
     const handleOpenContacts = () => {
       setActiveScreen('contacts');
     };
+    const handleAction = (e: any) => {
+      const actionId = e.detail?.actionId;
+      if (!actionId) return;
+      if (actionId === 'log_deviation') {
+        setShowDeviationModal(true);
+      } else if (actionId === 'take_photo') {
+        setActiveScreen('camera');
+      } else if (actionId === 'voice_sja') {
+        setActiveScreen('voice');
+      } else if (actionId === 'start_checklist') {
+        setShowChecklistModal(true);
+      } else if (actionId === 'contacts') {
+        setActiveScreen('contacts');
+      } else if (actionId === 'laerling') {
+        setActiveScreen('laerling');
+      } else if (actionId === 'translator') {
+        setActiveScreen('translator');
+      } else if (actionId === 'activity') {
+        setActiveScreen('activity');
+      }
+    };
+
     window.addEventListener('open_mobile_contacts', handleOpenContacts);
-    return () => window.removeEventListener('open_mobile_contacts', handleOpenContacts);
+    window.addEventListener('trigger_dashboard_action', handleAction as EventListener);
+    return () => {
+      window.removeEventListener('open_mobile_contacts', handleOpenContacts);
+      window.removeEventListener('trigger_dashboard_action', handleAction as EventListener);
+    };
   }, []);
   const handleCreateContact = async (e: React.FormEvent) => {
     e.preventDefault();
@@ -271,18 +237,33 @@ interface ColleagueContact {
     });
     toast.success(created.name + ' er lagt til i telefonlisten!');
     try {
-      await addDoc(collection(db, 'users'), {
+      await api.saveDoc('users', {
+        id: created.id,
         name: created.name,
-        role: 'worker',
+        role: created.role,
         trade: created.trade,
         phone: created.phone,
         email: created.email || '',
         companyId: userProfile?.companyId || 'vikingmester',
         companyName: created.company,
-        createdAt: serverTimestamp()
+        isOnSiteToday: created.isOnSiteToday,
+        isKeyPersonnel: created.isKeyPersonnel,
+        createdAt: new Date().toISOString()
       });
+      try {
+        await addDoc(collection(db, 'users'), {
+          name: created.name,
+          role: 'worker',
+          trade: created.trade,
+          phone: created.phone,
+          email: created.email || '',
+          companyId: userProfile?.companyId || 'vikingmester',
+          companyName: created.company,
+          createdAt: serverTimestamp()
+        });
+      } catch {}
     } catch (e) {
-      console.warn('Lagret kun i aktiv sesjon');
+      console.warn('Lagret kun i aktiv sesjon:', e);
     }
   };
   const emergencyContacts = [

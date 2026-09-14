@@ -32,5 +32,7 @@ jobs:
           if [ "$HTTP_STATUS" -ge 200 ] && [ "$HTTP_STATUS" -lt 300 ]; then
             echo "✅ Bakgrunnsrevisjon fullført med suksess!"
           else
-            echo "⚠️ Advarsel: Bakgrunnsjobb returnerte status $HTTP_STATUS"
+            echo "❌ Feil: Bakgrunnsjobb feilet med status $HTTP_STATUS"
+            echo "Feilmelding: $BODY"
+            exit 1
           fi

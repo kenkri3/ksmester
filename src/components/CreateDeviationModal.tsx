@@ -11,6 +11,7 @@ import { useAuth } from '../hooks/useAuth';
 import { cn } from '@/src/lib/utils';
 import { generateAiContent } from '../services/aiClient';
 import { useDebounce } from '../hooks/useDebounce';
+import { api } from '../services/api';
 
 interface CreateDeviationModalProps {
   isOpen: boolean;
@@ -158,13 +159,16 @@ export default function CreateDeviationModal({ isOpen, onClose, projects }: Crea
 
   const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault();
-    if (!auth.currentUser) return;
+    const currentUserId = user?.id || user?.uid || auth.currentUser?.uid || 'bruker';
+    const currentUserName = user?.displayName || auth.currentUser?.displayName || 'Byggeplassmedarbeider';
+    const userCompany = (user as any)?.company || (user as any)?.companyId || 'VikingMester';
+    const companyId = (user as any)?.companyId || (user as any)?.company || 'vikingmester';
+
     setLoading(true);
 
     try {
       const selectedProject = projects.find(p => p.id === formData.projectId);
-      const userCompany = (user as any)?.company || '';
-      await addDoc(collection(db, 'deviations'), {
+      const devItem = {
         title: formData.title,
         projectId: formData.projectId,
         project: selectedProject?.name || 'Ukjent',
@@ -174,20 +178,36 @@ export default function CreateDeviationModal({ isOpen, onClose, projects }: Crea
         gnr: formData.gnr,
         bnr: formData.bnr,
         status: 'open',
-        authorId: auth.currentUser.uid,
-        reportedBy: auth.currentUser.displayName || 'System',
+        authorId: currentUserId,
+        reportedBy: currentUserName,
         company: userCompany,
+        companyId: companyId,
         photoUrl: photoUrl || null,
         imageUrl: photoUrl || null,
-        timestamp: serverTimestamp(),
+        timestamp: new Date().toISOString(),
         createdAt: new Date().toISOString()
-      });
-      toast.success('Avviksrapport er opprettet.');
+      };
+
+      await api.saveDoc('deviations', devItem);
+
+      try {
+        if (auth.currentUser) {
+          await addDoc(collection(db, 'deviations'), {
+            ...devItem,
+            timestamp: serverTimestamp()
+          });
+        }
+      } catch (fErr) {
+        console.warn('Valgfri Firestore synkronisering hoppet over:', fErr);
+      }
+
+      toast.success('Avviksrapport er opprettet og lagret!');
       onClose();
       setFormData({ title: '', projectId: '', description: '', severity: 'medium', location: '', gnr: '', bnr: '' });
       setPhotoUrl(null);
     } catch (error) {
-      handleFirestoreError(error, OperationType.CREATE, 'deviations');
+      console.error('Feil ved opprettelse av avvik:', error);
+      toast.error('Kunne ikke opprette avvik. Prøv igjen.');
     } finally {
       setLoading(false);
     }

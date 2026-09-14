@@ -37,9 +37,31 @@ export async function GET(req: NextRequest) {
       getCollectionItems('agent_activities')
     ]);
 
+    // 🛡️ Multi-tenant isolasjon: Isoler per bedrift med mindre super-admin eller intern hemmelighet
+    const user = getUserFromRequest(req);
+    const isSuperAdmin = user?.role === 'admin' || verifyCronOrInternalSecret(req);
+    const companyId = user?.companyId;
+
+    let projects = allProjects;
+    let changeOrders = allChangeOrders;
+    let deviations = allDeviations;
+    let todayLogsList = allLogs;
+    let activitiesList = allActivities;
+
+    if (!isSuperAdmin && companyId) {
+      projects = allProjects.filter((p: any) => !p.companyId || p.companyId === companyId);
+      const projectIds = new Set(projects.map((p: any) => p.id));
+      changeOrders = allChangeOrders.filter((c: any) => (!c.companyId || c.companyId === companyId) || (c.projectId && projectIds.has(c.projectId)));
+      deviations = allDeviations.filter((d: any) => (!d.companyId || d.companyId === companyId) || (d.projectId && projectIds.has(d.projectId)));
+      todayLogsList = allLogs.filter((l: any) => (!l.companyId || l.companyId === companyId) || (l.projectId && projectIds.has(l.projectId)));
+      activitiesList = allActivities.filter((a: any) => (!a.companyId || a.companyId === companyId) || (a.projectId && projectIds.has(a.projectId)));
+    }
+
     // Filter by project if requested
-    const changeOrders = projectId ? allChangeOrders.filter((c: any) => c.projectId === projectId) : allChangeOrders;
-    const deviations = projectId ? allDeviations.filter((d: any) => d.projectId === projectId) : allDeviations;
+    if (projectId) {
+      changeOrders = changeOrders.filter((c: any) => c.projectId === projectId);
+      deviations = deviations.filter((d: any) => d.projectId === projectId);
+    }
 
     // 1. Pending approvals requiring admin sign-off
     const pendingChangeOrders = changeOrders.filter((c: any) => 
@@ -57,16 +79,12 @@ export async function GET(req: NextRequest) {
 
     // 2. Metrics calculation
     const todayStr = new Date().toISOString().split('T')[0];
-    const todayLogs = allLogs.filter((l: any) => (l.createdAt || l.date || '').startsWith(todayStr));
-    const todayActivities = allActivities.filter((a: any) => (a.createdAt || '').startsWith(todayStr));
+    const todayLogs = todayLogsList.filter((l: any) => (l.createdAt || l.date || '').startsWith(todayStr));
+    const todayActivities = activitiesList.filter((a: any) => (a.createdAt || '').startsWith(todayStr));
     
     const securedRevenue = changeOrders.reduce((sum: number, co: any) => sum + (Number(co.amountExVat) || 0), 0);
 
-    // FIX (11.09.2026): Fjernet hardkodet eksempel-aktivitetslogg. Denne ble vist i dashboardet
-    // og rapportert videre (bl.a. i eksterne morgen-/ettermiddagsrapporter) som om det var ekte,
-    // fersk aktivitet, selv når det ikke fantes noen reell aktivitet ennå. Et ærlig tomt resultat
-    // lar UI vise en tydelig "ingen aktivitet ennå"-tilstand i stedet.
-    const recentActivities = allActivities.slice(0, 20);
+    const recentActivities = activitiesList.slice(0, 20);
 
     return NextResponse.json({
       success: true,
@@ -89,13 +107,11 @@ export async function GET(req: NextRequest) {
         todayActionsCount: todayLogs.length + todayActivities.length,
         pendingApprovalsCount: pendingChangeOrders.length,
         activeBlockersCount: pendingDeviations.length,
-        activeProjectsCount: allProjects.filter((p: any) => p.status === 'active' || !p.status).length,
+        activeProjectsCount: projects.filter((p: any) => p.status === 'active' || !p.status).length,
         securedRevenue
       },
-      // FIX (11.09.2026): Additive, skrivebeskyttede felter slik at eksterne rapporter (f.eks.
-      // morgen-/ettermiddagsvakten) kan vise ekte prosjekter og ekte kritiske avvik i stedet for
-      // eksempeldata. Ingen eksisterende felter er endret eller fjernet.
-      activeProjectsSummary: allProjects
+      // Ekte prosjekter og ekte kritiske avvik, isolert per bedrift
+      activeProjectsSummary: projects
         .filter((p: any) => p.status === 'active' || !p.status)
         .slice(0, 25)
         .map((p: any) => ({ id: p.id, name: p.name, location: p.location || null, progress: p.progress ?? null })),
@@ -302,23 +318,37 @@ Svar kort, faglig og handlingsorientert (maks 2-3 setninger). Bekreft hvilke til
         return NextResponse.json({ error: 'Mangler changeOrderId' }, { status: 400 });
       }
 
-      const existingCo = await getCollectionItemById('change_orders', changeOrderId);
-      if (existingCo && existingCo.status === 'approved_by_admin') {
+      const targetCO = (await getCollectionItemById('change_orders', changeOrderId)) || (await getCollectionItems('change_orders')).find((c: any) => c.id === changeOrderId);
+      if (!targetCO) {
+        return NextResponse.json({ error: 'Endringsordre ikke funnet' }, { status: 404 });
+      }
+
+      if (targetCO.status === 'approved_by_admin') {
         return NextResponse.json({
           success: true,
           message: 'Endringsordre var allerede godkjent.',
-          changeOrder: existingCo
+          changeOrder: targetCO
         });
+      }
+
+      const user = getUserFromRequest(req);
+      if (user?.role !== 'admin') {
+        const userCompanyId = user?.companyId;
+        if (targetCO.companyId && userCompanyId && targetCO.companyId !== userCompanyId) {
+          return NextResponse.json({ error: 'Ingen tilgang til denne endringsordren' }, { status: 403 });
+        }
       }
 
       const updated = await updateCollectionItem('change_orders', changeOrderId, {
         status: 'approved_by_admin',
         approvedAt: new Date().toISOString(),
-        approvedBy: authorName || 'Byggmester / Admin'
+        approvedBy: authorName || user?.email || 'Byggmester / Admin'
       });
 
       await saveCollectionItem('agent_activities', {
         type: 'change_order_approved',
+        companyId: targetCO.companyId || user?.companyId,
+        projectId: targetCO.projectId,
         title: `Endringsordre #${updated.changeNumber || ''} godkjent av admin`,
         description: `Krav på kr ${(updated.amountExVat || 0).toLocaleString('no-NO')} eks mva er formelt godkjent og klargjort for utsending.`,
         trade: 'general',
@@ -340,13 +370,25 @@ Svar kort, faglig og handlingsorientert (maks 2-3 setninger). Bekreft hvilke til
         return NextResponse.json({ error: 'Mangler changeOrderId' }, { status: 400 });
       }
 
-      const existingCo = await getCollectionItemById('change_orders', changeOrderId);
-      if (existingCo && existingCo.status === 'rejected') {
+      const targetCO = (await getCollectionItemById('change_orders', changeOrderId)) || (await getCollectionItems('change_orders')).find((c: any) => c.id === changeOrderId);
+      if (!targetCO) {
+        return NextResponse.json({ error: 'Endringsordre ikke funnet' }, { status: 404 });
+      }
+
+      if (targetCO.status === 'rejected') {
         return NextResponse.json({
           success: true,
           message: 'Endringsordre var allerede avvist.',
-          changeOrder: existingCo
+          changeOrder: targetCO
         });
+      }
+
+      const user = getUserFromRequest(req);
+      if (user?.role !== 'admin') {
+        const userCompanyId = user?.companyId;
+        if (targetCO.companyId && userCompanyId && targetCO.companyId !== userCompanyId) {
+          return NextResponse.json({ error: 'Ingen tilgang til denne endringsordren' }, { status: 403 });
+        }
       }
 
       const updated = await updateCollectionItem('change_orders', changeOrderId, {

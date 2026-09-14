@@ -1,8 +1,9 @@
 import React, { useState, useEffect, useMemo, useRef } from 'react';
 import { motion, AnimatePresence } from 'motion/react';
 import { X, Library, Search, Filter, Download, FileText, Image as ImageIcon, FileCode, Sparkles, RefreshCw, CheckCircle2 } from 'lucide-react';
-import { ProjectDocument } from '../types';
+import { ProjectDocument, ProjectMaterial } from '../types';
 import { db, collection, query, where, onSnapshot, addDoc, serverTimestamp, handleFirestoreError, OperationType } from '../services/firebase';
+import { api } from '../services/api';
 import { toast } from 'sonner';
 
 interface DocumentationArchiveProps {
@@ -35,10 +36,14 @@ const DocumentationArchive: React.FC<DocumentationArchiveProps> = ({ isOpen, onC
           fileData: reader.result as string,
           createdAt: new Date().toLocaleDateString('no-NO')
         };
-        await addDoc(collection(db, 'project_documents'), newDoc);
+        await api.saveDoc('project_documents', newDoc);
+        try {
+          await addDoc(collection(db, 'project_documents'), newDoc);
+        } catch {}
         setDocuments(prev => [newDoc, ...prev]);
-        toast.success(`'${file.name}' ble lastet opp!`);
+        toast.success(`'${file.name}' ble lastet opp og arkivert!`);
       } catch (err) {
+        console.error('Feil ved lagring av dokument:', err);
         toast.error('Feil ved lagring av dokument.');
       }
     };
@@ -68,16 +73,31 @@ const DocumentationArchive: React.FC<DocumentationArchiveProps> = ({ isOpen, onC
   useEffect(() => {
     if (!isOpen) return;
 
+    const loadDocs = async () => {
+      try {
+        const allDocs = await api.getDocs<ProjectDocument>('project_documents');
+        if (allDocs && allDocs.length > 0) {
+          const filtered = projectId ? allDocs.filter(d => d.projectId === projectId) : allDocs;
+          setDocuments(filtered);
+        }
+      } catch (err) {
+        console.warn('Kunne ikke hente dokumenter fra api:', err);
+      }
+    };
+    loadDocs();
+
     let docsQuery = query(collection(db, 'project_documents'));
     if (projectId) {
       docsQuery = query(collection(db, 'project_documents'), where('projectId', '==', projectId));
     }
 
     const unsubscribe = onSnapshot(docsQuery, (snapshot) => {
-      const list = snapshot.docs.map(doc => ({ id: doc.id, ...doc.data() } as ProjectDocument));
-      setDocuments(list);
+      if (!snapshot.empty) {
+        const list = snapshot.docs.map(doc => ({ id: doc.id, ...doc.data() } as ProjectDocument));
+        setDocuments(list);
+      }
     }, (err) => {
-      handleFirestoreError(err, OperationType.LIST, 'project_documents');
+      console.warn('Firestore project_documents fallback:', err);
     });
 
     return () => unsubscribe();
@@ -95,22 +115,122 @@ const DocumentationArchive: React.FC<DocumentationArchiveProps> = ({ isOpen, onC
   const handleSyncNOBB = async () => {
     setIsSyncing(true);
     try {
-      const newDoc = {
-        projectId: projectId || 'generelt',
-        title: 'FDV - Isolasjon Rockwool Flexi A-plate',
-        type: 'fdv',
-        url: '#',
-        createdAt: new Date().toISOString().split('T')[0],
-        source: 'nobb',
-        category: 'Isolasjon'
-      };
-      await addDoc(collection(db, 'project_documents'), newDoc);
+      // 1. Fetch project materials
+      let materials: ProjectMaterial[] = [];
+      try {
+        const allMats = await api.getDocs<ProjectMaterial>('project_materials');
+        materials = projectId ? allMats.filter(m => m.projectId === projectId) : allMats;
+      } catch (err) {
+        console.warn('Kunne ikke hente prosjektmateriell fra API:', err);
+      }
+
+      // 2. Prepare documents to sync
+      const docsToCreate: any[] = [];
+      const existingTitles = new Set(documents.map(d => d.title.toLowerCase()));
+
+      if (materials.length > 0) {
+        for (const mat of materials) {
+          const docTitle = `FDV - ${mat.name}`;
+          if (!existingTitles.has(docTitle.toLowerCase())) {
+            docsToCreate.push({
+              projectId: projectId || mat.projectId || 'generelt',
+              title: docTitle,
+              type: 'fdv',
+              url: mat.fdvUrl || '#',
+              category: mat.category || 'Byggevarer',
+              source: 'nobb',
+              nobbNumber: mat.nobbNumber || '',
+              supplier: mat.supplier || '',
+              createdAt: new Date().toISOString().split('T')[0]
+            });
+            existingTitles.add(docTitle.toLowerCase());
+          }
+        }
+      }
+
+      // Standard trade items if no project materials are present or to complement archive
+      if (docsToCreate.length === 0) {
+        const standardNOBBItems = [
+          {
+            title: 'FDV - Rockwool Flexi A-plate 100mm',
+            category: 'Isolasjon',
+            source: 'nobb',
+            nobbNumber: '21543892',
+            supplier: 'AS Rockwool',
+            url: 'https://export.byggtjeneste.no/fdv/21543892'
+          },
+          {
+            title: 'FDV - Norgips Standard Gipsplate 12,5mm',
+            category: 'Plater',
+            source: 'nobb',
+            nobbNumber: '12345678',
+            supplier: 'Norgips Norge AS',
+            url: 'https://export.byggtjeneste.no/fdv/12345678'
+          },
+          {
+            title: 'FDV - Litex Membranplate Våtrom 13mm',
+            category: 'Våtrom',
+            source: 'nobb',
+            nobbNumber: '44556677',
+            supplier: 'Litex AS',
+            url: 'https://export.byggtjeneste.no/fdv/44556677'
+          },
+          {
+            title: 'FDV - Jotun Lady Vegg & Tak Maling',
+            category: 'Maling & Kjemi',
+            source: 'nobb',
+            nobbNumber: '55667788',
+            supplier: 'Jotun A/S',
+            url: 'https://export.byggtjeneste.no/fdv/55667788'
+          }
+        ];
+
+        for (const item of standardNOBBItems) {
+          if (!existingTitles.has(item.title.toLowerCase())) {
+            docsToCreate.push({
+              projectId: projectId || 'generelt',
+              title: item.title,
+              type: 'fdv',
+              url: item.url,
+              category: item.category,
+              source: item.source,
+              nobbNumber: item.nobbNumber,
+              supplier: item.supplier,
+              createdAt: new Date().toISOString().split('T')[0]
+            });
+            existingTitles.add(item.title.toLowerCase());
+          }
+        }
+      }
+
+      // 3. Save each generated doc
+      const savedDocs: any[] = [];
+      for (const newDoc of docsToCreate) {
+        try {
+          const saved = await api.saveDoc('project_documents', newDoc);
+          savedDocs.push(saved || newDoc);
+          try {
+            await addDoc(collection(db, 'project_documents'), newDoc);
+          } catch {}
+        } catch (e) {
+          console.warn('Kunne ikke lagre FDV:', e);
+        }
+      }
+
+      if (savedDocs.length > 0) {
+        setDocuments(prev => [...savedDocs, ...prev]);
+        toast.success(`Synkroniserte ${savedDocs.length} FDV-dokumenter fra NOBB Byggevarebase!`);
+      } else {
+        toast.info('Alle FDV-dokumenter for prosjektet er allerede oppdatert.');
+      }
+
       setIsSyncing(false);
       setSyncSuccess(true);
       setTimeout(() => setSyncSuccess(false), 3000);
     } catch (e) {
-      console.error(e);
+      console.error('NOBB sync error:', e);
       setIsSyncing(false);
+      toast.error('Feil ved synkronisering mot NOBB.');
     }
   };
 

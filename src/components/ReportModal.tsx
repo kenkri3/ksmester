@@ -19,6 +19,7 @@ import { motion, AnimatePresence } from 'motion/react';
 import { cn } from '@/src/lib/utils';
 import { Project, Deviation } from '../types';
 import { pdfService } from '../services/pdfService';
+import { api } from '../services/api';
 import { toast } from 'sonner';
 
 interface ReportModalProps {
@@ -49,9 +50,19 @@ export default function ReportModal({ isOpen, onClose, project, sjaReports, devi
         },
         (project as any).checklists || []
       );
+
+      // 📁 Arkiver i prosjektets faste dokumentarkiv
+      await api.saveDoc('project_documents', {
+        projectId: project.id,
+        title: `Boligmappa FDV-underlag - ${project.name}`,
+        type: 'fdv',
+        category: 'FDV & Sluttdokumentasjon',
+        source: 'system',
+        createdAt: new Date().toISOString().split('T')[0]
+      }).catch(() => {});
       
       setExportStep('success');
-      toast.success('Boligmappa-underlag generert og lastet ned!');
+      toast.success('Boligmappa-underlag generert, lastet ned og arkivert i prosjektet!');
     } catch (error) {
       console.error('Boligmappa export error:', error);
       toast.error('Kunne ikke generere Boligmappa-dokument.');

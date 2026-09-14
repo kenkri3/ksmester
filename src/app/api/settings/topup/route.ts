@@ -1,4 +1,4 @@
-﻿import { NextRequest, NextResponse } from 'next/server';
+import { NextRequest, NextResponse } from 'next/server';
 import { getUserFromRequest } from '@/src/lib/server/auth';
 import { saveCollectionItem } from '@/src/lib/server/db';
 import { TOPUP_PACKAGES } from '@/src/lib/server/costTracker';
@@ -11,7 +11,10 @@ export async function POST(req: NextRequest) {
 
   try {
     const body = await req.json();
-    const { packageKey } = body;
+    let packageKey = body.packageKey;
+    if (!packageKey && body.packageType) {
+      packageKey = body.packageType === 'large' ? 'topup-20m' : 'topup-5m';
+    }
 
     const pkg = TOPUP_PACKAGES[packageKey];
     if (!pkg) {

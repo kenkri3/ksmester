@@ -2,6 +2,31 @@ import { NextRequest, NextResponse } from 'next/server';
 import { getUserFromRequest } from '@/src/lib/server/auth';
 import { GoogleGenAI } from '@google/genai';
 
+function isBlockedUrl(urlString: string): boolean {
+  try {
+    const parsed = new URL(urlString);
+    if (parsed.protocol !== 'http:' && parsed.protocol !== 'https:') return true;
+    const hostname = parsed.hostname.toLowerCase();
+    if (
+      hostname === 'localhost' ||
+      hostname === '127.0.0.1' ||
+      hostname === '::1' ||
+      hostname === '0.0.0.0' ||
+      hostname.endsWith('.local') ||
+      hostname.endsWith('.internal') ||
+      hostname.startsWith('10.') ||
+      hostname.startsWith('192.168.') ||
+      hostname === '169.254.169.254' ||
+      /^172\.(1[6-9]|2\d|3[01])\./.test(hostname)
+    ) {
+      return true;
+    }
+    return false;
+  } catch {
+    return true;
+  }
+}
+
 export async function POST(req: NextRequest) {
   const user = getUserFromRequest(req);
   if (!user) {
@@ -9,8 +34,8 @@ export async function POST(req: NextRequest) {
   }
 
   const { url } = await req.json();
-  if (!url || typeof url !== 'string' || !url.startsWith('http')) {
-    return NextResponse.json({ error: 'Ugyldig URL oppgitt' }, { status: 400 });
+  if (!url || typeof url !== 'string' || isBlockedUrl(url)) {
+    return NextResponse.json({ error: 'Ugyldig eller blokkert URL oppgitt' }, { status: 400 });
   }
 
   try {

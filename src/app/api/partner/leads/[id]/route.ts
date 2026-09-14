@@ -1,17 +1,37 @@
 import { NextRequest, NextResponse } from 'next/server';
-import { getCollectionItems, updateCollectionItem } from '@/src/lib/server/db';
+import { getCollectionItems, updateCollectionItem, ADMIN_EMAILS } from '@/src/lib/server/db';
+import { getUserFromRequest } from '@/src/lib/server/auth';
+
+function canAccessLead(user: any, lead: any): boolean {
+  if (!user) return false;
+  const userEmail = (user.email || '').toLowerCase().trim();
+  if (user.role === 'admin' || ADMIN_EMAILS.includes(userEmail)) return true;
+  return (
+    (lead.sellerEmail && lead.sellerEmail.toLowerCase() === userEmail) ||
+    (lead.sellerId && lead.sellerId === user.id)
+  );
+}
 
 export async function GET(
   req: NextRequest,
   { params }: { params: Promise<{ id: string }> }
 ) {
   try {
+    const user = getUserFromRequest(req);
+    if (!user) {
+      return NextResponse.json({ error: 'Uautorisert tilgang' }, { status: 401 });
+    }
+
     const { id } = await params;
     const items = await getCollectionItems('leads');
     const lead = (items || []).find((l: any) => l.id === id);
 
     if (!lead) {
       return NextResponse.json({ error: 'Lead ikke funnet' }, { status: 404 });
+    }
+
+    if (!canAccessLead(user, lead)) {
+      return NextResponse.json({ error: 'Ingen tilgang til denne kunden' }, { status: 403 });
     }
 
     return NextResponse.json({ success: true, lead });
@@ -27,6 +47,11 @@ export async function PATCH(
   { params }: { params: Promise<{ id: string }> }
 ) {
   try {
+    const user = getUserFromRequest(req);
+    if (!user) {
+      return NextResponse.json({ error: 'Uautorisert tilgang' }, { status: 401 });
+    }
+
     const { id } = await params;
     const body = await req.json();
     const items = await getCollectionItems('leads');
@@ -34,6 +59,10 @@ export async function PATCH(
 
     if (!lead) {
       return NextResponse.json({ error: 'Lead ikke funnet' }, { status: 404 });
+    }
+
+    if (!canAccessLead(user, lead)) {
+      return NextResponse.json({ error: 'Ingen tilgang til å oppdatere denne kunden' }, { status: 403 });
     }
 
     const newStatus = body.status || lead.status; // 'contacted' | 'dialogue' | 'trial' | 'won' | 'lost'

@@ -7,6 +7,10 @@ import { getUserFromRequest } from '@/src/lib/server/auth';
 export async function GET(req: NextRequest) {
   try {
     const userPayload = getUserFromRequest(req);
+    if (!userPayload) {
+      return NextResponse.json({ error: 'Uautorisert tilgang. Vennligst logg inn.' }, { status: 401 });
+    }
+
     const sellerParam = req.nextUrl.searchParams.get('seller');
     const items = await getCollectionItems('leads');
 
@@ -16,18 +20,16 @@ export async function GET(req: NextRequest) {
       Boolean(l.partnerRep)
     );
 
-    // Hvis innlogget selger (og ikke admin), isoler KUN deres egne leads
-    if (userPayload && userPayload.email) {
-      const userEmail = userPayload.email.toLowerCase().trim();
-      const isAdmin = ADMIN_EMAILS.includes(userEmail) || userPayload.role === 'admin';
+    const userEmail = userPayload.email.toLowerCase().trim();
+    const isAdmin = ADMIN_EMAILS.includes(userEmail) || userPayload.role === 'admin';
 
-      if (!isAdmin) {
-        partnerLeads = partnerLeads.filter((l: any) => 
-          (l.sellerEmail && l.sellerEmail.toLowerCase() === userEmail) ||
-          (l.sellerId && l.sellerId === userPayload.id) ||
-          (l.sellerName && l.sellerName.toLowerCase().includes(userEmail.split('@')[0]))
-        );
-      }
+    // Hvis ikke admin, isoler KUN deres egne leads
+    if (!isAdmin) {
+      partnerLeads = partnerLeads.filter((l: any) => 
+        (l.sellerEmail && l.sellerEmail.toLowerCase() === userEmail) ||
+        (l.sellerId && l.sellerId === userPayload.id) ||
+        (l.sellerName && l.sellerName.toLowerCase().includes(userEmail.split('@')[0]))
+      );
     } else if (sellerParam && sellerParam.trim()) {
       const q = sellerParam.trim().toLowerCase();
       partnerLeads = partnerLeads.filter((l: any) => 

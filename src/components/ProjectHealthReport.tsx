@@ -15,12 +15,15 @@ import {
   Brain,
   ChevronRight,
   Info,
-  RefreshCw
+  RefreshCw,
+  Save
 } from 'lucide-react';
 import { cn } from '@/src/lib/utils';
 import { Project, Deviation, SafetyInspection, CrewMember, ProjectMaterial } from '../types';
 import { db, collection, query, where, onSnapshot, handleFirestoreError, OperationType } from '../services/firebase';
 import { projectAiService, ProjectHealthReport as HealthReportType } from '../services/projectAiService';
+import { api } from '../services/api';
+import { toast } from 'sonner';
 
 interface ProjectHealthReportProps {
   project: Project;
@@ -82,6 +85,30 @@ const ProjectHealthReport: React.FC<ProjectHealthReportProps> = ({ project, isOp
       console.error(err);
     } finally {
       setIsLoading(false);
+    }
+  };
+
+  const [isSavingReport, setIsSavingReport] = useState(false);
+  const handleSaveReport = async () => {
+    if (!report) return;
+    setIsSavingReport(true);
+    try {
+      await api.saveDoc('project_health_reports', {
+        projectId: project.id,
+        projectName: project.name,
+        status: report.status,
+        overallHealth: report.status,
+        score: report.score,
+        summary: report.summary,
+        risks: report.risks,
+        recommendations: report.recommendations,
+        createdAt: new Date().toISOString()
+      });
+      toast.success('Prosjekthelserapport er arkivert i prosjektet!');
+    } catch (err) {
+      toast.error('Kunne ikke arkivere rapport.');
+    } finally {
+      setIsSavingReport(false);
     }
   };
 
@@ -285,6 +312,14 @@ const ProjectHealthReport: React.FC<ProjectHealthReportProps> = ({ project, isOp
         {/* Footer */}
         {report && (
           <div className="p-6 border-t border-neutral-200 bg-white flex justify-end gap-4">
+            <button 
+              onClick={handleSaveReport}
+              disabled={isSavingReport}
+              className="px-6 py-3 bg-blue-600 hover:bg-blue-700 text-white rounded-xl text-sm font-bold shadow-md transition-colors flex items-center gap-2 cursor-pointer disabled:opacity-50"
+            >
+              <Save size={18} />
+              {isSavingReport ? 'Arkiverer...' : 'Arkiver helserapport'}
+            </button>
             <button 
               onClick={generateReport}
               className="px-6 py-3 bg-neutral-100 hover:bg-neutral-200 rounded-xl text-sm font-bold transition-colors flex items-center gap-2"

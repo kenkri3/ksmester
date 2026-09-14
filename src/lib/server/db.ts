@@ -380,6 +380,31 @@ export async function initDb() {
         created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP
       );
 
+      CREATE TABLE IF NOT EXISTS email_logs (
+        id SERIAL PRIMARY KEY,
+        company_id VARCHAR(255),
+        recipient VARCHAR(255) NOT NULL,
+        template_id VARCHAR(255),
+        status VARCHAR(50) DEFAULT 'sent',
+        error TEXT,
+        created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP
+      );
+
+      CREATE INDEX IF NOT EXISTS idx_email_logs_company ON email_logs (company_id);
+
+      CREATE TABLE IF NOT EXISTS project_health_reports (
+        id VARCHAR(255) PRIMARY KEY,
+        project_id VARCHAR(255) NOT NULL,
+        company_id VARCHAR(255),
+        score INTEGER,
+        summary TEXT,
+        risks JSONB,
+        recommendations JSONB,
+        created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP
+      );
+
+      CREATE INDEX IF NOT EXISTS idx_health_reports_project ON project_health_reports (project_id);
+
       ALTER TABLE users ADD COLUMN IF NOT EXISTS orgnr VARCHAR(50);
     `);
 

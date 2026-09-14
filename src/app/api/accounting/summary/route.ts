@@ -10,14 +10,11 @@ export async function GET(req: NextRequest) {
     const adminKey = url.searchParams.get('adminKey') || req.headers.get('x-admin-key');
     const user = getUserFromRequest(req);
 
-    // 🛡️ Sikker tilgangskontroll: Kun autorisert admin (JWT eller hemmelig adminnøkkel)
+    // 🛡️ Sikker tilgangskontroll: Kun autorisert admin (JWT eller hemmelig adminnøkkel/intern hemmelighet)
     const isAuthorized = 
       (user && user.role === 'admin') ||
-      (adminKey && (
-        adminKey === process.env.ADMIN_PASSWORD ||
-        adminKey === process.env.INTERNAL_API_SECRET ||
-        adminKey === 'vikingmester-admin-2026'
-      ));
+      (adminKey && Boolean(process.env.ADMIN_PASSWORD) && adminKey === process.env.ADMIN_PASSWORD) ||
+      (adminKey && Boolean(process.env.INTERNAL_API_SECRET) && adminKey === process.env.INTERNAL_API_SECRET);
 
     if (!isAuthorized) {
       return NextResponse.json({ 

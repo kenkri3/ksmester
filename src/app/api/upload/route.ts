@@ -3,10 +3,18 @@ import path from 'path';
 import fs from 'fs';
 import sharp from 'sharp';
 
+import { getUserFromRequest } from '@/src/lib/server/auth';
+
 // Mappe for opplastinger – kan pekes til Railway Volume via UPLOADS_PATH env var
 const UPLOADS_DIR = process.env.UPLOADS_PATH || path.join(process.cwd(), 'uploads');
+const MAX_UPLOAD_SIZE = 15 * 1024 * 1024; // 15MB maks
 
 export async function POST(req: NextRequest) {
+  const user = getUserFromRequest(req);
+  if (!user) {
+    return NextResponse.json({ error: 'Uautorisert opplasting. Krever innlogging.' }, { status: 401 });
+  }
+
   try {
     if (!fs.existsSync(UPLOADS_DIR)) {
       fs.mkdirSync(UPLOADS_DIR, { recursive: true });
@@ -41,6 +49,10 @@ export async function POST(req: NextRequest) {
 
     if (!buffer || buffer.length === 0) {
       return NextResponse.json({ error: 'Tom fil mottatt' }, { status: 400 });
+    }
+
+    if (originalSize > MAX_UPLOAD_SIZE || buffer.length > MAX_UPLOAD_SIZE) {
+      return NextResponse.json({ error: 'Filen er for stor. Maksimal tillatt filstørrelse er 15MB.' }, { status: 400 });
     }
 
     // Automatisk WebP-komprimering og smart resizing for byggedokumentasjon

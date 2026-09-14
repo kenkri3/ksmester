@@ -5,14 +5,17 @@ import { getUserFromRequest } from '@/src/lib/server/auth';
 export async function POST(req: NextRequest) {
   try {
     const user = getUserFromRequest(req);
+    if (!user) {
+      return NextResponse.json({ error: 'Uautorisert tilgang. Vennligst logg inn.' }, { status: 401 });
+    }
     const body = await req.json();
-    const { service, secretToken, companyId, companyName } = body;
+    const { service, secretToken, companyName } = body;
 
     if (!service || !secretToken) {
       return NextResponse.json({ error: 'Mangler tjeneste eller API-nøkkel.' }, { status: 400 });
     }
 
-    const effectiveCompanyId = user?.companyId || companyId || 'comp-default';
+    const effectiveCompanyId = user.companyId || 'comp-default';
     const effectiveCompanyName = (user as any)?.company || companyName || 'Bedriftsbruker';
 
     // 1. Lagre integrasjonen i databasen
@@ -97,8 +100,11 @@ export async function POST(req: NextRequest) {
 export async function GET(req: NextRequest) {
   try {
     const user = getUserFromRequest(req);
+    if (!user) {
+      return NextResponse.json({ error: 'Uautorisert tilgang' }, { status: 401 });
+    }
     const all = await getCollectionItems('integrations');
-    const filtered = user?.companyId ? all.filter((i: any) => i.companyId === user.companyId) : all;
+    const filtered = user.role === 'admin' ? all : all.filter((i: any) => i.companyId === user.companyId);
 
     return NextResponse.json(filtered.map((item: any) => ({
       service: item.service,

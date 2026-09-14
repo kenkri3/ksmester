@@ -31,8 +31,7 @@ export async function POST(req: NextRequest) {
       existingUser = inMemoryStore.users?.find(u => u.email.toLowerCase() === emailLower);
     }
 
-    if (existingUser) {
-      return NextResponse.json({ error: 'En bruker med denne e-posten er allerede registrert.' }, { status: 400 });
+      return NextResponse.json({ error: 'En bruker med denne e-posten er allerede registrert. Logg inn i stedet.' }, { status: 409 });
     }
 
     const hashedPassword = await bcrypt.hash(password, 10);

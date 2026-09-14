@@ -29,9 +29,22 @@ export function verifyAuthToken(token: string): TokenPayload | null {
 
 export function getUserFromRequest(req: NextRequest): TokenPayload | null {
   const authHeader = req.headers.get('authorization');
-  if (!authHeader) return null;
-  const token = authHeader.startsWith('Bearer ') ? authHeader.substring(7) : authHeader;
+  let token = authHeader?.startsWith('Bearer ') ? authHeader.substring(7) : authHeader;
+  if (!token) {
+    token = req.cookies.get('token')?.value || req.cookies.get('auth_token')?.value || null;
+  }
+  if (!token) return null;
   return verifyAuthToken(token);
+}
+
+/**
+ * 🛡️ Verifiserer at innlogget bruker har tilgang til forespurt bedrift (Multi-tenant IDOR-sikring).
+ * Admin har global tilgang, mens ordinære brukere kun har tilgang til egen bedrift.
+ */
+export function assertTenantAccess(user: TokenPayload, targetCompanyId?: string): boolean {
+  if (user.role === 'admin') return true;
+  if (!targetCompanyId) return true;
+  return user.companyId === targetCompanyId;
 }
 
 export function verifyInternalSecret(req: NextRequest): boolean {

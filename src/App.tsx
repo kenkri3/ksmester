@@ -147,8 +147,26 @@ function AppContent() {
   };
 
   const handleMobileAction = (actionId: string) => {
+    const mobileActions = ['take_photo', 'voice_sja', 'log_deviation', 'start_checklist', 'contacts', 'laerling', 'translator', 'activity'];
+
+    if (view === 'mobile') {
+      if (mobileActions.includes(actionId)) {
+        window.dispatchEvent(new CustomEvent('trigger_dashboard_action', { detail: { actionId } }));
+        return;
+      }
+      // Action requires dashboard view
+      setView('dashboard');
+      setTimeout(() => {
+        window.dispatchEvent(new CustomEvent('trigger_dashboard_action', { detail: { actionId } }));
+      }, 150);
+      return;
+    }
+
     if (actionId === 'voice_sja') {
       setView('mobile');
+      setTimeout(() => {
+        window.dispatchEvent(new CustomEvent('trigger_dashboard_action', { detail: { actionId } }));
+      }, 100);
       return;
     }
     if (actionId === 'contacts') {
