@@ -17,7 +17,7 @@ export function StructuredData({ breadcrumbs, faqs }: StructuredDataProps = {}) 
     logo: `${baseUrl}/icon.svg`,
     description: 'Norges ledende autonome KS- og HMS-system for håndverkere og entreprenører.',
     email: 'hei@vikingmester.no',
-    telephone: '+47 912 34 567',
+    telephone: '+47 401 63 082',
     address: {
       '@type': 'PostalAddress',
       addressCountry: 'NO',

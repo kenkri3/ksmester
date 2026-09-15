@@ -117,8 +117,8 @@ export default function OmOssPage() {
                 <Phone className="text-slate-400 mt-1 shrink-0" size={18} />
                 <div>
                   <div className="font-bold text-navy-900">Kundestøtte & vakttelefon</div>
-                  <a href="tel:+4792275033" className="text-electric-600 hover:underline">
-                    +47 92 27 50 33
+                  <a href="tel:+4740163082" className="text-electric-600 hover:underline">
+                    +47 401 63 082
                   </a>
                 </div>
               </div>

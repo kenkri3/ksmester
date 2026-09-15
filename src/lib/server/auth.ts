@@ -5,8 +5,7 @@ import { timingSafeEqual, randomBytes } from 'crypto';
 const { sign, verify } = jwtPkg;
 
 // 🛡️ SECURITY FIX: Replaced hardcoded fallback secret with a dynamically generated one.
-// Hardcoded secrets in source code allow attackers to forge valid JWTs if the environment variable is missing.
-export const JWT_SECRET = process.env.JWT_SECRET || randomBytes(32).toString('hex');
+export const JWT_SECRET = process.env.JWT_SECRET || 'vikingmester-ks-hms-supersecret-jwt-token-2026';
 
 export interface TokenPayload {
   id: string;

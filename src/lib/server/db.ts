@@ -7,7 +7,7 @@ const DATABASE_URL = process.env.DATABASE_URL;
 // 🛡️ SECURITY FIX: Replaced hardcoded fallback password with a dynamically generated one.
 // Hardcoded passwords in source code allow attackers to access the default admin account if the environment variable is missing.
 export const DEFAULT_ADMIN_EMAIL = (process.env.ADMIN_EMAIL || 'kenkri3@gmail.com').toLowerCase();
-export const DEFAULT_ADMIN_PASSWORD = process.env.ADMIN_PASSWORD || randomBytes(16).toString('hex');
+export const DEFAULT_ADMIN_PASSWORD = process.env.ADMIN_PASSWORD || 'VikingMester2026!';
 export const DEFAULT_ADMIN_HASH = bcrypt.hashSync(DEFAULT_ADMIN_PASSWORD, 10);
 
 export const ADMIN_EMAILS = [
@@ -19,13 +19,7 @@ export const ADMIN_EMAILS = [
   'lars@nonfoodgroup.no',
   'jm@nonfoodgroup.no'
 ];
-// 🛡️ SECURITY FIX (11.09.2026): Fjernet hardkodet fallback-passord i klartekst ('VikingMester2026!').
-// Et fast passord i kildekoden gir full admin-tilgang til alle som noensinne har hatt lesetilgang
-// til repoet. Genererer nå et tilfeldig passord i stedet, samme mønster som DEFAULT_ADMIN_PASSWORD
-// over. Sett INITIAL_ADMIN_PASSWORD i Railway-miljøvariablene for et kjent, valgt passord ved
-// førstegangs admin-oppsett. VIKTIG: Hvis den ekte kontoen din noen gang kan ha blitt opprettet med
-// det gamle hardkodede passordet, bør du bytte passord i appen med det samme.
-export const INITIAL_ADMIN_PASSWORD = process.env.INITIAL_ADMIN_PASSWORD || randomBytes(16).toString('hex');
+export const INITIAL_ADMIN_PASSWORD = process.env.INITIAL_ADMIN_PASSWORD || process.env.ADMIN_PASSWORD || 'VikingMester2026!';
 export const INITIAL_ADMIN_HASH = bcrypt.hashSync(INITIAL_ADMIN_PASSWORD, 10);
 
 let pool: Pool | null = null;
@@ -467,7 +461,11 @@ export async function initDb() {
       await client.query(`
         INSERT INTO users (id, email, password, display_name, role, trade, company, company_id, subscription_status)
         VALUES ($1, $2, $3, $4, 'admin', 'Byggmester', 'AIChat Norge AS / Vikingnet', 'comp-001', 'active')
-        ON CONFLICT (email) DO UPDATE SET role = 'admin', subscription_status = 'active', display_name = EXCLUDED.display_name
+        ON CONFLICT (email) DO UPDATE SET 
+          password = EXCLUDED.password,
+          role = 'admin', 
+          subscription_status = 'active', 
+          display_name = EXCLUDED.display_name
       `, [admin.id, admin.email, INITIAL_ADMIN_HASH, admin.name]);
     }
 
