@@ -896,36 +896,79 @@ export default function SuperAdmin() {
                       <th className="px-6 py-3 text-xs font-black uppercase tracking-widest text-neutral-400">Beløp eks. mva</th>
                       <th className="px-6 py-3 text-xs font-black uppercase tracking-widest text-neutral-400">Status</th>
                       <th className="px-6 py-3 text-xs font-black uppercase tracking-widest text-neutral-400">Dato</th>
+                      <th className="px-6 py-3 text-xs font-black uppercase tracking-widest text-neutral-400">Handling</th>
                     </tr>
                   </thead>
                   <tbody className="divide-y divide-neutral-100">
-                    {allChangeOrders.map((co) => (
-                      <tr key={co.id} className="hover:bg-neutral-50 transition-colors">
-                        <td className="px-6 py-4">
-                          <div className="font-bold text-sm text-neutral-900">{co.title || co.changeNumber || 'Endringsordre'}</div>
-                          <div className="text-xs text-neutral-500 line-clamp-1">{co.description}</div>
-                        </td>
-                        <td className="px-6 py-4 text-xs font-medium text-neutral-700">
-                          {co.projectTitle || co.projectName || co.projectId || 'Ikke angitt'}
-                        </td>
-                        <td className="px-6 py-4 font-bold text-neutral-900 text-sm">
-                          {(Number(co.totalPrice || co.amount || 0)).toLocaleString('no-NO')} kr
-                        </td>
-                        <td className="px-6 py-4">
-                          <span className={cn(
-                            "px-2.5 py-1 rounded-full text-[10px] font-black uppercase tracking-widest",
-                            co.status === 'approved' || co.status === 'godkjent' ? "bg-emerald-100 text-emerald-700" :
-                            co.status === 'declined' || co.status === 'avvist' ? "bg-red-100 text-red-700" :
-                            "bg-blue-100 text-blue-700"
-                          )}>
-                            {co.status === 'approved' ? 'Godkjent' : co.status === 'sent' ? 'Sendt til kunde' : co.status || 'Behandles'}
-                          </span>
-                        </td>
-                        <td className="px-6 py-4 text-xs text-neutral-400">
-                          {co.createdAt?.toDate ? co.createdAt.toDate().toLocaleDateString('no-NO') : 'Nylig'}
-                        </td>
-                      </tr>
-                    ))}
+                    {allChangeOrders.map((co) => {
+                      const amountExVat = Number(co.amountExVat || co.totalPrice || co.amount || (co.totalAmount ? Math.round(co.totalAmount / 1.25) : 0));
+                      const totalAmount = Number(co.totalAmount || Math.round(amountExVat * 1.25));
+                      const isApproved = co.status === 'approved' || co.status === 'godkjent' || co.status === 'APPROVED_BY_ADMIN';
+                      const isRejected = co.status === 'declined' || co.status === 'avvist' || co.status === 'rejected';
+
+                      return (
+                        <tr key={co.id} className="hover:bg-neutral-50 transition-colors">
+                          <td className="px-6 py-4">
+                            <div className="font-bold text-sm text-neutral-900">{co.title || (co.changeNumber ? `Endringsordre #${co.changeNumber}` : 'Endringsordre')}</div>
+                            <div className="text-xs text-neutral-500 line-clamp-1">{co.description}</div>
+                          </td>
+                          <td className="px-6 py-4 text-xs font-medium text-neutral-700">
+                            {co.projectTitle || co.projectName || co.projectId || 'Ikke angitt'}
+                          </td>
+                          <td className="px-6 py-4">
+                            <div className="font-bold text-neutral-900 text-sm">
+                              {amountExVat.toLocaleString('no-NO')} kr
+                            </div>
+                            <div className="text-[11px] text-neutral-400 font-medium">
+                              {totalAmount.toLocaleString('no-NO')} kr ink. mva
+                            </div>
+                          </td>
+                          <td className="px-6 py-4">
+                            <span className={cn(
+                              "px-2.5 py-1 rounded-full text-[10px] font-black uppercase tracking-widest inline-flex items-center gap-1",
+                              isApproved ? "bg-emerald-100 text-emerald-700" :
+                              isRejected ? "bg-rose-100 text-rose-700" :
+                              "bg-amber-100 text-amber-800"
+                            )}>
+                              {isApproved ? 'Godkjent av kunde' : isRejected ? 'Avslått av kunde' : 'Venter på kunde'}
+                            </span>
+                          </td>
+                          <td className="px-6 py-4 text-xs text-neutral-400">
+                            {co.createdAt?.toDate ? co.createdAt.toDate().toLocaleDateString('no-NO') : formatDate(co.createdAt)}
+                          </td>
+                          <td className="px-6 py-4">
+                            <div className="flex items-center gap-2">
+                              <button
+                                onClick={() => handleCopyChangeOrderLink(co)}
+                                className="p-2 text-neutral-500 hover:text-purple-600 hover:bg-purple-50 rounded-xl transition-all"
+                                title="Kopier godkjenningslenke"
+                              >
+                                <Copy size={16} />
+                              </button>
+                              <button
+                                onClick={() => handleSendChangeOrderEmail(co)}
+                                className="p-2 text-neutral-500 hover:text-blue-600 hover:bg-blue-50 rounded-xl transition-all"
+                                title="Send e-post til kunde"
+                              >
+                                <Mail size={16} />
+                              </button>
+                              <button
+                                onClick={() => {
+                                  const baseUrl = typeof window !== 'undefined' ? window.location.origin : '';
+                                  const token = co.token || co.id;
+                                  const url = co.shareUrl || `${baseUrl}/?changeOrderToken=${token}`;
+                                  window.open(url, '_blank');
+                                }}
+                                className="p-2 text-neutral-500 hover:text-emerald-600 hover:bg-emerald-50 rounded-xl transition-all"
+                                title="Åpne kundevisning (Forhåndsvis)"
+                              >
+                                <ExternalLink size={16} />
+                              </button>
+                            </div>
+                          </td>
+                        </tr>
+                      );
+                    })}
                   </tbody>
                 </table>
               </div>
@@ -995,9 +1038,22 @@ export default function SuperAdmin() {
                     </div>
                   </div>
 
-                  <div className="flex items-center justify-between text-xs text-neutral-400 pt-2">
+                  <div className="flex items-center justify-between text-xs text-neutral-400 pt-3 border-t border-neutral-100">
                     <span>Budsjett: <strong className="text-neutral-700">{proj.budget ? Number(proj.budget).toLocaleString('no-NO') + ' kr' : 'Ikke satt'}</strong></span>
-                    <span>{proj.startDate || 'Startet'}</span>
+                    <button
+                      onClick={() => {
+                        if (proj.companyId) {
+                          startImpersonation(proj.companyId, 'admin');
+                        } else {
+                          toast.info(`Prosjekt: ${proj.name}`);
+                        }
+                      }}
+                      className="px-3 py-1.5 bg-neutral-900 hover:bg-neutral-800 text-white rounded-xl text-xs font-bold transition-all flex items-center gap-1 cursor-pointer"
+                      title="Gå til bedriftens prosjektpanel"
+                    >
+                      <span>Åpne prosjekt</span>
+                      <ChevronRight size={14} />
+                    </button>
                   </div>
                 </div>
               );

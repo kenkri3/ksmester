@@ -59,8 +59,9 @@ Returner KUN et gyldig JSON-objekt med følgende felter:
 - legalHjemmel: Juridisk henvisning (f.eks. "NS 8406 punkt 19.2 (Varsel om vederlagsjustering og fristforlengelse)" eller "Bustadoppføringslova § 9 (Tilleggsarbeid)").
 - smsMessageToClient: En kort, høflig SMS-tekst til kunden med forklaring av tillegget og varsel om godkjenning.`;
 
+      const modelToUse = process.env.GEMINI_MODEL || 'gemini-2.5-flash';
       const aiResponse = await ai.models.generateContent({
-        model: 'gemini-3.8-flash',
+        model: modelToUse,
         contents: prompt,
         config: {
           responseMimeType: 'application/json'
@@ -71,7 +72,7 @@ Returner KUN et gyldig JSON-objekt med følgende felter:
       const promptTokens = aiResponse.usageMetadata?.promptTokenCount || Math.round(prompt.length / 4);
       const completionTokens = aiResponse.usageMetadata?.candidatesTokenCount || 200;
       trackTokenCost({
-        model: 'gemini-3.8-flash',
+        model: modelToUse,
         promptTokens,
         completionTokens,
         operation: 'voice_to_change_order',

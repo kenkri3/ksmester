@@ -1,4 +1,4 @@
-﻿import { getCollectionItems, saveCollectionItem } from './db';
+import { getCollectionItems, saveCollectionItem } from './db';
 import { GoogleGenAI } from '@google/genai';
 import { pingSearchEngines } from './indexNow';
 
@@ -467,7 +467,7 @@ Returner svaret som et gyldig JSON-objekt med følgende struktur:
 
   try {
     const ai = new GoogleGenAI({ apiKey: geminiKey });
-    const candidateModels = ['gemini-3.8-flash', 'gemini-2.5-flash', 'gemini-1.5-flash'];
+    const candidateModels = [process.env.GEMINI_MODEL, 'gemini-2.5-flash', 'gemini-2.5-flash-lite', 'gemini-3.5-flash-lite', 'gemini-2.0-flash', 'gemini-1.5-flash'].filter(Boolean) as string[];
     let aiResponse: any = null;
 
     for (const m of candidateModels) {
