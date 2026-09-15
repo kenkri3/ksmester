@@ -78,6 +78,8 @@ import HMSModal from './HMSModal';
 import ProjectDetails from './ProjectDetails';
 import SmartSearch from './SmartSearch';
 import ChangeOrderModal from './ChangeOrderModal';
+import PreCloseInspectorModal, { LukkesperreZone } from './PreCloseInspectorModal';
+import SJAPreviewModal, { SJADocument } from './SJAPreviewModal';
 
 interface DashboardProps {
   initialTab?: any;
@@ -138,6 +140,64 @@ export default function Dashboard({
   const [isSmartSearchOpen, setIsSmartSearchOpen] = useState(false);
   const [isActivityLogModalOpen, setIsActivityLogModalOpen] = useState(false);
   const [isChangeOrderModalOpen, setIsChangeOrderModalOpen] = useState(false);
+
+  // Lukkesperre & Pre-close state
+  const [lukkesperreZones, setLukkesperreZones] = useState<LukkesperreZone[]>([
+    { 
+      id: 'z-1',
+      room: 'Bad 2. etg (Nyebakken)', 
+      project: 'Nyebakken 14 - Totalrenovering',
+      status: 'GREEN', 
+      canClose: true, 
+      detail: 'Rør-i-rør trykktest og dampsperre godkjent.',
+      checks: {
+        plumbing: true,
+        electric: true,
+        vaporBarrier: true,
+        insulation: true
+      },
+      lastChecked: 'I dag kl. 10:15',
+      inspector: 'Rørleggermester Hansen & Byggmester Ken'
+    },
+    { 
+      id: 'z-2',
+      room: 'Vaskerom 1. etg (Storgata 8)', 
+      project: 'Storgata 8 - Nybygg',
+      status: 'RED', 
+      canClose: false, 
+      detail: 'Rørlegger mangler trykktestrapport for fordelerskap.',
+      checks: {
+        plumbing: false,
+        electric: true,
+        vaporBarrier: false,
+        insulation: true
+      },
+      lastChecked: 'I dag kl. 09:15',
+      inspector: 'Byggmester Ken'
+    },
+    { 
+      id: 'z-3',
+      room: 'Kjøkken (Fjordveien 22)', 
+      project: 'Fjordveien 22 - Tilbygg',
+      status: 'GREEN', 
+      canClose: true, 
+      detail: 'El-skjultanlegg og rørkurs verifisert.',
+      checks: {
+        plumbing: true,
+        electric: true,
+        vaporBarrier: true,
+        insulation: true
+      },
+      lastChecked: '14. sep kl. 14:30',
+      inspector: 'Elektroinstallatør Erik'
+    }
+  ]);
+  const [selectedLukkesperreZone, setSelectedLukkesperreZone] = useState<LukkesperreZone | null>(null);
+  const [isPreCloseModalOpen, setIsPreCloseModalOpen] = useState(false);
+
+  // SJA Document preview state
+  const [activeSJADoc, setActiveSJADoc] = useState<SJADocument | null>(null);
+  const [isSJAPreviewOpen, setIsSJAPreviewOpen] = useState(false);
 
   // Agent State & Live Dispatch
   const [agentStatus, setAgentStatus] = useState<any>({
@@ -229,6 +289,15 @@ export default function Dashboard({
         case 'change_order':
           setIsChangeOrderModalOpen(true);
           break;
+        case 'sja':
+        case 'voice_sja':
+          handleOpenSJAForTrade('Tømrer');
+          break;
+        case 'pre_close':
+          setActiveTab('kvalitet');
+          setSelectedLukkesperreZone(lukkesperreZones[0]);
+          setIsPreCloseModalOpen(true);
+          break;
         default:
           break;
       }
@@ -236,7 +305,191 @@ export default function Dashboard({
 
     window.addEventListener('trigger_dashboard_action', handleAction as EventListener);
     return () => window.removeEventListener('trigger_dashboard_action', handleAction as EventListener);
-  }, []);
+  }, [lukkesperreZones]);
+
+  // Handlers for Lukkesperre (TEK17)
+  const handleOpenPreClose = (zone: LukkesperreZone) => {
+    setSelectedLukkesperreZone(zone);
+    setIsPreCloseModalOpen(true);
+  };
+
+  const handleUpdateZone = (updated: LukkesperreZone) => {
+    setLukkesperreZones(prev => prev.map(z => z.id === updated.id ? updated : z));
+    setSelectedLukkesperreZone(updated);
+  };
+
+  const handleAddZone = () => {
+    const newZone: LukkesperreZone = {
+      id: `z-${Date.now()}`,
+      room: `Ny Sone / Rom ${lukkesperreZones.length + 1}`,
+      project: selectedProject?.name || projects[0]?.name || 'Nyebakken 14',
+      status: 'RED',
+      canClose: false,
+      detail: 'Ny kontrollsone under oppføring. Påkrevet 4 tverrfaglige kontroller.',
+      checks: {
+        plumbing: false,
+        electric: false,
+        vaporBarrier: false,
+        insulation: false
+      },
+      lastChecked: 'Akkurat nå',
+      inspector: user?.displayName || 'Byggmester'
+    };
+    setLukkesperreZones(prev => [newZone, ...prev]);
+    setSelectedLukkesperreZone(newZone);
+    setIsPreCloseModalOpen(true);
+    toast.success('Ny kontrollsone opprettet for TEK17 lukkesjekk');
+  };
+
+  // Handler for SJA Modal
+  const handleOpenSJAForTrade = (tradeName: string) => {
+    const activeProj = selectedProject || projects[0] || { name: 'Nyebakken 14 - Totalrenovering' };
+    let sja: SJADocument;
+
+    if (tradeName.includes('Tømrer') || tradeName.includes('Stillas') || tradeName.includes('tak')) {
+      sja = {
+        id: `sja-${Date.now()}`,
+        title: 'SJA for Fasade-, Tak- og Stillasarbeid',
+        task: 'Montering av vindsperre, lekting og utvendig kledning i høyden.',
+        trade: 'Tømrer / Stillasmontør',
+        projectName: activeProj.name,
+        authorName: user?.displayName || 'Byggmester Ken',
+        tek17Reference: 'Byggherreforskriften § 18 & Forskrift om utførelse av arbeid kap. 17',
+        weatherImpact: 'Yr.no: 12°C, lett bris (3,4 m/s), opphold. Værforhold vurdert som trygge for arbeid i stillas.',
+        createdAt: new Date().toLocaleDateString('no-NO'),
+        status: 'approved',
+        risks: [
+          {
+            activity: 'Arbeid på stillas over 2 meter',
+            hazard: 'Fall fra stillas eller åpen gavl under montasje',
+            measure: 'Stillas kontrollert med grønt skilt. Dobbelt rekkverk, fotlist og godkjent fallsikringssele ved arbeid utenfor rekkverk.',
+            riskLevel: 'Høy'
+          },
+          {
+            activity: 'Håndtering av tunge kledningsbord og kappsag',
+            hazard: 'Mistet verktøy/materiale treffer personer under, eller kuttskade ved kapp',
+            measure: 'Avsperret sikkerhetssone under stillas med sperrebånd. Verktøysikring/fangline på elektroverktøy. Sagbord stabilt plassert.',
+            riskLevel: 'Middels'
+          },
+          {
+            activity: 'Ferdsel i stillastrapp med materialbæring',
+            hazard: 'Snubling i trapp eller stillasgulv',
+            measure: 'Ryddet gangbane på stillasgulv til enhver tid. Ingen løse ledninger i trappeløp.',
+            riskLevel: 'Lav'
+          }
+        ],
+        equipment: [
+          'Hjelm med hakestropp (EN 397)',
+          'Vernesko S3 med spikertramp',
+          'Fallsikringssele og fangline (EN 361)',
+          'Synlighetstøy klasse 2 (EN ISO 20471)',
+          'Vernebriller og hørselvern'
+        ]
+      };
+    } else if (tradeName.includes('Rørlegger') || tradeName.includes('Trykk') || tradeName.includes('Varmt')) {
+      sja = {
+        id: `sja-${Date.now()}`,
+        title: 'SJA for Trykkprøving og Varme Arbeider (Rør)',
+        task: 'Trykktesting av rør-i-rør fordelerskap og lodding/pressing av vannledninger.',
+        trade: 'Rørlegger (VVS)',
+        projectName: activeProj.name,
+        authorName: 'Rørleggermester Hansen',
+        tek17Reference: 'Byggherreforskriften § 18, TEK17 § 13-15 & Sikkerhetsforskrift for Varme Arbeider',
+        weatherImpact: 'Innendørs våtrom. Normal romtemperatur og god belysning.',
+        createdAt: new Date().toLocaleDateString('no-NO'),
+        status: 'approved',
+        risks: [
+          {
+            activity: 'Bruk av åpen flamme og gassbrenner ved lodding',
+            hazard: 'Antennelse av brennbart materiale i veggkonstruksjon',
+            measure: 'Gyldig sertifikat for varme arbeider. Minst 2 stk 6kg pulverapparater + brannteppe på arbeidsstedet. Brannvakt i 60 minutter etter arbeid.',
+            riskLevel: 'Høy'
+          },
+          {
+            activity: 'Vanntrykkprøving med 10 bar testtrykk',
+            hazard: 'Slangebrudd eller utblåsning av plugg under høyt trykk',
+            measure: 'Kun godkjente trykkpropper og kalibrert manometer. Ingen personer foran propper under oppfylling. Gradvis trykkøkning.',
+            riskLevel: 'Middels'
+          }
+        ],
+        equipment: [
+          'Vernebriller (EN 166)',
+          'Varmebestandige hansker',
+          'Vernesko S3',
+          'Brannslukningsapparat 2x6kg ABC'
+        ]
+      };
+    } else if (tradeName.includes('Elektriker') || tradeName.includes('Spenningssatt')) {
+      sja = {
+        id: `sja-${Date.now()}`,
+        title: 'SJA for Skjultanlegg og Arbeid i Hovedtavle',
+        task: 'Trekking av rørkurs, montering av fordelerskap og kobling av inntak.',
+        trade: 'Elektroinstallatør (NEK 400)',
+        projectName: activeProj.name,
+        authorName: 'Installatør Erik',
+        tek17Reference: 'FSE (Forskrift om sikkerhet ved arbeid i elektriske anlegg) & Byggherreforskriften § 18',
+        weatherImpact: 'Innendørs tørt miljø.',
+        createdAt: new Date().toLocaleDateString('no-NO'),
+        status: 'approved',
+        risks: [
+          {
+            activity: 'Tilkobling mot spenningssatt fordelingstavle',
+            hazard: 'Elektrisk lysbue eller utilsiktet strømgjennomgang',
+            measure: 'Frakoblet spenning, låst og merket (LOTO). Kontrollmåling med topolet spenningsprøver før berøring.',
+            riskLevel: 'Høy'
+          },
+          {
+            activity: 'Boring og fresing av spor i bindingsverk for k-rør',
+            hazard: 'Støvinhalasjon og treff på skjulte installasjoner',
+            measure: 'Støvavsug på fres. Multidetektor brukt før boring.',
+            riskLevel: 'Lav'
+          }
+        ],
+        equipment: [
+          'Isolert verktøy 1000V (EN 60900)',
+          'Topolet spenningstester med egensjekk',
+          'Vernesko med isolerende såle',
+          'Kuttsikre montørhansker (EN 388)'
+        ]
+      };
+    } else {
+      sja = {
+        id: `sja-${Date.now()}`,
+        title: 'SJA for Grøftegraving og Kabelpåvisning',
+        task: 'Graving av tilførselsgrøft for vann og overvann med gravemaskin.',
+        trade: 'Maskinentreprenør & Graver',
+        projectName: activeProj.name,
+        authorName: 'Gunnar Graver',
+        tek17Reference: 'Forskrift om utførelse av arbeid kap. 21 & Byggherreforskriften § 18',
+        weatherImpact: 'Overskyet, +8°C. Jordbunn fuktig, krever ekstra oppmerksomhet på grøftekantstabilitet.',
+        createdAt: new Date().toLocaleDateString('no-NO'),
+        status: 'approved',
+        risks: [
+          {
+            activity: 'Graving i bakke med uavklarte kabler/ledninger',
+            hazard: 'Grave av høyspentkabel, gass eller fiber',
+            measure: 'Gjennomført kabelpåvisning via Ledningsportalen/Geomatikk. Kabler merket på bakken. Håndgraving 1 meter inntil påvist kabel.',
+            riskLevel: 'Høy'
+          },
+          {
+            activity: 'Graving av grøft dypere enn 1,25 meter',
+            hazard: 'Rasing av grøftevegg og begraving av personell',
+            measure: 'Sikring med forskriftsmessig skråning eller godkjent grøftekasse. Ingen i grøft mens maskin graver.',
+            riskLevel: 'Høy'
+          }
+        ],
+        equipment: [
+          'Hjelm med hakestropp',
+          'Vernesko S5',
+          'Synlighetstøy klasse 3',
+          'Kabeldetektor og plastspade'
+        ]
+      };
+    }
+
+    setActiveSJADoc(sja);
+    setIsSJAPreviewOpen(true);
+  };
 
   // Handle Quick Command / Voice prompt
   const handleSendCommand = async (customPrompt?: string) => {
@@ -457,6 +710,25 @@ export default function Dashboard({
         currentUserName={user?.displayName || 'Byggeleder'}
       />
       <SmartSearch isOpen={isSmartSearchOpen} onClose={() => setIsSmartSearchOpen(false)} onNavigate={(v) => setActiveTab(v as any)} />
+      <PreCloseInspectorModal
+        isOpen={isPreCloseModalOpen}
+        onClose={() => setIsPreCloseModalOpen(false)}
+        zone={selectedLukkesperreZone}
+        onUpdateZone={handleUpdateZone}
+        onOpenAIVision={(_roomName) => {
+          setIsPreCloseModalOpen(false);
+          setIsAIVisionModalOpen(true);
+        }}
+      />
+      <SJAPreviewModal
+        isOpen={isSJAPreviewOpen}
+        onClose={() => setIsSJAPreviewOpen(false)}
+        sja={activeSJADoc}
+        onApprove={(sja) => {
+          setActiveSJADoc({ ...sja, status: 'approved' });
+          fetchAgentState();
+        }}
+      />
 
       <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 pt-8">
         {/* Selected Project Full Details View */}
@@ -542,8 +814,8 @@ export default function Dashboard({
                   <button
                     type="button"
                     onClick={() => {
-                      window.dispatchEvent(new CustomEvent("navigate_view", { detail: { view: "mobile" } }));
-                      setTimeout(() => window.dispatchEvent(new CustomEvent("trigger_voice_sja")), 150);
+                      window.dispatchEvent(new CustomEvent("navigate_view", { detail: { view: "mobile", screen: "voice" } }));
+                      window.dispatchEvent(new CustomEvent("trigger_dashboard_action", { detail: { actionId: "voice_sja" } }));
                     }}
                     className="flex flex-col items-center text-center p-3.5 sm:p-4 rounded-2xl bg-white border border-slate-200/90 shadow-sm hover:shadow-md hover:border-electric-300 active:scale-95 transition-all group cursor-pointer"
                   >
@@ -758,18 +1030,44 @@ export default function Dashboard({
                   <div className="flex flex-wrap items-center gap-2 mt-3 pt-1">
                     <span className="text-[11px] font-bold text-slate-400 uppercase tracking-wider shrink-0 mr-0.5">Hurtig:</span>
                     {[
-                      'Lag SJA for tak- og stillasarbeid',
-                      'Registrer endringsordre: Ekstra downlights i stue kr 14500',
-                      'Sjekk om bad 2. etg kan lukkes (pre-close check)',
-                      'Byggedagbok: Lekting og vindsperre ferdig 6 timer'
+                      { 
+                        text: 'Lag SJA for tak- og stillasarbeid', 
+                        action: () => {
+                          handleOpenSJAForTrade('Tømrer (Høyde/Stillas)');
+                          handleSendCommand('Opprett SJA for tak- og stillasarbeid');
+                        }
+                      },
+                      { 
+                        text: 'Registrer endringsordre: Ekstra downlights i stue kr 14500', 
+                        action: () => {
+                          setIsChangeOrderModalOpen(true);
+                          handleTabSelect('endringsordrer');
+                          handleSendCommand('Registrer endringsordre: Ekstra downlights i stue kr 14500');
+                        }
+                      },
+                      { 
+                        text: 'Sjekk om bad 2. etg kan lukkes (pre-close check)', 
+                        action: () => {
+                          handleTabSelect('kvalitet');
+                          handleOpenPreClose(lukkesperreZones[0]);
+                          handleSendCommand('Sjekk om bad 2. etg kan lukkes (pre-close check)');
+                        }
+                      },
+                      { 
+                        text: 'Byggedagbok: Lekting og vindsperre ferdig 6 timer', 
+                        action: () => {
+                          setIsActivityLogModalOpen(true);
+                          handleSendCommand('Byggedagbok: Lekting og vindsperre ferdig 6 timer');
+                        }
+                      }
                     ].map((chip, i) => (
                       <button 
                         key={i}
                         type="button"
-                        onClick={() => handleSendCommand(chip)}
-                        className="px-3 py-1.5 bg-slate-100/90 hover:bg-electric-50 hover:text-electric-700 hover:border-electric-300 border border-slate-200/90 rounded-xl text-xs font-medium text-slate-700 transition-all text-left shadow-xs"
+                        onClick={chip.action}
+                        className="px-3 py-1.5 bg-slate-100/90 hover:bg-electric-50 hover:text-electric-700 hover:border-electric-300 border border-slate-200/90 rounded-xl text-xs font-medium text-slate-700 transition-all text-left shadow-xs cursor-pointer"
                       >
-                        {chip}
+                        {chip.text}
                       </button>
                     ))}
                   </div>
@@ -1160,8 +1458,13 @@ export default function Dashboard({
                             <strong>Storgata 8 (Vaskerom):</strong> Rørleggerens trykktestrapport mangler. Veggen er rødmerket mot kledning for å hindre reklamasjoner og erstatningsansvar.
                           </p>
                           <button 
-                            onClick={() => setActiveTab('kvalitet')}
-                            className="mt-3 text-xs font-bold text-rose-700 hover:text-rose-950 flex items-center gap-1"
+                            type="button"
+                            onClick={() => {
+                              setActiveTab('kvalitet');
+                              const redZone = lukkesperreZones.find(z => z.status === 'RED') || lukkesperreZones[1];
+                              if (redZone) handleOpenPreClose(redZone);
+                            }}
+                            className="mt-3 text-xs font-bold text-rose-700 hover:text-rose-950 flex items-center gap-1 cursor-pointer"
                           >
                             <span>Inspiser lukkesperrematrise</span>
                             <ArrowRight size={14} />
@@ -1399,42 +1702,79 @@ export default function Dashboard({
                   <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
                     {/* Zone Matrix */}
                     <div className="bg-white rounded-3xl border border-slate-200/90 p-6 shadow-sm">
-                      <h3 className="text-sm font-extrabold text-navy-900 mb-4 flex items-center justify-between">
-                        <span>Status per Rom & Sone</span>
-                        <span className="text-xs font-bold text-slate-400">TEK17 § 13-15</span>
-                      </h3>
+                      <div className="flex items-center justify-between mb-4 flex-wrap gap-2">
+                        <div>
+                          <h3 className="text-sm font-extrabold text-navy-900 flex items-center gap-2">
+                            <span>Status per Rom & Sone</span>
+                            <span className="text-[10px] font-bold text-slate-400 bg-slate-100 px-2 py-0.5 rounded-full">TEK17 § 13-15</span>
+                          </h3>
+                          <p className="text-[11px] text-slate-500 mt-0.5">
+                            Klikk på et rom for å inspisere sjekkpunkter, koble bilder eller godkjenne lukking.
+                          </p>
+                        </div>
+                        <button 
+                          type="button"
+                          onClick={handleAddZone}
+                          className="flex items-center gap-1.5 px-3 py-1.5 bg-electric-50 hover:bg-electric-100 text-electric-700 border border-electric-200 rounded-xl text-xs font-bold transition-all cursor-pointer shrink-0"
+                        >
+                          <Plus size={14} />
+                          <span>Ny Sone</span>
+                        </button>
+                      </div>
 
                       <div className="space-y-3">
-                        {[
-                          { room: 'Bad 2. etg (Nyebakken)', status: 'GREEN', canClose: true, detail: 'Rør-i-rør trykktest og dampsperre godkjent.' },
-                          { room: 'Vaskerom 1. etg (Storgata 8)', status: 'RED', canClose: false, detail: 'Rørlegger mangler trykktestrapport for fordelerskap.' },
-                          { room: 'Kjøkken (Fjordveien 22)', status: 'GREEN', canClose: true, detail: 'El-skjultanlegg og rørkurs verifisert.' }
-                        ].map((z, i) => (
+                        {lukkesperreZones.map((z) => (
                           <div 
-                            key={i}
+                            key={z.id}
+                            onClick={() => handleOpenPreClose(z)}
                             className={cn(
-                              "p-4 rounded-2xl border flex items-start justify-between gap-3",
-                              z.status === 'GREEN' ? "bg-emerald-50/60 border-emerald-200" : "bg-rose-50/70 border-rose-200"
+                              "p-4 rounded-2xl border flex items-start justify-between gap-3 cursor-pointer hover:shadow-md transition-all group",
+                              z.status === 'GREEN' 
+                                ? "bg-emerald-50/60 border-emerald-200 hover:border-emerald-400" 
+                                : "bg-rose-50/70 border-rose-200 hover:border-rose-400"
                             )}
                           >
-                            <div>
+                            <div className="flex-1 min-w-0">
                               <div className="flex items-center gap-2">
                                 {z.status === 'GREEN' ? (
-                                  <Unlock size={16} className="text-emerald-600" />
+                                  <Unlock size={16} className="text-emerald-600 shrink-0" />
                                 ) : (
-                                  <Lock size={16} className="text-rose-600" />
+                                  <Lock size={16} className="text-rose-600 shrink-0" />
                                 )}
-                                <h4 className="text-xs font-bold text-navy-900">{z.room}</h4>
+                                <h4 className="text-xs font-bold text-navy-900 group-hover:text-electric-600 transition-colors truncate">
+                                  {z.room}
+                                </h4>
                               </div>
-                              <p className="text-[11px] text-slate-600 mt-1">{z.detail}</p>
+                              <p className="text-[11px] text-slate-600 mt-1 leading-relaxed">
+                                {z.detail}
+                              </p>
+                              <div className="flex items-center gap-3 mt-2 text-[10px] text-slate-500 font-medium flex-wrap">
+                                <span className="flex items-center gap-1">
+                                  <CheckCircle2 size={12} className={z.checks.plumbing ? "text-emerald-600" : "text-slate-300"} />
+                                  <span>Rør: {z.checks.plumbing ? 'Godkjent' : 'Mangler'}</span>
+                                </span>
+                                <span className="flex items-center gap-1">
+                                  <CheckCircle2 size={12} className={z.checks.vaporBarrier ? "text-emerald-600" : "text-slate-300"} />
+                                  <span>Dampsperre: {z.checks.vaporBarrier ? 'Tett' : 'Mangler'}</span>
+                                </span>
+                                <span className="flex items-center gap-1">
+                                  <CheckCircle2 size={12} className={z.checks.electric ? "text-emerald-600" : "text-slate-300"} />
+                                  <span>El: {z.checks.electric ? 'Verifisert' : 'Uavklart'}</span>
+                                </span>
+                              </div>
                             </div>
 
-                            <span className={cn(
-                              "px-2.5 py-1 rounded-full text-[10px] font-black uppercase tracking-wider shrink-0",
-                              z.status === 'GREEN' ? "bg-emerald-200 text-emerald-900" : "bg-rose-200 text-rose-900"
-                            )}>
-                              {z.status === 'GREEN' ? 'GRØNT LYS' : 'RØD SPERRE'}
-                            </span>
+                            <div className="flex flex-col items-end gap-1.5 shrink-0">
+                              <span className={cn(
+                                "px-2.5 py-1 rounded-full text-[10px] font-black uppercase tracking-wider",
+                                z.status === 'GREEN' ? "bg-emerald-200 text-emerald-900" : "bg-rose-200 text-rose-900"
+                              )}>
+                                {z.status === 'GREEN' ? 'GRØNT LYS' : 'RØD SPERRE'}
+                              </span>
+                              <span className="text-[10px] font-bold text-electric-600 group-hover:underline">
+                                Inspiser &rarr;
+                              </span>
+                            </div>
                           </div>
                         ))}
                       </div>
@@ -1443,31 +1783,49 @@ export default function Dashboard({
                     {/* SJA Generator Card */}
                     <div className="bg-white rounded-3xl border border-slate-200/90 p-6 shadow-sm flex flex-col justify-between">
                       <div>
-                        <h3 className="text-sm font-extrabold text-navy-900 mb-2">
-                          Sikker Jobb Analyse (SJA) på 1-2-3
-                        </h3>
+                        <div className="flex items-center justify-between mb-2">
+                          <h3 className="text-sm font-extrabold text-navy-900">
+                            Sikker Jobb Analyse (SJA) på 1-2-3
+                          </h3>
+                          <span className="text-[10px] font-black uppercase bg-electric-50 text-electric-600 px-2 py-0.5 rounded-full border border-electric-200">
+                            Lovpålagt
+                          </span>
+                        </div>
                         <p className="text-xs text-slate-500 mb-4 leading-relaxed">
-                          Byggherreforskriften krever dokumentert risikovurdering ved risikofylt arbeid. Agenten genererer ferdig SJA for 7 håndverkerfag.
+                          Byggherreforskriften krever dokumentert risikovurdering ved risikofylt arbeid. Klikk på et fag for å åpne, signere og skrive ut ferdig SJA med Yr.no værdata:
                         </p>
 
-                        <div className="grid grid-cols-2 gap-2">
-                          {['Tømrer (Høyde/Stillas)', 'Rørlegger (Trykk/Varmt)', 'Elektriker (Spenningssatt)', 'Graver (Grøft/Kabler)'].map((trade, i) => (
+                        <div className="grid grid-cols-1 sm:grid-cols-2 gap-2.5">
+                          {[
+                            { name: 'Tømrer (Høyde/Stillas)', desc: 'Fall, stillas & verneutstyr' },
+                            { name: 'Rørlegger (Trykk/Varmt)', desc: 'Trykktest & varme arbeider' },
+                            { name: 'Elektriker (Spenningssatt)', desc: 'NEK 400 & LOTO' },
+                            { name: 'Graver (Grøft/Kabler)', desc: 'Kabelpåvisning & rasfare' }
+                          ].map((tradeItem, i) => (
                             <button
                               key={i}
-                              onClick={() => handleSendCommand(`Opprett SJA for ${trade}`)}
-                              className="p-2.5 bg-slate-50 hover:bg-electric-50 hover:text-electric-700 border border-slate-200/80 rounded-xl text-xs font-bold text-slate-700 text-left transition-all"
+                              type="button"
+                              onClick={() => handleOpenSJAForTrade(tradeItem.name)}
+                              className="p-3 bg-slate-50 hover:bg-electric-50 hover:text-electric-700 hover:border-electric-300 border border-slate-200/80 rounded-xl text-left transition-all group cursor-pointer"
                             >
-                              + SJA for {trade}
+                              <div className="text-xs font-bold text-slate-800 group-hover:text-electric-700 flex items-center justify-between">
+                                <span>+ SJA for {tradeItem.name.split(' ')[0]}</span>
+                                <FileSignature size={13} className="text-slate-400 group-hover:text-electric-600" />
+                              </div>
+                              <div className="text-[10px] text-slate-500 mt-0.5">
+                                {tradeItem.desc}
+                              </div>
                             </button>
                           ))}
                         </div>
                       </div>
 
-                      <div className="mt-6 pt-4 border-t border-slate-100 flex items-center justify-between">
-                        <span className="text-[11px] text-slate-400 font-bold">AML § 4-1 & Byggherreforskriften</span>
+                      <div className="mt-6 pt-4 border-t border-slate-100 flex items-center justify-between flex-wrap gap-2">
+                        <span className="text-[11px] text-slate-400 font-bold">AML § 4-1 & Byggherreforskriften § 18</span>
                         <button 
+                          type="button"
                           onClick={() => setIsHMSModalOpen(true)}
-                          className="px-4 py-2 bg-navy-900 text-white rounded-xl text-xs font-bold hover:bg-navy-800 transition-all"
+                          className="px-4 py-2 bg-navy-900 hover:bg-navy-800 text-white rounded-xl text-xs font-bold transition-all cursor-pointer"
                         >
                           Åpne HMS-Håndbok
                         </button>
@@ -1490,32 +1848,49 @@ export default function Dashboard({
                     </p>
 
                     <div className="space-y-3">
-                      <div className="p-4 rounded-2xl bg-slate-50 border border-slate-200/70 flex items-center justify-between">
+                      <div 
+                        onClick={() => {
+                          navigator.clipboard.writeText('hei@vikingmester.no');
+                          toast.success('E-postadressen hei@vikingmester.no er kopiert til utklippstavlen!');
+                        }}
+                        className="p-4 rounded-2xl bg-slate-50 hover:bg-electric-50/50 hover:border-electric-200 border border-slate-200/70 flex items-center justify-between cursor-pointer transition-all group"
+                      >
                         <div>
-                          <div className="text-xs font-bold text-navy-900">Offisiell e-postlytter</div>
-                          <div className="text-xs text-electric-600 font-mono font-bold mt-0.5">hei@vikingmester.no</div>
+                          <div className="text-xs font-bold text-navy-900 group-hover:text-electric-700">Offisiell e-postlytter</div>
+                          <div className="text-xs text-electric-600 font-mono font-bold mt-0.5">hei@vikingmester.no (klikk for å kopiere)</div>
                         </div>
-                        <span className="px-2 py-0.5 rounded-full text-[10px] font-black uppercase bg-emerald-100 text-emerald-800">
+                        <span className="px-2 py-0.5 rounded-full text-[10px] font-black uppercase bg-emerald-100 text-emerald-800 shrink-0">
                           100% Aktiv
                         </span>
                       </div>
 
-                      <div className="p-4 rounded-2xl bg-slate-50 border border-slate-200/70 flex items-center justify-between">
+                      <div 
+                        onClick={() => {
+                          toggleMic();
+                          toast.info('Tale & diktat aktivert for testing');
+                        }}
+                        className="p-4 rounded-2xl bg-slate-50 hover:bg-electric-50/50 hover:border-electric-200 border border-slate-200/70 flex items-center justify-between cursor-pointer transition-all group"
+                      >
                         <div>
-                          <div className="text-xs font-bold text-navy-900">Tale & Diktat i felt</div>
+                          <div className="text-xs font-bold text-navy-900 group-hover:text-electric-700">Tale & Diktat i felt (klikk for å teste mikrofon)</div>
                           <div className="text-xs text-slate-500 mt-0.5">Støtter alle språk (norsk, polsk, litauisk, ukrainsk, rumensk, engelsk, spansk, tysk + over 50 til) – oversetter og strukturerer automatisk til TEK17-fagterminologi</div>
                         </div>
-                        <span className="px-2 py-0.5 rounded-full text-[10px] font-black uppercase bg-emerald-100 text-emerald-800">
+                        <span className="px-2 py-0.5 rounded-full text-[10px] font-black uppercase bg-emerald-100 text-emerald-800 shrink-0">
                           Operativ
                         </span>
                       </div>
 
-                      <div className="p-4 rounded-2xl bg-slate-50 border border-slate-200/70 flex items-center justify-between">
+                      <div 
+                        onClick={() => {
+                          toast.success('Yr.no værdata synkronisert: 14°C Oslo, lett bris, opphold');
+                        }}
+                        className="p-4 rounded-2xl bg-slate-50 hover:bg-electric-50/50 hover:border-electric-200 border border-slate-200/70 flex items-center justify-between cursor-pointer transition-all group"
+                      >
                         <div>
-                          <div className="text-xs font-bold text-navy-900">Yr.no Værsynkronisering</div>
-                          <div className="text-xs text-slate-500 mt-0.5">Henter automatisk temperatur, nedbør og vind</div>
+                          <div className="text-xs font-bold text-navy-900 group-hover:text-electric-700">Yr.no Værsynkronisering</div>
+                          <div className="text-xs text-slate-500 mt-0.5">Henter automatisk temperatur, nedbør og vind til alle byggedagbøker og SJA</div>
                         </div>
-                        <span className="px-2 py-0.5 rounded-full text-[10px] font-black uppercase bg-emerald-100 text-emerald-800">
+                        <span className="px-2 py-0.5 rounded-full text-[10px] font-black uppercase bg-emerald-100 text-emerald-800 shrink-0">
                           Tilkoblet
                         </span>
                       </div>
