@@ -47,7 +47,8 @@ import {
   Check,
   Copy,
   ExternalLink,
-  Mail
+  Mail,
+  Trash2
 } from 'lucide-react';
 import CrossTradeCoordinator from './CrossTradeCoordinator';
 import { motion, AnimatePresence } from 'motion/react';
@@ -281,6 +282,19 @@ export default function ProjectDetails({ project, onBack, onShare, onStartCheckl
       toast.success(`Endringsmelding #${order.changeNumber} ble sendt til ${targetEmail}!`);
     } catch (e: any) {
       toast.error(e.message || 'Kunne ikke sende e-post');
+    }
+  };
+
+  const handleDeleteOrder = async (order: ChangeOrder) => {
+    if (!window.confirm(`Er du sikker på at du vil slette endringsordre #${order.changeNumber} "${order.title}"?`)) {
+      return;
+    }
+    try {
+      await changeOrderService.deleteChangeOrder(order.id);
+      setProjectChangeOrders(prev => prev.filter(o => o.id !== order.id));
+      toast.success(`Endringsordre #${order.changeNumber} er slettet.`);
+    } catch (e: any) {
+      toast.error('Kunne ikke slette endringsordre.');
     }
   };
 
@@ -1097,6 +1111,14 @@ export default function ProjectDetails({ project, onBack, onShare, onStartCheckl
                             >
                               <ExternalLink size={14} />
                               <span className="hidden sm:inline">Forhåndsvis</span>
+                            </button>
+                            <button
+                              onClick={() => handleDeleteOrder(order)}
+                              className="p-2.5 bg-rose-50 hover:bg-rose-100 text-rose-600 rounded-xl text-xs font-bold transition-all flex items-center gap-1.5 cursor-pointer"
+                              title="Slett endringsordre"
+                            >
+                              <Trash2 size={14} />
+                              <span className="hidden sm:inline">Slett</span>
                             </button>
                           </div>
                         </div>

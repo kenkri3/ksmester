@@ -145,6 +145,50 @@ export default function Dashboard({
   const [isDailyLogModalOpen, setIsDailyLogModalOpen] = useState(false);
   const [isChangeOrderModalOpen, setIsChangeOrderModalOpen] = useState(false);
 
+  // Live Endringsordrer state with deletion capability
+  const [dashboardChangeOrders, setDashboardChangeOrders] = useState<any[]>([
+    { id: 'co-101', number: 1, title: '6 ekstra downlights og trekkerør i stue', project: 'Nyebakken 14', amount: 14500, days: 2, status: 'Venter på bas', legal: 'NS 8406 pkt. 19.2' },
+    { id: 'co-102', number: 2, title: 'Uforutsett råte i bjelkelag under sluk', project: 'Storgata 8', amount: 28000, days: 4, status: 'Venter på bas', legal: 'NS 8406 pkt. 19.3' },
+    { id: 'co-103', number: 3, title: 'Oppgradering til royalimpregnert kledning', project: 'Fjordveien 22', amount: 42000, days: 0, status: 'Godkjent av kunde', legal: 'NS 8406 pkt. 19.2' }
+  ]);
+
+  useEffect(() => {
+    const unsub = onSnapshot(collection(db, 'change_orders'), (snapshot) => {
+      if (snapshot.docs && snapshot.docs.length > 0) {
+        const liveOrders = snapshot.docs.map(d => {
+          const data = d.data();
+          return {
+            id: d.id,
+            number: data.changeNumber || 1,
+            title: data.title,
+            project: data.projectName || data.projectCode || 'Prosjekt',
+            amount: data.amountExVat || data.totalAmount || 0,
+            days: data.impactDays || 0,
+            status: data.status === 'approved' ? 'Godkjent av kunde' : data.status === 'rejected' ? 'Avvist' : 'Venter på bas',
+            legal: data.legalHjemmel || 'NS 8406 pkt. 19.2',
+            shareUrl: data.shareUrl
+          };
+        });
+        setDashboardChangeOrders(liveOrders);
+      }
+    });
+    return () => unsub();
+  }, []);
+
+  const handleDeleteDashboardOrder = async (orderId: string, orderTitle: string) => {
+    if (!window.confirm(`Er du sikker på at du vil slette endringsordren "${orderTitle}"?`)) {
+      return;
+    }
+    try {
+      await changeOrderService.deleteChangeOrder(orderId);
+      setDashboardChangeOrders(prev => prev.filter(o => o.id !== orderId));
+      toast.success(`Endringsordre "${orderTitle}" er slettet.`);
+    } catch (e) {
+      console.error('Error deleting change order:', e);
+      toast.error('Kunne ikke slette endringsordre.');
+    }
+  };
+
   // Lukkesperre & Pre-close state
   const [lukkesperreZones, setLukkesperreZones] = useState<LukkesperreZone[]>([
     { 
@@ -1872,53 +1916,69 @@ export default function Dashboard({
                     </div>
 
                     <div className="divide-y divide-slate-100">
-                      {[
-                        { id: '1', number: 1, title: '6 ekstra downlights og trekkerør i stue', project: 'Nyebakken 14', amount: 14500, days: 2, status: 'Venter på bas', legal: 'NS 8406 pkt. 19.2' },
-                        { id: '2', number: 2, title: 'Uforutsett råte i bjelkelag under sluk', project: 'Storgata 8', amount: 28000, days: 4, status: 'Venter på bas', legal: 'NS 8406 pkt. 19.3' },
-                        { id: '3', number: 3, title: 'Oppgradering til royalimpregnert kledning', project: 'Fjordveien 22', amount: 42000, days: 0, status: 'Godkjent av kunde', legal: 'NS 8406 pkt. 19.2' }
-                      ].map((co) => (
-                        <div key={co.id} className="p-6 flex flex-col sm:flex-row sm:items-center justify-between gap-4 hover:bg-slate-50/60 transition-colors">
-                          <div>
-                            <div className="flex items-center gap-2 mb-1">
-                              <span className="text-xs font-extrabold text-navy-900">#{co.number}</span>
-                              <span className="text-xs font-bold text-slate-400">•</span>
-                              <span className="text-xs font-bold text-slate-600">{co.project}</span>
-                              <span className={cn(
-                                "px-2 py-0.5 rounded text-[10px] font-black uppercase",
-                                co.status.includes('Venter') ? "bg-amber-100 text-amber-800" : "bg-emerald-100 text-emerald-800"
-                              )}>
-                                {co.status}
-                              </span>
-                            </div>
-                            <h4 className="text-sm font-bold text-navy-900">{co.title}</h4>
-                            <p className="text-[11px] text-slate-500 mt-0.5">{co.legal}</p>
-                          </div>
-
-                          <div className="flex items-center gap-4 sm:text-right shrink-0">
-                            <div>
-                              <div className="text-sm font-black text-navy-900">kr {co.amount.toLocaleString('no-NO')}</div>
-                              <div className="text-[10px] text-slate-400 font-bold">eks mva (+{co.days} dgr)</div>
-                            </div>
-
-                            <div className="flex items-center gap-2">
-                              <button 
-                                type="button"
-                                onClick={() => setIsChangeOrderModalOpen(true)}
-                                className="px-3 py-2 bg-rose-50 hover:bg-rose-100 text-rose-700 rounded-xl text-xs font-bold transition-all cursor-pointer"
-                              >
-                                Behandle
-                              </button>
-                              <button 
-                                type="button"
-                                onClick={() => toast.success('Godkjenningslenke kopiert til utklippstavlen!')}
-                                className="px-3 py-2 bg-slate-100 hover:bg-slate-200 text-navy-900 rounded-xl text-xs font-bold transition-all cursor-pointer"
-                              >
-                                Kopier lenke
-                              </button>
-                            </div>
-                          </div>
+                      {dashboardChangeOrders.length === 0 ? (
+                        <div className="p-12 text-center text-slate-400">
+                          <p className="text-sm font-bold text-slate-600">Ingen endringsordrer registrert</p>
+                          <p className="text-xs mt-1">Opprett en ny endringsordre for å sikre betaling for tilleggsarbeid.</p>
                         </div>
-                      ))}
+                      ) : (
+                        dashboardChangeOrders.map((co) => (
+                          <div key={co.id} className="p-6 flex flex-col sm:flex-row sm:items-center justify-between gap-4 hover:bg-slate-50/60 transition-colors">
+                            <div>
+                              <div className="flex items-center gap-2 mb-1">
+                                <span className="text-xs font-extrabold text-navy-900">#{co.number}</span>
+                                <span className="text-xs font-bold text-slate-400">•</span>
+                                <span className="text-xs font-bold text-slate-600">{co.project}</span>
+                                <span className={cn(
+                                  "px-2 py-0.5 rounded text-[10px] font-black uppercase",
+                                  co.status.includes('Venter') ? "bg-amber-100 text-amber-800" : "bg-emerald-100 text-emerald-800"
+                                )}>
+                                  {co.status}
+                                </span>
+                              </div>
+                              <h4 className="text-sm font-bold text-navy-900">{co.title}</h4>
+                              <p className="text-[11px] text-slate-500 mt-0.5">{co.legal}</p>
+                            </div>
+
+                            <div className="flex items-center gap-4 sm:text-right shrink-0">
+                              <div>
+                                <div className="text-sm font-black text-navy-900">kr {Number(co.amount).toLocaleString('no-NO')}</div>
+                                <div className="text-[10px] text-slate-400 font-bold">eks mva (+{co.days} dgr)</div>
+                              </div>
+
+                              <div className="flex items-center gap-2">
+                                <button 
+                                  type="button"
+                                  onClick={() => setIsChangeOrderModalOpen(true)}
+                                  className="px-3 py-2 bg-rose-50 hover:bg-rose-100 text-rose-700 rounded-xl text-xs font-bold transition-all cursor-pointer"
+                                >
+                                  Behandle
+                                </button>
+                                <button 
+                                  type="button"
+                                  onClick={() => {
+                                    if (co.shareUrl) {
+                                      navigator.clipboard.writeText(co.shareUrl);
+                                    }
+                                    toast.success('Godkjenningslenke kopiert til utklippstavlen!');
+                                  }}
+                                  className="px-3 py-2 bg-slate-100 hover:bg-slate-200 text-navy-900 rounded-xl text-xs font-bold transition-all cursor-pointer"
+                                >
+                                  Kopier lenke
+                                </button>
+                                <button 
+                                  type="button"
+                                  onClick={() => handleDeleteDashboardOrder(co.id, co.title)}
+                                  title="Slett endringsordre"
+                                  className="p-2 text-slate-400 hover:text-rose-600 hover:bg-rose-50 rounded-xl transition-all cursor-pointer"
+                                >
+                                  <Trash2 size={16} />
+                                </button>
+                              </div>
+                            </div>
+                          </div>
+                        ))
+                      )}
                     </div>
                   </div>
                 </div>

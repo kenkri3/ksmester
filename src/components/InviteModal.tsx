@@ -69,7 +69,7 @@ const InviteModal: React.FC<InviteModalProps> = ({ isOpen, onClose, project }) =
         projectName: project?.name || null,
         companyId,
         companyName,
-        inviterId: auth.currentUser.uid,
+        inviterId: inviterUid,
         inviterName,
         inviteeEmail: email.trim(),
         role: role,
@@ -328,7 +328,7 @@ const InviteModal: React.FC<InviteModalProps> = ({ isOpen, onClose, project }) =
 
               <div className="pt-4 pb-2 border-t border-neutral-100 mt-4 bg-white">
                 <button
-                  disabled={loading || !userProfile}
+                  disabled={loading}
                   type="submit"
                   className="w-full py-3.5 sm:py-4 bg-emerald-600 text-white rounded-xl sm:rounded-2xl font-bold flex items-center justify-center gap-2 hover:bg-emerald-500 transition-all shadow-xl shadow-emerald-100 disabled:opacity-50 text-sm sm:text-base cursor-pointer"
                 >
