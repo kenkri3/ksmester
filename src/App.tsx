@@ -118,15 +118,25 @@ function AppContent() {
   const [portalModalCode, setPortalModalCode] = useState('');
   const [isSolutionsDropdownOpen, setIsSolutionsDropdownOpen] = useState(false);
   const [isIntegrationModalOpen, setIsIntegrationModalOpen] = useState(false);
+  const [mobileScreen, setMobileScreen] = useState<'home' | 'camera' | 'voice' | 'report' | 'imageResult' | 'translator' | 'laerling' | 'dailyLog' | 'activity' | 'contacts'>('home');
   const { t, i18n } = useTranslation();
   const { user, logout, isAuthReady, subscriptionStatus, trialDaysLeft, impersonatedCompanyId, stopImpersonation } = useAuth();
 
   useEffect(() => {
     const handleNav = (e: any) => {
       if (e.detail?.view) setView(e.detail.view);
+      if (e.detail?.screen) setMobileScreen(e.detail.screen);
+    };
+    const handleOpenContacts = () => {
+      setMobileScreen('contacts');
+      setView('mobile');
     };
     window.addEventListener('navigate_view', handleNav);
-    return () => window.removeEventListener('navigate_view', handleNav);
+    window.addEventListener('open_mobile_contacts', handleOpenContacts);
+    return () => {
+      window.removeEventListener('navigate_view', handleNav);
+      window.removeEventListener('open_mobile_contacts', handleOpenContacts);
+    };
   }, []);
 
   // 🚀 Auto-route into dashboard whenever user is authenticated
@@ -150,6 +160,9 @@ function AppContent() {
     const mobileActions = ['take_photo', 'voice_sja', 'log_deviation', 'start_checklist', 'contacts', 'laerling', 'translator', 'activity'];
 
     if (view === 'mobile') {
+      if (actionId === 'contacts') {
+        setMobileScreen('contacts');
+      }
       if (mobileActions.includes(actionId)) {
         window.dispatchEvent(new CustomEvent('trigger_dashboard_action', { detail: { actionId } }));
         return;
@@ -163,6 +176,7 @@ function AppContent() {
     }
 
     if (actionId === 'voice_sja') {
+      setMobileScreen('voice');
       setView('mobile');
       setTimeout(() => {
         window.dispatchEvent(new CustomEvent('trigger_dashboard_action', { detail: { actionId } }));
@@ -170,10 +184,11 @@ function AppContent() {
       return;
     }
     if (actionId === 'contacts') {
+      setMobileScreen('contacts');
       setView('mobile');
       setTimeout(() => {
         window.dispatchEvent(new CustomEvent('open_mobile_contacts'));
-      }, 100);
+      }, 50);
       return;
     }
     if (view !== 'dashboard') {
@@ -1298,7 +1313,12 @@ function AppContent() {
                   }}
                 />
               )}
-              {view === 'mobile' && <MobileApp />}
+              {view === 'mobile' && (
+                <MobileApp 
+                  initialScreen={mobileScreen} 
+                  onScreenChange={(s) => setMobileScreen(s as any)} 
+                />
+              )}
               {view === 'spec' && (
                 <Dashboard 
                   isDemo={false} 

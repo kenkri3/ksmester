@@ -30,7 +30,7 @@ export async function generateSJAAction(taskDescription: string, weatherContext?
 
   // 2. Check server-side cache (0 tokens)
   const prompt = `Generer SJA for: ${taskDescription}. Vær: ${weatherContext || 'Normalt'}.`;
-  const cacheKey = hashAiRequest(prompt, 'sja_generator', 'gemini-3.8-flash');
+  const cacheKey = hashAiRequest(prompt, 'sja_generator', 'gemini-2.5-flash');
   const cached = await getCachedAiResponse(cacheKey);
   if (cached) {
     try {
@@ -42,7 +42,7 @@ export async function generateSJAAction(taskDescription: string, weatherContext?
     } catch {}
   }
 
-  // 3. AI Generation: Prefer Gemini 3.8 Flash
+  // 3. AI Generation: Prefer Gemini 3.6 Flash
   const geminiKey = process.env.GEMINI_API_KEY || process.env.GOOGLE_API_KEY || process.env.GOOGLE_GENAI_API_KEY;
   const deepseekKey = process.env.DEEP_SEEK_API || process.env.DEEPSEEK_API_KEY;
 
@@ -51,7 +51,7 @@ export async function generateSJAAction(taskDescription: string, weatherContext?
       const ai = new GoogleGenAI({ apiKey: geminiKey });
       const aiResponse = await Promise.race([
         ai.models.generateContent({
-          model: 'gemini-3.8-flash',
+          model: 'gemini-2.5-flash',
           contents: `Generer et SJA-utkast som JSON for følgende oppgave: ${taskDescription}. Værforhold: ${weatherContext || 'Normalt innendørs/utendørs'}.`,
           config: {
             systemInstruction: 'Du er en ekspert på Sikker Jobb Analyse (SJA) i Norge. Returner KUN et gyldig JSON-objekt med feltene: title, task, risikoer (liste med aktivitet, risiko, tiltak), utstyr (liste), tek17Reference, weatherImpact.',
@@ -87,7 +87,7 @@ export async function generateSJAAction(taskDescription: string, weatherContext?
       const promptTokens = aiResponse.usageMetadata?.promptTokenCount || 350;
       const completionTokens = aiResponse.usageMetadata?.candidatesTokenCount || 250;
       trackTokenCost({
-        model: 'gemini-3.8-flash',
+        model: 'gemini-2.5-flash',
         promptTokens,
         completionTokens,
         operation: 'sja_generation',
@@ -95,11 +95,11 @@ export async function generateSJAAction(taskDescription: string, weatherContext?
       }).catch(() => {});
 
       const text = aiResponse.text || '{}';
-      await setCachedAiResponse(cacheKey, text, 'gemini-3.8-flash');
+      await setCachedAiResponse(cacheKey, text, 'gemini-2.5-flash');
       return {
         success: true,
         data: JSON.parse(text),
-        source: 'gemini_3.8_flash',
+        source: 'gemini_2.5_flash',
         tokensUsed: null
       };
     } catch (gErr: any) {

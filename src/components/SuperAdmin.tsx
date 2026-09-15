@@ -442,15 +442,17 @@ export default function SuperAdmin() {
           ...(token ? { 'Authorization': 'Bearer ' + token } : {})
         },
         body: JSON.stringify({
-          instruction: adminCommandText,
+          action: 'quick_command',
           actionType: 'quick_command',
+          text: adminCommandText,
+          instruction: adminCommandText,
           companyId: selectedCompany?.id || 'all'
         })
       });
       const data = await res.json();
       if (res.ok) {
         toast.success('Agentinstruks utført!');
-        setAdminAgentReply(data.response || data.message || 'Instruksen er behandlet av den autonome agenten.');
+        setAdminAgentReply(data.reply || data.response || data.message || 'Instruksen er behandlet av den autonome agenten.');
         setAdminCommandText('');
         if (data.metrics) setAgentMetrics(data.metrics);
       } else {
@@ -505,6 +507,61 @@ export default function SuperAdmin() {
       l.authorName?.toLowerCase().includes(adminLogSearch.toLowerCase())
     );
   }, [allDailyLogs, adminLogSearch]);
+
+  const handleCopyChangeOrderLink = (co: any) => {
+    const baseUrl = typeof window !== 'undefined' ? window.location.origin : '';
+    const token = co.token || co.id;
+    const url = co.shareUrl || `${baseUrl}/?changeOrderToken=${token}`;
+    navigator.clipboard.writeText(url);
+    toast.success('Godkjenningslenke kopiert til utklippstavlen!');
+  };
+
+  const handleSendChangeOrderEmail = async (co: any) => {
+    const defaultEmail = co.clientEmail || '';
+    const targetEmail = window.prompt('Send endringsordre til e-post:', defaultEmail);
+    if (!targetEmail) return;
+
+    const baseUrl = typeof window !== 'undefined' ? window.location.origin : '';
+    const token = co.token || co.id;
+    const url = co.shareUrl || `${baseUrl}/?changeOrderToken=${token}`;
+    const amount = Number(co.amountExVat || co.totalPrice || co.amount || (co.totalAmount ? Math.round(co.totalAmount / 1.25) : 0));
+    const totalAmount = Number(co.totalAmount || Math.round(amount * 1.25));
+
+    try {
+      const res = await fetch('/api/notify/email', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({
+          to: targetEmail,
+          subject: `Endringsordre: ${co.title || 'Tilleggsavtale'} - ${co.projectName || 'Ditt prosjekt'}`,
+          content: `
+            Hei ${co.clientName || 'Kunde'}!
+            
+            Det er opprettet et tilleggsarbeid/endringsordre som krever din godkjenning:
+            
+            Arbeid: ${co.title || 'Endringsordre'}
+            Beskrivelse: ${co.description || ''}
+            Beløp: ${amount.toLocaleString('no-NO')} kr eks. mva (${totalAmount.toLocaleString('no-NO')} kr inkl. mva)
+            
+            Vennligst se avtalen og godkjenn/signer digitalt her:
+            ${url}
+            
+            Vilkår i henhold til NS 8406 / Håndverkertjenesteloven § 9.
+            
+            Med vennlig hilsen,
+            VikingMester System
+          `
+        })
+      });
+      if (res.ok) {
+        toast.success(`Endringsordre sendt til ${targetEmail}!`);
+      } else {
+        toast.error('Kunne ikke sende e-post. Kontroller mottakeradresse.');
+      }
+    } catch (e) {
+      toast.error('Feil ved sending av e-post');
+    }
+  };
 
   if (!isSuperAdmin) {
     return (
@@ -720,7 +777,7 @@ export default function SuperAdmin() {
                 </div>
               </div>
               <div className="text-3xl font-black text-amber-600">
-                {agentMetrics.pendingApprovalsCount || allChangeOrders.filter(c => c.status === 'sent' || c.status === 'pending_signature').length}
+                {agentMetrics.pendingApprovalsCount || allChangeOrders.filter(c => c.status === 'sent' || c.status === 'pending_signature' || c.status === 'pending_customer').length}
               </div>
               <p className="text-xs text-neutral-500 mt-1">Endringsordrer hos byggherre</p>
             </div>
@@ -746,7 +803,7 @@ export default function SuperAdmin() {
                 </div>
               </div>
               <div className="text-3xl font-black text-emerald-600">
-                {(agentMetrics.securedRevenue || allChangeOrders.reduce((sum, c) => sum + (Number(c.totalPrice || c.amount || 0)), 0)).toLocaleString('no-NO')} kr
+                {(agentMetrics.securedRevenue || allChangeOrders.reduce((sum, c) => sum + (Number(c.totalAmount || c.amountExVat || c.totalPrice || c.amount || 0)), 0)).toLocaleString('no-NO')} kr
               </div>
               <p className="text-xs text-neutral-500 mt-1">Identifisert & fakturert via agent</p>
             </div>

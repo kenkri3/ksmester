@@ -121,7 +121,10 @@ export const api = {
     }
 
     try {
-      const res = await fetch(`/api/data/${collectionName}`, { headers: getHeaders() });
+      const res = await fetch(`/api/data/${collectionName}`, { 
+        headers: getHeaders(),
+        signal: AbortSignal.timeout(6000)
+      });
       if (res.ok) {
         const fresh = await res.json();
         if (Array.isArray(fresh)) {

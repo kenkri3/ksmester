@@ -40,14 +40,14 @@ export const visionService = {
 
     try {
       const response = await generateAiContent({
-        model: "gemini-3.8-flash", 
+        model: "gemini-2.5-flash", 
         prompt: prompt,
         operation: "vision_analysis",
         images: [
           {
             inlineData: {
               data: base64Image.split(',')[1] || base64Image,
-              mimeType: mimeType
+              mimeType: mimeType || 'image/jpeg'
             }
           }
         ],
@@ -68,7 +68,14 @@ export const visionService = {
         }
       });
 
-      return JSON.parse(response.text || '{}') as VisionAnalysisResult;
+      let raw = (response.text || '{}').trim();
+      if (raw.startsWith('```json')) {
+        raw = raw.replace(/^```json\s*/i, '').replace(/\s*```$/, '');
+      } else if (raw.startsWith('```')) {
+        raw = raw.replace(/^```\s*/, '').replace(/\s*```$/, '');
+      }
+
+      return JSON.parse(raw) as VisionAnalysisResult;
     } catch (error) {
       console.error("Vision Analysis error:", error);
       throw error;

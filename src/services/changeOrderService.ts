@@ -149,22 +149,90 @@ export const changeOrderService = {
     await api.saveDoc('change_orders', updated);
 
     // 100% Automated Project Sync:
-    // Update project budget
+    // Update project budget and timeline
     try {
       const projects = await api.getDocs<Project>('projects');
       const project = projects.find(p => p.id === order.projectId);
       if (project) {
         const currentBudget = project.budget || 0;
-        const newBudget = currentBudget + order.totalAmount;
+        const newBudget = currentBudget + (order.totalAmount || order.amountExVat || 0);
         
         await api.saveDoc('projects', {
           ...project,
           budget: newBudget,
-          lastUpdate: 'Nylig oppdatert (Endringsordre godkjent)'
+          lastUpdate: `Endringsordre #${order.changeNumber} godkjent av ${signerName || 'kunde'}`
         });
       }
     } catch (e) {
       console.warn('Could not update project budget:', e);
+    }
+
+    // 100% Real-time In-App Notification to Contractor/Admin
+    try {
+      const notifId = `notif_co_${Date.now()}_${Math.random().toString(36).substring(2, 6)}`;
+      const amountStr = (order.totalAmount || order.amountExVat || 0).toLocaleString('no-NO');
+      
+      await api.saveDoc('notifications', {
+        id: notifId,
+        userId: order.authorId || 'all',
+        projectId: order.projectId,
+        title: `Endringsordre #${order.changeNumber} godkjent!`,
+        message: `${signerName || 'Kunden'} har signert og godkjent endringsordre "${order.title}" (${amountStr} kr). Prosjektbudsjett er oppdatert automatisk.`,
+        type: 'success',
+        category: 'change_order',
+        read: false,
+        link: `/prosjekt/${order.projectId}?tab=change_orders`,
+        createdAt: new Date().toISOString()
+      });
+    } catch (err) {
+      console.warn('Could not save in-app notification:', err);
+    }
+
+    // Real-time Agent Activity Feed (so SuperAdmin & logs show instant approval)
+    try {
+      await api.saveDoc('agent_activities', {
+        id: `act_${Date.now()}_${Math.random().toString(36).substring(2, 6)}`,
+        action: 'Endringsordre godkjent av kunde',
+        details: `${signerName || 'Kunde'} signerte endringsordre #${order.changeNumber}: "${order.title}" for ${(order.totalAmount || order.amountExVat || 0).toLocaleString('no-NO')} kr inkl. mva.`,
+        projectId: order.projectId,
+        projectName: order.projectCode || 'Prosjekt',
+        status: 'completed',
+        createdAt: new Date()
+      });
+    } catch (err) {
+      console.warn('Could not register agent activity:', err);
+    }
+
+    // Instant Email Dispatch to Contractor / Management
+    try {
+      const amountExVatStr = (order.amountExVat || 0).toLocaleString('no-NO');
+      const totalAmountStr = (order.totalAmount || Math.round((order.amountExVat || 0) * 1.25)).toLocaleString('no-NO');
+      
+      await fetch('/api/notify/email', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({
+          subject: `✅ GODKJENT: Endringsordre #${order.changeNumber} signert av ${signerName || 'kunde'}`,
+          content: `
+            Hei!
+            
+            Byggherre/kunde (${signerName || order.clientName || 'Kunde'}) har nettopp godkjent og signert endringsordre #${order.changeNumber}.
+            
+            Tittel: ${order.title}
+            Beløp: ${amountExVatStr} kr eks. mva (${totalAmountStr} kr inkl. mva)
+            Fremdriftskonsekvens: ${order.impactDays > 0 ? `+${order.impactDays} virkedager` : 'Ingen forsinkelse'}
+            Godkjent tidspunkt: ${new Date().toLocaleString('no-NO')}
+            Signert av: ${signerName || order.clientName || 'Kunde'}
+            
+            Prosjektbudsjettet er automatisk oppdatert i KS Mester.
+            
+            Med vennlig hilsen,
+            VikingMester System
+          `
+        })
+      });
+    } catch (err) {
+      console.warn('Could not dispatch instant approval email:', err);
     }
 
     return updated;
@@ -185,6 +253,66 @@ export const changeOrderService = {
     };
 
     await api.saveDoc('change_orders', updated);
+
+    // Register in-app notification about rejection
+    try {
+      await api.saveDoc('notifications', {
+        id: `notif_co_rej_${Date.now()}`,
+        userId: order.authorId || 'all',
+        projectId: order.projectId,
+        title: `Endringsordre #${order.changeNumber} avvist`,
+        message: `Kunden har avvist endringsordre "${order.title}". Begrunnelse: ${reason || 'Ingen begrunnelse oppgitt'}.`,
+        type: 'warning',
+        category: 'change_order',
+        read: false,
+        createdAt: new Date().toISOString()
+      });
+    } catch (err) {}
+
     return updated;
+  },
+
+  /**
+   * Re-send or send change order invitation email to customer
+   */
+  async sendChangeOrderEmail(order: ChangeOrder, targetEmail?: string): Promise<boolean> {
+    const emailTo = targetEmail || order.clientEmail;
+    if (!emailTo) {
+      throw new Error('Mangler mottakers e-postadresse.');
+    }
+
+    const baseUrl = typeof window !== 'undefined' ? window.location.origin : '';
+    const shareUrl = order.shareUrl || `${baseUrl}?changeOrderToken=${order.token}`;
+    const amountStr = (order.amountExVat || 0).toLocaleString('no-NO');
+    const totalStr = (order.totalAmount || Math.round((order.amountExVat || 0) * 1.25)).toLocaleString('no-NO');
+
+    const res = await fetch('/api/notify/email', {
+      method: 'POST',
+      headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify({
+        to: emailTo,
+        subject: `Endringsmelding #${order.changeNumber}: ${order.title}`,
+        content: `
+          Hei ${order.clientName || 'Kunde'}!
+          
+          Det er opprettet et tilleggsarbeid/endringsordre som krever din godkjenning:
+          
+          Arbeid: ${order.title}
+          Beskrivelse: ${order.description}
+          Beløp: ${amountStr} kr eks. mva (${totalStr} kr ink. mva)
+          Fremdriftskonsekvens: ${order.impactDays > 0 ? `+${order.impactDays} virkedager` : 'Ingen forsinkelse'}
+          
+          Du kan se spesifikasjonen og signere digitalt med 1 klikk her:
+          ${shareUrl}
+          
+          Vilkår: NS 8406 / Håndverkertjenesteloven § 9.
+          
+          Med vennlig hilsen,
+          ${order.authorName || 'VikingMester'}
+        `
+      })
+    });
+
+    return res.ok;
   }
 };

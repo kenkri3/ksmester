@@ -70,7 +70,7 @@ export const sjaService = {
 
     try {
       const response = await generateAiContent({
-        model: "gemini-3.8-flash",
+        model: "gemini-2.5-flash",
         prompt: prompt,
         operation: "sja_generation",
         taskDescription: taskDescription,

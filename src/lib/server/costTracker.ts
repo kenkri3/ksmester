@@ -21,11 +21,14 @@ export interface CostLogRecord {
 // Valutakurs USD -> NOK
 export const NOK_USD_RATE = 10.80;
 
-// Offisielle Gemini 3.8 Flash priser per 1M tokens
+// Offisielle Gemini 2.5 Flash priser per 1M tokens
 // Input: $0.15 / 1M tokens (~1.62 NOK)
 // Output: $0.60 / 1M tokens (~6.48 NOK)
+// Gemini 2.5 Flash-Lite: $0.075 input / $0.30 output
 export const GEMINI_PROMPT_PER_M = 0.15;
 export const GEMINI_COMPLETION_PER_M = 0.60;
+export const GEMINI_LITE_PROMPT_PER_M = 0.075;
+export const GEMINI_LITE_COMPLETION_PER_M = 0.30;
 
 // DeepSeek V3 chat priser
 export const DEEPSEEK_PROMPT_PER_M = 0.14;
@@ -70,7 +73,7 @@ export const TOPUP_PACKAGES: Record<string, { name: string; tokens: number; imag
  * Logger tokenforbruk og beregner nøyaktig kostnad i NOK for 50/50-avregning.
  */
 export async function trackTokenCost({
-  model = 'gemini-3.8-flash',
+  model = 'gemini-2.5-flash',
   promptTokens = 0,
   completionTokens = 0,
   operation,
@@ -93,7 +96,10 @@ export async function trackTokenCost({
   let promptRate = GEMINI_PROMPT_PER_M;
   let completionRate = GEMINI_COMPLETION_PER_M;
 
-  if (model.includes('deepseek')) {
+  if (model.includes('lite')) {
+    promptRate = GEMINI_LITE_PROMPT_PER_M;
+    completionRate = GEMINI_LITE_COMPLETION_PER_M;
+  } else if (model.includes('deepseek')) {
     promptRate = DEEPSEEK_PROMPT_PER_M;
     completionRate = DEEPSEEK_COMPLETION_PER_M;
   }

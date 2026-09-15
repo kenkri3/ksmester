@@ -597,8 +597,8 @@ export default function Dashboard({
                   <button
                     type="button"
                     onClick={() => {
-                      window.dispatchEvent(new CustomEvent("navigate_view", { detail: { view: "mobile" } }));
-                      setTimeout(() => window.dispatchEvent(new CustomEvent("open_mobile_contacts")), 150);
+                      window.dispatchEvent(new CustomEvent("open_mobile_contacts"));
+                      window.dispatchEvent(new CustomEvent("navigate_view", { detail: { view: "mobile", screen: "contacts" } }));
                     }}
                     className="flex flex-col items-center text-center p-3.5 sm:p-4 rounded-2xl bg-white border border-slate-200/90 shadow-sm hover:shadow-md hover:border-cyan-300 active:scale-95 transition-all group cursor-pointer"
                   >

@@ -33,16 +33,29 @@ export async function generateAiContent(options: GenerateAiOptions): Promise<{ t
     headers['x-portal-access'] = 'true';
   }
 
-  const res = await fetch('/api/ai/generate', {
-    method: 'POST',
-    headers,
-    body: JSON.stringify(options)
-  });
+  const controller = new AbortController();
+  const timeoutId = setTimeout(() => controller.abort(), 45000);
 
-  if (!res.ok) {
-    const errData = await res.json().catch(() => ({}));
-    throw new Error(errData.error || 'AI-generering feilet på serveren');
+  try {
+    const res = await fetch('/api/ai/generate', {
+      method: 'POST',
+      headers,
+      body: JSON.stringify(options),
+      signal: controller.signal
+    });
+    clearTimeout(timeoutId);
+
+    if (!res.ok) {
+      const errData = await res.json().catch(() => ({}));
+      throw new Error(errData.error || 'AI-generering feilet på serveren');
+    }
+
+    return await res.json();
+  } catch (err: any) {
+    clearTimeout(timeoutId);
+    if (err.name === 'AbortError') {
+      throw new Error('AI-analysen tok for lang tid (timeout etter 45 sekunder). Vennligst prøv igjen med et komprimert bilde.');
+    }
+    throw err;
   }
-
-  return await res.json();
 }

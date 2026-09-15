@@ -6,7 +6,7 @@ import { getCachedAiResponse, setCachedAiResponse } from '@/src/lib/server/aiCac
 import { tryResolveDeterministicSja } from '@/src/lib/server/ruleEngine';
 import { createHash } from 'crypto';
 
-function computeCacheKey(promptOrContents: any, systemInstruction?: string, model = 'gemini-3.8-flash', images?: any[], inlineData?: any): string {
+function computeCacheKey(promptOrContents: any, systemInstruction?: string, model = 'gemini-2.5-flash', images?: any[], inlineData?: any): string {
   const textPart = typeof promptOrContents === 'string' ? promptOrContents.trim().toLowerCase() : JSON.stringify(promptOrContents || '');
   let imageParts = '';
   if (inlineData?.data) {
@@ -39,7 +39,7 @@ export async function POST(req: NextRequest) {
 
   try {
     const body = await req.json();
-    let { prompt, contents, model = 'gemini-3.8-flash', systemInstruction, responseMimeType, responseSchema, images, inlineData, operation = 'ai_generate' } = body;
+    let { prompt, contents, model = process.env.GEMINI_MODEL || 'gemini-2.5-flash', systemInstruction, responseMimeType, responseSchema, images, inlineData, operation = 'ai_generate' } = body;
 
     if (!user && isPortalAccess) {
       if (!prompt || typeof prompt !== 'string' || prompt.length > 5000) {
@@ -146,17 +146,21 @@ export async function POST(req: NextRequest) {
       if (responseSchema) config.responseSchema = responseSchema;
 
       const candidateModels = [
-        model || 'gemini-3.8-flash',
+        model,
+        process.env.GEMINI_MODEL,
         'gemini-2.5-flash',
+        'gemini-2.5-flash-lite',
+        'gemini-3.5-flash-lite',
         'gemini-2.0-flash',
         'gemini-1.5-flash'
-      ];
+      ].filter(Boolean) as string[];
 
       const uniqueModels = Array.from(new Set(candidateModels));
 
       let aiResponse: any = null;
       let lastError: any = null;
-      let executedModel = 'gemini-3.8-flash';
+      let executedModel = uniqueModels[0] || 'gemini-2.5-flash';
+      const candidateErrors: string[] = [];
 
       for (const cand of uniqueModels) {
         try {
@@ -170,13 +174,14 @@ export async function POST(req: NextRequest) {
             break;
           }
         } catch (err: any) {
+          candidateErrors.push(`${cand}: ${err.message}`);
           lastError = err;
           console.warn(`[AI Generation] Modell ${cand} feilet (${err.message}), forsøker neste kandidat...`);
         }
       }
 
       if (!aiResponse) {
-        throw lastError || new Error('Gemini generering feilet for alle modeller');
+        throw new Error(`Gemini-kall feilet for alle modeller: ${candidateErrors.join(' | ')}`);
       }
 
       // 📊 Presis registrering av tokenforbruk for 50/50 partnerskapsregnskap

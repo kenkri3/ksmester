@@ -3,6 +3,7 @@ import { motion, AnimatePresence } from 'motion/react';
 import { X, Camera, Upload, Brain, CheckCircle2, AlertTriangle, RefreshCw, Scan, Save, Loader2, Building2, ListChecks, Search, Lightbulb, ArrowRight } from 'lucide-react';
 import { useTranslation } from 'react-i18next';
 import { cn } from '@/src/lib/utils';
+import { optimizeImageForVision } from '@/src/lib/imageOptimizer';
 import { visionService, VisionAnalysisResult } from '../services/visionService';
 import { db, collection, addDoc, serverTimestamp, OperationType, handleFirestoreError, onSnapshot } from '../services/firebase';
 import { toast } from 'sonner';
@@ -48,16 +49,20 @@ export default function AIVisionModal({ isOpen, onClose, projectId: initialProje
     }
   }, [isOpen, initialProjectId]);
 
-  const handleFileChange = (e: React.ChangeEvent<HTMLInputElement>) => {
+  const handleFileChange = async (e: React.ChangeEvent<HTMLInputElement>) => {
     const file = e.target.files?.[0];
     if (file) {
-      const reader = new FileReader();
-      reader.onloadend = () => {
-        const base64 = reader.result as string;
+      setAnalyzing(true);
+      setResult(null);
+      try {
+        const { base64, mimeType } = await optimizeImageForVision(file);
         setImage(base64);
-        startAnalysis(base64, file.type);
-      };
-      reader.readAsDataURL(file);
+        startAnalysis(base64, mimeType);
+      } catch (err: any) {
+        console.error('Image optimization failed:', err);
+        setAnalyzing(false);
+        toast.error('Kunne ikke laste inn bildet. Vennligst prøv en annen fil.');
+      }
     }
   };
 
@@ -66,18 +71,20 @@ export default function AIVisionModal({ isOpen, onClose, projectId: initialProje
     setResult(null);
     
     try {
-      const analysis = await visionService.analyzeImage(base64Image, mimeType);
+      const analysis = await visionService.analyzeImage(base64Image, mimeType || 'image/jpeg');
       setResult(analysis);
-    } catch (error) {
+    } catch (error: any) {
       console.error('AI Vision analysis error:', error);
+      const errMsg = error?.message || 'Kunne ikke fullføre AI-analysen. Prøv et tydeligere bilde.';
       setResult({
         status: 'deviation',
         title: 'Analyse feilet',
-        description: 'Kunne ikke fullføre AI-analysen. Prøv et tydeligere bilde.',
+        description: errMsg.length > 250 ? errMsg.slice(0, 250) + '...' : errMsg,
         elements: [],
         confidence: 0,
-        recommendation: 'Prøv å ta et nytt bilde med bedre lys.'
+        recommendation: 'Prøv å ta et nytt bilde med bedre belysning eller tettere på konstruksjonen.'
       });
+      toast.error('AI-analysen feilet: ' + (error?.message || 'Ukjent feil'));
     } finally {
       setAnalyzing(false);
     }
@@ -268,7 +275,17 @@ export default function AIVisionModal({ isOpen, onClose, projectId: initialProje
                         >
                           <RefreshCw size={24} className="sm:w-12 sm:h-12 text-rose-500" />
                         </motion.div>
-                        <p className="text-white font-bold tracking-widest uppercase text-[8px] sm:text-xs animate-pulse text-center">Analyserer...</p>
+                        <p className="text-white font-bold tracking-widest uppercase text-[8px] sm:text-xs animate-pulse text-center">Analyserer bilde med TEK17-AI...</p>
+                        <button
+                          type="button"
+                          onClick={() => {
+                            setAnalyzing(false);
+                            toast.info('Bildeanalyse avbrutt.');
+                          }}
+                          className="mt-3 px-3 py-1 bg-white/15 hover:bg-white/25 text-white/90 rounded-full text-[10px] font-bold transition-all pointer-events-auto border border-white/20"
+                        >
+                          Avbryt
+                        </button>
                         
                         {/* Scanning line animation */}
                         <motion.div 

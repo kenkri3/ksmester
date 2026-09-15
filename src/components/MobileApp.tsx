@@ -33,6 +33,7 @@ import {
   Siren
 } from 'lucide-react';
 import { cn } from '@/src/lib/utils';
+import { optimizeImageForVision } from '@/src/lib/imageOptimizer';
 import { sjaService } from '../services/sjaService';
 import { visionService } from '../services/visionService';
 import { ImageAnalysisResult, Project as ProjectType, UserProfile, Trade } from '../types';
@@ -51,9 +52,25 @@ import { logAiService } from '../services/logAiService';
 import { locationService } from '../services/locationService';
 import { Sparkles, ClipboardList } from 'lucide-react';
 import { api } from '../services/api';
-export default function MobileApp() {
+interface MobileAppProps {
+  initialScreen?: 'home' | 'camera' | 'voice' | 'report' | 'imageResult' | 'translator' | 'laerling' | 'dailyLog' | 'activity' | 'contacts';
+  onScreenChange?: (screen: 'home' | 'camera' | 'voice' | 'report' | 'imageResult' | 'translator' | 'laerling' | 'dailyLog' | 'activity' | 'contacts') => void;
+}
+
+export default function MobileApp({ initialScreen, onScreenChange }: MobileAppProps = {}) {
   const { t, i18n } = useTranslation();
-  const [activeScreen, setActiveScreen] = useState<'home' | 'camera' | 'voice' | 'report' | 'imageResult' | 'translator' | 'laerling' | 'dailyLog' | 'activity' | 'contacts'>('home');
+  const [activeScreen, setActiveScreen] = useState<'home' | 'camera' | 'voice' | 'report' | 'imageResult' | 'translator' | 'laerling' | 'dailyLog' | 'activity' | 'contacts'>(initialScreen || 'home');
+
+  useEffect(() => {
+    if (initialScreen) {
+      setActiveScreen(initialScreen);
+    }
+  }, [initialScreen]);
+
+  const handleScreenChange = (screen: 'home' | 'camera' | 'voice' | 'report' | 'imageResult' | 'translator' | 'laerling' | 'dailyLog' | 'activity' | 'contacts') => {
+    setActiveScreen(screen);
+    onScreenChange?.(screen);
+  };
   const [isAnalyzing, setIsAnalyzing] = useState(false);
   const [dailyLog, setDailyLog] = useState<any>(null);
   const [currentReportId, setCurrentReportId] = useState<string | null>(null);
@@ -478,30 +495,38 @@ interface ColleagueContact {
       handleFirestoreError(error, OperationType.UPDATE, `sja_reports/${currentReportId}`);
     }
   };
-  const handleImageUpload = (e: React.ChangeEvent<HTMLInputElement>) => {
+  const handleImageUpload = async (e: React.ChangeEvent<HTMLInputElement>) => {
     const file = e.target.files?.[0];
     if (file) {
-      const reader = new FileReader();
-      reader.onloadend = () => {
-        const base64 = reader.result as string;
+      try {
+        setIsAnalyzing(true);
+        setActiveScreen('camera');
+        const { base64, mimeType } = await optimizeImageForVision(file);
         setPreviewImage(base64);
-        startImageAnalysis(base64);
-      };
-      reader.readAsDataURL(file);
+        startImageAnalysis(base64, mimeType);
+      } catch (err) {
+        console.error('Mobile image optimization error:', err);
+        setIsAnalyzing(false);
+        toast.error('Kunne ikke laste opp bildet.');
+      }
     }
   };
-  const startImageAnalysis = async (base64: string) => {
-    if (!selectedProjectId) return;
+  const startImageAnalysis = async (base64: string, mimeType = 'image/jpeg') => {
+    if (!selectedProjectId) {
+      toast.error('Velg et prosjekt først');
+      setIsAnalyzing(false);
+      return;
+    }
     setIsAnalyzing(true);
     setActiveScreen('camera');
-    const result = await visionService.analyzeImage(base64, 'image/jpeg');
-    setIsAnalyzing(false);
-    if (result) {
-      setImageAnalysis(result);
-      setActiveScreen('imageResult');
-      // Save analysis result to project_photos
-      try {
-        let locationData = {};
+    try {
+      const result = await visionService.analyzeImage(base64, mimeType);
+      if (result) {
+        setImageAnalysis(result);
+        setActiveScreen('imageResult');
+        // Save analysis result to project_photos
+        try {
+          let locationData = {};
         
         // Try to get current location
         if ("geolocation" in navigator) {
@@ -554,7 +579,13 @@ interface ColleagueContact {
         console.error("Error saving analysis:", error);
       }
     }
-  };
+  } catch (error: any) {
+    console.error("Image analysis error:", error);
+    toast.error("Bildeanalyse feilet: " + (error?.message || "Ukjent feil"));
+  } finally {
+    setIsAnalyzing(false);
+  }
+};
   return (
     <div className="min-h-screen bg-slate-100 py-3 sm:py-6 px-2 sm:px-4">
       <div className="max-w-2xl mx-auto space-y-4">
