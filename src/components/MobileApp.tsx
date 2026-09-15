@@ -52,6 +52,78 @@ import { logAiService } from '../services/logAiService';
 import { locationService } from '../services/locationService';
 import { Sparkles, ClipboardList } from 'lucide-react';
 import { api } from '../services/api';
+
+export interface ColleagueContact {
+  id: string;
+  name: string;
+  role: string;
+  company: string;
+  trade?: Trade | string;
+  phone: string;
+  email?: string;
+  isOnSiteToday?: boolean;
+  isKeyPersonnel?: boolean;
+  projectId?: string;
+}
+
+const DEFAULT_COLLEAGUES: ColleagueContact[] = [
+  {
+    id: 'contact_1',
+    name: 'Kari Nordmann (Prosjektleder)',
+    role: 'Prosjektleder / Faglig leder',
+    company: 'VikingMester AS',
+    trade: 'carpenter',
+    phone: '920 11 222',
+    email: 'prosjekt@vikingmester.no',
+    isOnSiteToday: true,
+    isKeyPersonnel: true
+  },
+  {
+    id: 'contact_2',
+    name: 'Ola Hansen (Bas & Verneombud)',
+    role: 'Byggeplassleder / Verneombud',
+    company: 'VikingMester AS',
+    trade: 'carpenter',
+    phone: '930 22 333',
+    email: 'hms@vikingmester.no',
+    isOnSiteToday: true,
+    isKeyPersonnel: true
+  },
+  {
+    id: 'contact_3',
+    name: 'Per Olsen (Tømrer bas)',
+    role: 'Tømrer / Montør',
+    company: 'VikingMester AS',
+    trade: 'carpenter',
+    phone: '940 33 444',
+    email: 'per@vikingmester.no',
+    isOnSiteToday: true,
+    isKeyPersonnel: false
+  },
+  {
+    id: 'contact_4',
+    name: 'Eirik Berg (Elektroansvarlig)',
+    role: 'Elektriker / Installatør',
+    company: 'Partner Elektro AS',
+    trade: 'electrician',
+    phone: '950 44 555',
+    email: 'elektro@vikingmester.no',
+    isOnSiteToday: false,
+    isKeyPersonnel: true
+  },
+  {
+    id: 'contact_5',
+    name: 'Marius Lien (Rørlegger bas)',
+    role: 'VVS / Rørlegger bas',
+    company: 'Partner VVS AS',
+    trade: 'plumber',
+    phone: '960 55 666',
+    email: 'vvs@vikingmester.no',
+    isOnSiteToday: true,
+    isKeyPersonnel: false
+  }
+];
+
 interface MobileAppProps {
   initialScreen?: 'home' | 'camera' | 'voice' | 'report' | 'imageResult' | 'translator' | 'laerling' | 'dailyLog' | 'activity' | 'contacts';
   onScreenChange?: (screen: 'home' | 'camera' | 'voice' | 'report' | 'imageResult' | 'translator' | 'laerling' | 'dailyLog' | 'activity' | 'contacts') => void;
@@ -78,8 +150,16 @@ export default function MobileApp({ initialScreen, onScreenChange }: MobileAppPr
   const [imageAnalysis, setImageAnalysis] = useState<ImageAnalysisResult | null>(null);
   const [transcript, setTranscript] = useState("");
   const [previewImage, setPreviewImage] = useState<string | null>(null);
-  const [projects, setProjects] = useState<ProjectType[]>([]);
-  const [selectedProjectId, setSelectedProjectId] = useState<string>("");
+  const [projects, setProjects] = useState<ProjectType[]>([
+    {
+      id: 'proj_default_1',
+      name: 'Hovedprosjekt (Byggeplass Oslo)',
+      location: 'Oslo',
+      status: 'active',
+      description: 'Aktivt standardprosjekt'
+    } as any
+  ]);
+  const [selectedProjectId, setSelectedProjectId] = useState<string>("proj_default_1");
   const [recentEvents, setRecentEvents] = useState<any[]>([]);
   const [showInstallGuide, setShowInstallGuide] = useState(false);
   const handleInstallApp = async () => {
@@ -113,20 +193,8 @@ export default function MobileApp({ initialScreen, onScreenChange }: MobileAppPr
   const fileInputRef = useRef<HTMLInputElement>(null);
   const apprenticeFileInputRef = useRef<HTMLInputElement>(null);
   const [apprenticeImage, setApprenticeImage] = useState<string | null>(null);
-interface ColleagueContact {
-  id: string;
-  name: string;
-  role: string;
-  company: string;
-  trade?: Trade | string;
-  phone: string;
-  email?: string;
-  isOnSiteToday?: boolean;
-  isKeyPersonnel?: boolean;
-  projectId?: string;
-}
   // --- Telefonliste & Kolleger State ---
-  const [colleagues, setColleagues] = useState<ColleagueContact[]>([]);
+  const [colleagues, setColleagues] = useState<ColleagueContact[]>(DEFAULT_COLLEAGUES);
   const [contactsSearch, setContactsSearch] = useState('');
   const [contactsFilter, setContactsFilter] = useState<'all' | 'onsite' | 'key' | 'emergency'>('all');
   const [showAddContactModal, setShowAddContactModal] = useState(false);
