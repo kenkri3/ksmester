@@ -4,76 +4,101 @@ export interface AddressInfo {
   city: string;
   gnr?: string;
   bnr?: string;
+  fnr?: string;
   municipality?: string;
   municipalityNumber?: string;
   fullAddress: string;
+  lat?: number;
+  lon?: number;
 }
 
 export const locationService = {
   /**
-   * Searches for addresses in Norway using Geonorge API.
-   * Includes GNR and BNR where available.
+   * Searches for addresses in Norway using server API (/api/address)
+   * with direct Geonorge API fallback.
+   * Accurately extracts and auto-fills GNR and BNR.
    */
   async searchAddress(query: string): Promise<AddressInfo[]> {
-    if (!query || query.length < 2) return [];
+    if (!query || query.trim().length < 2) return [];
 
+    // 1. Try local server-side proxy route (bypasses CSP & adds server caching)
     try {
-      // Check if query looks like GNR/BNR (e.g., "123/45" or "gnr 123 bnr 45")
+      const res = await fetch(`/api/address?q=${encodeURIComponent(query.trim())}`, {
+        signal: AbortSignal.timeout(5000)
+      });
+      if (res.ok) {
+        const data = await res.json();
+        if (Array.isArray(data) && data.length > 0) {
+          return data;
+        }
+      }
+    } catch (apiErr) {
+      console.warn('Address proxy route error, falling back to direct Geonorge:', apiErr);
+    }
+
+    // 2. Direct fallback to Geonorge API
+    try {
       const gnrBnrMatch = query.match(/(?:gnr\s*)?(\d+)\s*[\/\s]\s*(?:bnr\s*)?(\d+)/i);
-      let url = `https://ws.geonorge.no/adresser/v1/sok?sok=${encodeURIComponent(query)}&fuzzy=true&treffPerSide=10`;
+      let url = `https://ws.geonorge.no/adresser/v1/sok?sok=${encodeURIComponent(query)}&fuzzy=true&treffPerSide=15`;
       
+      const response = await fetch(url, { signal: AbortSignal.timeout(5000) });
+      if (response.ok) {
+        const data = await response.json();
+        if (data.adresser && data.adresser.length > 0) {
+          return this.mapAdresser(data.adresser);
+        }
+      }
+
       if (gnrBnrMatch) {
         const gnr = gnrBnrMatch[1];
         const bnr = gnrBnrMatch[2];
-        // If it looks like GNR/BNR, we can try to search specifically for that
-        // However, the 'sok' parameter often handles this well. 
-        // We'll stick to 'sok' but maybe add some logic if results are empty.
-      }
-
-      const response = await fetch(url);
-      
-      if (!response.ok) {
-        throw new Error('Geonorge API error');
-      }
-
-      const data = await response.json();
-      
-      if (!data.adresser || data.adresser.length === 0) {
-        // Try searching by GNR/BNR if the first search failed and it looks like GNR/BNR
-        if (gnrBnrMatch) {
-          const gnr = gnrBnrMatch[1];
-          const bnr = gnrBnrMatch[2];
-          const altResponse = await fetch(`https://ws.geonorge.no/adresser/v1/sok?gaardsnummer=${gnr}&bruksnummer=${bnr}&treffPerSide=10`);
-          if (altResponse.ok) {
-            const altData = await altResponse.ok ? await altResponse.json() : { adresser: [] };
-            if (altData.adresser) return this.mapAdresser(altData.adresser);
-          }
+        const altResponse = await fetch(`https://ws.geonorge.no/adresser/v1/sok?gaardsnummer=${gnr}&bruksnummer=${bnr}&treffPerSide=10`);
+        if (altResponse.ok) {
+          const altData = await altResponse.json();
+          if (altData.adresser) return this.mapAdresser(altData.adresser);
         }
-        return [];
       }
-
-      return this.mapAdresser(data.adresser);
+      return [];
     } catch (error) {
-      console.error('Error searching address:', error);
+      console.error('Error searching address directly:', error);
       return [];
     }
   },
 
   /**
-   * Helper to map Geonorge address objects to AddressInfo
+   * Helper to map Geonorge address objects to AddressInfo.
+   * FIX: Correctly reads top-level gardsnummer / gaardsnummer and bruksnummer.
    */
   mapAdresser(adresser: any[]): AddressInfo[] {
     return adresser.map((addr: any) => {
       const matrikkel = addr.matrikkelenhet || {};
+      const gnrRaw = addr.gardsnummer ?? addr.gaardsnummer ?? matrikkel.gaardsnummer;
+      const bnrRaw = addr.bruksnummer ?? matrikkel.bruksnummer;
+      const fnrRaw = addr.festenummer ?? matrikkel.festenummer;
+      const knrRaw = addr.kommunenummer ?? matrikkel.kommunenummer;
+
+      const gnr = gnrRaw !== undefined && gnrRaw !== null ? String(gnrRaw) : undefined;
+      const bnr = bnrRaw !== undefined && bnrRaw !== null ? String(bnrRaw) : undefined;
+      const fnr = fnrRaw !== undefined && fnrRaw !== null && Number(fnrRaw) > 0 ? String(fnrRaw) : undefined;
+
+      const address = addr.adressetekst || '';
+      const postcode = addr.postnummer || '';
+      const city = addr.poststed || '';
+      const municipality = addr.kommunenavn || '';
+      const municipalityNumber = knrRaw ? String(knrRaw) : undefined;
+
       return {
-        address: addr.adressetekst || '',
-        postcode: addr.postnummer || '',
-        city: addr.poststed || '',
-        gnr: matrikkel.gaardsnummer ? String(matrikkel.gaardsnummer) : undefined,
-        bnr: matrikkel.bruksnummer ? String(matrikkel.bruksnummer) : undefined,
-        municipality: addr.kommunenavn || '',
-        municipalityNumber: matrikkel.kommunenummer || '',
-        fullAddress: `${addr.adressetekst}, ${addr.postnummer} ${addr.poststed}`
+        address,
+        postcode,
+        city,
+        gnr,
+        bnr,
+        fnr,
+        municipality,
+        municipalityNumber,
+        fullAddress: `${address}${postcode ? `, ${postcode}` : ''}${city ? ` ${city}` : ''}`.trim(),
+        lat: addr.representasjonspunkt?.lat,
+        lon: addr.representasjonspunkt?.lon
       };
     });
   },
@@ -82,6 +107,14 @@ export const locationService = {
    * Searches specifically for property by GNR/BNR
    */
   async searchByGnrBnr(gnr: string, bnr: string, knr?: string): Promise<AddressInfo[]> {
+    try {
+      const res = await fetch(`/api/address?gnr=${encodeURIComponent(gnr)}&bnr=${encodeURIComponent(bnr)}${knr ? `&knr=${encodeURIComponent(knr)}` : ''}`);
+      if (res.ok) {
+        const data = await res.json();
+        if (Array.isArray(data) && data.length > 0) return data;
+      }
+    } catch (e) {}
+
     try {
       let url = `https://ws.geonorge.no/adresser/v1/sok?gaardsnummer=${gnr}&bruksnummer=${bnr}&treffPerSide=10`;
       if (knr) url += `&kommunenummer=${knr}`;
@@ -101,8 +134,15 @@ export const locationService = {
    */
   async getAddressFromCoords(lat: number, lon: number): Promise<AddressInfo | null> {
     try {
-      const response = await fetch(`https://ws.geonorge.no/adresser/v1/punktsok?lon=${lon}&lat=${lat}&radius=50&treffPerSide=1`);
-      
+      const res = await fetch(`/api/address?lat=${lat}&lon=${lon}`);
+      if (res.ok) {
+        const list = await res.json();
+        if (Array.isArray(list) && list.length > 0) return list[0];
+      }
+    } catch (e) {}
+
+    try {
+      const response = await fetch(`https://ws.geonorge.no/adresser/v1/punktsok?lon=${lon}&lat=${lat}&radius=150&treffPerSide=1`);
       if (!response.ok) return null;
       
       const data = await response.json();

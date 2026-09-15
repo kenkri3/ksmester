@@ -1,12 +1,13 @@
 import { useState, useEffect } from 'react';
 import { motion, AnimatePresence } from 'motion/react';
-import { X, MapPin, HardHat, Loader2, Sparkles, Users, Clock, Package, TrendingUp, Mic, MicOff, Brain, Wand2, Check } from 'lucide-react';
+import { X, MapPin, HardHat, Loader2, Sparkles, Users, Clock, Package, TrendingUp, Mic, MicOff, Brain, Wand2, Check, Navigation, Building2 } from 'lucide-react';
 import { db, collection, setDoc, doc, OperationType, handleFirestoreError, Timestamp, auth } from '../services/firebase';
 import { useTranslation } from 'react-i18next';
 import { useAuth } from '../hooks/useAuth';
 import { generateAiContent } from '../services/aiClient';
 import { resourceService, ResourceEstimation } from '../services/resourceService';
 import { locationService, AddressInfo } from '../services/locationService';
+import { companyService, CompanyInfo } from '../services/companyService';
 import { cn } from '@/src/lib/utils';
 import { useDebounce } from '../hooks/useDebounce';
 import { toast } from 'sonner';
@@ -48,7 +49,13 @@ export default function CreateProjectModal({ isOpen, onClose }: CreateProjectMod
   const [addressSearch, setAddressSearch] = useState('');
   const [addressSuggestions, setAddressSuggestions] = useState<AddressInfo[]>([]);
   const [isSearchingAddress, setIsSearchingAddress] = useState(false);
-  const debouncedAddressSearch = useDebounce(addressSearch, 500);
+  const [isLocating, setIsLocating] = useState(false);
+  const debouncedAddressSearch = useDebounce(addressSearch, 400);
+
+  // Brønnøysundregistrene company lookup
+  const [companySuggestions, setCompanySuggestions] = useState<CompanyInfo[]>([]);
+  const [isSearchingCompany, setIsSearchingCompany] = useState(false);
+  const debouncedClientSearch = useDebounce(formData.clientName, 400);
 
   useEffect(() => {
     const fetchAddresses = async () => {
@@ -71,6 +78,28 @@ export default function CreateProjectModal({ isOpen, onClose }: CreateProjectMod
     fetchAddresses();
   }, [debouncedAddressSearch]);
 
+  useEffect(() => {
+    const fetchCompanies = async () => {
+      const q = debouncedClientSearch.trim();
+      if (q.length < 2 || q.includes('(Org:')) {
+        setCompanySuggestions([]);
+        setIsSearchingCompany(false);
+        return;
+      }
+      setIsSearchingCompany(true);
+      try {
+        const results = await companyService.searchCompany(q);
+        setCompanySuggestions(results);
+      } catch (error) {
+        console.error('Company search error:', error);
+      } finally {
+        setIsSearchingCompany(false);
+      }
+    };
+
+    fetchCompanies();
+  }, [debouncedClientSearch]);
+
   const selectAddress = (addr: AddressInfo) => {
     setFormData(prev => ({
       ...prev,
@@ -80,6 +109,63 @@ export default function CreateProjectModal({ isOpen, onClose }: CreateProjectMod
     }));
     setAddressSearch(addr.fullAddress);
     setAddressSuggestions([]);
+  };
+
+  const selectCompany = (company: CompanyInfo) => {
+    setFormData(prev => {
+      const updated = {
+        ...prev,
+        clientName: `${company.name} (Org: ${company.orgnr})`
+      };
+      if (!prev.location && company.address) {
+        const compLoc = `${company.address}, ${company.postcode} ${company.city}`.trim();
+        updated.location = compLoc;
+        setAddressSearch(compLoc);
+      }
+      return updated;
+    });
+    setCompanySuggestions([]);
+    if (company.isBankrupt) {
+      toast.error(`OBS: ${company.name} er registrert som KONKURS i Brønnøysundregistrene!`);
+    } else if (company.isUnderLiquidation) {
+      toast.warning(`OBS: ${company.name} er under avvikling.`);
+    } else {
+      toast.success(`Hentet ${company.name} fra Brønnøysundregistrene`);
+    }
+  };
+
+  const handleGetLocation = () => {
+    if (!navigator.geolocation) {
+      toast.error('Geolokasjon støttes ikke av nettleseren.');
+      return;
+    }
+    setIsLocating(true);
+    toast.info('Henter din GPS-posisjon...');
+    navigator.geolocation.getCurrentPosition(
+      async (pos) => {
+        try {
+          const addr = await locationService.getAddressFromCoords(pos.coords.latitude, pos.coords.longitude);
+          if (addr) {
+            selectAddress(addr);
+            toast.success(`Posisjon funnet: ${addr.fullAddress}`);
+          } else {
+            const locStr = `${pos.coords.latitude.toFixed(5)}, ${pos.coords.longitude.toFixed(5)}`;
+            setFormData(prev => ({ ...prev, location: locStr }));
+            setAddressSearch(locStr);
+            toast.success('GPS-koordinater registrert.');
+          }
+        } catch (e) {
+          toast.error('Kunne ikke hente adresse fra GPS-posisjon.');
+        } finally {
+          setIsLocating(false);
+        }
+      },
+      (err) => {
+        setIsLocating(false);
+        toast.error('Kunne ikke hente posisjon. Sjekk tillatelser for stedstjenester.');
+      },
+      { timeout: 10000, enableHighAccuracy: true }
+    );
   };
 
   // 1-Click quick templates
@@ -511,9 +597,21 @@ Tolk dette og returner KUN gyldig JSON i følgende format (uten markdown-formate
 
                 {/* Lokasjon / Adresse */}
                 <div className="md:col-span-2 relative">
-                  <label className="block text-xs font-bold uppercase tracking-wider text-slate-500 mb-1.5">
-                    Lokasjon / Adresse (Geonorge synk)
-                  </label>
+                  <div className="flex items-center justify-between mb-1.5">
+                    <label className="block text-xs font-bold uppercase tracking-wider text-slate-500">
+                      Lokasjon / Adresse (Kartverket & Geonorge)
+                    </label>
+                    <button
+                      type="button"
+                      onClick={handleGetLocation}
+                      disabled={isLocating}
+                      className="text-[11px] font-bold text-electric-600 hover:text-electric-700 flex items-center gap-1 transition-colors cursor-pointer disabled:opacity-50"
+                      title="Hent nåværende GPS-posisjon og finn adresse med GNR/BNR"
+                    >
+                      {isLocating ? <Loader2 size={12} className="animate-spin text-electric-600" /> : <Navigation size={12} />}
+                      <span>{isLocating ? 'Henter GPS...' : 'Bruk min posisjon'}</span>
+                    </button>
+                  </div>
                   <div className="relative">
                     <MapPin className="absolute left-3.5 top-1/2 -translate-y-1/2 text-slate-400" size={18} />
                     <input 
@@ -537,7 +635,7 @@ Tolk dette og returner KUN gyldig JSON i følgende format (uten markdown-formate
                           key={i}
                           type="button"
                           onClick={() => selectAddress(addr)}
-                          className="w-full text-left p-3 hover:bg-slate-50 transition-colors border-b border-slate-100 last:border-0"
+                          className="w-full text-left p-3 hover:bg-slate-50 transition-colors border-b border-slate-100 last:border-0 cursor-pointer"
                         >
                           <div className="text-xs sm:text-sm font-bold text-navy-900">{addr.address}</div>
                           <div className="text-[10px] text-slate-500">
@@ -576,17 +674,55 @@ Tolk dette og returner KUN gyldig JSON i følgende format (uten markdown-formate
                 </div>
 
                 {/* Kunde & E-post */}
-                <div>
-                  <label className="block text-xs font-bold uppercase tracking-wider text-slate-500 mb-1.5">
-                    Kunde (Byggherre)
-                  </label>
-                  <input 
-                    type="text"
-                    value={formData.clientName}
-                    onChange={(e) => setFormData({ ...formData, clientName: e.target.value })}
-                    className="w-full bg-slate-50 border border-slate-200 rounded-xl py-3 px-4 text-sm font-medium text-navy-900 focus:bg-white focus:ring-2 focus:ring-electric-500/20 focus:border-electric-500 outline-none transition-all"
-                    placeholder="Kundenavn"
-                  />
+                <div className="relative">
+                  <div className="flex items-center justify-between mb-1.5">
+                    <label className="block text-xs font-bold uppercase tracking-wider text-slate-500">
+                      Kunde (Byggherre / Bedrift)
+                    </label>
+                    <span className="text-[10px] font-bold text-slate-400 flex items-center gap-1">
+                      <Building2 size={11} className="text-slate-400" />
+                      Brønnøysund-oppslag
+                    </span>
+                  </div>
+                  <div className="relative">
+                    <input 
+                      type="text"
+                      value={formData.clientName}
+                      onChange={(e) => setFormData({ ...formData, clientName: e.target.value })}
+                      className="w-full bg-slate-50 border border-slate-200 rounded-xl py-3 px-4 text-sm font-medium text-navy-900 focus:bg-white focus:ring-2 focus:ring-electric-500/20 focus:border-electric-500 outline-none transition-all"
+                      placeholder="Kundenavn eller søk firma / org.nr..."
+                    />
+                    {isSearchingCompany && (
+                      <div className="absolute right-3.5 top-1/2 -translate-y-1/2">
+                        <Loader2 className="animate-spin text-electric-500" size={16} />
+                      </div>
+                    )}
+
+                    {companySuggestions.length > 0 && (
+                      <div className="absolute z-50 left-0 right-0 mt-1 bg-white border border-slate-200 rounded-xl shadow-xl overflow-hidden max-h-52 overflow-y-auto custom-scrollbar">
+                        {companySuggestions.map((c) => (
+                          <button
+                            key={c.orgnr}
+                            type="button"
+                            onClick={() => selectCompany(c)}
+                            className="w-full text-left p-3 hover:bg-slate-50 transition-colors border-b border-slate-100 last:border-0 cursor-pointer"
+                          >
+                            <div className="flex items-center justify-between">
+                              <div className="text-xs sm:text-sm font-bold text-navy-900">{c.name}</div>
+                              {c.isBankrupt ? (
+                                <span className="text-[10px] font-black text-rose-600 bg-rose-50 px-1.5 py-0.5 rounded">KONKURS</span>
+                              ) : (
+                                <span className="text-[10px] font-medium text-slate-400">{c.orgType}</span>
+                              )}
+                            </div>
+                            <div className="text-[10px] text-slate-500 mt-0.5">
+                              Org.nr: {c.orgnr} {c.city && `• ${c.city}`} {c.isMvaRegistered && '• MVA'}
+                            </div>
+                          </button>
+                        ))}
+                      </div>
+                    )}
+                  </div>
                 </div>
 
                 <div>

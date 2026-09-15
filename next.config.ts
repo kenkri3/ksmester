@@ -4,7 +4,7 @@ import path from 'path';
 const cspHeader = [
   "default-src 'self'",
   "script-src 'self' 'unsafe-inline' 'unsafe-eval' https://*.googletagmanager.com https://va.vercel-scripts.com https://cdn.jsdelivr.net",
-  "connect-src 'self' https://*.google-analytics.com https://*.analytics.google.com https://*.googletagmanager.com https://data.brreg.no https://api.resend.com https://api.met.no https://generativelanguage.googleapis.com https://*.railway.app wss://*.railway.app",
+  "connect-src 'self' https://*.google-analytics.com https://*.analytics.google.com https://*.googletagmanager.com https://data.brreg.no https://ws.geonorge.no https://api.open-meteo.com https://api.resend.com https://api.met.no https://generativelanguage.googleapis.com https://*.railway.app wss://*.railway.app",
   "img-src 'self' data: https: blob:",
   "style-src 'self' 'unsafe-inline' https://fonts.googleapis.com",
   "font-src 'self' data: https://fonts.gstatic.com",

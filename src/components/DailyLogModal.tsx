@@ -1,4 +1,4 @@
-import React, { useState, useEffect } from 'react';
+import React, { useState, useEffect, useRef } from 'react';
 import { motion, AnimatePresence } from 'motion/react';
 import { 
   X, 
@@ -36,11 +36,25 @@ export default function DailyLogModal({
   const [activeLog, setActiveLog] = useState<DailyLog | null>(null);
   const [loading, setLoading] = useState(true);
   const [isCompiling, setIsCompiling] = useState(false);
+  const [generalNotes, setGeneralNotes] = useState('');
+  const [deliveryNotes, setDeliveryNotes] = useState('');
+  const [isSavingNotes, setIsSavingNotes] = useState(false);
+  const hasAutoCompiledRef = useRef(false);
 
   useEffect(() => {
-    if (!isOpen || !project?.id) return;
+    if (!isOpen || !project?.id) {
+      hasAutoCompiledRef.current = false;
+      return;
+    }
     loadLogs();
   }, [isOpen, project?.id]);
+
+  useEffect(() => {
+    if (activeLog) {
+      setGeneralNotes(activeLog.generalNotes || '');
+      setDeliveryNotes(activeLog.deliveryNotes || '');
+    }
+  }, [activeLog?.id]);
 
   const loadLogs = async () => {
     setLoading(true);
@@ -49,9 +63,9 @@ export default function DailyLogModal({
       setLogs(data);
       if (data.length > 0) {
         setActiveLog(data[0]);
-      } else {
-        // Auto compile if no logs exist yet
-        handleCompileToday();
+      } else if (!hasAutoCompiledRef.current) {
+        hasAutoCompiledRef.current = true;
+        await handleCompileToday();
       }
     } catch (e) {
       console.warn('Could not load daily logs:', e);
@@ -61,6 +75,7 @@ export default function DailyLogModal({
   };
 
   const handleCompileToday = async () => {
+    if (isCompiling) return;
     setIsCompiling(true);
     try {
       const compiled = await dailyLogService.compileTodayLog(project, currentUserName);
@@ -69,9 +84,30 @@ export default function DailyLogModal({
       const updatedList = await dailyLogService.getProjectDailyLogs(project.id);
       setLogs(updatedList);
     } catch (e) {
+      console.error('Feil ved generering av byggedagbok:', e);
       toast.error('Kunne ikke hente vær og aktiviteter for dagboken.');
     } finally {
       setIsCompiling(false);
+    }
+  };
+
+  const handleSaveNotes = async () => {
+    if (!activeLog) return;
+    setIsSavingNotes(true);
+    try {
+      const updated: DailyLog = {
+        ...activeLog,
+        generalNotes,
+        deliveryNotes
+      };
+      await dailyLogService.saveDailyLog(updated);
+      setActiveLog(updated);
+      setLogs(prev => prev.map(l => l.id === updated.id ? updated : l));
+      toast.success('Notater lagret i byggedagboken.');
+    } catch (e) {
+      toast.error('Kunne ikke lagre notater.');
+    } finally {
+      setIsSavingNotes(false);
     }
   };
 
@@ -136,7 +172,14 @@ export default function DailyLogModal({
               </div>
               {logs.length === 0 ? (
                 <div className="text-xs text-neutral-400 p-4 bg-neutral-50 rounded-xl text-center">
-                  Ingen dagslogger ennå. Klikk «Kompiler i dag».
+                  {isCompiling || loading ? (
+                    <div className="flex flex-col items-center gap-2 py-4">
+                      <RefreshCw size={18} className="animate-spin text-sky-500" />
+                      <span className="text-neutral-600 font-medium">Henter vær og timeføring...</span>
+                    </div>
+                  ) : (
+                    'Ingen dagslogger ennå. Klikk «Kompiler i dag».'
+                  )}
                 </div>
               ) : (
                 logs.map(l => (
@@ -258,6 +301,49 @@ export default function DailyLogModal({
                       </div>
                     </div>
                   )}
+
+                  {/* Delivery Notes & General Notes */}
+                  <div className="p-4 bg-neutral-50 rounded-2xl border border-neutral-100 space-y-3">
+                    <div className="flex items-center justify-between">
+                      <div className="flex items-center gap-2 text-neutral-700 font-bold text-xs">
+                        <FileText size={14} className="text-sky-600" />
+                        Vareleveranser og byggelederens notater
+                      </div>
+                      <button
+                        onClick={handleSaveNotes}
+                        disabled={isSavingNotes}
+                        className="px-3 py-1 bg-sky-600 hover:bg-sky-500 text-white rounded-lg text-xs font-bold transition-all disabled:opacity-50 flex items-center gap-1 cursor-pointer"
+                      >
+                        {isSavingNotes ? 'Lagrer...' : 'Lagre notater'}
+                      </button>
+                    </div>
+                    <div className="space-y-2">
+                      <div>
+                        <label className="block text-[10px] font-bold uppercase tracking-wider text-neutral-400 mb-1">
+                          Vareleveranser / Mottakskontroll
+                        </label>
+                        <input
+                          type="text"
+                          value={deliveryNotes}
+                          onChange={(e) => setDeliveryNotes(e.target.value)}
+                          placeholder="F.eks: Leveranse av trelast og isolasjon, kontrollert uten fuktskader..."
+                          className="w-full px-3 py-2 bg-white border border-neutral-200 rounded-xl text-xs text-neutral-800 outline-none focus:border-sky-500 font-medium"
+                        />
+                      </div>
+                      <div>
+                        <label className="block text-[10px] font-bold uppercase tracking-wider text-neutral-400 mb-1">
+                          Observasjoner / Byggelederens notater
+                        </label>
+                        <textarea
+                          rows={2}
+                          value={generalNotes}
+                          onChange={(e) => setGeneralNotes(e.target.value)}
+                          placeholder="F.eks: Normal fremdrift. Ingen HMS-avvik registrert i dag..."
+                          className="w-full px-3 py-2 bg-white border border-neutral-200 rounded-xl text-xs text-neutral-800 outline-none focus:border-sky-500 resize-none font-medium"
+                        />
+                      </div>
+                    </div>
+                  </div>
 
                   {/* Export Button */}
                   <div className="pt-2 flex justify-end">

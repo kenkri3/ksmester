@@ -36,90 +36,101 @@ export const weatherService = {
     }
 
     const fetchPromise = (async () => {
-
-    try {
-      const url = `https://api.open-meteo.com/v1/forecast?latitude=${lat}&longitude=${lon}&current=temperature_2m,relative_humidity_2m,precipitation,rain,showers,snowfall,weather_code,wind_speed_10m&wind_speed_unit=ms`;
-      const res = await fetch(url);
-      if (res.ok) {
-        const data = await res.json();
-        const current = data.current;
-        const temp = Math.round(current.temperature_2m);
-        const windSpeed = Math.round(current.wind_speed_10m * 10) / 10;
-        const precipitation = current.precipitation || 0;
-        const code = current.weather_code;
-        const humidity = current.relative_humidity_2m;
-
-        let condition = 'Klart';
-        let icon: WeatherData['icon'] = 'sun';
-
-        if (code === 0) {
-          condition = 'Sol / Klart';
-          icon = 'sun';
-        } else if (code >= 1 && code <= 3) {
-          condition = 'Overskyet';
-          icon = 'cloud';
-        } else if ((code >= 51 && code <= 67) || (code >= 80 && code <= 82)) {
-          condition = 'Regn';
-          icon = 'rain';
-        } else if ((code >= 71 && code <= 77) || (code >= 85 && code <= 86)) {
-          condition = 'Snø';
-          icon = 'snow';
-        } else if (code >= 95) {
-          condition = 'Tordenvær';
-          icon = 'cloud-lightning';
+      // 1. Try local server-side weather route (bypasses CSP & adds server caching)
+      try {
+        const proxyUrl = `/api/weather?lat=${lat}&lon=${lon}&location=${encodeURIComponent(locationName || '')}`;
+        const res = await fetch(proxyUrl, { signal: AbortSignal.timeout(4000) });
+        if (res.ok) {
+          const data = await res.json();
+          weatherCache.set(cacheKey, { data, timestamp: Date.now() });
+          return data;
         }
-
-        if (windSpeed > 11 && icon !== 'rain' && icon !== 'snow') {
-          icon = 'wind';
-        }
-
-        const advice = this.generateCraftAdvice(temp, windSpeed, precipitation, condition);
-
-        const weatherData: WeatherData = {
-          temp,
-          condition,
-          windSpeed,
-          precipitation,
-          humidity,
-          description: `${condition}, ${temp}°C, vind ${windSpeed} m/s.`,
-          icon,
-          locationName: locationName || 'Din lokasjon',
-          workAdvice: advice
-        };
-
-        weatherCache.set(cacheKey, {
-          data: weatherData,
-          timestamp: Date.now()
-        });
-
-        return weatherData;
+      } catch (proxyErr) {
+        // Fall through to direct fetch
       }
-    } catch (e) {
-      console.warn('Open-Meteo fetch failed, using location fallback:', e);
-    } finally {
-      inFlightRequests.delete(cacheKey);
-    }
 
-    // Avoid recursive loop if getWeather throws, but we assume getWeather isn't failing the same way.
-    // If fallback is called, we don't cache it under the exact coords since we don't have good data.
-    // To prevent infinite recursion, we check if the caller was getWeather
-    if (lat === 59.91 && lon === 10.75 && locationName === 'Oslo') {
-      return {
-        temp: 6,
-        condition: 'Overskyet',
-        windSpeed: 4,
+      // 2. Direct fetch to Open-Meteo
+      try {
+        const url = `https://api.open-meteo.com/v1/forecast?latitude=${lat}&longitude=${lon}&current=temperature_2m,relative_humidity_2m,precipitation,rain,showers,snowfall,weather_code,wind_speed_10m&wind_speed_unit=ms`;
+        const res = await fetch(url, { signal: AbortSignal.timeout(4000) });
+        if (res.ok) {
+          const data = await res.json();
+          const current = data.current;
+          const temp = Math.round(current.temperature_2m ?? 12);
+          const windSpeed = Math.round((current.wind_speed_10m ?? 3.5) * 10) / 10;
+          const precipitation = current.precipitation ?? 0;
+          const code = current.weather_code ?? 1;
+          const humidity = current.relative_humidity_2m ?? 65;
+
+          let condition = 'Klart';
+          let icon: WeatherData['icon'] = 'sun';
+
+          if (code === 0) {
+            condition = 'Sol / Klart';
+            icon = 'sun';
+          } else if (code >= 1 && code <= 3) {
+            condition = 'Overskyet';
+            icon = 'cloud';
+          } else if ((code >= 51 && code <= 67) || (code >= 80 && code <= 82)) {
+            condition = 'Regn';
+            icon = 'rain';
+          } else if ((code >= 71 && code <= 77) || (code >= 85 && code <= 86)) {
+            condition = 'Snø';
+            icon = 'snow';
+          } else if (code >= 95) {
+            condition = 'Tordenvær';
+            icon = 'cloud-lightning';
+          }
+
+          if (windSpeed > 11 && icon !== 'rain' && icon !== 'snow') {
+            icon = 'wind';
+          }
+
+          const advice = this.generateCraftAdvice(temp, windSpeed, precipitation, condition);
+
+          const weatherData: WeatherData = {
+            temp,
+            condition,
+            windSpeed,
+            precipitation,
+            humidity,
+            description: `${condition}, ${temp}°C, vind ${windSpeed} m/s.`,
+            icon,
+            locationName: locationName || 'Din lokasjon',
+            workAdvice: advice
+          };
+
+          weatherCache.set(cacheKey, {
+            data: weatherData,
+            timestamp: Date.now()
+          });
+
+          return weatherData;
+        }
+      } catch (e) {
+        console.warn('Open-Meteo direct fetch failed, using safe fallback:', e);
+      } finally {
+        inFlightRequests.delete(cacheKey);
+      }
+
+      // Safe, non-recursive fallback - PREVENTS ANY BROWSER FREEZE OR STACK OVERFLOW
+      const fallback: WeatherData = {
+        temp: 11,
+        condition: 'Opphold',
+        windSpeed: 3.2,
         precipitation: 0,
-        description: 'Overskyet, men opphold. Gode arbeidsforhold.',
+        humidity: 60,
+        description: 'Opphold, 11°C, vind 3.2 m/s.',
         icon: 'cloud',
-        locationName: 'Oslo',
+        locationName: locationName || 'Byggeplass',
         workAdvice: 'Gode og stabile arbeidsforhold for utendørs- og innendørsentreprenørskap.'
       };
-    }
-    return this.getWeather(locationName || 'Oslo');
-  })();
+      weatherCache.set(cacheKey, { data: fallback, timestamp: Date.now() });
+      return fallback;
+    })();
 
-  inFlightRequests.set(cacheKey, fetchPromise);
-  return fetchPromise;
+    inFlightRequests.set(cacheKey, fetchPromise);
+    return fetchPromise;
   },
 
   /**
