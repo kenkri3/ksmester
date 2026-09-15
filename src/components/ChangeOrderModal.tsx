@@ -13,7 +13,8 @@ import {
   Calendar,
   ExternalLink,
   Plus,
-  Coins
+  Coins,
+  Trash2
 } from 'lucide-react';
 import { Project, ChangeOrder } from '../types';
 import { changeOrderService } from '../services/changeOrderService';
@@ -61,6 +62,19 @@ export default function ChangeOrderModal({
       console.warn('Could not load change orders:', e);
     } finally {
       setLoading(false);
+    }
+  };
+
+  const handleDeleteOrder = async (order: ChangeOrder) => {
+    if (!window.confirm(`Er du sikker på at du vil slette endringsordre #${order.changeNumber} "${order.title}"?`)) {
+      return;
+    }
+    try {
+      await changeOrderService.deleteChangeOrder(order.id);
+      setOrders(prev => prev.filter(o => o.id !== order.id));
+      toast.success(`Endringsordre #${order.changeNumber} er slettet.`);
+    } catch (e) {
+      toast.error('Kunne ikke slette endringsordre.');
     }
   };
 
@@ -378,9 +392,16 @@ export default function ChangeOrderModal({
                         <button
                           onClick={() => pdfService.generateChangeOrderPDF(project, order)}
                           title="Last ned juridisk endringsavtale (PDF)"
-                          className="p-2 text-neutral-500 hover:text-neutral-900 bg-neutral-50 hover:bg-neutral-100 rounded-lg text-xs font-bold transition-all"
+                          className="p-2 text-neutral-500 hover:text-neutral-900 bg-neutral-50 hover:bg-neutral-100 rounded-lg text-xs font-bold transition-all cursor-pointer"
                         >
                           <Download size={14} />
+                        </button>
+                        <button
+                          onClick={() => handleDeleteOrder(order)}
+                          title="Slett endringsordre"
+                          className="p-2 text-neutral-400 hover:text-rose-600 hover:bg-rose-50 rounded-lg text-xs font-bold transition-all cursor-pointer"
+                        >
+                          <Trash2 size={14} />
                         </button>
                       </div>
                     </div>
