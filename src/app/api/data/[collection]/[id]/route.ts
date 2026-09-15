@@ -4,7 +4,11 @@ import { getUserFromRequest } from '@/src/lib/server/auth';
 
 const ALLOWED_COLLECTIONS = [
   'users', 'projects', 'deviations', 'sja_reports',
-  'offers', 'invites', 'contracts', 'change_orders'
+  'offers', 'invites', 'invitations', 'contracts', 'change_orders',
+  'crew', 'safety_inspections', 'checklists', 'hms_documents', 'hms_signatures',
+  'inventory', 'apprentice_goals', 'apprentice_profiles', 'building_applications',
+  'materials', 'project_documents', 'project_photos', 'notifications',
+  'time_registrations', 'vehicles', 'agent_activities'
 ];
 
 export async function GET(
@@ -38,10 +42,12 @@ export async function GET(
 
     if (user.role !== 'admin') {
       const isOwner = 
-        (item.companyId && item.companyId === user.companyId) ||
-        (item.company && item.company === user.companyId) ||
+        (item.companyId && (item.companyId === user.companyId || item.companyId === 'system')) ||
+        (item.company && (item.company === user.companyId || item.company === 'system')) ||
         (item.userId && item.userId === user.id) ||
-        (item.authorId && item.authorId === user.id);
+        (item.authorId && item.authorId === user.id) ||
+        (collection === 'hms_documents' && (!item.companyId || item.companyId === 'system')) ||
+        (collection === 'checklists' && (!item.companyId || item.companyId === 'system'));
 
       if (!isOwner) {
         return NextResponse.json({ error: 'Ingen tilgang til dette objektet (IDOR-beskyttelse)' }, { status: 403 });

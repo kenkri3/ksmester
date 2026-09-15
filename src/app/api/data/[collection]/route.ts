@@ -4,7 +4,11 @@ import { getUserFromRequest } from '@/src/lib/server/auth';
 
 const ALLOWED_COLLECTIONS = [
   'users', 'projects', 'deviations', 'sja_reports',
-  'offers', 'invites', 'contracts', 'change_orders'
+  'offers', 'invites', 'invitations', 'contracts', 'change_orders',
+  'crew', 'safety_inspections', 'checklists', 'hms_documents', 'hms_signatures',
+  'inventory', 'apprentice_goals', 'apprentice_profiles', 'building_applications',
+  'materials', 'project_documents', 'project_photos', 'notifications',
+  'time_registrations', 'vehicles', 'agent_activities'
 ];
 
 export async function GET(
@@ -25,7 +29,7 @@ export async function GET(
 
     // 1. Handle secure public token lookups
     if (!user) {
-      if (token && (collection === 'offers' || collection === 'invites' || collection === 'contracts' || collection === 'change_orders')) {
+      if (token && (collection === 'offers' || collection === 'invites' || collection === 'invitations' || collection === 'contracts' || collection === 'change_orders')) {
         const items = await getCollectionItems(collection);
         const match = items.find((i: any) => i.token === token);
         if (match) {
@@ -51,10 +55,12 @@ export async function GET(
 
     if (user.role !== 'admin') {
       items = items.filter((item: any) => 
-        (item.companyId && item.companyId === user.companyId) ||
-        (item.company && item.company === user.companyId) ||
+        (item.companyId && (item.companyId === user.companyId || item.companyId === 'system')) ||
+        (item.company && (item.company === user.companyId || item.company === 'system')) ||
         (item.userId && item.userId === user.id) ||
-        (item.authorId && item.authorId === user.id)
+        (item.authorId && item.authorId === user.id) ||
+        (collection === 'hms_documents' && (!item.companyId || item.companyId === 'system')) ||
+        (collection === 'checklists' && (!item.companyId || item.companyId === 'system'))
       );
     }
 

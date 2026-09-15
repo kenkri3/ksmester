@@ -39,6 +39,7 @@ export default function DailyLogModal({
   const [generalNotes, setGeneralNotes] = useState('');
   const [deliveryNotes, setDeliveryNotes] = useState('');
   const [isSavingNotes, setIsSavingNotes] = useState(false);
+  const [isExportingPdf, setIsExportingPdf] = useState(false);
   const hasAutoCompiledRef = useRef(false);
 
   useEffect(() => {
@@ -108,6 +109,24 @@ export default function DailyLogModal({
       toast.error('Kunne ikke lagre notater.');
     } finally {
       setIsSavingNotes(false);
+    }
+  };
+
+  const handleDownloadPDF = async () => {
+    if (!activeLog) {
+      toast.error('Ingen aktiv byggedagbok valgt.');
+      return;
+    }
+    setIsExportingPdf(true);
+    const toastId = toast.loading('Genererer offisiell byggedagbok som PDF...');
+    try {
+      await pdfService.generateDailyLogPDF(project || ({ id: 'p1', name: 'Prosjekt' } as any), activeLog);
+      toast.success('Byggedagbok (PDF) ble lastet ned!', { id: toastId });
+    } catch (err: any) {
+      console.error('Feil ved eksport av byggedagbok:', err);
+      toast.error(`Kunne ikke laste ned PDF: ${err?.message || 'Ukjent feil'}`, { id: toastId });
+    } finally {
+      setIsExportingPdf(false);
     }
   };
 
@@ -348,11 +367,13 @@ export default function DailyLogModal({
                   {/* Export Button */}
                   <div className="pt-2 flex justify-end">
                     <button
-                      onClick={() => pdfService.generateDailyLogPDF(project, activeLog)}
-                      className="px-4 py-2.5 bg-neutral-900 hover:bg-neutral-800 text-white rounded-xl text-xs font-bold flex items-center gap-2 shadow-md transition-all cursor-pointer"
+                      type="button"
+                      onClick={handleDownloadPDF}
+                      disabled={isExportingPdf || !activeLog}
+                      className="px-4 py-2.5 bg-neutral-900 hover:bg-neutral-800 text-white rounded-xl text-xs font-bold flex items-center gap-2 shadow-md transition-all cursor-pointer disabled:opacity-50"
                     >
-                      <Download size={14} />
-                      Last ned Byggedagbok (PDF)
+                      <Download size={14} className={isExportingPdf ? 'animate-bounce' : ''} />
+                      {isExportingPdf ? 'Laster ned...' : 'Last ned Byggedagbok (PDF)'}
                     </button>
                   </div>
                 </div>

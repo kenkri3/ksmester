@@ -314,5 +314,18 @@ export const changeOrderService = {
     });
 
     return res.ok;
+  },
+
+  /**
+   * Deletes a change order
+   */
+  async deleteChangeOrder(orderId: string): Promise<boolean> {
+    try {
+      await api.deleteDoc('change_orders', orderId);
+      return true;
+    } catch (e) {
+      console.warn('Error deleting change order:', e);
+      return false;
+    }
   }
 };

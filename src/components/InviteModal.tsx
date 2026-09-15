@@ -1,8 +1,10 @@
 import React, { useState, useEffect } from 'react';
 import { motion, AnimatePresence } from 'motion/react';
-import { X, Mail, Send, Link as LinkIcon, Users, Shield, CheckCircle2, Building2, UserCircle } from 'lucide-react';
+import { X, Mail, Send, Link as LinkIcon, Users, Shield, CheckCircle2, Building2, UserCircle, Copy, Check, ExternalLink } from 'lucide-react';
 import { Project, UserProfile } from '../types';
 import { db, auth, collection, addDoc, serverTimestamp, OperationType, handleFirestoreError, doc, getDoc } from '../services/firebase';
+import { toast } from 'sonner';
+import { cn } from '../lib/utils';
 
 interface InviteModalProps {
   isOpen: boolean;
@@ -18,6 +20,8 @@ const InviteModal: React.FC<InviteModalProps> = ({ isOpen, onClose, project }) =
   const [loading, setLoading] = useState(false);
   const [success, setSuccess] = useState(false);
   const [inviteLink, setInviteLink] = useState('');
+  const [copied, setCopied] = useState(false);
+  const [emailSent, setEmailSent] = useState(false);
   const [userProfile, setUserProfile] = useState<UserProfile | null>(null);
 
   useEffect(() => {
@@ -35,48 +39,111 @@ const InviteModal: React.FC<InviteModalProps> = ({ isOpen, onClose, project }) =
     }
     if (isOpen) {
       fetchUserProfile();
+      setCopied(false);
+      setEmailSent(false);
     }
   }, [isOpen]);
 
   const handleSendInvite = async (e: React.FormEvent) => {
     e.preventDefault();
-    if (!auth.currentUser || !userProfile) return;
+    if (!auth.currentUser) {
+      toast.error('Du må være innlogget for å opprette en invitasjon.');
+      return;
+    }
     setLoading(true);
 
     try {
       const token = Math.random().toString(36).substring(2, 15) + Math.random().toString(36).substring(2, 15);
-      
+      const inviterName = auth.currentUser.displayName || userProfile?.name || 'Byggeleder';
+      const companyId = userProfile?.companyId || (project as any)?.companyId || 'company_default';
+      const companyName = userProfile?.companyName || (project as any)?.companyName || 'Bedrift';
+
       const inviteData = {
         projectId: project?.id || null,
         projectName: project?.name || null,
-        companyId: userProfile.companyId,
-        companyName: userProfile.companyName,
+        companyId,
+        companyName,
         inviterId: auth.currentUser.uid,
-        inviterName: auth.currentUser.displayName || userProfile.name || 'Ukjent',
-        inviteeEmail: email,
+        inviterName,
+        inviteeEmail: email.trim(),
         role: role,
         status: 'pending',
         token: token,
         createdAt: new Date().toISOString(),
-        expiresAt: new Date(Date.now() + 7 * 24 * 60 * 60 * 1000).toISOString(), // 7 days
+        expiresAt: new Date(Date.now() + 14 * 24 * 60 * 60 * 1000).toISOString(), // 14 dager
       };
 
-      const docRef = await addDoc(collection(db, 'invitations'), inviteData);
+      await addDoc(collection(db, 'invitations'), inviteData);
       
-      // In a real app, we'd send an email here.
-      // For the demo, we'll generate a link.
-      const link = `${window.location.origin}/invite/${token}`;
+      const baseUrl = typeof window !== 'undefined' ? window.location.origin : 'https://vikingmester.no';
+      // Use query parameter which works instantly across any hosting / SPA router
+      const link = `${baseUrl}/?invite=${token}`;
       setInviteLink(link);
       setSuccess(true);
+
+      // Send automated email if email address was provided
+      if (email.trim()) {
+        try {
+          const roleTitle = role === 'external_worker' ? 'håndverker' : role === 'external_manager' ? 'prosjektleder' : 'medarbeider';
+          const res = await fetch('/api/notify/email', {
+            method: 'POST',
+            headers: { 'Content-Type': 'application/json' },
+            body: JSON.stringify({
+              to: email.trim(),
+              subject: `Invitasjon til ${project ? `prosjektet "${project.name}"` : companyName}`,
+              content: `
+                Hei!
+                
+                Du har blitt invitert av ${inviterName} til å delta på ${project ? `prosjektet "${project.name}"` : companyName} i VikingMester som ${roleTitle}.
+                
+                Klikk på lenken under for å åpne og akseptere invitasjonen:
+                ${link}
+                
+                Lenken er gyldig i 14 dager.
+                
+                Med vennlig hilsen,
+                ${companyName} / VikingMester
+              `
+            })
+          });
+          if (res.ok) {
+            setEmailSent(true);
+            toast.success(`Invitasjon er sendt på e-post til ${email.trim()}!`);
+          }
+        } catch (err) {
+          console.warn('Could not dispatch invite email:', err);
+        }
+      }
     } catch (error) {
       handleFirestoreError(error, OperationType.CREATE, 'invitations');
+      toast.error('Kunne ikke opprette invitasjon. Prøv igjen.');
     } finally {
       setLoading(false);
     }
   };
 
   const copyToClipboard = () => {
-    navigator.clipboard.writeText(inviteLink);
+    if (!inviteLink) return;
+    try {
+      if (navigator.clipboard && window.isSecureContext) {
+        navigator.clipboard.writeText(inviteLink);
+      } else {
+        const textArea = document.createElement('textarea');
+        textArea.value = inviteLink;
+        textArea.style.position = 'fixed';
+        textArea.style.left = '-999999px';
+        document.body.appendChild(textArea);
+        textArea.focus();
+        textArea.select();
+        document.execCommand('copy');
+        textArea.remove();
+      }
+      setCopied(true);
+      toast.success('Invitasjonslenke kopiert til utklippstavlen!');
+      setTimeout(() => setCopied(false), 2500);
+    } catch (e) {
+      toast.error('Kunne ikke kopiere automatisk. Marker teksten i feltet for å kopiere.');
+    }
   };
 
   if (!isOpen) return null;
@@ -136,25 +203,65 @@ const InviteModal: React.FC<InviteModalProps> = ({ isOpen, onClose, project }) =
                 </p>
               </div>
               
-              <div className="bg-neutral-50 p-2.5 sm:p-4 rounded-xl sm:rounded-2xl border border-neutral-200 flex items-center gap-2 sm:gap-3">
+              <div 
+                onClick={copyToClipboard}
+                className="bg-neutral-50 hover:bg-neutral-100/80 p-3 sm:p-4 rounded-xl sm:rounded-2xl border border-neutral-200 flex items-center gap-2 sm:gap-3 cursor-pointer transition-colors group"
+                title="Klikk for å kopiere"
+              >
                 <input 
                   readOnly 
                   value={inviteLink}
-                  className="bg-transparent border-none text-[9px] sm:text-xs font-mono text-neutral-600 flex-1 focus:ring-0 truncate"
+                  onClick={(e) => { e.currentTarget.select(); copyToClipboard(); }}
+                  className="bg-transparent border-none text-[10px] sm:text-xs font-mono text-neutral-800 flex-1 focus:ring-0 truncate cursor-pointer select-all font-bold"
                 />
                 <button 
-                  onClick={copyToClipboard}
-                  className="p-1.5 sm:p-2 hover:bg-neutral-200 rounded-lg transition-colors text-neutral-400 hover:text-neutral-900 shrink-0"
+                  type="button"
+                  onClick={(e) => { e.stopPropagation(); copyToClipboard(); }}
+                  className={cn(
+                    "p-2 rounded-xl transition-all flex items-center gap-1.5 text-xs font-bold shrink-0 cursor-pointer",
+                    copied ? "bg-emerald-600 text-white" : "bg-neutral-200 text-neutral-700 hover:bg-neutral-300"
+                  )}
                 >
-                  <LinkIcon size={14} className="sm:w-4 sm:h-4" />
+                  {copied ? <Check size={16} /> : <Copy size={16} />}
+                  <span>{copied ? 'Kopiert!' : 'Kopier'}</span>
+                </button>
+              </div>
+
+              {emailSent && (
+                <div className="p-3 bg-emerald-50 border border-emerald-200 text-emerald-800 rounded-xl text-xs flex items-center justify-between gap-2">
+                  <span className="flex items-center gap-1.5">
+                    <CheckCircle2 size={14} className="text-emerald-600 shrink-0" />
+                    <span>Invitasjon sendt automatisk på e-post til <strong>{email}</strong></span>
+                  </span>
+                </div>
+              )}
+
+              <div className="flex flex-col sm:flex-row gap-2">
+                <button 
+                  type="button"
+                  onClick={copyToClipboard}
+                  className="flex-1 py-3 sm:py-3.5 bg-emerald-600 hover:bg-emerald-500 text-white rounded-xl sm:rounded-2xl font-bold transition-all text-xs sm:text-sm flex items-center justify-center gap-2 cursor-pointer shadow-md shadow-emerald-100"
+                >
+                  {copied ? <Check size={16} /> : <Copy size={16} />}
+                  <span>{copied ? 'Kopiert til utklippstavlen!' : 'Kopier invitasjonslenke'}</span>
+                </button>
+                <button 
+                  type="button"
+                  onClick={() => window.open(inviteLink, '_blank')}
+                  className="py-3 sm:py-3.5 px-4 bg-neutral-100 hover:bg-neutral-200 text-neutral-700 rounded-xl sm:rounded-2xl font-bold transition-all text-xs sm:text-sm flex items-center justify-center gap-1.5 cursor-pointer"
+                  title="Åpne og test invitasjonen i en ny fane"
+                >
+                  <ExternalLink size={16} />
+                  <span>Test lenke</span>
                 </button>
               </div>
 
               <button 
+                type="button"
                 onClick={onClose}
-                className="w-full py-3 sm:py-4 bg-neutral-900 text-white rounded-xl sm:rounded-2xl font-bold hover:bg-neutral-800 transition-all text-xs sm:text-base"
+                className="w-full py-2.5 text-neutral-500 hover:text-neutral-900 rounded-xl font-bold transition-all text-xs sm:text-sm cursor-pointer"
               >
-                Ferdig
+                Lukk vindu
               </button>
             </div>
           ) : (

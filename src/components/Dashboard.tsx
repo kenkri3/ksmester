@@ -62,6 +62,7 @@ import { toast } from 'sonner';
 import { useDashboardData } from '../hooks/useDashboardData';
 import { useAuth } from '../hooks/useAuth';
 import ActivityLogModal from './ActivityLogModal';
+import DailyLogModal from './DailyLogModal';
 import CreateProjectModal from './CreateProjectModal';
 import CreateDeviationModal from './CreateDeviationModal';
 import ChecklistModal from './ChecklistModal';
@@ -140,6 +141,7 @@ export default function Dashboard({
   const [isHMSModalOpen, setIsHMSModalOpen] = useState(false);
   const [isSmartSearchOpen, setIsSmartSearchOpen] = useState(false);
   const [isActivityLogModalOpen, setIsActivityLogModalOpen] = useState(false);
+  const [isDailyLogModalOpen, setIsDailyLogModalOpen] = useState(false);
   const [isChangeOrderModalOpen, setIsChangeOrderModalOpen] = useState(false);
 
   // Lukkesperre & Pre-close state

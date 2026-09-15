@@ -287,7 +287,57 @@ export const inMemoryStore: Record<string, any[]> = {
   invites: [],
   activity_logs: [],
   checklists: [],
-  documents: []
+  documents: [],
+  hms_documents: [
+    {
+      id: 'hms-doc-1',
+      title: 'HMS-erklæring og målsetting for byggeplassen',
+      category: 'general',
+      version: '1.0',
+      companyId: 'system',
+      updatedAt: '2026-08-01T10:00:00.000Z',
+      content: '# HMS-erklæring og Målsetting\n\nVår bedrift har som overordnet mål at alt arbeid skal utføres uten personskader, helseplager eller skade på miljø og materiell (Null-visjon).\n\n### 1. Hovedprinsipper\n- Sikkerhet og helse har alltid førsteprioritet foran fremdrift og økonomi.\n- Enhver ansatt har rett og plikt til å stanse uforsvarlig arbeid (AML § 2-3).\n- Ryddighet på byggeplass er grunnlaget for et sikkert arbeidsmiljø.\n\n### 2. Ansvar og medvirkning\n- **Ledelsen** sørger for opplæring, nødvendig verneutstyr og risikovurderinger.\n- **Verneombudet** påser at arbeidsmiljøloven følges og deltar på vernerunder.\n- **Ansatte** er forpliktet til å bruke påbudt verneutstyr og rapportere avvik og nestenulykker.'
+    },
+    {
+      id: 'hms-doc-2',
+      title: 'Personlig verneutstyr (PVU) – Krav og bruk',
+      category: 'safety',
+      version: '1.2',
+      companyId: 'system',
+      updatedAt: '2026-08-15T09:00:00.000Z',
+      content: '# Krav til Personlig Verneutstyr (PVU)\n\nPå alle våre bygge- og anleggsplasser gjelder strenge krav til PVU.\n\n### Obligatorisk grunnutrustning:\n1. **Vernehjelm** med hakestropp (EN 397).\n2. **Vernetøy / Synlighetstøy** klasse 2 eller 3 (EN ISO 20471).\n3. **Vernesko / vernestøvler** med spikertramp og tåhette (S3 / EN ISO 20345).\n4. **Vernebriller / ansiktsskjerm** ved kapping, meisling, boring og støvende arbeid.\n5. **Hørselsvern** ved støy over 80 dB(A).\n\n### Spesialutstyr ved behov:\n- **Fallsele og fangline** ved arbeid over 2 meter uten tilstrekkelig rekkverk.\n- **Åndedrettsvern** (P3-filter / motordrevet vifte) ved asbestsanering, isolering, mineralull og kvartsstøv.'
+    },
+    {
+      id: 'hms-doc-3',
+      title: 'Førstehjelp, akuttberedskap og varslingsplan',
+      category: 'first_aid',
+      version: '1.0',
+      companyId: 'system',
+      updatedAt: '2026-08-10T08:00:00.000Z',
+      content: '# Førstehjelp og Nødprosedyrer\n\nVed akutt personskade eller alvorlig hendelse på byggeplass gjelder følgende instruks:\n\n### 1. Nødnumre:\n- **Brann:** 110\n- **Politi:** 112\n- **Ambulanse / Medisinsk nød:** 113\n- **Legevakt:** 116 117\n- **Giftinformasjonen:** 22 59 13 00\n\n### 2. Handlingsrekkefølge (STANS - TENK - HANDLE):\n1. **Sikre skadestedet:** Koble fra strøm, stans maskiner, sikre mot ras eller fall.\n2. **Gi livreddende førstehjelp:** Frie luftveier, sideleie, stans blødninger, hjerte-lunge-redning (30:2).\n3. **Varsle 113:** Oppgi nøyaktig adresse, adkomst for ambulanse og skadeomfang.\n4. **Møte ambulansen:** Send en person ut til innkjøringen for å veilede nødetatene.'
+    },
+    {
+      id: 'hms-doc-4',
+      title: 'Brannvern og varme arbeider',
+      category: 'fire',
+      version: '1.1',
+      companyId: 'system',
+      updatedAt: '2026-08-20T11:00:00.000Z',
+      content: '# Brannvern og Varme Arbeider\n\nVarme arbeider (sveising, skjærebrenning, taktekking med åpen flamme, bruk av vinkelsliper) medfører stor brannrisiko.\n\n### Krav før oppstart:\n- Gyldig sertifikat for Varme Arbeider fra Norsk Brannvernforening.\n- Skriftlig arbeidstillatelse signert av byggeleder.\n- Rydding av brennbart materiale innenfor 10 meters radius.\n\n### Krav under og etter arbeid:\n- Minst 2 stk godkjente 6 kg pulverapparater (eller tilkoblet brannslange) lett tilgjengelig.\n- Kontinuerlig brannvakt under arbeidet.\n- **Obligatorisk brannvakt i minst 60 minutter etter at arbeidet er avsluttet.**'
+    },
+    {
+      id: 'hms-doc-5',
+      title: 'Stillas, stiger og arbeid i høyden',
+      category: 'equipment',
+      version: '1.0',
+      companyId: 'system',
+      updatedAt: '2026-08-05T12:00:00.000Z',
+      content: '# Stillas, Stiger og Arbeid i Høyden\n\nFall fra høyde er den vanligste årsaken til alvorlige ulykker i bygg- og anleggsbransjen.\n\n### Stillas:\n- Skal være montert av kvalifisert personell iht. Forskrift om utførelse av arbeid.\n- **Grønt stillasskilt** skal være utfylt og synlig ved adkomst før stillaset tas i bruk.\n- Rekkverk (topplist 1,0 m, mellomlist 0,5 m og fotlist 0,15 m) er obligatorisk på alle stillasgulv.\n\n### Stiger:\n- Stiger skal primært brukes som adkomstvei, aldri som permanent arbeidsplattform.\n- Ved lett arbeid fra stige skal stigen være sikret mot utglidning i topp og bunn, og stikke minst 1 meter over adkomstnivå.'
+    }
+  ],
+  hms_signatures: [],
+  crew: [],
+  safety_inspections: []
 };
 
 let dbInitialized = false;

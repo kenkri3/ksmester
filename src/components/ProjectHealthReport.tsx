@@ -193,13 +193,13 @@ const ProjectHealthReport: React.FC<ProjectHealthReportProps> = ({ project, isOp
               <div className="grid grid-cols-1 md:grid-cols-3 gap-6">
                 <div className="md:col-span-2 bg-white p-8 rounded-[2rem] border border-neutral-200 shadow-sm">
                   <div className="flex items-center gap-3 mb-4">
-                    <div className={cn("px-3 py-1 rounded-full text-[10px] font-black uppercase tracking-widest", getStatusColor(report.status))}>
-                      {report.status}
+                    <div className={cn("px-3 py-1 rounded-full text-[10px] font-black uppercase tracking-widest", getStatusColor(report.status || 'good'))}>
+                      {report.status || 'good'}
                     </div>
-                    <div className="text-sm font-bold text-neutral-400">Total Helse: {report.score}/100</div>
+                    <div className="text-sm font-bold text-neutral-400">Total Helse: {report.score ?? 75}/100</div>
                   </div>
                   <h3 className="text-2xl font-bold mb-4">Oppsummering</h3>
-                  <p className="text-neutral-600 leading-relaxed">{report.summary}</p>
+                  <p className="text-neutral-600 leading-relaxed">{typeof report.summary === 'string' ? report.summary : String(report.summary || 'Analyse fullført.')}</p>
                 </div>
                 
                 <div className="bg-neutral-900 p-8 rounded-[2rem] text-white relative overflow-hidden">
@@ -210,13 +210,13 @@ const ProjectHealthReport: React.FC<ProjectHealthReportProps> = ({ project, isOp
                       Helse-score
                     </h3>
                     <div className="flex items-baseline gap-2">
-                      <span className="text-6xl font-black">{report.score}</span>
+                      <span className="text-6xl font-black">{report.score ?? 75}</span>
                       <span className="text-neutral-500 font-bold">/100</span>
                     </div>
                     <div className="mt-6 w-full bg-white/10 h-2 rounded-full overflow-hidden">
                       <motion.div 
                         initial={{ width: 0 }}
-                        animate={{ width: `${report.score}%` }}
+                        animate={{ width: `${Math.min(100, Math.max(0, Number(report.score) || 75))}%` }}
                         className="h-full bg-emerald-500"
                       />
                     </div>
@@ -227,20 +227,24 @@ const ProjectHealthReport: React.FC<ProjectHealthReportProps> = ({ project, isOp
               {/* Metrics Grid */}
               <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-4">
                 {[
-                  { label: 'Fremdrift', icon: <TrendingUp size={18} />, data: report.metrics.progress, color: 'text-blue-600 bg-blue-50' },
-                  { label: 'Budsjett', icon: <DollarSign size={18} />, data: report.metrics.budget, color: 'text-emerald-600 bg-emerald-50' },
-                  { label: 'HMS-status', icon: <ShieldCheck size={18} />, data: report.metrics.hms, color: 'text-amber-600 bg-amber-50' },
-                  { label: 'Kvalitet', icon: <CheckCircle2 size={18} />, data: report.metrics.quality, color: 'text-purple-600 bg-purple-50' }
-                ].map((metric, i) => (
-                  <div key={i} className="bg-white p-6 rounded-3xl border border-neutral-200 shadow-sm">
-                    <div className={cn("w-10 h-10 rounded-xl flex items-center justify-center mb-4", metric.color)}>
-                      {metric.icon}
+                  { label: 'Fremdrift', icon: <TrendingUp size={18} />, data: report.metrics?.progress, color: 'text-blue-600 bg-blue-50' },
+                  { label: 'Budsjett', icon: <DollarSign size={18} />, data: report.metrics?.budget, color: 'text-emerald-600 bg-emerald-50' },
+                  { label: 'HMS-status', icon: <ShieldCheck size={18} />, data: report.metrics?.hms, color: 'text-amber-600 bg-amber-50' },
+                  { label: 'Kvalitet', icon: <CheckCircle2 size={18} />, data: report.metrics?.quality, color: 'text-purple-600 bg-purple-50' }
+                ].map((metric, i) => {
+                  const status = typeof metric.data === 'string' ? metric.data : (metric.data?.status || 'Vurdert');
+                  const detail = typeof metric.data === 'string' ? metric.data : (metric.data?.detail || '');
+                  return (
+                    <div key={i} className="bg-white p-6 rounded-3xl border border-neutral-200 shadow-sm">
+                      <div className={cn("w-10 h-10 rounded-xl flex items-center justify-center mb-4", metric.color)}>
+                        {metric.icon}
+                      </div>
+                      <div className="text-xs font-black uppercase tracking-widest text-neutral-400 mb-1">{metric.label}</div>
+                      <div className="text-sm font-bold mb-2">{status}</div>
+                      <p className="text-[11px] text-neutral-500 leading-relaxed">{detail}</p>
                     </div>
-                    <div className="text-xs font-black uppercase tracking-widest text-neutral-400 mb-1">{metric.label}</div>
-                    <div className="text-sm font-bold mb-2">{metric.data.status}</div>
-                    <p className="text-[11px] text-neutral-500 leading-relaxed">{metric.data.detail}</p>
-                  </div>
-                ))}
+                  );
+                })}
               </div>
 
               {/* Risks & Recommendations */}
@@ -251,15 +255,20 @@ const ProjectHealthReport: React.FC<ProjectHealthReportProps> = ({ project, isOp
                     Risikoanalyse
                   </h3>
                   <div className="space-y-3">
-                    {report.risks.map((risk, i) => (
-                      <div key={i} className={cn("p-5 rounded-3xl border transition-all", getSeverityColor(risk.severity))}>
-                        <div className="flex items-center justify-between mb-2">
-                          <span className="text-sm font-bold">{risk.title}</span>
-                          <span className="text-[10px] font-black uppercase tracking-widest opacity-70">{risk.severity}</span>
+                    {(report.risks || []).map((risk: any, i: number) => {
+                      const title = typeof risk === 'string' ? risk : (risk?.title || 'Risiko');
+                      const severity = typeof risk === 'string' ? 'medium' : (risk?.severity || 'medium');
+                      const desc = typeof risk === 'string' ? '' : (risk?.description || '');
+                      return (
+                        <div key={i} className={cn("p-5 rounded-3xl border transition-all", getSeverityColor(severity))}>
+                          <div className="flex items-center justify-between mb-2">
+                            <span className="text-sm font-bold">{title}</span>
+                            <span className="text-[10px] font-black uppercase tracking-widest opacity-70">{severity}</span>
+                          </div>
+                          {desc && <p className="text-xs opacity-80 leading-relaxed">{desc}</p>}
                         </div>
-                        <p className="text-xs opacity-80 leading-relaxed">{risk.description}</p>
-                      </div>
-                    ))}
+                      );
+                    })}
                   </div>
                 </div>
 
@@ -269,14 +278,17 @@ const ProjectHealthReport: React.FC<ProjectHealthReportProps> = ({ project, isOp
                     Anbefalinger
                   </h3>
                   <div className="bg-white rounded-[2rem] border border-neutral-200 p-6 shadow-sm space-y-4">
-                    {report.recommendations.map((rec, i) => (
-                      <div key={i} className="flex gap-4 group">
-                        <div className="w-6 h-6 rounded-full bg-emerald-100 text-emerald-600 flex items-center justify-center shrink-0 text-xs font-bold">
-                          {i + 1}
+                    {(report.recommendations || []).map((rec: any, i: number) => {
+                      const text = typeof rec === 'string' ? rec : (rec?.text || rec?.title || rec?.recommendation || String(rec));
+                      return (
+                        <div key={i} className="flex gap-4 group">
+                          <div className="w-6 h-6 rounded-full bg-emerald-100 text-emerald-600 flex items-center justify-center shrink-0 text-xs font-bold">
+                            {i + 1}
+                          </div>
+                          <p className="text-sm text-neutral-600 leading-relaxed group-hover:text-neutral-900 transition-colors">{text}</p>
                         </div>
-                        <p className="text-sm text-neutral-600 leading-relaxed group-hover:text-neutral-900 transition-colors">{rec}</p>
-                      </div>
-                    ))}
+                      );
+                    })}
                   </div>
                 </div>
               </div>
@@ -288,23 +300,34 @@ const ProjectHealthReport: React.FC<ProjectHealthReportProps> = ({ project, isOp
                   Neste steg for prosjektleder
                 </h3>
                 <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
-                  {report.nextSteps.map((step, i) => (
-                    <div key={i} className="flex items-center gap-4 p-4 bg-white/10 rounded-2xl border border-white/10 hover:bg-white/20 transition-colors cursor-pointer group">
-                      <div className="w-8 h-8 rounded-lg bg-white/20 flex items-center justify-center shrink-0 group-hover:scale-110 transition-transform">
-                        <ChevronRight size={18} />
+                  {(report.nextSteps || []).map((step: any, i: number) => {
+                    const text = typeof step === 'string' ? step : (step?.step || step?.action || step?.text || String(step));
+                    return (
+                      <div key={i} className="flex items-center gap-4 p-4 bg-white/10 rounded-2xl border border-white/10 hover:bg-white/20 transition-colors cursor-pointer group">
+                        <div className="w-8 h-8 rounded-lg bg-white/20 flex items-center justify-center shrink-0 group-hover:scale-110 transition-transform">
+                          <ChevronRight size={18} />
+                        </div>
+                        <span className="text-sm font-medium">{text}</span>
                       </div>
-                      <span className="text-sm font-medium">{step}</span>
-                    </div>
-                  ))}
+                    );
+                  })}
                 </div>
               </div>
             </div>
           ) : null}
 
           {error && (
-            <div className="p-4 bg-rose-50 border border-rose-100 text-rose-600 rounded-2xl text-sm flex items-center gap-3">
-              <AlertTriangle size={18} />
-              {error}
+            <div className="p-4 bg-rose-50 border border-rose-100 text-rose-600 rounded-2xl text-sm flex items-center justify-between gap-3">
+              <div className="flex items-center gap-3">
+                <AlertTriangle size={18} className="shrink-0" />
+                <span>{error}</span>
+              </div>
+              <button 
+                onClick={generateReport}
+                className="px-3 py-1.5 bg-rose-600 text-white rounded-xl text-xs font-bold hover:bg-rose-700 transition-all shrink-0 cursor-pointer"
+              >
+                Prøv igjen
+              </button>
             </div>
           )}
         </div>

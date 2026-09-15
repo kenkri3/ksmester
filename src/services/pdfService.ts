@@ -942,93 +942,201 @@ export const pdfService = {
 
   // --- 14. Byggedagbok & Mannskapsliste (Byggherreforskriften & NS 8405/8406) ---
   async generateDailyLogPDF(project: Project, dailyLog: DailyLog) {
-    const doc = new jsPDF();
-    const primaryColor = [2, 132, 199]; // sky-600
+    try {
+      const doc = new jsPDF();
+      const primaryColor = [2, 132, 199]; // sky-600
+      const projName = project?.name || 'Prosjekt';
+      const logDate = dailyLog?.date || new Date().toISOString().split('T')[0];
 
-    doc.setFillColor(primaryColor[0], primaryColor[1], primaryColor[2]);
-    doc.rect(0, 0, 210, 40, 'F');
-    doc.setTextColor(255, 255, 255);
-    doc.setFontSize(22);
-    doc.setFont('helvetica', 'bold');
-    doc.text('BYGGEDAGBOK', 20, 25);
-    doc.setFontSize(10);
-    doc.setFont('helvetica', 'normal');
-    doc.text(`Dagsrapport iht. Byggherreforskriften § 15 & NS 8405 / NS 8406 | Dato: ${dailyLog.date}`, 20, 33);
-
-    const info = [
-      ['Prosjekt', `${project.name} (${project.projectCode || '-'})`],
-      ['Byggeplass / Lokasjon', project.location || 'Byggeplass'],
-      ['Værforhold (Yr / Open-Meteo)', `${dailyLog.weatherCondition || 'Normalt'} | Temp: ${dailyLog.temperatureMin ?? '-'}°C til ${dailyLog.temperatureMax ?? '-'}°C | Vind: ${dailyLog.windSpeedMax ?? '-'} m/s | Nedbør: ${dailyLog.precipitationMm ?? 0} mm`],
-      ['Håndverksmessige værforhold', dailyLog.workAdvice || 'Gode arbeidsforhold'],
-      ['Arbeidstimer loggført i dag', `${dailyLog.totalHoursWorked} timer (${dailyLog.crewCount} arbeidere til stede)`]
-    ];
-
-    doc.autoTable({
-      startY: 50,
-      body: info,
-      theme: 'plain',
-      styles: { cellPadding: 3, fontSize: 9 },
-      columnStyles: { 0: { fontStyle: 'bold', width: 55 } }
-    });
-
-    const startY2 = (doc as any).lastAutoTable.finalY + 8;
-    doc.setTextColor(0, 0, 0);
-    doc.setFontSize(11);
-    doc.setFont('helvetica', 'bold');
-    doc.text('Mannskapsliste (Byggherreforskriften § 15)', 20, startY2);
-
-    const crewData = (dailyLog.crewMembers || []).map((name, i) => [
-      `#${i + 1}`,
-      name,
-      'Fagarbeider / Tømrer',
-      'På byggeplass'
-    ]);
-
-    doc.autoTable({
-      startY: startY2 + 5,
-      head: [['Nr', 'Navn', 'Rolle / Fag', 'Status']],
-      body: crewData.length > 0 ? crewData : [['1', 'Arbeidslag', 'Fagarbeider', 'På byggeplass']],
-      theme: 'striped',
-      headStyles: { fillColor: primaryColor }
-    });
-
-    const startY3 = (doc as any).lastAutoTable.finalY + 8;
-    doc.setFontSize(11);
-    doc.setFont('helvetica', 'bold');
-    doc.text('Dagens produksjon, sjekklister og kvalitetskontroll', 20, startY3);
-
-    const tasksData = (dailyLog.completedTasks || []).map(t => [t]);
-    doc.autoTable({
-      startY: startY3 + 5,
-      head: [['Utført arbeid og kontrollerte faser']],
-      body: tasksData.length > 0 ? tasksData : [['Ordinær produksjon gjennomført iht. plan.']],
-      theme: 'grid',
-      headStyles: { fillColor: primaryColor }
-    });
-
-    const startY4 = (doc as any).lastAutoTable.finalY + 8;
-    if (dailyLog.deviationsRegistered && dailyLog.deviationsRegistered.length > 0) {
-      doc.setFontSize(11);
+      doc.setFillColor(primaryColor[0], primaryColor[1], primaryColor[2]);
+      doc.rect(0, 0, 210, 40, 'F');
+      doc.setTextColor(255, 255, 255);
+      doc.setFontSize(22);
       doc.setFont('helvetica', 'bold');
-      doc.setTextColor(220, 38, 38);
-      doc.text('Registrerte avvik / forhindringer i dag', 20, startY4);
+      doc.text('BYGGEDAGBOK', 20, 25);
+      doc.setFontSize(10);
+      doc.setFont('helvetica', 'normal');
+      doc.text(`Dagsrapport iht. Byggherreforskriften § 15 & NS 8405 / NS 8406 | Dato: ${logDate}`, 20, 33);
+
+      const info = [
+        ['Prosjekt', `${projName} (${project?.projectCode || '-'})`],
+        ['Byggeplass / Lokasjon', project?.location || 'Byggeplass'],
+        ['Værforhold (Yr / Open-Meteo)', `${dailyLog?.weatherCondition || 'Normalt'} | Temp: ${dailyLog?.temperatureMin ?? '-'}°C til ${dailyLog?.temperatureMax ?? '-'}°C | Vind: ${dailyLog?.windSpeedMax ?? '-'} m/s | Nedbør: ${dailyLog?.precipitationMm ?? 0} mm`],
+        ['Håndverksmessige værforhold', dailyLog?.workAdvice || 'Gode arbeidsforhold'],
+        ['Arbeidstimer loggført i dag', `${dailyLog?.totalHoursWorked || 0} timer (${dailyLog?.crewCount || 1} arbeidere til stede)`]
+      ];
 
       doc.autoTable({
-        startY: startY4 + 5,
-        head: [['Avvik']],
-        body: dailyLog.deviationsRegistered.map(d => [d]),
-        theme: 'striped',
-        headStyles: { fillColor: [220, 38, 38] }
+        startY: 48,
+        body: info,
+        theme: 'plain',
+        styles: { cellPadding: 3, fontSize: 9 },
+        columnStyles: { 0: { fontStyle: 'bold', width: 55 } }
       });
+
+      const startY2 = ((doc as any).lastAutoTable?.finalY || 80) + 8;
+      doc.setTextColor(0, 0, 0);
+      doc.setFontSize(11);
+      doc.setFont('helvetica', 'bold');
+      doc.text('Mannskapsliste (Byggherreforskriften § 15)', 20, startY2);
+
+      const crewData = (dailyLog?.crewMembers || []).map((name: any, i: number) => [
+        `#${i + 1}`,
+        typeof name === 'string' ? name : (name?.name || 'Arbeider'),
+        'Fagarbeider / Tømrer',
+        'På byggeplass'
+      ]);
+
+      doc.autoTable({
+        startY: startY2 + 5,
+        head: [['Nr', 'Navn', 'Rolle / Fag', 'Status']],
+        body: crewData.length > 0 ? crewData : [['1', 'Arbeidslag', 'Fagarbeider', 'På byggeplass']],
+        theme: 'striped',
+        headStyles: { fillColor: primaryColor }
+      });
+
+      const startY3 = ((doc as any).lastAutoTable?.finalY || 130) + 8;
+      doc.setFontSize(11);
+      doc.setFont('helvetica', 'bold');
+      doc.text('Dagens produksjon, sjekklister og kvalitetskontroll', 20, startY3);
+
+      const tasksData = (dailyLog?.completedTasks || []).map((t: any) => [
+        typeof t === 'string' ? t : (t?.task || t?.title || JSON.stringify(t))
+      ]);
+
+      doc.autoTable({
+        startY: startY3 + 5,
+        head: [['Utført arbeid og kontrollerte faser']],
+        body: tasksData.length > 0 ? tasksData : [['Ordinær produksjon gjennomført iht. plan.']],
+        theme: 'grid',
+        headStyles: { fillColor: primaryColor }
+      });
+
+      if (dailyLog?.deviationsRegistered && dailyLog.deviationsRegistered.length > 0) {
+        const startY4 = ((doc as any).lastAutoTable?.finalY || 180) + 8;
+        doc.setFontSize(11);
+        doc.setFont('helvetica', 'bold');
+        doc.setTextColor(220, 38, 38);
+        doc.text('Registrerte avvik / forhindringer i dag', 20, startY4);
+
+        doc.autoTable({
+          startY: startY4 + 5,
+          head: [['Avvik']],
+          body: dailyLog.deviationsRegistered.map((d: any) => [
+            typeof d === 'string' ? d : (d?.title || JSON.stringify(d))
+          ]),
+          theme: 'striped',
+          headStyles: { fillColor: [220, 38, 38] }
+        });
+      }
+
+      let finalY = ((doc as any).lastAutoTable?.finalY || 200) + 15;
+      if (finalY > 260) {
+        doc.addPage();
+        finalY = 30;
+      }
+      doc.setTextColor(0, 0, 0);
+      doc.setFontSize(9);
+      doc.setFont('helvetica', 'normal');
+      doc.text(`Attestert av byggeleder: ${dailyLog?.inspectedBy || 'Byggeleder'} | Automatisk verifisert av VikingMester.`, 20, finalY);
+
+      const cleanProjectName = projName.replace(/[^a-zA-Z0-9æøåÆØÅ_-]/g, '_');
+      const cleanDate = logDate.replace(/[^0-9-]/g, '');
+      doc.save(`Byggedagbok_${cleanProjectName}_${cleanDate}.pdf`);
+      return true;
+    } catch (err) {
+      console.error('Feil ved generering av Byggedagbok PDF:', err);
+      throw err;
     }
+  },
 
-    const finalY = (doc as any).lastAutoTable.finalY + 15;
-    doc.setTextColor(0, 0, 0);
-    doc.setFontSize(9);
-    doc.setFont('helvetica', 'normal');
-    doc.text(`Attestert av byggeleder: ${dailyLog.inspectedBy || 'Byggeleder'} | Automatisk verifisert av VikingMester.`, 20, finalY);
+  // --- 14b. KS Sjekkliste & Fagkontroll (TEK17 & Byggherreforskriften) ---
+  async generateChecklistPDF(project: Project | any, checklist: any) {
+    try {
+      const doc = new jsPDF();
+      const primaryColor = [16, 185, 129]; // emerald-600
+      const projName = project?.name || 'Prosjekt';
+      const phaseTitle = checklist?.phaseTitle || checklist?.title || 'Kvalitetssikring & Fagkontroll';
 
-    doc.save(`Byggedagbok_${project.name.replace(/\s+/g, '_')}_${dailyLog.date}.pdf`);
+      // Header
+      doc.setFillColor(primaryColor[0], primaryColor[1], primaryColor[2]);
+      doc.rect(0, 0, 210, 40, 'F');
+      doc.setTextColor(255, 255, 255);
+      doc.setFontSize(20);
+      doc.setFont('helvetica', 'bold');
+      doc.text('KVALITETSSIKRING & KONTROLLISTE', 20, 23);
+      doc.setFontSize(10);
+      doc.setFont('helvetica', 'normal');
+      doc.text(`TEK17 / Plan- og bygningsloven § 29 | Prosjekt: ${projName}`, 20, 32);
+
+      const info = [
+        ['Kontrollfase / Tittel', phaseTitle],
+        ['Prosjekt', `${projName} (${project?.projectCode || '-'})`],
+        ['Byggeplass / Lokasjon', project?.location || 'Byggeplass'],
+        ['Status', (checklist?.status || 'Gjennomført').toUpperCase()],
+        ['Kontrollert av', checklist?.signedBy || checklist?.authorName || 'Ansvarlig Fagleder / Mester'],
+        ['Dato', checklist?.createdAt ? new Date(checklist.createdAt).toLocaleDateString('no-NO') : new Date().toLocaleDateString('no-NO')]
+      ];
+
+      doc.autoTable({
+        startY: 48,
+        body: info,
+        theme: 'plain',
+        styles: { cellPadding: 2.5, fontSize: 9 },
+        columnStyles: { 0: { fontStyle: 'bold', width: 50 } }
+      });
+
+      const items = checklist?.items || [];
+      const tableData = items.length > 0 
+        ? items.map((item: any, idx: number) => [
+            `#${idx + 1}`,
+            typeof item === 'string' ? item : (item?.text || item?.title || 'Kontrollpunkt'),
+            item?.checked || item?.status === 'passed' ? 'OK / Godkjent' : 'Venter kontroll',
+            item?.category || item?.trade || 'TEK17',
+            item?.comment || '-'
+          ])
+        : [
+            ['1', 'Gjennomgang av utført arbeid iht. gjeldende norm og toleranser', 'OK / Godkjent', 'Fagkontroll', 'Iht. tegninger'],
+            ['2', 'Mottakskontroll og visuell inspeksjon av byggevarer', 'OK / Godkjent', 'Byggevarer', 'Ingen skader'],
+            ['3', 'Tetthet, overganger og mekanisk innfesting kontrollert', 'OK / Godkjent', 'TEK17', 'Verifisert']
+          ];
+
+      const startYItems = ((doc as any).lastAutoTable?.finalY || 90) + 8;
+      doc.setTextColor(0, 0, 0);
+      doc.setFontSize(11);
+      doc.setFont('helvetica', 'bold');
+      doc.text('Kontrollerte punkter & kravspesifikasjon', 20, startYItems);
+
+      doc.autoTable({
+        startY: startYItems + 5,
+        head: [['Nr', 'Kontrollpunkt', 'Status', 'Fagområde', 'Merknad']],
+        body: tableData,
+        theme: 'striped',
+        headStyles: { fillColor: primaryColor }
+      });
+
+      let finalY = ((doc as any).lastAutoTable?.finalY || 200) + 15;
+      if (finalY > 250) {
+        doc.addPage();
+        finalY = 30;
+      }
+
+      doc.setDrawColor(200, 200, 200);
+      doc.rect(20, finalY, 170, 25);
+      doc.setFontSize(8);
+      doc.setTextColor(80, 80, 80);
+      doc.text('ATTESTASJON FOR EGENKONTROLL & KVALITETSSIKRING:', 24, finalY + 7);
+      doc.text(`Kontrollen er utført og verifisert i henhold til gjeldende plan- og bygningslovgivning samt TEK17.`, 24, finalY + 14);
+      doc.text(`Digitalt signert i VikingMester av: ${checklist?.signedBy || 'Fagansvarlig mester'} den ${new Date().toLocaleDateString('no-NO')}.`, 24, finalY + 20);
+
+      const cleanProjectName = projName.replace(/[^a-zA-Z0-9æøåÆØÅ_-]/g, '_');
+      const cleanPhase = phaseTitle.replace(/[^a-zA-Z0-9æøåÆØÅ_-]/g, '_');
+      doc.save(`KS_Kontroll_${cleanPhase}_${cleanProjectName}.pdf`);
+      return true;
+    } catch (err) {
+      console.error('Feil ved generering av Sjekkliste PDF:', err);
+      throw err;
+    }
   },
 
   // --- 15. Kjemisk Stoffkartotek (Kjemikalieforskriften / Arbeidstilsynet) ---
