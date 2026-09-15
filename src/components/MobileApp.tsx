@@ -675,8 +675,20 @@ export default function MobileApp({ initialScreen, onScreenChange }: MobileAppPr
             <span>Tilbake til oversikt</span>
           </button>
           <div className="flex items-center gap-2">
-            <span className="w-2 h-2 rounded-full bg-emerald-500 animate-pulse" />
-            <span className="text-xs font-bold text-slate-800">Byggeplass Mobilapp</span>
+            <button
+              onClick={() => handleScreenChange('contacts')}
+              className={cn(
+                "flex items-center gap-1.5 px-3 py-1.5 rounded-xl text-xs font-bold transition-all cursor-pointer",
+                activeScreen === 'contacts' 
+                  ? "bg-cyan-600 text-white shadow-sm" 
+                  : "bg-cyan-50 text-cyan-800 hover:bg-cyan-100 border border-cyan-200/70"
+              )}
+              title="Åpne telefonliste og kolleger"
+            >
+              <PhoneCall size={13} />
+              <span>Telefonliste</span>
+            </button>
+            <span className="w-2 h-2 rounded-full bg-emerald-500 animate-pulse hidden xs:inline" />
           </div>
         </div>
         {/* 1-Klikk Direkte Nedlasting Banner */}
@@ -752,14 +764,14 @@ export default function MobileApp({ initialScreen, onScreenChange }: MobileAppPr
                     <select 
                       value={selectedProjectId}
                       onChange={(e) => setSelectedProjectId(e.target.value)}
-                      className="text-sm font-bold bg-transparent border-none p-0 focus:ring-0 w-full truncate"
+                      className="text-sm font-bold bg-transparent border-none p-0 focus:ring-0 w-full truncate cursor-pointer text-slate-800"
                     >
                       {projects.length > 0 ? (
                         projects.map(p => (
                           <option key={p.id} value={p.id}>{p.name}</option>
                         ))
                       ) : (
-                        <option value="">{t('loading_projects')}</option>
+                        <option value="proj_default_1">Hovedprosjekt (Byggeplass Oslo)</option>
                       )}
                     </select>
                   </div>
@@ -771,6 +783,53 @@ export default function MobileApp({ initialScreen, onScreenChange }: MobileAppPr
                 <WeatherWidget 
                   projectLocation={projects.find(p => p.id === selectedProjectId)?.location || 'Oslo'} 
                 />
+
+                {/* Smart Contextual Action Button - Inline non-blocking card */}
+                {smartAction && activeScreen === 'home' && (
+                  <motion.div 
+                    initial={{ opacity: 0, y: 10 }}
+                    animate={{ opacity: 1, y: 0 }}
+                    className="relative w-full rounded-[2rem] overflow-hidden shadow-lg"
+                  >
+                    <div className="relative">
+                      <button 
+                        onClick={() => {
+                          if (smartAction.id === 'camera') fileInputRef.current?.click();
+                          else handleScreenChange(smartAction.id as any);
+                        }}
+                        className={cn(
+                          "w-full p-4 rounded-[2rem] flex items-center gap-4 transition-all active:scale-[0.98] group text-left cursor-pointer",
+                          smartAction.color,
+                          "text-white"
+                        )}
+                      >
+                        <div className="w-12 h-12 bg-white/20 rounded-2xl flex items-center justify-center shrink-0 group-hover:scale-105 transition-transform">
+                          {smartAction.icon}
+                        </div>
+                        <div className="text-left flex-1 min-w-0">
+                          <div className="text-[10px] font-black uppercase tracking-widest opacity-75 mb-0.5">Anbefalt Handling</div>
+                          <div className="text-base font-bold leading-tight truncate">{smartAction.label}</div>
+                          <div className="text-[11px] opacity-85 mt-0.5 truncate">{smartAction.description}</div>
+                        </div>
+                        <div className="ml-auto w-8 h-8 bg-white/10 rounded-full flex items-center justify-center shrink-0">
+                          <ChevronRight size={18} />
+                        </div>
+                      </button>
+                      <button
+                        onClick={(e) => {
+                          e.stopPropagation();
+                          setSmartActionDismissed(true);
+                        }}
+                        aria-label="Lukk forslag"
+                        title="Lukk forslag"
+                        className="absolute top-2.5 right-2.5 w-6 h-6 rounded-full bg-black/20 hover:bg-black/40 text-white flex items-center justify-center active:scale-90 transition-all cursor-pointer"
+                      >
+                        <X size={13} strokeWidth={2.5} />
+                      </button>
+                    </div>
+                  </motion.div>
+                )}
+
                 <button
                   onClick={handleInstallApp}
                   className="w-full py-2.5 px-3.5 bg-neutral-100/90 hover:bg-emerald-50 text-neutral-800 hover:text-emerald-900 rounded-2xl text-xs font-bold flex items-center justify-between border border-neutral-200 transition-all cursor-pointer"
@@ -788,15 +847,28 @@ export default function MobileApp({ initialScreen, onScreenChange }: MobileAppPr
                   </p>
                 </div>
                 {/* Quick Buttons */}
-                <div className="grid grid-cols-2 gap-4">
+                <div className="grid grid-cols-2 gap-3.5 sm:gap-4">
+                  {/* 1. Telefonliste & Kolleger - 1-klikk direkte */}
+                  <button 
+                    onClick={() => handleScreenChange('contacts')}
+                    className="flex flex-col items-center justify-center p-5 sm:p-6 bg-gradient-to-br from-cyan-600 to-blue-600 hover:from-cyan-500 hover:to-blue-500 text-white rounded-[2rem] gap-2.5 active:scale-95 transition-all shadow-lg shadow-cyan-100/50 cursor-pointer col-span-2 sm:col-span-1"
+                  >
+                    <div className="w-12 h-12 bg-white/20 rounded-2xl flex items-center justify-center">
+                      <PhoneCall size={24} />
+                    </div>
+                    <span className="text-xs font-bold uppercase tracking-widest text-center">Telefonliste</span>
+                    <span className="text-[10px] text-cyan-100 font-medium">Ring & SMS kolleger</span>
+                  </button>
+
                   <button 
                     onClick={() => fileInputRef.current?.click()}
-                    className="flex flex-col items-center justify-center p-6 bg-neutral-900 text-white rounded-[2rem] gap-3 active:scale-95 transition-all shadow-lg shadow-neutral-200"
+                    className="flex flex-col items-center justify-center p-5 sm:p-6 bg-neutral-900 text-white rounded-[2rem] gap-2.5 active:scale-95 transition-all shadow-lg shadow-neutral-200 cursor-pointer"
                   >
                     <div className="w-12 h-12 bg-white/10 rounded-2xl flex items-center justify-center">
                       <Camera size={24} />
                     </div>
                     <span className="text-xs font-bold uppercase tracking-widest">{t('image')}</span>
+                    <span className="text-[10px] text-slate-300 font-medium">AI Bildeanalyse</span>
                     <input 
                       type="file" 
                       ref={fileInputRef} 
@@ -806,76 +878,84 @@ export default function MobileApp({ initialScreen, onScreenChange }: MobileAppPr
                     />
                   </button>
                   <button 
-                    onClick={() => setActiveScreen('voice')}
-                    className="flex flex-col items-center justify-center p-6 bg-emerald-600 text-white rounded-[2rem] gap-3 active:scale-95 transition-all shadow-lg shadow-emerald-100"
+                    onClick={() => handleScreenChange('voice')}
+                    className="flex flex-col items-center justify-center p-5 sm:p-6 bg-emerald-600 text-white rounded-[2rem] gap-2.5 active:scale-95 transition-all shadow-lg shadow-emerald-100 cursor-pointer"
                   >
                     <div className="w-12 h-12 bg-white/10 rounded-2xl flex items-center justify-center">
                       <Mic size={24} />
                     </div>
                     <span className="text-xs font-bold uppercase tracking-widest">{t('voice')}</span>
+                    <span className="text-[10px] text-emerald-100 font-medium">Tale til SJA</span>
                   </button>
                   <button 
-                    onClick={() => setActiveScreen('translator')}
-                    className="flex flex-col items-center justify-center p-6 bg-blue-600 text-white rounded-[2rem] gap-3 active:scale-95 transition-all shadow-lg shadow-blue-100"
+                    onClick={() => handleScreenChange('translator')}
+                    className="flex flex-col items-center justify-center p-5 sm:p-6 bg-blue-600 text-white rounded-[2rem] gap-2.5 active:scale-95 transition-all shadow-lg shadow-blue-100 cursor-pointer"
                   >
                     <div className="w-12 h-12 bg-white/10 rounded-2xl flex items-center justify-center">
                       <Languages size={24} />
                     </div>
                     <span className="text-xs font-bold uppercase tracking-widest">{t('translator')}</span>
+                    <span className="text-[10px] text-blue-100 font-medium">Byggetolk</span>
                   </button>
                   <button 
-                    onClick={() => setActiveScreen('laerling')}
-                    className="flex flex-col items-center justify-center p-6 bg-amber-500 text-white rounded-[2rem] gap-3 active:scale-95 transition-all shadow-lg shadow-amber-100"
+                    onClick={() => handleScreenChange('laerling')}
+                    className="flex flex-col items-center justify-center p-5 sm:p-6 bg-amber-500 text-white rounded-[2rem] gap-2.5 active:scale-95 transition-all shadow-lg shadow-amber-100 cursor-pointer"
                   >
                     <div className="w-12 h-12 bg-white/10 rounded-2xl flex items-center justify-center">
                       <GraduationCap size={24} />
                     </div>
                     <span className="text-xs font-bold uppercase tracking-widest">Lærling</span>
+                    <span className="text-[10px] text-amber-100 font-medium">AI Opplæring</span>
                   </button>
                   <button 
                     onClick={() => setShowDeviationModal(true)}
-                    className="flex flex-col items-center justify-center p-6 bg-white border-2 border-neutral-100 text-neutral-900 rounded-[2rem] gap-3 active:scale-95 transition-all cursor-pointer"
+                    className="flex flex-col items-center justify-center p-5 sm:p-6 bg-white border-2 border-neutral-100 text-neutral-900 rounded-[2rem] gap-2.5 active:scale-95 transition-all cursor-pointer"
                   >
                     <div className="w-12 h-12 bg-neutral-50 rounded-2xl flex items-center justify-center">
                       <AlertTriangle size={24} className="text-amber-500" />
                     </div>
                     <span className="text-xs font-bold uppercase tracking-widest">{t('deviation')}</span>
+                    <span className="text-[10px] text-neutral-400 font-medium">Registrer avvik</span>
                   </button>
                   <button 
-                    onClick={() => setActiveScreen('voice')}
-                    className="flex flex-col items-center justify-center p-6 bg-white border-2 border-neutral-100 text-neutral-900 rounded-[2rem] gap-3 active:scale-95 transition-all cursor-pointer"
+                    onClick={() => handleScreenChange('voice')}
+                    className="flex flex-col items-center justify-center p-5 sm:p-6 bg-white border-2 border-neutral-100 text-neutral-900 rounded-[2rem] gap-2.5 active:scale-95 transition-all cursor-pointer"
                   >
                     <div className="w-12 h-12 bg-neutral-50 rounded-2xl flex items-center justify-center">
                       <FileText size={24} className="text-blue-500" />
                     </div>
                     <span className="text-xs font-bold uppercase tracking-widest">{t('sja')}</span>
+                    <span className="text-[10px] text-neutral-400 font-medium">Sikker jobb analyse</span>
                   </button>
                   <button 
                     onClick={handleGenerateDailyLog}
-                    className="flex flex-col items-center justify-center p-6 bg-white border-2 border-neutral-100 text-neutral-900 rounded-[2rem] gap-3 active:scale-95 transition-all"
+                    className="flex flex-col items-center justify-center p-5 sm:p-6 bg-white border-2 border-neutral-100 text-neutral-900 rounded-[2rem] gap-2.5 active:scale-95 transition-all cursor-pointer"
                   >
                     <div className="w-12 h-12 bg-indigo-50 rounded-2xl flex items-center justify-center">
                       <Sparkles size={24} className="text-indigo-600" />
                     </div>
                     <span className="text-xs font-bold uppercase tracking-widest">Dagsrapport</span>
+                    <span className="text-[10px] text-neutral-400 font-medium">AI Dagbok</span>
                   </button>
                   <button 
                     onClick={() => setShowChecklistModal(true)}
-                    className="flex flex-col items-center justify-center p-6 bg-white border-2 border-neutral-100 text-neutral-900 rounded-[2rem] gap-3 active:scale-95 transition-all"
+                    className="flex flex-col items-center justify-center p-5 sm:p-6 bg-white border-2 border-neutral-100 text-neutral-900 rounded-[2rem] gap-2.5 active:scale-95 transition-all cursor-pointer"
                   >
                     <div className="w-12 h-12 bg-neutral-50 rounded-2xl flex items-center justify-center">
                       <ListChecks size={24} className="text-emerald-500" />
                     </div>
                     <span className="text-xs font-bold uppercase tracking-widest">{t('checklist')}</span>
+                    <span className="text-[10px] text-neutral-400 font-medium">TEK17 / HMS</span>
                   </button>
                   <button 
-                    onClick={() => setActiveScreen('activity')}
-                    className="flex flex-col items-center justify-center p-6 bg-white border-2 border-neutral-100 text-neutral-900 rounded-[2rem] gap-3 active:scale-95 transition-all"
+                    onClick={() => handleScreenChange('activity')}
+                    className="flex flex-col items-center justify-center p-5 sm:p-6 bg-white border-2 border-neutral-100 text-neutral-900 rounded-[2rem] gap-2.5 active:scale-95 transition-all cursor-pointer"
                   >
                     <div className="w-12 h-12 bg-neutral-50 rounded-2xl flex items-center justify-center">
                       <ListChecks size={24} className="text-neutral-500" />
                     </div>
                     <span className="text-xs font-bold uppercase tracking-widest">Prosjektlogg</span>
+                    <span className="text-[10px] text-neutral-400 font-medium">Aktivitetshistorikk</span>
                   </button>
                 </div>
                 <div className="space-y-4">
@@ -896,52 +976,6 @@ export default function MobileApp({ initialScreen, onScreenChange }: MobileAppPr
                     </div>
                   )}
                 </div>
-                {/* Smart Contextual Action Button - Recipe 3: Hardware / Specialist Tool */}
-                {smartAction && activeScreen === 'home' && (
-                  <motion.div 
-                    initial={{ opacity: 0, y: 20 }}
-                    animate={{ opacity: 1, y: 0 }}
-                    className="fixed bottom-24 left-4 right-4 sm:absolute sm:bottom-24 sm:left-6 sm:right-6 z-30"
-                  >
-                    <div className="relative">
-                      <button 
-                        onClick={() => {
-                          if (smartAction.id === 'camera') fileInputRef.current?.click();
-                          else setActiveScreen(smartAction.id as any);
-                        }}
-                        className={cn(
-                          "w-full p-4 rounded-[2.5rem] flex items-center gap-4 shadow-2xl transition-all active:scale-95 group",
-                          smartAction.color,
-                          "text-white"
-                        )}
-                      >
-                        <div className="w-14 h-14 bg-white/20 rounded-[1.5rem] flex items-center justify-center shrink-0 group-hover:rotate-6 transition-transform">
-                          {smartAction.icon}
-                        </div>
-                        <div className="text-left">
-                          <div className="text-[10px] font-black uppercase tracking-widest opacity-70 mb-1">Anbefalt Handling</div>
-                          <div className="text-lg font-bold leading-tight">{smartAction.label}</div>
-                          <div className="text-[10px] opacity-80 mt-1">{smartAction.description}</div>
-                        </div>
-                        <div className="ml-auto w-10 h-10 bg-white/10 rounded-full flex items-center justify-center">
-                          <ChevronRight size={20} />
-                        </div>
-                      </button>
-                      {/* FIX (11.09.2026): Lukkeknapp så boblen ikke blokkerer skjermen resten av økten. */}
-                      <button
-                        onClick={(e) => {
-                          e.stopPropagation();
-                          setSmartActionDismissed(true);
-                        }}
-                        aria-label="Lukk forslag"
-                        title="Lukk forslag"
-                        className="absolute -top-2 -right-2 w-7 h-7 rounded-full bg-white text-neutral-500 border border-neutral-200 shadow-md flex items-center justify-center active:scale-90 transition-all"
-                      >
-                        <X size={14} strokeWidth={2.5} />
-                      </button>
-                    </div>
-                  </motion.div>
-                )}
               </motion.div>
             )}
             {activeScreen === 'camera' && (

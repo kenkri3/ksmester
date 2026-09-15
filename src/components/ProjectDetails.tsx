@@ -264,6 +264,26 @@ export default function ProjectDetails({ project, onBack, onShare, onStartCheckl
     }
   }, [project]);
 
+  const handleCopyOrderLink = (order: ChangeOrder) => {
+    const baseUrl = typeof window !== 'undefined' ? window.location.origin : '';
+    const url = order.shareUrl || `${baseUrl}?changeOrderToken=${order.token}`;
+    navigator.clipboard.writeText(url);
+    toast.success(`Godkjenningslenke for #${order.changeNumber} kopiert til utklippstavlen!`);
+  };
+
+  const handleSendOrderEmail = async (order: ChangeOrder) => {
+    const defaultEmail = order.clientEmail || project.clientEmail || '';
+    const targetEmail = window.prompt('Send endringsmelding til kunden (e-post):', defaultEmail);
+    if (!targetEmail) return;
+
+    try {
+      await changeOrderService.sendChangeOrderEmail(order, targetEmail);
+      toast.success(`Endringsmelding #${order.changeNumber} ble sendt til ${targetEmail}!`);
+    } catch (e: any) {
+      toast.error(e.message || 'Kunne ikke sende e-post');
+    }
+  };
+
   // Handle MesterAI quick project instruction
   const handleSendProjectCommand = async (customPrompt?: string) => {
     const text = customPrompt || projectCommand;
@@ -925,22 +945,167 @@ export default function ProjectDetails({ project, onBack, onShare, onStartCheckl
       )}
 
       {activeTab === 'change_orders' && (
-        <div className="bg-white p-6 sm:p-8 rounded-3xl border border-slate-200 shadow-xs space-y-6">
-          <div className="flex flex-col sm:flex-row justify-between items-start sm:items-center gap-4">
-            <div>
-              <span className="text-xs font-black uppercase tracking-wider text-amber-600">NS 8406 / Håndverkertjenesteloven § 9</span>
-              <h3 className="text-xl font-black text-navy-900 mt-1">Endringsordrer & Tilleggsarbeid</h3>
-              <p className="text-xs text-slate-500">Varsle tillegg og få skriftlig godkjenning fra kunden før arbeidet starter.</p>
+        <div className="space-y-6">
+          <div className="bg-white p-6 sm:p-8 rounded-3xl border border-slate-200 shadow-xs space-y-6">
+            <div className="flex flex-col sm:flex-row justify-between items-start sm:items-center gap-4">
+              <div>
+                <span className="text-xs font-black uppercase tracking-wider text-amber-600">NS 8406 / Håndverkertjenesteloven § 9</span>
+                <h3 className="text-xl font-black text-navy-900 mt-1">Endringsordrer & Tilleggsarbeid</h3>
+                <p className="text-xs text-slate-500">Varsle tillegg og få skriftlig godkjenning fra kunden med 1 klikk før arbeidet starter.</p>
+              </div>
+              <button
+                onClick={() => setIsChangeOrderOpen(true)}
+                className="px-5 py-2.5 bg-gradient-to-r from-electric-500 to-electric-400 text-white rounded-xl text-xs font-black shadow-purple-cta flex items-center gap-2 hover:opacity-95 transition-all cursor-pointer"
+              >
+                <Plus size={16} />
+                <span>Ny endringsordre</span>
+              </button>
             </div>
-            <button
-              onClick={() => setIsChangeOrderOpen(true)}
-              className="px-5 py-2.5 bg-gradient-to-r from-electric-500 to-electric-400 text-white rounded-xl text-xs font-black shadow-purple-cta"
-            >
-              + Ny endringsordre
-            </button>
+
+            {/* Quick Metrics */}
+            <div className="grid grid-cols-1 sm:grid-cols-3 gap-4">
+              <div className="p-4 bg-slate-50 rounded-2xl border border-slate-200/80">
+                <span className="text-[10px] font-black uppercase tracking-wider text-slate-400">Totalt antall endringer</span>
+                <div className="text-2xl font-black text-navy-900 mt-1">{projectChangeOrders.length}</div>
+              </div>
+              <div className="p-4 bg-amber-50 rounded-2xl border border-amber-200/80">
+                <span className="text-[10px] font-black uppercase tracking-wider text-amber-700">Venter godkjenning</span>
+                <div className="text-2xl font-black text-amber-900 mt-1">
+                  {projectChangeOrders.filter(o => o.status !== 'approved' && o.status !== 'rejected').length}
+                </div>
+              </div>
+              <div className="p-4 bg-emerald-50 rounded-2xl border border-emerald-200/80">
+                <span className="text-[10px] font-black uppercase tracking-wider text-emerald-700">Godkjent tilleggsverdi</span>
+                <div className="text-2xl font-black text-emerald-900 mt-1">
+                  {projectChangeOrders
+                    .filter(o => o.status === 'approved')
+                    .reduce((sum, o) => sum + (o.totalAmount || o.amountExVat || 0), 0)
+                    .toLocaleString('no-NO')} kr
+                </div>
+              </div>
+            </div>
+
+            <div className="p-4 bg-amber-50/80 border border-amber-200 rounded-2xl text-xs text-amber-950 leading-relaxed">
+              <strong>Krav til skriftlighet:</strong> Alt tilleggsarbeid skal varsles umiddelbart. Kunden godkjenner direkte via lenken eller e-posten med digital signatur. Når kunden signerer, oppdateres prosjektbudsjettet og du varsles momentant.
+            </div>
           </div>
-          <div className="p-4 bg-amber-50 border border-amber-200 rounded-2xl text-xs text-amber-950 leading-relaxed">
-            <strong>Krav til skriftlighet:</strong> Alt tilleggsarbeid skal varsles umiddelbart. MesterAI beregner automatisk timepris, materiellpåslag og fristforlengelse.
+
+          {/* Change Orders List */}
+          <div className="bg-white rounded-3xl border border-slate-200 shadow-xs overflow-hidden">
+            <div className="p-5 sm:p-6 border-b border-slate-100 flex items-center justify-between">
+              <div>
+                <h4 className="font-black text-base text-navy-900">Registrerte endringsordrer</h4>
+                <p className="text-xs text-slate-400">Del godkjenningslenke med kunden eller send direkte på e-post</p>
+              </div>
+              <span className="text-xs font-bold text-slate-400">{projectChangeOrders.length} ordrer</span>
+            </div>
+
+            {projectChangeOrders.length === 0 ? (
+              <div className="p-12 text-center space-y-4">
+                <div className="w-12 h-12 rounded-2xl bg-amber-50 text-amber-600 flex items-center justify-center mx-auto">
+                  <FileSignature size={24} />
+                </div>
+                <div>
+                  <h4 className="font-bold text-navy-900 text-base">Ingen endringsordrer registrert ennå</h4>
+                  <p className="text-xs text-slate-400 max-w-md mx-auto mt-1">
+                    Meld fra om tilleggsarbeid og endringer raskt for å sikre bedriften mot ubetalte timer og materialkostnader.
+                  </p>
+                </div>
+                <button
+                  onClick={() => setIsChangeOrderOpen(true)}
+                  className="px-5 py-2.5 bg-navy-900 text-white rounded-xl text-xs font-bold hover:bg-navy-800 transition-all inline-flex items-center gap-2 cursor-pointer"
+                >
+                  <Plus size={16} />
+                  <span>Opprett første endringsordre</span>
+                </button>
+              </div>
+            ) : (
+              <div className="divide-y divide-slate-100">
+                {projectChangeOrders.map((order) => {
+                  const amountExVat = Number(order.amountExVat || (order.totalAmount ? Math.round(order.totalAmount / 1.25) : 0));
+                  const totalAmount = Number(order.totalAmount || Math.round(amountExVat * 1.25));
+                  const isApproved = order.status === 'approved';
+                  const isRejected = order.status === 'rejected';
+
+                  return (
+                    <div key={order.id} className="p-6 hover:bg-slate-50/50 transition-colors">
+                      <div className="flex flex-col lg:flex-row lg:items-center justify-between gap-4">
+                        <div className="space-y-1.5 flex-1">
+                          <div className="flex items-center gap-2 flex-wrap">
+                            <span className="px-2.5 py-0.5 rounded-full bg-slate-100 text-slate-700 text-[10px] font-black uppercase">
+                              #{order.changeNumber}
+                            </span>
+                            <h5 className="font-bold text-navy-900 text-base">{order.title}</h5>
+                            <span className={cn(
+                              "px-2.5 py-0.5 rounded-full text-[10px] font-black uppercase tracking-wider",
+                              isApproved ? "bg-emerald-100 text-emerald-800" :
+                              isRejected ? "bg-rose-100 text-rose-800" :
+                              "bg-amber-100 text-amber-800"
+                            )}>
+                              {isApproved ? 'Godkjent & signert' : isRejected ? 'Avslått av kunde' : 'Venter på godkjenning'}
+                            </span>
+                          </div>
+
+                          <p className="text-xs text-slate-600 leading-relaxed max-w-3xl">
+                            {order.description}
+                          </p>
+
+                          <div className="flex items-center gap-4 text-xs text-slate-400 pt-1 flex-wrap">
+                            <span>Fristkonsekvens: <strong className="text-slate-700">{order.impactDays > 0 ? `+${order.impactDays} virkedager` : 'Ingen'}</strong></span>
+                            <span>Meldt av: <strong className="text-slate-700">{order.authorName || 'Byggeleder'}</strong></span>
+                            <span>Dato: <strong className="text-slate-700">{formatDate(order.createdAt)}</strong></span>
+                            {order.signedByClientAt && (
+                              <span className="text-emerald-700 font-bold">
+                                Signert av: {order.clientName || 'Kunde'} ({formatDate(order.signedByClientAt)})
+                              </span>
+                            )}
+                          </div>
+                        </div>
+
+                        {/* Amount and Action Buttons */}
+                        <div className="flex flex-col sm:flex-row lg:flex-col items-start lg:items-end justify-between gap-3 shrink-0">
+                          <div className="text-left lg:text-right">
+                            <div className="text-lg font-black text-navy-900">{amountExVat.toLocaleString('no-NO')} kr</div>
+                            <div className="text-[11px] text-slate-400 font-medium">({totalAmount.toLocaleString('no-NO')} kr inkl. mva)</div>
+                          </div>
+
+                          <div className="flex items-center gap-2">
+                            <button
+                              onClick={() => handleCopyOrderLink(order)}
+                              className="p-2.5 bg-slate-100 hover:bg-slate-200 text-slate-700 rounded-xl text-xs font-bold transition-all flex items-center gap-1.5 cursor-pointer"
+                              title="Kopier godkjenningslenke"
+                            >
+                              <Copy size={14} />
+                              <span className="hidden sm:inline">Kopier lenke</span>
+                            </button>
+                            <button
+                              onClick={() => handleSendOrderEmail(order)}
+                              className="p-2.5 bg-blue-50 hover:bg-blue-100 text-blue-700 rounded-xl text-xs font-bold transition-all flex items-center gap-1.5 cursor-pointer"
+                              title="Send e-post til kunden"
+                            >
+                              <Mail size={14} />
+                              <span className="hidden sm:inline">Send e-post</span>
+                            </button>
+                            <button
+                              onClick={() => {
+                                const baseUrl = typeof window !== 'undefined' ? window.location.origin : '';
+                                const url = order.shareUrl || `${baseUrl}?changeOrderToken=${order.token}`;
+                                window.open(url, '_blank');
+                              }}
+                              className="p-2.5 bg-navy-900 hover:bg-navy-800 text-white rounded-xl text-xs font-bold transition-all flex items-center gap-1.5 cursor-pointer"
+                              title="Åpne kundevisning"
+                            >
+                              <ExternalLink size={14} />
+                              <span className="hidden sm:inline">Forhåndsvis</span>
+                            </button>
+                          </div>
+                        </div>
+                      </div>
+                    </div>
+                  );
+                })}
+              </div>
+            )}
           </div>
         </div>
       )}
