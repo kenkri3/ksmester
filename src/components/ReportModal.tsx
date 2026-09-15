@@ -33,6 +33,7 @@ interface ReportModalProps {
 export default function ReportModal({ isOpen, onClose, project, sjaReports, deviations }: ReportModalProps) {
   const { t } = useTranslation();
   const [isExporting, setIsExporting] = useState(false);
+  const [isDownloadingPdf, setIsDownloadingPdf] = useState(false);
   const [exportStep, setExportStep] = useState<'idle' | 'preparing' | 'sending' | 'success'>('idle');
 
   const handleBoligmappaExport = async () => {
@@ -76,13 +77,16 @@ export default function ReportModal({ isOpen, onClose, project, sjaReports, devi
   };
 
   const handleDownloadPDF = async () => {
+    setIsDownloadingPdf(true);
+    const toastId = toast.loading('Genererer FDV- og prosjektrapport som PDF...');
     try {
-      toast.info('Genererer FDV- og prosjektrapport som PDF...');
       await pdfService.generateFDVPDF(project);
-      toast.success('PDF lastet ned!');
-    } catch (error) {
+      toast.success('FDV- og prosjektrapport (PDF) lastet ned!', { id: toastId });
+    } catch (error: any) {
       console.error('PDF generation error:', error);
-      toast.error('Kunne ikke generere PDF.');
+      toast.error(`Kunne ikke generere PDF: ${error?.message || 'Ukjent feil'}`, { id: toastId });
+    } finally {
+      setIsDownloadingPdf(false);
     }
   };
 
@@ -324,11 +328,13 @@ export default function ReportModal({ isOpen, onClose, project, sjaReports, devi
           <div className="p-4 sm:p-6 border-t border-neutral-100 bg-white flex flex-col sm:flex-row items-center justify-between gap-3 sm:gap-4 shrink-0">
             <div className="flex items-center gap-2 sm:gap-4 w-full sm:w-auto">
               <button 
+                type="button"
                 onClick={handleDownloadPDF}
-                className="flex-1 sm:flex-none flex items-center justify-center gap-2 px-4 sm:px-6 py-3 bg-neutral-100 text-neutral-700 rounded-xl sm:rounded-2xl text-xs sm:text-sm font-bold hover:bg-neutral-200 transition-all cursor-pointer"
+                disabled={isDownloadingPdf}
+                className="flex-1 sm:flex-none flex items-center justify-center gap-2 px-4 sm:px-6 py-3 bg-neutral-100 text-neutral-700 rounded-xl sm:rounded-2xl text-xs sm:text-sm font-bold hover:bg-neutral-200 transition-all cursor-pointer disabled:opacity-50"
               >
-                <Download size={15} className="sm:w-[18px] sm:h-[18px]" />
-                <span className="hidden xs:inline">Last ned</span> PDF
+                <Download size={15} className={cn("sm:w-[18px] sm:h-[18px]", isDownloadingPdf && "animate-bounce text-emerald-600")} />
+                {isDownloadingPdf ? 'Laster ned...' : <><span className="hidden xs:inline">Last ned</span> PDF</>}
               </button>
               <button 
                 onClick={handleShare}

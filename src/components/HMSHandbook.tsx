@@ -13,13 +13,15 @@ import {
   X,
   Loader2,
   PenLine,
-  Users
+  Users,
+  Trash2
 } from 'lucide-react';
 import ReactMarkdown from 'react-markdown';
 import { cn } from '@/src/lib/utils';
 import { HMSDocument, HMSSignature } from '../types';
-import { db, auth, collection, onSnapshot, query, where, orderBy, addDoc, Timestamp, handleFirestoreError, OperationType } from '../services/firebase';
+import { db, auth, collection, onSnapshot, query, where, orderBy, addDoc, doc as firebaseDoc, deleteDoc, Timestamp, handleFirestoreError, OperationType } from '../services/firebase';
 import { useAuth } from '../hooks/useAuth';
+import { toast } from 'sonner';
 
 const HMSHandbook: React.FC = () => {
   const { user, company, role } = useAuth();
@@ -99,6 +101,19 @@ const HMSHandbook: React.FC = () => {
 
   const hasSigned = (docId: string) => {
     return signatures.some(s => s.documentId === docId && s.userId === user?.uid);
+  };
+
+  const handleDeleteDoc = async (docId: string, title: string) => {
+    if (!window.confirm(`Er du sikker på at du vil slette dokumentet "${title}"?`)) {
+      return;
+    }
+    try {
+      await deleteDoc(firebaseDoc(db, 'hms_documents', docId));
+      toast.success(`Dokumentet "${title}" er slettet.`);
+    } catch (e) {
+      console.error('Error deleting doc:', e);
+      toast.error('Kunne ikke slette dokumentet.');
+    }
   };
 
   // ⚡ Bolt: Memoize filtered list to prevent unnecessary recalculations on every render.
@@ -191,18 +206,29 @@ const HMSHandbook: React.FC = () => {
               <div className="flex items-center gap-2 mt-auto">
                 <button 
                   onClick={() => setSelectedDoc(doc)}
-                  className="flex-1 py-2 bg-neutral-900 text-white rounded-xl text-xs font-bold hover:bg-neutral-800 transition-all"
+                  className="flex-1 py-2 bg-neutral-900 text-white rounded-xl text-xs font-bold hover:bg-neutral-800 transition-all cursor-pointer"
                 >
                   Les dokument
                 </button>
                 {role === 'admin' && (
-                  <button 
-                    onClick={() => setShowSignees(doc.id)}
-                    className="p-2 bg-neutral-100 text-neutral-600 rounded-xl hover:bg-neutral-200 transition-all"
-                    title="Se hvem som har signert"
-                  >
-                    <Users size={18} />
-                  </button>
+                  <>
+                    <button 
+                      onClick={() => setShowSignees(doc.id)}
+                      className="p-2 bg-neutral-100 text-neutral-600 rounded-xl hover:bg-neutral-200 transition-all cursor-pointer"
+                      title="Se hvem som har signert"
+                    >
+                      <Users size={18} />
+                    </button>
+                    {doc.companyId === company && (
+                      <button 
+                        onClick={() => handleDeleteDoc(doc.id, doc.title)}
+                        className="p-2 bg-neutral-100 text-neutral-400 hover:text-rose-600 hover:bg-rose-50 rounded-xl transition-all cursor-pointer"
+                        title="Slett dokument"
+                      >
+                        <Trash2 size={18} />
+                      </button>
+                    )}
+                  </>
                 )}
               </div>
             </motion.div>

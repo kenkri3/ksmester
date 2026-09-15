@@ -225,7 +225,11 @@ export function applyQueryConstraints(items: any[], constraints?: any[]): any[] 
 
 export async function getDocs(queryRef: any) {
   const col = queryRef.collectionName;
-  let items = await api.getCollection(col);
+  const tokenConstraint = queryRef.constraints?.find(
+    (c: any) => (c.field === 'token' || c.field === 'portalToken') && (c.op === '==' || !c.op)
+  );
+  const queryParams = tokenConstraint ? { [tokenConstraint.field]: String(tokenConstraint.value) } : undefined;
+  let items = await api.getCollection(col, queryParams);
 
   if (queryRef.constraints) {
     items = applyQueryConstraints(items, queryRef.constraints);

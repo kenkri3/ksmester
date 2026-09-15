@@ -2,6 +2,7 @@ import React, { useState, useEffect } from 'react';
 import { motion, AnimatePresence } from 'motion/react';
 import { X, Mail, Send, Link as LinkIcon, Users, Shield, CheckCircle2, Building2, UserCircle, Copy, Check, ExternalLink } from 'lucide-react';
 import { Project, UserProfile } from '../types';
+import { useAuth } from '../hooks/useAuth';
 import { db, auth, collection, addDoc, serverTimestamp, OperationType, handleFirestoreError, doc, getDoc } from '../services/firebase';
 import { toast } from 'sonner';
 import { cn } from '../lib/utils';
@@ -15,6 +16,7 @@ interface InviteModalProps {
 type InviteRole = 'admin' | 'manager' | 'worker' | 'external_worker' | 'external_manager';
 
 const InviteModal: React.FC<InviteModalProps> = ({ isOpen, onClose, project }) => {
+  const { user } = useAuth();
   const [email, setEmail] = useState('');
   const [role, setRole] = useState<InviteRole>(project ? 'external_worker' : 'worker');
   const [loading, setLoading] = useState(false);
@@ -26,9 +28,11 @@ const InviteModal: React.FC<InviteModalProps> = ({ isOpen, onClose, project }) =
 
   useEffect(() => {
     async function fetchUserProfile() {
-      if (!auth.currentUser) return;
+      const activeUser = user || auth.currentUser;
+      if (!activeUser) return;
       try {
-        const docRef = doc(db, 'users', auth.currentUser.uid);
+        const uid = (activeUser as any).uid || (activeUser as any).id;
+        const docRef = doc(db, 'users', uid);
         const docSnap = await getDoc(docRef);
         if (docSnap.exists()) {
           setUserProfile(docSnap.data() as UserProfile);
@@ -42,11 +46,12 @@ const InviteModal: React.FC<InviteModalProps> = ({ isOpen, onClose, project }) =
       setCopied(false);
       setEmailSent(false);
     }
-  }, [isOpen]);
+  }, [isOpen, user]);
 
   const handleSendInvite = async (e: React.FormEvent) => {
     e.preventDefault();
-    if (!auth.currentUser) {
+    const activeUser = user || auth.currentUser;
+    if (!activeUser) {
       toast.error('Du må være innlogget for å opprette en invitasjon.');
       return;
     }
@@ -54,9 +59,10 @@ const InviteModal: React.FC<InviteModalProps> = ({ isOpen, onClose, project }) =
 
     try {
       const token = Math.random().toString(36).substring(2, 15) + Math.random().toString(36).substring(2, 15);
-      const inviterName = auth.currentUser.displayName || userProfile?.name || 'Byggeleder';
-      const companyId = userProfile?.companyId || (project as any)?.companyId || 'company_default';
-      const companyName = userProfile?.companyName || (project as any)?.companyName || 'Bedrift';
+      const inviterName = activeUser.displayName || userProfile?.name || 'Byggeleder';
+      const companyId = (activeUser as any).companyId || userProfile?.companyId || (project as any)?.companyId || 'company_default';
+      const companyName = (activeUser as any).company || userProfile?.companyName || (project as any)?.companyName || 'Bedrift';
+      const inviterUid = (activeUser as any).uid || (activeUser as any).id;
 
       const inviteData = {
         projectId: project?.id || null,

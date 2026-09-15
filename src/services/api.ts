@@ -112,23 +112,26 @@ export const api = {
   },
 
   // --- Collection Data with Offline First & Local Cache ---
-  async getCollection<T = any>(collectionName: string): Promise<T[]> {
+  async getCollection<T = any>(collectionName: string, queryParams?: Record<string, string>): Promise<T[]> {
     const cached = getLocalCache<T>(collectionName);
     
-    // If browser is offline, instantly return cached items
-    if (typeof navigator !== 'undefined' && !navigator.onLine) {
+    // If browser is offline and no specific queryParams, instantly return cached items
+    if (typeof navigator !== 'undefined' && !navigator.onLine && !queryParams) {
       return cached;
     }
 
     try {
-      const res = await fetch(`/api/data/${collectionName}`, { 
+      const queryString = queryParams ? `?${new URLSearchParams(queryParams).toString()}` : '';
+      const res = await fetch(`/api/data/${collectionName}${queryString}`, { 
         headers: getHeaders(),
         signal: AbortSignal.timeout(6000)
       });
       if (res.ok) {
         const fresh = await res.json();
         if (Array.isArray(fresh)) {
-          setLocalCache(collectionName, fresh);
+          if (!queryParams) {
+            setLocalCache(collectionName, fresh);
+          }
           return fresh;
         }
       }

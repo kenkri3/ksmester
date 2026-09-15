@@ -315,6 +315,7 @@ export interface CrewMember {
   hmsCardExpiry: string;
   employer: string;
   status: 'on_site' | 'off_site';
+  projectId?: string;
 }
 
 export interface SafetyInspection {

@@ -88,7 +88,7 @@ export async function PUT(
     const existing = await getCollectionItemById(collection, id);
 
     if (!user) {
-      const allowedPublicCollections = ['change_orders', 'contracts', 'offers'];
+      const allowedPublicCollections = ['change_orders', 'contracts', 'offers', 'invitations'];
       if (!allowedPublicCollections.includes(collection) || !existing || !providedToken) {
         return NextResponse.json({ error: 'Uautorisert' }, { status: 401 });
       }
@@ -117,6 +117,10 @@ export async function PUT(
         if (body.status) safePublicUpdate.status = body.status;
         if (body.acceptedAt) safePublicUpdate.acceptedAt = body.acceptedAt;
         if (body.contractId) safePublicUpdate.contractId = body.contractId;
+      } else if (collection === 'invitations') {
+        if (body.status) safePublicUpdate.status = body.status;
+        if (body.acceptedAt) safePublicUpdate.acceptedAt = body.acceptedAt;
+        if (body.acceptedBy) safePublicUpdate.acceptedBy = body.acceptedBy;
       }
 
       const updated = await updateCollectionItem(collection, id, safePublicUpdate);
@@ -143,6 +147,13 @@ export async function PUT(
 
     if (user.role !== 'admin') {
       const isOwner =
+        (collection === 'users' && (id === user.id || existing.id === user.id)) ||
+        (collection === 'invitations' && (
+          existing.token === providedToken ||
+          (existing.inviteeEmail && existing.inviteeEmail.toLowerCase() === user.email?.toLowerCase()) ||
+          existing.companyId === user.companyId ||
+          body.status === 'accepted'
+        )) ||
         (existing.companyId && existing.companyId === user.companyId) ||
         (existing.company && existing.company === user.companyId) ||
         (existing.userId && existing.userId === user.id) ||

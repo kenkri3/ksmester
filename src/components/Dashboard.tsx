@@ -80,6 +80,7 @@ import HMSModal from './HMSModal';
 import ProjectDetails from './ProjectDetails';
 import SmartSearch from './SmartSearch';
 import ChangeOrderModal from './ChangeOrderModal';
+import { changeOrderService } from '../services/changeOrderService';
 import PreCloseInspectorModal, { LukkesperreZone } from './PreCloseInspectorModal';
 import SJAPreviewModal, { SJADocument } from './SJAPreviewModal';
 
@@ -309,6 +310,177 @@ export default function Dashboard({
     window.addEventListener('trigger_dashboard_action', handleAction as EventListener);
     return () => window.removeEventListener('trigger_dashboard_action', handleAction as EventListener);
   }, [lukkesperreZones]);
+
+  // Global ⌘K / Ctrl+K keyboard shortcut for SmartSearch
+  useEffect(() => {
+    const handleKeyDown = (e: KeyboardEvent) => {
+      if ((e.metaKey || e.ctrlKey) && e.key.toLowerCase() === 'k') {
+        e.preventDefault();
+        setIsSmartSearchOpen(prev => !prev);
+      }
+    };
+    window.addEventListener('keydown', handleKeyDown);
+    return () => window.removeEventListener('keydown', handleKeyDown);
+  }, []);
+
+  // Comprehensive SmartSearch Action Dispatcher (Guarantees working navigation)
+  const handleSmartSearchNavigate = (actionType: string, id?: string, extra?: any) => {
+    setIsSmartSearchOpen(false);
+    switch (actionType) {
+      case 'nav_project':
+      case 'project':
+        if (id) {
+          const found = projects.find(p => p.id === id || p.projectCode === id);
+          if (found) {
+            setSelectedProject(found);
+            return;
+          }
+        }
+        setSelectedProject(null);
+        setActiveTab('prosjekter');
+        break;
+
+      case 'prosjekter':
+        setSelectedProject(null);
+        setActiveTab('prosjekter');
+        break;
+
+      case 'create_project':
+      case 'new_project':
+        setIsCreateModalOpen(true);
+        break;
+
+      case 'create_deviation':
+      case 'log_deviation':
+        setIsDeviationModalOpen(true);
+        break;
+
+      case 'deviation':
+      case 'deviations':
+        setSelectedProject(null);
+        setActiveTab('kvalitet');
+        break;
+
+      case 'start_checklist':
+      case 'checklist':
+        if (id) setChecklistProjectId(id);
+        else if (projects.length > 0) setChecklistProjectId(projects[0].id);
+        setIsChecklistModalOpen(true);
+        break;
+
+      case 'daily_log':
+      case 'byggedagbok':
+      case 'activity_log':
+        setIsActivityLogModalOpen(true);
+        break;
+
+      case 'time_registration':
+      case 'time':
+      case 'timer':
+        setIsTimeModalOpen(true);
+        break;
+
+      case 'change_order':
+      case 'endringsordre':
+        setIsChangeOrderModalOpen(true);
+        break;
+
+      case 'endringsordrer':
+        setSelectedProject(null);
+        setActiveTab('endringsordrer');
+        break;
+
+      case 'offer':
+      case 'tilbud':
+        setIsOfferModalOpen(true);
+        break;
+
+      case 'contract':
+      case 'kontrakt':
+      case 'kontrakter':
+        setIsContractModalOpen(true);
+        break;
+
+      case 'hms':
+      case 'hms_handbook':
+        setIsHMSModalOpen(true);
+        break;
+
+      case 'sja':
+      case 'safe_job_analysis':
+        handleOpenSJAForTrade(extra?.trade || 'Tømrer');
+        break;
+
+      case 'tek17_vision':
+      case 'ai_vision':
+      case 'camera':
+        setIsAIVisionModalOpen(true);
+        break;
+
+      case 'pre_close':
+      case 'lukkesperre':
+        setSelectedProject(null);
+        setActiveTab('kvalitet');
+        setSelectedLukkesperreZone(lukkesperreZones[0]);
+        setIsPreCloseModalOpen(true);
+        break;
+
+      case 'handover':
+      case 'overlevering':
+        if (id) setHandoverProjectId(id);
+        setIsHandoverModalOpen(true);
+        break;
+
+      case 'archive':
+      case 'dokumentarkiv':
+        setIsArchiveModalOpen(true);
+        break;
+
+      case 'inventory':
+      case 'lager':
+        setIsInventoryModalOpen(true);
+        break;
+
+      case 'vehicle':
+      case 'bilpark':
+        setIsVehicleModalOpen(true);
+        break;
+
+      case 'building_app':
+      case 'byggesoknad':
+        setIsBuildingAppModalOpen(true);
+        break;
+
+      case 'integrations':
+        setIsIntegrationModalOpen(true);
+        break;
+
+      case 'mobile':
+      case 'feltapp':
+        window.dispatchEvent(new CustomEvent("navigate_view", { detail: { view: "mobile" } }));
+        break;
+
+      case 'cockpit':
+      case 'kvalitet':
+      case 'agent':
+        setSelectedProject(null);
+        setActiveTab(actionType as any);
+        break;
+
+      case 'route':
+        if (id && typeof window !== 'undefined') {
+          window.location.href = id;
+        }
+        break;
+
+      default:
+        if (['cockpit', 'prosjekter', 'endringsordrer', 'kvalitet', 'agent'].includes(actionType)) {
+          setSelectedProject(null);
+          setActiveTab(actionType as any);
+        }
+        break;
+    }
+  };
 
   // Handlers for Lukkesperre (TEK17)
   const handleOpenPreClose = (zone: LukkesperreZone) => {
@@ -711,6 +883,14 @@ export default function Dashboard({
       <VehicleModal isOpen={isVehicleModalOpen} onClose={() => setIsVehicleModalOpen(false)} projects={projects} />
       <HMSModal isOpen={isHMSModalOpen} onClose={() => setIsHMSModalOpen(false)} projects={projects} />
       <ActivityLogModal isOpen={isActivityLogModalOpen} onClose={() => setIsActivityLogModalOpen(false)} projectId={projects[0]?.id} />
+      {projects[0] && (
+        <DailyLogModal
+          isOpen={isDailyLogModalOpen}
+          onClose={() => setIsDailyLogModalOpen(false)}
+          project={selectedProject || projects[0]}
+          currentUserName={user?.displayName || 'Byggeleder'}
+        />
+      )}
       <ChangeOrderModal
         isOpen={isChangeOrderModalOpen}
         onClose={() => {
@@ -742,7 +922,14 @@ export default function Dashboard({
         currentUserId={user?.id || 'admin_user'}
         currentUserName={user?.displayName || 'Byggeleder'}
       />
-      <SmartSearch isOpen={isSmartSearchOpen} onClose={() => setIsSmartSearchOpen(false)} onNavigate={(v) => setActiveTab(v as any)} />
+      <SmartSearch 
+        isOpen={isSmartSearchOpen} 
+        onClose={() => setIsSmartSearchOpen(false)} 
+        onNavigate={handleSmartSearchNavigate}
+        projects={projects}
+        deviations={deviations}
+        recentActivities={recentActivities}
+      />
       <PreCloseInspectorModal
         isOpen={isPreCloseModalOpen}
         onClose={() => setIsPreCloseModalOpen(false)}
@@ -922,7 +1109,7 @@ export default function Dashboard({
                   {/* 6. Byggedagbok */}
                   <button
                     type="button"
-                    onClick={() => setIsActivityLogModalOpen(true)}
+                    onClick={() => setIsDailyLogModalOpen(true)}
                     className="flex flex-col items-center text-center p-3.5 sm:p-4 rounded-2xl bg-white border border-slate-200/90 shadow-sm hover:shadow-md hover:border-violet-300 active:scale-95 transition-all group cursor-pointer"
                   >
                     <div className="w-12 h-12 rounded-2xl bg-gradient-to-tr from-violet-600 to-purple-500 text-white flex items-center justify-center shadow-md mb-2 group-hover:scale-105 transition-transform">

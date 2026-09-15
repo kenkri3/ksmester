@@ -295,31 +295,112 @@ export async function POST(req: NextRequest) {
         }
       }
 
+      // 🎯 PROSJEKTKOBLING & SYSTEMINTEGRASJON:
+      // Finn hvilket prosjekt instruksen gjelder. Hvis ukjent og det finnes flere prosjekter, SPØR brukeren!
+      const allProjects = await getCollectionItems('projects');
+      let targetProject: any = null;
+
+      // 1. Hvis projectId var oppgitt
+      if (projectId) {
+        targetProject = allProjects.find((p: any) => p.id === projectId);
+      }
+
+      // 2. Sjekk om teksten eksplisitt nevner et prosjektnavn, adresse eller kode
+      if (!targetProject && allProjects.length > 0) {
+        const textLower = text.toLowerCase();
+        for (const p of allProjects) {
+          const nameLower = (p.name || '').toLowerCase();
+          const locLower = (p.location || '').toLowerCase();
+          const codeLower = (p.projectCode || '').toLowerCase();
+
+          // Sjekk nøkkelord fra prosjektnavn (f.eks: 'kongeveien', 'nyebakken', 'storgata')
+          const nameKeywords = nameLower
+            .split(/[\s-]+/)
+            .filter((w: string) => w.length > 3 && !['totalrenovering', 'prosjekt', 'tilbygg', 'rehabilitering', 'leilighet', 'enebolig'].includes(w));
+          
+          const hasKeywordMatch = nameKeywords.some((kw: string) => textLower.includes(kw));
+
+          if (
+            (nameLower && textLower.includes(nameLower)) ||
+            (locLower && textLower.includes(locLower)) ||
+            (codeLower && textLower.includes(codeLower)) ||
+            hasKeywordMatch
+          ) {
+            targetProject = p;
+            break;
+          }
+        }
+      }
+
+      // 3. Hvis bruker ber om en prosjektspesifikk handling (endring, sja, lukking, avvik)
+      const isProjectScopedIntent = 
+        lower.includes('endring') || 
+        lower.includes('tillegg') || 
+        lower.includes('ekstra') || 
+        lower.includes('avvik') || 
+        lower.includes('sja') ||
+        lower.includes('lukke');
+
+      if (isProjectScopedIntent && !targetProject) {
+        if (allProjects.length > 1) {
+          // Systemet har flere prosjekter og vet ikke hvilket det gjelder -> Spør brukeren!
+          const projectListText = allProjects
+            .slice(0, 5)
+            .map((p: any) => `• ${p.name} (${p.location || 'Byggeplass'})`)
+            .join('\n');
+
+          return NextResponse.json({
+            success: true,
+            action: 'need_project_clarification',
+            reply: `Hvilket prosjekt gjelder dette? Du har flere aktive prosjekter i systemet:\n\n${projectListText}\n\nVennligst oppgi hvilket prosjekt endringen eller oppgaven tilhører (f.eks: «Kongeveien» eller «Nyebakken»), så kobler jeg alt sammen direkte.`,
+            availableProjects: allProjects.map((p: any) => ({ id: p.id, name: p.name, location: p.location }))
+          });
+        } else if (allProjects.length === 1) {
+          // Kun ett prosjekt finnes -> Bruk dette automatisk
+          targetProject = allProjects[0];
+        }
+      }
+
+      const resolvedProjectId = targetProject?.id || projectId || allProjects[0]?.id || 'proj-101';
+      const resolvedProjectName = targetProject?.name || projectName || allProjects[0]?.name || 'Byggeprosjekt';
+
       // Check if user is asking to create a change order (endringsordre / tillegg)
       if (lower.includes('endring') || lower.includes('tillegg') || lower.includes('ekstra') || lower.includes('avviksfaktura')) {
         const result = await createAutonomousChangeOrder({
-          projectId: projectId || 'proj-101',
-          projectName: projectName || 'Nyebakken 14 - Totalrenovering',
+          projectId: resolvedProjectId,
+          projectName: resolvedProjectName,
           spokenText: text,
-          authorId: 'admin_user',
-          authorName: authorName
+          authorId: user?.id || 'admin_user',
+          authorName: authorName,
+          clientEmail: targetProject?.clientEmail || '',
+          clientName: targetProject?.clientName || ''
         });
+
+        // Synkroniser hele systemet: Oppdater prosjektets aktivitetsstempel
+        if (targetProject) {
+          await updateCollectionItem('projects', targetProject.id, {
+            updatedAt: new Date().toISOString(),
+            lastActivityAt: new Date().toISOString()
+          }).catch(() => {});
+        }
 
         // Log agent activity
         await saveCollectionItem('agent_activities', {
           type: 'change_order',
           title: `Tilleggsordre generert: ${result.changeOrder.title}`,
-          description: `Beregnet beløp: kr ${result.changeOrder.amountExVat?.toLocaleString('no-NO')} eks mva (${result.changeOrder.impactDays} dagers fristforlengelse).`,
+          description: `Prosjekt: ${resolvedProjectName} | Beløp: kr ${result.changeOrder.amountExVat?.toLocaleString('no-NO')} eks mva (${result.changeOrder.impactDays} dagers fristforlengelse).`,
           trade: trade || 'general',
           tradeName: 'Byggeleder',
           status: 'pending_approval',
-          badge: 'NS 8406'
+          badge: 'NS 8406',
+          projectId: resolvedProjectId,
+          projectName: resolvedProjectName
         });
 
         return NextResponse.json({
           success: true,
           action: 'change_order',
-          reply: `Mottatt! Endringsordre "${result.changeOrder.title}" er opprettet på kr ${result.changeOrder.totalAmount?.toLocaleString('no-NO')} ink. mva. Den ligger nå klar i godkjenningskøen for utsending til kunde.`,
+          reply: `Mottatt! Endringsordre "${result.changeOrder.title}" er opprettet og koblet direkte til prosjektet **${resolvedProjectName}** på kr ${result.changeOrder.totalAmount?.toLocaleString('no-NO')} ink. mva. Den ligger nå klar i godkjenningskøen for utsending til kunde.`,
           data: result.changeOrder
         });
       }
@@ -331,17 +412,33 @@ export async function POST(req: NextRequest) {
         await saveCollectionItem('agent_activities', {
           type: 'sja',
           title: `SJA opprettet: ${sjaResult.data.title}`,
-          description: `Vernetiltak og risikovurdering registrert iht. ${sjaResult.data.tek17Reference}.`,
+          description: `Prosjekt: ${resolvedProjectName} | Vernetiltak og risikovurdering registrert iht. ${sjaResult.data.tek17Reference}.`,
           trade: trade || 'general',
           tradeName: 'HMS-ansvarlig',
           status: 'verified',
-          badge: 'Byggherreforskriften § 18'
+          badge: 'Byggherreforskriften § 18',
+          projectId: resolvedProjectId,
+          projectName: resolvedProjectName
         });
+
+        // Synkroniser også sja_reports samlingen
+        await saveCollectionItem('sja_reports', {
+          projectId: resolvedProjectId,
+          projectName: resolvedProjectName,
+          title: sjaResult.data.title,
+          description: sjaResult.data.workTask || sjaResult.data.task || text,
+          tek17Reference: sjaResult.data.tek17Reference,
+          risks: sjaResult.data.hazards || sjaResult.data.risikoer || [],
+          mitigations: sjaResult.data.mitigations || [],
+          ppe: sjaResult.data.ppe || sjaResult.data.utstyr || [],
+          createdBy: authorName || 'HMS-ansvarlig',
+          createdAt: new Date().toISOString()
+        }).catch(() => {});
 
         return NextResponse.json({
           success: true,
           action: 'sja',
-          reply: `Sikker Jobb Analyse (SJA) er generert for "${sjaResult.data.title}". Risikoer og pålagte tiltak iht. ${sjaResult.data.tek17Reference} er arkivert på prosjektet.`,
+          reply: `Sikker Jobb Analyse (SJA) er generert for "${sjaResult.data.title}" og koblet direkte til prosjektet **${resolvedProjectName}**. Risikoer og pålagte tiltak iht. ${sjaResult.data.tek17Reference} er arkivert.`,
           data: sjaResult.data
         });
       }

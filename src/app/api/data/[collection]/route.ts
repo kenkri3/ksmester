@@ -27,26 +27,26 @@ export async function GET(
     const token = url.searchParams.get('token');
     const portalToken = url.searchParams.get('portalToken');
 
-    // 1. Handle secure public token lookups
+    // 1. Handle secure token lookups (for both public and authenticated users holding a valid capability token)
+    if (token && (collection === 'offers' || collection === 'invites' || collection === 'invitations' || collection === 'contracts' || collection === 'change_orders')) {
+      const items = await getCollectionItems(collection);
+      const match = items.find((i: any) => i.token === token);
+      if (match) {
+        return NextResponse.json([match]);
+      }
+      return NextResponse.json({ error: 'Ugyldig eller utløpt token' }, { status: 404 });
+    }
+
+    if ((portalToken || token) && collection === 'projects') {
+      const items = await getCollectionItems(collection);
+      const match = items.find((p: any) => p.portalToken === portalToken || p.portalToken === token || p.token === token);
+      if (match) {
+        return NextResponse.json([match]);
+      }
+      return NextResponse.json({ error: 'Ugyldig portallenke' }, { status: 404 });
+    }
+
     if (!user) {
-      if (token && (collection === 'offers' || collection === 'invites' || collection === 'invitations' || collection === 'contracts' || collection === 'change_orders')) {
-        const items = await getCollectionItems(collection);
-        const match = items.find((i: any) => i.token === token);
-        if (match) {
-          return NextResponse.json([match]);
-        }
-        return NextResponse.json({ error: 'Ugyldig eller utløpt token' }, { status: 404 });
-      }
-
-      if ((portalToken || token) && collection === 'projects') {
-        const items = await getCollectionItems(collection);
-        const match = items.find((p: any) => p.portalToken === portalToken || p.portalToken === token || p.token === token);
-        if (match) {
-          return NextResponse.json([match]);
-        }
-        return NextResponse.json({ error: 'Ugyldig portallenke' }, { status: 404 });
-      }
-
       return NextResponse.json({ error: 'Uautorisert tilgang. Vennligst logg inn.' }, { status: 401 });
     }
 
@@ -59,6 +59,7 @@ export async function GET(
         (item.company && (item.company === user.companyId || item.company === 'system')) ||
         (item.userId && item.userId === user.id) ||
         (item.authorId && item.authorId === user.id) ||
+        (collection === 'invitations' && item.inviteeEmail && item.inviteeEmail.toLowerCase() === user.email?.toLowerCase()) ||
         (collection === 'hms_documents' && (!item.companyId || item.companyId === 'system')) ||
         (collection === 'checklists' && (!item.companyId || item.companyId === 'system'))
       );

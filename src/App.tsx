@@ -326,7 +326,7 @@ function AppContent() {
       }
     }
 
-    const invite = params.get('invite');
+    const invite = params.get('invite') || (typeof window !== 'undefined' ? localStorage.getItem('pending_invite_token') : null);
     if (invite) {
       setInviteToken(invite);
       setView('invite');
