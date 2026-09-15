@@ -13,7 +13,7 @@ export function PublicFooter() {
           {/* Brand Col */}
           <div className="lg:col-span-2 space-y-4">
             <Link href="/" className="inline-block">
-              <Logo size="lg" />
+              <Logo size="lg" theme="dark" />
             </Link>
             <p className="text-slate-400 text-sm max-w-md leading-relaxed">
               VikingMester er Norges ledende autonome KS- og HMS-system for håndverkere og entreprenører. Utviklet for å fjerne papirarbeid med tale, AI-bildekontroll og automatiske endringsvarsler iht. TEK17 og NS 8406.
@@ -118,8 +118,8 @@ export function PublicFooter() {
               </div>
               <div className="flex items-start gap-2.5">
                 <Phone size={16} className="text-electric-400 shrink-0 mt-0.5" />
-                <a href="tel:+4791234567" className="hover:text-white">
-                  +47 912 34 567
+                <a href="tel:+4740163082" className="hover:text-white">
+                  +47 401 63 082
                 </a>
               </div>
               <div className="flex items-start gap-2.5">

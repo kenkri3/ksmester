@@ -19,7 +19,7 @@ const baseUrl = process.env.NEXT_PUBLIC_APP_URL || 'https://vikingmester.no';
 
 export const metadata: Metadata = {
   title: 'Kontakt oss & Bestill demo | VikingMester',
-  description: 'Ta kontakt med VikingMester for uforpliktende demo eller rådgivning om KS- og HMS-system. Ring +47 92 27 50 33 eller send en melding. Rask respons.',
+  description: 'Ta kontakt med VikingMester for uforpliktende demo eller rådgivning om KS- og HMS-system. Ring +47 401 63 082 eller send en melding. Rask respons.',
   alternates: {
     canonical: `${baseUrl}/kontakt`,
   },
@@ -70,7 +70,7 @@ export default function KontaktPage() {
 
               <div className="space-y-4 text-sm pt-2">
                 <a
-                  href="tel:+4792275033"
+                  href="tel:+4740163082"
                   className="flex items-center gap-4 p-3 rounded-2xl bg-white/5 hover:bg-white/10 transition-colors"
                 >
                   <div className="w-10 h-10 rounded-xl bg-electric-500/20 text-electric-400 flex items-center justify-center shrink-0">
@@ -78,7 +78,7 @@ export default function KontaktPage() {
                   </div>
                   <div>
                     <div className="text-xs text-slate-400">Telefon / Vakttelefon</div>
-                    <div className="font-bold text-base text-white">+47 92 27 50 33</div>
+                    <div className="font-bold text-base text-white">+47 401 63 082</div>
                   </div>
                 </a>
 

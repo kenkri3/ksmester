@@ -219,7 +219,7 @@ const CustomerPortal: React.FC<CustomerPortalProps> = ({ project }) => {
       <div className="bg-neutral-900 text-white py-12 px-4 sm:px-6 lg:px-8">
         <div className="max-w-5xl mx-auto">
           <div className="flex items-center gap-3 mb-4">
-            <Logo size="md" className="text-white" />
+            <Logo size="md" theme="dark" className="text-white" />
             <span className="text-xs font-black uppercase tracking-[0.2em] text-electric-400">Kundeportal</span>
           </div>
           <h1 className="text-4xl font-black tracking-tight mb-2">{project.name}</h1>
