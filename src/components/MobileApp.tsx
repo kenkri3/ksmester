@@ -224,7 +224,11 @@ export default function MobileApp({ initialScreen, onScreenChange }: MobileAppPr
             isOnSiteToday: u.isOnSiteToday ?? true,
             isKeyPersonnel: u.isKeyPersonnel ?? (u.role === 'admin' || u.role === 'manager')
           }));
-          setColleagues(fetched);
+          setColleagues(prev => {
+            const ids = new Set(fetched.map(f => f.id));
+            const remainingDefaults = prev.filter(d => !ids.has(d.id));
+            return [...fetched, ...remainingDefaults];
+          });
           return;
         }
 
@@ -249,7 +253,11 @@ export default function MobileApp({ initialScreen, onScreenChange }: MobileAppPr
             };
           });
           if (fetched.length > 0) {
-            setColleagues(fetched);
+            setColleagues(prev => {
+              const ids = new Set(fetched.map(f => f.id));
+              const remainingDefaults = prev.filter(d => !ids.has(d.id));
+              return [...fetched, ...remainingDefaults];
+            });
           }
         }
       } catch (err) {
@@ -261,7 +269,7 @@ export default function MobileApp({ initialScreen, onScreenChange }: MobileAppPr
   // Lytt på åpning av telefonliste og mobile handlinger
   useEffect(() => {
     const handleOpenContacts = () => {
-      setActiveScreen('contacts');
+      handleScreenChange('contacts');
     };
     const handleAction = (e: any) => {
       const actionId = e.detail?.actionId;
@@ -269,19 +277,19 @@ export default function MobileApp({ initialScreen, onScreenChange }: MobileAppPr
       if (actionId === 'log_deviation') {
         setShowDeviationModal(true);
       } else if (actionId === 'take_photo') {
-        setActiveScreen('camera');
+        handleScreenChange('camera');
       } else if (actionId === 'voice_sja') {
-        setActiveScreen('voice');
+        handleScreenChange('voice');
       } else if (actionId === 'start_checklist') {
         setShowChecklistModal(true);
       } else if (actionId === 'contacts') {
-        setActiveScreen('contacts');
+        handleScreenChange('contacts');
       } else if (actionId === 'laerling') {
-        setActiveScreen('laerling');
+        handleScreenChange('laerling');
       } else if (actionId === 'translator') {
-        setActiveScreen('translator');
+        handleScreenChange('translator');
       } else if (actionId === 'activity') {
-        setActiveScreen('activity');
+        handleScreenChange('activity');
       }
     };
 
@@ -444,9 +452,9 @@ export default function MobileApp({ initialScreen, onScreenChange }: MobileAppPr
         id: doc.id,
         ...doc.data()
       })) as ProjectType[];
-      setProjects(projectsData);
-      if (projectsData.length > 0 && !selectedProjectId) {
-        setSelectedProjectId(projectsData[0].id);
+      if (projectsData.length > 0) {
+        setProjects(projectsData);
+        setSelectedProjectId(prev => (prev && projectsData.some(p => p.id === prev) ? prev : projectsData[0].id));
       }
     }, (error) => {
       handleFirestoreError(error, OperationType.LIST, 'projects');

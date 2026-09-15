@@ -14,7 +14,7 @@ const CACHE_TTL_MS = 24 * 60 * 60 * 1000; // 24 hours
 
 let totalTokenSavings = 0;
 
-export function hashAiRequest(prompt: string, systemInstruction?: string, model: string = 'gemini-3.8-flash'): string {
+export function hashAiRequest(prompt: string, systemInstruction?: string, model: string = 'gemini-2.5-flash'): string {
   const content = `${model}:::${systemInstruction || ''}:::${prompt.trim().toLowerCase()}`;
   return createHash('sha256').update(content).digest('hex');
 }
@@ -47,7 +47,7 @@ export async function getCachedAiResponse(hash: string): Promise<string | null> 
           memoryCache.set(hash, {
             text: stored.text,
             createdAt: stored.createdAt,
-            model: stored.model || 'gemini-3.8-flash',
+            model: stored.model || 'gemini-2.5-flash',
             hits: (stored.hits || 0) + 1
           });
           totalTokenSavings += Math.round(stored.text.length / 4);
@@ -65,7 +65,7 @@ export async function getCachedAiResponse(hash: string): Promise<string | null> 
 export async function setCachedAiResponse(
   hash: string,
   text: string,
-  model: string = 'gemini-3.8-flash'
+  model: string = 'gemini-2.5-flash'
 ): Promise<void> {
   const now = Date.now();
   memoryCache.set(hash, {

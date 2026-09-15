@@ -44,16 +44,20 @@ import {
   Send,
   Brain,
   Wand2,
-  Check
+  Check,
+  Copy,
+  ExternalLink,
+  Mail
 } from 'lucide-react';
 import CrossTradeCoordinator from './CrossTradeCoordinator';
 import { motion, AnimatePresence } from 'motion/react';
 import { cn } from '@/src/lib/utils';
-import { Project, Deviation, CrewMember, Offer, Contract } from '../types';
+import { Project, Deviation, CrewMember, Offer, Contract, ChangeOrder } from '../types';
 import { db, auth, collection, query, where, orderBy, onSnapshot, addDoc, Timestamp, OperationType, handleFirestoreError } from '../services/firebase';
 import UniversalTranslator from './UniversalTranslator';
 import { sjaService } from '../services/sjaService';
 import { visionService, VisionAnalysisResult } from '../services/visionService';
+import { changeOrderService } from '../services/changeOrderService';
 import { useAuth } from '../hooks/useAuth';
 import ReportModal from './ReportModal';
 import InviteModal from './InviteModal';
@@ -94,6 +98,7 @@ export default function ProjectDetails({ project, onBack, onShare, onStartCheckl
   const [projectCrew, setProjectCrew] = useState<CrewMember[]>([]);
   const [projectOffers, setProjectOffers] = useState<Offer[]>([]);
   const [projectContracts, setProjectContracts] = useState<Contract[]>([]);
+  const [projectChangeOrders, setProjectChangeOrders] = useState<ChangeOrder[]>([]);
   const [loading, setLoading] = useState(true);
   const [isNewDeviationOpen, setIsNewDeviationOpen] = useState(false);
   const [isNewSJAOpen, setIsNewSJAOpen] = useState(false);
@@ -228,12 +233,28 @@ export default function ProjectDetails({ project, onBack, onShare, onStartCheckl
       handleFirestoreError(error, OperationType.LIST, 'contracts');
     });
 
+    const changeOrdersQuery = query(
+      collection(db, 'change_orders'),
+      where('projectId', '==', project.id)
+    );
+
+    const unsubscribeChangeOrders = onSnapshot(changeOrdersQuery, (snapshot) => {
+      const data = snapshot.docs.map(doc => ({
+        id: doc.id,
+        ...doc.data()
+      })) as ChangeOrder[];
+      setProjectChangeOrders(data.sort((a, b) => (b.changeNumber || 0) - (a.changeNumber || 0)));
+    }, (error) => {
+      handleFirestoreError(error, OperationType.LIST, 'change_orders');
+    });
+
     return () => {
       unsubscribeSja();
       unsubscribeDeviations();
       unsubscribeCrew();
       unsubscribeOffers();
       unsubscribeContracts();
+      unsubscribeChangeOrders();
     };
   }, [project.id]);
 

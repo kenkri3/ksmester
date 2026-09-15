@@ -260,15 +260,35 @@ export async function POST(req: NextRequest) {
       if (geminiKey) {
         try {
           const ai = new GoogleGenAI({ apiKey: geminiKey });
-          const res = await ai.models.generateContent({
-            model: 'gemini-3.6-flash',
-            contents: `Du er VikingMester, byggeplassens autonome lederassistent for norske entreprenører og håndverkere.
+          const candidateModels = [
+            process.env.GEMINI_MODEL,
+            'gemini-2.5-flash',
+            'gemini-2.5-flash-lite',
+            'gemini-3.5-flash-lite',
+            'gemini-2.0-flash'
+          ].filter(Boolean) as string[];
+
+          let res: any = null;
+          let usedModel = 'gemini-2.5-flash';
+          for (const m of Array.from(new Set(candidateModels))) {
+            try {
+              res = await ai.models.generateContent({
+                model: m,
+                contents: `Du er VikingMester, byggeplassens autonome lederassistent for norske entreprenører og håndverkere.
 Brukeren gir følgende instruks eller spørsmål:
 "${text}"
 
 Kontekst: Prosjekt "${projectName || 'Nyebakken 14'}", fag: "${trade}".
 Svar kort, faglig og handlingsorientert (maks 2-3 setninger). Bekreft hvilke tiltak som er iverksatt iht. norsk standard (TEK17, NS 8406, Byggherreforskriften).`
-          });
+              });
+              if (res?.text) {
+                usedModel = m;
+                break;
+              }
+            } catch (err) {
+              console.warn(`[Dispatch] Modell ${m} feilet, prøver neste...`);
+            }
+          }
 
           if (res?.text) {
             replyText = res.text.trim();
@@ -276,7 +296,7 @@ Svar kort, faglig og handlingsorientert (maks 2-3 setninger). Bekreft hvilke til
           const promptTokens = res?.usageMetadata?.promptTokenCount || Math.round(text.length / 4);
           const completionTokens = res?.usageMetadata?.candidatesTokenCount || Math.round(replyText.length / 4);
           trackTokenCost({
-            model: 'gemini-3.6-flash',
+            model: usedModel,
             promptTokens,
             completionTokens,
             operation: 'agent_dispatch_instruction',
@@ -533,7 +553,7 @@ async function translateAgentReply(reply: string, targetLanguage: string): Promi
   try {
     const ai = new GoogleGenAI({ apiKey: geminiKey });
     const res = await ai.models.generateContent({
-      model: process.env.GEMINI_MODEL || 'gemini-3.6-flash',
+      model: process.env.GEMINI_MODEL || 'gemini-2.5-flash-lite',
       contents: `Oversett følgende melding til språkkode '${targetLanguage}' slik at en utenlandsk håndverker forstår det presist: "${reply}"`
     });
     return res.text?.trim() || reply;

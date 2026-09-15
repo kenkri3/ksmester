@@ -42,7 +42,7 @@ export async function GET() {
     nativeScraper: true,
     geminiConfigured,
     deepseekConfigured,
-    aiModel: geminiConfigured ? 'gemini-3.6-flash' : (deepseekConfigured ? 'deepseek-chat' : 'none'),
+    aiModel: geminiConfigured ? (process.env.GEMINI_MODEL || 'gemini-2.5-flash') : (deepseekConfigured ? 'deepseek-chat' : 'none'),
     timestamp: new Date().toISOString()
   }, { status: isHealthy ? 200 : 503 });
 }
