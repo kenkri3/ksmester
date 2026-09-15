@@ -173,7 +173,7 @@ export default function PublicChangeOrderFlow({
       {/* Brand Header */}
       <div className="max-w-2xl w-full mb-8 flex justify-between items-center">
         <div className="flex items-center gap-3">
-          <Logo size="md" className="text-white" />
+          <Logo size="md" theme="dark" className="text-white" />
           <span className="text-xs font-black uppercase tracking-[0.2em] text-amber-400">
             Endringsavtale
           </span>

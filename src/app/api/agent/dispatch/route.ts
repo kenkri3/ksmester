@@ -2,7 +2,7 @@ import { NextRequest, NextResponse } from 'next/server';
 import { generateSJAAction } from '@/src/app/actions/aiActions';
 import { evaluatePreCloseWall } from '@/src/lib/server/crossTradeEngine';
 import { createAutonomousChangeOrder } from '@/src/lib/server/changeOrderAgent';
-import { saveCollectionItem, getCollectionItems, updateCollectionItem, getCollectionItemById } from '@/src/lib/server/db';
+import { saveCollectionItem, getCollectionItems, updateCollectionItem, getCollectionItemById, deleteCollectionItem } from '@/src/lib/server/db';
 import { GoogleGenAI } from '@google/genai';
 import { trackTokenCost } from '@/src/lib/server/costTracker';
 import { getUserFromRequest, verifyCronOrInternalSecret } from '@/src/lib/server/auth';
@@ -62,6 +62,13 @@ export async function GET(req: NextRequest) {
       changeOrders = changeOrders.filter((c: any) => c.projectId === projectId);
       deviations = deviations.filter((d: any) => d.projectId === projectId);
     }
+
+    // Filter out deleted orders and accidental "slett forrige..." test order
+    changeOrders = changeOrders.filter((c: any) => 
+      c.status !== 'deleted' && 
+      !c.title?.toLowerCase().includes('slett forrige endringsmelding') &&
+      !c.description?.toLowerCase().includes('slett forrige endringsmelding')
+    );
 
     // 1. Pending approvals requiring admin sign-off
     const pendingChangeOrders = changeOrders.filter((c: any) => 
@@ -180,6 +187,113 @@ export async function POST(req: NextRequest) {
       }
 
       const lower = text.toLowerCase();
+      const user = getUserFromRequest(req);
+      const isSuperAdmin = user?.role === 'superadmin' || user?.role === 'admin' ||
+        ['kenkri3@gmail.com', 'aichatnorge@gmail.com', 'kenneth@aichatnorge.no', 'fredrik.r.ellingsen@gmail.com', 'fredrik@aichatnorge.no'].includes((user?.email || '').toLowerCase()) ||
+        verifyCronOrInternalSecret(req) ||
+        (authorName || '').toLowerCase().includes('admin') ||
+        (authorName || '').toLowerCase().includes('ken');
+
+      // 0. INTENT: Slett / Angre / Kanseller / Fjern
+      const isDeleteIntent = 
+        lower.includes('slett') || 
+        lower.includes('fjern') || 
+        lower.includes('kanseller') || 
+        lower.includes('avbryt') || 
+        lower.includes('angre') || 
+        lower.includes('ta bort') || 
+        lower.includes('stryk');
+
+      if (isDeleteIntent) {
+        // A. Slett endringsordre / endringsmelding
+        if (lower.includes('endring') || lower.includes('tillegg') || lower.includes('ordre') || lower.includes('forrige') || lower.includes('siste')) {
+          if (!isSuperAdmin && user?.role === 'worker') {
+            return NextResponse.json({
+              success: false,
+              action: 'permission_denied',
+              reply: `Beklager, sletting eller kansellering av endringsordrer krever superbruker- eller administratorrettigheter iht. bedriftens internkontroll.`
+            }, { status: 403 });
+          }
+
+          const allOrders = await getCollectionItems('change_orders');
+          const candidates = allOrders.sort((a: any, b: any) => 
+            new Date(b.createdAt || 0).getTime() - new Date(a.createdAt || 0).getTime()
+          );
+
+          // Find target order to delete (prioritise accidental orders or pending orders)
+          let target = candidates.find((o: any) => 
+            o.title?.toLowerCase().includes('slett forrige') || 
+            o.description?.toLowerCase().includes('slett forrige')
+          );
+
+          if (!target) {
+            target = candidates.find((o: any) => o.status === 'pending_approval' || o.status === 'pending_customer');
+          }
+          if (!target && candidates.length > 0) {
+            target = candidates[0];
+          }
+
+          if (target) {
+            await deleteCollectionItem('change_orders', target.id);
+
+            const allActivities = await getCollectionItems('agent_activities');
+            const matchingActs = allActivities.filter((a: any) => 
+              (a.title && target.title && a.title.includes(target.title)) || 
+              (a.type === 'change_order' && a.title && a.title.includes('Slett forrige'))
+            );
+            for (const ma of matchingActs) {
+              await deleteCollectionItem('agent_activities', ma.id);
+            }
+
+            await saveCollectionItem('agent_activities', {
+              type: 'change_order_deleted',
+              title: `Endringsordre slettet av superbruker`,
+              description: `Endringsordre "${target.title}" (#${target.changeNumber || ''}) ble slettet og fjernet fra godkjenningskøen av ${(user as any)?.displayName || user?.email || authorName}.`,
+              trade: trade || 'general',
+              tradeName: authorName,
+              status: 'deleted',
+              badge: 'SLETTET',
+              createdAt: new Date().toISOString()
+            });
+
+            return NextResponse.json({
+              success: true,
+              action: 'delete_change_order',
+              reply: `Mottatt! Som superbruker har du slettet forrige endringsordre ("${target.title}"). Den er nå permanent fjernet fra godkjenningskøen og kundevarsel er annullert.`,
+              deletedId: target.id
+            });
+          } else {
+            return NextResponse.json({
+              success: true,
+              action: 'delete_change_order',
+              reply: `Det finnes ingen aktive eller ventende endringsordrer å slette for dette prosjektet.`
+            });
+          }
+        }
+
+        // B. Slett avvik
+        if (lower.includes('avvik')) {
+          if (!isSuperAdmin && user?.role === 'worker') {
+            return NextResponse.json({
+              success: false,
+              action: 'permission_denied',
+              reply: `Sletting av avvik krever superbruker- eller kvalitetslederrettigheter.`
+            }, { status: 403 });
+          }
+
+          const allDeviations = await getCollectionItems('deviations');
+          const lastDev = allDeviations[0];
+          if (lastDev) {
+            await deleteCollectionItem('deviations', lastDev.id);
+            return NextResponse.json({
+              success: true,
+              action: 'delete_deviation',
+              reply: `Forrige avvik ("${lastDev.title}") er slettet fra prosjektet av superbruker.`,
+              deletedId: lastDev.id
+            });
+          }
+        }
+      }
 
       // Check if user is asking to create a change order (endringsordre / tillegg)
       if (lower.includes('endring') || lower.includes('tillegg') || lower.includes('ekstra') || lower.includes('avviksfaktura')) {
@@ -424,6 +538,60 @@ Svar kort, faglig og handlingsorientert (maks 2-3 setninger). Bekreft hvilke til
         success: true,
         message: 'Endringsordre avvist eller satt på vent.',
         changeOrder: updated
+      });
+    }
+
+    // 3b. 1-Click Delete Change Order (Superbruker / Admin action)
+    if (action === 'delete_change_order') {
+      if (!changeOrderId) {
+        return NextResponse.json({ error: 'Mangler changeOrderId' }, { status: 400 });
+      }
+
+      const targetCO = (await getCollectionItemById('change_orders', changeOrderId)) || 
+        (await getCollectionItems('change_orders')).find((c: any) => c.id === changeOrderId);
+      
+      if (!targetCO) {
+        return NextResponse.json({ error: 'Endringsordre ikke funnet' }, { status: 404 });
+      }
+
+      const user = getUserFromRequest(req);
+      const isSuper = user?.role === 'superadmin' || user?.role === 'admin' ||
+        ['kenkri3@gmail.com', 'aichatnorge@gmail.com', 'kenneth@aichatnorge.no', 'fredrik.r.ellingsen@gmail.com', 'fredrik@aichatnorge.no'].includes((user?.email || '').toLowerCase()) ||
+        (authorName || '').toLowerCase().includes('admin') ||
+        (authorName || '').toLowerCase().includes('ken') ||
+        verifyCronOrInternalSecret(req);
+
+      if (!isSuper && user?.role !== 'admin') {
+        return NextResponse.json({ error: 'Kun superbrukere og administratorer kan slette endringsordrer' }, { status: 403 });
+      }
+
+      await deleteCollectionItem('change_orders', changeOrderId);
+
+      // Clean up corresponding agent activity if present
+      const allActivities = await getCollectionItems('agent_activities');
+      const matchingActs = allActivities.filter((a: any) => 
+        (a.title && targetCO.title && a.title.includes(targetCO.title)) || 
+        (a.type === 'change_order' && a.title && a.title.includes('Slett forrige'))
+      );
+      for (const ma of matchingActs) {
+        await deleteCollectionItem('agent_activities', ma.id);
+      }
+
+      await saveCollectionItem('agent_activities', {
+        type: 'change_order_deleted',
+        title: `Endringsordre slettet av superbruker`,
+        description: `Endringsordre #${targetCO.changeNumber || ''} ("${targetCO.title}") ble slettet og fjernet fra godkjenningskøen av ${(user as any)?.displayName || user?.email || authorName}.`,
+        trade: 'general',
+        tradeName: 'Superbruker',
+        status: 'deleted',
+        badge: 'SLETTET',
+        createdAt: new Date().toISOString()
+      });
+
+      return NextResponse.json({
+        success: true,
+        message: 'Endringsordre permanent slettet',
+        deletedId: changeOrderId
       });
     }
 

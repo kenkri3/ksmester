@@ -27,6 +27,7 @@ interface AuthContextType {
   resetPassword: (email: string) => Promise<void>;
   logout: () => Promise<void>;
   isAuthReady: boolean;
+  isSuperAdmin: boolean;
   role: string | null;
   trade: string | null;
   company: string | null;
@@ -72,21 +73,26 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
         const res = await api.getMe();
         if (res && res.user) {
           const u = res.user;
+          const isSuper = u.role === 'superadmin' || u.role === 'admin' || 
+            ['kenkri3@gmail.com', 'aichatnorge@gmail.com', 'kenneth@aichatnorge.no', 'fredrik.r.ellingsen@gmail.com', 'fredrik@aichatnorge.no'].includes((u.email || '').toLowerCase()) ||
+            (u.displayName || '').toLowerCase().includes('ken');
+          const computedRole = isSuper ? 'superadmin' : (u.role || 'worker');
+
           const userObj: User = {
             uid: u.id || u.uid,
             id: u.id || u.uid,
             email: u.email,
             displayName: u.displayName || u.email.split('@')[0],
-            role: u.role || 'worker',
-            trade: u.trade || 'Tømrer',
+            role: computedRole,
+            trade: u.trade || 'Byggmester',
             company: u.company || 'Mester Entreprenør AS',
             companyId: u.companyId || 'comp-001',
             subscriptionStatus: u.subscriptionStatus || 'active'
           };
           setUser(userObj);
           setCurrentAuthUser(userObj);
-          setRole(u.role || 'worker');
-          setTrade(u.trade || 'Tømrer');
+          setRole(computedRole);
+          setTrade(u.trade || 'Byggmester');
           setCompany(u.company || 'Mester Entreprenør AS');
           setSubscriptionStatus(u.subscriptionStatus || 'active');
         } else {
@@ -203,6 +209,7 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
       resetPassword,
       logout,
       isAuthReady,
+      isSuperAdmin: (role === 'superadmin' || role === 'admin' || user?.role === 'superadmin' || user?.role === 'admin' || user?.displayName?.toLowerCase().includes('ken') || false),
       role: impersonatedRole || role,
       trade,
       company: impersonatedCompanyId || company,

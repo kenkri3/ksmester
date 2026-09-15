@@ -41,13 +41,15 @@ import {
   RefreshCw,
   Layers,
   Check,
-  ChevronRight
+  ChevronRight,
+  ArrowLeft
 } from 'lucide-react';
 import { generateAiContent } from '../services/aiClient';
 import { db, collection, onSnapshot, query, where, doc, updateDoc, deleteDoc, addDoc, serverTimestamp, handleFirestoreError, OperationType, orderBy } from '../services/firebase';
 import { useAuth } from '../hooks/useAuth';
 import { cn } from '../lib/utils';
 import { toast } from 'sonner';
+import ProjectDetails from './ProjectDetails';
 
 interface Company {
   id: string;
@@ -60,7 +62,8 @@ interface Company {
 }
 
 export default function SuperAdmin() {
-  const { user, startImpersonation } = useAuth();
+  const { user, startImpersonation, stopImpersonation, impersonatedCompanyId } = useAuth();
+  const [selectedProject, setSelectedProject] = useState<any | null>(null);
   const isSuperAdmin = user?.role === 'admin' || user?.email === 'kenkri3@gmail.com' || user?.email === 'admin@VikingMester.no' || user?.email === 'aichatnorge@gmail.com' || user?.email === 'kenneth@aichatnorge.no';
 
   const formatDate = (date: any) => {
@@ -575,8 +578,51 @@ export default function SuperAdmin() {
     );
   }
 
+  if (selectedProject) {
+    return (
+      <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 py-8">
+        <div className="mb-6 flex items-center justify-between">
+          <button
+            onClick={() => setSelectedProject(null)}
+            className="flex items-center gap-2 px-4 py-2.5 bg-white border border-neutral-200 text-neutral-800 rounded-2xl text-xs font-bold hover:bg-neutral-50 transition-all shadow-sm cursor-pointer"
+          >
+            <ArrowLeft size={16} />
+            <span>← Tilbake til SuperAdmin Dashboard</span>
+          </button>
+          <div className="flex items-center gap-2 text-xs font-bold text-neutral-500">
+            <span className="w-2 h-2 rounded-full bg-purple-500 inline-block" />
+            <span>SuperAdmin Prosjekttilgang: <strong className="text-neutral-900">{selectedProject.name}</strong></span>
+          </div>
+        </div>
+        <ProjectDetails
+          project={selectedProject}
+          onBack={() => setSelectedProject(null)}
+        />
+      </div>
+    );
+  }
+
   return (
     <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 py-12">
+      {impersonatedCompanyId && (
+        <div className="mb-8 p-4 bg-red-50 border border-red-200 rounded-2xl flex flex-col sm:flex-row items-start sm:items-center justify-between gap-4">
+          <div className="flex items-center gap-3">
+            <AlertTriangle className="text-red-600 shrink-0" size={20} />
+            <div className="text-xs text-red-900">
+              Du er i visningsmodus for en annen kunde (<strong>ID: {impersonatedCompanyId}</strong>). Klikk avslutt for å returnere til din vanlige admin-tilgang.
+            </div>
+          </div>
+          <button
+            onClick={() => {
+              stopImpersonation();
+              toast.success('Avsluttet visningsmodus.');
+            }}
+            className="px-4 py-2 bg-red-600 hover:bg-red-700 text-white rounded-xl text-xs font-bold transition-all cursor-pointer shrink-0 shadow-sm"
+          >
+            Avslutt visningsmodus
+          </button>
+        </div>
+      )}
       <div className="flex flex-col md:flex-row md:items-center justify-between gap-4 mb-12">
         <div>
           <h1 className="text-4xl font-black tracking-tight text-neutral-900 mb-2">SuperAdmin Dashboard</h1>
@@ -912,7 +958,15 @@ export default function SuperAdmin() {
                             <div className="font-bold text-sm text-neutral-900">{co.title || (co.changeNumber ? `Endringsordre #${co.changeNumber}` : 'Endringsordre')}</div>
                             <div className="text-xs text-neutral-500 line-clamp-1">{co.description}</div>
                           </td>
-                          <td className="px-6 py-4 text-xs font-medium text-neutral-700">
+                          <td 
+                            onClick={() => {
+                              const proj = allProjects.find(p => p.id === co.projectId);
+                              if (proj) setSelectedProject(proj);
+                              else toast.info(`Prosjekt: ${co.projectTitle || co.projectName || co.projectId}`);
+                            }}
+                            className="px-6 py-4 text-xs font-medium text-neutral-700 hover:text-purple-600 cursor-pointer"
+                            title="Klikk for å åpne prosjektet"
+                          >
                             {co.projectTitle || co.projectName || co.projectId || 'Ikke angitt'}
                           </td>
                           <td className="px-6 py-4">
@@ -1019,7 +1073,13 @@ export default function SuperAdmin() {
                         {proj.status === 'completed' ? 'Fullført' : proj.status === 'paused' ? 'På vent' : 'Aktiv'}
                       </span>
                     </div>
-                    <h3 className="text-lg font-bold text-neutral-900 mb-1 line-clamp-1">{proj.name || 'Navnløst prosjekt'}</h3>
+                    <h3 
+                      onClick={() => setSelectedProject(proj)}
+                      className="text-lg font-bold text-neutral-900 mb-1 line-clamp-1 cursor-pointer hover:text-purple-600 transition-colors"
+                      title="Klikk for å gå direkte inn på prosjektet"
+                    >
+                      {proj.name || 'Navnløst prosjekt'}
+                    </h3>
                     <p className="text-xs text-neutral-500 mb-4">{proj.client || 'Ingen oppdragsgiver angitt'}</p>
 
                     <div className="grid grid-cols-3 gap-2 py-3 border-y border-neutral-100 mb-4 text-center">
@@ -1041,17 +1101,11 @@ export default function SuperAdmin() {
                   <div className="flex items-center justify-between text-xs text-neutral-400 pt-3 border-t border-neutral-100">
                     <span>Budsjett: <strong className="text-neutral-700">{proj.budget ? Number(proj.budget).toLocaleString('no-NO') + ' kr' : 'Ikke satt'}</strong></span>
                     <button
-                      onClick={() => {
-                        if (proj.companyId) {
-                          startImpersonation(proj.companyId, 'admin');
-                        } else {
-                          toast.info(`Prosjekt: ${proj.name}`);
-                        }
-                      }}
-                      className="px-3 py-1.5 bg-neutral-900 hover:bg-neutral-800 text-white rounded-xl text-xs font-bold transition-all flex items-center gap-1 cursor-pointer"
-                      title="Gå til bedriftens prosjektpanel"
+                      onClick={() => setSelectedProject(proj)}
+                      className="px-3.5 py-1.5 bg-neutral-900 hover:bg-neutral-800 text-white rounded-xl text-xs font-bold transition-all flex items-center gap-1.5 cursor-pointer shadow-sm"
+                      title="Gå direkte inn på prosjektet"
                     >
-                      <span>Åpne prosjekt</span>
+                      <span>Gå inn på prosjekt</span>
                       <ChevronRight size={14} />
                     </button>
                   </div>

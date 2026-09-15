@@ -51,7 +51,8 @@ import {
   Layers,
   ThumbsUp,
   ThumbsDown,
-  CloudSun
+  CloudSun,
+  Trash2
 } from 'lucide-react';
 import { cn } from '@/src/lib/utils';
 import { Project, Deviation, UserProfile } from '../types';
@@ -95,7 +96,7 @@ export default function Dashboard({
   onOpenPortal 
 }: DashboardProps) {
   const { t } = useTranslation();
-  const { user } = useAuth();
+  const { user, isSuperAdmin } = useAuth();
   const { projects, deviations, stats, loading: dataLoading, dataUnavailable } = useDashboardData();
 
   // Primary active tab
@@ -589,6 +590,36 @@ export default function Dashboard({
     }
   };
 
+  // 1-Click Delete Change Order (Superbruker / Admin)
+  const handleDeleteChangeOrder = async (changeOrderId: string) => {
+    try {
+      const res = await fetch('/api/agent/dispatch', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json', ...(typeof window !== 'undefined' && localStorage.getItem('token') ? { 'Authorization': `Bearer ${localStorage.getItem('token')}` } : {}) },
+        body: JSON.stringify({
+          action: 'delete_change_order',
+          changeOrderId,
+          authorName: user?.displayName || 'Ken (Admin)'
+        })
+      });
+
+      if (res.ok) {
+        toast.success('Endringsordre permanent slettet!');
+        setPendingApprovals(prev => prev.filter(item => item.id !== changeOrderId));
+        setAgentMetrics((prev: any) => ({
+          ...prev,
+          pendingApprovalsCount: Math.max(0, prev.pendingApprovalsCount - 1)
+        }));
+        fetchAgentState();
+      } else {
+        const data = await res.json();
+        toast.error(data.error || 'Kunne ikke slette endringsordren');
+      }
+    } catch (err: any) {
+      toast.error('Feil ved sletting: ' + err.message);
+    }
+  };
+
   // Voice recording mock / speech recognition
   const toggleMic = () => {
     if (isListeningMic) {
@@ -768,6 +799,11 @@ export default function Dashboard({
                       <h2 className="text-xl sm:text-2xl font-black tracking-tight text-white">
                         Hei, {user?.displayName ? user.displayName.split(" ")[0] : "Kenneth"}! 👋
                       </h2>
+                      {isSuperAdmin && (
+                        <span className="inline-flex items-center gap-1.5 px-2.5 py-0.5 rounded-full text-[11px] font-black uppercase tracking-wider bg-gradient-to-r from-amber-500/30 to-amber-600/30 text-amber-300 border border-amber-400/50 shadow-xs">
+                          👑 Superbruker (Full tilgang)
+                        </span>
+                      )}
                       <span className="inline-flex items-center gap-1.5 px-2.5 py-0.5 rounded-full text-[11px] font-bold bg-emerald-500/20 text-emerald-400 border border-emerald-500/30">
                         <span className="w-2 h-2 rounded-full bg-emerald-400 animate-pulse" />
                         Aktiv bedrift
@@ -1311,15 +1347,27 @@ export default function Dashboard({
                               </span>
 
                               <div className="flex items-center gap-2">
+                                {isSuperAdmin && (
+                                  <button 
+                                    type="button"
+                                    onClick={() => handleDeleteChangeOrder(item.id)}
+                                    className="p-2.5 bg-rose-50 hover:bg-rose-100 text-rose-600 hover:text-rose-800 border border-rose-200 rounded-xl text-xs font-bold transition-all cursor-pointer"
+                                    title="Slett endringsordre permanent (Superbruker)"
+                                  >
+                                    <Trash2 size={15} />
+                                  </button>
+                                )}
                                 <button 
+                                  type="button"
                                   onClick={() => handleRejectChangeOrder(item.id)}
-                                  className="px-3.5 py-2 bg-slate-100 hover:bg-slate-200 text-slate-700 rounded-xl text-xs font-bold transition-all"
+                                  className="px-3.5 py-2 bg-slate-100 hover:bg-slate-200 text-slate-700 rounded-xl text-xs font-bold transition-all cursor-pointer"
                                 >
                                   Avvis / Utsett
                                 </button>
                                 <button 
+                                  type="button"
                                   onClick={() => handleApproveChangeOrder(item.id)}
-                                  className="flex items-center gap-1.5 px-4 py-2 bg-gradient-to-r from-electric-500 to-electric-400 text-white rounded-xl text-xs font-black hover:opacity-95 transition-all shadow-purple-cta"
+                                  className="flex items-center gap-1.5 px-4 py-2 bg-gradient-to-r from-electric-500 to-electric-400 text-white rounded-xl text-xs font-black hover:opacity-95 transition-all shadow-purple-cta cursor-pointer"
                                 >
                                   <Check size={14} />
                                   <span>Godkjenn & Send Kunde</span>

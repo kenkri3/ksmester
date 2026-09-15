@@ -461,11 +461,11 @@ function AppContent() {
 
       {/* Impersonation Banner */}
       {impersonatedCompanyId && (
-        <div className="fixed top-0 left-0 right-0 z-[60] bg-red-600 text-navy-900 text-[10px] font-bold py-1 text-center uppercase tracking-widest flex items-center justify-center gap-4">
+        <div className="fixed top-0 left-0 right-0 z-[60] bg-red-600 text-white text-[10px] font-bold py-1 text-center uppercase tracking-widest flex items-center justify-center gap-4 shadow-sm">
           <span>DU VISER NÅ SYSTEMET SOM EN ANNEN KUNDE (ID: {impersonatedCompanyId})</span>
           <button 
-            onClick={() => { stopImpersonation(); setView('super-admin'); }}
-            className="px-2 py-0.5 bg-white text-red-600 rounded hover:bg-slate-50 transition-colors"
+            onClick={() => stopImpersonation()}
+            className="px-2 py-0.5 bg-white text-red-600 rounded hover:bg-slate-100 transition-colors font-black cursor-pointer"
           >
             AVSLUTT
           </button>

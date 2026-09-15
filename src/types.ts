@@ -28,11 +28,13 @@ export interface Invitation {
   token: string;
 }
 
+export type UserRole = 'superadmin' | 'admin' | 'manager' | 'worker' | 'external_worker' | 'external_manager';
+
 export interface UserProfile {
   id: string;
   name: string;
   email: string;
-  role: 'admin' | 'manager' | 'worker' | 'external_worker' | 'external_manager';
+  role: UserRole;
   trade?: Trade;
   companyId: string;
   companyName: string;
