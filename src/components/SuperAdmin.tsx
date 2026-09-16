@@ -62,9 +62,9 @@ interface Company {
 }
 
 export default function SuperAdmin() {
-  const { user, startImpersonation, stopImpersonation, impersonatedCompanyId } = useAuth();
+  const { user, startImpersonation, stopImpersonation, impersonatedCompanyId, isSuperAdmin: authIsSuperAdmin } = useAuth();
   const [selectedProject, setSelectedProject] = useState<any | null>(null);
-  const isSuperAdmin = user?.role === 'admin' || user?.email === 'kenkri3@gmail.com' || user?.email === 'admin@VikingMester.no' || user?.email === 'aichatnorge@gmail.com' || user?.email === 'kenneth@aichatnorge.no';
+  const isSuperAdmin = authIsSuperAdmin || user?.role === 'admin' || user?.role === 'superadmin' || user?.email === 'kenkri3@gmail.com' || user?.email?.toLowerCase() === 'admin@vikingmester.no' || user?.email === 'aichatnorge@gmail.com' || user?.email === 'kenneth@aichatnorge.no' || user?.email === 'post@vikingent.no';
 
   const formatDate = (date: any) => {
     if (!date) return '-';
@@ -697,16 +697,22 @@ export default function SuperAdmin() {
       {/* Stats */}
       <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-6 mb-12">
         {[
-          { label: 'Agenthandlinger i dag', value: agentMetrics.todayActionsCount || agentActivities.length, icon: <BrainCircuit className="text-purple-600" />, bg: 'bg-purple-50' },
-          { label: 'Aktive Prosjekter', value: allProjects.filter(p => p.status !== 'completed').length || allProjects.length, icon: <Layers className="text-blue-600" />, bg: 'bg-blue-50' },
-          { label: 'Åpne Avvik & HMS', value: allDeviations.filter(d => d.status !== 'closed' && d.status !== 'resolved').length, icon: <AlertTriangle className="text-amber-600" />, bg: 'bg-amber-50' },
-          { label: 'Kunder / Bedrifter', value: companies.length, icon: <Building2 className="text-emerald-600" />, bg: 'bg-emerald-50' },
+          { tab: 'agent', label: 'Agenthandlinger i dag', value: agentMetrics.todayActionsCount || agentActivities.length, icon: <BrainCircuit className="text-purple-600" />, bg: 'bg-purple-50' },
+          { tab: 'projects', label: 'Aktive Prosjekter', value: allProjects.filter(p => p.status !== 'completed').length || allProjects.length, icon: <Layers className="text-blue-600" />, bg: 'bg-blue-50' },
+          { tab: 'deviations', label: 'Åpne Avvik & HMS', value: allDeviations.filter(d => d.status !== 'closed' && d.status !== 'resolved').length, icon: <AlertTriangle className="text-amber-600" />, bg: 'bg-amber-50' },
+          { tab: 'companies', label: 'Kunder / Bedrifter', value: companies.length, icon: <Building2 className="text-emerald-600" />, bg: 'bg-emerald-50' },
         ].map((stat, i) => (
-          <div key={i} className={cn("p-6 rounded-[2rem] border border-neutral-200 shadow-sm", stat.bg)}>
+          <div 
+            key={i} 
+            onClick={() => setActiveTab(stat.tab as any)}
+            className={cn("p-6 rounded-[2rem] border border-neutral-200 shadow-sm cursor-pointer hover:scale-[1.02] hover:shadow-md transition-all", stat.bg)}
+            title={`Klikk for å åpne ${stat.label}`}
+          >
             <div className="flex items-center justify-between mb-4">
               <div className="w-10 h-10 bg-white rounded-xl flex items-center justify-center shadow-sm">
                 {stat.icon}
               </div>
+              <span className="text-[10px] font-bold text-neutral-400 uppercase tracking-wider bg-white/70 px-2 py-0.5 rounded-md">Se alle</span>
             </div>
             <div className="text-3xl font-black text-neutral-900">{stat.value}</div>
             <div className="text-xs font-bold text-neutral-500 uppercase tracking-widest mt-1">{stat.label}</div>
@@ -1411,11 +1417,16 @@ export default function SuperAdmin() {
                             <Trash2 size={18} />
                           </button>
                           <button 
-                            onClick={() => startImpersonation(company.id, 'admin')}
-                            className="p-2 text-neutral-400 hover:text-blue-600 hover:bg-blue-50 rounded-xl transition-all"
-                            title="Impersonate (Logg inn som)"
+                            onClick={() => {
+                              startImpersonation(company.id, 'admin');
+                              toast.success(`Logget inn som ${company.name || company.id}. Viser nå kundens system.`);
+                              window.dispatchEvent(new CustomEvent('navigate_view', { detail: { view: 'dashboard' } }));
+                            }}
+                            className="flex items-center gap-1.5 px-3 py-1.5 bg-blue-50 hover:bg-blue-100 text-blue-700 rounded-xl text-xs font-bold border border-blue-200 transition-all cursor-pointer shadow-xs"
+                            title={`Logg inn som ${company.name || company.id} og se deres system`}
                           >
-                            <ExternalLink size={18} />
+                            <ExternalLink size={14} />
+                            <span>Impersonate</span>
                           </button>
                         </div>
                       </td>
@@ -1780,8 +1791,13 @@ export default function SuperAdmin() {
                       <td className="py-4">
                         <div className="flex items-center gap-2">
                           <button 
-                            onClick={() => startImpersonation(selectedCompany.id, u.role)}
-                            className="flex items-center gap-1 text-[10px] font-black uppercase tracking-widest text-blue-600 hover:text-blue-700"
+                            onClick={() => {
+                              startImpersonation(selectedCompany.id, u.role);
+                              toast.success(`Logget inn som ${u.name || u.email || 'bruker'} (${u.role}) hos ${selectedCompany.name}.`);
+                              setIsUserModalOpen(false);
+                              window.dispatchEvent(new CustomEvent('navigate_view', { detail: { view: 'dashboard' } }));
+                            }}
+                            className="flex items-center gap-1 text-[10px] font-black uppercase tracking-widest text-blue-600 hover:text-blue-700 hover:underline cursor-pointer"
                           >
                             <ExternalLink size={12} />
                             Logg inn som

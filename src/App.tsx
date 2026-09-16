@@ -121,7 +121,7 @@ function AppContent() {
   const [isIntegrationModalOpen, setIsIntegrationModalOpen] = useState(false);
   const [mobileScreen, setMobileScreen] = useState<'home' | 'camera' | 'voice' | 'report' | 'imageResult' | 'translator' | 'laerling' | 'dailyLog' | 'activity' | 'contacts'>('home');
   const { t, i18n } = useTranslation();
-  const { user, logout, isAuthReady, subscriptionStatus, trialDaysLeft, impersonatedCompanyId, stopImpersonation } = useAuth();
+  const { user, logout, isAuthReady, subscriptionStatus, trialDaysLeft, impersonatedCompanyId, stopImpersonation, isSuperAdmin } = useAuth();
 
   useEffect(() => {
     const handleNav = (e: any) => {
@@ -468,13 +468,16 @@ function AppContent() {
 
       {/* Impersonation Banner */}
       {impersonatedCompanyId && (
-        <div className="fixed top-0 left-0 right-0 z-[60] bg-red-600 text-white text-[10px] font-bold py-1 text-center uppercase tracking-widest flex items-center justify-center gap-4 shadow-sm">
-          <span>DU VISER NÅ SYSTEMET SOM EN ANNEN KUNDE (ID: {impersonatedCompanyId})</span>
+        <div className="fixed top-0 left-0 right-0 z-[60] bg-red-600 text-white text-[11px] font-bold py-1.5 px-4 text-center uppercase tracking-wider flex items-center justify-center gap-4 shadow-md">
+          <span>DU VISER NÅ SYSTEMET SOM KUNDE: <strong className="underline">{impersonatedCompanyId}</strong></span>
           <button 
-            onClick={() => stopImpersonation()}
-            className="px-2 py-0.5 bg-white text-red-600 rounded hover:bg-slate-100 transition-colors font-black cursor-pointer"
+            onClick={() => {
+              stopImpersonation();
+              setView('super-admin');
+            }}
+            className="px-3 py-0.5 bg-white text-red-700 rounded-lg hover:bg-slate-100 transition-colors font-black cursor-pointer shadow-xs"
           >
-            AVSLUTT
+            AVSLUTT &amp; TILBAKE TIL SUPERADMIN
           </button>
         </div>
       )}
@@ -779,7 +782,7 @@ function AppContent() {
                 </button>
 
 
-                {user.role === 'admin' && (
+                {(isSuperAdmin || user?.role === 'admin' || user?.role === 'superadmin') && (
                   <button 
                     onClick={() => setView('super-admin')}
                     className={cn(
@@ -1240,7 +1243,7 @@ function AppContent() {
                         <span>Innstillinger</span>
                       </button>
 
-                      {(user?.role === 'admin' || user?.email === 'kenkri3@gmail.com' || user?.email === 'aichatnorge@gmail.com' || user?.email === 'kenneth@aichatnorge.no' || user?.email === 'post@vikingent.no') && (
+                      {(isSuperAdmin || user?.role === 'admin' || user?.role === 'superadmin' || user?.email === 'kenkri3@gmail.com' || user?.email === 'aichatnorge@gmail.com' || user?.email === 'kenneth@aichatnorge.no' || user?.email?.toLowerCase() === 'admin@vikingmester.no' || user?.email === 'post@vikingent.no') && (
                         <button 
                           onClick={() => { setView('super-admin'); setIsMenuOpen(false); }} 
                           className={cn("col-span-2 flex items-center justify-center gap-2 p-2.5 rounded-xl text-xs font-bold cursor-pointer transition-all", view === 'super-admin' ? "bg-rose-50 text-rose-600 border border-rose-200" : "bg-neutral-900 text-white hover:bg-neutral-800")}
@@ -1339,7 +1342,7 @@ function AppContent() {
               )}
               {view === 'settings' && <SettingsPage />}
               {view === 'super-admin' && (
-                (user?.role === 'admin' || user?.email === 'kenkri3@gmail.com' || user?.email === 'aichatnorge@gmail.com' || user?.email === 'kenneth@aichatnorge.no') ? (
+                (isSuperAdmin || user?.role === 'admin' || user?.role === 'superadmin' || user?.email === 'kenkri3@gmail.com' || user?.email === 'aichatnorge@gmail.com' || user?.email === 'kenneth@aichatnorge.no' || user?.email?.toLowerCase() === 'admin@vikingmester.no' || user?.email === 'post@vikingent.no') ? (
                   <SuperAdmin />
                 ) : (
                   <div className="max-w-md mx-auto my-20 p-8 bg-white rounded-3xl shadow-xl border border-red-100 text-center">
