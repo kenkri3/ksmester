@@ -25,7 +25,7 @@ import { Project, OfferItem, ProjectTask } from '../types';
 import { db, collection, addDoc, serverTimestamp, getDocs } from '../services/firebase';
 import { changeOrderService } from '../services/changeOrderService';
 import { useAuth } from '../hooks/useAuth';
-import { cn } from '../lib/utils';
+import { cn, sanitizePlainText } from '../lib/utils';
 import { toast } from 'sonner';
 import { getStoredOmnichannelSettings, OmnichannelSettings } from './OmnichannelModal';
 
@@ -460,8 +460,8 @@ function InChatOfferForm({
   const [projectId, setProjectId] = useState<string>(initialData?.projectId || selectedProject?.id || '');
   const [clientName, setClientName] = useState<string>(initialData?.clientName || selectedProject?.clientName || '');
   const [clientEmail, setClientEmail] = useState<string>(initialData?.clientEmail || selectedProject?.clientEmail || '');
-  const [title, setTitle] = useState<string>(initialData?.title || 'Pristilbud: ');
-  const [description, setDescription] = useState<string>(initialData?.description || '');
+  const [title, setTitle] = useState<string>(() => sanitizePlainText(initialData?.title || 'Pristilbud: '));
+  const [description, setDescription] = useState<string>(() => sanitizePlainText(initialData?.description || ''));
   const [items, setItems] = useState<OfferItem[]>(() => {
     if (initialData?.items && Array.isArray(initialData.items) && initialData.items.length > 0) {
       return initialData.items.map((it: any) => ({
@@ -479,8 +479,8 @@ function InChatOfferForm({
   });
 
   const handleApplyAutofill = (data: any) => {
-    if (data.title) setTitle(data.title);
-    if (data.description) setDescription(data.description);
+    if (data.title) setTitle(sanitizePlainText(data.title));
+    if (data.description) setDescription(sanitizePlainText(data.description));
     if (data.items && Array.isArray(data.items) && data.items.length > 0) {
       setItems(data.items.map((it: any) => ({
         description: it.description || 'Fagarbeid',
@@ -809,15 +809,15 @@ function InChatChangeOrderForm({
   onSuccess: (msg: string, actionData?: any) => void;
 }) {
   const [projectId, setProjectId] = useState<string>(initialData?.projectId || selectedProject?.id || projects[0]?.id || '');
-  const [title, setTitle] = useState<string>(initialData?.title || 'Endring: ');
-  const [description, setDescription] = useState<string>(initialData?.description || '');
+  const [title, setTitle] = useState<string>(() => sanitizePlainText(initialData?.title || 'Endring: '));
+  const [description, setDescription] = useState<string>(() => sanitizePlainText(initialData?.description || ''));
   const [cause, setCause] = useState<string>(initialData?.cause || 'client_request');
   const [amountExVat, setAmountExVat] = useState<number>(Number(initialData?.amountExVat) || 12500);
   const [impactDays, setImpactDays] = useState<number>(Number(initialData?.impactDays) || 3);
 
   const handleApplyAutofill = (data: any) => {
-    if (data.title) setTitle(data.title);
-    if (data.description) setDescription(data.description);
+    if (data.title) setTitle(sanitizePlainText(data.title));
+    if (data.description) setDescription(sanitizePlainText(data.description));
     if (data.cause) setCause(data.cause);
     if (data.amountExVat !== undefined) setAmountExVat(Number(data.amountExVat));
     if (data.impactDays !== undefined) setImpactDays(Number(data.impactDays));
@@ -1190,18 +1190,18 @@ function InChatDeviationForm({
   onSuccess: (msg: string, actionData?: any) => void;
 }) {
   const [projectId, setProjectId] = useState<string>(initialData?.projectId || selectedProject?.id || projects[0]?.id || '');
-  const [title, setTitle] = useState<string>(initialData?.title || '');
+  const [title, setTitle] = useState<string>(() => sanitizePlainText(initialData?.title || ''));
   const [category, setCategory] = useState<string>(initialData?.category || 'quality');
   const [severity, setSeverity] = useState<string>(initialData?.severity || 'medium');
-  const [description, setDescription] = useState<string>(initialData?.description || '');
-  const [actionTaken, setActionTaken] = useState<string>(initialData?.actionTaken || '');
+  const [description, setDescription] = useState<string>(() => sanitizePlainText(initialData?.description || ''));
+  const [actionTaken, setActionTaken] = useState<string>(() => sanitizePlainText(initialData?.actionTaken || ''));
 
   const handleApplyAutofill = (data: any) => {
-    if (data.title) setTitle(data.title);
-    if (data.description) setDescription(data.description);
+    if (data.title) setTitle(sanitizePlainText(data.title));
+    if (data.description) setDescription(sanitizePlainText(data.description));
     if (data.category) setCategory(data.category);
     if (data.severity) setSeverity(data.severity);
-    if (data.actionTaken) setActionTaken(data.actionTaken);
+    if (data.actionTaken) setActionTaken(sanitizePlainText(data.actionTaken));
     if (data.projectId && !projectId) setProjectId(data.projectId);
     toast.success('Avvik autofylt!');
   };
