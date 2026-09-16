@@ -27,8 +27,10 @@ import {
   User,
   Zap,
   CheckCircle2,
-  AlertCircle
+  AlertCircle,
+  Layers
 } from 'lucide-react';
+import InChatWorkspace, { InChatFormType } from './InChatWorkspace';
 import { cn } from '../lib/utils';
 import { toast } from 'sonner';
 
@@ -89,6 +91,7 @@ export default function VikingChatbot({
   const [leadForm, setLeadForm] = useState({ name: '', company: '', phone: '', email: '' });
   const [isSubmittingLead, setIsSubmittingLead] = useState(false);
   const [hasUnread, setHasUnread] = useState(false);
+  const [activeFormView, setActiveFormView] = useState<{ type: InChatFormType; data?: any } | null>(null);
 
   const messagesEndRef = useRef<HTMLDivElement>(null);
   const speechRecognitionRef = useRef<any>(null);
@@ -309,34 +312,74 @@ export default function VikingChatbot({
     setTimeout(() => setCopiedId(null), 2000);
   };
 
-  // Handle action buttons
+  // Handle action buttons (in-chat forms + navigation)
   const handleActionClick = (action: any) => {
+    if (action.type === 'open_offer_modal') {
+      setActiveFormView({ type: 'offer', data: action.data });
+      return;
+    }
     if (action.type === 'open_change_order_modal') {
-      if (onOpenChangeOrderModal) onOpenChangeOrderModal(action.data);
-      else window.dispatchEvent(new CustomEvent('trigger_dashboard_action', { detail: { actionId: 'change_order', data: action.data } }));
-    } else if (action.type === 'open_sja_modal') {
-      if (onOpenSJAModal) onOpenSJAModal(action.data);
-      else window.dispatchEvent(new CustomEvent('trigger_dashboard_action', { detail: { actionId: 'sja', data: action.data } }));
-    } else if (action.type === 'open_offer_modal') {
-      if (onOpenOfferModal) onOpenOfferModal(action.data);
-      else window.dispatchEvent(new CustomEvent('trigger_dashboard_action', { detail: { actionId: 'offers', data: action.data } }));
-    } else if (action.type === 'open_ai_vision') {
+      setActiveFormView({ type: 'change_order', data: action.data });
+      return;
+    }
+    if (action.type === 'open_sja_modal') {
+      setActiveFormView({ type: 'sja', data: action.data });
+      return;
+    }
+    if (action.type === 'open_deviation_modal') {
+      setActiveFormView({ type: 'deviation', data: action.data });
+      return;
+    }
+    if (action.type === 'open_time_modal') {
+      setActiveFormView({ type: 'time', data: action.data });
+      return;
+    }
+    if (action.type === 'open_external_link' && action.data?.url) {
+      window.open(action.data.url, '_blank');
+      return;
+    }
+    if (action.type === 'open_ai_vision') {
       if (onOpenAIVision) onOpenAIVision();
       else window.dispatchEvent(new CustomEvent('trigger_dashboard_action', { detail: { actionId: 'take_photo' } }));
-    } else if (action.type === 'open_pricing') {
+      return;
+    }
+    if (action.type === 'open_pricing') {
       if (onOpenPricing) onOpenPricing();
-      else {
-        window.location.hash = 'priser';
-      }
-    } else if (action.type === 'request_trial') {
+      else window.location.hash = 'priser';
+      return;
+    }
+    if (action.type === 'request_trial') {
       if (onOpenRegister) onOpenRegister();
       else setShowLeadDrawer(true);
-    } else if (action.type === 'select_project') {
+      return;
+    }
+    if (action.type === 'select_project') {
       handleSendMessage(`Gjelder prosjekt ${action.data.projectName}`, {
         projectId: action.data.projectId,
         projectName: action.data.projectName
       });
+      return;
     }
+  };
+
+  const handleFormSuccess = (msgContent: string, actionData?: any) => {
+    const confirmMessage: ChatMessage = {
+      id: `sys-${Date.now()}`,
+      role: 'assistant',
+      content: msgContent,
+      timestamp: new Date().toLocaleTimeString('no-NO', { hour: '2-digit', minute: '2-digit' }),
+      suggestedActions: actionData?.offerLink ? [
+        {
+          id: 'preview_offer',
+          type: 'open_external_link',
+          label: '👁️ Forhåndsvis tilbud',
+          data: { url: actionData.offerLink }
+        }
+      ] : undefined
+    };
+
+    setMessages(prev => [...prev, confirmMessage]);
+    setActiveFormView(null);
   };
 
   // Speech recognition (Web Speech API)
@@ -576,10 +619,12 @@ export default function VikingChatbot({
             transition={{ duration: 0.25 }}
             className={cn(
               "fixed z-50 flex flex-col bg-white shadow-2xl border border-neutral-200 overflow-hidden transition-all duration-300",
-              // Fullskjerm på PC (dekker hele skjermen / siden) vs standard flytende hjørne
+              // Fullskjerm på PC (dekker hele skjermen / siden) vs standard flytende hjørne (utvides automatisk ved aktivt skjema)
               isFullscreen
                 ? "inset-0 sm:inset-3 md:inset-5 sm:rounded-3xl sm:max-w-6xl sm:mx-auto sm:my-auto sm:h-[94vh]"
-                : "inset-0 h-full sm:h-[650px] sm:inset-auto sm:bottom-6 sm:right-6 sm:w-[440px] sm:max-h-[88vh] sm:rounded-3xl",
+                : activeFormView
+                  ? "inset-0 h-full sm:inset-auto sm:bottom-4 sm:right-4 md:bottom-6 md:right-6 sm:w-[680px] md:w-[760px] sm:h-[86vh] sm:max-h-[820px] sm:rounded-3xl"
+                  : "inset-0 h-full sm:h-[650px] sm:inset-auto sm:bottom-6 sm:right-6 sm:w-[440px] sm:max-h-[88vh] sm:rounded-3xl",
               isMinimized && "sm:h-[70px] sm:w-[320px] rounded-2xl"
             )}
           >
@@ -635,6 +680,20 @@ export default function VikingChatbot({
 
               {/* Handlingsknapper i header */}
               <div className="flex items-center gap-1">
+                {/* Verktøykasse snarvei */}
+                <button
+                  type="button"
+                  onClick={(e) => { e.stopPropagation(); setActiveFormView(prev => prev ? null : { type: 'toolbox' }); }}
+                  className={cn(
+                    "hidden sm:flex items-center gap-1 text-[11px] font-bold px-2 py-1 rounded-lg transition-colors cursor-pointer mr-0.5",
+                    activeFormView ? "bg-white text-neutral-900 shadow-xs" : "bg-white/10 hover:bg-white/20 text-white"
+                  )}
+                  title="Skjemaer & Verktøy i chatten"
+                >
+                  <Layers size={13} />
+                  <span>Verktøy</span>
+                </button>
+
                 {!isAuthenticated && !isMinimized && (
                   <button
                     type="button"
@@ -694,6 +753,18 @@ export default function VikingChatbot({
             {/* HOVEDINNHOLD DERSOM IKKE MINIMERT */}
             {!isMinimized && (
               <>
+                {activeFormView ? (
+                  <InChatWorkspace
+                    formType={activeFormView.type}
+                    initialData={activeFormView.data}
+                    projects={projects}
+                    selectedProject={activeProject}
+                    onClose={() => setActiveFormView(null)}
+                    onSuccess={handleFormSuccess}
+                    onSwitchForm={(nextType, nextData) => setActiveFormView({ type: nextType, data: nextData })}
+                  />
+                ) : (
+                  <>
                 {/* HURTIG-LEAD DRAWER FOR GJESTER */}
                 <AnimatePresence>
                   {showLeadDrawer && !isAuthenticated && (
@@ -914,6 +985,16 @@ export default function VikingChatbot({
                       isFullscreen && "max-w-4xl mx-auto"
                     )}
                   >
+                    {/* Verktøykasse & Skjemaer i chatten */}
+                    <button
+                      type="button"
+                      onClick={() => setActiveFormView(prev => prev ? null : { type: 'toolbox' })}
+                      className="p-2 text-neutral-500 hover:text-purple-600 hover:bg-neutral-200/60 rounded-xl transition-all cursor-pointer shrink-0"
+                      title="Skjemaer og verktøy (Tilbud, Endringsordre, SJA, Avvik, Timeføring)"
+                    >
+                      <Layers size={18} />
+                    </button>
+
                     {/* Stemme-mikrofonknapp */}
                     <button
                       type="button"
@@ -974,6 +1055,8 @@ export default function VikingChatbot({
                     )}
                   </div>
                 </div>
+                  </>
+                )}
               </>
             )}
           </motion.div>

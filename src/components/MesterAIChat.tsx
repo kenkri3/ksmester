@@ -19,8 +19,10 @@ import {
   Trash2,
   Minimize2,
   Maximize2,
-  Minus
+  Minus,
+  Layers
 } from 'lucide-react';
+import InChatWorkspace, { InChatFormType } from './InChatWorkspace';
 import { cn } from '../lib/utils';
 import { toast } from 'sonner';
 
@@ -96,6 +98,7 @@ export default function MesterAIChat({
   const [copiedId, setCopiedId] = useState<string | null>(null);
   const [isMinimized, setIsMinimized] = useState(false);
   const [isFullscreen, setIsFullscreen] = useState(false);
+  const [activeFormView, setActiveFormView] = useState<{ type: InChatFormType; data?: any } | null>(null);
   const messagesContainerRef = useRef<HTMLDivElement>(null);
 
   // Save conversation history to sessionStorage
@@ -233,30 +236,54 @@ export default function MesterAIChat({
 
   const handleActionClick = (action: any) => {
     if (action.type === 'open_offer_modal') {
-      if (onOpenOfferModal) {
-        onOpenOfferModal(action.data);
-      } else {
-        window.dispatchEvent(new CustomEvent('trigger_dashboard_action', { detail: { actionId: 'offers' } }));
-      }
-    } else if (action.type === 'open_change_order_modal') {
-      if (onOpenChangeOrderModal) {
-        onOpenChangeOrderModal(action.data);
-      } else {
-        window.dispatchEvent(new CustomEvent('trigger_dashboard_action', { detail: { actionId: 'change_order' } }));
-      }
-    } else if (action.type === 'open_sja_modal') {
-      if (onOpenSJAModal) {
-        onOpenSJAModal(action.data);
-      } else {
-        window.dispatchEvent(new CustomEvent('trigger_dashboard_action', { detail: { actionId: 'sja' } }));
-      }
-    } else if (action.type === 'open_ai_vision') {
-      if (onOpenAIVision) {
-        onOpenAIVision();
-      } else {
-        window.dispatchEvent(new CustomEvent('trigger_dashboard_action', { detail: { actionId: 'take_photo' } }));
-      }
+      setActiveFormView({ type: 'offer', data: action.data });
+      return;
     }
+    if (action.type === 'open_change_order_modal') {
+      setActiveFormView({ type: 'change_order', data: action.data });
+      return;
+    }
+    if (action.type === 'open_sja_modal') {
+      setActiveFormView({ type: 'sja', data: action.data });
+      return;
+    }
+    if (action.type === 'open_deviation_modal') {
+      setActiveFormView({ type: 'deviation', data: action.data });
+      return;
+    }
+    if (action.type === 'open_time_modal') {
+      setActiveFormView({ type: 'time', data: action.data });
+      return;
+    }
+    if (action.type === 'open_external_link' && action.data?.url) {
+      window.open(action.data.url, '_blank');
+      return;
+    }
+    if (action.type === 'open_ai_vision') {
+      if (onOpenAIVision) onOpenAIVision();
+      else window.dispatchEvent(new CustomEvent('trigger_dashboard_action', { detail: { actionId: 'take_photo' } }));
+      return;
+    }
+  };
+
+  const handleFormSuccess = (msgContent: string, actionData?: any) => {
+    const confirmMessage: ChatMessage = {
+      id: `sys-${Date.now()}`,
+      role: 'assistant',
+      content: msgContent,
+      timestamp: new Date().toLocaleTimeString('no-NO', { hour: '2-digit', minute: '2-digit' }),
+      suggestedActions: actionData?.offerLink ? [
+        {
+          id: 'preview_offer',
+          type: 'open_external_link',
+          label: '👁️ Forhåndsvis tilbud',
+          data: { url: actionData.offerLink }
+        }
+      ] : undefined
+    };
+
+    setMessages(prev => [...prev, confirmMessage]);
+    setActiveFormView(null);
   };
 
   // Voice dictation
@@ -471,6 +498,19 @@ export default function MesterAIChat({
           <div className="flex items-center gap-1.5 shrink-0">
             <button
               type="button"
+              onClick={() => setActiveFormView(prev => prev ? null : { type: 'toolbox' })}
+              className={cn(
+                "p-2 rounded-xl transition-all text-xs font-bold flex items-center gap-1 cursor-pointer",
+                activeFormView ? "bg-white text-navy-950 shadow-sm" : "text-slate-300 hover:text-white hover:bg-white/10"
+              )}
+              title="Skjemaer & Verktøy i chatten"
+            >
+              <Layers size={15} />
+              <span className="hidden sm:inline">Verktøy</span>
+            </button>
+
+            <button
+              type="button"
               onClick={handleClearHistory}
               className="p-2 text-slate-300 hover:text-white hover:bg-white/10 rounded-xl transition-all text-xs font-bold flex items-center gap-1 cursor-pointer"
               title="Start en ny samtale"
@@ -510,11 +550,23 @@ export default function MesterAIChat({
           </div>
         </div>
 
-        {/* Messages Thread Container */}
-        <div 
-          ref={messagesContainerRef}
-          className="flex-1 overflow-y-auto p-4 sm:p-6 space-y-4 bg-slate-50/50 custom-scrollbar"
-        >
+        {activeFormView ? (
+          <InChatWorkspace
+            formType={activeFormView.type}
+            initialData={activeFormView.data}
+            projects={projects}
+            selectedProject={selectedProject}
+            onClose={() => setActiveFormView(null)}
+            onSuccess={handleFormSuccess}
+            onSwitchForm={(nextType, nextData) => setActiveFormView({ type: nextType, data: nextData })}
+          />
+        ) : (
+          <>
+            {/* Messages Thread Container */}
+            <div 
+              ref={messagesContainerRef}
+              className="flex-1 overflow-y-auto p-4 sm:p-6 space-y-4 bg-slate-50/50 custom-scrollbar"
+            >
           {messages.map((msg) => (
             <div 
               key={msg.id}
@@ -641,6 +693,16 @@ export default function MesterAIChat({
               </button>
             </div>
 
+            {/* Verktøykasse snarvei */}
+            <button
+              type="button"
+              onClick={() => setActiveFormView(prev => prev ? null : { type: 'toolbox' })}
+              className="p-3 text-slate-400 hover:text-electric-600 hover:bg-slate-100 rounded-2xl transition-all cursor-pointer shrink-0"
+              title="Skjemaer & Verktøy i chatten"
+            >
+              <Layers size={18} />
+            </button>
+
             <button
               type="submit"
               disabled={isLoading || !inputVal.trim()}
@@ -656,6 +718,8 @@ export default function MesterAIChat({
             <span className="font-bold text-electric-600">VikingMester AI v3.0</span>
           </div>
         </div>
+          </>
+        )}
       </motion.div>
     </div>
   );
