@@ -43,7 +43,7 @@ export async function GET(
     if (user.role !== 'admin') {
       const isOwner = 
         (item.companyId && (item.companyId === user.companyId || item.companyId === 'system')) ||
-        (item.company && (item.company === user.companyId || item.company === 'system')) ||
+        (item.company && (item.company === user.companyId || (user.company && item.company === user.company) || item.company === 'system')) ||
         (item.userId && item.userId === user.id) ||
         (item.authorId && item.authorId === user.id) ||
         (collection === 'hms_documents' && (!item.companyId || item.companyId === 'system')) ||
@@ -155,7 +155,7 @@ export async function PUT(
           body.status === 'accepted'
         )) ||
         (existing.companyId && existing.companyId === user.companyId) ||
-        (existing.company && existing.company === user.companyId) ||
+        (existing.company && (existing.company === user.companyId || (user.company && existing.company === user.company))) ||
         (existing.userId && existing.userId === user.id) ||
         (existing.authorId && existing.authorId === user.id);
 

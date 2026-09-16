@@ -345,7 +345,8 @@ Tolk dette og returner KUN gyldig JSON i følgende format (uten markdown-formate
     const path = `projects/${projectId}`;
 
     try {
-      const userCompany = (user as any)?.company || 'Byggmester AS';
+      const userCompany = (user as any)?.company || 'Mester Entreprenør AS';
+      const userCompanyId = (user as any)?.companyId || 'comp-001';
       await setDoc(doc(db, 'projects', projectId), {
         id: projectId,
         name: formData.name,
@@ -357,8 +358,9 @@ Tolk dette og returner KUN gyldig JSON i følgende format (uten markdown-formate
         clientName: formData.clientName,
         clientEmail: formData.clientEmail,
         projectManager: formData.projectManager,
-        managerId: auth.currentUser?.uid || 'admin',
+        managerId: auth.currentUser?.uid || user?.id || 'admin',
         company: userCompany,
+        companyId: userCompanyId,
         startDate: formData.startDate,
         endDate: formData.endDate,
         tags: formData.tags.split(',').map(tag => tag.trim()).filter(tag => tag !== ''),

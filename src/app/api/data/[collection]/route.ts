@@ -56,7 +56,7 @@ export async function GET(
     if (user.role !== 'admin') {
       items = items.filter((item: any) => 
         (item.companyId && (item.companyId === user.companyId || item.companyId === 'system')) ||
-        (item.company && (item.company === user.companyId || item.company === 'system')) ||
+        (item.company && (item.company === user.companyId || (user.company && item.company === user.company) || item.company === 'system')) ||
         (item.userId && item.userId === user.id) ||
         (item.authorId && item.authorId === user.id) ||
         (collection === 'invitations' && item.inviteeEmail && item.inviteeEmail.toLowerCase() === user.email?.toLowerCase()) ||

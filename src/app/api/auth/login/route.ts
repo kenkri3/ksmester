@@ -122,12 +122,12 @@ export async function POST(req: NextRequest) {
       displayName: userRecord.display_name || userRecord.displayName || userRecord.email.split('@')[0],
       role: isSystemAdmin ? 'admin' : (userRecord.role || 'worker'),
       trade: userRecord.trade || 'Byggmester',
-      company: isSystemAdmin ? 'AIChat Norge AS / Vikingnet' : (userRecord.company || 'Mester Entreprenør AS'),
+      company: userRecord.company || (isSystemAdmin ? 'AIChat Norge AS / Vikingnet' : 'Mester Entreprenør AS'),
       companyId: userRecord.company_id || userRecord.companyId || 'comp-001',
       subscriptionStatus: isSystemAdmin ? 'active' : (userRecord.subscription_status || userRecord.subscriptionStatus || 'active')
     };
 
-    const token = signToken({ id: userObj.id, email: userObj.email, role: userObj.role, companyId: userObj.companyId });
+    const token = signToken({ id: userObj.id, email: userObj.email, role: userObj.role, companyId: userObj.companyId, company: userObj.company });
     return NextResponse.json({ token, user: userObj });
   } catch (err: any) {
     console.error('Login Error:', err);

@@ -83,6 +83,8 @@ import ChangeOrderModal from './ChangeOrderModal';
 import { changeOrderService } from '../services/changeOrderService';
 import PreCloseInspectorModal, { LukkesperreZone } from './PreCloseInspectorModal';
 import SJAPreviewModal, { SJADocument } from './SJAPreviewModal';
+import VoiceSJAModal from './VoiceSJAModal';
+import ProjectContactsModal from './ProjectContactsModal';
 
 interface DashboardProps {
   initialTab?: any;
@@ -246,6 +248,8 @@ export default function Dashboard({
   // SJA Document preview state
   const [activeSJADoc, setActiveSJADoc] = useState<SJADocument | null>(null);
   const [isSJAPreviewOpen, setIsSJAPreviewOpen] = useState(false);
+  const [isVoiceSJAOpen, setIsVoiceSJAOpen] = useState(false);
+  const [isContactsModalOpen, setIsContactsModalOpen] = useState(false);
 
   // Agent State & Live Dispatch
   const [agentStatus, setAgentStatus] = useState<any>({
@@ -339,7 +343,10 @@ export default function Dashboard({
           break;
         case 'sja':
         case 'voice_sja':
-          handleOpenSJAForTrade('Tømrer');
+          setIsVoiceSJAOpen(true);
+          break;
+        case 'contacts':
+          setIsContactsModalOpen(true);
           break;
         case 'pre_close':
           setActiveTab('kvalitet');
@@ -993,6 +1000,16 @@ export default function Dashboard({
           fetchAgentState();
         }}
       />
+      <VoiceSJAModal
+        isOpen={isVoiceSJAOpen}
+        onClose={() => setIsVoiceSJAOpen(false)}
+        projects={projects}
+        initialProjectId={selectedProject?.id || projects[0]?.id}
+        onOpenPreview={(sja) => {
+          setActiveSJADoc(sja);
+          setIsSJAPreviewOpen(true);
+        }}
+      />
 
       <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 pt-8">
         {/* Selected Project Full Details View */}
@@ -1082,10 +1099,7 @@ export default function Dashboard({
                   {/* 1. Tale til SJA */}
                   <button
                     type="button"
-                    onClick={() => {
-                      window.dispatchEvent(new CustomEvent("navigate_view", { detail: { view: "mobile", screen: "voice" } }));
-                      window.dispatchEvent(new CustomEvent("trigger_dashboard_action", { detail: { actionId: "voice_sja" } }));
-                    }}
+                    onClick={() => setIsVoiceSJAOpen(true)}
                     className="flex flex-col items-center text-center p-3.5 sm:p-4 rounded-2xl bg-white border border-slate-200/90 shadow-sm hover:shadow-md hover:border-electric-300 active:scale-95 transition-all group cursor-pointer"
                   >
                     <div className="w-12 h-12 rounded-2xl bg-gradient-to-tr from-purple-600 to-indigo-500 text-white flex items-center justify-center shadow-md mb-2 group-hover:scale-105 transition-transform">

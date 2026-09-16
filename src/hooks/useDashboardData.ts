@@ -11,7 +11,7 @@ export function useDashboardData() {
   // UI kan vise en tydelig melding i stedet for et stille tomt rutenett (så det ikke ser
   // ut som en ødelagt knapp for brukeren).
   const [dataUnavailable, setDataUnavailable] = useState(false);
-  const { user, role, company } = useAuth();
+  const { user, role, company, impersonatedCompanyId } = useAuth();
 
   useEffect(() => {
     if (!user) return;
@@ -21,14 +21,20 @@ export function useDashboardData() {
 
     let projectsQuery = query(collection(db, projectsPath), orderBy('lastUpdate', 'desc'));
     
-    // Filter by company if present
-    if (company) {
+    // Admin / Superadmin har global oversikt og ser alle prosjekter med mindre en bedrift eksplisitt impersoneres
+    const isGlobalAdmin = role === 'admin' || role === 'superadmin' || 
+      ['kenkri3@gmail.com', 'aichatnorge@gmail.com', 'kenneth@aichatnorge.no', 'fredrik.r.ellingsen@gmail.com', 'fredrik@aichatnorge.no'].includes((user?.email || '').toLowerCase());
+
+    const effectiveCompany = impersonatedCompanyId || (isGlobalAdmin ? null : company);
+
+    // Filter by company if present for non-admins (or when admin impersonates)
+    if (effectiveCompany) {
       if (role === 'client') {
-        projectsQuery = query(collection(db, projectsPath), where('clientId', '==', user.uid), where('company', '==', company), orderBy('lastUpdate', 'desc'));
+        projectsQuery = query(collection(db, projectsPath), where('clientId', '==', user.uid), where('company', '==', effectiveCompany), orderBy('lastUpdate', 'desc'));
       } else {
-        projectsQuery = query(collection(db, projectsPath), where('company', '==', company), orderBy('lastUpdate', 'desc'));
+        projectsQuery = query(collection(db, projectsPath), where('company', '==', effectiveCompany), orderBy('lastUpdate', 'desc'));
       }
-    } else if (role !== 'admin') {
+    } else if (!isGlobalAdmin) {
       console.warn('[useDashboardData] Mangler firmatilknytning (company) for innlogget bruker – kan ikke hente prosjekter/avvik.');
       setLoading(false);
       setDataUnavailable(true);
@@ -53,10 +59,10 @@ export function useDashboardData() {
 
     let deviationsQuery = query(collection(db, deviationsPath), orderBy('timestamp', 'desc'));
     
-    // Filter by company if present
-    if (company) {
-      deviationsQuery = query(collection(db, deviationsPath), where('company', '==', company), orderBy('timestamp', 'desc'));
-    } else if (role !== 'admin') {
+    // Filter by company if present for non-admins (or when admin impersonates)
+    if (effectiveCompany) {
+      deviationsQuery = query(collection(db, deviationsPath), where('company', '==', effectiveCompany), orderBy('timestamp', 'desc'));
+    } else if (!isGlobalAdmin) {
       setLoading(false);
       return;
     }
@@ -78,7 +84,7 @@ export function useDashboardData() {
       unsubscribeProjects();
       unsubscribeDeviations();
     };
-  }, [user, role, company]);
+  }, [user, role, company, impersonatedCompanyId]);
 
   // Memoize stats calculation to avoid repeated O(N) filtering and reducing
   // on every render of components utilizing this hook. Also ensures a stable object reference.

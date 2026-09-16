@@ -176,11 +176,14 @@ function AppContent() {
     }
 
     if (actionId === 'voice_sja') {
-      setMobileScreen('voice');
-      setView('mobile');
-      setTimeout(() => {
-        window.dispatchEvent(new CustomEvent('trigger_dashboard_action', { detail: { actionId } }));
-      }, 100);
+      if (view !== 'dashboard') {
+        setView('dashboard');
+        setTimeout(() => {
+          window.dispatchEvent(new CustomEvent('trigger_dashboard_action', { detail: { actionId: 'voice_sja' } }));
+        }, 150);
+      } else {
+        window.dispatchEvent(new CustomEvent('trigger_dashboard_action', { detail: { actionId: 'voice_sja' } }));
+      }
       return;
     }
     if (actionId === 'contacts') {
