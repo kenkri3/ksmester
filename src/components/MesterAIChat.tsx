@@ -789,6 +789,38 @@ export default function MesterAIChat({
       onOpenAIVision?.();
       return;
     }
+    if (action.type === 'open_apprentice_modal' || action.id === 'open_apprentice_modal') {
+      window.dispatchEvent(new CustomEvent('trigger_dashboard_action', { detail: { actionId: 'apprentice' } }));
+      return;
+    }
+    if (action.type === 'open_documentation_archive' || action.id === 'open_documentation_archive') {
+      window.dispatchEvent(new CustomEvent('trigger_dashboard_action', { detail: { actionId: 'archive', id: action.data?.projectId } }));
+      return;
+    }
+    if (action.type === 'download_combined_fdv' || action.id === 'download_combined_fdv') {
+      fetch('/api/documentation', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({
+          action: 'get_combined_fdv',
+          projectId: action.data?.projectId || 'general',
+          projectInfo: { name: action.data?.projectName || 'Prosjekt' }
+        })
+      })
+        .then(res => res.json())
+        .then(data => {
+          if (data?.html) {
+            const printWin = window.open('', '_blank');
+            if (printWin) {
+              printWin.document.write(data.html);
+              printWin.document.close();
+              setTimeout(() => { printWin.focus(); printWin.print(); }, 400);
+            }
+          }
+        })
+        .catch(err => console.error(err));
+      return;
+    }
     if (action.type === 'navigate_settings' || action.id === 'open_settings_billing') {
       window.dispatchEvent(new CustomEvent('navigate_view', { detail: { view: 'settings', tab: 'billing' } }));
       return;

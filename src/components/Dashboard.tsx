@@ -94,6 +94,7 @@ import InviteModal from './InviteModal';
 import MesterAIChat from './MesterAIChat';
 import AllModulesDrawer from './AllModulesDrawer';
 import QuickStartGuide from './QuickStartGuide';
+import ApprenticeModal from './ApprenticeModal';
 
 interface DashboardProps {
   initialTab?: any;
@@ -143,6 +144,7 @@ export default function Dashboard({
   const [isOfferModalOpen, setIsOfferModalOpen] = useState(false);
   const [isContractModalOpen, setIsContractModalOpen] = useState(false);
   const [isArchiveModalOpen, setIsArchiveModalOpen] = useState(false);
+  const [isApprenticeModalOpen, setIsApprenticeModalOpen] = useState(false);
   const [isTimeModalOpen, setIsTimeModalOpen] = useState(false);
   const [isBuildingAppModalOpen, setIsBuildingAppModalOpen] = useState(false);
   const [isIntegrationModalOpen, setIsIntegrationModalOpen] = useState(false);
@@ -449,6 +451,15 @@ export default function Dashboard({
         case 'modules':
           setIsAllModulesOpen(true);
           break;
+        case 'apprentice':
+        case 'laerling':
+          setIsApprenticeModalOpen(true);
+          break;
+        case 'archive':
+        case 'documentation':
+        case 'fdv':
+          setIsArchiveModalOpen(true);
+          break;
         case 'pre_close':
           setActiveTab('kvalitet');
           setSelectedLukkesperreZone(lukkesperreZones[0]);
@@ -586,7 +597,7 @@ export default function Dashboard({
 
       case 'apprentice':
       case 'laerling':
-        handleOpenSJAForTrade('Tømrer');
+        setIsApprenticeModalOpen(true);
         break;
 
       case 'super_admin':
@@ -621,6 +632,12 @@ export default function Dashboard({
 
       case 'archive':
       case 'dokumentarkiv':
+      case 'documentation':
+      case 'fdv':
+        if (id) {
+          const found = projects.find(p => p.id === id);
+          if (found) setSelectedProject(found);
+        }
         setIsArchiveModalOpen(true);
         break;
 
@@ -1022,7 +1039,16 @@ export default function Dashboard({
         initialData={offerInitialData}
       />
       <ContractModal isOpen={isContractModalOpen} onClose={() => setIsContractModalOpen(false)} />
-      <DocumentationArchive isOpen={isArchiveModalOpen} onClose={() => setIsArchiveModalOpen(false)} />
+      <DocumentationArchive 
+        isOpen={isArchiveModalOpen} 
+        onClose={() => setIsArchiveModalOpen(false)} 
+        projectId={selectedProject?.id}
+        projects={projects}
+      />
+      <ApprenticeModal 
+        isOpen={isApprenticeModalOpen} 
+        onClose={() => setIsApprenticeModalOpen(false)} 
+      />
       <TimeRegistrationModal 
         isOpen={isTimeModalOpen} 
         onClose={() => setIsTimeModalOpen(false)} 

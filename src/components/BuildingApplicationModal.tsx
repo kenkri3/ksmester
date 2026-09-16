@@ -60,7 +60,7 @@ const BuildingApplicationModal: React.FC<BuildingApplicationModalProps> = ({ isO
       <motion.div 
         initial={{ opacity: 0, scale: 0.98, y: 20 }}
         animate={{ opacity: 1, scale: 1, y: 0 }}
-        className="bg-neutral-50 w-full max-w-3xl rounded-t-[2rem] sm:rounded-[2.5rem] shadow-2xl overflow-hidden flex flex-col max-h-[92vh] sm:max-h-[90vh] pb-[env(safe-area-inset-bottom,0px)]"
+        className="bg-neutral-50 text-neutral-900 w-full max-w-3xl rounded-t-[2rem] sm:rounded-[2.5rem] shadow-2xl overflow-hidden flex flex-col max-h-[92vh] sm:max-h-[90vh] pb-[env(safe-area-inset-bottom,0px)]"
       >
         {/* Mobile Grab Handle */}
         <div className="sm:hidden w-12 h-1.5 bg-neutral-300 rounded-full mx-auto mt-3 mb-1 shrink-0" />
@@ -72,11 +72,11 @@ const BuildingApplicationModal: React.FC<BuildingApplicationModalProps> = ({ isO
               <Building2 size={20} className="sm:w-6 sm:h-6" />
             </div>
             <div className="min-w-0">
-              <h2 className="text-lg sm:text-2xl font-bold tracking-tight truncate">Byggesøknad</h2>
+              <h2 className="text-lg sm:text-2xl font-bold tracking-tight text-neutral-900 truncate">Byggesøknad</h2>
               <p className="text-neutral-500 text-xs sm:text-sm font-medium truncate">Administrer søknadsprosessen mot kommunen</p>
             </div>
           </div>
-          <button onClick={onClose} aria-label="Lukk" title="Lukk" className="p-2 hover:bg-neutral-100 rounded-xl transition-colors shrink-0">
+          <button onClick={onClose} aria-label="Lukk" title="Lukk" className="p-2 text-neutral-500 hover:text-neutral-900 hover:bg-neutral-100 rounded-xl transition-colors shrink-0">
             <X size={20} className="sm:w-6 sm:h-6" />
           </button>
         </div>
@@ -93,8 +93,8 @@ const BuildingApplicationModal: React.FC<BuildingApplicationModalProps> = ({ isO
                 <div className="w-20 h-20 bg-emerald-100 text-emerald-600 rounded-full flex items-center justify-center mb-6">
                   <CheckCircle2 size={48} />
                 </div>
-                <h3 className="text-2xl font-bold mb-2">Søknad Oppdatert!</h3>
-                <p className="text-neutral-500">Endringene er lagret og status er oppdatert.</p>
+                <h3 className="text-2xl font-bold text-neutral-900 mb-2">Søknad Oppdatert!</h3>
+                <p className="text-neutral-600">Endringene er lagret og status er oppdatert.</p>
               </motion.div>
             ) : (
               <motion.div 
@@ -105,34 +105,34 @@ const BuildingApplicationModal: React.FC<BuildingApplicationModalProps> = ({ isO
               >
                 <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
                   <div className="space-y-2">
-                    <label className="text-xs font-black uppercase tracking-widest text-neutral-400 ml-1">Prosjekt</label>
+                    <label className="text-xs font-black uppercase tracking-widest text-neutral-500 ml-1">Prosjekt</label>
                     <select 
                       value={selectedProjectId}
                       onChange={(e) => setSelectedProjectId(e.target.value)}
-                      className="w-full p-4 bg-white border border-neutral-200 rounded-2xl focus:ring-2 focus:ring-blue-500 outline-none font-bold appearance-none"
+                      className="w-full p-4 bg-white text-neutral-900 border border-neutral-200 rounded-2xl focus:ring-2 focus:ring-blue-500 outline-none font-bold"
                     >
-                      <option value="">Velg prosjekt...</option>
+                      <option value="" className="text-neutral-500 bg-white">Velg prosjekt...</option>
                       {projects.map(p => (
-                        <option key={p.id} value={p.id}>{p.name}</option>
+                        <option key={p.id} value={p.id} className="text-neutral-900 bg-white">{p.name}</option>
                       ))}
                     </select>
                   </div>
                   <div className="space-y-2">
-                    <label className="text-xs font-black uppercase tracking-widest text-neutral-400 ml-1">Søknadstype</label>
+                    <label className="text-xs font-black uppercase tracking-widest text-neutral-500 ml-1">Søknadstype</label>
                     <select 
                       value={appType}
                       onChange={(e) => setAppType(e.target.value as any)}
-                      className="w-full p-4 bg-white border border-neutral-200 rounded-2xl focus:ring-2 focus:ring-blue-500 outline-none font-bold appearance-none"
+                      className="w-full p-4 bg-white text-neutral-900 border border-neutral-200 rounded-2xl focus:ring-2 focus:ring-blue-500 outline-none font-bold"
                     >
-                      <option value="ett-trinns">Ett-trinns søknad</option>
-                      <option value="ramme">Rammetillatelse</option>
-                      <option value="igangsetting">Igangsettingstillatelse</option>
+                      <option value="ett-trinns" className="text-neutral-900 bg-white">Ett-trinns søknad</option>
+                      <option value="ramme" className="text-neutral-900 bg-white">Rammetillatelse</option>
+                      <option value="igangsetting" className="text-neutral-900 bg-white">Igangsettingstillatelse</option>
                     </select>
                   </div>
                 </div>
 
                 <div className="space-y-4">
-                  <h3 className="text-sm font-black uppercase tracking-widest text-neutral-400">Dokumentasjonsstatus</h3>
+                  <h3 className="text-sm font-black uppercase tracking-widest text-neutral-600">Dokumentasjonsstatus</h3>
                   <div className="grid grid-cols-1 gap-3">
                     {checklist.map((item) => (
                       <div key={item.id} className="flex items-center justify-between p-4 bg-white border border-neutral-200 rounded-2xl">
@@ -145,7 +145,7 @@ const BuildingApplicationModal: React.FC<BuildingApplicationModalProps> = ({ isO
                           >
                             {item.status === 'completed' ? <CheckCircle2 size={14} /> : <Clock size={14} />}
                           </button>
-                          <span className="text-sm font-bold text-neutral-700">{item.label}</span>
+                          <span className="text-sm font-bold text-neutral-800">{item.label}</span>
                         </div>
                         <button className="text-xs font-bold text-blue-600 hover:underline">Se dokument</button>
                       </div>
@@ -169,7 +169,7 @@ const BuildingApplicationModal: React.FC<BuildingApplicationModalProps> = ({ isO
                 <div className="flex gap-4">
                   <button 
                     onClick={onClose}
-                    className="flex-1 py-4 bg-white border border-neutral-200 rounded-2xl font-bold hover:bg-neutral-50 transition-all"
+                    className="flex-1 py-4 bg-white border border-neutral-200 text-neutral-700 hover:text-neutral-900 rounded-2xl font-bold hover:bg-neutral-50 transition-all"
                   >
                     Avbryt
                   </button>

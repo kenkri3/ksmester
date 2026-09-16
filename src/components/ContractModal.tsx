@@ -160,7 +160,7 @@ const ContractModal: React.FC<ContractModalProps> = ({ isOpen, onClose }) => {
       <motion.div 
         initial={{ opacity: 0, scale: 0.98, y: 20 }}
         animate={{ opacity: 1, scale: 1, y: 0 }}
-        className="bg-neutral-50 w-full max-w-5xl rounded-t-[2.5rem] sm:rounded-[2.5rem] shadow-2xl overflow-hidden flex flex-col max-h-[92vh] sm:max-h-[90vh] pb-[env(safe-area-inset-bottom,0px)]"
+        className="bg-neutral-50 text-neutral-900 w-full max-w-5xl rounded-t-[2.5rem] sm:rounded-[2.5rem] shadow-2xl overflow-hidden flex flex-col max-h-[92vh] sm:max-h-[90vh] pb-[env(safe-area-inset-bottom,0px)]"
       >
         {/* Mobile Grab Handle */}
         <div className="sm:hidden w-12 h-1.5 bg-neutral-300 rounded-full mx-auto mt-3 mb-1" />
@@ -172,11 +172,11 @@ const ContractModal: React.FC<ContractModalProps> = ({ isOpen, onClose }) => {
               <FileSignature size={24} />
             </div>
             <div>
-              <h2 className="text-2xl font-bold tracking-tight">Kontraktshåndtering</h2>
+              <h2 className="text-2xl font-bold tracking-tight text-neutral-900">Kontraktshåndtering</h2>
               <p className="text-neutral-500 text-sm font-medium">Administrer og følg opp dine kontrakter</p>
             </div>
           </div>
-          <button onClick={onClose} className="p-2 hover:bg-neutral-100 rounded-xl transition-colors">
+          <button onClick={onClose} className="p-2 text-neutral-500 hover:text-neutral-900 hover:bg-neutral-100 rounded-xl transition-colors">
             <X size={24} />
           </button>
         </div>

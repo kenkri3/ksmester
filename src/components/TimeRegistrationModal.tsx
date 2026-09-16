@@ -66,7 +66,7 @@ const TimeRegistrationModal: React.FC<TimeRegistrationModalProps> = ({ isOpen, o
         initial={{ opacity: 0, scale: 0.98, y: 20 }}
         animate={{ opacity: 1, scale: 1, y: 0 }}
         exit={{ opacity: 0, scale: 0.98, y: 20 }}
-        className="bg-neutral-50 w-full max-w-2xl rounded-t-[2.5rem] sm:rounded-[2.5rem] shadow-2xl overflow-hidden flex flex-col max-h-[92vh] sm:max-h-[calc(100vh-2rem)] pb-[env(safe-area-inset-bottom,0px)]"
+        className="bg-neutral-50 text-neutral-900 w-full max-w-xl rounded-t-[2rem] sm:rounded-[2.5rem] shadow-2xl overflow-hidden flex flex-col max-h-[92vh] sm:max-h-[90vh] pb-[env(safe-area-inset-bottom,0px)]"
       >
         {/* Mobile Grab Handle */}
         <div className="sm:hidden w-12 h-1.5 bg-neutral-300 rounded-full mx-auto mt-3 mb-1" />
@@ -78,11 +78,11 @@ const TimeRegistrationModal: React.FC<TimeRegistrationModalProps> = ({ isOpen, o
               <Timer size={20} className="sm:w-6 sm:h-6" />
             </div>
             <div className="min-w-0">
-              <h2 className="text-base sm:text-2xl font-bold tracking-tight truncate">Timeføring</h2>
+              <h2 className="text-base sm:text-2xl font-bold tracking-tight text-neutral-900 truncate">Timeføring</h2>
               <p className="text-neutral-500 text-[8px] sm:text-sm font-medium truncate">Registrer timer raskt og enkelt</p>
             </div>
           </div>
-          <button onClick={onClose} className="p-2 hover:bg-neutral-100 rounded-xl transition-colors">
+          <button onClick={onClose} className="p-2 text-neutral-500 hover:text-neutral-900 hover:bg-neutral-100 rounded-xl transition-colors">
             <X size={20} className="sm:w-6 sm:h-6" />
           </button>
         </div>

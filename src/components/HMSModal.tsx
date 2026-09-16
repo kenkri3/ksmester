@@ -18,7 +18,7 @@ const HMSModal: React.FC<HMSModalProps> = ({ isOpen, onClose, projects }) => {
       <motion.div 
         initial={{ opacity: 0, y: 20 }}
         animate={{ opacity: 1, y: 0 }}
-        className="bg-neutral-50 w-full max-w-5xl rounded-t-[2rem] sm:rounded-[2.5rem] shadow-2xl overflow-hidden flex flex-col max-h-[92vh] sm:max-h-[90vh] pb-[env(safe-area-inset-bottom,0px)]"
+        className="bg-neutral-50 text-neutral-900 w-full max-w-5xl rounded-t-[2rem] sm:rounded-[2.5rem] shadow-2xl overflow-hidden flex flex-col max-h-[92vh] sm:max-h-[90vh] pb-[env(safe-area-inset-bottom,0px)]"
       >
         {/* Header */}
         <div className="p-4 sm:p-8 border-b border-neutral-200 bg-white shrink-0">
@@ -29,11 +29,11 @@ const HMSModal: React.FC<HMSModalProps> = ({ isOpen, onClose, projects }) => {
               <ShieldCheck size={20} className="sm:w-6 sm:h-6" />
             </div>
             <div className="min-w-0">
-              <h2 className="text-base sm:text-2xl font-bold tracking-tight truncate">HMS &amp; Mannskap</h2>
+              <h2 className="text-base sm:text-2xl font-bold tracking-tight text-neutral-900 truncate">HMS &amp; Mannskap</h2>
               <p className="text-neutral-500 text-[10px] sm:text-sm font-medium truncate">Administrer mannskapsliste, vernerunder og HMS-kort</p>
             </div>
           </div>
-            <button onClick={onClose} aria-label="Lukk" title="Lukk" className="p-2 hover:bg-neutral-100 rounded-xl transition-colors shrink-0">
+            <button onClick={onClose} aria-label="Lukk" title="Lukk" className="p-2 text-neutral-500 hover:text-neutral-900 hover:bg-neutral-100 rounded-xl transition-colors shrink-0">
               <X size={20} className="sm:w-6 sm:h-6" />
             </button>
           </div>

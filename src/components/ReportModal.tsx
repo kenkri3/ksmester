@@ -130,7 +130,7 @@ export default function ReportModal({ isOpen, onClose, project, sjaReports, devi
           initial={{ opacity: 0, y: 20 }}
           animate={{ opacity: 1, y: 0 }}
           exit={{ opacity: 0, y: 20 }}
-          className="relative w-full max-w-5xl max-h-[92vh] sm:max-h-[90vh] bg-white rounded-t-[2rem] sm:rounded-[2.5rem] shadow-2xl overflow-hidden flex flex-col pb-[env(safe-area-inset-bottom,0px)]"
+          className="relative w-full max-w-5xl max-h-[92vh] sm:max-h-[90vh] bg-white text-neutral-900 rounded-t-[2rem] sm:rounded-[2.5rem] shadow-2xl overflow-hidden flex flex-col pb-[env(safe-area-inset-bottom,0px)]"
         >
           {/* Header */}
           <div className="p-4 sm:p-6 border-b border-neutral-100 bg-white sticky top-0 z-10 shrink-0">
@@ -141,14 +141,14 @@ export default function ReportModal({ isOpen, onClose, project, sjaReports, devi
                   <FileText size={18} className="sm:w-5 sm:h-5" />
                 </div>
                 <div className="min-w-0">
-                  <h2 className="text-sm sm:text-xl font-bold tracking-tight truncate">Prosjektrapport: {project.name}</h2>
+                  <h2 className="text-sm sm:text-xl font-bold tracking-tight text-neutral-900 truncate">Prosjektrapport: {project.name}</h2>
                   <p className="text-[10px] sm:text-xs text-neutral-400 font-bold uppercase tracking-wider">Generert {new Date().toLocaleDateString('no-NO')}</p>
                 </div>
               </div>
               <button 
-                onClick={onClose}
-                aria-label="Lukk"
-                className="p-2 hover:bg-neutral-100 rounded-full transition-colors shrink-0"
+                onClick={onClose} 
+                aria-label="Lukk" 
+                className="p-2 text-neutral-500 hover:text-neutral-900 hover:bg-neutral-100 rounded-full transition-colors shrink-0"
               >
                 <X size={20} className="sm:w-5 sm:h-5" />
               </button>

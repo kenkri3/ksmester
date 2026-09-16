@@ -196,12 +196,20 @@ export interface Contract {
 export interface ProjectDocument {
   id: string;
   projectId: string;
+  projectName?: string;
   title: string;
-  type: 'contract' | 'fdv' | 'drawing' | 'photo' | 'other';
+  type: 'contract' | 'fdv' | 'drawing' | 'photo' | 'report' | 'pdf' | 'other';
   url: string;
-  createdAt: string;
-  source: 'manual' | 'nobb' | 'system';
+  createdAt: string | any;
+  source: 'manual' | 'nobb' | 'system' | 'ai_engine' | 'sintef';
   category?: string;
+  nobbNumber?: string;
+  supplier?: string;
+  sintefApproval?: string;
+  tek17Clause?: string;
+  maintenanceInterval?: string;
+  description?: string;
+  fileData?: string;
 }
 
 export interface ProjectMaterial {

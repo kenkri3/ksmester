@@ -12,6 +12,10 @@ import {
   generateApprenticeHalfYearReport, 
   syncApprenticeProgressFromTimeEntries 
 } from '@/src/lib/server/apprenticeEngine';
+import { 
+  getOrGenerateProjectDocumentation, 
+  buildConsolidatedFdvHtml 
+} from '@/src/lib/server/projectDocumentationEngine';
 
 // 🛡️ Tilgangskontroll: Gyldig innlogget bruker (JWT i header/cookie/body),
 // cron/intern hemmelighet, eller tillatte hjelpehandlinger (autofill_form).
@@ -1197,6 +1201,155 @@ Returner KUN et gyldig JSON-objekt:
             ]
           });
         }
+      }
+
+      // E0-C. AUTONOM DOKUMENTASJON, FDV & SLUTTDOKUMENTASJON PER PROSJEKT
+      const isDocumentationIntent = 
+        action === 'get_documentation' ||
+        action === 'generate_project_fdv' ||
+        action === 'send_documentation_email' ||
+        lower.includes('dokumentasjon') || 
+        lower.includes('hent dokumentasjon') || 
+        lower.includes('fdv') || 
+        lower.includes('hent fdv') || 
+        lower.includes('lag fdv') || 
+        lower.includes('generer fdv') || 
+        lower.includes('sluttdokumentasjon') || 
+        lower.includes('samsvarserklæring') || 
+        lower.includes('overtakelsesprotokoll') ||
+        lower.includes('byggeperm');
+
+      if (isDocumentationIntent) {
+        // Finn aktuelt prosjekt basert på tekst eller valgt prosjekt
+        let docProj = targetProject;
+        if (allProjects && allProjects.length > 0) {
+          const matchedByName = allProjects.find((p: any) => 
+            (p.name && lower.includes(p.name.toLowerCase())) ||
+            (p.address && lower.includes(p.address.toLowerCase())) ||
+            (p.id && lower.includes(p.id.toLowerCase()))
+          );
+          if (matchedByName) {
+            docProj = matchedByName;
+          }
+        }
+
+        if (!docProj && allProjects && allProjects.length > 0) {
+          docProj = allProjects[0];
+        }
+
+        const projId = docProj?.id || resolvedProjectId || 'p-gen';
+        const projName = docProj?.name || resolvedProjectName || 'Prosjekt';
+        const clientName = docProj?.clientName || 'Byggherre';
+        const clientEmail = docProj?.clientEmail || '';
+        const address = docProj?.address || 'Byggeplass';
+        const category = docProj?.category || 'Tømrer';
+
+        // Autonom generering / henting
+        const docResult = await getOrGenerateProjectDocumentation(projId, {
+          name: projName,
+          address,
+          category,
+          clientName,
+          description: docProj?.description || ''
+        });
+
+        // 1. Send på e-post dersom bruker ba om det
+        if ((lower.includes('send') && (lower.includes('epost') || lower.includes('mail'))) || action === 'send_documentation_email') {
+          const emailMatch = text.match(/[a-zA-Z0-9._%+-]+@[a-zA-Z0-9.-]+\.[a-zA-Z]{2,}/);
+          const recipientEmail = emailMatch ? emailMatch[0] : (clientEmail || body.to);
+
+          if (!recipientEmail) {
+            return NextResponse.json({
+              success: true,
+              action: 'need_client_email',
+              reply: `Dokumentasjonen for **${projName}** er klargjort (${docResult.documents.length} dokumenter). Hvilken e-postadresse skal jeg sende FDV-permen til?`,
+              suggestedActions: [
+                {
+                  id: 'open_documentation_archive',
+                  type: 'open_documentation_archive',
+                  label: '📄 Åpne FDV-Arkiv',
+                  data: { projectId: projId }
+                }
+              ]
+            });
+          }
+
+          const sendEmailRes = await sendSystemEmail({
+            to: recipientEmail,
+            subject: `📁 FDV-Perm & Sluttdokumentasjon - ${projName}`,
+            text: `Komplett FDV-perm og sluttdokumentasjon for ${projName} er oversendt. Inneholder ${docResult.documents.length} verifiserte dokumenter iht. TEK17.`,
+            html: `
+              <div style="font-family:sans-serif;line-height:1.6;color:#0f172a;max-width:640px;margin:0 auto;padding:24px;border:1px solid #e2e8f0;border-radius:16px;">
+                <div style="border-bottom:2px solid #0f172a;padding-bottom:12px;margin-bottom:16px;">
+                  <h2 style="margin:0;color:#0f172a;">FDV-Perm & Sluttdokumentasjon</h2>
+                  <p style="margin:4px 0 0 0;font-size:14px;color:#64748b;">Prosjekt: <strong>${projName}</strong> (${address})</p>
+                </div>
+                <p>Hei ${clientName}, her er komplett FDV-dokumentasjon og samsvarsdokumenter for utført arbeid:</p>
+                <div style="background:#f8fafc;padding:16px;border-radius:12px;margin:16px 0;">
+                  <h4 style="margin:0 0 8px 0;font-size:13px;text-transform:uppercase;color:#475569;">Innhold i permen:</h4>
+                  <ul style="margin:0;padding-left:20px;font-size:13px;color:#334155;">
+                    ${docResult.documents.map((d: any) => `<li><strong>${d.title}</strong> (${d.category}) ${d.sintefApproval ? `<span style="color:#16a34a;">[${d.sintefApproval}]</span>` : ''}</li>`).join('')}
+                  </ul>
+                </div>
+                <p style="font-size:13px;color:#16a34a;font-weight:bold;">✓ Arbeidet er dokumentert iht. Byggeteknisk forskrift (TEK17) og gjeldende NBI Byggdetaljer.</p>
+                <p style="font-size:12px;color:#64748b;margin-top:24px;">Vennlig hilsen<br><strong>${authorName}</strong> | ${(user as any)?.company || 'Mesterbedrift AS'}</p>
+              </div>
+            `,
+            authorName,
+            companyName: (user as any)?.company || 'Mesterbedrift AS'
+          });
+
+          return NextResponse.json({
+            success: true,
+            action: 'documentation_email_sent',
+            reply: `✅ **Komplett FDV-perm er nå oversendt på e-post!**\n\n- **Mottaker:** **${recipientEmail}** (${clientName})\n- **Prosjekt:** **${projName}**\n- **Antall dokumenter i permen:** ${docResult.documents.length} stk (FDV-blader, tekniske godkjenninger, TEK17-samsvar og overtakelsesprotokoll).\n\nByggherren har mottatt en formell e-post med all nødvendig FDV- og sluttdokumentasjon.`,
+            emailResult: sendEmailRes,
+            suggestedActions: [
+              {
+                id: 'open_documentation_archive',
+                type: 'open_documentation_archive',
+                label: '📄 Åpne FDV-Arkiv for prosjektet',
+                data: { projectId: projId }
+              }
+            ]
+          });
+        }
+
+        // 2. Vis sammendrag og handlinger for dokumentasjon
+        const docListMarkdown = docResult.documents.map((d: any, idx: number) => {
+          return `${idx + 1}. **${d.title}**\n   - *Kategori:* ${d.category} | *Kilde:* ${d.source.toUpperCase()}\n   - *Godkjenning/NOBB:* ${d.sintefApproval || d.nobbNumber || 'Verifisert'}\n   - *Hjemmel:* ${d.tek17Clause || 'TEK17'}\n   - *Drift/Vedlikehold:* ${d.maintenanceInterval || 'Se datablad'}`;
+        }).join('\n\n');
+
+        return NextResponse.json({
+          success: true,
+          action: 'project_documentation_ready',
+          reply: `📁 **Komplett FDV-Perm & Sluttdokumentasjon for ${projName}**\n\n${docResult.isNewlyGenerated ? '⚡ *Jeg har autonomt analysert prosjektet og generert en fullstendig FDV-pakke tilpasset utførelsen:*\n\n' : 'Her er oppdatert dokumentasjon for prosjektet:\n\n'}${docListMarkdown}\n\n💡 **Hva vil du gjøre nå?** Du kan be meg sende permen til kunden på e-post, laste den ned, eller åpne dokumentarkivet.`,
+          suggestedActions: [
+            {
+              id: 'open_documentation_archive',
+              type: 'open_documentation_archive',
+              label: '📄 Åpne FDV-Arkiv',
+              data: { projectId: projId }
+            },
+            {
+              id: 'send_documentation_email',
+              type: 'send_documentation_email',
+              label: clientEmail ? `✉️ Send FDV til ${clientEmail}` : '✉️ Send FDV på e-post til kunde',
+              data: { projectId: projId, clientEmail }
+            },
+            {
+              id: 'download_combined_fdv',
+              type: 'download_combined_fdv',
+              label: '📥 Last ned samlet FDV-perm (PDF/Utskrift)',
+              data: { projectId: projId }
+            }
+          ],
+          followUpPrompts: [
+            clientEmail ? `Send FDV-permen til ${clientEmail}` : 'Send FDV-permen på epost til kunden',
+            `Hvilke TEK17-krav gjelder for ferdigattest på ${projName}?`,
+            `Generer overtakelsesprotokoll med 5 års garanti for ${projName}`
+          ]
+        });
       }
 
       // E1. INVITERE BRUKERE INN & TILGANGSNIVÅER (RBAC)

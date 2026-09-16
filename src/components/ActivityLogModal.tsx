@@ -17,7 +17,7 @@ const ActivityLogModal: React.FC<ActivityLogModalProps> = ({ isOpen, onClose, pr
       <motion.div 
         initial={{ opacity: 0, scale: 0.98, y: 20 }}
         animate={{ opacity: 1, scale: 1, y: 0 }}
-        className="bg-neutral-50 w-full max-w-4xl rounded-t-[2rem] sm:rounded-[2.5rem] shadow-2xl overflow-hidden flex flex-col max-h-[92vh] sm:max-h-[90vh] pb-[env(safe-area-inset-bottom,0px)]"
+        className="bg-neutral-50 text-neutral-900 w-full max-w-4xl rounded-t-[2rem] sm:rounded-[2.5rem] shadow-2xl overflow-hidden flex flex-col max-h-[92vh] sm:max-h-[90vh] pb-[env(safe-area-inset-bottom,0px)]"
       >
         {/* Mobile Grab Handle */}
         <div className="sm:hidden w-12 h-1.5 bg-neutral-300 rounded-full mx-auto mt-3 mb-1 shrink-0" />
@@ -29,11 +29,11 @@ const ActivityLogModal: React.FC<ActivityLogModalProps> = ({ isOpen, onClose, pr
               <Clock size={20} className="sm:w-6 sm:h-6" />
             </div>
             <div className="min-w-0">
-              <h2 className="text-lg sm:text-2xl font-bold tracking-tight truncate">Aktivitetslogg</h2>
+              <h2 className="text-lg sm:text-2xl font-bold tracking-tight text-neutral-900 truncate">Aktivitetslogg</h2>
               <p className="text-neutral-500 text-xs sm:text-sm font-medium truncate">Fullstendig oversikt over hendelser i prosjektet</p>
             </div>
           </div>
-          <button onClick={onClose} aria-label="Lukk" title="Lukk" className="p-2 hover:bg-neutral-100 rounded-xl transition-colors shrink-0">
+          <button onClick={onClose} aria-label="Lukk" title="Lukk" className="p-2 text-neutral-500 hover:text-neutral-900 hover:bg-neutral-100 rounded-xl transition-colors shrink-0">
             <X size={20} className="sm:w-6 sm:h-6" />
           </button>
         </div>

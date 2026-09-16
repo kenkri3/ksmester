@@ -91,7 +91,7 @@ const VehicleModal: React.FC<VehicleModalProps> = ({ isOpen, onClose, projects }
       <motion.div 
         initial={{ opacity: 0, y: 20 }}
         animate={{ opacity: 1, y: 0 }}
-        className="bg-neutral-50 w-full max-w-5xl rounded-t-[2rem] sm:rounded-[2.5rem] shadow-2xl overflow-hidden flex flex-col max-h-[92vh] sm:max-h-[90vh] pb-[env(safe-area-inset-bottom,0px)]"
+        className="bg-neutral-50 text-neutral-900 w-full max-w-5xl rounded-t-[2rem] sm:rounded-[2.5rem] shadow-2xl overflow-hidden flex flex-col max-h-[92vh] sm:max-h-[90vh] pb-[env(safe-area-inset-bottom,0px)]"
       >
         {/* Header */}
         <div className="p-4 sm:p-8 border-b border-neutral-200 bg-white shrink-0">
@@ -102,11 +102,11 @@ const VehicleModal: React.FC<VehicleModalProps> = ({ isOpen, onClose, projects }
                 <Car size={20} className="sm:w-6 sm:h-6" />
               </div>
               <div>
-                <h2 className="text-lg sm:text-2xl font-bold tracking-tight">Kjørebok & Bilpark</h2>
+                <h2 className="text-lg sm:text-2xl font-bold tracking-tight text-neutral-900">Kjørebok & Bilpark</h2>
                 <p className="text-neutral-500 text-xs sm:text-sm font-medium">Administrer biler, turer og bompenger</p>
               </div>
             </div>
-            <button onClick={onClose} aria-label="Lukk" className="p-2 hover:bg-neutral-100 rounded-xl transition-colors shrink-0">
+            <button onClick={onClose} aria-label="Lukk" className="p-2 text-neutral-500 hover:text-neutral-900 hover:bg-neutral-100 rounded-xl transition-colors shrink-0">
               <X size={20} className="sm:w-6 sm:h-6" />
             </button>
           </div>
