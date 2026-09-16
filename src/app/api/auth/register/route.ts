@@ -1,6 +1,6 @@
 import { NextRequest, NextResponse } from 'next/server';
 import bcrypt from 'bcrypt';
-import { dbQuery, inMemoryStore } from '@/src/lib/server/db';
+import { dbQuery, inMemoryStore, saveCollectionItem } from '@/src/lib/server/db';
 import { signToken } from '@/src/lib/server/auth';
 
 export async function POST(req: NextRequest) {
@@ -65,7 +65,23 @@ export async function POST(req: NextRequest) {
     if (!inMemoryStore.users) inMemoryStore.users = [];
     inMemoryStore.users.push({ ...userObj, password: hashedPassword });
 
-    const token = signToken({ id: userObj.id, email: userObj.email, role: userObj.role, companyId: userObj.companyId });
+    // Opprett også bedriftsoppføring i companies-samlingen så SuperAdmin har full oversikt
+    const companyData = {
+      id: companyId,
+      name: userObj.company,
+      orgnr: cleanOrgnr || '',
+      contactName: userObj.displayName,
+      email: emailLower,
+      phone: '',
+      plan: 'pro',
+      status: 'active',
+      subscriptionStatus: 'trial',
+      modules: ['projects', 'checklists', 'deviations', 'ai', 'economy', 'fdv', 'inventory', 'vehicle', 'time', 'apprentice', 'building_app'],
+      createdAt: new Date().toISOString()
+    };
+    await saveCollectionItem('companies', companyData).catch(() => {});
+
+    const token = signToken({ id: userObj.id, email: userObj.email, role: userObj.role, companyId: userObj.companyId, company: userObj.company });
     return NextResponse.json({ token, user: userObj });
   } catch (err: any) {
     console.error('Register Error:', err);

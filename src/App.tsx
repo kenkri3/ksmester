@@ -1052,7 +1052,7 @@ function AppContent() {
                       className="w-full mt-3 flex items-center justify-center gap-2 py-2.5 px-3 bg-electric-50 text-electric-900 rounded-xl text-xs font-bold border border-electric-200 hover:bg-electric-100 transition-all cursor-pointer"
                     >
                       <Download size={15} className="text-electric-600" />
-                      <span>Last ned mobil-app / snarvei</span>
+                      <span>{t('app_shortcut_download', 'Last ned mobil-app / snarvei')}</span>
                     </button>
                   </div>
 
@@ -1072,7 +1072,7 @@ function AppContent() {
                       </select>
                     </div>
                     <span className="text-[10px] font-bold uppercase text-electric-700 bg-electric-100 px-2.5 py-0.5 rounded-full border border-electric-200">
-                      Eksport: Norsk
+                      {t('export_standard_note', 'Eksport: Norsk')}
                     </span>
                   </div>
                 </div>
@@ -1256,7 +1256,7 @@ function AppContent() {
                       className="w-full flex items-center justify-center gap-2 py-3 px-3 bg-emerald-600 text-navy-900 rounded-xl text-xs font-bold shadow-md hover:bg-slate-500 transition-all cursor-pointer"
                     >
                       <Smartphone size={16} />
-                      <span>Installer som app på mobilen</span>
+                      <span>{t('nav_download_app', 'Installer som app på mobilen')}</span>
                     </button>
                   </div>
 
@@ -1276,7 +1276,7 @@ function AppContent() {
                       </select>
                     </div>
                     <span className="text-[10px] font-black uppercase text-emerald-700 bg-emerald-100/60 px-2 py-0.5 rounded">
-                      Eksport: Norsk
+                      {t('export_standard_note', 'Eksport: Norsk')}
                     </span>
                   </div>
                 </div>

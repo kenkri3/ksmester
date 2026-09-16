@@ -672,7 +672,7 @@ export default function MobileApp({ initialScreen, onScreenChange }: MobileAppPr
             className="flex items-center gap-2 text-xs font-bold text-slate-700 hover:text-navy-900 bg-slate-100 hover:bg-slate-200 px-3 py-1.5 rounded-xl transition-all cursor-pointer"
           >
             <ArrowLeft size={14} />
-            <span>Tilbake til oversikt</span>
+            <span>{t('back_to_overview', 'Tilbake til oversikt')}</span>
           </button>
           <div className="flex items-center gap-2">
             <button
@@ -686,7 +686,7 @@ export default function MobileApp({ initialScreen, onScreenChange }: MobileAppPr
               title="Åpne telefonliste og kolleger"
             >
               <PhoneCall size={13} />
-              <span>Telefonliste</span>
+              <span>{t('contacts_colleagues', 'Telefonliste')}</span>
             </button>
             <span className="w-2 h-2 rounded-full bg-emerald-500 animate-pulse hidden xs:inline" />
           </div>
@@ -697,13 +697,13 @@ export default function MobileApp({ initialScreen, onScreenChange }: MobileAppPr
             <div>
               <div className="inline-flex items-center gap-1.5 px-2.5 py-0.5 rounded-full bg-emerald-500/20 text-emerald-300 text-[10px] font-black uppercase tracking-wider mb-1 border border-emerald-500/30">
                 <Smartphone size={12} />
-                <span>Lynrask mobil-tilgang</span>
+                <span>{t('mobile_fast_access', 'Lynrask mobil-tilgang')}</span>
               </div>
               <h2 className="text-sm sm:text-base font-bold text-white">
-                Last ned VikingMester til din mobil
+                {t('mobile_download_title', 'Last ned VikingMester til din mobil')}
               </h2>
               <p className="text-xs text-slate-300 max-w-sm mt-0.5">
-                1-klikk direkte nedlasting. Legg appen rett på hjemskjermen uten ventetid.
+                {t('mobile_download_desc', '1-klikk direkte nedlasting. Legg appen rett på hjemskjermen uten ventetid.')}
               </p>
             </div>
             <div className="flex flex-wrap items-center gap-1.5 shrink-0">
@@ -717,7 +717,7 @@ export default function MobileApp({ initialScreen, onScreenChange }: MobileAppPr
                 title="Last ned Apple profil for iPhone og iPad"
               >
                 <Download size={13} className="text-emerald-400" />
-                <span>iPhone profil</span>
+                <span>{t('btn_iphone_profile', 'iPhone profil')}</span>
               </button>
               <button
                 type="button"
@@ -729,7 +729,7 @@ export default function MobileApp({ initialScreen, onScreenChange }: MobileAppPr
                 title="Last ned snarvei for Android og mobil"
               >
                 <Download size={13} />
-                <span>Android snarvei</span>
+                <span>{t('btn_android_shortcut', 'Android snarvei')}</span>
               </button>
               <button
                 type="button"
@@ -741,7 +741,7 @@ export default function MobileApp({ initialScreen, onScreenChange }: MobileAppPr
                 title="Last ned Windows snarvei"
               >
                 <Download size={12} />
-                <span>PC snarvei</span>
+                <span>{t('btn_pc_shortcut', 'PC snarvei')}</span>
               </button>
             </div>
           </div>
@@ -807,7 +807,7 @@ export default function MobileApp({ initialScreen, onScreenChange }: MobileAppPr
                           {smartAction.icon}
                         </div>
                         <div className="text-left flex-1 min-w-0">
-                          <div className="text-[10px] font-black uppercase tracking-widest opacity-75 mb-0.5">Anbefalt Handling</div>
+                          <div className="text-[10px] font-black uppercase tracking-widest opacity-75 mb-0.5">{t('recommended_action', 'Anbefalt Handling')}</div>
                           <div className="text-base font-bold leading-tight truncate">{smartAction.label}</div>
                           <div className="text-[11px] opacity-85 mt-0.5 truncate">{smartAction.description}</div>
                         </div>
@@ -834,7 +834,7 @@ export default function MobileApp({ initialScreen, onScreenChange }: MobileAppPr
                   onClick={handleInstallApp}
                   className="w-full py-2.5 px-3.5 bg-neutral-100/90 hover:bg-emerald-50 text-neutral-800 hover:text-emerald-900 rounded-2xl text-xs font-bold flex items-center justify-between border border-neutral-200 transition-all cursor-pointer"
                 >
-                  <span className="flex items-center gap-2"><Download size={15} className="text-emerald-600" /> Last ned app / snarvei</span>
+                  <span className="flex items-center gap-2"><Download size={15} className="text-emerald-600" /> {t('app_shortcut_download', 'Last ned app / snarvei')}</span>
                   <span className="text-[10px] uppercase font-black text-emerald-800 bg-emerald-100/80 px-2 py-0.5 rounded-full">Offline OK</span>
                 </button>
                 <div className="p-4 bg-emerald-50 rounded-2xl border border-emerald-100">
@@ -856,8 +856,8 @@ export default function MobileApp({ initialScreen, onScreenChange }: MobileAppPr
                     <div className="w-12 h-12 bg-white/20 rounded-2xl flex items-center justify-center">
                       <PhoneCall size={24} />
                     </div>
-                    <span className="text-xs font-bold uppercase tracking-widest text-center">Telefonliste</span>
-                    <span className="text-[10px] text-cyan-100 font-medium">Ring & SMS kolleger</span>
+                    <span className="text-xs font-bold uppercase tracking-widest text-center">{t('contacts_colleagues', 'Telefonliste')}</span>
+                    <span className="text-[10px] text-cyan-100 font-medium">{t('call_sms_colleagues', 'Ring & SMS kolleger')}</span>
                   </button>
 
                   <button 
@@ -868,7 +868,7 @@ export default function MobileApp({ initialScreen, onScreenChange }: MobileAppPr
                       <Camera size={24} />
                     </div>
                     <span className="text-xs font-bold uppercase tracking-widest">{t('image')}</span>
-                    <span className="text-[10px] text-slate-300 font-medium">AI Bildeanalyse</span>
+                    <span className="text-[10px] text-slate-300 font-medium">{t('ai_photo_analysis', 'AI Bildeanalyse')}</span>
                     <input 
                       type="file" 
                       ref={fileInputRef} 
@@ -885,7 +885,7 @@ export default function MobileApp({ initialScreen, onScreenChange }: MobileAppPr
                       <Mic size={24} />
                     </div>
                     <span className="text-xs font-bold uppercase tracking-widest">{t('voice')}</span>
-                    <span className="text-[10px] text-emerald-100 font-medium">Tale til SJA</span>
+                    <span className="text-[10px] text-emerald-100 font-medium">{t('voice_to_sja_short', 'Tale til SJA')}</span>
                   </button>
                   <button 
                     onClick={() => handleScreenChange('translator')}
@@ -895,7 +895,7 @@ export default function MobileApp({ initialScreen, onScreenChange }: MobileAppPr
                       <Languages size={24} />
                     </div>
                     <span className="text-xs font-bold uppercase tracking-widest">{t('translator')}</span>
-                    <span className="text-[10px] text-blue-100 font-medium">Byggetolk</span>
+                    <span className="text-[10px] text-blue-100 font-medium">{t('construction_translator', 'Byggetolk')}</span>
                   </button>
                   <button 
                     onClick={() => handleScreenChange('laerling')}

@@ -70,6 +70,21 @@ export const inMemoryStore: Record<string, any[]> = {
       createdAt: new Date().toISOString()
     }
   ],
+  companies: [
+    {
+      id: 'comp-001',
+      name: 'Mester Entreprenør AS',
+      orgnr: '933 607 779',
+      contactName: 'Ken (Admin)',
+      email: 'kenkri3@gmail.com',
+      phone: '401 63 082',
+      plan: 'enterprise',
+      status: 'active',
+      subscriptionStatus: 'active',
+      modules: ['projects', 'checklists', 'deviations', 'ai', 'economy', 'fdv', 'inventory', 'vehicle', 'time', 'apprentice', 'building_app'],
+      createdAt: new Date().toISOString()
+    }
+  ],
   projects: [
     {
       id: 'proj-101',
@@ -526,6 +541,49 @@ export async function getCollectionItems(collectionName: string): Promise<any[]>
             createdAt: r.created_at,
             updatedAt: r.updated_at
           }));
+        }
+      }
+
+      if (collectionName === 'companies') {
+        const rows = await dbQuery(
+          'SELECT id, data FROM items_store WHERE collection_name = $1 ORDER BY created_at DESC',
+          ['companies']
+        );
+        const existing: any[] = rows.map(r => ({ id: r.id, ...r.data }));
+
+        try {
+          const userRows = await dbQuery('SELECT DISTINCT company_id, company, orgnr, display_name, email, created_at FROM users WHERE company_id IS NOT NULL');
+          for (const u of userRows) {
+            const compId = u.company_id || 'comp-001';
+            const compName = u.company || 'Mester Entreprenør AS';
+            if (!existing.some(c => c.id === compId || c.name === compName)) {
+              const synthCompany = {
+                id: compId,
+                name: compName,
+                orgnr: u.orgnr || '933 607 779',
+                contactName: u.display_name || u.email,
+                email: u.email,
+                phone: '401 63 082',
+                plan: 'enterprise',
+                status: 'active',
+                subscriptionStatus: 'active',
+                modules: ['projects', 'checklists', 'deviations', 'ai', 'economy', 'fdv', 'inventory', 'vehicle', 'time', 'apprentice', 'building_app'],
+                createdAt: u.created_at || new Date().toISOString()
+              };
+              existing.push(synthCompany);
+              await dbQuery(
+                `INSERT INTO items_store (id, collection_name, data) VALUES ($1, $2, $3)
+                 ON CONFLICT (id) DO UPDATE SET data = $3`,
+                [compId, 'companies', JSON.stringify(synthCompany)]
+              ).catch(() => {});
+            }
+          }
+        } catch (uErr) {
+          console.warn('Error syncing companies from users:', uErr);
+        }
+
+        if (existing.length > 0) {
+          return existing;
         }
       }
 

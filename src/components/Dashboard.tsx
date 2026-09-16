@@ -1055,9 +1055,15 @@ export default function Dashboard({
                         {t('greeting_hello', { name: user?.displayName ? user.displayName.split(" ")[0] : "Kenneth", defaultValue: "Hei, Kenneth! 👋" })}
                       </h2>
                       {isSuperAdmin && (
-                        <span className="inline-flex items-center gap-1.5 px-2.5 py-0.5 rounded-full text-[11px] font-black uppercase tracking-wider bg-gradient-to-r from-amber-500/30 to-amber-600/30 text-amber-300 border border-amber-400/50 shadow-xs">
-                          {t('superadmin_badge', '👑 Superbruker (Full tilgang)')}
-                        </span>
+                        <button
+                          type="button"
+                          onClick={() => window.dispatchEvent(new CustomEvent("navigate_view", { detail: { view: "super-admin" } }))}
+                          className="inline-flex items-center gap-1.5 px-3 py-1 rounded-full text-[11px] font-black uppercase tracking-wider bg-gradient-to-r from-amber-500 to-amber-600 hover:from-amber-400 hover:to-amber-500 text-slate-950 shadow-md transition-all active:scale-95 cursor-pointer"
+                          title="Åpne SuperAdmin-konsollen (kundeoversikt, impersonation og autonom agent)"
+                        >
+                          <Shield size={13} className="text-slate-950" />
+                          <span>👑 SuperAdmin Konsoll ↗</span>
+                        </button>
                       )}
                       <span className="inline-flex items-center gap-1.5 px-2.5 py-0.5 rounded-full text-[11px] font-bold bg-emerald-500/20 text-emerald-400 border border-emerald-500/30">
                         <span className="w-2 h-2 rounded-full bg-emerald-400 animate-pulse" />
@@ -1071,7 +1077,17 @@ export default function Dashboard({
                 </div>
                 
                 {/* App View Quick Switcher Pill */}
-                <div className="flex items-center gap-2 bg-white/10 p-1.5 rounded-2xl backdrop-blur-md self-start sm:self-auto relative z-10">
+                <div className="flex items-center gap-2 bg-white/10 p-1.5 rounded-2xl backdrop-blur-md self-start sm:self-auto relative z-10 flex-wrap">
+                  {isSuperAdmin && (
+                    <button
+                      onClick={() => window.dispatchEvent(new CustomEvent("navigate_view", { detail: { view: "super-admin" } }))}
+                      className="flex items-center gap-1.5 px-3.5 py-2 rounded-xl text-xs font-black transition-all bg-gradient-to-r from-rose-600 to-pink-600 hover:from-rose-500 hover:to-pink-500 text-white shadow-md active:scale-95 cursor-pointer"
+                      title="Administrer alle kundebedrifter, moduler og impersoner kunder"
+                    >
+                      <Shield size={14} />
+                      <span>👑 SuperAdmin & Firmaer</span>
+                    </button>
+                  )}
                   <button
                     onClick={() => window.dispatchEvent(new CustomEvent("navigate_view", { detail: { view: "mobile" } }))}
                     className="flex items-center gap-2 px-4 py-2 rounded-xl text-xs font-black transition-all bg-electric-500 text-white shadow-purple-cta hover:bg-electric-400 active:scale-95 cursor-pointer"
@@ -1101,6 +1117,20 @@ export default function Dashboard({
                 </div>
 
                 <div className="grid grid-cols-2 sm:grid-cols-4 lg:grid-cols-8 gap-3 sm:gap-3.5">
+                  {/* 0. SuperAdmin (Kun synlig for Superbrukere) */}
+                  {isSuperAdmin && (
+                    <button
+                      type="button"
+                      onClick={() => window.dispatchEvent(new CustomEvent("navigate_view", { detail: { view: "super-admin" } }))}
+                      className="flex flex-col items-center text-center p-3.5 sm:p-4 rounded-2xl bg-gradient-to-b from-rose-50/90 to-white border border-rose-200/90 shadow-sm hover:shadow-md hover:border-rose-400 active:scale-95 transition-all group cursor-pointer"
+                    >
+                      <div className="w-12 h-12 rounded-2xl bg-gradient-to-tr from-rose-600 to-pink-600 text-white flex items-center justify-center shadow-md mb-2 group-hover:scale-105 transition-transform">
+                        <Shield size={22} />
+                      </div>
+                      <span className="text-xs font-black text-rose-900 group-hover:text-rose-600 transition-colors">SuperAdmin</span>
+                      <span className="text-[10px] text-rose-600 font-bold mt-0.5">Firmaer & Kunder</span>
+                    </button>
+                  )}
                   {/* 1. Tale til SJA */}
                   <button
                     type="button"

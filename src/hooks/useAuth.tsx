@@ -183,9 +183,22 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
     setCompany(null);
   };
 
+  const isSuperAdminComputed = (
+    role === 'superadmin' || 
+    role === 'admin' || 
+    user?.role === 'superadmin' || 
+    user?.role === 'admin' || 
+    user?.displayName?.toLowerCase().includes('ken') || 
+    user?.email === 'kenkri3@gmail.com' ||
+    user?.email === 'aichatnorge@gmail.com' ||
+    user?.email === 'kenneth@aichatnorge.no' ||
+    user?.email?.toLowerCase() === 'admin@vikingmester.no' ||
+    user?.email === 'post@vikingent.no' ||
+    false
+  );
+
   const startImpersonation = (companyId: string, role: string) => {
-    const isSuper = user?.role === 'admin' || user?.email === 'kenkri3@gmail.com' || user?.email === 'aichatnorge@gmail.com' || user?.email === 'kenneth@aichatnorge.no';
-    if (!isSuper) return;
+    if (!isSuperAdminComputed) return;
     localStorage.setItem('impersonatedCompanyId', companyId);
     localStorage.setItem('impersonatedRole', role);
     setImpersonatedCompanyId(companyId);
@@ -209,7 +222,7 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
       resetPassword,
       logout,
       isAuthReady,
-      isSuperAdmin: (role === 'superadmin' || role === 'admin' || user?.role === 'superadmin' || user?.role === 'admin' || user?.displayName?.toLowerCase().includes('ken') || false),
+      isSuperAdmin: isSuperAdminComputed,
       role: impersonatedRole || role,
       trade,
       company: impersonatedCompanyId || company,
