@@ -445,6 +445,10 @@ export default function Dashboard({
         case 'contacts':
           setIsContactsModalOpen(true);
           break;
+        case 'all_modules':
+        case 'modules':
+          setIsAllModulesOpen(true);
+          break;
         case 'pre_close':
           setActiveTab('kvalitet');
           setSelectedLukkesperreZone(lukkesperreZones[0]);
@@ -1162,6 +1166,7 @@ export default function Dashboard({
           <MesterAIChat 
             isEmbedded={true}
             isOpen={true}
+            initialTab={initialTab || (activeTab === 'cockpit' ? 'control_center' : (activeTab === 'prosjekter' ? 'projects' : (activeTab === 'endringsordrer' ? 'admin' : (activeTab === 'kvalitet' ? 'control_center' : 'chat'))))}
             selectedProject={selectedProject}
             projects={projects}
             changeOrders={dashboardChangeOrders}

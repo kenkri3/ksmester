@@ -74,6 +74,7 @@ export interface ChatMessage {
     label: string;
     title?: string;
     data?: any;
+    prompt?: string;
   }>;
   followUpPrompts?: string[];
 }
@@ -90,6 +91,7 @@ interface MesterAIChatProps {
   recentActivities?: any[];
   tasks?: any[];
   initialPrompt?: string;
+  initialTab?: string;
   isEmbedded?: boolean;
   onSelectProject?: (project: any) => void;
   onOpenPortal?: (project: any) => void;
@@ -123,6 +125,7 @@ export default function MesterAIChat({
   recentActivities = [],
   tasks = [],
   initialPrompt,
+  initialTab,
   isEmbedded = false,
   onSelectProject,
   onOpenPortal,
@@ -208,7 +211,47 @@ export default function MesterAIChat({
   const messagesContainerRef = useRef<HTMLDivElement>(null);
   const messagesEndRef = useRef<HTMLDivElement>(null);
   const chatFileInputRef = useRef<HTMLInputElement>(null);
+  const recognitionRef = useRef<any>(null);
   const [isAnalyzingImage, setIsAnalyzingImage] = useState(false);
+
+  // Sync initialTab with activeTab
+  useEffect(() => {
+    if (!initialTab) return;
+    if (initialTab === 'prosjekter' || initialTab === 'projects') setActiveTab('projects');
+    else if (initialTab === 'chat' || initialTab === 'samtale') setActiveTab('chat');
+    else if (initialTab === 'admin' || initialTab === 'tilbud' || initialTab === 'endring' || initialTab === 'finans' || initialTab === 'endringsordrer') setActiveTab('admin');
+    else if (initialTab === 'team') setActiveTab('team');
+    else if (initialTab === 'toolbox' || initialTab === 'verktoy') setActiveTab('toolbox');
+    else if (initialTab === 'oversikt' || initialTab === 'cockpit' || initialTab === 'control_center') setActiveTab('control_center');
+  }, [initialTab]);
+
+  // Global event listener for tab switching from header / mobile menu
+  useEffect(() => {
+    const handleSwitchTab = (e: any) => {
+      const target = e.detail?.tab;
+      if (!target) return;
+      if (target === 'prosjekter' || target === 'projects') setActiveTab('projects');
+      else if (target === 'chat' || target === 'samtale') setActiveTab('chat');
+      else if (target === 'admin' || target === 'tilbud' || target === 'endring' || target === 'finans' || target === 'endringsordrer') setActiveTab('admin');
+      else if (target === 'team') setActiveTab('team');
+      else if (target === 'toolbox' || target === 'verktoy') setActiveTab('toolbox');
+      else if (target === 'oversikt' || target === 'cockpit' || target === 'control_center') setActiveTab('control_center');
+      setActiveFormView(null);
+    };
+    window.addEventListener('switch_mester_tab', handleSwitchTab as EventListener);
+    return () => window.removeEventListener('switch_mester_tab', handleSwitchTab as EventListener);
+  }, []);
+
+  // Cleanup speech recognition on unmount
+  useEffect(() => {
+    return () => {
+      if (recognitionRef.current) {
+        try {
+          recognitionRef.current.abort();
+        } catch {}
+      }
+    };
+  }, []);
 
   // Keep omnichannel settings updated in real time
   useEffect(() => {
@@ -280,39 +323,85 @@ export default function MesterAIChat({
     handleSpeakText(briefingText);
   };
 
-  // Dedicated push-to-talk voice command handler
+  // Dedicated push-to-talk voice command handler with robust mobile SpeechRecognition
   const handleVoiceCommand = () => {
     if (isListeningMic) {
+      if (recognitionRef.current) {
+        try {
+          recognitionRef.current.stop();
+        } catch {}
+      }
       setIsListeningMic(false);
       return;
     }
-    if (!('webkitSpeechRecognition' in window) && !('SpeechRecognition' in window)) {
-      toast.info('Tale-til-tekst støttes ikke direkte i denne nettleseren. Bruk skrivefeltet.');
+
+    if (typeof window === 'undefined') return;
+    const SpeechRecognition = (window as any).SpeechRecognition || (window as any).webkitSpeechRecognition;
+    if (!SpeechRecognition) {
+      toast.info('Tale-til-tekst støttes best i Chrome, Safari og Edge. Du kan også bruke tastaturet eller diktat-knappen.');
       return;
     }
+
+    if (recognitionRef.current) {
+      try {
+        recognitionRef.current.abort();
+      } catch {}
+      recognitionRef.current = null;
+    }
+
     try {
-      const SpeechRecognition = (window as any).SpeechRecognition || (window as any).webkitSpeechRecognition;
       const recognition = new SpeechRecognition();
       recognition.lang = 'nb-NO';
       recognition.continuous = false;
-      recognition.interimResults = false;
+      recognition.interimResults = true;
+      recognitionRef.current = recognition;
+
+      let capturedText = '';
+
       recognition.onstart = () => {
         setIsListeningMic(true);
-        toast.info('Lytter... Still spørsmål eller gi instruks med stemmen.');
+        toast.info('Lytter... Still spørsmål eller gi instruks med stemmen nå.');
       };
+
       recognition.onresult = (event: any) => {
-        const transcript = event.results[0][0].transcript;
+        let currentInterim = '';
+        for (let i = event.resultIndex; i < event.results.length; ++i) {
+          const trans = event.results[i][0]?.transcript || '';
+          if (event.results[i].isFinal) {
+            capturedText += trans;
+          } else {
+            currentInterim += trans;
+          }
+        }
+        if (!capturedText && currentInterim) {
+          capturedText = currentInterim;
+        }
+      };
+
+      recognition.onerror = (event: any) => {
+        console.warn('Voice command recognition error:', event?.error);
+        if (event?.error === 'not-allowed') {
+          toast.error('Mikrofontilgang ble avvist. Vennligst tillat mikrofon i nettleseren.');
+        } else if (event?.error === 'no-speech') {
+          toast.info('Ingen tale registrert. Trykk og snakk tydelig.');
+        }
         setIsListeningMic(false);
-        if (transcript && transcript.trim()) {
-          toast.success(`Oppfattet: "${transcript}"`);
-          handleSendMessage(transcript.trim());
+      };
+
+      recognition.onend = () => {
+        setIsListeningMic(false);
+        recognitionRef.current = null;
+        const finalCmd = capturedText.trim();
+        if (finalCmd) {
+          toast.success(`Oppfattet: "${finalCmd}"`);
+          handleSendMessage(finalCmd);
           setActiveTab('chat');
         }
       };
-      recognition.onerror = () => setIsListeningMic(false);
-      recognition.onend = () => setIsListeningMic(false);
+
       recognition.start();
-    } catch {
+    } catch (e) {
+      console.warn('Voice command start failed:', e);
       setIsListeningMic(false);
     }
   };
@@ -480,24 +569,49 @@ export default function MesterAIChat({
         .filter(m => m.id !== 'welcome')
         .map(m => ({ role: m.role, content: m.content }));
 
-      const res = await fetch('/api/agent/dispatch', {
-        method: 'POST',
-        headers: {
-          'Content-Type': 'application/json',
-          ...(token ? { 'Authorization': `Bearer ${token}` } : {})
-        },
-        body: JSON.stringify({
-          action: 'chat',
-          text: textToSend,
-          history: historyPayload,
-          projectId: activeProj?.id || '',
-          projectName: activeProj?.name || 'Byggeprosjekt',
-          authorName: typeof window !== 'undefined' && localStorage.getItem('user_display_name') ? localStorage.getItem('user_display_name') : 'Admin / Byggmester'
-        })
-      });
+      let res: Response | null = null;
+      let lastFetchErr: any = null;
 
-      if (!res.ok) {
-        throw new Error(`Serverfeil: ${res.status}`);
+      // Prøv inntil 2 ganger ved 502/503/504 (f.eks. under deployment rollover)
+      for (let attempt = 0; attempt < 2; attempt++) {
+        try {
+          res = await fetch('/api/agent/dispatch', {
+            method: 'POST',
+            headers: {
+              'Content-Type': 'application/json',
+              ...(token ? { 'Authorization': `Bearer ${token}` } : {})
+            },
+            body: JSON.stringify({
+              action: 'chat',
+              text: textToSend,
+              history: historyPayload,
+              projectId: activeProj?.id || '',
+              projectName: activeProj?.name || 'Byggeprosjekt',
+              authorName: typeof window !== 'undefined' && localStorage.getItem('user_display_name') ? localStorage.getItem('user_display_name') : 'Admin / Byggmester'
+            })
+          });
+
+          // Hvis serveren returnerte 502/503/504 (f.eks. under container switchover), vent 2 sek og prøv på nytt
+          if ((res.status === 502 || res.status === 503 || res.status === 504) && attempt === 0) {
+            await new Promise(r => setTimeout(r, 2000));
+            continue;
+          }
+          break;
+        } catch (fetchErr: any) {
+          lastFetchErr = fetchErr;
+          if (attempt === 0) {
+            await new Promise(r => setTimeout(r, 2000));
+            continue;
+          }
+        }
+      }
+
+      if (!res || !res.ok) {
+        const status = res ? res.status : 500;
+        if (status === 502 || status === 503 || status === 504) {
+          throw new Error(`Serveroppdatering pågår (${status})`);
+        }
+        throw new Error(lastFetchErr?.message || `Serverfeil: ${status}`);
       }
 
       const data = await res.json();
@@ -523,11 +637,23 @@ export default function MesterAIChat({
       }
     } catch (err: any) {
       console.error('MesterAI chat dispatch failed:', err);
+      const isDeployOrTimeout = err.message?.includes('502') || err.message?.includes('503') || err.message?.includes('504') || err.message?.includes('Serveroppdatering');
+      
       const errorMessage: ChatMessage = {
         id: `err-${Date.now()}`,
         role: 'assistant',
-        content: `Beklager, jeg opplevde en midlertidig feil: ${err.message}. Vennligst prøv igjen om et øyeblikk.`,
-        timestamp: new Date().toLocaleTimeString('no-NO', { hour: '2-digit', minute: '2-digit' })
+        content: isDeployOrTimeout
+          ? `🔄 **Midlertidig kontaktbrudd mot serveren:**\n\nServeren utførte akkurat en automatisk oppdatering eller brukte litt for lang tid på å svare. Den nye versjonen er nå aktiv!\n\nKlikk på knappen under for å prøve forespørselen på nytt:`
+          : `Beklager, jeg opplevde en midlertidig feil: ${err.message}. Vennligst prøv igjen om et øyeblikk.`,
+        timestamp: new Date().toLocaleTimeString('no-NO', { hour: '2-digit', minute: '2-digit' }),
+        suggestedActions: [
+          {
+            id: 'retry_prompt',
+            type: 'retry_prompt',
+            label: '🔄 Prøv på nytt nå',
+            prompt: textToSend
+          }
+        ]
       };
       setMessages(prev => [...prev, errorMessage]);
     } finally {
@@ -555,32 +681,51 @@ export default function MesterAIChat({
   };
 
   const handleActionClick = (action: any) => {
-    if (action.type === 'open_offer_modal') {
+    if (!action) return;
+
+    if (action.type === 'open_task_modal' || action.id === 'assign_task') {
+      setActiveFormView({ type: 'task', data: action.data });
+      return;
+    }
+    if (action.type === 'open_offer_modal' || action.id === 'open_offer') {
       setActiveFormView({ type: 'offer', data: action.data });
       return;
     }
-    if (action.type === 'open_change_order_modal') {
+    if (action.type === 'open_change_order_modal' || action.id === 'open_co') {
       setActiveFormView({ type: 'change_order', data: action.data });
       return;
     }
-    if (action.type === 'open_sja_modal') {
+    if (action.type === 'open_sja_modal' || action.id === 'open_sja') {
       setActiveFormView({ type: 'sja', data: action.data });
       return;
     }
-    if (action.type === 'open_deviation_modal') {
+    if (action.type === 'open_deviation_modal' || action.id === 'open_deviation') {
       setActiveFormView({ type: 'deviation', data: action.data });
       return;
     }
-    if (action.type === 'open_time_modal') {
+    if (action.type === 'open_time_modal' || action.id === 'open_time') {
       setActiveFormView({ type: 'time', data: action.data });
+      return;
+    }
+    if (action.type === 'open_invite_modal' || action.id === 'invite_user') {
+      if (onOpenInviteModal) {
+        onOpenInviteModal();
+      } else {
+        setActiveTab('team');
+        setActiveFormView(null);
+      }
       return;
     }
     if (action.type === 'open_ai_vision') {
       onOpenAIVision?.();
       return;
     }
+
     if (action.prompt) {
       handleSendMessage(action.prompt);
+    } else if (action.label) {
+      const cleanPrompt = action.label.replace(/^[\p{Emoji}\s•\-–—]+/u, '').trim();
+      handleSendMessage(cleanPrompt || action.label);
     }
   };
 
@@ -603,21 +748,37 @@ export default function MesterAIChat({
 
   const toggleMic = () => {
     if (isListeningMic) {
+      if (recognitionRef.current) {
+        try {
+          recognitionRef.current.stop();
+        } catch {}
+      }
       setIsListeningMic(false);
       return;
     }
 
-    if (!('webkitSpeechRecognition' in window) && !('SpeechRecognition' in window)) {
-      toast.info('Tale-til-tekst er tilgjengelig via tastaturet. Snakk direkte inn i feltet.');
+    if (typeof window === 'undefined') return;
+    const SpeechRecognition = (window as any).SpeechRecognition || (window as any).webkitSpeechRecognition;
+    if (!SpeechRecognition) {
+      toast.info('Tale-til-tekst støttes best i Chrome, Safari og Edge. Du kan også bruke tastaturet eller diktat-knappen.');
       return;
     }
 
+    if (recognitionRef.current) {
+      try {
+        recognitionRef.current.abort();
+      } catch {}
+      recognitionRef.current = null;
+    }
+
     try {
-      const SpeechRecognition = (window as any).SpeechRecognition || (window as any).webkitSpeechRecognition;
       const recognition = new SpeechRecognition();
       recognition.lang = 'nb-NO';
       recognition.continuous = false;
-      recognition.interimResults = false;
+      recognition.interimResults = true;
+      recognitionRef.current = recognition;
+
+      let capturedText = '';
 
       recognition.onstart = () => {
         setIsListeningMic(true);
@@ -625,22 +786,42 @@ export default function MesterAIChat({
       };
 
       recognition.onresult = (event: any) => {
-        const transcript = event.results[0][0].transcript;
-        setInputVal(prev => (prev ? `${prev} ${transcript}` : transcript));
-        setIsListeningMic(false);
-        toast.success('Tale oppfattet!');
+        let currentInterim = '';
+        for (let i = event.resultIndex; i < event.results.length; ++i) {
+          const trans = event.results[i][0]?.transcript || '';
+          if (event.results[i].isFinal) {
+            capturedText += trans;
+          } else {
+            currentInterim += trans;
+          }
+        }
+        const textToSet = (capturedText || currentInterim).trim();
+        if (textToSet) {
+          setInputVal(textToSet);
+        }
       };
 
-      recognition.onerror = () => {
+      recognition.onerror = (event: any) => {
+        console.warn('Speech recognition error:', event?.error);
+        if (event?.error === 'not-allowed') {
+          toast.error('Mikrofontilgang ble avvist. Vennligst tillat mikrofon i nettleseren.');
+        } else if (event?.error === 'no-speech') {
+          toast.info('Ingen tale registrert. Prøv igjen.');
+        }
         setIsListeningMic(false);
       };
 
       recognition.onend = () => {
         setIsListeningMic(false);
+        recognitionRef.current = null;
+        if (capturedText.trim()) {
+          toast.success('Tale oppfattet!');
+        }
       };
 
       recognition.start();
-    } catch {
+    } catch (e) {
+      console.warn('SpeechRecognition start failed:', e);
       setIsListeningMic(false);
     }
   };
@@ -1045,7 +1226,9 @@ export default function MesterAIChat({
           {(activeTab === 'chat' || (isSplitView && !activeFormView)) && (
             <div className={cn(
               "flex flex-col bg-white border-r border-slate-200 overflow-hidden transition-all",
-              isSplitView && activeTab !== 'chat' ? "hidden md:flex md:w-[44%] lg:w-[40%] xl:w-[38%]" : "w-full flex-1"
+              activeFormView 
+                ? "hidden md:flex md:w-[44%] lg:w-[40%] xl:w-[38%]" 
+                : (isSplitView && activeTab !== 'chat' ? "hidden md:flex md:w-[44%] lg:w-[40%] xl:w-[38%]" : "w-full flex-1")
             )}>
               {/* Chat Subheader with Active Project & Nullstill Chat Action */}
               <div className="px-3.5 sm:px-4 py-2 bg-slate-50 border-b border-slate-200 flex items-center justify-between text-xs text-slate-600 shrink-0">
@@ -1262,16 +1445,21 @@ export default function MesterAIChat({
             {activeFormView ? (
               <div className="bg-white rounded-2xl border border-slate-200 shadow-sm p-4 sm:p-6 flex-1 flex flex-col">
                 <div className="flex items-center justify-between pb-3 mb-4 border-b border-slate-100">
-                  <span className="text-xs font-black uppercase tracking-wider text-slate-400">
-                    Aktivt Skjema i Chatten
-                  </span>
                   <button
                     type="button"
                     onClick={() => setActiveFormView(null)}
-                    className="text-xs font-bold text-slate-500 hover:text-navy-950 flex items-center gap-1"
+                    className="text-xs font-bold text-electric-700 hover:text-electric-800 flex items-center gap-1.5 py-1.5 px-3 bg-electric-50 hover:bg-electric-100 rounded-xl border border-electric-200 cursor-pointer active:scale-95 transition-all"
                   >
-                    <X size={14} />
-                    <span>Lukk skjema</span>
+                    <ChevronLeft size={16} />
+                    <span>← Tilbake til samtale</span>
+                  </button>
+                  <button
+                    type="button"
+                    onClick={() => setActiveFormView(null)}
+                    className="p-1.5 text-slate-400 hover:text-slate-700 rounded-lg cursor-pointer"
+                    title="Lukk skjema"
+                  >
+                    <X size={18} />
                   </button>
                 </div>
                 <div className="flex-1 overflow-y-auto">
@@ -1745,24 +1933,24 @@ export default function MesterAIChat({
                       Sanntids vær, fremdrift og lukkesperrer for alle byggeplasser.
                     </p>
                   </div>
-                  <div className="flex items-center gap-2">
+                  <div className="flex flex-col sm:flex-row sm:items-center gap-2 w-full sm:w-auto">
                     {onOpenCreateProject && (
                       <button
                         type="button"
                         onClick={onOpenCreateProject}
-                        className="flex items-center gap-1.5 px-3 py-1.5 bg-gradient-to-r from-blue-600 to-electric-600 hover:from-blue-500 hover:to-electric-500 text-white rounded-xl text-xs font-black shadow-xs cursor-pointer shrink-0"
+                        className="flex items-center justify-center gap-1.5 px-3.5 py-2 sm:py-1.5 bg-gradient-to-r from-blue-600 to-electric-600 hover:from-blue-500 hover:to-electric-500 text-white rounded-xl text-xs font-black shadow-xs cursor-pointer w-full sm:w-auto shrink-0 active:scale-98 transition-all"
                       >
                         <Plus size={13} />
                         <span>+ Nytt Prosjekt</span>
                       </button>
                     )}
-                    <div className="relative">
+                    <div className="relative w-full sm:w-56">
                       <input 
                         type="text"
                         value={projectFilter}
                         onChange={(e) => setProjectFilter(e.target.value)}
                         placeholder="Filtrer prosjekter..."
-                        className="pl-7 pr-3 py-1.5 bg-slate-50 border border-slate-200 rounded-xl text-xs font-medium focus:bg-white"
+                        className="w-full pl-7 pr-3 py-2 sm:py-1.5 bg-slate-50 border border-slate-200 rounded-xl text-xs font-medium focus:bg-white outline-none focus:ring-1 focus:ring-electric-500"
                       />
                       <Search size={12} className="absolute left-2.5 top-1/2 -translate-y-1/2 text-slate-400" />
                     </div>

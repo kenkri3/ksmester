@@ -42,7 +42,10 @@ import {
   FolderKanban,
   ChevronDown,
   Sparkles,
-  FileCheck
+  FileCheck,
+  Layers,
+  MessageSquare,
+  FileSignature
 } from 'lucide-react';
 import { cn } from '@/src/lib/utils';
 import { Toaster } from 'sonner';
@@ -153,13 +156,26 @@ function AppContent() {
   const handleMobileNavigate = (targetView: string, tab?: string) => {
     if (tab) {
       setDashboardTab(tab as any);
+      window.dispatchEvent(new CustomEvent('switch_mester_tab', { detail: { tab } }));
     }
     setView(targetView as View);
     window.scrollTo({ top: 0, behavior: 'smooth' });
   };
 
   const handleMobileAction = (actionId: string) => {
-    const mobileActions = ['take_photo', 'voice_sja', 'log_deviation', 'start_checklist', 'contacts', 'laerling', 'translator', 'activity'];
+    const mobileActions = ['take_photo', 'voice_sja', 'log_deviation', 'start_checklist', 'contacts', 'laerling', 'translator', 'activity', 'all_modules', 'modules'];
+
+    if (actionId === 'all_modules' || actionId === 'modules') {
+      if (view !== 'dashboard') {
+        setView('dashboard');
+        setTimeout(() => {
+          window.dispatchEvent(new CustomEvent('trigger_dashboard_action', { detail: { actionId: 'all_modules' } }));
+        }, 150);
+      } else {
+        window.dispatchEvent(new CustomEvent('trigger_dashboard_action', { detail: { actionId: 'all_modules' } }));
+      }
+      return;
+    }
 
     if (view === 'mobile') {
       if (actionId === 'contacts') {
@@ -1132,42 +1148,67 @@ function AppContent() {
                     </div>
                   </div>
 
+                  {/* Banner: Åpne alle 20 verktøy & moduler */}
+                  <button
+                    onClick={() => {
+                      handleMobileAction('all_modules');
+                      setIsMenuOpen(false);
+                    }}
+                    className="w-full flex items-center justify-between p-3.5 bg-gradient-to-r from-electric-600 via-blue-600 to-indigo-600 text-white rounded-2xl font-bold text-xs shadow-md active:scale-98 transition-all cursor-pointer"
+                  >
+                    <div className="flex items-center gap-2.5">
+                      <span className="p-1.5 bg-white/20 rounded-xl">
+                        <Layers size={18} />
+                      </span>
+                      <div className="text-left">
+                        <div className="font-bold text-white text-xs">Se alle 20 verktøy & moduler</div>
+                        <div className="text-[10px] text-white/80 font-normal">Komplett verktøykasse for bygg & anlegg</div>
+                      </div>
+                    </div>
+                    <ChevronRight size={16} className="text-white/80" />
+                  </button>
+
                   {/* Main App Modules */}
                   <div>
                     <div className="text-[10px] font-black uppercase tracking-wider text-neutral-400 px-1 mb-2">
-                      Systemmoduler
+                      MesterAI Arbeidsstasjon
                     </div>
                     <div className="grid grid-cols-2 gap-2">
                       {[
-                        { tab: 'oversikt', label: 'Oversikt', icon: <LayoutDashboard size={16} /> },
-                        { tab: 'prosjekter', label: 'Prosjekter', icon: <FolderKanban size={16} /> },
-                        { tab: 'tilbud', label: 'Tilbud & Kalkyle', icon: <FileText size={16} /> },
-                        { tab: 'avvik', label: 'Avvik & KS', icon: <AlertTriangle size={16} /> },
-                        { tab: 'hms', label: 'HMS & Mannskap', icon: <ShieldCheck size={16} /> },
-                        { tab: 'finans', label: 'Finans & Endringer', icon: <Coins size={16} /> },
-                        { tab: 'laerling', label: 'Lærling', icon: <GraduationCap size={16} /> },
-                        { tab: 'ai', label: 'AI Analyse', icon: <Brain size={16} /> },
-                      ].map((m) => (
+                        { tab: 'chat', label: 'MesterAI Samtale', icon: <MessageSquare size={16} />, badge: 'AI' },
+                        { tab: 'control_center', label: 'Dagens Kontroll', icon: <Sparkles size={16} /> },
+                        { tab: 'projects', label: 'Prosjektoversikt', icon: <FolderKanban size={16} /> },
+                        { tab: 'admin', label: 'Tilbud & Kalkyle', icon: <FileText size={16} /> },
+                        { tab: 'admin', label: 'Endringsordrer', icon: <FileSignature size={16} />, badge: 'NS 8406' },
+                        { tab: 'team', label: 'Team & Tilganger', icon: <Users size={16} /> },
+                      ].map((m, idx) => (
                         <button
-                          key={m.tab}
+                          key={`${m.tab}-${idx}`}
                           onClick={() => {
                             handleMobileNavigate('dashboard', m.tab);
                             setIsMenuOpen(false);
                           }}
                           className={cn(
-                            "flex items-center gap-2.5 p-3 rounded-xl text-left text-xs font-bold transition-all border cursor-pointer",
+                            "flex items-center justify-between p-3 rounded-xl text-left text-xs font-bold transition-all border cursor-pointer",
                             view === 'dashboard' && dashboardTab === m.tab
                               ? "bg-electric-50 border-electric-300 text-electric-700 shadow-xs"
                               : "bg-white border-slate-200 text-slate-700 hover:bg-slate-50"
                           )}
                         >
-                          <span className={cn(
-                            "p-1.5 rounded-lg shrink-0",
-                            view === 'dashboard' && dashboardTab === m.tab ? "bg-electric-500 text-white" : "bg-slate-100 text-slate-600"
-                          )}>
-                            {m.icon}
-                          </span>
-                          <span className="truncate">{m.label}</span>
+                          <div className="flex items-center gap-2.5 min-w-0">
+                            <span className={cn(
+                              "p-1.5 rounded-lg shrink-0",
+                              view === 'dashboard' && dashboardTab === m.tab ? "bg-electric-500 text-white" : "bg-slate-100 text-slate-600"
+                            )}>
+                              {m.icon}
+                            </span>
+                            <span className="truncate">{m.label}</span>
+                          </div>
+                          {m.badge && (
+                            <span className="text-[9px] font-black px-1.5 py-0.5 rounded bg-electric-100 text-electric-800 shrink-0">
+                              {m.badge}
+                            </span>
+                          )}
                         </button>
                       ))}
                     </div>
@@ -1176,35 +1217,9 @@ function AppContent() {
                   {/* Field Tools Direct Launch */}
                   <div>
                     <div className="text-[10px] font-black uppercase tracking-wider text-neutral-400 px-1 mb-2">
-                      Feltverktøy
+                      Feltverktøy & Hurtighandlinger
                     </div>
-                    <div className="grid grid-cols-2 gap-2">
-                      <button
-                        onClick={() => {
-                          handleMobileAction('vehicle');
-                          setIsMenuOpen(false);
-                        }}
-                        className="flex items-center gap-2.5 p-3 rounded-xl text-left text-xs font-bold bg-neutral-50 border border-neutral-200/80 text-neutral-800 hover:bg-slate-50 transition-all cursor-pointer"
-                      >
-                        <span className="p-1.5 rounded-lg bg-slate-800 text-white shrink-0">
-                          <Car size={16} />
-                        </span>
-                        <span className="truncate">Kjørebok</span>
-                      </button>
-
-                      <button
-                        onClick={() => {
-                          handleMobileAction('inventory');
-                          setIsMenuOpen(false);
-                        }}
-                        className="flex items-center gap-2.5 p-3 rounded-xl text-left text-xs font-bold bg-neutral-50 border border-neutral-200/80 text-neutral-800 hover:bg-slate-50 transition-all cursor-pointer"
-                      >
-                        <span className="p-1.5 rounded-lg bg-blue-600 text-white shrink-0">
-                          <Package size={16} />
-                        </span>
-                        <span className="truncate">Lager & Utstyr</span>
-                      </button>
-
+                    <div className="grid grid-cols-2 sm:grid-cols-3 gap-2">
                       <button
                         onClick={() => {
                           handleMobileAction('time_registration');
@@ -1229,6 +1244,58 @@ function AppContent() {
                           <Camera size={16} />
                         </span>
                         <span className="truncate">AI Vision</span>
+                      </button>
+
+                      <button
+                        onClick={() => {
+                          handleMobileAction('voice_sja');
+                          setIsMenuOpen(false);
+                        }}
+                        className="flex items-center gap-2.5 p-3 rounded-xl text-left text-xs font-bold bg-neutral-50 border border-neutral-200/80 text-neutral-800 hover:bg-slate-50 transition-all cursor-pointer"
+                      >
+                        <span className="p-1.5 rounded-lg bg-amber-500 text-white shrink-0">
+                          <Mic size={16} />
+                        </span>
+                        <span className="truncate">Stemme-SJA</span>
+                      </button>
+
+                      <button
+                        onClick={() => {
+                          handleMobileAction('start_checklist');
+                          setIsMenuOpen(false);
+                        }}
+                        className="flex items-center gap-2.5 p-3 rounded-xl text-left text-xs font-bold bg-neutral-50 border border-neutral-200/80 text-neutral-800 hover:bg-slate-50 transition-all cursor-pointer"
+                      >
+                        <span className="p-1.5 rounded-lg bg-teal-600 text-white shrink-0">
+                          <FileCheck size={16} />
+                        </span>
+                        <span className="truncate">Sjekkliste</span>
+                      </button>
+
+                      <button
+                        onClick={() => {
+                          handleMobileAction('vehicle');
+                          setIsMenuOpen(false);
+                        }}
+                        className="flex items-center gap-2.5 p-3 rounded-xl text-left text-xs font-bold bg-neutral-50 border border-neutral-200/80 text-neutral-800 hover:bg-slate-50 transition-all cursor-pointer"
+                      >
+                        <span className="p-1.5 rounded-lg bg-slate-800 text-white shrink-0">
+                          <Car size={16} />
+                        </span>
+                        <span className="truncate">Kjørebok</span>
+                      </button>
+
+                      <button
+                        onClick={() => {
+                          handleMobileAction('inventory');
+                          setIsMenuOpen(false);
+                        }}
+                        className="flex items-center gap-2.5 p-3 rounded-xl text-left text-xs font-bold bg-neutral-50 border border-neutral-200/80 text-neutral-800 hover:bg-slate-50 transition-all cursor-pointer"
+                      >
+                        <span className="p-1.5 rounded-lg bg-blue-600 text-white shrink-0">
+                          <Package size={16} />
+                        </span>
+                        <span className="truncate">Lager & Utstyr</span>
                       </button>
                     </div>
                   </div>

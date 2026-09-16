@@ -232,7 +232,7 @@ async function call1MinAi(
       'API-KEY': apiKey
     },
     body: JSON.stringify(payload),
-    signal: AbortSignal.timeout(28000)
+    signal: AbortSignal.timeout(9000)
   });
 
   if (!res.ok) {
@@ -287,7 +287,6 @@ async function callGeminiBackup(
     process.env.GEMINI_MODEL,
     'gemini-2.5-flash',
     'gemini-2.5-flash-lite',
-    'gemini-3.5-flash-lite',
     'gemini-2.0-flash',
     'gemini-1.5-flash'
   ].filter(Boolean) as string[];
@@ -333,11 +332,17 @@ async function callGeminiBackup(
   let lastError: any = null;
   for (const cand of uniqueModels) {
     try {
-      const res = await ai.models.generateContent({
+      const generatePromise = ai.models.generateContent({
         model: cand,
         contents: finalContents,
         config: Object.keys(config).length > 0 ? config : undefined
       });
+
+      const timeoutPromise = new Promise((_, reject) =>
+        setTimeout(() => reject(new Error(`Timeout på ${cand} etter 10s`)), 10000)
+      );
+
+      const res: any = await Promise.race([generatePromise, timeoutPromise]);
 
       if (res && res.text) {
         const promptTokens = res.usageMetadata?.promptTokenCount || Math.round(prompt.length / 4);
