@@ -57,6 +57,7 @@ import { cn } from '../lib/utils';
 import { toast } from 'sonner';
 import { useAuth } from '../hooks/useAuth';
 import { db, collection, onSnapshot, doc, updateDoc } from '../services/firebase';
+import { getStoredOmnichannelSettings, OmnichannelSettings } from './OmnichannelModal';
 
 export interface ChatMessage {
   id: string;
@@ -197,9 +198,27 @@ export default function MesterAIChat({
     { id: 't-3', title: 'Trykkteste rør-i-rør fordelerskap i vaskerom', projectName: 'Storgata 8', assignedTo: 'Rørlegger Hansen', deadline: 'I morgen', priority: 'high', status: 'pending' },
     { id: 't-4', title: 'Bære inn gipsplater og lekte ut himling', projectName: 'Fjordveien 22', assignedTo: 'Lærling', deadline: 'Fredag', priority: 'medium', status: 'completed' }
   ]);
+  const [omniSettings, setOmniSettings] = useState<OmnichannelSettings>(getStoredOmnichannelSettings);
   const messagesContainerRef = useRef<HTMLDivElement>(null);
+  const messagesEndRef = useRef<HTMLDivElement>(null);
 
-  // Live Task syncing from Firestore
+  // Keep omnichannel settings updated in real time
+  useEffect(() => {
+    const handleOmniUpdate = (e: any) => {
+      if (e.detail) {
+        setOmniSettings(e.detail);
+      } else {
+        setOmniSettings(getStoredOmnichannelSettings());
+      }
+    };
+    window.addEventListener('omnichannel_settings_updated', handleOmniUpdate);
+    return () => window.removeEventListener('omnichannel_settings_updated', handleOmniUpdate);
+  }, []);
+
+  // Auto-scroll to bottom whenever messages or loading state changes
+  useEffect(() => {
+    messagesEndRef.current?.scrollIntoView({ behavior: 'smooth' });
+  }, [messages, isLoading]);
   useEffect(() => {
     const unsub = onSnapshot(collection(db, 'tasks'), (snap) => {
       if (snap.docs && snap.docs.length > 0) {
@@ -753,142 +772,91 @@ export default function MesterAIChat({
         </div>
 
         {/* 💻 2. DESKTOP & TABLET HEADER & NAVIGATION BAR (Visible md and up) */}
-        <div className="hidden md:flex px-4 sm:px-6 py-3.5 bg-gradient-to-r from-navy-950 via-slate-900 to-navy-950 text-white flex-col md:flex-row md:items-center justify-between gap-3 border-b border-white/10 shrink-0">
-          <div className="flex items-center justify-between gap-3">
-            <div className="flex items-center gap-3 min-w-0">
-              <div className="w-10 h-10 rounded-2xl bg-gradient-to-tr from-electric-600 to-purple-500 flex items-center justify-center text-white shadow-md shadow-electric-500/20 shrink-0">
-                <Brain size={20} />
-              </div>
-              <div className="min-w-0">
-                <div className="flex items-center gap-2 flex-wrap">
-                  <h3 className="text-sm sm:text-base font-black tracking-tight text-white">
-                    MesterAI Kontrollsenter
-                  </h3>
-                  <span className="inline-flex items-center gap-1.5 px-2 py-0.5 rounded-full text-[10px] font-bold bg-emerald-500/20 text-emerald-300 border border-emerald-500/30">
-                    <span className="w-1.5 h-1.5 rounded-full bg-emerald-400 animate-pulse" />
-                    100% Autonom
-                  </span>
-                  {selectedProject && (
-                    <span className="inline-flex items-center gap-1 px-2 py-0.5 rounded-full text-[10px] font-bold bg-white/10 text-slate-200 border border-white/10">
-                      <Building2 size={11} className="text-electric-400" />
-                      <span className="truncate max-w-[140px]">{selectedProject.name}</span>
-                    </span>
-                  )}
-                </div>
-                <p className="text-[11px] text-slate-300 truncate">
-                  Full styring av byggeplass, oppgaver, tilbud, endringsordrer (NS 8406) og faglige råd
-                </p>
-              </div>
+        <div className="hidden md:flex px-4 sm:px-6 py-2.5 bg-gradient-to-r from-navy-950 via-slate-900 to-navy-950 text-white items-center justify-between gap-3 border-b border-white/10 shrink-0">
+          <div className="flex items-center gap-3 shrink-0">
+            <div className="w-8 h-8 rounded-xl bg-gradient-to-tr from-electric-600 to-purple-500 flex items-center justify-center text-white shadow-md shadow-electric-500/20 shrink-0">
+              <Brain size={18} />
+            </div>
+            <div className="flex items-center gap-2">
+              <h3 className="text-sm font-black tracking-tight text-white whitespace-nowrap">
+                MesterAI
+              </h3>
+              <span className="inline-flex items-center gap-1 px-2 py-0.5 rounded-full text-[10px] font-bold bg-emerald-500/20 text-emerald-300 border border-emerald-500/30 whitespace-nowrap">
+                <span className="w-1.5 h-1.5 rounded-full bg-emerald-400 animate-pulse" />
+                100% Autonom
+              </span>
+              {selectedProject && (
+                <span className="inline-flex items-center gap-1 px-2 py-0.5 rounded-full text-[10px] font-bold bg-white/10 text-slate-200 border border-white/10 truncate max-w-[130px]">
+                  <Building2 size={11} className="text-electric-400 shrink-0" />
+                  <span className="truncate">{selectedProject.name}</span>
+                </span>
+              )}
             </div>
           </div>
 
-          {/* Central Workspace View Mode Selector with RBAC */}
-          <div className="flex items-center gap-1.5 bg-white/10 p-1 rounded-2xl backdrop-blur-md overflow-x-auto shrink-0">
+          {/* Central Workspace View Mode Selector with RBAC (Streamlined 4 Core Views) */}
+          <div className="flex items-center gap-1 bg-white/10 p-1 rounded-2xl backdrop-blur-md overflow-x-auto shrink-0">
+            {/* 1. Oversikt / Kontrollsenter */}
             <button
               type="button"
               onClick={() => { setActiveTab('control_center'); setActiveFormView(null); }}
               className={cn(
                 "flex items-center gap-1.5 px-3 py-1.5 rounded-xl text-xs font-bold transition-all shrink-0 cursor-pointer",
                 activeTab === 'control_center' && !activeFormView
-                  ? "bg-white text-navy-950 shadow-sm"
+                  ? "bg-white text-navy-950 shadow-sm font-black"
                   : "text-slate-200 hover:text-white hover:bg-white/10"
               )}
             >
-              <Sparkles size={14} className={activeTab === 'control_center' ? "text-purple-600" : "text-purple-300"} />
-              <span>{isWorker ? `Mine Oppgaver (${tasksList.filter(t => t.status !== 'completed').length})` : 'Kontrollsenter'}</span>
+              <Sparkles size={14} className={activeTab === 'control_center' && !activeFormView ? "text-purple-600" : "text-purple-300"} />
+              <span>{isWorker ? `Mine Oppgaver (${tasksList.filter(t => t.status !== 'completed').length})` : 'Oversikt'}</span>
             </button>
 
-            <button
-              type="button"
-              onClick={() => { setActiveTab('chat'); setActiveFormView(null); }}
-              className={cn(
-                "flex items-center gap-1.5 px-3 py-1.5 rounded-xl text-xs font-bold transition-all shrink-0 cursor-pointer",
-                activeTab === 'chat' && !activeFormView
-                  ? "bg-white text-navy-950 shadow-sm"
-                  : "text-slate-200 hover:text-white hover:bg-white/10"
-              )}
-            >
-              <Brain size={14} />
-              <span>{isWorker ? 'Faglige Råd' : 'Samtale'}</span>
-            </button>
-
+            {/* 2. Prosjekter / Byggeplasser */}
             <button
               type="button"
               onClick={() => { setActiveTab('projects'); setActiveFormView(null); }}
               className={cn(
                 "flex items-center gap-1.5 px-3 py-1.5 rounded-xl text-xs font-bold transition-all shrink-0 cursor-pointer",
                 activeTab === 'projects'
-                  ? "bg-white text-navy-950 shadow-sm"
+                  ? "bg-white text-navy-950 shadow-sm font-black"
                   : "text-slate-200 hover:text-white hover:bg-white/10"
               )}
             >
-              <HardHat size={14} />
-              <span>{isWorker ? `Prosjekter (${projects.length})` : `Byggeplass (${projects.length})`}</span>
+              <HardHat size={14} className={activeTab === 'projects' ? "text-blue-600" : "text-slate-300"} />
+              <span>Prosjekt ({projects.length})</span>
             </button>
 
-            {/* Admin/Manager Exclusive Tabs */}
-            {isAdminOrManager && (
-              <>
-                <button
-                  type="button"
-                  onClick={() => { setActiveTab('admin'); setActiveFormView(null); }}
-                  className={cn(
-                    "flex items-center gap-1.5 px-3 py-1.5 rounded-xl text-xs font-bold transition-all shrink-0 cursor-pointer",
-                    activeTab === 'admin'
-                      ? "bg-white text-navy-950 shadow-sm"
-                      : "text-slate-200 hover:text-white hover:bg-white/10"
-                  )}
-                >
-                  <FileSignature size={14} />
-                  <span>Tilbud & Endringer ({offers.length + changeOrders.length})</span>
-                </button>
-
-                <button
-                  type="button"
-                  onClick={() => { setActiveTab('team'); setActiveFormView(null); }}
-                  className={cn(
-                    "flex items-center gap-1.5 px-3 py-1.5 rounded-xl text-xs font-bold transition-all shrink-0 cursor-pointer",
-                    activeTab === 'team'
-                      ? "bg-white text-navy-950 shadow-sm"
-                      : "text-slate-200 hover:text-white hover:bg-white/10"
-                  )}
-                >
-                  <Users size={14} />
-                  <span>Team & Inviter</span>
-                </button>
-              </>
-            )}
-
-            <button
-              type="button"
-              onClick={() => {
-                setActiveTab('toolbox');
-                setActiveFormView({ type: 'toolbox' });
-              }}
-              className={cn(
-                "flex items-center gap-1.5 px-3 py-1.5 rounded-xl text-xs font-bold transition-all shrink-0 cursor-pointer",
-                activeTab === 'toolbox' || activeFormView
-                  ? "bg-white text-navy-950 shadow-sm"
-                  : "text-slate-200 hover:text-white hover:bg-white/10"
-              )}
-            >
-              <Layers size={14} />
-              <span>Verktøy</span>
-            </button>
-
+            {/* 3. Tilbud & Endringsordrer (NS 8406) */}
             {isAdminOrManager && (
               <button
                 type="button"
-                onClick={() => { setActiveTab('channels'); setActiveFormView(null); }}
+                onClick={() => { setActiveTab('admin'); setActiveFormView(null); }}
                 className={cn(
                   "flex items-center gap-1.5 px-3 py-1.5 rounded-xl text-xs font-bold transition-all shrink-0 cursor-pointer",
-                  activeTab === 'channels'
-                    ? "bg-white text-navy-950 shadow-sm"
+                  activeTab === 'admin'
+                    ? "bg-white text-navy-950 shadow-sm font-black"
                     : "text-slate-200 hover:text-white hover:bg-white/10"
                 )}
               >
-                <Radio size={14} />
-                <span>Kanaler</span>
+                <FileSignature size={14} className={activeTab === 'admin' ? "text-amber-600" : "text-slate-300"} />
+                <span>Tilbud & Endring ({offers.length + changeOrders.length})</span>
+              </button>
+            )}
+
+            {/* 4. Team & Invitasjoner */}
+            {isAdminOrManager && (
+              <button
+                type="button"
+                onClick={() => { setActiveTab('team'); setActiveFormView(null); }}
+                className={cn(
+                  "flex items-center gap-1.5 px-3 py-1.5 rounded-xl text-xs font-bold transition-all shrink-0 cursor-pointer",
+                  activeTab === 'team'
+                    ? "bg-white text-navy-950 shadow-sm font-black"
+                    : "text-slate-200 hover:text-white hover:bg-white/10"
+                )}
+              >
+                <Users size={14} className={activeTab === 'team' ? "text-emerald-600" : "text-slate-300"} />
+                <span>Team</span>
               </button>
             )}
           </div>
@@ -995,7 +963,7 @@ export default function MesterAIChat({
           {(activeTab === 'chat' || (isSplitView && !activeFormView)) && (
             <div className={cn(
               "flex flex-col bg-white border-r border-slate-200 overflow-hidden transition-all",
-              isSplitView && activeTab !== 'chat' ? "hidden md:flex md:w-[48%] lg:w-[50%]" : "w-full flex-1"
+              isSplitView && activeTab !== 'chat' ? "hidden md:flex md:w-[44%] lg:w-[40%] xl:w-[38%]" : "w-full flex-1"
             )}>
               {/* Active Project Banner */}
               {selectedProject && (
@@ -1027,7 +995,7 @@ export default function MesterAIChat({
                     <div className={cn(
                       "p-4 rounded-2xl shadow-xs transition-all",
                       msg.role === 'user' 
-                        ? "bg-navy-900 text-white rounded-br-xs" 
+                        ? "bg-gradient-to-r from-electric-600 to-electric-500 text-white rounded-br-xs shadow-md shadow-electric-600/20" 
                         : "bg-white text-navy-900 border border-slate-200/90 rounded-bl-xs"
                     )}>
                       {msg.role === 'assistant' && (
@@ -1041,7 +1009,7 @@ export default function MesterAIChat({
                             <button
                               type="button"
                               onClick={() => handleCopyText(msg.id, msg.content)}
-                              className="text-slate-400 hover:text-navy-900 transition-colors p-1"
+                              className="text-slate-400 hover:text-navy-900 transition-colors p-1 cursor-pointer"
                               title="Kopier svar"
                             >
                               {copiedId === msg.id ? <Check size={13} className="text-emerald-600" /> : <Copy size={13} />}
@@ -1050,7 +1018,13 @@ export default function MesterAIChat({
                         </div>
                       )}
 
-                      {renderFormattedContent(msg.content)}
+                      {msg.role === 'user' ? (
+                        <div className="text-white text-xs sm:text-sm font-semibold leading-relaxed whitespace-pre-wrap">
+                          {msg.content}
+                        </div>
+                      ) : (
+                        renderFormattedContent(msg.content)
+                      )}
 
                       {/* Suggested In-Chat Form Actions */}
                       {msg.suggestedActions && msg.suggestedActions.length > 0 && (
@@ -1102,6 +1076,9 @@ export default function MesterAIChat({
                     </div>
                   </div>
                 )}
+
+                {/* Auto-scroll anchor */}
+                <div ref={messagesEndRef} />
               </div>
 
               {/* Chat Input Field & Toolbox Launcher */}
@@ -1159,8 +1136,8 @@ export default function MesterAIChat({
           {/* Right Column / Full Body: Active Form OR Overview Views */}
           <div className={cn(
             "flex-1 overflow-y-auto flex flex-col bg-slate-50/70 p-4 sm:p-6 transition-all custom-scrollbar pb-28 md:pb-6",
-            activeTab === 'chat' && !activeFormView ? "hidden md:flex md:w-[52%] lg:w-[50%]" : "w-full",
-            isSplitView && activeTab !== 'chat' ? "md:w-[52%] lg:w-[50%]" : ""
+            activeTab === 'chat' && !activeFormView ? "hidden md:flex md:w-[56%] lg:w-[60%] xl:w-[62%]" : "w-full",
+            isSplitView && activeTab !== 'chat' ? "md:w-[56%] lg:w-[60%] xl:w-[62%]" : ""
           )}>
             {/* 1. IN-CHAT WORKSPACE FORM VIEW */}
             {activeFormView ? (
@@ -2035,65 +2012,121 @@ export default function MesterAIChat({
                 </div>
 
                 <div className="grid grid-cols-1 sm:grid-cols-2 gap-3">
-                  <div className="p-4 bg-white rounded-2xl border border-slate-200 shadow-2xs space-y-2">
-                    <div className="flex items-center justify-between">
-                      <div className="flex items-center gap-2">
-                        <MessageSquare size={16} className="text-indigo-600" />
-                        <h5 className="text-xs font-black text-navy-950">Discord Bot</h5>
+                  {/* Discord */}
+                  {(() => {
+                    const isConnected = Boolean(omniSettings.discordEnabled && omniSettings.discordWebhook?.trim());
+                    return (
+                      <div 
+                        onClick={onOpenOmnichannelModal}
+                        className="p-4 bg-white rounded-2xl border border-slate-200 shadow-2xs space-y-2 hover:border-indigo-300 transition-all cursor-pointer"
+                      >
+                        <div className="flex items-center justify-between">
+                          <div className="flex items-center gap-2">
+                            <MessageSquare size={16} className="text-indigo-600" />
+                            <h5 className="text-xs font-black text-navy-950">Discord Bot</h5>
+                          </div>
+                          <span className={cn(
+                            "px-2 py-0.5 rounded-full text-[9px] font-black uppercase",
+                            isConnected ? "bg-emerald-100 text-emerald-800" : "bg-slate-100 text-slate-500 border border-slate-200"
+                          )}>
+                            {isConnected ? 'Aktiv' : 'Ikke tilkoblet'}
+                          </span>
+                        </div>
+                        <p className="text-[11px] text-slate-500">
+                          {isConnected 
+                            ? `Lytter i kanalen ${omniSettings.discordChannel || '#byggeplass-oppdateringer'}. Byggedagbok og SJA via tale/tekst.`
+                            : 'Klikk for å konfigurere webhook og koble Discord til MesterAI.'}
+                        </p>
                       </div>
-                      <span className="px-2 py-0.5 rounded-full text-[9px] font-black uppercase bg-emerald-100 text-emerald-800">
-                        Aktiv
-                      </span>
-                    </div>
-                    <p className="text-[11px] text-slate-500">
-                      Lytter i kanalen <code>#byggeplass-oppdateringer</code>. Automatisk byggedagbok og SJA via tale/tekst.
-                    </p>
-                  </div>
+                    );
+                  })()}
 
-                  <div className="p-4 bg-white rounded-2xl border border-slate-200 shadow-2xs space-y-2">
-                    <div className="flex items-center justify-between">
-                      <div className="flex items-center gap-2">
-                        <Hash size={16} className="text-emerald-600" />
-                        <h5 className="text-xs font-black text-navy-950">Slack App</h5>
+                  {/* Slack */}
+                  {(() => {
+                    const isConnected = Boolean(omniSettings.slackEnabled && omniSettings.slackWebhook?.trim());
+                    return (
+                      <div 
+                        onClick={onOpenOmnichannelModal}
+                        className="p-4 bg-white rounded-2xl border border-slate-200 shadow-2xs space-y-2 hover:border-emerald-300 transition-all cursor-pointer"
+                      >
+                        <div className="flex items-center justify-between">
+                          <div className="flex items-center gap-2">
+                            <Hash size={16} className="text-emerald-600" />
+                            <h5 className="text-xs font-black text-navy-950">Slack App</h5>
+                          </div>
+                          <span className={cn(
+                            "px-2 py-0.5 rounded-full text-[9px] font-black uppercase",
+                            isConnected ? "bg-emerald-100 text-emerald-800" : "bg-slate-100 text-slate-500 border border-slate-200"
+                          )}>
+                            {isConnected ? 'Aktiv' : 'Ikke tilkoblet'}
+                          </span>
+                        </div>
+                        <p className="text-[11px] text-slate-500">
+                          {isConnected 
+                            ? `Sender varsler om endringsordrer (NS 8406) til ${omniSettings.slackChannel || '#prosjekt-varsler'}.`
+                            : 'Klikk for å konfigurere incoming webhook for Slack.'}
+                        </p>
                       </div>
-                      <span className="px-2 py-0.5 rounded-full text-[9px] font-black uppercase bg-emerald-100 text-emerald-800">
-                        Aktiv
-                      </span>
-                    </div>
-                    <p className="text-[11px] text-slate-500">
-                      Sender automatiske varsler om endringsordrer (NS 8406) og lukkesperrer direkte til prosjektkanalen.
-                    </p>
-                  </div>
+                    );
+                  })()}
 
-                  <div className="p-4 bg-white rounded-2xl border border-slate-200 shadow-2xs space-y-2">
-                    <div className="flex items-center justify-between">
-                      <div className="flex items-center gap-2">
-                        <Radio size={16} className="text-blue-600" />
-                        <h5 className="text-xs font-black text-navy-950">Microsoft Teams</h5>
+                  {/* Teams */}
+                  {(() => {
+                    const isConnected = Boolean(omniSettings.teamsEnabled && omniSettings.teamsWebhook?.trim());
+                    return (
+                      <div 
+                        onClick={onOpenOmnichannelModal}
+                        className="p-4 bg-white rounded-2xl border border-slate-200 shadow-2xs space-y-2 hover:border-blue-300 transition-all cursor-pointer"
+                      >
+                        <div className="flex items-center justify-between">
+                          <div className="flex items-center gap-2">
+                            <Radio size={16} className="text-blue-600" />
+                            <h5 className="text-xs font-black text-navy-950">Microsoft Teams</h5>
+                          </div>
+                          <span className={cn(
+                            "px-2 py-0.5 rounded-full text-[9px] font-black uppercase",
+                            isConnected ? "bg-emerald-100 text-emerald-800" : "bg-slate-100 text-slate-500 border border-slate-200"
+                          )}>
+                            {isConnected ? 'Aktiv' : 'Ikke tilkoblet'}
+                          </span>
+                        </div>
+                        <p className="text-[11px] text-slate-500">
+                          {isConnected 
+                            ? `Integrert for byggeledelse og baser via kanalen ${omniSettings.teamsChannel || 'Byggeledelse'}.`
+                            : 'Klikk for å koble Microsoft Teams Power Automate / Webhook.'}
+                        </p>
                       </div>
-                      <span className="px-2 py-0.5 rounded-full text-[9px] font-black uppercase bg-emerald-100 text-emerald-800">
-                        Aktiv
-                      </span>
-                    </div>
-                    <p className="text-[11px] text-slate-500">
-                      Integrert for byggeledelse, rådgivende ingeniører og baser med live statusoppdateringer.
-                    </p>
-                  </div>
+                    );
+                  })()}
 
-                  <div className="p-4 bg-white rounded-2xl border border-slate-200 shadow-2xs space-y-2">
-                    <div className="flex items-center justify-between">
-                      <div className="flex items-center gap-2">
-                        <Mail size={16} className="text-purple-600" />
-                        <h5 className="text-xs font-black text-navy-950">E-post Lytter</h5>
+                  {/* E-post */}
+                  {(() => {
+                    const isConnected = Boolean(omniSettings.emailListenerEnabled && omniSettings.emailAddress?.trim());
+                    return (
+                      <div 
+                        onClick={onOpenOmnichannelModal}
+                        className="p-4 bg-white rounded-2xl border border-slate-200 shadow-2xs space-y-2 hover:border-purple-300 transition-all cursor-pointer"
+                      >
+                        <div className="flex items-center justify-between">
+                          <div className="flex items-center gap-2">
+                            <Mail size={16} className="text-purple-600" />
+                            <h5 className="text-xs font-black text-navy-950">E-post Lytter</h5>
+                          </div>
+                          <span className={cn(
+                            "px-2 py-0.5 rounded-full text-[9px] font-black uppercase",
+                            isConnected ? "bg-emerald-100 text-emerald-800" : "bg-slate-100 text-slate-500 border border-slate-200"
+                          )}>
+                            {isConnected ? 'Operativ' : 'Inaktiv'}
+                          </span>
+                        </div>
+                        <p className="text-[11px] text-slate-500">
+                          {isConnected 
+                            ? `${omniSettings.emailAddress || 'hei@vikingmester.no'} fanger opp henvendelser og genererer forslag.`
+                            : 'Klikk for å aktivere e-post videresending og AI-sortering.'}
+                        </p>
                       </div>
-                      <span className="px-2 py-0.5 rounded-full text-[9px] font-black uppercase bg-emerald-100 text-emerald-800">
-                        100% Operativ
-                      </span>
-                    </div>
-                    <p className="text-[11px] text-slate-500">
-                      <code>hei@vikingmester.no</code> fanger opp kundehenvendelser og genererer svarforslag.
-                    </p>
-                  </div>
+                    );
+                  })()}
                 </div>
               </div>
             ) : activeTab === 'team' ? (

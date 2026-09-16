@@ -39,42 +39,35 @@ export interface OmnichannelSettings {
 const STORAGE_KEY = 'vikingmester_omnichannel_settings';
 
 export const getStoredOmnichannelSettings = (): OmnichannelSettings => {
+  const defaultSettings: OmnichannelSettings = {
+    discordWebhook: '',
+    discordChannel: '#byggeplass-oppdateringer',
+    discordEnabled: false,
+    slackWebhook: '',
+    slackChannel: '#prosjekt-varsler',
+    slackEnabled: false,
+    teamsWebhook: '',
+    teamsChannel: 'Byggeledelse',
+    teamsEnabled: false,
+    emailListenerEnabled: false,
+    emailAddress: 'hei@vikingmester.no'
+  };
+
   if (typeof window === 'undefined') {
-    return {
-      discordWebhook: '',
-      discordChannel: '#byggeplass-oppdateringer',
-      discordEnabled: true,
-      slackWebhook: '',
-      slackChannel: '#prosjekt-varsler',
-      slackEnabled: true,
-      teamsWebhook: '',
-      teamsChannel: 'Byggeledelse',
-      teamsEnabled: true,
-      emailListenerEnabled: true,
-      emailAddress: 'hei@vikingmester.no'
-    };
+    return defaultSettings;
   }
 
   try {
     const raw = localStorage.getItem(STORAGE_KEY);
-    if (raw) return JSON.parse(raw);
+    if (raw) {
+      const parsed = JSON.parse(raw);
+      return { ...defaultSettings, ...parsed };
+    }
   } catch (e) {
     console.warn('Could not parse omnichannel settings:', e);
   }
 
-  return {
-    discordWebhook: '',
-    discordChannel: '#byggeplass-oppdateringer',
-    discordEnabled: true,
-    slackWebhook: '',
-    slackChannel: '#prosjekt-varsler',
-    slackEnabled: true,
-    teamsWebhook: '',
-    teamsChannel: 'Byggeledelse',
-    teamsEnabled: true,
-    emailListenerEnabled: true,
-    emailAddress: 'hei@vikingmester.no'
-  };
+  return defaultSettings;
 };
 
 export default function OmnichannelModal({ isOpen, onClose }: OmnichannelModalProps) {
@@ -165,10 +158,34 @@ export default function OmnichannelModal({ isOpen, onClose }: OmnichannelModalPr
         {/* Channel Selector Tabs */}
         <div className="flex items-center gap-1.5 p-3 bg-slate-100/90 border-b border-slate-200 overflow-x-auto shrink-0">
           {[
-            { id: 'discord', label: 'Discord Bot', icon: <MessageSquare size={15} />, badge: settings.discordEnabled ? 'Aktiv' : 'Inaktiv' },
-            { id: 'slack', label: 'Slack App', icon: <Hash size={15} />, badge: settings.slackEnabled ? 'Aktiv' : 'Inaktiv' },
-            { id: 'teams', label: 'Microsoft Teams', icon: <Radio size={15} />, badge: settings.teamsEnabled ? 'Aktiv' : 'Inaktiv' },
-            { id: 'email', label: 'E-post Lytter', icon: <Mail size={15} />, badge: settings.emailListenerEnabled ? '100%' : 'Inaktiv' }
+            { 
+              id: 'discord', 
+              label: 'Discord Bot', 
+              icon: <MessageSquare size={15} />, 
+              isActive: Boolean(settings.discordEnabled && settings.discordWebhook?.trim()),
+              badge: Boolean(settings.discordEnabled && settings.discordWebhook?.trim()) ? 'Aktiv' : 'Ikke tilkoblet' 
+            },
+            { 
+              id: 'slack', 
+              label: 'Slack App', 
+              icon: <Hash size={15} />, 
+              isActive: Boolean(settings.slackEnabled && settings.slackWebhook?.trim()),
+              badge: Boolean(settings.slackEnabled && settings.slackWebhook?.trim()) ? 'Aktiv' : 'Ikke tilkoblet' 
+            },
+            { 
+              id: 'teams', 
+              label: 'Microsoft Teams', 
+              icon: <Radio size={15} />, 
+              isActive: Boolean(settings.teamsEnabled && settings.teamsWebhook?.trim()),
+              badge: Boolean(settings.teamsEnabled && settings.teamsWebhook?.trim()) ? 'Aktiv' : 'Ikke tilkoblet' 
+            },
+            { 
+              id: 'email', 
+              label: 'E-post Lytter', 
+              icon: <Mail size={15} />, 
+              isActive: Boolean(settings.emailListenerEnabled && settings.emailAddress?.trim()),
+              badge: Boolean(settings.emailListenerEnabled && settings.emailAddress?.trim()) ? 'Klar' : 'Ikke tilkoblet' 
+            }
           ].map((tab) => (
             <button
               key={tab.id}
@@ -182,8 +199,8 @@ export default function OmnichannelModal({ isOpen, onClose }: OmnichannelModalPr
             >
               {tab.icon}
               <span>{tab.label}</span>
-              <span className={`px-1.5 py-0.2 rounded-full text-[9px] font-black ${
-                tab.badge === 'Inaktiv' ? 'bg-slate-200 text-slate-600' : 'bg-emerald-100 text-emerald-800'
+              <span className={`px-1.5 py-0.5 rounded-full text-[9px] font-black ${
+                tab.isActive ? 'bg-emerald-100 text-emerald-800' : 'bg-slate-200 text-slate-600'
               }`}>
                 {tab.badge}
               </span>

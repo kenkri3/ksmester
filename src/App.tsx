@@ -735,10 +735,12 @@ function AppContent() {
                     {user.company}
                   </span>
                 )}
-                <div className="hidden md:inline-flex items-center gap-1.5 px-2.5 py-1 rounded-full bg-emerald-50 border border-emerald-200 text-emerald-700 text-[11px] font-bold">
-                  <span className="w-2 h-2 rounded-full bg-emerald-500 animate-pulse" />
-                  <span>{t('nav_agent_active', 'MesterAI Aktiv')}</span>
-                </div>
+                {view !== 'dashboard' && (
+                  <div className="hidden md:inline-flex items-center gap-1.5 px-2.5 py-1 rounded-full bg-emerald-50 border border-emerald-200 text-emerald-700 text-[11px] font-bold">
+                    <span className="w-2 h-2 rounded-full bg-emerald-500 animate-pulse" />
+                    <span>{t('nav_agent_active', 'MesterAI Aktiv')}</span>
+                  </div>
+                )}
               </div>
 
               {/* Desktop Center: Internal Operational App Navigation */}
@@ -853,7 +855,13 @@ function AppContent() {
                       )}
                       <div className="hidden lg:block leading-tight">
                         <p className="text-xs font-bold truncate max-w-[110px]">{user.displayName || t('user_default_name', 'Bruker')}</p>
-                        <p className="text-[10px] font-black uppercase text-neutral-400">{user.role === 'admin' ? t('user_admin', 'Admin') : t('user_craftsman', 'Håndverker')}</p>
+                        <p className="text-[10px] font-black uppercase text-neutral-400">
+                          {(user.role === 'admin' || user.role === 'superadmin' || user.displayName?.toLowerCase().includes('admin') || isSuperAdmin)
+                            ? 'Admin / Leder' 
+                            : user.role === 'external_worker' 
+                              ? 'UE Håndverker'
+                              : t('user_craftsman', 'Håndverker')}
+                        </p>
                       </div>
                     </button>
 
@@ -1483,44 +1491,46 @@ function AppContent() {
         <IntegrationModal isOpen={isIntegrationModalOpen} onClose={() => setIsIntegrationModalOpen(false)} />
       </Suspense>
 
-      {/* 🛡️ Universal VikingMester AI Chatbot (Ragnar for visitors, MesterAI Autonom Agent for logged in users) */}
-      <VikingChatbot
-        user={user}
-        currentView={view}
-        onOpenPricing={() => {
-          setView('pricing');
-          window.scrollTo({ top: 0, behavior: 'smooth' });
-        }}
-        onOpenRegister={() => {
-          setView('landing');
-          setLandingTab('home');
-          window.scrollTo({ top: 0, behavior: 'smooth' });
-        }}
-        onOpenChangeOrderModal={(data) => {
-          if (view !== 'dashboard') setView('dashboard');
-          setTimeout(() => {
-            window.dispatchEvent(new CustomEvent('trigger_dashboard_action', { detail: { actionId: 'change_order', data } }));
-          }, 150);
-        }}
-        onOpenSJAModal={(data) => {
-          if (view !== 'dashboard') setView('dashboard');
-          setTimeout(() => {
-            window.dispatchEvent(new CustomEvent('trigger_dashboard_action', { detail: { actionId: 'sja', data } }));
-          }, 150);
-        }}
-        onOpenOfferModal={(data) => {
-          if (view !== 'dashboard') setView('dashboard');
-          setTimeout(() => {
-            window.dispatchEvent(new CustomEvent('trigger_dashboard_action', { detail: { actionId: 'offers', data } }));
-          }, 150);
-        }}
-        onOpenAIVision={() => {
-          if (view !== 'dashboard') setView('dashboard');
-          setTimeout(() => {
-            window.dispatchEvent(new CustomEvent('trigger_dashboard_action', { detail: { actionId: 'take_photo' } }));
-          }, 150);
-        }}
-      />
+      {/* 🛡️ Universal VikingMester AI Chatbot (Ragnar for visitors, hidden on dashboard where MesterAI is the full interface) */}
+      {view !== 'dashboard' && (
+        <VikingChatbot
+          user={user}
+          currentView={view}
+          onOpenPricing={() => {
+            setView('pricing');
+            window.scrollTo({ top: 0, behavior: 'smooth' });
+          }}
+          onOpenRegister={() => {
+            setView('landing');
+            setLandingTab('home');
+            window.scrollTo({ top: 0, behavior: 'smooth' });
+          }}
+          onOpenChangeOrderModal={(data) => {
+            setView('dashboard');
+            setTimeout(() => {
+              window.dispatchEvent(new CustomEvent('trigger_dashboard_action', { detail: { actionId: 'change_order', data } }));
+            }, 150);
+          }}
+          onOpenSJAModal={(data) => {
+            setView('dashboard');
+            setTimeout(() => {
+              window.dispatchEvent(new CustomEvent('trigger_dashboard_action', { detail: { actionId: 'sja', data } }));
+            }, 150);
+          }}
+          onOpenOfferModal={(data) => {
+            setView('dashboard');
+            setTimeout(() => {
+              window.dispatchEvent(new CustomEvent('trigger_dashboard_action', { detail: { actionId: 'offers', data } }));
+            }, 150);
+          }}
+          onOpenAIVision={() => {
+            setView('dashboard');
+            setTimeout(() => {
+              window.dispatchEvent(new CustomEvent('trigger_dashboard_action', { detail: { actionId: 'take_photo' } }));
+            }, 150);
+          }}
+        />
+      )}
 
       {/* GDPR Cookie Banner */}
       <CookieBanner onOpenPrivacyPolicy={() => setView('privacy')} />
