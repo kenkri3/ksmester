@@ -59,6 +59,18 @@ const OfferModal: React.FC<OfferModalProps> = ({ isOpen, onClose, initialData })
         setProjectId(initialData.projectId || '');
         setTitle(initialData.title || '');
         setDescription(initialData.description || '');
+        if (initialData.items && Array.isArray(initialData.items) && initialData.items.length > 0) {
+          setItems(initialData.items.map((it: any) => ({
+            description: it.description || '',
+            quantity: Number(it.quantity) || 1,
+            unit: it.unit || 'timer',
+            pricePerUnit: Number(it.pricePerUnit) || 0,
+            total: Math.round((Number(it.quantity) || 1) * (Number(it.pricePerUnit) || 0))
+          })));
+          setStep(2);
+        } else {
+          setStep(1);
+        }
       }
     }
   }, [isOpen, initialData]);

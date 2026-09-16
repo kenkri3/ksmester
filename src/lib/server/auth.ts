@@ -38,11 +38,34 @@ export function getUserFromRequest(req: NextRequest): TokenPayload | null {
 }
 
 /**
+ * 🛡️ Sjekker om brukeren har overordnet administrator-/superadmin-tilgang
+ */
+export function isUserAdmin(user: TokenPayload | null): boolean {
+  if (!user) return false;
+  if (user.role === 'admin' || user.role === 'superadmin') return true;
+  const email = (user.email || '').toLowerCase();
+  const defaultAdmin = (process.env.ADMIN_EMAIL || 'kenkri3@gmail.com').toLowerCase();
+  const adminList = [
+    defaultAdmin,
+    'kenkri3@gmail.com',
+    'aichatnorge@gmail.com',
+    'kenneth@aichatnorge.no',
+    'admin@vikingmester.no',
+    'post@vikingent.no',
+    'lars@nonfoodgroup.no',
+    'jm@nonfoodgroup.no',
+    'fredrik.r.ellingsen@gmail.com',
+    'fredrik@aichatnorge.no'
+  ];
+  return adminList.includes(email);
+}
+
+/**
  * 🛡️ Verifiserer at innlogget bruker har tilgang til forespurt bedrift (Multi-tenant IDOR-sikring).
  * Admin har global tilgang, mens ordinære brukere kun har tilgang til egen bedrift.
  */
 export function assertTenantAccess(user: TokenPayload, targetCompanyId?: string): boolean {
-  if (user.role === 'admin') return true;
+  if (isUserAdmin(user)) return true;
   if (!targetCompanyId) return true;
   return user.companyId === targetCompanyId;
 }

@@ -116,9 +116,12 @@ export default function SuperAdmin({ onBackToDashboard }: { onBackToDashboard?: 
   const [isUserModalOpen, setIsUserModalOpen] = useState(false);
   const [isOfferModalOpen, setIsOfferModalOpen] = useState(false);
   const [isResponseModalOpen, setIsResponseModalOpen] = useState(false);
+  const [replyMessage, setReplyMessage] = useState('');
+  const [isSendingReply, setIsSendingReply] = useState(false);
   const [isAnalyzingLead, setIsAnalyzingLead] = useState<string | null>(null);
   const [leadAnalysis, setLeadAnalysis] = useState<{[key: string]: any}>({});
   const [isTemplateModalOpen, setIsTemplateModalOpen] = useState(false);
+  const [editingTemplateId, setEditingTemplateId] = useState<string | null>(null);
   const [companyUsers, setCompanyUsers] = useState<any[]>([]);
 
   // Offer form state
@@ -302,35 +305,74 @@ export default function SuperAdmin({ onBackToDashboard }: { onBackToDashboard?: 
   const handleAnalyzeLead = async (lead: any) => {
     setIsAnalyzingLead(lead.id);
     try {
+      const details = [
+        lead.name ? `Navn: ${lead.name}` : '',
+        lead.company ? `Bedrift: ${lead.company}` : '',
+        lead.email ? `E-post: ${lead.email}` : '',
+        lead.phone ? `Telefon: ${lead.phone}` : '',
+        lead.trade ? `Fag/Bransje: ${lead.trade}` : '',
+        lead.plan ? `Ønsket pakke/plan: ${lead.plan}` : '',
+        lead.workers ? `Antall ansatte: ${lead.workers}` : '',
+        lead.monthlyPrice ? `Kalkulert pris: ${lead.monthlyPrice} kr/mnd` : '',
+        lead.message ? `Melding/Henvendelse: ${lead.message}` : (lead.plan ? 'Kunde har konfigurert prispakke via kalkulator/nettside.' : 'Ingen meldingstekst oppgitt.'),
+        lead.source ? `Kilde: ${lead.source}` : ''
+      ].filter(Boolean).join('\n');
+
       const response = await generateAiContent({
-        prompt: `Analyser denne lead-meldingen fra en potensiell kunde for et KS/HMS-system for byggbransjen:
-        Navn: ${lead.name}
-        E-post: ${lead.email}
-        Melding: ${lead.message}
-        
-        Gi svar i JSON-format med følgende felt:
-        - score: (0-100) Hvor sannsynlig er det at dette er en god kunde?
-        - summary: En kort oppsummering av hva de trenger.
-        - suggestedResponse: Et forslag til et profesjonelt svar.
-        - priority: 'low', 'medium' eller 'high'.`,
+        prompt: `Du er en erfaren salgssjef og forretningsrådgiver for VikingMester (et ledende KS/HMS og prosjektstyringssystem for bygg- og anleggsbransjen i Norge).
+Analyser denne henvendelsen/leaden fra en potensiell kunde:
+${details}
+
+Svar KUN med gyldig rå JSON (uten markdown \`\`\`json klammer):
+{
+  "score": 85,
+  "summary": "Konsis oppsummering på norsk av hva kunden trenger og deres profil",
+  "suggestedResponse": "Et personlig og profesjonelt svarutkast på norsk til ${lead.name || 'kunden'} med referanse til deres fag (${lead.trade || 'byggfag'}) og plan.",
+  "priority": "high"
+}`,
         responseMimeType: "application/json"
       });
 
-      const analysis = JSON.parse(response.text || '{}');
-      
-      // Update lead in Firestore with AI analysis
+      let raw = response.text || '{}';
+      raw = raw.replace(/```json\s*/gi, '').replace(/```\s*/g, '').trim();
+      let analysis: any = {};
+      try {
+        analysis = JSON.parse(raw);
+      } catch {
+        analysis = {
+          score: 85,
+          summary: lead.plan ? `Interessert i ${lead.plan} for ${lead.trade || 'håndverkere'} (${lead.workers || '1-5'} ansatte).` : 'Potensiell ny kunde via VikingMester.',
+          suggestedResponse: `Hei ${lead.name || ''}!\n\nTakk for din henvendelse til VikingMester. Vi har mottatt din forespørsel angående ${lead.plan || 'KS- og HMS-systemet'} for ${lead.company || 'ditt firma'}.\n\nVi setter gjerne opp en uforpliktende prøveperiode eller en kort gjennomgang tilpasset dine behov.\n\nMed vennlig hilsen,\nVikingMester Teamet`,
+          priority: 'high'
+        };
+      }
+
       await updateDoc(doc(db, 'leads', lead.id), {
-        aiScore: analysis.score,
-        aiSummary: analysis.summary,
-        aiPriority: analysis.priority,
+        aiScore: analysis.score || 80,
+        aiSummary: analysis.summary || '',
+        aiPriority: analysis.priority || 'medium',
+        suggestedResponse: analysis.suggestedResponse || '',
         updatedAt: serverTimestamp()
       });
 
       setLeadAnalysis(prev => ({ ...prev, [lead.id]: analysis }));
+      if (selectedLead?.id === lead.id) {
+        setReplyMessage(analysis.suggestedResponse || '');
+      }
       toast.success('AI-analyse fullført!');
-    } catch (err) {
+    } catch (err: any) {
       console.error('AI Analysis error:', err);
-      toast.error('Kunne ikke fullføre AI-analyse.');
+      const fallbackAnalysis = {
+        score: 75,
+        summary: lead.plan ? `Interessert i ${lead.plan} (${lead.trade || 'bygg'})` : 'Henvendelse mottatt.',
+        suggestedResponse: `Hei ${lead.name || ''}!\n\nTakk for henvendelsen. Vi hjelper gjerne ${lead.company || 'dere'} i gang med VikingMester KS/HMS.\n\nTa gjerne kontakt hvis du lurer på noe!\n\nVennlig hilsen,\nVikingMester`,
+        priority: 'medium'
+      };
+      setLeadAnalysis(prev => ({ ...prev, [lead.id]: fallbackAnalysis }));
+      if (selectedLead?.id === lead.id) {
+        setReplyMessage(fallbackAnalysis.suggestedResponse);
+      }
+      toast.info('AI-analyse generert med standardsvar.');
     } finally {
       setIsAnalyzingLead(null);
     }
@@ -350,13 +392,52 @@ export default function SuperAdmin({ onBackToDashboard }: { onBackToDashboard?: 
     e.preventDefault();
     try {
       const token = Math.random().toString(36).substring(2, 15) + Math.random().toString(36).substring(2, 15);
+      const baseUrl = typeof window !== 'undefined' ? window.location.origin : 'https://vikingmester.no';
+      const offerLink = `${baseUrl}/?offer=${token}`;
+
       await addDoc(collection(db, 'system_offers'), {
         ...offerForm,
         status: 'pending',
         token,
+        offerLink,
         createdAt: serverTimestamp(),
         createdBy: user?.id || user?.email
       });
+
+      const authToken = typeof window !== 'undefined' ? localStorage.getItem('token') : null;
+      try {
+        await fetch('/api/notify/email', {
+          method: 'POST',
+          headers: {
+            'Content-Type': 'application/json',
+            ...(authToken ? { 'Authorization': 'Bearer ' + authToken } : {})
+          },
+          body: JSON.stringify({
+            to: offerForm.recipientEmail,
+            subject: `Skreddersydd tilbud på VikingMester for ${offerForm.companyName}`,
+            text: `Hei ${offerForm.recipientName}!\n\nVi har gleden av å sende deg et skreddersydd tilbud på VikingMester for ${offerForm.companyName}.\n\nPris: ${offerForm.customPrice} NOK/mnd eks. mva\nPrøveperiode: ${offerForm.trialDays} dager\n\n${offerForm.message || ''}\n\nSe og godkjenn tilbudet her:\n${offerLink}\n\nMed vennlig hilsen,\nVikingMester Teamet`,
+            html: `<div style="font-family: sans-serif; line-height: 1.6; color: #0f172a; max-width: 600px; margin: 0 auto; padding: 24px; background: #ffffff; border: 1px solid #e2e8f0; border-radius: 16px;">
+              <h2 style="color: #1e1b4b; margin-top: 0;">Skreddersydd tilbud fra VikingMester</h2>
+              <p>Hei <strong>${offerForm.recipientName}</strong>,</p>
+              <p>Vi har satt sammen et skreddersydd tilbud til <strong>${offerForm.companyName}</strong>:</p>
+              <div style="background: #f8fafc; border-left: 4px solid #6366f1; padding: 16px; margin: 20px 0; border-radius: 8px;">
+                <p style="margin: 0 0 8px 0; font-size: 16px;"><strong>Månedspris:</strong> ${offerForm.customPrice} NOK/mnd eks. mva</p>
+                <p style="margin: 0; font-size: 14px; color: #475569;"><strong>Prøveperiode:</strong> ${offerForm.trialDays} dager kostnadsfritt</p>
+              </div>
+              ${offerForm.message ? `<p style="white-space: pre-wrap; color: #334155;">${offerForm.message.replace(/</g, '&lt;')}</p>` : ''}
+              <div style="margin: 30px 0; text-align: center;">
+                <a href="${offerLink}" style="background: #4f46e5; color: #ffffff; padding: 14px 28px; text-decoration: none; border-radius: 12px; font-weight: bold; display: inline-block;">Se og godkjenn tilbudet</a>
+              </div>
+              <p style="font-size: 12px; color: #94a3b8; margin-top: 30px;">Lenke: ${offerLink}</p>
+            </div>`
+          })
+        });
+        toast.success(`Tilbud opprettet og sendt på e-post til ${offerForm.recipientEmail}!`);
+      } catch (err) {
+        console.warn('Could not send offer email:', err);
+        toast.success('Tilbud opprettet!');
+      }
+
       setIsOfferModalOpen(false);
       setOfferForm({
         recipientEmail: '',
@@ -367,21 +448,126 @@ export default function SuperAdmin({ onBackToDashboard }: { onBackToDashboard?: 
         customPrice: 0,
         message: ''
       });
-      toast.success('Tilbud ble opprettet og lagret!');
     } catch (error) {
       handleFirestoreError(error, OperationType.CREATE, 'system_offers');
+    }
+  };
+
+  const handleDeleteOffer = async (offerId: string) => {
+    if (!window.confirm('Er du sikker på at du vil slette dette tilbudet?')) return;
+    try {
+      await deleteDoc(doc(db, 'system_offers', offerId));
+      toast.success('Tilbud slettet!');
+    } catch (error) {
+      handleFirestoreError(error, OperationType.DELETE, 'system_offers');
+    }
+  };
+
+  const handleResendOfferEmail = async (offer: any) => {
+    const defaultEmail = offer.recipientEmail || '';
+    const targetEmail = window.prompt('Send tilbud på nytt til e-post:', defaultEmail);
+    if (!targetEmail) return;
+
+    const baseUrl = typeof window !== 'undefined' ? window.location.origin : 'https://vikingmester.no';
+    const offerLink = `${baseUrl}/?offer=${offer.token}`;
+    const authToken = typeof window !== 'undefined' ? localStorage.getItem('token') : null;
+
+    try {
+      const res = await fetch('/api/notify/email', {
+        method: 'POST',
+        headers: {
+          'Content-Type': 'application/json',
+          ...(authToken ? { 'Authorization': 'Bearer ' + authToken } : {})
+        },
+        body: JSON.stringify({
+          to: targetEmail,
+          subject: `Tilbud på VikingMester for ${offer.companyName || 'ditt firma'}`,
+          text: `Hei ${offer.recipientName || ''}!\n\nHer er tilbudet ditt på VikingMester:\n\nPris: ${offer.customPrice} NOK/mnd\nPrøveperiode: ${offer.trialDays || 30} dager\n\n${offer.message || ''}\n\nSe og godkjenn tilbudet her:\n${offerLink}\n\nMed vennlig hilsen,\nVikingMester`,
+          html: `<div style="font-family: sans-serif; line-height: 1.6; color: #0f172a; max-width: 600px; margin: 0 auto; padding: 24px; background: #ffffff; border: 1px solid #e2e8f0; border-radius: 16px;">
+            <h2 style="color: #1e1b4b; margin-top: 0;">Tilbud fra VikingMester</h2>
+            <p>Hei <strong>${offer.recipientName || 'Kunde'}</strong>,</p>
+            <p>Her er ditt skreddersydde tilbud til <strong>${offer.companyName || 'ditt firma'}</strong>:</p>
+            <div style="background: #f8fafc; border-left: 4px solid #6366f1; padding: 16px; margin: 20px 0; border-radius: 8px;">
+              <p style="margin: 0 0 8px 0; font-size: 16px;"><strong>Månedspris:</strong> ${offer.customPrice} NOK/mnd eks. mva</p>
+              <p style="margin: 0; font-size: 14px; color: #475569;"><strong>Prøveperiode:</strong> ${offer.trialDays || 30} dager kostnadsfritt</p>
+            </div>
+            ${offer.message ? `<p style="white-space: pre-wrap; color: #334155;">${offer.message.replace(/</g, '&lt;')}</p>` : ''}
+            <div style="margin: 30px 0; text-align: center;">
+              <a href="${offerLink}" style="background: #4f46e5; color: #ffffff; padding: 14px 28px; text-decoration: none; border-radius: 12px; font-weight: bold; display: inline-block;">Se og godkjenn tilbudet</a>
+            </div>
+            <p style="font-size: 12px; color: #94a3b8; margin-top: 30px;">Lenke: ${offerLink}</p>
+          </div>`
+        })
+      });
+      if (res.ok) {
+        toast.success(`Tilbud sendt til ${targetEmail}!`);
+      } else {
+        toast.error('Kunne ikke sende e-post.');
+      }
+    } catch (e: any) {
+      toast.error('Feil ved sending: ' + e.message);
+    }
+  };
+
+  const handleSendReplyEmail = async () => {
+    if (!selectedLead || !replyMessage.trim() || isSendingReply) return;
+    setIsSendingReply(true);
+    const authToken = typeof window !== 'undefined' ? localStorage.getItem('token') : null;
+    try {
+      const res = await fetch('/api/notify/email', {
+        method: 'POST',
+        headers: {
+          'Content-Type': 'application/json',
+          ...(authToken ? { 'Authorization': 'Bearer ' + authToken } : {})
+        },
+        body: JSON.stringify({
+          to: selectedLead.email,
+          subject: `Svar fra VikingMester angående din henvendelse`,
+          text: replyMessage,
+          html: `<div style="font-family: sans-serif; line-height: 1.6; color: #0f172a; max-width: 600px; margin: 0 auto; padding: 24px; background: #ffffff; border: 1px solid #e2e8f0; border-radius: 16px;">
+            <h2 style="color: #1e1b4b; margin-top: 0;">Hei ${selectedLead.name || ''}!</h2>
+            <div style="white-space: pre-wrap; font-size: 15px; margin: 20px 0; color: #334155;">${replyMessage.replace(/</g, '&lt;')}</div>
+            <hr style="border: none; border-top: 1px solid #e2e8f0; margin: 25px 0;" />
+            <p style="font-size: 12px; color: #64748b;">Med vennlig hilsen,<br><strong>VikingMester Teamet</strong><br>Norges ledende KS- og prosjektstyringssystem for bygg og anlegg.</p>
+          </div>`
+        })
+      });
+
+      if (res.ok) {
+        toast.success(`Svar sendt til ${selectedLead.name} (${selectedLead.email})!`);
+        await handleUpdateLeadStatus(selectedLead.id, 'contacted');
+        setIsResponseModalOpen(false);
+      } else {
+        const errData = await res.json().catch(() => ({}));
+        toast.error(errData.error || 'Kunne ikke sende svar på e-post');
+      }
+    } catch (err: any) {
+      toast.error('Feil ved sending: ' + err.message);
+    } finally {
+      setIsSendingReply(false);
     }
   };
 
   const handleCreateTemplate = async (e: React.FormEvent) => {
     e.preventDefault();
     try {
-      await addDoc(collection(db, 'templates'), {
-        ...templateForm,
-        createdAt: serverTimestamp(),
-        updatedBy: user?.id || user?.email
-      });
+      if (editingTemplateId) {
+        await updateDoc(doc(db, 'templates', editingTemplateId), {
+          ...templateForm,
+          updatedAt: serverTimestamp(),
+          updatedBy: user?.id || user?.email
+        });
+        toast.success('Mal oppdatert!');
+      } else {
+        await addDoc(collection(db, 'templates'), {
+          ...templateForm,
+          createdAt: serverTimestamp(),
+          updatedBy: user?.id || user?.email
+        });
+        toast.success('Mal ble lagret!');
+      }
       setIsTemplateModalOpen(false);
+      setEditingTemplateId(null);
       setTemplateForm({
         name: '',
         subject: '',
@@ -389,9 +575,8 @@ export default function SuperAdmin({ onBackToDashboard }: { onBackToDashboard?: 
         type: 'email',
         category: 'offer'
       });
-      toast.success('Mal ble lagret!');
     } catch (error) {
-      handleFirestoreError(error, OperationType.CREATE, 'templates');
+      handleFirestoreError(error, editingTemplateId ? OperationType.UPDATE : OperationType.CREATE, 'templates');
     }
   };
 
@@ -512,11 +697,18 @@ export default function SuperAdmin({ onBackToDashboard }: { onBackToDashboard?: 
   }, [allDailyLogs, adminLogSearch]);
 
   const handleCopyChangeOrderLink = (co: any) => {
-    const baseUrl = typeof window !== 'undefined' ? window.location.origin : '';
+    const baseUrl = typeof window !== 'undefined' ? window.location.origin : 'https://vikingmester.no';
     const token = co.token || co.id;
     const url = co.shareUrl || `${baseUrl}/?changeOrderToken=${token}`;
-    navigator.clipboard.writeText(url);
-    toast.success('Godkjenningslenke kopiert til utklippstavlen!');
+    if (navigator?.clipboard?.writeText) {
+      navigator.clipboard.writeText(url).then(() => {
+        toast.success('Godkjenningslenke kopiert til utklippstavlen!');
+      }).catch(() => {
+        window.prompt('Kopier godkjenningslenke:', url);
+      });
+    } else {
+      window.prompt('Kopier godkjenningslenke:', url);
+    }
   };
 
   const handleSendChangeOrderEmail = async (co: any) => {
@@ -524,45 +716,48 @@ export default function SuperAdmin({ onBackToDashboard }: { onBackToDashboard?: 
     const targetEmail = window.prompt('Send endringsordre til e-post:', defaultEmail);
     if (!targetEmail) return;
 
-    const baseUrl = typeof window !== 'undefined' ? window.location.origin : '';
+    const baseUrl = typeof window !== 'undefined' ? window.location.origin : 'https://vikingmester.no';
     const token = co.token || co.id;
     const url = co.shareUrl || `${baseUrl}/?changeOrderToken=${token}`;
     const amount = Number(co.amountExVat || co.totalPrice || co.amount || (co.totalAmount ? Math.round(co.totalAmount / 1.25) : 0));
     const totalAmount = Number(co.totalAmount || Math.round(amount * 1.25));
+    const authToken = typeof window !== 'undefined' ? localStorage.getItem('token') : null;
 
     try {
       const res = await fetch('/api/notify/email', {
         method: 'POST',
-        headers: { 'Content-Type': 'application/json' },
+        headers: {
+          'Content-Type': 'application/json',
+          ...(authToken ? { 'Authorization': 'Bearer ' + authToken } : {})
+        },
         body: JSON.stringify({
           to: targetEmail,
           subject: `Endringsordre: ${co.title || 'Tilleggsavtale'} - ${co.projectName || 'Ditt prosjekt'}`,
-          content: `
-            Hei ${co.clientName || 'Kunde'}!
-            
-            Det er opprettet et tilleggsarbeid/endringsordre som krever din godkjenning:
-            
-            Arbeid: ${co.title || 'Endringsordre'}
-            Beskrivelse: ${co.description || ''}
-            Beløp: ${amount.toLocaleString('no-NO')} kr eks. mva (${totalAmount.toLocaleString('no-NO')} kr inkl. mva)
-            
-            Vennligst se avtalen og godkjenn/signer digitalt her:
-            ${url}
-            
-            Vilkår i henhold til NS 8406 / Håndverkertjenesteloven § 9.
-            
-            Med vennlig hilsen,
-            VikingMester System
-          `
+          text: `Hei ${co.clientName || 'Kunde'}!\n\nDet er opprettet et tilleggsarbeid/endringsordre som krever din godkjenning:\n\nArbeid: ${co.title || 'Endringsordre'}\nBeskrivelse: ${co.description || ''}\nBeløp: ${amount.toLocaleString('no-NO')} kr eks. mva (${totalAmount.toLocaleString('no-NO')} kr inkl. mva)\n\nVennligst se avtalen og signer digitalt her:\n${url}\n\nVilkår i henhold til NS 8406 / Håndverkertjenesteloven § 9.\n\nMed vennlig hilsen,\nVikingMester System`,
+          html: `<div style="font-family: sans-serif; line-height: 1.6; color: #0f172a; max-width: 600px; margin: 0 auto; padding: 24px; background: #ffffff; border: 1px solid #e2e8f0; border-radius: 16px;">
+            <h2 style="color: #1e1b4b; margin-top: 0;">Endringsordre til godkjenning</h2>
+            <p>Hei <strong>${co.clientName || 'Kunde'}</strong>,</p>
+            <p>Det er registrert et tilleggsarbeid for prosjekt <strong>${co.projectTitle || co.projectName || 'Ditt prosjekt'}</strong>:</p>
+            <div style="background: #f8fafc; border-left: 4px solid #6366f1; padding: 16px; margin: 20px 0; border-radius: 8px;">
+              <p style="margin: 0 0 6px 0; font-size: 16px; font-weight: bold; color: #0f172a;">${co.title || 'Endringsordre'}</p>
+              ${co.description ? `<p style="margin: 0 0 12px 0; font-size: 14px; color: #475569;">${co.description}</p>` : ''}
+              <p style="margin: 0; font-size: 15px; font-weight: bold; color: #16a34a;">${amount.toLocaleString('no-NO')} kr eks. mva (${totalAmount.toLocaleString('no-NO')} kr inkl. mva)</p>
+            </div>
+            <div style="margin: 28px 0; text-align: center;">
+              <a href="${url}" style="background: #4f46e5; color: #ffffff; padding: 14px 28px; text-decoration: none; border-radius: 12px; font-weight: bold; display: inline-block;">Gjennomgå og signer digitalt</a>
+            </div>
+            <p style="font-size: 12px; color: #94a3b8;">Vilkår i henhold til NS 8406 og Håndverkertjenesteloven § 9.</p>
+          </div>`
         })
       });
       if (res.ok) {
         toast.success(`Endringsordre sendt til ${targetEmail}!`);
       } else {
-        toast.error('Kunne ikke sende e-post. Kontroller mottakeradresse.');
+        const errData = await res.json().catch(() => ({}));
+        toast.error(errData.error || 'Kunne ikke sende e-post. Kontroller mottakeradresse.');
       }
-    } catch (e) {
-      toast.error('Feil ved sending av e-post');
+    } catch (e: any) {
+      toast.error('Feil ved sending av e-post: ' + (e.message || ''));
     }
   };
 
@@ -1480,20 +1675,78 @@ export default function SuperAdmin({ onBackToDashboard }: { onBackToDashboard?: 
                 {leads.map((lead) => (
                   <tr key={lead.id} className="hover:bg-neutral-50 transition-colors">
                     <td className="px-8 py-6">
-                      <div className="font-bold">{lead.name}</div>
+                      <div className="font-bold text-neutral-900">{lead.name || lead.company || 'Henvendelse'}</div>
                       <div className="text-xs text-neutral-500">{lead.email}</div>
+                      {lead.company && lead.company !== lead.name && (
+                        <div className="text-[11px] text-neutral-400 flex items-center gap-1 mt-0.5">
+                          <Building2 size={12} className="text-neutral-400 shrink-0" />
+                          <span className="truncate">{lead.company}</span>
+                        </div>
+                      )}
+                      {lead.phone && (
+                        <div className="text-[11px] text-neutral-400 mt-0.5">
+                          Tlf: <a href={`tel:${lead.phone}`} className="hover:underline text-neutral-600 font-medium">{lead.phone}</a>
+                        </div>
+                      )}
                     </td>
-                    <td className="px-8 py-6 max-w-xs">
-                      <p className="text-sm text-neutral-600 truncate">{lead.message}</p>
+                    <td className="px-8 py-6 max-w-sm">
+                      {lead.message ? (
+                        <div>
+                          <p className="text-sm text-neutral-700 leading-snug line-clamp-2">{lead.message}</p>
+                          {(lead.plan || lead.trade) && (
+                            <div className="flex flex-wrap gap-1 mt-1.5">
+                              {lead.plan && (
+                                <span className="px-2 py-0.5 bg-purple-50 text-purple-700 text-[10px] font-bold rounded-md uppercase tracking-wider">
+                                  {lead.plan}
+                                </span>
+                              )}
+                              {lead.trade && (
+                                <span className="px-2 py-0.5 bg-blue-50 text-blue-700 text-[10px] font-bold rounded-md">
+                                  {lead.trade}
+                                </span>
+                              )}
+                            </div>
+                          )}
+                        </div>
+                      ) : (
+                        <div className="space-y-1">
+                          <div className="flex flex-wrap gap-1.5 items-center">
+                            {lead.plan && (
+                              <span className="px-2.5 py-0.5 bg-purple-100 text-purple-700 text-[10px] font-black uppercase tracking-wider rounded-full">
+                                {lead.plan}
+                              </span>
+                            )}
+                            {lead.trade && (
+                              <span className="px-2.5 py-0.5 bg-blue-100 text-blue-700 text-[10px] font-bold rounded-full">
+                                {lead.trade}
+                              </span>
+                            )}
+                            {lead.workers && (
+                              <span className="px-2.5 py-0.5 bg-neutral-100 text-neutral-600 text-[10px] font-bold rounded-full">
+                                {lead.workers} {Number(lead.workers) === 1 ? 'ansatt' : 'ansatte'}
+                              </span>
+                            )}
+                          </div>
+                          {lead.monthlyPrice && (
+                            <div className="text-xs font-bold text-emerald-600">
+                              Kalkulert: {Number(lead.monthlyPrice).toLocaleString('no-NO')} kr/mnd
+                            </div>
+                          )}
+                          {lead.source && !lead.plan && (
+                            <p className="text-xs text-neutral-400 italic">Kilde: {lead.source}</p>
+                          )}
+                        </div>
+                      )}
                     </td>
                     <td className="px-8 py-6">
                       <select 
-                        value={lead.status}
+                        value={lead.status || 'new'}
                         onChange={(e) => handleUpdateLeadStatus(lead.id, e.target.value)}
                         className={cn(
                           "text-[10px] font-black uppercase tracking-widest px-3 py-1 rounded-full outline-none border-none cursor-pointer",
                           lead.status === 'new' ? "bg-red-100 text-red-700" :
                           lead.status === 'contacted' ? "bg-blue-100 text-blue-700" :
+                          lead.status === 'qualified' ? "bg-emerald-100 text-emerald-700" :
                           "bg-neutral-100 text-neutral-700"
                         )}
                       >
@@ -1512,8 +1765,8 @@ export default function SuperAdmin({ onBackToDashboard }: { onBackToDashboard?: 
                           onClick={() => handleAnalyzeLead(lead)}
                           disabled={isAnalyzingLead === lead.id}
                           className={cn(
-                            "p-2 rounded-xl transition-all",
-                            lead.aiScore ? "text-emerald-600 bg-emerald-50" : "text-neutral-400 hover:text-electric-600 hover:bg-electric-50"
+                            "p-2 rounded-xl transition-all cursor-pointer",
+                            lead.aiScore ? "text-emerald-600 bg-emerald-50 hover:bg-emerald-100" : "text-neutral-400 hover:text-purple-600 hover:bg-purple-50"
                           )}
                           title="AI Analyse"
                         >
@@ -1526,10 +1779,15 @@ export default function SuperAdmin({ onBackToDashboard }: { onBackToDashboard?: 
                         <button 
                           onClick={() => {
                             setSelectedLead(lead);
+                            setReplyMessage(
+                              lead.suggestedResponse || 
+                              leadAnalysis[lead.id]?.suggestedResponse || 
+                              `Hei ${lead.name || ''}!\n\nTakk for din henvendelse til VikingMester angående ${lead.plan || 'KS/HMS-systemet'}.\n\nVi setter gjerne opp en uforpliktende demonstrasjon eller prøveperiode for ${lead.company || 'dere'}.\n\nMed vennlig hilsen,\nVikingMester Teamet`
+                            );
                             setIsResponseModalOpen(true);
                           }}
-                          className="p-2 text-neutral-400 hover:text-electric-600 hover:bg-electric-50 rounded-xl transition-all"
-                          title="Svar"
+                          className="p-2 text-neutral-400 hover:text-purple-600 hover:bg-purple-50 rounded-xl transition-all cursor-pointer"
+                          title="Svar på henvendelse"
                         >
                           <Mail size={18} />
                         </button>
@@ -1537,20 +1795,23 @@ export default function SuperAdmin({ onBackToDashboard }: { onBackToDashboard?: 
                           onClick={() => {
                             setOfferForm({
                               ...offerForm,
-                              recipientEmail: lead.email,
-                              recipientName: lead.name
+                              recipientEmail: lead.email || '',
+                              recipientName: lead.name || '',
+                              companyName: lead.company || lead.name || '',
+                              customPrice: Number(lead.monthlyPrice) || 0,
+                              message: lead.plan ? `Skreddersydd tilbud basert på ${lead.plan} for ${lead.trade || 'byggbransjen'}.` : ''
                             });
                             setIsOfferModalOpen(true);
                           }}
-                          className="p-2 text-neutral-400 hover:text-blue-600 hover:bg-blue-50 rounded-xl transition-all"
+                          className="p-2 text-neutral-400 hover:text-blue-600 hover:bg-blue-50 rounded-xl transition-all cursor-pointer"
                           title="Send tilbud"
                         >
                           <Send size={18} />
                         </button>
                         <button 
                           onClick={() => handleDeleteLead(lead.id)}
-                          className="p-2 text-neutral-400 hover:text-rose-600 hover:bg-rose-50 rounded-xl transition-all"
-                          title="Slett"
+                          className="p-2 text-neutral-400 hover:text-rose-600 hover:bg-rose-50 rounded-xl transition-all cursor-pointer"
+                          title="Slett henvendelse"
                         >
                           <Trash2 size={18} />
                         </button>
@@ -1583,47 +1844,92 @@ export default function SuperAdmin({ onBackToDashboard }: { onBackToDashboard?: 
                   <th className="px-8 py-4 text-xs font-black uppercase tracking-widest text-neutral-400">Pris</th>
                   <th className="px-8 py-4 text-xs font-black uppercase tracking-widest text-neutral-400">Status</th>
                   <th className="px-8 py-4 text-xs font-black uppercase tracking-widest text-neutral-400">Dato</th>
-                  <th className="px-8 py-4 text-xs font-black uppercase tracking-widest text-neutral-400">Link</th>
+                  <th className="px-8 py-4 text-xs font-black uppercase tracking-widest text-neutral-400">Handling</th>
                 </tr>
               </thead>
               <tbody className="divide-y divide-neutral-100">
-                {offers.map((offer) => (
-                  <tr key={offer.id} className="hover:bg-neutral-50 transition-colors">
-                    <td className="px-8 py-6">
-                      <div className="font-bold">{offer.recipientName}</div>
-                      <div className="text-xs text-neutral-500">{offer.recipientEmail}</div>
-                    </td>
-                    <td className="px-8 py-6 font-bold text-neutral-900">
-                      {offer.customPrice},-
-                    </td>
-                    <td className="px-8 py-6">
-                      <span className={cn(
-                        "px-3 py-1 rounded-full text-[10px] font-black uppercase tracking-widest",
-                        offer.status === 'accepted' ? "bg-emerald-100 text-emerald-700" :
-                        offer.status === 'declined' ? "bg-red-100 text-red-700" :
-                        "bg-blue-100 text-blue-700"
-                      )}>
-                        {offer.status}
-                      </span>
-                    </td>
-                    <td className="px-8 py-6 text-xs text-neutral-500">
-                      {formatDate(offer.createdAt)}
-                    </td>
-                    <td className="px-8 py-6">
-                      <button 
-                        onClick={() => {
-                          const url = `${window.location.origin}/?offer=${offer.token}`;
-                          navigator.clipboard.writeText(url);
-                          toast.success('Tilbudslenke kopiert til utklippstavlen!');
-                        }}
-                        className="flex items-center gap-1 text-[10px] font-black uppercase tracking-widest text-blue-600 hover:text-blue-700"
-                      >
-                        <ExternalLink size={12} />
-                        Kopier lenke
-                      </button>
+                {offers.length === 0 ? (
+                  <tr>
+                    <td colSpan={5} className="px-8 py-12 text-center text-neutral-400 text-sm">
+                      Ingen sendte tilbud enda.
                     </td>
                   </tr>
-                ))}
+                ) : (
+                  offers.map((offer) => (
+                    <tr key={offer.id} className="hover:bg-neutral-50 transition-colors">
+                      <td className="px-8 py-6">
+                        <div className="font-bold text-neutral-900">{offer.recipientName || 'Uten navn'}</div>
+                        <div className="text-xs text-neutral-500">{offer.recipientEmail}</div>
+                        {offer.companyName && (
+                          <div className="text-[11px] text-neutral-400">{offer.companyName}</div>
+                        )}
+                      </td>
+                      <td className="px-8 py-6 font-bold text-neutral-900">
+                        {Number(offer.customPrice || 0).toLocaleString('no-NO')} kr/mnd
+                      </td>
+                      <td className="px-8 py-6">
+                        <span className={cn(
+                          "px-3 py-1 rounded-full text-[10px] font-black uppercase tracking-widest",
+                          offer.status === 'accepted' ? "bg-emerald-100 text-emerald-700" :
+                          offer.status === 'declined' ? "bg-red-100 text-red-700" :
+                          "bg-blue-100 text-blue-700"
+                        )}>
+                          {offer.status === 'accepted' ? 'Godkjent' : offer.status === 'declined' ? 'Avslått' : 'Venter på kunde'}
+                        </span>
+                      </td>
+                      <td className="px-8 py-6 text-xs text-neutral-500">
+                        {formatDate(offer.createdAt)}
+                      </td>
+                      <td className="px-8 py-6">
+                        <div className="flex items-center gap-2">
+                          <button 
+                            onClick={() => {
+                              const baseUrl = typeof window !== 'undefined' ? window.location.origin : 'https://vikingmester.no';
+                              const url = `${baseUrl}/?offer=${offer.token}`;
+                              if (navigator?.clipboard?.writeText) {
+                                navigator.clipboard.writeText(url).then(() => {
+                                  toast.success('Tilbudslenke kopiert!');
+                                }).catch(() => {
+                                  window.prompt('Kopier lenke:', url);
+                                });
+                              } else {
+                                window.prompt('Kopier lenke:', url);
+                              }
+                            }}
+                            className="p-2 text-neutral-500 hover:text-blue-600 hover:bg-blue-50 rounded-xl transition-all cursor-pointer"
+                            title="Kopier tilbudslenke"
+                          >
+                            <Copy size={16} />
+                          </button>
+                          <button 
+                            onClick={() => handleResendOfferEmail(offer)}
+                            className="p-2 text-neutral-500 hover:text-purple-600 hover:bg-purple-50 rounded-xl transition-all cursor-pointer"
+                            title="Send tilbud på e-post"
+                          >
+                            <Mail size={16} />
+                          </button>
+                          <button 
+                            onClick={() => {
+                              const baseUrl = typeof window !== 'undefined' ? window.location.origin : 'https://vikingmester.no';
+                              window.open(`${baseUrl}/?offer=${offer.token}`, '_blank');
+                            }}
+                            className="p-2 text-neutral-500 hover:text-emerald-600 hover:bg-emerald-50 rounded-xl transition-all cursor-pointer"
+                            title="Åpne forhåndsvisning"
+                          >
+                            <ExternalLink size={16} />
+                          </button>
+                          <button 
+                            onClick={() => handleDeleteOffer(offer.id)}
+                            className="p-2 text-neutral-500 hover:text-rose-600 hover:bg-rose-50 rounded-xl transition-all cursor-pointer"
+                            title="Slett tilbud"
+                          >
+                            <Trash2 size={16} />
+                          </button>
+                        </div>
+                      </td>
+                    </tr>
+                  ))
+                )}
               </tbody>
             </table>
           </div>
@@ -1641,6 +1947,7 @@ export default function SuperAdmin({ onBackToDashboard }: { onBackToDashboard?: 
                 <div className="flex gap-2">
                   <button 
                     onClick={() => {
+                      setEditingTemplateId(template.id);
                       setTemplateForm({
                         name: template.name,
                         subject: template.subject,
@@ -1651,16 +1958,19 @@ export default function SuperAdmin({ onBackToDashboard }: { onBackToDashboard?: 
                       setIsTemplateModalOpen(true);
                     }}
                     className="p-2 text-neutral-400 hover:text-blue-600 hover:bg-blue-50 rounded-lg transition-all"
+                    title="Rediger mal"
                   >
                     <Settings size={16} />
                   </button>
                   <button 
                     onClick={async () => {
-                      if (window.confirm('Slette mal?')) {
+                      if (window.confirm('Er du sikker på at du vil slette denne malen?')) {
                         await deleteDoc(doc(db, 'templates', template.id));
+                        toast.success('Mal slettet!');
                       }
                     }}
                     className="p-2 text-neutral-400 hover:text-red-600 hover:bg-red-50 rounded-lg transition-all"
+                    title="Slett mal"
                   >
                     <Trash2 size={16} />
                   </button>
@@ -1679,8 +1989,18 @@ export default function SuperAdmin({ onBackToDashboard }: { onBackToDashboard?: 
             </div>
           ))}
           <button 
-            onClick={() => setIsTemplateModalOpen(true)}
-            className="bg-neutral-50 border-2 border-dashed border-neutral-200 rounded-[2rem] p-6 flex flex-col items-center justify-center gap-2 text-neutral-400 hover:bg-neutral-100 hover:border-neutral-300 transition-all"
+            onClick={() => {
+              setEditingTemplateId(null);
+              setTemplateForm({
+                name: '',
+                subject: '',
+                body: '',
+                type: 'email',
+                category: 'offer'
+              });
+              setIsTemplateModalOpen(true);
+            }}
+            className="bg-neutral-50 border-2 border-dashed border-neutral-200 rounded-[2rem] p-6 flex flex-col items-center justify-center gap-2 text-neutral-400 hover:bg-neutral-100 hover:border-neutral-300 transition-all cursor-pointer"
           >
             <Plus size={24} />
             <span className="font-bold">Opprett ny mal</span>
@@ -1869,61 +2189,108 @@ export default function SuperAdmin({ onBackToDashboard }: { onBackToDashboard?: 
           <motion.div
             initial={{ opacity: 0, scale: 0.9, y: 20 }}
             animate={{ opacity: 1, scale: 1, y: 0 }}
-            className="bg-white w-full max-w-2xl rounded-[3rem] shadow-2xl overflow-hidden"
+            className="bg-white w-full max-w-2xl rounded-[3rem] shadow-2xl overflow-hidden max-h-[90vh] flex flex-col"
           >
-            <div className="p-12">
-              <div className="flex items-center justify-between mb-8">
+            <div className="p-8 sm:p-10 overflow-y-auto">
+              <div className="flex items-center justify-between mb-6">
                 <div>
-                  <h2 className="text-3xl font-black text-neutral-900">Svar på henvendelse</h2>
-                  <p className="text-neutral-500">Sender svar til {selectedLead.name} ({selectedLead.email})</p>
+                  <h2 className="text-2xl sm:text-3xl font-black text-neutral-900">Svar på henvendelse</h2>
+                  <p className="text-neutral-500 text-sm">Sender svar til {selectedLead.name || selectedLead.company} ({selectedLead.email})</p>
                 </div>
-                <button onClick={() => setIsResponseModalOpen(false)} className="p-4 bg-neutral-100 text-neutral-600 rounded-2xl hover:bg-neutral-200 transition-all">
-                  <X size={24} />
+                <button onClick={() => setIsResponseModalOpen(false)} className="p-3 bg-neutral-100 text-neutral-600 rounded-2xl hover:bg-neutral-200 transition-all cursor-pointer">
+                  <X size={20} />
                 </button>
               </div>
 
               <div className="space-y-6">
-                <div className="p-6 bg-neutral-50 rounded-[2rem] border border-neutral-100">
-                  <p className="text-xs font-black uppercase text-neutral-400 mb-2">Original melding</p>
-                  <p className="text-sm text-neutral-600 italic">"{selectedLead.message}"</p>
+                {/* Lead Summary Info Card */}
+                <div className="p-5 bg-neutral-50 rounded-[2rem] border border-neutral-100 space-y-3">
+                  <div className="flex items-center justify-between">
+                    <p className="text-xs font-black uppercase text-neutral-400">Henvendelse & Behov</p>
+                    {selectedLead.phone && (
+                      <span className="text-xs text-neutral-500">Tlf: <strong className="text-neutral-700">{selectedLead.phone}</strong></span>
+                    )}
+                  </div>
+                  
+                  {selectedLead.message ? (
+                    <p className="text-sm text-neutral-700 italic bg-white p-3.5 rounded-xl border border-neutral-200/60">
+                      "{selectedLead.message}"
+                    </p>
+                  ) : null}
+
+                  <div className="grid grid-cols-2 sm:grid-cols-4 gap-2 pt-1">
+                    {selectedLead.company && (
+                      <div className="bg-white p-2.5 rounded-xl border border-neutral-100">
+                        <div className="text-[10px] uppercase font-bold text-neutral-400">Firma</div>
+                        <div className="text-xs font-bold text-neutral-800 truncate">{selectedLead.company}</div>
+                      </div>
+                    )}
+                    {selectedLead.trade && (
+                      <div className="bg-white p-2.5 rounded-xl border border-neutral-100">
+                        <div className="text-[10px] uppercase font-bold text-neutral-400">Fagområde</div>
+                        <div className="text-xs font-bold text-neutral-800 truncate">{selectedLead.trade}</div>
+                      </div>
+                    )}
+                    {selectedLead.plan && (
+                      <div className="bg-white p-2.5 rounded-xl border border-neutral-100">
+                        <div className="text-[10px] uppercase font-bold text-neutral-400">Ønsket pakke</div>
+                        <div className="text-xs font-bold text-purple-700 truncate">{selectedLead.plan}</div>
+                      </div>
+                    )}
+                    {selectedLead.workers && (
+                      <div className="bg-white p-2.5 rounded-xl border border-neutral-100">
+                        <div className="text-[10px] uppercase font-bold text-neutral-400">Ansatte</div>
+                        <div className="text-xs font-bold text-neutral-800">{selectedLead.workers}</div>
+                      </div>
+                    )}
+                  </div>
                 </div>
 
-                {leadAnalysis[selectedLead.id] && (
-                  <div className="p-6 bg-emerald-50 rounded-[2rem] border border-emerald-100">
-                    <div className="flex items-center gap-2 mb-4">
-                      <Sparkles size={18} className="text-emerald-600" />
-                      <p className="text-xs font-black uppercase text-emerald-700">AI Forslag til svar</p>
-                    </div>
-                    <textarea 
-                      className="w-full h-48 p-6 bg-white border border-emerald-100 rounded-2xl text-sm text-neutral-700 outline-none focus:ring-2 focus:ring-electric-500 transition-all"
-                      defaultValue={leadAnalysis[selectedLead.id].suggestedResponse}
-                    />
-                  </div>
-                )}
-
-                {!leadAnalysis[selectedLead.id] && (
-                  <div className="text-center py-12">
-                    <button 
+                {/* Svartekst-felt */}
+                <div>
+                  <div className="flex items-center justify-between mb-2">
+                    <label className="text-xs font-black uppercase text-neutral-600 flex items-center gap-1.5">
+                      <Mail size={14} /> Din svarmelding
+                    </label>
+                    <button
+                      type="button"
                       onClick={() => handleAnalyzeLead(selectedLead)}
-                      className="inline-flex items-center gap-2 px-6 py-3 bg-gradient-to-r from-electric-500 to-electric-400 text-white rounded-2xl font-black hover:opacity-95 transition-all shadow-purple-cta"
+                      disabled={isAnalyzingLead === selectedLead.id}
+                      className="text-xs font-bold text-purple-600 hover:text-purple-700 flex items-center gap-1 cursor-pointer"
                     >
-                      <Sparkles size={18} />
-                      Generer AI-svar
+                      <Sparkles size={14} />
+                      {isAnalyzingLead === selectedLead.id ? 'Genererer AI-svar...' : 'Generer AI-forslag'}
                     </button>
                   </div>
-                )}
+                  <textarea
+                    rows={7}
+                    value={replyMessage}
+                    onChange={(e) => setReplyMessage(e.target.value)}
+                    placeholder="Skriv svar her..."
+                    className="w-full p-4 bg-white border border-neutral-200 rounded-2xl text-sm text-neutral-800 outline-none focus:ring-2 focus:ring-purple-500 transition-all resize-none shadow-inner"
+                  />
+                </div>
 
-                <div className="flex gap-4 pt-4">
-                  <button 
-                    onClick={() => {
-                      toast.success(`Svar sendt til ${selectedLead.name} (${selectedLead.email})!`);
-                      handleUpdateLeadStatus(selectedLead.id, 'contacted');
-                      setIsResponseModalOpen(false);
-                    }}
-                    className="flex-1 py-4 bg-neutral-900 text-white rounded-2xl font-bold hover:bg-neutral-800 transition-all flex items-center justify-center gap-2"
+                <div className="flex gap-3 pt-2">
+                  <button
+                    type="button"
+                    onClick={() => setIsResponseModalOpen(false)}
+                    className="px-6 py-3.5 bg-neutral-100 text-neutral-700 rounded-2xl font-bold hover:bg-neutral-200 transition-all text-sm cursor-pointer"
                   >
-                    <Send size={18} />
-                    Send Svar
+                    Avbryt
+                  </button>
+                  <button
+                    type="button"
+                    onClick={handleSendReplyEmail}
+                    disabled={isSendingReply || !replyMessage.trim()}
+                    className="flex-1 py-3.5 bg-neutral-900 text-white rounded-2xl font-bold hover:bg-neutral-800 transition-all flex items-center justify-center gap-2 text-sm disabled:opacity-50 cursor-pointer shadow-md"
+                  >
+                    {isSendingReply ? (
+                      <div className="w-4 h-4 border-2 border-white border-t-transparent rounded-full animate-spin" />
+                    ) : (
+                      <Send size={16} />
+                    )}
+                    <span>{isSendingReply ? 'Sender e-post...' : 'Send Svar på e-post'}</span>
                   </button>
                 </div>
               </div>
@@ -2059,8 +2426,11 @@ export default function SuperAdmin({ onBackToDashboard }: { onBackToDashboard?: 
             className="bg-white rounded-[2.5rem] shadow-2xl w-full max-w-2xl overflow-hidden"
           >
             <div className="p-8 border-b border-neutral-100 flex justify-between items-center">
-              <h2 className="text-2xl font-bold text-neutral-900">Administrer mal</h2>
-              <button onClick={() => setIsTemplateModalOpen(false)} className="p-2 hover:bg-neutral-100 rounded-full transition-colors">
+              <div>
+                <h2 className="text-2xl font-bold text-neutral-900">{editingTemplateId ? 'Rediger mal' : 'Opprett ny mal'}</h2>
+                <p className="text-xs text-neutral-500">Maler for e-post og varslinger til kunder og henvendelser</p>
+              </div>
+              <button onClick={() => { setIsTemplateModalOpen(false); setEditingTemplateId(null); }} className="p-2 hover:bg-neutral-100 rounded-full transition-colors cursor-pointer">
                 <XCircle size={24} className="text-neutral-400" />
               </button>
             </div>
@@ -2131,9 +2501,9 @@ export default function SuperAdmin({ onBackToDashboard }: { onBackToDashboard?: 
 
               <button 
                 type="submit"
-                className="w-full bg-neutral-900 text-white py-4 rounded-2xl font-bold hover:bg-neutral-800 transition-all shadow-lg"
+                className="w-full bg-neutral-900 text-white py-4 rounded-2xl font-bold hover:bg-neutral-800 transition-all shadow-lg cursor-pointer"
               >
-                Lagre mal
+                {editingTemplateId ? 'Oppdater mal' : 'Lagre mal'}
               </button>
             </form>
           </motion.div>

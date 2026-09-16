@@ -93,7 +93,15 @@ export function resolveOptimalModel(operation?: string, requestedModel?: string)
     };
   }
 
-  // 1. Juridisk, NS 8406, Endringsordrer, Kontrakt -> Claude 3.5 Sonnet
+  // 1. MesterAI Samtalepartner, Rådgivning, Tilbud & Kalkyle -> Claude 3.5 Sonnet / GPT-4o
+  if (op.includes('conversation') || op.includes('advisor') || op.includes('consultation') || op.includes('chat') || op.includes('offer') || op.includes('tilbud') || op.includes('kalkyle')) {
+    return {
+      oneMinModel: process.env.ONE_MIN_AI_CHAT_MODEL || 'claude-3-5-sonnet',
+      geminiModel: 'gemini-2.5-flash'
+    };
+  }
+
+  // 2. Juridisk, NS 8406, Endringsordrer, Kontrakt -> Claude 3.5 Sonnet
   if (op.includes('change_order') || op.includes('contract') || op.includes('legal') || op.includes('ns8406') || op.includes('varsel')) {
     return {
       oneMinModel: process.env.ONE_MIN_AI_LEGAL_MODEL || 'claude-3-5-sonnet',

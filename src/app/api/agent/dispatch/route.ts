@@ -167,7 +167,8 @@ export async function POST(req: NextRequest) {
   try {
     const body = await req.json();
     const action = body.action || body.actionType;
-    const text = body.text || body.instruction;
+    const text = body.text || body.instruction || body.message;
+    const history = Array.isArray(body.history) ? body.history : [];
     const { 
       projectId, 
       projectName, 
@@ -179,8 +180,8 @@ export async function POST(req: NextRequest) {
       companyId
     } = body;
 
-    // 1. Quick Intelligent Command (Dispatches to correct engine automatically)
-    if (action === 'quick_command' || action === 'ask') {
+    // 1. Quick Intelligent Command & Conversational Partner (Chat, Advisor, Actions)
+    if (action === 'quick_command' || action === 'ask' || action === 'chat') {
       if (!text) {
         return NextResponse.json({ error: 'Mangler kommando/tekst' }, { status: 400 });
       }
@@ -363,8 +364,47 @@ export async function POST(req: NextRequest) {
       const resolvedProjectId = targetProject?.id || projectId || allProjects[0]?.id || 'proj-101';
       const resolvedProjectName = targetProject?.name || projectName || allProjects[0]?.name || 'Byggeprosjekt';
 
-      // Check if user is asking to create a change order (endringsordre / tillegg)
-      if (lower.includes('endring') || lower.includes('tillegg') || lower.includes('ekstra') || lower.includes('avviksfaktura')) {
+      // 🎯 HÅNDTERING AV HENVENDELSER & SAMTALEPARTNER (MesterAI)
+      const isOfferIntent = 
+        lower.includes('tilbud') || 
+        lower.includes('kalkyle') || 
+        lower.includes('kalkylere') || 
+        lower.includes('anbud') || 
+        lower.includes('overslag') || 
+        lower.includes('gi pris') || 
+        lower.includes('prisestimat') || 
+        lower.includes('hva koster') || 
+        lower.includes('skrive tilbud') ||
+        (lower.includes('pris') && (lower.includes('kunde') || lower.includes('arbeid') || lower.includes('m2') || lower.includes('bad') || lower.includes('stue') || lower.includes('tak') || lower.includes('kledning')));
+
+      const isExplicitCreateChangeOrder = 
+        !isOfferIntent && (
+          lower.startsWith('opprett endring') || 
+          lower.startsWith('registrer endring') || 
+          lower.startsWith('lag endring') || 
+          lower.includes('registrer endringsordre:') ||
+          (lower.includes('endringsordre:') && (lower.includes('kr') || lower.includes('kroner')))
+        );
+
+      const isExplicitCreateSJA = 
+        !isOfferIntent && (
+          lower.startsWith('opprett sja') || 
+          lower.startsWith('registrer sja') || 
+          lower.startsWith('lag sja for') || 
+          lower.startsWith('opprett sikker jobb')
+        );
+
+      const isExplicitLukkesperre = 
+        lower.startsWith('sjekk om') && (lower.includes('lukkes') || lower.includes('pre-close') || lower.includes('lukkesperre'));
+
+      const isExplicitDailyLog = 
+        lower.startsWith('byggedagbok:') || 
+        lower.startsWith('dagbok:') || 
+        lower.startsWith('før byggedagbok') || 
+        lower.startsWith('loggfør i byggedagbok');
+
+      // A. Eksplisitt oppretting av endringsordre (f.eks: "Registrer endringsordre: Ekstra downlights i stue kr 14500")
+      if (isExplicitCreateChangeOrder) {
         const result = await createAutonomousChangeOrder({
           projectId: resolvedProjectId,
           projectName: resolvedProjectName,
@@ -375,7 +415,6 @@ export async function POST(req: NextRequest) {
           clientName: targetProject?.clientName || ''
         });
 
-        // Synkroniser hele systemet: Oppdater prosjektets aktivitetsstempel
         if (targetProject) {
           await updateCollectionItem('projects', targetProject.id, {
             updatedAt: new Date().toISOString(),
@@ -383,7 +422,6 @@ export async function POST(req: NextRequest) {
           }).catch(() => {});
         }
 
-        // Log agent activity
         await saveCollectionItem('agent_activities', {
           type: 'change_order',
           title: `Tilleggsordre generert: ${result.changeOrder.title}`,
@@ -400,12 +438,20 @@ export async function POST(req: NextRequest) {
           success: true,
           action: 'change_order',
           reply: `Mottatt! Endringsordre "${result.changeOrder.title}" er opprettet og koblet direkte til prosjektet **${resolvedProjectName}** på kr ${result.changeOrder.totalAmount?.toLocaleString('no-NO')} ink. mva. Den ligger nå klar i godkjenningskøen for utsending til kunde.`,
-          data: result.changeOrder
+          data: result.changeOrder,
+          suggestedActions: [
+            {
+              id: 'open_co',
+              type: 'open_change_order_modal',
+              label: '📄 Åpne Endringsordre',
+              data: result.changeOrder
+            }
+          ]
         });
       }
 
-      // Check if user is asking for SJA (Sikker Jobb Analyse)
-      if (lower.includes('sja') || lower.includes('sikker jobb') || lower.includes('risiko') || lower.includes('stillas') || lower.includes('verneutstyr')) {
+      // B. Eksplisitt oppretting av SJA
+      if (isExplicitCreateSJA) {
         const sjaResult = await generateSJAAction(text);
         
         await saveCollectionItem('agent_activities', {
@@ -420,7 +466,6 @@ export async function POST(req: NextRequest) {
           projectName: resolvedProjectName
         });
 
-        // Synkroniser også sja_reports samlingen
         await saveCollectionItem('sja_reports', {
           projectId: resolvedProjectId,
           projectName: resolvedProjectName,
@@ -438,12 +483,20 @@ export async function POST(req: NextRequest) {
           success: true,
           action: 'sja',
           reply: `Sikker Jobb Analyse (SJA) er generert for "${sjaResult.data.title}" og koblet direkte til prosjektet **${resolvedProjectName}**. Risikoer og pålagte tiltak iht. ${sjaResult.data.tek17Reference} er arkivert.`,
-          data: sjaResult.data
+          data: sjaResult.data,
+          suggestedActions: [
+            {
+              id: 'open_sja',
+              type: 'open_sja_modal',
+              label: '🛡️ Se SJA-skjema',
+              data: sjaResult.data
+            }
+          ]
         });
       }
 
-      // Check if user is asking for lukkesperre (pre-close check)
-      if (lower.includes('lukke') || lower.includes('vegg') || lower.includes('gips') || lower.includes('plate') || lower.includes('sperre')) {
+      // C. Eksplisitt lukkesperre (pre-close check)
+      if (isExplicitLukkesperre) {
         const room = roomOrZone || 'Aktuell sone';
         const evaluation = evaluatePreCloseWall({
           roomName: room,
@@ -463,50 +516,240 @@ export async function POST(req: NextRequest) {
         });
       }
 
-      // Default: Byggedagbok / AI Mester-svar via 1_MIN_AI (hovedmotor) med Gemini backup
-      let replyText = `Instruks mottatt og loggført i VikingMester byggedagbok.`;
+      // D. Eksplisitt Byggedagbok
+      if (isExplicitDailyLog) {
+        await saveCollectionItem('daily_logs', {
+          projectId: resolvedProjectId,
+          projectName: resolvedProjectName,
+          authorName: authorName || 'Håndverker',
+          note: text,
+          trade: trade || 'general',
+          createdAt: new Date().toISOString(),
+          verified: true,
+          source: 'agent_instruction'
+        });
+
+        await saveCollectionItem('agent_activities', {
+          type: 'daily_log',
+          title: 'Notat ført i elektronisk byggedagbok',
+          description: text.slice(0, 100) + '...',
+          trade: trade || 'general',
+          tradeName: authorName,
+          status: 'verified',
+          badge: 'Byggedagbok § 15',
+          projectId: resolvedProjectId,
+          projectName: resolvedProjectName,
+          createdAt: new Date().toISOString()
+        });
+
+        return NextResponse.json({
+          success: true,
+          action: 'daily_log',
+          reply: `Ditt notat er ført i byggedagboken for prosjektet **${resolvedProjectName}** iht. Byggherreforskriften § 15.`
+        });
+      }
+
+      // E. MESTERAI: AUTONOM SAMTALEPARTNER & FAGLIG RÅDGIVER (Alle caser: Tilbud, TEK17, NS 8406, Sparring)
+      let replyText = '';
+      let offerDraft: any = null;
+      let parsedOfferItems: any[] = [];
 
       try {
+        const systemInstruction = `Du er VikingMester AI – håndverkernes og mesterbedriftens autonome lederassistent, kalkulatør, faglige rådgiver og dedikerte samtalepartner.
+Du kan ABSOLUTT ALT innen norsk bygg og anlegg, og du veileder, regner, formulerer og sparrer med håndverkeren uansett hva slags case de står i ("uansett case"):
+
+DINE KJERNEOMRÅDER & EKSPERTISE:
+1. Tilbud, Prissetting & Kalkyle:
+   - Veilede steg-for-steg i utforming av komplette, vinnende og lønnsomme tilbud.
+   - Beregne realistiske arbeidstimer per fag (tømrer ca 850–950 kr/t eks mva, rørlegger ca 980–1150 kr/t, elektriker ca 950–1100 kr/t, flislegger ca 880–980 kr/t, maler ca 800–900 kr/t).
+   - Beregne materialforbruk og anbefale standard påslag (15–25%).
+   - Spesifisere rigg/drift, avfallshåndtering/container og prosjektledelse.
+   - Formulere avgjørende FORBEHOLD (skjulte feil/mangler, råte, uforutsett el/vvs iht. NS 8406 / NS 8405 / Bustadoppføringslova).
+   - Spesifisere summer eks. mva og inkl. 25% mva.
+2. Entrepriserett & Kontraktsstandarder:
+   - NS 8405, NS 8406, NS 8407, Bustadoppføringslova og Håndverkertjenesteloven.
+   - Korrekt og rettidig varsling av endringer, fristforlengelse og tilleggsvederlag uten å tape rettigheter (unngå preklusjon).
+3. Tekniske Forskrifter & Fagkrav:
+   - TEK17 (alle kapitler, herunder § 13-15 for våtrom/sluk, § 14 for energi/U-verdier, § 11 for brann, § 12 for trapper/rekkverk).
+   - Våtromsnormen (BVN), SINTEF Byggforsk-detaljblader, NEK 400 (skjultanlegg).
+4. HMS, SJA & Byggherreforskriften:
+   - Risikovurdering, barrierer, verneutstyr (EN-standarder) og sikkert arbeid i høyden/stillas.
+5. Praktisk utførelse & Problemløsning i felt:
+   - Løsninger for skjeve vegger/gulv, fuktsikring, lufting, isolering, lydkrav og materialvalg.
+6. Kundedialog & Korrespondanse:
+   - Formulere diplomatiske, profesjonelle e-poster, svare på klager, avvise urimelige krav ryddig.
+
+RETNINGSLINJER FOR SVARENE:
+- Vær en aktiv, imøtekommende samtalepartner (en klok, erfaren mester du sparrer med på byggeplassen eller kontoret).
+- Skriv grundige, strukturerte, lettleste svar (bruk overskrifter, punkter og tydelige priser).
+- Hvis brukeren trenger hjelp med et tilbud:
+  * Sett opp en konkret tilbudsstruktur med arbeidsomfang, time- og materialoverslag, nødvendige forbehold og prisestimat.
+  * Still 1-2 gode oppfølgingsspørsmål for å spisse tilbudet ytterligere.
+  * Legg VED en strukturert JSON-blokk på slutten med estimerte kalkyleposter for tilbudet:
+\`\`\`kalkyle_json
+[
+  {"description": "Postbeskrivelse", "quantity": 1, "unit": "timer/stk/m2/lm", "pricePerUnit": 850}
+]
+\`\`\`
+- Hold språket på naturlig, faglig stødig norsk (bokmål).`;
+
+        let contextPrompt = '';
+        if (history && history.length > 0) {
+          contextPrompt += `TIDLIGERE SAMTALEHISTORIKK:\n`;
+          for (const msg of history.slice(-6)) {
+            contextPrompt += `${msg.role === 'user' ? 'Håndverker' : 'MesterAI'}: ${msg.content}\n`;
+          }
+          contextPrompt += `\n`;
+        }
+
+        contextPrompt += `GJELDENDE HENVENDELSE FRA HÅNDVERKER:\n"${text}"\n\nPROSJEKTKONTEKST:\nProsjekt: "${resolvedProjectName}" (ID: ${resolvedProjectId})\nOppdragsgiver: "${targetProject?.clientName || 'Privat/Næringskunde'}"\nOppdragsfag: "${trade || 'Byggmester / Håndverker'}"`;
+
         const aiRes = await generateWithAiEngine({
-          prompt: `Brukeren gir følgende instruks eller spørsmål:\n"${text}"\n\nKontekst: Prosjekt "${projectName || 'Nyebakken 14'}", fag: "${trade}".\nSvar kort, faglig og handlingsorientert (maks 2-3 setninger). Bekreft hvilke tiltak som er iverksatt iht. norsk standard (TEK17, NS 8406, Byggherreforskriften).`,
-          systemInstruction: 'Du er VikingMester, byggeplassens autonome lederassistent for norske entreprenører og håndverkere.',
-          operation: 'agent_dispatch_instruction',
-          notes: `Dispatch command on project ${projectName || 'unknown'}`
+          prompt: contextPrompt,
+          systemInstruction,
+          operation: isOfferIntent ? 'mester_ai_offer' : 'mester_ai_conversation',
+          notes: `Conversational MesterAI assistance on project ${resolvedProjectName}`
         });
 
         if (aiRes?.text) {
-          replyText = aiRes.text.trim();
+          const rawText = aiRes.text.trim();
+          
+          // Parse kalkyle_json if present
+          const matchKalkyle = rawText.match(/```kalkyle_json([\s\S]*?)```/);
+          if (matchKalkyle) {
+            try {
+              parsedOfferItems = JSON.parse(matchKalkyle[1].trim());
+            } catch (e) {
+              console.warn('Could not parse kalkyle_json:', e);
+            }
+          }
+
+          replyText = rawText.replace(/```kalkyle_json[\s\S]*?```/g, '').trim();
         }
-      } catch (err) {
-        console.warn('[Dispatch] AI Engine dispatch error:', err);
+      } catch (err: any) {
+        console.warn('[Dispatch] MesterAI conversation error:', err);
+        replyText = `Jeg er klar til å hjelpe deg med dette! For tilbud og kalkyler kan jeg hjelpe deg å beregne timer, materialer, påslag og standard forbehold iht. NS 8406 / NS 8405. Hva er omfanget på arbeidet du skal prise?`;
       }
 
-      await saveCollectionItem('daily_logs', {
-        projectId: projectId || 'proj-101',
-        projectName: projectName || 'Byggeprosjekt',
-        authorName: authorName || 'Håndverker',
-        note: text,
-        trade: trade || 'general',
-        createdAt: new Date().toISOString(),
-        verified: true,
-        source: 'agent_instruction'
-      });
+      // Build rich suggested actions
+      const suggestedActions: any[] = [];
+      let followUpPrompts: string[] = [];
 
+      if (isOfferIntent) {
+        const finalItems = parsedOfferItems.length > 0 ? parsedOfferItems : [
+          { description: 'Fagarbeid og utførelse', quantity: 24, unit: 'timer', pricePerUnit: 890, total: 21360 },
+          { description: 'Nødvendige materialer og forbruksmateriell', quantity: 1, unit: 'stk', pricePerUnit: 16500, total: 16500 },
+          { description: 'Rigg, drift og avfallshåndtering', quantity: 1, unit: 'stk', pricePerUnit: 4500, total: 4500 }
+        ];
+
+        offerDraft = {
+          title: targetProject ? `Tilbud: ${targetProject.name}` : `Tilbud: ${text.slice(0, 45)}`,
+          description: replyText.slice(0, 500),
+          items: finalItems,
+          projectId: targetProject?.id,
+          projectCode: targetProject?.projectCode,
+          clientName: targetProject?.clientName || '',
+          clientEmail: targetProject?.clientEmail || ''
+        };
+
+        suggestedActions.push({
+          id: 'open_offer_modal',
+          type: 'open_offer_modal',
+          label: '📝 Åpne Tilbudsbygger med dette utkastet',
+          title: 'Åpne Tilbudsbygger',
+          data: offerDraft
+        });
+
+        followUpPrompts = [
+          'Hvilke standard forbehold bør jeg inkludere for dette prosjektet?',
+          'Hva bør timeprisen settes til for dette faget?',
+          'Formuler et profesjonelt følgebrev til kunden',
+          'Hvordan beregner jeg dekningsbidrag og påslag på 20%?'
+        ];
+      } else if (lower.includes('endring') || lower.includes('tillegg')) {
+        suggestedActions.push({
+          id: 'open_co_modal',
+          type: 'open_change_order_modal',
+          label: '📄 Opprett Endringsordre (NS 8406)',
+          data: {
+            title: `Endring: ${text.slice(0, 45)}`,
+            description: replyText.slice(0, 300),
+            projectId: resolvedProjectId
+          }
+        });
+        followUpPrompts = [
+          'Hvordan varsler jeg kunden formelt iht. NS 8406?',
+          'Krev fristforlengelse pga uforutsett arbeid',
+          'Hva gjør jeg hvis kunden bestrider tillegget?'
+        ];
+      } else if (lower.includes('sja') || lower.includes('sikkerhet') || lower.includes('stillas')) {
+        suggestedActions.push({
+          id: 'open_sja_modal',
+          type: 'open_sja_modal',
+          label: '🛡️ Generer SJA-skjema',
+          data: {
+            title: `SJA: ${text.slice(0, 45)}`,
+            task: text,
+            projectId: resolvedProjectId
+          }
+        });
+        followUpPrompts = [
+          'Hvilke spesifikke vernetiltak kreves her?',
+          'Sjekk værforhold og vind på Yr.no for arbeid i høyden',
+          'Hva sier Byggherreforskriften § 18 om dette?'
+        ];
+      } else if (lower.includes('tek17') || lower.includes('våtrom') || lower.includes('sluk') || lower.includes('membran') || lower.includes('vegg')) {
+        suggestedActions.push({
+          id: 'open_vision_scan',
+          type: 'open_ai_vision',
+          label: '📸 Kontroller med TEK17 Visjon'
+        });
+        followUpPrompts = [
+          'Hva er kravene til fall mot sluk i TEK17 § 13-15?',
+          'Hvilke krav gjelder for dampsperre ved etterisolering?',
+          'Må jeg søke kommunen (ansvarsrett) for dette tiltaket?'
+        ];
+      } else {
+        suggestedActions.push({
+          id: 'open_offer_modal',
+          type: 'open_offer_modal',
+          label: '📝 Nytt Tilbud'
+        });
+        suggestedActions.push({
+          id: 'open_co_modal',
+          type: 'open_change_order_modal',
+          label: '📄 Endringsordre (NS 8406)'
+        });
+        followUpPrompts = [
+          'Hjelp meg å skrive et nytt tilbud',
+          'Hva er reglene for endringsvarsel i NS 8406?',
+          'Sjekk TEK17-krav for dette arbeidet'
+        ];
+      }
+
+      // Log the consultation into agent activities (NOT daily_logs!)
       await saveCollectionItem('agent_activities', {
-        type: 'daily_log',
-        title: 'Instruks registrert i byggedagbok',
-        description: text.slice(0, 100) + '...',
+        type: isOfferIntent ? 'offer_consultation' : 'chat_consultation',
+        title: isOfferIntent ? 'MesterAI: Tilbudsrådgivning' : 'MesterAI: Faglig veiledning',
+        description: text.slice(0, 120),
         trade: trade || 'general',
         tradeName: authorName,
         status: 'verified',
-        badge: 'Dagbok',
+        badge: isOfferIntent ? 'TILBUD' : 'SPARRING',
+        projectId: resolvedProjectId,
+        projectName: resolvedProjectName,
         createdAt: new Date().toISOString()
       });
 
       return NextResponse.json({
         success: true,
-        action: 'general',
-        reply: replyText
+        action: isOfferIntent ? 'offer_consultation' : 'conversation',
+        reply: replyText,
+        suggestedActions,
+        followUpPrompts,
+        intent: isOfferIntent ? 'offer' : 'conversation',
+        offerDraft,
+        targetProject: targetProject ? { id: targetProject.id, name: targetProject.name } : null
       });
     }
 

@@ -23,9 +23,11 @@ export async function POST(req: NextRequest) {
     }
 
     const body = await req.json();
-    const { to, subject, html, text, type = 'general', metadata = {} } = body;
+    const { to, subject, html, text, content, type = 'general', metadata = {} } = body;
+    const bodyText = text || content || '';
+    const bodyHtml = html || (bodyText ? `<div style="font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, sans-serif; white-space: pre-wrap; line-height: 1.6; color: #1e293b;">${bodyText}</div>` : '');
 
-    if (!to || (!subject && !text && !html)) {
+    if (!to || (!subject && !bodyText && !bodyHtml)) {
       return NextResponse.json({ error: 'Mottaker (to) og innhold (subject/body) er påkrevd.' }, { status: 400 });
     }
 
@@ -37,7 +39,7 @@ export async function POST(req: NextRequest) {
       id: 'email-' + Date.now() + '-' + Math.random().toString(36).substring(2, 7),
       to: sanitizedTo,
       subject: sanitizedSubject,
-      text: text || '',
+      text: bodyText,
       type,
       status: 'sent',
       createdAt: new Date().toISOString(),
@@ -59,8 +61,9 @@ export async function POST(req: NextRequest) {
             from: fromEmail,
             reply_to: 'hei@vikingmester.no',
             to: Array.isArray(to) ? to : [to],
-            subject: subject || 'Melding fra VikingMester',
-            html: html || `<p>${text}</p>`
+            subject: sanitizedSubject,
+            html: bodyHtml,
+            text: bodyText
           })
         });
 

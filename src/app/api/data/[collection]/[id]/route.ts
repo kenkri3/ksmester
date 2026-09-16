@@ -1,10 +1,10 @@
 import { NextRequest, NextResponse } from 'next/server';
 import { getCollectionItemById, updateCollectionItem, deleteCollectionItem, saveCollectionItem } from '@/src/lib/server/db';
-import { getUserFromRequest } from '@/src/lib/server/auth';
+import { getUserFromRequest, isUserAdmin } from '@/src/lib/server/auth';
 
 const ALLOWED_COLLECTIONS = [
   'users', 'projects', 'deviations', 'sja_reports',
-  'offers', 'invites', 'invitations', 'contracts', 'change_orders',
+  'offers', 'system_offers', 'invites', 'invitations', 'contracts', 'change_orders',
   'crew', 'safety_inspections', 'checklists', 'hms_documents', 'hms_signatures',
   'inventory', 'apprentice_goals', 'apprentice_profiles', 'building_applications',
   'materials', 'project_documents', 'project_photos', 'notifications',
@@ -27,14 +27,15 @@ export async function GET(
     const user = getUserFromRequest(req);
     const url = new URL(req.url);
     const token = url.searchParams.get('token');
+    const targetCollection = collection === 'system_offers' ? 'offers' : collection;
 
-    const item = await getCollectionItemById(collection, id);
+    const item = await getCollectionItemById(targetCollection, id);
 
     if (!item) {
       return NextResponse.json({ error: 'Elementet ble ikke funnet' }, { status: 404 });
     }
 
-    if (!user && token && (item.token === token || item.portalToken === token)) {
+    if (!user && token && (item.token === token || item.portalToken === token || item.id === token)) {
       return NextResponse.json(item);
     }
 
@@ -42,14 +43,15 @@ export async function GET(
       return NextResponse.json({ error: 'Uautorisert tilgang. Vennligst logg inn.' }, { status: 401 });
     }
 
-    if (user.role !== 'admin') {
+    const isAdmin = isUserAdmin(user);
+    if (!isAdmin) {
       const isOwner = 
         (item.companyId && (item.companyId === user.companyId || item.companyId === 'system')) ||
         (item.company && (item.company === user.companyId || (user.company && item.company === user.company) || item.company === 'system')) ||
         (item.userId && item.userId === user.id) ||
         (item.authorId && item.authorId === user.id) ||
-        (collection === 'hms_documents' && (!item.companyId || item.companyId === 'system')) ||
-        (collection === 'checklists' && (!item.companyId || item.companyId === 'system'));
+        (targetCollection === 'hms_documents' && (!item.companyId || item.companyId === 'system')) ||
+        (targetCollection === 'checklists' && (!item.companyId || item.companyId === 'system'));
 
       if (!isOwner) {
         return NextResponse.json({ error: 'Ingen tilgang til dette objektet (IDOR-beskyttelse)' }, { status: 403 });
@@ -79,6 +81,7 @@ export async function PUT(
       return NextResponse.json({ error: 'Ugyldig samling' }, { status: 400 });
     }
 
+    const targetCollection = collection === 'system_offers' ? 'offers' : collection;
     const body = await req.json();
     const user = getUserFromRequest(req);
 
@@ -87,15 +90,15 @@ export async function PUT(
     const headerToken = req.headers.get('x-token');
     const providedToken = queryToken || headerToken || body.token;
 
-    const existing = await getCollectionItemById(collection, id);
+    const existing = await getCollectionItemById(targetCollection, id);
 
     if (!user) {
-      const allowedPublicCollections = ['change_orders', 'contracts', 'offers', 'invitations'];
+      const allowedPublicCollections = ['change_orders', 'contracts', 'offers', 'system_offers', 'invitations'];
       if (!allowedPublicCollections.includes(collection) || !existing || !providedToken) {
         return NextResponse.json({ error: 'Uautorisert' }, { status: 401 });
       }
 
-      if (existing.token !== providedToken && existing.portalToken !== providedToken) {
+      if (existing.token !== providedToken && existing.portalToken !== providedToken && existing.id !== providedToken) {
         return NextResponse.json({ error: 'Ugyldig sikkerhetstoken' }, { status: 403 });
       }
 
@@ -103,34 +106,36 @@ export async function PUT(
         updatedAt: new Date().toISOString()
       };
 
-      if (collection === 'change_orders') {
+      if (targetCollection === 'change_orders') {
         if (body.status) safePublicUpdate.status = body.status;
         if (body.clientSignatureUrl) safePublicUpdate.clientSignatureUrl = body.clientSignatureUrl;
         if (body.signedByClientAt) safePublicUpdate.signedByClientAt = body.signedByClientAt;
         if (body.clientName) safePublicUpdate.clientName = body.clientName;
         if (body.rejectionReason) safePublicUpdate.rejectionReason = body.rejectionReason;
-      } else if (collection === 'contracts') {
+      } else if (targetCollection === 'contracts') {
         if (body.status) safePublicUpdate.status = body.status;
         if (body.signedAt) safePublicUpdate.signedAt = body.signedAt;
         if (body.signatureData) safePublicUpdate.signatureData = body.signatureData;
         if (body.signerName) safePublicUpdate.signerName = body.signerName;
         if (body.signerIp) safePublicUpdate.signerIp = body.signerIp;
-      } else if (collection === 'offers') {
+      } else if (targetCollection === 'offers') {
         if (body.status) safePublicUpdate.status = body.status;
         if (body.acceptedAt) safePublicUpdate.acceptedAt = body.acceptedAt;
         if (body.contractId) safePublicUpdate.contractId = body.contractId;
-      } else if (collection === 'invitations') {
+      } else if (targetCollection === 'invitations') {
         if (body.status) safePublicUpdate.status = body.status;
         if (body.acceptedAt) safePublicUpdate.acceptedAt = body.acceptedAt;
         if (body.acceptedBy) safePublicUpdate.acceptedBy = body.acceptedBy;
       }
 
-      const updated = await updateCollectionItem(collection, id, safePublicUpdate);
+      const updated = await updateCollectionItem(targetCollection, id, safePublicUpdate);
       return NextResponse.json(updated);
     }
 
+    const isAdmin = isUserAdmin(user);
+
     if (!existing) {
-      if (collection === 'users' && user.role !== 'admin') {
+      if (targetCollection === 'users' && !isAdmin) {
         delete body.role;
         delete body.is_admin;
       }
@@ -139,18 +144,18 @@ export async function PUT(
         ...body,
         id,
         authorId: user.id,
-        companyId: user.role === 'admin' ? (body.companyId || user.companyId) : user.companyId,
+        companyId: isAdmin ? (body.companyId || user.companyId) : user.companyId,
         createdAt: body.createdAt || new Date().toISOString(),
         updatedAt: new Date().toISOString()
       };
-      const saved = await saveCollectionItem(collection, newItem);
+      const saved = await saveCollectionItem(targetCollection, newItem);
       return NextResponse.json(saved);
     }
 
-    if (user.role !== 'admin') {
+    if (!isAdmin) {
       const isOwner =
-        (collection === 'users' && (id === user.id || existing.id === user.id)) ||
-        (collection === 'invitations' && (
+        (targetCollection === 'users' && (id === user.id || existing.id === user.id)) ||
+        (targetCollection === 'invitations' && (
           existing.token === providedToken ||
           (existing.inviteeEmail && existing.inviteeEmail.toLowerCase() === user.email?.toLowerCase()) ||
           existing.companyId === user.companyId ||
@@ -165,7 +170,7 @@ export async function PUT(
         return NextResponse.json({ error: 'Ingen tilgang til å oppdatere dette objektet (IDOR-beskyttelse)' }, { status: 403 });
       }
 
-      if (collection === 'users') {
+      if (targetCollection === 'users') {
         delete body.role;
         delete body.is_admin;
       }
@@ -176,7 +181,7 @@ export async function PUT(
       updatedAt: new Date().toISOString()
     };
 
-    const item = await updateCollectionItem(collection, id, updatedData);
+    const item = await updateCollectionItem(targetCollection, id, updatedData);
     return NextResponse.json(item);
   } catch (err: any) {
     console.error('Data PUT error:', err);
@@ -195,14 +200,17 @@ export async function DELETE(
       return NextResponse.json({ error: 'Ugyldig samling' }, { status: 400 });
     }
 
+    const targetCollection = collection === 'system_offers' ? 'offers' : collection;
     const user = getUserFromRequest(req);
 
     if (!user) {
       return NextResponse.json({ error: 'Uautorisert' }, { status: 401 });
     }
 
-    if (user.role !== 'admin') {
-      const existing = await getCollectionItemById(collection, id);
+    const isAdmin = isUserAdmin(user);
+
+    if (!isAdmin) {
+      const existing = await getCollectionItemById(targetCollection, id);
       if (existing) {
         const isOwner =
           (existing.companyId && existing.companyId === user.companyId) ||
@@ -218,7 +226,7 @@ export async function DELETE(
       }
     }
 
-    await deleteCollectionItem(collection, id);
+    await deleteCollectionItem(targetCollection, id);
     return NextResponse.json({ success: true, id });
   } catch (err: any) {
     console.error('Data DELETE error:', err);

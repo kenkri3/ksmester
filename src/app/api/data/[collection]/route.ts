@@ -1,10 +1,10 @@
 import { NextRequest, NextResponse } from 'next/server';
 import { getCollectionItems, saveCollectionItem } from '@/src/lib/server/db';
-import { getUserFromRequest } from '@/src/lib/server/auth';
+import { getUserFromRequest, isUserAdmin } from '@/src/lib/server/auth';
 
 const ALLOWED_COLLECTIONS = [
   'users', 'projects', 'deviations', 'sja_reports',
-  'offers', 'invites', 'invitations', 'contracts', 'change_orders',
+  'offers', 'system_offers', 'invites', 'invitations', 'contracts', 'change_orders',
   'crew', 'safety_inspections', 'checklists', 'hms_documents', 'hms_signatures',
   'inventory', 'apprentice_goals', 'apprentice_profiles', 'building_applications',
   'materials', 'project_documents', 'project_photos', 'notifications',
@@ -28,19 +28,20 @@ export async function GET(
     const url = new URL(req.url);
     const token = url.searchParams.get('token');
     const portalToken = url.searchParams.get('portalToken');
+    const targetCollection = collection === 'system_offers' ? 'offers' : collection;
 
     // 1. Handle secure token lookups (for both public and authenticated users holding a valid capability token)
-    if (token && (collection === 'offers' || collection === 'invites' || collection === 'invitations' || collection === 'contracts' || collection === 'change_orders')) {
-      const items = await getCollectionItems(collection);
-      const match = items.find((i: any) => i.token === token);
+    if (token && (targetCollection === 'offers' || targetCollection === 'invites' || targetCollection === 'invitations' || targetCollection === 'contracts' || targetCollection === 'change_orders')) {
+      const items = await getCollectionItems(targetCollection);
+      const match = items.find((i: any) => i.token === token || i.id === token);
       if (match) {
         return NextResponse.json([match]);
       }
       return NextResponse.json({ error: 'Ugyldig eller utløpt token' }, { status: 404 });
     }
 
-    if ((portalToken || token) && collection === 'projects') {
-      const items = await getCollectionItems(collection);
+    if ((portalToken || token) && targetCollection === 'projects') {
+      const items = await getCollectionItems(targetCollection);
       const match = items.find((p: any) => p.portalToken === portalToken || p.portalToken === token || p.token === token);
       if (match) {
         return NextResponse.json([match]);
@@ -53,17 +54,18 @@ export async function GET(
     }
 
     // 2. Authenticated requests: Enforce strict multi-tenant isolation
-    let items = await getCollectionItems(collection);
+    let items = await getCollectionItems(targetCollection);
 
-    if (user.role !== 'admin') {
+    const isAdmin = isUserAdmin(user);
+    if (!isAdmin) {
       items = items.filter((item: any) => 
         (item.companyId && (item.companyId === user.companyId || item.companyId === 'system')) ||
         (item.company && (item.company === user.companyId || (user.company && item.company === user.company) || item.company === 'system')) ||
         (item.userId && item.userId === user.id) ||
         (item.authorId && item.authorId === user.id) ||
-        (collection === 'invitations' && item.inviteeEmail && item.inviteeEmail.toLowerCase() === user.email?.toLowerCase()) ||
-        (collection === 'hms_documents' && (!item.companyId || item.companyId === 'system')) ||
-        (collection === 'checklists' && (!item.companyId || item.companyId === 'system'))
+        (targetCollection === 'invitations' && item.inviteeEmail && item.inviteeEmail.toLowerCase() === user.email?.toLowerCase()) ||
+        (targetCollection === 'hms_documents' && (!item.companyId || item.companyId === 'system')) ||
+        (targetCollection === 'checklists' && (!item.companyId || item.companyId === 'system'))
       );
     }
 
@@ -113,16 +115,19 @@ export async function POST(
       return NextResponse.json({ error: 'Uautorisert tilgang. Vennligst logg inn.' }, { status: 401 });
     }
 
+    const targetCollection = collection === 'system_offers' ? 'offers' : collection;
+    const isAdmin = isUserAdmin(user);
+
     // Enforce tenant boundary from verified JWT session
     const itemData = {
       ...body,
       authorId: user.id,
-      companyId: user.role === 'admin' ? (body.companyId || user.companyId) : user.companyId,
+      companyId: isAdmin ? (body.companyId || user.companyId) : user.companyId,
       createdAt: body.createdAt || new Date().toISOString(),
       updatedAt: new Date().toISOString()
     };
 
-    const item = await saveCollectionItem(collection, itemData);
+    const item = await saveCollectionItem(targetCollection, itemData);
     return NextResponse.json(item);
   } catch (err: any) {
     console.error('Data POST error:', err);

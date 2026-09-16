@@ -1,5 +1,5 @@
 import { NextRequest, NextResponse } from 'next/server';
-import { getUserFromRequest } from '@/src/lib/server/auth';
+import { getUserFromRequest, isUserAdmin } from '@/src/lib/server/auth';
 import { checkCompanyQuota } from '@/src/lib/server/costTracker';
 import { getCachedAiResponse, setCachedAiResponse } from '@/src/lib/server/aiCache';
 import { tryResolveDeterministicSja } from '@/src/lib/server/ruleEngine';
@@ -48,8 +48,10 @@ export async function POST(req: NextRequest) {
       }
     }
 
-    // 🛡️ Sjekk bedriftens faktiske tokenkvote og abonnementsplan (100% marginvern)
-    if (user?.companyId) {
+    const isAdmin = isUserAdmin(user);
+
+    // 🛡️ Sjekk bedriftens faktiske tokenkvote og abonnementsplan (100% marginvern for vanlige brukere)
+    if (user?.companyId && !isAdmin) {
       const quota = await checkCompanyQuota(user.companyId);
       if (quota.needsTopUp) {
         return NextResponse.json({
