@@ -1010,6 +1010,11 @@ export default function Dashboard({
           setIsSJAPreviewOpen(true);
         }}
       />
+      <ProjectContactsModal
+        isOpen={isContactsModalOpen}
+        onClose={() => setIsContactsModalOpen(false)}
+        project={selectedProject || projects[0]}
+      />
 
       <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 pt-8">
         {/* Selected Project Full Details View */}
@@ -1047,20 +1052,20 @@ export default function Dashboard({
                   <div>
                     <div className="flex items-center gap-2.5 flex-wrap">
                       <h2 className="text-xl sm:text-2xl font-black tracking-tight text-white">
-                        Hei, {user?.displayName ? user.displayName.split(" ")[0] : "Kenneth"}! 👋
+                        {t('greeting_hello', { name: user?.displayName ? user.displayName.split(" ")[0] : "Kenneth", defaultValue: "Hei, Kenneth! 👋" })}
                       </h2>
                       {isSuperAdmin && (
                         <span className="inline-flex items-center gap-1.5 px-2.5 py-0.5 rounded-full text-[11px] font-black uppercase tracking-wider bg-gradient-to-r from-amber-500/30 to-amber-600/30 text-amber-300 border border-amber-400/50 shadow-xs">
-                          👑 Superbruker (Full tilgang)
+                          {t('superadmin_badge', '👑 Superbruker (Full tilgang)')}
                         </span>
                       )}
                       <span className="inline-flex items-center gap-1.5 px-2.5 py-0.5 rounded-full text-[11px] font-bold bg-emerald-500/20 text-emerald-400 border border-emerald-500/30">
                         <span className="w-2 h-2 rounded-full bg-emerald-400 animate-pulse" />
-                        Aktiv bedrift
+                        {t('active_company', 'Aktiv bedrift')}
                       </span>
                     </div>
                     <p className="text-xs sm:text-sm text-slate-300 mt-0.5">
-                      {user?.company || "AIChat Norge AS / Vikingnet"} • {projects.length || 3} aktive prosjekter i dag
+                      {user?.company || "AIChat Norge AS / Vikingnet"} • {t('active_projects_count', { count: projects.length || 3, defaultValue: `${projects.length || 3} aktive prosjekter i dag` })}
                     </p>
                   </div>
                 </div>
@@ -1070,17 +1075,17 @@ export default function Dashboard({
                   <button
                     onClick={() => window.dispatchEvent(new CustomEvent("navigate_view", { detail: { view: "mobile" } }))}
                     className="flex items-center gap-2 px-4 py-2 rounded-xl text-xs font-black transition-all bg-electric-500 text-white shadow-purple-cta hover:bg-electric-400 active:scale-95 cursor-pointer"
-                    title="Åpne ren feltapp tilpasset 1-hånds mobilbruk"
+                    title={t('open_field_app_desc', 'Åpne ren feltapp tilpasset 1-hånds mobilbruk')}
                   >
                     <Smartphone size={15} />
-                    <span>📱 Åpne Feltapp</span>
+                    <span>{t('open_field_app', '📱 Åpne Feltapp')}</span>
                   </button>
                   <button
                     onClick={() => setIsSmartSearchOpen(true)}
                     className="flex items-center gap-1.5 px-3 py-2 rounded-xl text-xs font-bold text-slate-300 hover:text-white hover:bg-white/10 transition-all active:scale-95 cursor-pointer"
                   >
                     <Search size={14} />
-                    <span>Søk</span>
+                    <span>{t('btn_search', 'Søk')}</span>
                   </button>
                 </div>
               </div>
@@ -1090,9 +1095,9 @@ export default function Dashboard({
                 <div className="flex items-center justify-between mb-3 px-1">
                   <span className="text-xs font-black uppercase tracking-wider text-slate-500 flex items-center gap-1.5">
                     <Sparkles size={14} className="text-electric-500" />
-                    Hurtighandlinger & App-moduler
+                    {t('tile_launcher_title', 'Hurtighandlinger & App-moduler')}
                   </span>
-                  <span className="text-[11px] font-medium text-slate-400">1-klikk tilgang i felt og på kontor</span>
+                  <span className="text-[11px] font-medium text-slate-400">{t('tile_launcher_subtitle', '1-klikk tilgang i felt og på kontor')}</span>
                 </div>
 
                 <div className="grid grid-cols-2 sm:grid-cols-4 lg:grid-cols-8 gap-3 sm:gap-3.5">
@@ -1105,8 +1110,8 @@ export default function Dashboard({
                     <div className="w-12 h-12 rounded-2xl bg-gradient-to-tr from-purple-600 to-indigo-500 text-white flex items-center justify-center shadow-md mb-2 group-hover:scale-105 transition-transform">
                       <Mic size={22} />
                     </div>
-                    <span className="text-xs font-bold text-navy-900 group-hover:text-electric-600 transition-colors">Tale til SJA</span>
-                    <span className="text-[10px] text-slate-400 mt-0.5">Snakk inn risiko</span>
+                    <span className="text-xs font-bold text-navy-900 group-hover:text-electric-600 transition-colors">{t('tile_voice_sja', 'Tale til SJA')}</span>
+                    <span className="text-[10px] text-slate-400 mt-0.5">{t('tile_voice_sja_sub', 'Snakk inn risiko')}</span>
                   </button>
 
                   {/* 2. AI Bildekontroll */}
@@ -1118,8 +1123,8 @@ export default function Dashboard({
                     <div className="w-12 h-12 rounded-2xl bg-gradient-to-tr from-blue-600 to-cyan-500 text-white flex items-center justify-center shadow-md mb-2 group-hover:scale-105 transition-transform">
                       <Camera size={22} />
                     </div>
-                    <span className="text-xs font-bold text-navy-900 group-hover:text-blue-600 transition-colors">Bildekontroll</span>
-                    <span className="text-[10px] text-slate-400 mt-0.5">TEK17 AI-sjekk</span>
+                    <span className="text-xs font-bold text-navy-900 group-hover:text-blue-600 transition-colors">{t('tile_vision', 'Bildekontroll')}</span>
+                    <span className="text-[10px] text-slate-400 mt-0.5">{t('tile_vision_sub', 'TEK17 AI-sjekk')}</span>
                   </button>
 
                   {/* 3. Registrer Timer */}
@@ -1131,8 +1136,8 @@ export default function Dashboard({
                     <div className="w-12 h-12 rounded-2xl bg-gradient-to-tr from-emerald-600 to-teal-500 text-white flex items-center justify-center shadow-md mb-2 group-hover:scale-105 transition-transform">
                       <Clock size={22} />
                     </div>
-                    <span className="text-xs font-bold text-navy-900 group-hover:text-emerald-600 transition-colors">Før Timer</span>
-                    <span className="text-[10px] text-slate-400 mt-0.5">Dagens arbeid</span>
+                    <span className="text-xs font-bold text-navy-900 group-hover:text-emerald-600 transition-colors">{t('tile_time', 'Før Timer')}</span>
+                    <span className="text-[10px] text-slate-400 mt-0.5">{t('tile_time_sub', 'Dagens arbeid')}</span>
                   </button>
 
                   {/* 4. Sjekklister */}
@@ -1144,24 +1149,21 @@ export default function Dashboard({
                     <div className="w-12 h-12 rounded-2xl bg-gradient-to-tr from-amber-500 to-orange-500 text-white flex items-center justify-center shadow-md mb-2 group-hover:scale-105 transition-transform">
                       <ClipboardCheck size={22} />
                     </div>
-                    <span className="text-xs font-bold text-navy-900 group-hover:text-amber-600 transition-colors">Sjekkliste</span>
-                    <span className="text-[10px] text-slate-400 mt-0.5">HMS & Fag</span>
+                    <span className="text-xs font-bold text-navy-900 group-hover:text-amber-600 transition-colors">{t('tile_checklist', 'Sjekkliste')}</span>
+                    <span className="text-[10px] text-slate-400 mt-0.5">{t('tile_checklist_sub', 'HMS & Fag')}</span>
                   </button>
 
                   {/* 5. Telefonliste / Kolleger */}
                   <button
                     type="button"
-                    onClick={() => {
-                      window.dispatchEvent(new CustomEvent("open_mobile_contacts"));
-                      window.dispatchEvent(new CustomEvent("navigate_view", { detail: { view: "mobile", screen: "contacts" } }));
-                    }}
+                    onClick={() => setIsContactsModalOpen(true)}
                     className="flex flex-col items-center text-center p-3.5 sm:p-4 rounded-2xl bg-white border border-slate-200/90 shadow-sm hover:shadow-md hover:border-cyan-300 active:scale-95 transition-all group cursor-pointer"
                   >
                     <div className="w-12 h-12 rounded-2xl bg-gradient-to-tr from-cyan-600 to-blue-500 text-white flex items-center justify-center shadow-md mb-2 group-hover:scale-105 transition-transform">
                       <Users size={22} />
                     </div>
-                    <span className="text-xs font-bold text-navy-900 group-hover:text-cyan-600 transition-colors">Telefonliste</span>
-                    <span className="text-[10px] text-slate-400 mt-0.5">Ring & SMS</span>
+                    <span className="text-xs font-bold text-navy-900 group-hover:text-cyan-600 transition-colors">{t('tile_contacts', 'Telefonliste')}</span>
+                    <span className="text-[10px] text-slate-400 mt-0.5">{t('tile_contacts_sub', 'Ring & SMS')}</span>
                   </button>
 
                   {/* 6. Byggedagbok */}
@@ -1173,8 +1175,8 @@ export default function Dashboard({
                     <div className="w-12 h-12 rounded-2xl bg-gradient-to-tr from-violet-600 to-purple-500 text-white flex items-center justify-center shadow-md mb-2 group-hover:scale-105 transition-transform">
                       <FileText size={22} />
                     </div>
-                    <span className="text-xs font-bold text-navy-900 group-hover:text-violet-600 transition-colors">Byggedagbok</span>
-                    <span className="text-[10px] text-slate-400 mt-0.5">Dagsrapport</span>
+                    <span className="text-xs font-bold text-navy-900 group-hover:text-violet-600 transition-colors">{t('tile_dailylog', 'Byggedagbok')}</span>
+                    <span className="text-[10px] text-slate-400 mt-0.5">{t('tile_dailylog_sub', 'Dagsrapport')}</span>
                   </button>
 
                   {/* 7. Endringsordre (NS 8406) */}
@@ -1189,8 +1191,8 @@ export default function Dashboard({
                     <div className="w-12 h-12 rounded-2xl bg-gradient-to-tr from-rose-600 to-pink-500 text-white flex items-center justify-center shadow-md mb-2 group-hover:scale-105 transition-transform">
                       <FileSignature size={22} />
                     </div>
-                    <span className="text-xs font-bold text-navy-900 group-hover:text-rose-600 transition-colors">Endring (8406)</span>
-                    <span className="text-[10px] text-slate-400 mt-0.5">Tilleggsarbeid</span>
+                    <span className="text-xs font-bold text-navy-900 group-hover:text-rose-600 transition-colors">{t('tile_changeorder', 'Endring (8406)')}</span>
+                    <span className="text-[10px] text-slate-400 mt-0.5">{t('tile_changeorder_sub', 'Tilleggsarbeid')}</span>
                   </button>
 
                   {/* 8. Nytt Prosjekt */}
@@ -1202,8 +1204,8 @@ export default function Dashboard({
                     <div className="w-12 h-12 rounded-2xl bg-gradient-to-tr from-slate-800 to-slate-900 text-white flex items-center justify-center shadow-md mb-2 group-hover:scale-105 transition-transform">
                       <Plus size={22} />
                     </div>
-                    <span className="text-xs font-bold text-navy-900 group-hover:text-slate-800 transition-colors">Nytt Prosjekt</span>
-                    <span className="text-[10px] text-slate-400 mt-0.5">Opprett på 1 min</span>
+                    <span className="text-xs font-bold text-navy-900 group-hover:text-slate-800 transition-colors">{t('tile_newproject', 'Nytt Prosjekt')}</span>
+                    <span className="text-[10px] text-slate-400 mt-0.5">{t('tile_newproject_sub', 'Opprett på 1 min')}</span>
                   </button>
                 </div>
               </div>
@@ -1216,21 +1218,21 @@ export default function Dashboard({
                     <div className="flex items-center gap-3 mb-2 flex-wrap">
                       <span className="inline-flex items-center gap-2 px-3 py-1 rounded-full text-xs font-black uppercase tracking-wider bg-electric-50 text-electric-600 border border-electric-200">
                         <span className="w-2 h-2 rounded-full bg-emerald-500 animate-pulse" />
-                        Autonom Agent 100% Operativ
+                        {t('cockpit_agent_operational', 'Autonom Agent 100% Operativ')}
                       </span>
                       <span className="text-xs font-bold text-slate-500">
-                        Lytter på: <strong className="text-navy-900">{agentStatus.email || 'hei@vikingmester.no'}</strong>
+                        {t('cockpit_listening_on', 'Lytter på:')} <strong className="text-navy-900">{agentStatus.email || 'hei@vikingmester.no'}</strong>
                       </span>
                       <span className="hidden sm:inline-block text-xs font-bold text-emerald-600 bg-emerald-50 px-2.5 py-0.5 rounded-full border border-emerald-200">
-                        TEK17 & NS 8406 Aktiv
+                        {t('cockpit_tek_ns_active', 'TEK17 & NS 8406 Aktiv')}
                       </span>
                     </div>
 
                     <h1 className="text-2xl sm:text-3xl lg:text-4xl font-extrabold text-navy-900 tracking-tight">
-                      Mester-Cockpit & Lederoversikt
+                      {t('cockpit_title', 'Mester-Cockpit & Lederoversikt')}
                     </h1>
                     <p className="text-sm sm:text-base text-slate-600 mt-1">
-                      Agenten fører byggedagbok, kontrollerer TEK17 og fanger opp uvarslet ekstraarbeid. Du beholder 100% kontroll.
+                      {t('cockpit_desc', 'Agenten fører byggedagbok, kontrollerer TEK17 og fanger opp uvarslet ekstraarbeid. Du beholder 100% kontroll.')}
                     </p>
                   </div>
 
@@ -1241,7 +1243,7 @@ export default function Dashboard({
                       className="hidden md:flex items-center gap-3 px-4 py-2.5 bg-slate-50 border border-slate-200 rounded-2xl text-xs font-bold text-slate-600 hover:border-electric-400 hover:text-navy-900 transition-all shadow-sm"
                     >
                       <Search size={15} />
-                      <span>Søk i systemet...</span>
+                      <span>{t('search_system_placeholder', 'Søk i systemet...')}</span>
                       <kbd className="px-1.5 py-0.5 bg-white border border-slate-200 rounded text-[10px] text-slate-400">⌘K</kbd>
                     </button>
 
@@ -1250,7 +1252,7 @@ export default function Dashboard({
                       className="flex items-center gap-2 px-4 py-2.5 bg-slate-100 hover:bg-slate-200 text-navy-900 border border-slate-200 rounded-2xl text-xs font-black transition-all"
                     >
                       <Camera size={16} className="text-electric-600" />
-                      <span>TEK17 Visjon</span>
+                      <span>{t('btn_tek17_vision', 'TEK17 Visjon')}</span>
                     </button>
 
                     <button 
@@ -1258,7 +1260,7 @@ export default function Dashboard({
                       className="flex items-center gap-2 px-5 py-2.5 bg-gradient-to-r from-electric-500 to-electric-400 text-white rounded-2xl text-xs font-black hover:opacity-95 transition-all shadow-purple-cta"
                     >
                       <Plus size={16} />
-                      <span>Nytt Prosjekt</span>
+                      <span>{t('tile_newproject', 'Nytt Prosjekt')}</span>
                     </button>
                   </div>
                 </div>
@@ -1274,7 +1276,7 @@ export default function Dashboard({
                         type="text"
                         value={commandText}
                         onChange={(e) => setCommandText(e.target.value)}
-                        placeholder="Gi en instruks til agenten (f.eks: 'Registrer 4 timer ekstraarbeid på bad', 'Opprett SJA for stillas')..."
+                        placeholder={t('cockpit_prompt_placeholder', "Gi en instruks til agenten (f.eks: 'Registrer 4 timer ekstraarbeid på bad', 'Opprett SJA for stillas')...")}
                         className="w-full pl-4 pr-12 py-3 bg-slate-50 border border-slate-200 rounded-2xl text-sm font-medium text-slate-900 placeholder:text-slate-400 focus:bg-white focus:border-electric-500 focus:ring-2 focus:ring-electric-500/20 transition-all"
                       />
                       <button 
@@ -1284,7 +1286,7 @@ export default function Dashboard({
                           "absolute right-3 top-1/2 -translate-y-1/2 p-1.5 rounded-xl transition-all",
                           isListeningMic ? "bg-rose-500 text-white animate-pulse" : "text-slate-400 hover:text-electric-600"
                         )}
-                        title="Snakk inn instruks"
+                        title={t('cockpit_mic_title', 'Snakk inn instruks')}
                       >
                         {isListeningMic ? <MicOff size={16} /> : <Mic size={16} />}
                       </button>
@@ -1298,12 +1300,12 @@ export default function Dashboard({
                       {isDispatching ? (
                         <>
                           <RefreshCw size={14} className="animate-spin" />
-                          <span>Analyserer...</span>
+                          <span>{t('cockpit_analyzing', 'Analyserer...')}</span>
                         </>
                       ) : (
                         <>
                           <Send size={14} />
-                          <span>Send Instruks</span>
+                          <span>{t('cockpit_btn_send', 'Send Instruks')}</span>
                         </>
                       )}
                     </button>
@@ -1311,36 +1313,36 @@ export default function Dashboard({
 
                   {/* Suggestion Chips */}
                   <div className="flex flex-wrap items-center gap-2 mt-3 pt-1">
-                    <span className="text-[11px] font-bold text-slate-400 uppercase tracking-wider shrink-0 mr-0.5">Hurtig:</span>
+                    <span className="text-[11px] font-bold text-slate-400 uppercase tracking-wider shrink-0 mr-0.5">{t('cockpit_quick_label', 'Hurtig:')}</span>
                     {[
                       { 
-                        text: 'Lag SJA for tak- og stillasarbeid', 
+                        text: t('chip_sja_scaffold', 'Lag SJA for tak- og stillasarbeid'), 
                         action: () => {
                           handleOpenSJAForTrade('Tømrer (Høyde/Stillas)');
-                          handleSendCommand('Opprett SJA for tak- og stillasarbeid');
+                          handleSendCommand(t('chip_sja_scaffold', 'Lag SJA for tak- og stillasarbeid'));
                         }
                       },
                       { 
-                        text: 'Registrer endringsordre: Ekstra downlights i stue kr 14500', 
+                        text: t('chip_change_order', 'Registrer endringsordre: Ekstra downlights i stue kr 14500'), 
                         action: () => {
                           setIsChangeOrderModalOpen(true);
                           handleTabSelect('endringsordrer');
-                          handleSendCommand('Registrer endringsordre: Ekstra downlights i stue kr 14500');
+                          handleSendCommand(t('chip_change_order', 'Registrer endringsordre: Ekstra downlights i stue kr 14500'));
                         }
                       },
                       { 
-                        text: 'Sjekk om bad 2. etg kan lukkes (pre-close check)', 
+                        text: t('chip_preclose_bath', 'Sjekk om bad 2. etg kan lukkes (pre-close check)'), 
                         action: () => {
                           handleTabSelect('kvalitet');
                           handleOpenPreClose(lukkesperreZones[0]);
-                          handleSendCommand('Sjekk om bad 2. etg kan lukkes (pre-close check)');
+                          handleSendCommand(t('chip_preclose_bath', 'Sjekk om bad 2. etg kan lukkes (pre-close check)'));
                         }
                       },
                       { 
-                        text: 'Byggedagbok: Lekting og vindsperre ferdig 6 timer', 
+                        text: t('chip_dailylog_wind', 'Byggedagbok: Lekting og vindsperre ferdig 6 timer'), 
                         action: () => {
                           setIsActivityLogModalOpen(true);
-                          handleSendCommand('Byggedagbok: Lekting og vindsperre ferdig 6 timer');
+                          handleSendCommand(t('chip_dailylog_wind', 'Byggedagbok: Lekting og vindsperre ferdig 6 timer'));
                         }
                       }
                     ].map((chip, i) => (
@@ -1368,7 +1370,7 @@ export default function Dashboard({
                           <Brain size={16} />
                         </div>
                         <div className="flex-1 text-xs text-navy-900 leading-relaxed font-medium">
-                          <strong className="font-black text-electric-700 block mb-0.5">Svar fra VikingMester:</strong>
+                          <strong className="font-black text-electric-700 block mb-0.5">{t('cockpit_agent_response_title', 'Svar fra VikingMester:')}</strong>
                           {lastAgentReply}
                         </div>
                         <button 
@@ -1395,14 +1397,14 @@ export default function Dashboard({
                       <HardHat size={20} />
                     </div>
                     <span className="text-[10px] font-black uppercase tracking-wider text-slate-400 group-hover:text-blue-600 transition-colors">
-                      Se alle &rarr;
+                      {t('metric_see_all', 'Se alle')} &rarr;
                     </span>
                   </div>
                   <div className="text-3xl font-extrabold text-navy-900 tracking-tight">
                     {projects.length}
                   </div>
                   <div className="text-xs font-bold text-slate-500 mt-1">
-                    Aktive Prosjekter i drift
+                    {t('metric_active_projects', 'Aktive Prosjekter i drift')}
                   </div>
                 </div>
 
@@ -1416,14 +1418,14 @@ export default function Dashboard({
                       <Zap size={20} />
                     </div>
                     <span className="text-[10px] font-black uppercase tracking-wider text-emerald-600 bg-emerald-50 px-2 py-0.5 rounded-full border border-emerald-200">
-                      I dag
+                      {t('metric_today_badge', 'I dag')}
                     </span>
                   </div>
                   <div className="text-3xl font-extrabold text-navy-900 tracking-tight">
                     {agentMetrics.todayActionsCount ?? 0}
                   </div>
                   <div className="text-xs font-bold text-slate-500 mt-1">
-                    Autonome agent-handlinger
+                    {t('metric_actions_today', 'Autonome agent-handlinger')}
                   </div>
                 </div>
 
@@ -1446,7 +1448,7 @@ export default function Dashboard({
                     </div>
                     {pendingApprovals.length > 0 && (
                       <span className="text-[10px] font-black uppercase tracking-wider text-amber-700 bg-amber-100 px-2 py-0.5 rounded-full animate-pulse">
-                        Handling kreves
+                        {t('metric_action_required', 'Handling kreves')}
                       </span>
                     )}
                   </div>
@@ -1457,7 +1459,7 @@ export default function Dashboard({
                     {pendingApprovals.length}
                   </div>
                   <div className="text-xs font-bold text-slate-500 mt-1">
-                    Venter på din godkjenning
+                    {t('metric_pending_approval', 'Venter på din godkjenning')}
                   </div>
                 </div>
 
@@ -1478,7 +1480,7 @@ export default function Dashboard({
                     kr {Math.round((agentMetrics.securedRevenue || 0) / 1000)}k
                   </div>
                   <div className="text-xs font-bold text-slate-500 mt-1">
-                    Sikret i tilleggsarbeider
+                    {t('metric_secured_revenue', 'Sikret i tilleggsarbeider')}
                   </div>
                 </div>
               </div>
@@ -1486,11 +1488,11 @@ export default function Dashboard({
               {/* 3. TABS NAVIGATION */}
               <div className="flex flex-wrap items-center gap-2 sm:gap-2.5 border-b border-slate-200 mb-8 pb-3">
                 {[
-                  { id: 'cockpit', label: 'Agent-Cockpit & Godkjenning', icon: <Zap size={16} />, badge: pendingApprovals.length > 0 ? pendingApprovals.length : undefined },
-                  { id: 'prosjekter', label: 'Prosjekter & Vær', icon: <Building2 size={16} /> },
-                  { id: 'endringsordrer', label: 'Endringsordrer (NS 8406)', icon: <FileSignature size={16} /> },
-                  { id: 'kvalitet', label: 'Kvalitet & Lukkesperre (TEK17)', icon: <ShieldCheck size={16} /> },
-                  { id: 'agent', label: 'Agent-Kanaler & Regler', icon: <Brain size={16} /> }
+                  { id: 'cockpit', label: t('tab_cockpit', 'Agent-Cockpit & Godkjenning'), icon: <Zap size={16} />, badge: pendingApprovals.length > 0 ? pendingApprovals.length : undefined },
+                  { id: 'prosjekter', label: t('tab_projects', 'Prosjekter & Vær'), icon: <Building2 size={16} /> },
+                  { id: 'endringsordrer', label: t('tab_changeorders', 'Endringsordrer (NS 8406)'), icon: <FileSignature size={16} /> },
+                  { id: 'kvalitet', label: t('tab_quality', 'Kvalitet & Lukkesperre (TEK17)'), icon: <ShieldCheck size={16} /> },
+                  { id: 'agent', label: t('tab_agent', 'Agent-Kanaler & Regler'), icon: <Brain size={16} /> }
                 ].map((tab) => (
                   <button
                     key={tab.id}
@@ -1523,15 +1525,15 @@ export default function Dashboard({
                     <div className="flex items-center justify-between">
                       <div>
                         <h2 className="text-lg font-extrabold text-navy-900 tracking-tight flex items-center gap-2">
-                          <span>Krever Din Godkjenning</span>
+                          <span>{t('approval_requires_yours', 'Krever Din Godkjenning')}</span>
                           {pendingApprovals.length > 0 && (
                             <span className="px-2 py-0.5 rounded-full text-xs font-black bg-amber-100 text-amber-800 border border-amber-200">
-                              {pendingApprovals.length} venter
+                              {t('approval_waiting_count', '{{count}} venter', { count: pendingApprovals.length })}
                             </span>
                           )}
                         </h2>
                         <p className="text-xs text-slate-500 mt-0.5">
-                          Talebeskjeder og ekstraarbeider fra byggeplassen ferdig tolket og kalkulert av agenten.
+                          {t('approval_subtitle', 'Talebeskjeder og ekstraarbeider fra byggeplassen ferdig tolket og kalkulert av agenten.')}
                         </p>
                       </div>
 
@@ -1549,9 +1551,9 @@ export default function Dashboard({
                         <div className="w-12 h-12 rounded-2xl bg-emerald-50 text-emerald-600 flex items-center justify-center mx-auto mb-3">
                           <CheckCircle2 size={24} />
                         </div>
-                        <h3 className="text-sm font-bold text-navy-900">Ingen ventende godkjenninger</h3>
+                        <h3 className="text-sm font-bold text-navy-900">{t('no_pending_approvals_title', 'Ingen ventende godkjenninger')}</h3>
                         <p className="text-xs text-slate-500 max-w-sm mx-auto mt-1">
-                          Alle endringsordrer, byggedagbøker og varsler er godkjent og synkronisert med kunden og VikingCRM.
+                          {t('no_pending_approvals_desc', 'Alle endringsordrer, byggedagbøker og varsler er godkjent og synkronisert med kunden og VikingCRM.')}
                         </p>
                       </div>
                     ) : (
@@ -1565,7 +1567,7 @@ export default function Dashboard({
                               <div>
                                 <div className="flex items-center gap-2 mb-1 flex-wrap">
                                   <span className="px-2.5 py-0.5 rounded-full text-[10px] font-black uppercase tracking-wider bg-amber-100 text-amber-800 border border-amber-200">
-                                    Endringsordre (NS 8406)
+                                    {t('change_order_tag', 'Endringsordre (NS 8406)')}
                                   </span>
                                   <span className="text-xs font-bold text-slate-500">
                                     {item.projectName || 'Nyebakken 14'}
@@ -1580,7 +1582,7 @@ export default function Dashboard({
                                 <div className="text-lg font-black text-navy-900">
                                   kr {(item.amountExVat ?? 0).toLocaleString('no-NO')}
                                 </div>
-                                <div className="text-[10px] font-bold text-slate-400">eks mva ({item.impactDays || 0} dgr)</div>
+                                <div className="text-[10px] font-bold text-slate-400">{t('ex_vat_days', 'eks mva ({{days}} dgr)', { days: item.impactDays || 0 })}</div>
                               </div>
                             </div>
 
@@ -1590,7 +1592,7 @@ export default function Dashboard({
 
                             <div className="flex items-center justify-between gap-4 pt-3 border-t border-slate-100 flex-wrap">
                               <span className="text-[11px] font-bold text-slate-400">
-                                Registrert fra tale av: <strong className="text-slate-700">{item.authorName || 'Håndverker'}</strong>
+                                {t('recorded_from_voice_by', 'Registrert fra tale av:')} <strong className="text-slate-700">{item.authorName || 'Håndverker'}</strong>
                               </span>
 
                               <div className="flex items-center gap-2">
@@ -1599,7 +1601,7 @@ export default function Dashboard({
                                     type="button"
                                     onClick={() => handleDeleteChangeOrder(item.id)}
                                     className="p-2.5 bg-rose-50 hover:bg-rose-100 text-rose-600 hover:text-rose-800 border border-rose-200 rounded-xl text-xs font-bold transition-all cursor-pointer"
-                                    title="Slett endringsordre permanent (Superbruker)"
+                                    title={t('btn_delete_order', 'Slett endringsordre')}
                                   >
                                     <Trash2 size={15} />
                                   </button>
@@ -1609,7 +1611,7 @@ export default function Dashboard({
                                   onClick={() => handleRejectChangeOrder(item.id)}
                                   className="px-3.5 py-2 bg-slate-100 hover:bg-slate-200 text-slate-700 rounded-xl text-xs font-bold transition-all cursor-pointer"
                                 >
-                                  Avvis / Utsett
+                                  {t('btn_reject_delay', 'Avvis / Utsett')}
                                 </button>
                                 <button 
                                   type="button"
@@ -1617,7 +1619,7 @@ export default function Dashboard({
                                   className="flex items-center gap-1.5 px-4 py-2 bg-gradient-to-r from-electric-500 to-electric-400 text-white rounded-xl text-xs font-black hover:opacity-95 transition-all shadow-purple-cta cursor-pointer"
                                 >
                                   <Check size={14} />
-                                  <span>Godkjenn & Send Kunde</span>
+                                  <span>{t('btn_approve_send', 'Godkjenn & Send Kunde')}</span>
                                 </button>
                               </div>
                             </div>
@@ -1629,7 +1631,7 @@ export default function Dashboard({
                     {/* Quick Craft Tools Row */}
                     <div className="bg-white rounded-3xl border border-slate-200/90 p-6 shadow-sm">
                       <h3 className="text-xs font-black uppercase tracking-wider text-slate-400 mb-4">
-                        Hurtigverktøy for Byggeleder
+                        {t('craft_tools_title', 'Hurtigverktøy for Byggeleder')}
                       </h3>
                       <div className="grid grid-cols-2 sm:grid-cols-4 gap-3">
                         <button 
@@ -1637,7 +1639,7 @@ export default function Dashboard({
                           className="flex flex-col items-center text-center p-3 rounded-2xl bg-slate-50 hover:bg-electric-50 hover:border-electric-200 border border-slate-200/70 transition-all group"
                         >
                           <ClipboardCheck size={20} className="text-electric-600 mb-1.5 group-hover:scale-110 transition-transform" />
-                          <span className="text-xs font-bold text-navy-900">Sjekkliste</span>
+                          <span className="text-xs font-bold text-navy-900">{t('craft_checklist', 'Sjekkliste')}</span>
                         </button>
 
                         <button 
@@ -1645,7 +1647,7 @@ export default function Dashboard({
                           className="flex flex-col items-center text-center p-3 rounded-2xl bg-slate-50 hover:bg-orange-50 hover:border-orange-200 border border-slate-200/70 transition-all group"
                         >
                           <AlertTriangle size={20} className="text-orange-600 mb-1.5 group-hover:scale-110 transition-transform" />
-                          <span className="text-xs font-bold text-navy-900">Registrer Avvik</span>
+                          <span className="text-xs font-bold text-navy-900">{t('craft_deviation', 'Registrer Avvik')}</span>
                         </button>
 
                         <button 
@@ -1653,7 +1655,7 @@ export default function Dashboard({
                           className="flex flex-col items-center text-center p-3 rounded-2xl bg-slate-50 hover:bg-blue-50 hover:border-blue-200 border border-slate-200/70 transition-all group"
                         >
                           <Timer size={20} className="text-blue-600 mb-1.5 group-hover:scale-110 transition-transform" />
-                          <span className="text-xs font-bold text-navy-900">Timeføring</span>
+                          <span className="text-xs font-bold text-navy-900">{t('craft_time', 'Timeføring')}</span>
                         </button>
 
                         <button 
@@ -1661,7 +1663,7 @@ export default function Dashboard({
                           className="flex flex-col items-center text-center p-3 rounded-2xl bg-slate-50 hover:bg-emerald-50 hover:border-emerald-200 border border-slate-200/70 transition-all group"
                         >
                           <Library size={20} className="text-emerald-600 mb-1.5 group-hover:scale-110 transition-transform" />
-                          <span className="text-xs font-bold text-navy-900">Dokumentarkiv</span>
+                          <span className="text-xs font-bold text-navy-900">{t('craft_archive', 'Dokumentarkiv')}</span>
                         </button>
                       </div>
                     </div>
@@ -1671,11 +1673,11 @@ export default function Dashboard({
                   <div className="lg:col-span-5 space-y-6">
                     <div>
                       <h2 className="text-lg font-extrabold text-navy-900 tracking-tight flex items-center gap-2">
-                        <span>Sanntids Agent-Logg</span>
+                        <span>{t('activity_stream_title', 'Sanntids Agent-Logg')}</span>
                         <span className="w-2 h-2 rounded-full bg-emerald-500 animate-ping" />
                       </h2>
                       <p className="text-xs text-slate-500 mt-0.5">
-                        Løpende handlinger utført autonomt av VikingMester.
+                        {t('activity_stream_subtitle', 'Løpende handlinger utført autonomt av VikingMester.')}
                       </p>
                     </div>
 
@@ -1685,9 +1687,9 @@ export default function Dashboard({
                           <div className="w-10 h-10 rounded-2xl bg-electric-50 text-electric-600 flex items-center justify-center mx-auto mb-3">
                             <Brain size={20} />
                           </div>
-                          <h4 className="text-xs font-bold text-navy-900">Agenten er aktiv og lytter</h4>
+                          <h4 className="text-xs font-bold text-navy-900">{t('activity_empty_title', 'Agenten er aktiv og lytter')}</h4>
                           <p className="text-[11px] text-slate-500 max-w-xs mx-auto mt-1 leading-relaxed">
-                            Handlinger som byggedagbok via tale, TEK17 bildeanalyser og endringsordrer loggføres her i sanntid.
+                            {t('activity_empty_desc', 'Handlinger som byggedagbok via tale, TEK17 bildeanalyser og endringsordrer loggføres her i sanntid.')}
                           </p>
                         </div>
                       ) : (
@@ -1747,10 +1749,10 @@ export default function Dashboard({
                         </div>
                         <div>
                           <h4 className="text-sm font-extrabold text-rose-950">
-                            1 Tverrfaglig Lukkesperre Aktiv
+                            {t('preclose_alert_title', '1 Tverrfaglig Lukkesperre Aktiv')}
                           </h4>
                           <p className="text-xs text-rose-800 mt-1 leading-relaxed">
-                            <strong>Storgata 8 (Vaskerom):</strong> Rørleggerens trykktestrapport mangler. Veggen er rødmerket mot kledning for å hindre reklamasjoner og erstatningsansvar.
+                            {t('preclose_alert_desc', 'Storgata 8 (Vaskerom): Rørleggerens trykktestrapport mangler. Veggen er rødmerket mot kledning for å hindre reklamasjoner og erstatningsansvar.')}
                           </p>
                           <button 
                             type="button"
@@ -1761,7 +1763,7 @@ export default function Dashboard({
                             }}
                             className="mt-3 text-xs font-bold text-rose-700 hover:text-rose-950 flex items-center gap-1 cursor-pointer"
                           >
-                            <span>Inspiser lukkesperrematrise</span>
+                            <span>{t('btn_inspect_matrix', 'Inspiser lukkesperrematrise')}</span>
                             <ArrowRight size={14} />
                           </button>
                         </div>
@@ -1777,10 +1779,10 @@ export default function Dashboard({
                   <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-4 mb-6">
                     <div>
                       <h2 className="text-xl font-extrabold text-navy-900 tracking-tight">
-                        Aktive Byggeprosjekter
+                        {t('projects_tab_title', 'Aktive Byggeprosjekter')}
                       </h2>
                       <p className="text-xs text-slate-500">
-                        Oversikt over fremdrift, værforhold fra Yr.no og kvalitetssikring.
+                        {t('projects_tab_subtitle', 'Oversikt over fremdrift, værforhold fra Yr.no og kvalitetssikring.')}
                       </p>
                     </div>
 
@@ -1789,35 +1791,32 @@ export default function Dashboard({
                       className="flex items-center gap-2 px-4 py-2.5 bg-gradient-to-r from-electric-500 to-electric-400 text-white rounded-2xl text-xs font-black shadow-purple-cta"
                     >
                       <Plus size={16} />
-                      <span>Opprett Prosjekt</span>
+                      <span>{t('btn_create_project', 'Opprett Prosjekt')}</span>
                     </button>
                   </div>
 
-                  {/* FIX (11.09.2026): Tydelig tilbakemelding i stedet for et stille tomt rutenett,
-                      slik at "ingen prosjekter" eller "mangler firmatilknytning" ikke oppleves
-                      som en ødelagt knapp. */}
                   {dataLoading ? (
                     <div className="flex flex-col items-center justify-center py-16 text-center">
                       <div className="w-8 h-8 border-4 border-electric-500/30 border-t-electric-500 rounded-full animate-spin mb-4" />
-                      <p className="text-sm font-bold text-slate-500">Henter prosjekter...</p>
+                      <p className="text-sm font-bold text-slate-500">{t('projects_loading', 'Henter prosjekter...')}</p>
                     </div>
                   ) : dataUnavailable ? (
                     <div className="flex flex-col items-center justify-center py-16 text-center bg-amber-50 border border-amber-200 rounded-3xl">
                       <AlertTriangle size={32} className="text-amber-500 mb-3" />
-                      <p className="text-sm font-black text-amber-900 mb-1">Fant ingen firmatilknytning for kontoen din</p>
-                      <p className="text-xs text-amber-700 max-w-sm">Vi kunne derfor ikke hente prosjektene dine. Kontakt support på hei@vikingmester.no så ordner vi dette raskt.</p>
+                      <p className="text-sm font-black text-amber-900 mb-1">{t('projects_no_company', 'Fant ingen firmatilknytning for kontoen din')}</p>
+                      <p className="text-xs text-amber-700 max-w-sm">{t('projects_no_company_desc', 'Vi kunne derfor ikke hente prosjektene dine. Kontakt support på hei@vikingmester.no så ordner vi dette raskt.')}</p>
                     </div>
                   ) : projects.length === 0 ? (
                     <div className="flex flex-col items-center justify-center py-16 text-center bg-slate-50 border border-slate-200 rounded-3xl">
                       <Building2 size={32} className="text-slate-300 mb-3" />
-                      <p className="text-sm font-black text-navy-900 mb-1">Ingen prosjekter ennå</p>
-                      <p className="text-xs text-slate-500 max-w-sm mb-4">Kom i gang ved å opprette ditt første byggeprosjekt.</p>
+                      <p className="text-sm font-black text-navy-900 mb-1">{t('projects_empty_title', 'Ingen prosjekter ennå')}</p>
+                      <p className="text-xs text-slate-500 max-w-sm mb-4">{t('projects_empty_desc', 'Kom i gang ved å opprette ditt første byggeprosjekt.')}</p>
                       <button
                         onClick={() => setIsCreateModalOpen(true)}
                         className="flex items-center gap-2 px-4 py-2.5 bg-gradient-to-r from-electric-500 to-electric-400 text-white rounded-2xl text-xs font-black shadow-purple-cta"
                       >
                         <Plus size={16} />
-                        <span>Opprett Prosjekt</span>
+                        <span>{t('btn_create_project', 'Opprett Prosjekt')}</span>
                       </button>
                     </div>
                   ) : (
@@ -1830,7 +1829,7 @@ export default function Dashboard({
                         <div>
                           <div className="flex items-start justify-between gap-3 mb-3">
                             <span className="px-2.5 py-0.5 rounded-full text-[10px] font-black uppercase tracking-wider bg-electric-50 text-electric-600 border border-electric-200">
-                              {proj.status === 'active' ? 'I drift' : 'Planlagt'}
+                              {proj.status === 'active' ? t('status_in_progress', 'I drift') : t('status_planned', 'Planlagt')}
                             </span>
                             <div className="flex items-center gap-1 text-xs font-bold text-slate-500">
                               <CloudSun size={14} className="text-amber-500" />
@@ -1849,7 +1848,7 @@ export default function Dashboard({
                           {/* Progress bar */}
                           <div className="space-y-1.5 mb-5">
                             <div className="flex justify-between text-xs font-bold">
-                              <span className="text-slate-500">Fremdrift</span>
+                              <span className="text-slate-500">{t('label_progress', 'Fremdrift')}</span>
                               <span className="text-navy-900">{proj.progress || 65}%</span>
                             </div>
                             <div className="w-full h-2 rounded-full bg-slate-100 overflow-hidden">
@@ -1861,8 +1860,8 @@ export default function Dashboard({
                           </div>
 
                           <div className="p-3 bg-slate-50 rounded-2xl border border-slate-100 text-xs text-slate-600 mb-4">
-                            <div className="text-[10px] font-black uppercase tracking-wider text-slate-400 mb-0.5">Kunde</div>
-                            <div className="font-bold text-navy-900">{proj.clientName || 'Privat byggherre'}</div>
+                            <div className="text-[10px] font-black uppercase tracking-wider text-slate-400 mb-0.5">{t('label_client', 'Kunde')}</div>
+                            <div className="font-bold text-navy-900">{proj.clientName || t('label_private_client', 'Privat byggherre')}</div>
                             <div className="text-[11px] text-slate-500">{proj.clientEmail || 'kunde@vikingmester.no'}</div>
                           </div>
                         </div>
@@ -1873,14 +1872,14 @@ export default function Dashboard({
                             className="px-3 py-2 bg-slate-100 hover:bg-slate-200 text-slate-700 rounded-xl text-xs font-bold transition-all flex items-center gap-1.5"
                           >
                             <ExternalLink size={13} />
-                            <span>Kundeportal</span>
+                            <span>{t('btn_customer_portal', 'Kundeportal')}</span>
                           </button>
 
                           <button 
                             onClick={() => setSelectedProject(proj)}
                             className="px-4 py-2 bg-navy-900 hover:bg-navy-800 text-white rounded-xl text-xs font-black transition-all flex items-center gap-1"
                           >
-                            <span>Åpne Prosjekt</span>
+                            <span>{t('btn_open_project', 'Åpne Prosjekt')}</span>
                             <ChevronRight size={14} />
                           </button>
                         </div>
@@ -1897,10 +1896,10 @@ export default function Dashboard({
                   <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-4">
                     <div>
                       <h2 className="text-xl font-extrabold text-navy-900 tracking-tight">
-                        Endringsordrer & Varslingsplikt (NS 8406 / Håndverkertjenesteloven)
+                        {t('change_orders_tab_title', 'Endringsordrer & Varslingsplikt (NS 8406 / Håndverkertjenesteloven)')}
                       </h2>
                       <p className="text-xs text-slate-500">
-                        Agenten forvandler muntlige beskjeder fra byggeplass til juridisk bindende tilleggskrav.
+                        {t('change_orders_tab_subtitle', 'Agenten forvandler muntlige beskjeder fra byggeplass til juridisk bindende tilleggskrav.')}
                       </p>
                     </div>
 
@@ -1910,7 +1909,7 @@ export default function Dashboard({
                       className="flex items-center gap-2 px-4 py-2.5 bg-gradient-to-r from-electric-500 to-electric-400 hover:opacity-95 text-white rounded-2xl text-xs font-black shadow-purple-cta transition-opacity cursor-pointer"
                     >
                       <Plus size={16} />
-                      <span>Ny Endringsordre</span>
+                      <span>{t('btn_new_change_order', 'Ny Endringsordre')}</span>
                     </button>
                   </div>
 
@@ -1921,19 +1920,19 @@ export default function Dashboard({
                           kr {(agentMetrics.securedRevenue || 84500).toLocaleString('no-NO')}
                         </div>
                         <span className="text-xs font-bold text-slate-500">
-                          Totalt sikret i tilleggsarbeid
+                          {t('total_secured_revenue', 'Totalt sikret i tilleggsarbeid')}
                         </span>
                       </div>
                       <span className="text-xs font-bold text-emerald-600 bg-emerald-50 px-3 py-1 rounded-full border border-emerald-200">
-                        0 tapte krav på grunn av sen varsling
+                        {t('zero_lost_claims', '0 tapte krav på grunn av sen varsling')}
                       </span>
                     </div>
 
                     <div className="divide-y divide-slate-100">
                       {dashboardChangeOrders.length === 0 ? (
                         <div className="p-12 text-center text-slate-400">
-                          <p className="text-sm font-bold text-slate-600">Ingen endringsordrer registrert</p>
-                          <p className="text-xs mt-1">Opprett en ny endringsordre for å sikre betaling for tilleggsarbeid.</p>
+                          <p className="text-sm font-bold text-slate-600">{t('no_change_orders_title', 'Ingen endringsordrer registrert')}</p>
+                          <p className="text-xs mt-1">{t('no_change_orders_desc', 'Opprett en ny endringsordre for å sikre betaling for tilleggsarbeid.')}</p>
                         </div>
                       ) : (
                         dashboardChangeOrders.map((co) => (
@@ -1957,7 +1956,7 @@ export default function Dashboard({
                             <div className="flex items-center gap-4 sm:text-right shrink-0">
                               <div>
                                 <div className="text-sm font-black text-navy-900">kr {Number(co.amount).toLocaleString('no-NO')}</div>
-                                <div className="text-[10px] text-slate-400 font-bold">eks mva (+{co.days} dgr)</div>
+                                <div className="text-[10px] text-slate-400 font-bold">{t('ex_vat_days', 'eks mva (+{{days}} dgr)', { days: co.days })}</div>
                               </div>
 
                               <div className="flex items-center gap-2">
@@ -1966,7 +1965,7 @@ export default function Dashboard({
                                   onClick={() => setIsChangeOrderModalOpen(true)}
                                   className="px-3 py-2 bg-rose-50 hover:bg-rose-100 text-rose-700 rounded-xl text-xs font-bold transition-all cursor-pointer"
                                 >
-                                  Behandle
+                                  {t('btn_process', 'Behandle')}
                                 </button>
                                 <button 
                                   type="button"
@@ -1978,12 +1977,12 @@ export default function Dashboard({
                                   }}
                                   className="px-3 py-2 bg-slate-100 hover:bg-slate-200 text-navy-900 rounded-xl text-xs font-bold transition-all cursor-pointer"
                                 >
-                                  Kopier lenke
+                                  {t('btn_copy_link', 'Kopier lenke')}
                                 </button>
                                 <button 
                                   type="button"
                                   onClick={() => handleDeleteDashboardOrder(co.id, co.title)}
-                                  title="Slett endringsordre"
+                                  title={t('btn_delete_order', 'Slett endringsordre')}
                                   className="p-2 text-slate-400 hover:text-rose-600 hover:bg-rose-50 rounded-xl transition-all cursor-pointer"
                                 >
                                   <Trash2 size={16} />
@@ -2003,10 +2002,10 @@ export default function Dashboard({
                 <div className="space-y-6">
                   <div>
                     <h2 className="text-xl font-extrabold text-navy-900 tracking-tight">
-                      Tverrfaglig Lukkesperre & TEK17 Kontroll
+                      {t('quality_tab_title', 'Tverrfaglig Lukkesperre & TEK17 Kontroll')}
                     </h2>
                     <p className="text-xs text-slate-500">
-                      Sperrer rom og vegger mot lukking/flislegging før skjultanlegg og trykktester er verifisert.
+                      {t('quality_tab_subtitle', 'Sperrer rom og vegger mot lukking/flislegging før skjultanlegg og trykktester er verifisert.')}
                     </p>
                   </div>
 
@@ -2016,11 +2015,11 @@ export default function Dashboard({
                       <div className="flex items-center justify-between mb-4 flex-wrap gap-2">
                         <div>
                           <h3 className="text-sm font-extrabold text-navy-900 flex items-center gap-2">
-                            <span>Status per Rom & Sone</span>
+                            <span>{t('status_per_room', 'Status per Rom & Sone')}</span>
                             <span className="text-[10px] font-bold text-slate-400 bg-slate-100 px-2 py-0.5 rounded-full">TEK17 § 13-15</span>
                           </h3>
                           <p className="text-[11px] text-slate-500 mt-0.5">
-                            Klikk på et rom for å inspisere sjekkpunkter, koble bilder eller godkjenne lukking.
+                            {t('status_per_room_desc', 'Klikk på et rom for å inspisere sjekkpunkter, koble bilder eller godkjenne lukking.')}
                           </p>
                         </div>
                         <button 
@@ -2029,7 +2028,7 @@ export default function Dashboard({
                           className="flex items-center gap-1.5 px-3 py-1.5 bg-electric-50 hover:bg-electric-100 text-electric-700 border border-electric-200 rounded-xl text-xs font-bold transition-all cursor-pointer shrink-0"
                         >
                           <Plus size={14} />
-                          <span>Ny Sone</span>
+                          <span>{t('btn_new_zone', 'Ny Sone')}</span>
                         </button>
                       </div>
 
@@ -2062,15 +2061,15 @@ export default function Dashboard({
                               <div className="flex items-center gap-3 mt-2 text-[10px] text-slate-500 font-medium flex-wrap">
                                 <span className="flex items-center gap-1">
                                   <CheckCircle2 size={12} className={z.checks.plumbing ? "text-emerald-600" : "text-slate-300"} />
-                                  <span>Rør: {z.checks.plumbing ? 'Godkjent' : 'Mangler'}</span>
+                                  <span>{t('check_plumbing', 'Rør')}: {z.checks.plumbing ? t('status_approved_short', 'Godkjent') : t('status_missing_short', 'Mangler')}</span>
                                 </span>
                                 <span className="flex items-center gap-1">
                                   <CheckCircle2 size={12} className={z.checks.vaporBarrier ? "text-emerald-600" : "text-slate-300"} />
-                                  <span>Dampsperre: {z.checks.vaporBarrier ? 'Tett' : 'Mangler'}</span>
+                                  <span>{t('check_vapor', 'Dampsperre')}: {z.checks.vaporBarrier ? t('status_tight_short', 'Tett') : t('status_missing_short', 'Mangler')}</span>
                                 </span>
                                 <span className="flex items-center gap-1">
                                   <CheckCircle2 size={12} className={z.checks.electric ? "text-emerald-600" : "text-slate-300"} />
-                                  <span>El: {z.checks.electric ? 'Verifisert' : 'Uavklart'}</span>
+                                  <span>{t('check_electric', 'El')}: {z.checks.electric ? t('status_verified_short', 'Verifisert') : t('status_unclarified_short', 'Uavklart')}</span>
                                 </span>
                               </div>
                             </div>
@@ -2080,10 +2079,10 @@ export default function Dashboard({
                                 "px-2.5 py-1 rounded-full text-[10px] font-black uppercase tracking-wider",
                                 z.status === 'GREEN' ? "bg-emerald-200 text-emerald-900" : "bg-rose-200 text-rose-900"
                               )}>
-                                {z.status === 'GREEN' ? 'GRØNT LYS' : 'RØD SPERRE'}
+                                {z.status === 'GREEN' ? t('green_light', 'GRØNT LYS') : t('red_lock', 'RØD SPERRE')}
                               </span>
                               <span className="text-[10px] font-bold text-electric-600 group-hover:underline">
-                                Inspiser &rarr;
+                                {t('btn_inspect_arrow', 'Inspiser →')}
                               </span>
                             </div>
                           </div>
@@ -2096,14 +2095,14 @@ export default function Dashboard({
                       <div>
                         <div className="flex items-center justify-between mb-2">
                           <h3 className="text-sm font-extrabold text-navy-900">
-                            Sikker Jobb Analyse (SJA) på 1-2-3
+                            {t('sja_easy_title', 'Sikker Jobb Analyse (SJA) på 1-2-3')}
                           </h3>
                           <span className="text-[10px] font-black uppercase bg-electric-50 text-electric-600 px-2 py-0.5 rounded-full border border-electric-200">
-                            Lovpålagt
+                            {t('statutory_badge', 'Lovpålagt')}
                           </span>
                         </div>
                         <p className="text-xs text-slate-500 mb-4 leading-relaxed">
-                          Byggherreforskriften krever dokumentert risikovurdering ved risikofylt arbeid. Klikk på et fag for å åpne, signere og skrive ut ferdig SJA med Yr.no værdata:
+                          {t('sja_easy_desc', 'Byggherreforskriften krever dokumentert risikovurdering ved risikofylt arbeid. Klikk på et fag for å åpne, signere og skrive ut ferdig SJA med Yr.no værdata:')}
                         </p>
 
                         <div className="grid grid-cols-1 sm:grid-cols-2 gap-2.5">
@@ -2138,7 +2137,7 @@ export default function Dashboard({
                           onClick={() => setIsHMSModalOpen(true)}
                           className="px-4 py-2 bg-navy-900 hover:bg-navy-800 text-white rounded-xl text-xs font-bold transition-all cursor-pointer"
                         >
-                          Åpne HMS-Håndbok
+                          {t('btn_open_hms_manual', 'Åpne HMS-Håndbok')}
                         </button>
                       </div>
                     </div>
@@ -2152,10 +2151,10 @@ export default function Dashboard({
                   {/* Active Inboxes & Channels */}
                   <div className="bg-white rounded-3xl border border-slate-200/90 p-6 shadow-sm space-y-4">
                     <h3 className="text-base font-extrabold text-navy-900">
-                      Tilknyttede Kommunikasjonskanaler
+                      {t('channels_title', 'Tilknyttede Kommunikasjonskanaler')}
                     </h3>
                     <p className="text-xs text-slate-500 leading-relaxed">
-                      Håndverkerne kan sende inn byggedagbok, bilder og spørsmål rett fra lomma uten å installere apper.
+                      {t('channels_desc', 'Håndverkerne kan sende inn byggedagbok, bilder og spørsmål rett fra lomma uten å installere apper.')}
                     </p>
 
                     <div className="space-y-3">
@@ -2167,11 +2166,11 @@ export default function Dashboard({
                         className="p-4 rounded-2xl bg-slate-50 hover:bg-electric-50/50 hover:border-electric-200 border border-slate-200/70 flex items-center justify-between cursor-pointer transition-all group"
                       >
                         <div>
-                          <div className="text-xs font-bold text-navy-900 group-hover:text-electric-700">Offisiell e-postlytter</div>
-                          <div className="text-xs text-electric-600 font-mono font-bold mt-0.5">hei@vikingmester.no (klikk for å kopiere)</div>
+                          <div className="text-xs font-bold text-navy-900 group-hover:text-electric-700">{t('official_email_listener', 'Offisiell e-postlytter')}</div>
+                          <div className="text-xs text-electric-600 font-mono font-bold mt-0.5">hei@vikingmester.no {t('click_to_copy', '(klikk for å kopiere)')}</div>
                         </div>
                         <span className="px-2 py-0.5 rounded-full text-[10px] font-black uppercase bg-emerald-100 text-emerald-800 shrink-0">
-                          100% Aktiv
+                          {t('active_100', '100% Aktiv')}
                         </span>
                       </div>
 
@@ -2183,11 +2182,11 @@ export default function Dashboard({
                         className="p-4 rounded-2xl bg-slate-50 hover:bg-electric-50/50 hover:border-electric-200 border border-slate-200/70 flex items-center justify-between cursor-pointer transition-all group"
                       >
                         <div>
-                          <div className="text-xs font-bold text-navy-900 group-hover:text-electric-700">Tale & Diktat i felt (klikk for å teste mikrofon)</div>
-                          <div className="text-xs text-slate-500 mt-0.5">Støtter alle språk (norsk, polsk, litauisk, ukrainsk, rumensk, engelsk, spansk, tysk + over 50 til) – oversetter og strukturerer automatisk til TEK17-fagterminologi</div>
+                          <div className="text-xs font-bold text-navy-900 group-hover:text-electric-700">{t('voice_dictation_field', 'Tale & Diktat i felt (klikk for å teste mikrofon)')}</div>
+                          <div className="text-xs text-slate-500 mt-0.5">{t('voice_dictation_desc', 'Støtter alle språk (norsk, polsk, litauisk, ukrainsk, rumensk, engelsk, spansk, tysk + over 50 til) – oversetter og strukturerer automatisk til TEK17-fagterminologi')}</div>
                         </div>
                         <span className="px-2 py-0.5 rounded-full text-[10px] font-black uppercase bg-emerald-100 text-emerald-800 shrink-0">
-                          Operativ
+                          {t('status_operational', 'Operativ')}
                         </span>
                       </div>
 
@@ -2198,11 +2197,11 @@ export default function Dashboard({
                         className="p-4 rounded-2xl bg-slate-50 hover:bg-electric-50/50 hover:border-electric-200 border border-slate-200/70 flex items-center justify-between cursor-pointer transition-all group"
                       >
                         <div>
-                          <div className="text-xs font-bold text-navy-900 group-hover:text-electric-700">Yr.no Værsynkronisering</div>
-                          <div className="text-xs text-slate-500 mt-0.5">Henter automatisk temperatur, nedbør og vind til alle byggedagbøker og SJA</div>
+                          <div className="text-xs font-bold text-navy-900 group-hover:text-electric-700">{t('yr_sync_title', 'Yr.no Værsynkronisering')}</div>
+                          <div className="text-xs text-slate-500 mt-0.5">{t('yr_sync_desc', 'Henter automatisk temperatur, nedbør og vind til alle byggedagbøker og SJA')}</div>
                         </div>
                         <span className="px-2 py-0.5 rounded-full text-[10px] font-black uppercase bg-emerald-100 text-emerald-800 shrink-0">
-                          Tilkoblet
+                          {t('status_connected', 'Tilkoblet')}
                         </span>
                       </div>
                     </div>
@@ -2211,10 +2210,10 @@ export default function Dashboard({
                   {/* Active Regulatory Engines */}
                   <div className="bg-white rounded-3xl border border-slate-200/90 p-6 shadow-sm space-y-4">
                     <h3 className="text-base font-extrabold text-navy-900">
-                      Aktive Regelmotorer & Norske Standarder
+                      {t('rules_engines_title', 'Aktive Regelmotorer & Norske Standarder')}
                     </h3>
                     <p className="text-xs text-slate-500 leading-relaxed">
-                      Deterministisk validering som sikrer at alle rapporter holder juridisk mål ved tilsyn og overtakelse.
+                      {t('rules_engines_desc', 'Deterministisk validering som sikrer at alle rapporter holder juridisk mål ved tilsyn og overtakelse.')}
                     </p>
 
                     <ul className="space-y-2.5">

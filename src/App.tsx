@@ -76,10 +76,11 @@ const PartnerPortal = lazy(() => import('./components/PartnerPortal'));
 const IntegrationModal = lazy(() => import('./components/IntegrationModal'));
 
 function ModuleLoader() {
+  const { t } = useTranslation();
   return (
     <div className="flex flex-col items-center justify-center min-h-[50vh] p-8 space-y-4">
       <div className="w-10 h-10 border-4 border-electric-200 border-t-electric-600 rounded-full animate-spin" />
-      <span className="text-xs font-bold text-slate-500 uppercase tracking-widest">Laster inn modul...</span>
+      <span className="text-xs font-bold text-slate-500 uppercase tracking-widest">{t('module_loading', 'Laster inn modul...')}</span>
     </div>
   );
 }
@@ -187,11 +188,14 @@ function AppContent() {
       return;
     }
     if (actionId === 'contacts') {
-      setMobileScreen('contacts');
-      setView('mobile');
-      setTimeout(() => {
-        window.dispatchEvent(new CustomEvent('open_mobile_contacts'));
-      }, 50);
+      if (view !== 'dashboard') {
+        setView('dashboard');
+        setTimeout(() => {
+          window.dispatchEvent(new CustomEvent('trigger_dashboard_action', { detail: { actionId: 'contacts' } }));
+        }, 150);
+      } else {
+        window.dispatchEvent(new CustomEvent('trigger_dashboard_action', { detail: { actionId: 'contacts' } }));
+      }
       return;
     }
     if (view !== 'dashboard') {
@@ -507,7 +511,7 @@ function AppContent() {
                         : "text-slate-600 hover:text-navy-900 hover:bg-slate-100"
                     )}
                   >
-                    <span>Løsninger</span>
+                    <span>{t('nav_solutions', 'Løsninger')}</span>
                     <ChevronDown size={14} className="text-slate-500 group-hover:text-amber-400 transition-transform group-hover:rotate-180" />
                   </button>
 
@@ -524,8 +528,8 @@ function AppContent() {
                         <FileCheck size={16} />
                       </div>
                       <div>
-                        <p className="text-xs font-bold text-navy-900">KS-system & Kvalitetssikring</p>
-                        <p className="text-[10px] text-slate-500 leading-tight">Byggedagbok, sjekklister & TEK17</p>
+                        <p className="text-xs font-bold text-navy-900">{t('nav_ks_system', 'KS-system & Kvalitetssikring')}</p>
+                        <p className="text-[10px] text-slate-500 leading-tight">{t('nav_ks_sub', 'Byggedagbok, sjekklister & TEK17')}</p>
                       </div>
                     </Link>
 
@@ -537,8 +541,8 @@ function AppContent() {
                         <ShieldCheck size={16} />
                       </div>
                       <div>
-                        <p className="text-xs font-bold text-navy-900">HMS & Internkontroll</p>
-                        <p className="text-[10px] text-slate-500 leading-tight">Lovpålagt § 5, vernerunde & risikovurdering</p>
+                        <p className="text-xs font-bold text-navy-900">{t('nav_hms', 'HMS & Internkontroll')}</p>
+                        <p className="text-[10px] text-slate-500 leading-tight">{t('nav_hms_sub', 'Lovpålagt § 5, vernerunde & risikovurdering')}</p>
                       </div>
                     </Link>
 
@@ -550,8 +554,8 @@ function AppContent() {
                         <Camera size={16} />
                       </div>
                       <div>
-                        <p className="text-xs font-bold text-navy-900">Avvik med TEK17-visjon</p>
-                        <p className="text-[10px] text-slate-500 leading-tight">AI-analyse av bilder på 5 sekunder</p>
+                        <p className="text-xs font-bold text-navy-900">{t('nav_tek17_vision', 'Avvik med TEK17-visjon')}</p>
+                        <p className="text-[10px] text-slate-500 leading-tight">{t('nav_tek17_sub', 'AI-analyse av bilder på 5 sekunder')}</p>
                       </div>
                     </Link>
 
@@ -563,8 +567,8 @@ function AppContent() {
                         <AlertTriangle size={16} />
                       </div>
                       <div>
-                        <p className="text-xs font-bold text-navy-900">Sikker Jobb Analyse (SJA)</p>
-                        <p className="text-[10px] text-slate-500 leading-tight">Risikokartlegging & Yr-vær</p>
+                        <p className="text-xs font-bold text-navy-900">{t('nav_sja', 'Sikker Jobb Analyse (SJA)')}</p>
+                        <p className="text-[10px] text-slate-500 leading-tight">{t('nav_sja_sub', 'Risikokartlegging & Yr-vær')}</p>
                       </div>
                     </Link>
 
@@ -576,8 +580,8 @@ function AppContent() {
                         <Package size={16} />
                       </div>
                       <div>
-                        <p className="text-xs font-bold text-navy-900">Digitalt Stoffkartotek</p>
-                        <p className="text-[10px] text-slate-500 leading-tight">Sikkerhetsdatablader offline på mobil</p>
+                        <p className="text-xs font-bold text-navy-900">{t('nav_substances', 'Digitalt Stoffkartotek')}</p>
+                        <p className="text-[10px] text-slate-500 leading-tight">{t('nav_substances_sub', 'Sikkerhetsdatablader offline på mobil')}</p>
                       </div>
                     </Link>
 
@@ -589,8 +593,8 @@ function AppContent() {
                         <FolderKanban size={16} />
                       </div>
                       <div>
-                        <p className="text-xs font-bold text-navy-900">Prosjektstyring & Endringsordre</p>
-                        <p className="text-[10px] text-slate-500 leading-tight">Få betalt for uvarslet ekstraarbeid (NS 8406)</p>
+                        <p className="text-xs font-bold text-navy-900">{t('nav_project_mgmt', 'Prosjektstyring & Endringsordre')}</p>
+                        <p className="text-[10px] text-slate-500 leading-tight">{t('nav_project_mgmt_sub', 'Få betalt for uvarslet ekstraarbeid (NS 8406)')}</p>
                       </div>
                     </Link>
                   </div>
@@ -606,7 +610,7 @@ function AppContent() {
                       : "text-slate-600 hover:text-navy-900 hover:bg-slate-100"
                   )}
                 >
-                  Priser
+                  {t('nav_pricing', 'Priser')}
                 </Link>
 
 
@@ -615,7 +619,7 @@ function AppContent() {
                   href="/faq"
                   className="px-3.5 py-2 rounded-xl text-xs font-bold text-slate-600 hover:text-navy-900 hover:bg-slate-100 transition-all"
                 >
-                  FAQ
+                  {t('nav_faq', 'FAQ')}
                 </Link>
 
                 {/* Kundeportal */}
@@ -624,7 +628,7 @@ function AppContent() {
                   className="px-3.5 py-2 rounded-xl text-xs font-bold text-slate-600 hover:text-navy-900 hover:bg-slate-100 transition-all flex items-center gap-1.5 cursor-pointer"
                 >
                   <Users size={14} className="text-emerald-600" />
-                  <span>Kundeportal</span>
+                  <span>{t('nav_customer_portal', 'Kundeportal')}</span>
                 </button>
 
                 {/* Om oss */}
@@ -637,7 +641,7 @@ function AppContent() {
                       : "text-slate-600 hover:text-navy-900 hover:bg-slate-100"
                   )}
                 >
-                  Om oss
+                  {t('nav_about', 'Om oss')}
                 </Link>
 
                 {/* Kontakt */}
@@ -650,7 +654,7 @@ function AppContent() {
                       : "text-slate-600 hover:text-navy-900 hover:bg-slate-100"
                   )}
                 >
-                  Kontakt
+                  {t('nav_contact', 'Kontakt')}
                 </Link>
               </div>
 
@@ -663,7 +667,7 @@ function AppContent() {
                     onChange={(e) => changeLanguage(e.target.value)}
                     value={getStandardLang(i18n.language)}
                     className="text-xs font-bold bg-transparent border-none focus:ring-0 cursor-pointer uppercase text-slate-800 pr-1 outline-none"
-                    title="Bytt språk"
+                    title={t('language', 'Bytt språk')}
                   >
                     <option value="no">NO</option>
                     <option value="en">EN</option>
@@ -678,7 +682,7 @@ function AppContent() {
                     className="bg-gradient-to-r from-electric-500 to-electric-400 hover:from-electric-400 hover:to-electric-300 text-white px-4 py-2 rounded-xl text-xs font-bold transition-all shadow-purple-cta active:scale-95 flex items-center gap-1.5 cursor-pointer"
                   >
                     <LayoutDashboard size={14} />
-                    <span>Gå til Dashboard</span>
+                    <span>{t('nav_dashboard', 'Gå til Dashboard')}</span>
                   </button>
                 ) : (
                   <div className="flex items-center gap-2">
@@ -686,13 +690,13 @@ function AppContent() {
                       onClick={() => setView('login')}
                       className="text-slate-700 hover:text-navy-900 px-3.5 py-2.5 rounded-xl text-xs font-bold hover:bg-slate-100 transition-all cursor-pointer"
                     >
-                      Logg inn
+                      {t('nav_login', 'Logg inn')}
                     </button>
                     <button 
                       onClick={handleStartDemo}
                       className="bg-gradient-to-r from-electric-500 to-electric-400 hover:from-electric-400 hover:to-electric-300 text-white px-4 py-2.5 rounded-xl text-xs font-bold transition-all shadow-purple-cta hover:shadow-purple-hover active:scale-95 flex items-center gap-1.5 cursor-pointer"
                     >
-                      <span>Kom i gang på 2 minutter</span>
+                      <span>{t('nav_get_started', 'Kom i gang på 2 minutter')}</span>
                       <ArrowRight size={14} />
                     </button>
                   </div>
@@ -729,7 +733,7 @@ function AppContent() {
                 )}
                 <div className="hidden md:inline-flex items-center gap-1.5 px-2.5 py-1 rounded-full bg-emerald-50 border border-emerald-200 text-emerald-700 text-[11px] font-bold">
                   <span className="w-2 h-2 rounded-full bg-emerald-500 animate-pulse" />
-                  <span>MesterAI Aktiv</span>
+                  <span>{t('nav_agent_active', 'MesterAI Aktiv')}</span>
                 </div>
               </div>
 
@@ -745,7 +749,7 @@ function AppContent() {
                   )}
                 >
                   <LayoutDashboard size={15} />
-                  <span>Oversikt</span>
+                  <span>{t('nav_overview', 'Oversikt')}</span>
                 </button>
 
                 <button 
@@ -758,7 +762,7 @@ function AppContent() {
                   )}
                 >
                   <Smartphone size={15} />
-                  <span>Mobilapp</span>
+                  <span>{t('nav_mobile', 'Mobilapp')}</span>
                 </button>
 
                 <button 
@@ -771,7 +775,7 @@ function AppContent() {
                   )}
                 >
                   <Settings size={15} />
-                  <span>Innstillinger</span>
+                  <span>{t('nav_settings', 'Innstillinger')}</span>
                 </button>
 
 
@@ -786,7 +790,7 @@ function AppContent() {
                     )}
                   >
                     <Shield size={15} />
-                    <span>Super Admin</span>
+                    <span>{t('nav_superadmin', 'Super Admin')}</span>
                   </button>
                 )}
               </div>
@@ -796,10 +800,10 @@ function AppContent() {
                 <button 
                   onClick={handleInstallApp}
                   className="flex items-center gap-1.5 px-3 py-1.5 bg-white/5 hover:bg-slate-50 text-neutral-700 hover:text-emerald-800 rounded-xl text-xs font-bold transition-all border border-neutral-200/80 hover:border-emerald-300 shadow-sm active:scale-95 cursor-pointer"
-                  title="Last ned app eller snarvei til mobil"
+                  title={t('nav_download_app', 'Last ned app')}
                 >
                   <Download size={14} className="text-emerald-600" />
-                  <span>Last ned app</span>
+                  <span>{t('nav_download_app', 'Last ned app')}</span>
                 </button>
 
                 <div className="flex items-center gap-1 px-2.5 py-1.5 bg-white/5/80 hover:bg-slate-50 rounded-xl border border-neutral-200 transition-all">
@@ -808,7 +812,7 @@ function AppContent() {
                     onChange={(e) => changeLanguage(e.target.value)}
                     value={getStandardLang(i18n.language)}
                     className="text-xs font-black bg-transparent border-none focus:ring-0 cursor-pointer uppercase text-neutral-800 pr-1 outline-none"
-                    title="Bytt språk"
+                    title={t('language', 'Bytt språk')}
                   >
                     <option value="no">NO</option>
                     <option value="en">EN</option>
@@ -829,7 +833,7 @@ function AppContent() {
                           ? "bg-emerald-50 border-emerald-200 text-emerald-900" 
                           : "bg-neutral-50 border-neutral-200/80 hover:bg-slate-50 text-neutral-800"
                       )}
-                      title="Brukerprofil & Innstillinger"
+                      title={t('nav_settings', 'Brukerprofil & Innstillinger')}
                     >
                       {user.photoURL ? (
                         <img 
@@ -844,8 +848,8 @@ function AppContent() {
                         </div>
                       )}
                       <div className="hidden lg:block leading-tight">
-                        <p className="text-xs font-bold truncate max-w-[110px]">{user.displayName || 'Bruker'}</p>
-                        <p className="text-[10px] font-black uppercase text-neutral-400">{user.role || 'Håndverker'}</p>
+                        <p className="text-xs font-bold truncate max-w-[110px]">{user.displayName || t('user_default_name', 'Bruker')}</p>
+                        <p className="text-[10px] font-black uppercase text-neutral-400">{user.role === 'admin' ? t('user_admin', 'Admin') : t('user_craftsman', 'Håndverker')}</p>
                       </div>
                     </button>
 
