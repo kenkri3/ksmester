@@ -71,13 +71,13 @@ export default function KsSystemPage() {
         <div className="max-w-5xl mx-auto text-center">
           <div className="inline-flex items-center gap-2 bg-electric-50 border border-electric-200/60 px-3.5 py-1.5 rounded-full text-xs font-bold text-electric-700 mb-6">
             <ShieldCheck size={16} />
-            <span>Kvalitetssikring (KS) iht. TEK17 & Plan- og bygningsloven</span>
+            <span>100% Autonomt KS-system med MesterAI • TEK17 & NS 8406</span>
           </div>
           <h1 className="text-4xl sm:text-6xl font-black tracking-tight text-navy-900 mb-6 leading-tight">
-            Norges råeste <span className="text-electric-600">KS-system</span> for håndverkere
+            Norges råeste <span className="text-electric-600">autonome KS-system</span> for håndverkere
           </h1>
           <p className="text-lg sm:text-xl text-slate-600 max-w-3xl mx-auto mb-10 leading-relaxed">
-            Fjern papirarbeidet og kveldsjobbingen. Snakk inn dagboken, knips bildene med automatisk TEK17-sjekk, og overlever fiks ferdige sluttrapporter til kunden på sekunder.
+            Fjern papirarbeidet og kveldsjobbingen. Snakk inn dagboken, knips bildene med automatisk TEK17-sjekk, og la MesterAI overlevere fiks ferdige sluttrapporter til kunden på sekunder.
           </p>
           <div className="flex flex-col sm:flex-row items-center justify-center gap-4">
             <Link
@@ -91,7 +91,7 @@ export default function KsSystemPage() {
               href="/priser"
               className="w-full sm:w-auto px-8 py-4 bg-white border border-slate-200 hover:bg-slate-50 text-navy-900 font-bold rounded-2xl transition-colors text-base"
             >
-              Se priser (fra kr 990,-)
+              Se priser (fra kr 1 490,-)
             </Link>
           </div>
         </div>

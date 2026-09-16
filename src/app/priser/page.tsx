@@ -17,13 +17,13 @@ const baseUrl = process.env.NEXT_PUBLIC_APP_URL || 'https://vikingmester.no';
 
 export const metadata: Metadata = {
   title: 'Priser på KS- og HMS-system | Forutsigbart, ingen binding | VikingMester',
-  description: 'Gjennomsiktige priser på Norges råeste KS- og HMS-system. Solo kr 990,- eks mva/mnd for én håndverker. Team kr 3 490,- eks mva/mnd for inntil 5 brukere. 14 dager gratis prøve.',
+  description: 'Gjennomsiktige priser på Norges råeste KS- og HMS-system med 100% autonom MesterAI byggeleder. Solo kr 1 490,- eks mva/mnd for én håndverker. Team kr 3 490,- eks mva/mnd for inntil 5-10 brukere. Totalentreprenør fra kr 6 900,- eks mva/mnd. 14 dagers gratis prøveperiode.',
   alternates: {
     canonical: `${baseUrl}/priser`,
   },
   openGraph: {
     title: 'Priser på KS- og HMS-system | VikingMester',
-    description: 'Ingen bindingstid, ingen etableringsgebyrer. Komplett KS, HMS, SJA og byggedagbok tilpasset din håndverksbedrift.',
+    description: 'Ingen bindingstid, ingen etableringsgebyrer. Komplett KS, HMS, SJA og byggedagbok tilpasset din håndverksbedrift med 100% autonom MesterAI.',
     url: `${baseUrl}/priser`,
   },
 };
@@ -39,7 +39,11 @@ const faqs = [
   },
   {
     question: 'Hva koster ekstra brukere utover Team-pakken?',
-    answer: 'I Team-pakken er 5 aktive fagarbeidere inkludert. Ekstra brukere koster kun kr 390,- eks mva per måned per bruker.',
+    answer: 'I Team-pakken er 5-10 aktive fagarbeidere inkludert. Ekstra brukere koster kun kr 249,- eks mva per måned per bruker.',
+  },
+  {
+    question: 'Hva skjer hvis bedriften bruker opp den inkluderte AI-tokenkvoten?',
+    answer: 'Vårt innebygde Marginvern forhindrer ubehagelige overraskelsesfakturaer. All standard KS, HMS, sjekklister, timeføring og offline-stoffkartotek forblir 100% ubegrenset. Hvis du trenger mer avansert AI-kapasitet (TEK17-visjon, avansert NS 8406-kalkyle), kan du når som helst aktivere en Mester Top-up under Innstillinger (fra kr 490,- for +5M tokens). Vi går aldri i minus, og du får aldri en sjokkregning.',
   },
   {
     question: 'Får vi fri support inkludert i prisen?',
@@ -64,13 +68,13 @@ export default function PriserPage() {
       <section className="pt-16 pb-20 px-4 sm:px-6 lg:px-8 bg-gradient-to-b from-slate-50 to-white border-b border-slate-100 text-center">
         <div className="max-w-4xl mx-auto">
           <span className="text-xs font-mono font-bold text-electric-600 uppercase tracking-widest bg-electric-50 px-3.5 py-1.5 rounded-full border border-electric-300/40 inline-block mb-6">
-            Forutsigbare priser for norske håndverkere
+            100% Autonom Byggeleder • Forutsigbare priser
           </span>
           <h1 className="text-4xl sm:text-6xl font-black tracking-tight text-navy-900 mb-6">
-            Enkle priser. <span className="text-electric-600">Ingen bindingstid.</span>
+            Enkle priser. <span className="text-electric-600">14 dagers prøveperiode.</span>
           </h1>
           <p className="text-lg sm:text-xl text-slate-600 max-w-2xl mx-auto mb-10 leading-relaxed">
-            Velg pakken som passer din bedrift. Start gratis i 14 dager – ingen kredittkort kreves.
+            Velg pakken som passer din håndverksbedrift. MesterAI, Zero-Entry AI og alle 20 moduler er tilgjengelige fra dag én.
           </p>
         </div>
       </section>
@@ -82,40 +86,49 @@ export default function PriserPage() {
           <div className="p-8 rounded-3xl bg-white border border-slate-200 shadow-sm hover:shadow-md transition-all flex flex-col justify-between">
             <div>
               <span className="text-xs font-bold uppercase tracking-wider text-slate-500">
-                Enkeltpersonforetak
+                Enkeltpersonforetak & 1 bruker
               </span>
               <h3 className="text-2xl font-bold text-navy-900 mt-1 mb-2">VikingMester Solo</h3>
               <p className="text-slate-600 text-sm mb-6">
-                For deg som driver alene og vil ha full kontroll på byggeplassen.
+                For deg som driver alene og vil ha 100% autonom kontroll på byggeplassen og papirene.
               </p>
               <div className="mb-8">
-                <span className="text-4xl font-black text-navy-900">990 kr</span>
+                <span className="text-4xl font-black text-navy-900">1 490 kr</span>
                 <span className="text-slate-500 text-sm font-medium"> / mnd eks mva</span>
+                <div className="text-xs text-emerald-600 font-bold mt-1">Kun 1 190 kr/mnd ved årlig avtale</div>
               </div>
               <ul className="space-y-3 text-sm text-slate-700 mb-8">
-                <li className="flex items-center gap-2">
+                <li className="flex items-center gap-2 font-semibold text-navy-900">
                   <Check size={16} className="text-emerald-500 shrink-0" />
-                  <span>1 aktiv bruker</span>
+                  <span>100% Autonom MesterAI byggeleder</span>
                 </li>
                 <li className="flex items-center gap-2">
                   <Check size={16} className="text-emerald-500 shrink-0" />
-                  <span>Ubegrenset byggedagbok fra tale</span>
+                  <span>1 aktiv fagarbeider (opptil 5 prosjekter)</span>
+                </li>
+                <li className="flex items-center gap-2 font-semibold text-electric-600">
+                  <Check size={16} className="text-emerald-500 shrink-0" />
+                  <span>Zero-Entry AI (Snakk eller ta bilde)</span>
                 </li>
                 <li className="flex items-center gap-2">
                   <Check size={16} className="text-emerald-500 shrink-0" />
-                  <span>TEK17 AI-bildekontroll & avvik</span>
+                  <span>Handsfree stemme-til-byggedagbok</span>
                 </li>
                 <li className="flex items-center gap-2">
                   <Check size={16} className="text-emerald-500 shrink-0" />
-                  <span>Sikker Jobb Analyse (SJA)</span>
+                  <span>TEK17 AI Vision bildekontroll & avvik</span>
                 </li>
                 <li className="flex items-center gap-2">
                   <Check size={16} className="text-emerald-500 shrink-0" />
-                  <span>Yr.no automatisk værdata</span>
+                  <span>Sikker Jobb Analyse (SJA) & risikovurdering</span>
                 </li>
                 <li className="flex items-center gap-2">
                   <Check size={16} className="text-emerald-500 shrink-0" />
-                  <span>PDF-sluttrapport til kunde</span>
+                  <span>Yr.no automatisk værsynk & 2 GB lagring</span>
+                </li>
+                <li className="flex items-center gap-2">
+                  <Check size={16} className="text-emerald-500 shrink-0" />
+                  <span>1-klikks Boligmappa & PDF-sluttrapport</span>
                 </li>
               </ul>
             </div>
@@ -130,7 +143,7 @@ export default function PriserPage() {
           {/* Team Card (Featured) */}
           <div className="p-8 rounded-3xl bg-white border-2 border-electric-500 shadow-xl ring-4 ring-electric-500/10 flex flex-col justify-between relative">
             <span className="absolute -top-3.5 left-1/2 -translate-x-1/2 bg-electric-500 text-white font-black text-[10px] uppercase tracking-widest px-3.5 py-1 rounded-full shadow-md">
-              Mest populær for bedrifter
+              Mest populær for håndverkere
             </span>
             <div>
               <span className="text-xs font-bold uppercase tracking-wider text-electric-600">
@@ -138,40 +151,49 @@ export default function PriserPage() {
               </span>
               <h3 className="text-2xl font-bold text-navy-900 mt-1 mb-2">VikingMester Team</h3>
               <p className="text-slate-600 text-sm mb-6">
-                For voksende lag som vil ha full samhandling, timer og endringsvarsler.
+                For voksende håndverkerbedrifter som vil samhandle sømløst og sikre marginene.
               </p>
               <div className="mb-8">
                 <span className="text-4xl font-black text-navy-900">3 490 kr</span>
                 <span className="text-slate-500 text-sm font-medium"> / mnd eks mva</span>
+                <div className="text-xs text-emerald-600 font-bold mt-1">Kun 2 790 kr/mnd ved årlig avtale</div>
               </div>
               <ul className="space-y-3 text-sm text-slate-700 mb-8">
                 <li className="flex items-center gap-2 font-semibold text-navy-900">
                   <Check size={16} className="text-electric-500 shrink-0" />
-                  <span>Inntil 5 aktive fagarbeidere inkludert</span>
+                  <span>100% Autonom MesterAI byggeleder</span>
+                </li>
+                <li className="flex items-center gap-2 font-semibold text-navy-900">
+                  <Check size={16} className="text-electric-500 shrink-0" />
+                  <span>Inntil 5-10 aktive fagarbeidere (+249,- per ekstra)</span>
+                </li>
+                <li className="flex items-center gap-2 font-semibold text-electric-600">
+                  <Check size={16} className="text-electric-500 shrink-0" />
+                  <span>Tale-til-Endringsordre & fristvarsel (NS 8406)</span>
                 </li>
                 <li className="flex items-center gap-2">
                   <Check size={16} className="text-electric-500 shrink-0" />
-                  <span>Alt i Solo-pakken</span>
+                  <span>Inntil 15 aktive prosjekter samtidig</span>
                 </li>
                 <li className="flex items-center gap-2">
                   <Check size={16} className="text-electric-500 shrink-0" />
-                  <span>Tverrfaglig samhandling (tømrer, el, rør)</span>
+                  <span>Tverrfaglig Lukkesperre (Rom/Sone før lukking)</span>
                 </li>
                 <li className="flex items-center gap-2">
                   <Check size={16} className="text-electric-500 shrink-0" />
-                  <span>Endringsordrer & fristvarsel (NS 8406)</span>
+                  <span>TEK17 AI Vision & avviksfotografering</span>
                 </li>
                 <li className="flex items-center gap-2">
                   <Check size={16} className="text-electric-500 shrink-0" />
-                  <span>Digitalt stoffkartotek offline</span>
+                  <span>Yr.no sanntids værlogging i byggedagbok</span>
                 </li>
                 <li className="flex items-center gap-2">
                   <Check size={16} className="text-electric-500 shrink-0" />
-                  <span>Flerspråklig støtte (Polsk/Ukrainsk)</span>
+                  <span>Digitalt stoffkartotek offline & 10 GB lagring</span>
                 </li>
                 <li className="flex items-center gap-2">
                   <Check size={16} className="text-electric-500 shrink-0" />
-                  <span>Prioritert telefonsupport</span>
+                  <span>Flerspråklig støtte (Norsk, Engelsk, Polsk, Litauisk)</span>
                 </li>
               </ul>
             </div>
@@ -187,45 +209,110 @@ export default function PriserPage() {
           <div className="p-8 rounded-3xl bg-white border border-slate-200 shadow-sm hover:shadow-md transition-all flex flex-col justify-between">
             <div>
               <span className="text-xs font-bold uppercase tracking-wider text-slate-500">
-                Større entreprenører
+                Større entreprenører & konsern
               </span>
-              <h3 className="text-2xl font-bold text-navy-900 mt-1 mb-2">Entreprenør</h3>
+              <h3 className="text-2xl font-bold text-navy-900 mt-1 mb-2">Totalentreprenør</h3>
               <p className="text-slate-600 text-sm mb-6">
-                For konsern med behov for skreddersydde integrasjoner og API-er.
+                For konsern med behov for skreddersydde integrasjoner, underentreprenører og API.
               </p>
               <div className="mb-8">
-                <span className="text-3xl font-black text-navy-900">Tilpasset</span>
-                <span className="text-slate-500 text-sm font-medium"> / etter avtale</span>
+                <span className="text-3xl font-black text-navy-900">Fra 6 900 kr</span>
+                <span className="text-slate-500 text-sm font-medium"> / mnd eks mva</span>
+                <div className="text-xs text-slate-500 font-bold mt-1">Tilpasset etter prosjektomfang</div>
               </div>
               <ul className="space-y-3 text-sm text-slate-700 mb-8">
-                <li className="flex items-center gap-2">
+                <li className="flex items-center gap-2 font-semibold text-navy-900">
                   <Check size={16} className="text-emerald-500 shrink-0" />
-                  <span>Ubegrenset antall fagarbeidere</span>
+                  <span>Full autonom AI-arkitektur & UE-portal</span>
+                </li>
+                <li className="flex items-center gap-2 font-semibold text-electric-600">
+                  <Check size={16} className="text-emerald-500 shrink-0" />
+                  <span>Juridisk NS 8405 / NS 8406 endringsordremotor</span>
                 </li>
                 <li className="flex items-center gap-2">
                   <Check size={16} className="text-emerald-500 shrink-0" />
-                  <span>Underentreprenør-portal</span>
+                  <span>Ubegrenset antall aktive brukere & prosjekter</span>
                 </li>
                 <li className="flex items-center gap-2">
                   <Check size={16} className="text-emerald-500 shrink-0" />
-                  <span>ERP/Økonomi API-bro (Tripletex/PowerOffice)</span>
+                  <span>Tverrfaglig Lukkesperre med tidslås og soner</span>
                 </li>
                 <li className="flex items-center gap-2">
                   <Check size={16} className="text-emerald-500 shrink-0" />
-                  <span>Dedikert kontaktperson & opplæring</span>
+                  <span>Omnichannel (Discord, Slack, Teams, E-post, SMS)</span>
                 </li>
                 <li className="flex items-center gap-2">
                   <Check size={16} className="text-emerald-500 shrink-0" />
-                  <span>Garantert oppetid (SLA 99.9%)</span>
+                  <span>Tripletex, PowerOffice Go & Fiken API-bro</span>
+                </li>
+                <li className="flex items-center gap-2">
+                  <Check size={16} className="text-emerald-500 shrink-0" />
+                  <span>Dedikert onboarding, opplæring & prioritert support</span>
                 </li>
               </ul>
             </div>
             <Link
-              href="/kontakt"
+              href="/?action=demo&plan=entreprenor"
               className="w-full py-3 text-center text-sm font-bold text-navy-900 bg-slate-100 hover:bg-slate-200 rounded-xl transition-colors"
             >
-              Ta kontakt for tilbud
+              Start 14 dagers prøve
             </Link>
+          </div>
+        </div>
+      </section>
+
+      {/* 🛡️ Marginvern & Top-up Seksjon */}
+      <section className="py-12 px-4 sm:px-6 lg:px-8 max-w-5xl mx-auto w-full">
+        <div className="p-8 sm:p-10 rounded-3xl bg-slate-900 text-white border border-slate-800 shadow-xl">
+          <div className="flex flex-col md:flex-row md:items-center justify-between gap-6 mb-8">
+            <div>
+              <span className="text-xs font-mono font-bold text-emerald-400 uppercase tracking-widest bg-emerald-500/20 px-3 py-1 rounded-full border border-emerald-500/30 inline-block mb-3">
+                100% FORUTSIGBARHET • INGEN OVERFORBRUKSSJOKK
+              </span>
+              <h2 className="text-2xl sm:text-3xl font-black">
+                Mester Top-up & Marginvern
+              </h2>
+              <p className="text-slate-400 text-sm mt-2 max-w-xl leading-relaxed">
+                Standard sjekklister, KS, HMS, timeføring og offline-stoffkartotek er alltid <strong>100% ubegrenset</strong>. Avansert AI-generering (TEK17-visjoner og NS 8406-kalkyler) har faste månedlige kvoter. Ved ekstra behov bestiller du enkelt en top-up pakke.
+              </p>
+            </div>
+          </div>
+
+          <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
+            <div className="p-5 rounded-2xl bg-slate-800/80 border border-slate-700/80 flex flex-col justify-between">
+              <div>
+                <div className="text-xs font-mono text-electric-400 font-bold uppercase mb-1">Top-up Nivå 1</div>
+                <h4 className="text-lg font-bold text-white">Liten Mester-pakke</h4>
+                <p className="text-xs text-slate-400 mt-1 mb-4">
+                  For ekstra byggeplasskontroll og avviksruting i travle perioder.
+                </p>
+                <div className="text-2xl font-black text-white mb-2">kr 490,- <span className="text-xs text-slate-400 font-normal">eks mva</span></div>
+                <div className="text-xs text-emerald-400 font-medium space-y-1">
+                  <div>✓ +5 000 000 tokens ekstra</div>
+                  <div>✓ +200 TEK17 bildeanalyser</div>
+                  <div>✓ Føres direkte på neste EHF-faktura</div>
+                </div>
+              </div>
+            </div>
+
+            <div className="p-5 rounded-2xl bg-slate-800/80 border border-electric-500/40 flex flex-col justify-between relative overflow-hidden">
+              <div className="absolute top-3 right-3 text-[10px] font-black uppercase tracking-wider bg-electric-500 text-white px-2.5 py-0.5 rounded-full">
+                Beste verdi
+              </div>
+              <div>
+                <div className="text-xs font-mono text-electric-400 font-bold uppercase mb-1">Top-up Nivå 2</div>
+                <h4 className="text-lg font-bold text-white">Stor Mester-pakke</h4>
+                <p className="text-xs text-slate-400 mt-1 mb-4">
+                  For stordrift, totalentrepriser og omfattende dokumentasjonskrav.
+                </p>
+                <div className="text-2xl font-black text-white mb-2">kr 1 490,- <span className="text-xs text-slate-400 font-normal">eks mva</span></div>
+                <div className="text-xs text-emerald-400 font-medium space-y-1">
+                  <div>✓ +20 000 000 tokens ekstra</div>
+                  <div>✓ +1 000 TEK17 bildeanalyser</div>
+                  <div>✓ Føres direkte på neste EHF-faktura</div>
+                </div>
+              </div>
+            </div>
           </div>
         </div>
       </section>

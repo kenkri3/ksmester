@@ -29,6 +29,7 @@ import {
   FileText,
   Lock,
   AlertCircle,
+  AlertTriangle,
   Cookie
 } from 'lucide-react';
 import { useAuth } from '../hooks/useAuth';
@@ -90,6 +91,21 @@ export default function Settings() {
   const [connectedServices, setConnectedServices] = useState<Record<string, boolean>>({});
   const profilePhotoInputRef = useRef<HTMLInputElement>(null);
   
+  const [aiQuota, setAiQuota] = useState<{
+    usedTokens: number;
+    limitTokens: number;
+    baseTokens: number;
+    topupTokens: number;
+    topupImages: number;
+    remainingTokens: number;
+    percentUsed: number;
+    plan: string;
+    needsTopUp: boolean;
+    isWarning: boolean;
+    planMonthlyPrice: number;
+  } | null>(null);
+  const [loadingQuota, setLoadingQuota] = useState(false);
+
   const [profile, setProfile] = useState<SettingsProfile>({
     displayName: '',
     phone: '',
@@ -170,6 +186,32 @@ export default function Settings() {
     }
     fetchTeam();
   }, [user, activeTab, profile.companyId]);
+
+  const fetchAiQuota = async () => {
+    try {
+      setLoadingQuota(true);
+      const token = typeof window !== 'undefined' ? localStorage.getItem('token') : null;
+      const res = await fetch('/api/company/quota', {
+        headers: token ? { 'Authorization': 'Bearer ' + token } : {}
+      });
+      if (res.ok) {
+        const data = await res.json();
+        if (data.quota) {
+          setAiQuota(data.quota);
+        }
+      }
+    } catch (err) {
+      console.warn('Kunne ikke hente AI-kvote:', err);
+    } finally {
+      setLoadingQuota(false);
+    }
+  };
+
+  useEffect(() => {
+    if (user) {
+      fetchAiQuota();
+    }
+  }, [user, activeTab]);
 
   const handleDeleteMember = async (memberId: string) => {
     if (!window.confirm(t('confirm_delete_member', 'Er du sikker på at du vil fjerne dette medlemmet?'))) return;
@@ -828,23 +870,57 @@ export default function Settings() {
                       <div className="flex items-center gap-2 mb-1">
                         <Brain size={18} className="text-electric-400" />
                         <h4 className="text-base font-bold">MesterAI Kvote & Tokenbalanse</h4>
-                        <span className="px-2 py-0.5 rounded text-[10px] font-black uppercase tracking-widest bg-emerald-500/20 text-emerald-400 border border-emerald-500/30">
-                          Aktiv kvote (Marginvern)
+                        <span className={cn(
+                          "px-2 py-0.5 rounded text-[10px] font-black uppercase tracking-widest border",
+                          aiQuota?.needsTopUp 
+                            ? "bg-rose-500/20 text-rose-400 border-rose-500/30" 
+                            : aiQuota?.isWarning 
+                            ? "bg-amber-500/20 text-amber-400 border-amber-500/30"
+                            : "bg-emerald-500/20 text-emerald-400 border-emerald-500/30"
+                        )}>
+                          {aiQuota?.needsTopUp ? 'Kvote nådd' : aiQuota?.isWarning ? '80% brukt' : 'Aktiv kvote (Marginvern)'}
                         </span>
                       </div>
                       <p className="text-xs text-slate-400">
-                        Inkludert månedlig forbruk for stemmestyrt byggedagbok, TEK17 bildekontroll og tale-til-endringsordre (NS 8406).
+                        Inkludert månedlig forbruk for stemmestyrt byggedagbok, TEK17 bildekontroll og tale-til-endringsordre (NS 8406) på pakken <strong className="text-slate-200">{aiQuota?.plan === 'team' ? 'VikingMester Team' : aiQuota?.plan === 'entreprenor' ? 'Totalentreprenør' : 'VikingMester Solo'}</strong>.
                       </p>
                     </div>
                     <div className="text-right">
-                      <div className="text-xl font-black text-electric-400">12% brukt</div>
-                      <div className="text-[10px] text-slate-400">1,2M / 10,0M tokens</div>
+                      <div className={cn(
+                        "text-xl font-black",
+                        aiQuota?.needsTopUp ? "text-rose-400" : aiQuota?.isWarning ? "text-amber-400" : "text-electric-400"
+                      )}>
+                        {aiQuota ? `${aiQuota.percentUsed}% brukt` : '0% brukt'}
+                      </div>
+                      <div className="text-[10px] text-slate-400">
+                        {aiQuota 
+                          ? `${(aiQuota.usedTokens / 1_000_000).toFixed(2)}M / ${(aiQuota.limitTokens / 1_000_000).toFixed(1)}M tokens` 
+                          : '0.0M / 2.5M tokens'}
+                        {aiQuota?.topupTokens ? ` (+${(aiQuota.topupTokens / 1_000_000).toFixed(0)}M top-up)` : ''}
+                      </div>
                     </div>
                   </div>
 
-                  <div className="h-2 w-full bg-slate-800 rounded-full overflow-hidden mb-6">
-                    <div className="h-full bg-gradient-to-r from-electric-500 to-emerald-400 rounded-full" style={{ width: '12%' }} />
+                  <div className="h-2.5 w-full bg-slate-800 rounded-full overflow-hidden mb-6">
+                    <div 
+                      className={cn(
+                        "h-full transition-all duration-500 rounded-full",
+                        aiQuota?.needsTopUp 
+                          ? "bg-rose-500" 
+                          : aiQuota?.isWarning 
+                          ? "bg-gradient-to-r from-electric-500 to-amber-400" 
+                          : "bg-gradient-to-r from-electric-500 to-emerald-400"
+                      )} 
+                      style={{ width: `${Math.max(2, Math.min(100, aiQuota?.percentUsed || 0))}%` }} 
+                    />
                   </div>
+
+                  {aiQuota?.needsTopUp && (
+                    <div className="mb-4 p-3 bg-rose-500/10 border border-rose-500/30 rounded-xl text-xs text-rose-300 flex items-center gap-2">
+                      <AlertTriangle size={16} className="text-rose-400 shrink-0" />
+                      <span>Månedens inkluderte kvote er brukt opp. For å fortsette med MesterAI uten avbrudd, bestill en top-up nedenfor.</span>
+                    </div>
+                  )}
 
                   <div className="pt-4 border-t border-slate-800/80 flex flex-col sm:flex-row items-center justify-between gap-4">
                     <div className="text-xs text-slate-400">
@@ -867,6 +943,7 @@ export default function Settings() {
                             const data = await res.json();
                             if (res.ok) {
                               toast.success(data.message || 'Liten Mester-pakke (+5M tokens / +200 bilder) aktivert for din bedrift! kr 490,- legges til på neste EHF.');
+                              await fetchAiQuota();
                             } else {
                               toast.error(data.error || 'Kunne ikke bestille top-up');
                             }
@@ -894,6 +971,7 @@ export default function Settings() {
                             const data = await res.json();
                             if (res.ok) {
                               toast.success(data.message || 'Stor Mester-pakke (+20M tokens / +1000 bilder) aktivert for din bedrift! kr 1 490,- legges til på neste EHF.');
+                              await fetchAiQuota();
                             } else {
                               toast.error(data.error || 'Kunne ikke bestille top-up');
                             }

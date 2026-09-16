@@ -948,7 +948,7 @@ function TacticalHomeView({ onStartDemo, onGoToPricing, onViewChange }: { onStar
 
             <div className="text-center">
               <p className="text-sm text-slate-700 mb-4 font-sans font-medium">
-                Pakke som passer for deg: <span className="text-navy-900 font-bold underline decoration-electric-400">{workerCount <= 1 ? 'VikingMester Solo (990 kr/mnd)' : workerCount <= 5 ? 'VikingMester Team (2 490 kr/mnd)' : 'VikingMester Totalentreprenør (fra 4 900 kr/mnd)'}</span>
+                Pakke som passer for deg: <span className="text-navy-900 font-bold underline decoration-electric-400">{workerCount <= 1 ? 'VikingMester Solo (1 490 kr/mnd)' : workerCount <= 5 ? 'VikingMester Team (3 490 kr/mnd)' : 'VikingMester Totalentreprenør (fra 6 900 kr/mnd)'}</span>
               </p>
               <a 
                 href="#bestill"
@@ -966,13 +966,13 @@ function TacticalHomeView({ onStartDemo, onGoToPricing, onViewChange }: { onStar
         <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8">
           <div className="text-center max-w-3xl mx-auto mb-16">
             <span className="text-xs font-bold text-electric-600 uppercase tracking-widest bg-electric-50 px-3.5 py-1 rounded-full border border-electric-300/40">
-              FORUTSIGBARE DRIFTSKOSTNADER
+              FORUTSIGBARE DRIFTSKOSTNADER • 14 DAGERS PRØVEPERIODE
             </span>
             <h2 className="text-2xl sm:text-4xl lg:text-5xl font-black text-navy-900 mt-4 leading-tight">
-              KNIVSKARPE RAMMER. 100% PROFITTMULTIPLIKATOR.
+              100% AUTONOM BYGGELEDER. ZERO-ENTRY AI.
             </h2>
             <p className="text-slate-600 mt-4 text-sm sm:text-base leading-relaxed">
-              Alltid månedlig bedriftsfaktura eller EHF. Ingen bindingstid. Ingen skjulte kostnader.
+              Alltid månedlig bedriftsfaktura eller EHF. Ingen bindingstid. 14 dagers gratis prøveperiode med umiddelbar oppstart på 2 minutter.
             </p>
           </div>
 
@@ -983,38 +983,39 @@ function TacticalHomeView({ onStartDemo, onGoToPricing, onViewChange }: { onStar
                 <span className="text-xs font-mono font-bold text-slate-500 uppercase">ENKELTMANNSFORETAK / MESTER</span>
                 <h3 className="text-2xl font-black text-navy-900 mt-1">VikingMester Solo</h3>
                 <div className="mt-4 mb-6">
-                  <span className="text-4xl font-black text-navy-900 font-sans">990,-</span>
+                  <span className="text-4xl font-black text-navy-900 font-sans">1 490,-</span>
                   <span className="text-xs text-slate-500 font-mono ml-2">/mnd eks. mva</span>
+                  <div className="text-xs text-emerald-600 font-bold mt-1">Kun 1 190,-/mnd ved årlig avtale</div>
                 </div>
                 <div className="space-y-3 text-xs sm:text-sm font-sans text-slate-700 border-t border-slate-200 pt-4">
-                  <p className="text-electric-600 font-bold font-mono text-xs">KVOTER & RAMMER:</p>
-                  <p className="flex items-center gap-2">
+                  <p className="text-electric-600 font-bold font-mono text-xs">AUTONOME FUNKSJONER & RAMMER:</p>
+                  <p className="flex items-center gap-2 font-semibold text-navy-900">
                     <span className="text-emerald-600 font-bold">✓</span>
-                    <span>1 aktiv bruker</span>
+                    <span>100% Autonom MesterAI byggeleder</span>
                   </p>
                   <p className="flex items-center gap-2">
                     <span className="text-emerald-600 font-bold">✓</span>
-                    <span>Inntil 3 aktive prosjekter</span>
+                    <span>1 aktiv bruker (inntil 5 prosjekter)</span>
+                  </p>
+                  <p className="flex items-center gap-2 font-semibold text-electric-600">
+                    <span className="text-emerald-600 font-bold">✓</span>
+                    <span>Zero-Entry AI (Snakk eller ta bilde)</span>
                   </p>
                   <p className="flex items-center gap-2">
                     <span className="text-emerald-600 font-bold">✓</span>
-                    <span>2 GB lagring (~10 000 WebP-bilder)</span>
+                    <span>Yr.no sanntids byggedagbok (automatisk vær)</span>
                   </p>
                   <p className="flex items-center gap-2">
                     <span className="text-emerald-600 font-bold">✓</span>
-                    <span>100 AI-analyser / mnd</span>
+                    <span>TEK17 AI Vision & avviksfoto</span>
                   </p>
                   <p className="flex items-center gap-2">
                     <span className="text-emerald-600 font-bold">✓</span>
-                    <span>Stemmestyrt byggedagbok</span>
+                    <span>Lovpålagt SJA (Sikker Jobb Analyse)</span>
                   </p>
                   <p className="flex items-center gap-2">
                     <span className="text-emerald-600 font-bold">✓</span>
-                    <span>Yr.no automatisk værsynk</span>
-                  </p>
-                  <p className="flex items-center gap-2">
-                    <span className="text-emerald-600 font-bold">✓</span>
-                    <span>Eksport til Boligmappa PDF</span>
+                    <span>Eksport til Boligmappa PDF på 1 klikk</span>
                   </p>
                 </div>
               </div>
@@ -1022,7 +1023,7 @@ function TacticalHomeView({ onStartDemo, onGoToPricing, onViewChange }: { onStar
                 href="#bestill"
                 className="w-full mt-8 py-3.5 rounded-xl bg-slate-100 hover:bg-slate-200 text-navy-900 font-bold text-xs uppercase tracking-wider text-center border border-slate-200 transition-colors cursor-pointer"
               >
-                Bestill Solo
+                Prøv Solo gratis i 14 dager
               </a>
             </div>
 
@@ -1035,42 +1036,39 @@ function TacticalHomeView({ onStartDemo, onGoToPricing, onViewChange }: { onStar
                 <span className="text-xs font-mono font-bold text-electric-600 uppercase">FOR SMÅ & MELLOMSTORE BYGGFIRMAER</span>
                 <h3 className="text-2xl font-black text-navy-900 mt-1">VikingMester Team</h3>
                 <div className="mt-4 mb-6">
-                  <span className="text-4xl font-black text-electric-600 font-sans">2 490,-</span>
+                  <span className="text-4xl font-black text-electric-600 font-sans">3 490,-</span>
                   <span className="text-xs text-slate-500 font-mono ml-2">/mnd eks. mva</span>
+                  <div className="text-xs text-emerald-600 font-bold mt-1">Kun 2 790,-/mnd ved årlig avtale</div>
                 </div>
                 <div className="space-y-3 text-xs sm:text-sm font-sans text-slate-800 font-medium border-t border-slate-200 pt-4">
-                  <p className="text-electric-600 font-bold font-mono text-xs">KVOTER & RAMMER:</p>
-                  <p className="flex items-center gap-2">
+                  <p className="text-electric-600 font-bold font-mono text-xs">AUTONOME FUNKSJONER & RAMMER:</p>
+                  <p className="flex items-center gap-2 font-bold text-navy-900">
                     <span className="text-emerald-600 font-bold">✓</span>
-                    <span>Inntil 5 aktive brukere</span>
+                    <span>100% Autonom MesterAI byggeleder</span>
                   </p>
                   <p className="flex items-center gap-2">
                     <span className="text-emerald-600 font-bold">✓</span>
-                    <span>Inntil 15 aktive prosjekter</span>
+                    <span>Inntil 5-10 aktive brukere</span>
+                  </p>
+                  <p className="flex items-center gap-2 font-bold text-electric-600">
+                    <span className="text-emerald-600 font-bold">✓</span>
+                    <span>Tale-til-endringsordre (NS 8406 autopilot)</span>
+                  </p>
+                  <p className="flex items-center gap-2 font-semibold">
+                    <span className="text-emerald-600 font-bold">✓</span>
+                    <span>Tverrfaglig Lukkesperre (Rom & Sone)</span>
                   </p>
                   <p className="flex items-center gap-2">
                     <span className="text-emerald-600 font-bold">✓</span>
-                    <span>10 GB lagring (~50 000 WebP-bilder)</span>
+                    <span>TEK17 AI Vision (sluk, membran, fall)</span>
                   </p>
                   <p className="flex items-center gap-2">
                     <span className="text-emerald-600 font-bold">✓</span>
-                    <span>500 AI-analyser / mnd</span>
+                    <span>Yr.no sanntids byggedagbok synkronisering</span>
                   </p>
                   <p className="flex items-center gap-2">
                     <span className="text-emerald-600 font-bold">✓</span>
-                    <span>Tale-til-endringsordre (NS 8406)</span>
-                  </p>
-                  <p className="flex items-center gap-2">
-                    <span className="text-emerald-600 font-bold">✓</span>
-                    <span>TEK17 bilde-avvik og visjon</span>
-                  </p>
-                  <p className="flex items-center gap-2">
-                    <span className="text-emerald-600 font-bold">✓</span>
-                    <span>Flerspråklig (Norsk, Polsk, Litauisk)</span>
-                  </p>
-                  <p className="flex items-center gap-2">
-                    <span className="text-emerald-600 font-bold">✓</span>
-                    <span>Tverrfaglig koordinering</span>
+                    <span>Flerspråklig (Norsk, Engelsk, Polsk, Litauisk)</span>
                   </p>
                 </div>
               </div>
@@ -1078,7 +1076,7 @@ function TacticalHomeView({ onStartDemo, onGoToPricing, onViewChange }: { onStar
                 href="#bestill"
                 className="w-full mt-8 py-3.5 rounded-xl bg-gradient-to-r from-electric-500 to-electric-400 hover:from-electric-400 hover:to-electric-300 text-white font-bold text-xs uppercase tracking-wider text-center shadow-purple-cta hover:shadow-purple-hover transition-all cursor-pointer"
               >
-                Bestill Team
+                Prøv Team gratis i 14 dager
               </a>
             </div>
 
@@ -1088,42 +1086,39 @@ function TacticalHomeView({ onStartDemo, onGoToPricing, onViewChange }: { onStar
                 <span className="text-xs font-mono font-bold text-slate-500 uppercase">FOR STØRRE ENTREPRENØRER</span>
                 <h3 className="text-2xl font-black text-navy-900 mt-1">Totalentreprenør</h3>
                 <div className="mt-4 mb-6">
-                  <span className="text-4xl font-black text-navy-900 font-sans">Fra 4 900,-</span>
-                  <span className="text-xs text-slate-500 font-mono ml-2">/mnd</span>
+                  <span className="text-4xl font-black text-navy-900 font-sans">Fra 6 900,-</span>
+                  <span className="text-xs text-slate-500 font-mono ml-2">/mnd eks. mva</span>
+                  <div className="text-xs text-slate-500 font-bold mt-1">Skreddersydd etter prosjektvolum</div>
                 </div>
                 <div className="space-y-3 text-xs sm:text-sm font-sans text-slate-700 border-t border-slate-200 pt-4">
-                  <p className="text-electric-600 font-bold font-mono text-xs">KVOTER & RAMMER:</p>
-                  <p className="flex items-center gap-2">
+                  <p className="text-electric-600 font-bold font-mono text-xs">AUTONOME FUNKSJONER & RAMMER:</p>
+                  <p className="flex items-center gap-2 font-bold text-navy-900">
                     <span className="text-emerald-600 font-bold">✓</span>
-                    <span>Inntil 15 brukere (skalerbart)</span>
+                    <span>Full autonom AI-arkitektur & UE-portal</span>
                   </p>
                   <p className="flex items-center gap-2">
                     <span className="text-emerald-600 font-bold">✓</span>
-                    <span>Inntil 50 aktive prosjekter</span>
+                    <span>Ubegrenset antall aktive brukere & prosjekter</span>
+                  </p>
+                  <p className="flex items-center gap-2 font-bold text-electric-600">
+                    <span className="text-emerald-600 font-bold">✓</span>
+                    <span>Juridisk NS 8405 / NS 8406 endringsordremotor</span>
                   </p>
                   <p className="flex items-center gap-2">
                     <span className="text-emerald-600 font-bold">✓</span>
-                    <span>30 GB lagringsvolum</span>
+                    <span>Tverrfaglig Lukkesperre med tidslås og soner</span>
                   </p>
                   <p className="flex items-center gap-2">
                     <span className="text-emerald-600 font-bold">✓</span>
-                    <span>2 000 AI-analyser / mnd</span>
+                    <span>Omnichannel (Discord, Slack, Teams, E-post, SMS)</span>
                   </p>
                   <p className="flex items-center gap-2">
                     <span className="text-emerald-600 font-bold">✓</span>
-                    <span>Tverrfaglig Lukkesperre (Rom/Sone)</span>
+                    <span>Tripletex & PowerOffice API-bro</span>
                   </p>
                   <p className="flex items-center gap-2">
                     <span className="text-emerald-600 font-bold">✓</span>
-                    <span>Underentreprenør-tildeling</span>
-                  </p>
-                  <p className="flex items-center gap-2">
-                    <span className="text-emerald-600 font-bold">✓</span>
-                    <span>Tripletex & PowerOffice API</span>
-                  </p>
-                  <p className="flex items-center gap-2">
-                    <span className="text-emerald-600 font-bold">✓</span>
-                    <span>Eget Microsoft Teams Bot oppsett</span>
+                    <span>Dedikert onboarding & SLA 99.9%</span>
                   </p>
                 </div>
               </div>
@@ -1140,11 +1135,19 @@ function TacticalHomeView({ onStartDemo, onGoToPricing, onViewChange }: { onStar
           <div className="bg-slate-50 border border-slate-200 rounded-3xl p-6 sm:p-8 max-w-5xl mx-auto shadow-card-soft mt-12">
             <h4 className="text-sm font-bold text-electric-600 uppercase tracking-widest mb-6 flex items-center gap-2">
               <span className="w-2 h-2 rounded-full bg-electric-500" />
-              MODULÆRE TILLEGG PÅ ALLE NIVÅER
+              MODULÆRE TILLEGG & TOP-UP PÅ ALLE NIVÅER
             </h4>
             <div className="grid grid-cols-1 sm:grid-cols-2 md:grid-cols-3 gap-4 text-xs sm:text-sm font-sans">
               <div className="p-3.5 rounded-xl bg-white border border-slate-200/80 shadow-xs flex items-center justify-between">
-                <span className="text-slate-800 font-bold">Ekstra bruker:</span>
+                <span className="text-slate-800 font-bold">Liten Mester Top-up:</span>
+                <span className="text-electric-600 font-mono font-black">490,- (+5M tok)</span>
+              </div>
+              <div className="p-3.5 rounded-xl bg-white border border-slate-200/80 shadow-xs flex items-center justify-between">
+                <span className="text-slate-800 font-bold">Stor Mester Top-up:</span>
+                <span className="text-electric-600 font-mono font-black">1 490,- (+20M tok)</span>
+              </div>
+              <div className="p-3.5 rounded-xl bg-white border border-slate-200/80 shadow-xs flex items-center justify-between">
+                <span className="text-slate-800 font-bold">Ekstra fagarbeider:</span>
                 <span className="text-electric-600 font-mono font-black">249,- /mnd</span>
               </div>
               <div className="p-3.5 rounded-xl bg-white border border-slate-200/80 shadow-xs flex items-center justify-between">
@@ -1154,14 +1157,6 @@ function TacticalHomeView({ onStartDemo, onGoToPricing, onViewChange }: { onStar
               <div className="p-3.5 rounded-xl bg-white border border-slate-200/80 shadow-xs flex items-center justify-between">
                 <span className="text-slate-800 font-bold">+10 GB Lagring:</span>
                 <span className="text-electric-600 font-mono font-black">149,- /mnd</span>
-              </div>
-              <div className="p-3.5 rounded-xl bg-white border border-slate-200/80 shadow-xs flex items-center justify-between">
-                <span className="text-slate-800 font-bold">Våtrom & Membran BVN:</span>
-                <span className="text-electric-600 font-mono font-black">490,- /mnd</span>
-              </div>
-              <div className="p-3.5 rounded-xl bg-white border border-slate-200/80 shadow-xs flex items-center justify-between">
-                <span className="text-slate-800 font-bold">Elektro & NEK 400:</span>
-                <span className="text-electric-600 font-mono font-black">490,- /mnd</span>
               </div>
               <div className="p-3.5 rounded-xl bg-white border border-slate-200/80 shadow-xs flex items-center justify-between">
                 <span className="text-slate-800 font-bold">Tripletex / PowerOffice:</span>
@@ -1300,9 +1295,9 @@ function TacticalHomeView({ onStartDemo, onGoToPricing, onViewChange }: { onStar
                     <select
                       className="w-full bg-slate-50 border border-slate-200 rounded-xl px-4 py-3 text-slate-900 focus:bg-white focus:border-electric-500 focus:ring-2 focus:ring-electric-500/20 outline-none text-sm transition-all cursor-pointer"
                     >
-                      <option value="team">VikingMester Team (2 490,-/mnd)</option>
-                      <option value="solo">VikingMester Solo (990,-/mnd)</option>
-                      <option value="entreprenor">Totalentreprenør (fra 4 900,-/mnd)</option>
+                      <option value="team">VikingMester Team (3 490,-/mnd)</option>
+                      <option value="solo">VikingMester Solo (1 490,-/mnd)</option>
+                      <option value="entreprenor">Totalentreprenør (fra 6 900,-/mnd)</option>
                     </select>
                   </div>
                 </div>
@@ -1434,7 +1429,7 @@ function TacticalPricingView({ onStartDemo, onBack }: { onStartDemo: () => void,
           FASTE MÅNEDSPRISER • INGEN BINDINGSTID
         </h2>
         <p className="text-sm sm:text-base text-slate-600 leading-relaxed font-sans mb-8">
-          Solo: 990 kr/mnd • Team: 2 490 kr/mnd • Totalentreprenør: fra 4 900 kr/mnd. Faktura sendes på EHF hver måned.
+          Solo: 1 490 kr/mnd • Team: 3 490 kr/mnd • Totalentreprenør: fra 6 900 kr/mnd. Faktura sendes på EHF hver måned. Inkluderer 14 dagers gratis prøveperiode.
         </p>
         <a 
           href="#bestill" 

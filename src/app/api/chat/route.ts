@@ -1,7 +1,8 @@
 import { NextRequest, NextResponse } from 'next/server';
 import { generateWithAiEngine } from '@/src/lib/server/aiEngine';
 import { saveCollectionItem, getCollectionItems } from '@/src/lib/server/db';
-import { getUserFromRequest } from '@/src/lib/server/auth';
+import { getUserFromRequest, isUserAdmin } from '@/src/lib/server/auth';
+import { checkCompanyQuota } from '@/src/lib/server/costTracker';
 import { sanitize, sanitizeEmail, sanitizePhone, sanitizeHeader } from '@/src/lib/sanitize';
 import { checkRateLimit, getClientIp } from '@/src/lib/server/rateLimit';
 
@@ -432,6 +433,29 @@ INSTRUKSJON FOR SVAR:
       promptContext += '\n';
     }
     promptContext += `HÅNDVERKERENS INSTRUKS:\n"${userText}"\n\nPROSJEKT:\n${resolvedProjectName} (${resolvedProjectId})`;
+
+    // 🛡️ Marginvern: Sjekk bedriftens tokenkvote før kostbare AI-beregninger
+    const isAdmin = isUserAdmin(user);
+    if (userCompanyId && !isAdmin) {
+      const quota = await checkCompanyQuota(userCompanyId);
+      if (quota.needsTopUp) {
+        return NextResponse.json({
+          reply: `⚠️ **Månedlig inkludert AI-kvote er nådd**\n\nBedriftens kvote for MesterAI (${(quota.limitTokens / 1_000_000).toFixed(1)}M tokens) for denne måneden er brukt opp.\n\nFor å sikre 100% forutsigbare driftskostnader uten ubehagelige overforbruksregninger, er autonome analyser satt på pause frem til neste måned for din bedrift.\n\nDu kan fortsette umiddelbart ved å aktivere en **Mester Top-up** under **Innstillinger → Fakturering** (+5M tokens / 200 bilder for kr 490,-).`,
+          suggestedActions: [
+            {
+              id: 'open_settings_billing',
+              type: 'navigate_settings',
+              label: '⚡ Aktiver Mester Top-up (+5M tokens / 490,-)',
+              data: { tab: 'billing' }
+            }
+          ],
+          followUpPrompts: [
+            'Hva koster ekstra AI-pakker?',
+            'Hvilke funksjoner er fortsatt gratis?'
+          ]
+        });
+      }
+    }
 
     let agentReply = '';
     try {

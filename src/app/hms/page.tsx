@@ -68,13 +68,13 @@ export default function HmsPage() {
         <div className="max-w-5xl mx-auto text-center">
           <div className="inline-flex items-center gap-2 bg-emerald-100/80 border border-emerald-300/60 px-3.5 py-1.5 rounded-full text-xs font-bold text-emerald-800 mb-6">
             <ShieldCheck size={16} />
-            <span>Internkontrollforskriften § 5 & Arbeidstilsynet</span>
+            <span>100% Autonomt HMS-system med MesterAI • Internkontrollforskriften</span>
           </div>
           <h1 className="text-4xl sm:text-6xl font-black tracking-tight text-navy-900 mb-6 leading-tight">
-            Lovpålagt <span className="text-emerald-600">HMS-system</span> for bygg og anlegg
+            Lovpålagt <span className="text-emerald-600">autonomt HMS-system</span> for bygg og anlegg
           </h1>
           <p className="text-lg sm:text-xl text-slate-600 max-w-3xl mx-auto mb-10 leading-relaxed">
-            Slipp bekymringer for Arbeidstilsynets kontroller. Få ferdig oppsatt internkontroll med SJA, vernerunder, stoffkartotek og RUH samlet i én lynrask mobilapp.
+            Slipp bekymringer for Arbeidstilsynets kontroller. Få ferdig oppsatt internkontroll med SJA via tale, vernerunder, stoffkartotek og RUH samlet i én lynrask mobilapp.
           </p>
           <div className="flex flex-col sm:flex-row items-center justify-center gap-4">
             <Link
@@ -88,7 +88,7 @@ export default function HmsPage() {
               href="/priser"
               className="w-full sm:w-auto px-8 py-4 bg-white border border-slate-200 hover:bg-slate-50 text-navy-900 font-bold rounded-2xl transition-colors text-base"
             >
-              Se HMS-priser (fra kr 990,-)
+              Se HMS-priser (fra kr 1 490,-)
             </Link>
           </div>
         </div>

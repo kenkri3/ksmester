@@ -2657,7 +2657,7 @@ function CreateCompanyModal({ onClose, onSuccess }: { onClose: () => void, onSuc
             >
               <option value="solo">Solo (2.5M tokens/mnd - kr 1 490,-)</option>
               <option value="team">Team (10M tokens/mnd - kr 3 490,-)</option>
-              <option value="entreprenor">Totalentreprenør (30M tokens/mnd - kr 6 900,-)</option>
+              <option value="entreprenor">Totalentreprenør (30M tokens/mnd - fra kr 6 900,-)</option>
             </select>
           </div>
 

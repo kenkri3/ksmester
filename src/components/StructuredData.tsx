@@ -66,11 +66,11 @@ export function StructuredData({ breadcrumbs, faqs }: StructuredDataProps = {}) 
       {
         '@type': 'Offer',
         name: 'VikingMester Solo',
-        price: '990',
+        price: '1490',
         priceCurrency: 'NOK',
         priceValidUntil: '2027-12-31',
         availability: 'https://schema.org/InStock',
-        description: 'For enkeltpersonforetak (1 aktiv håndverker). Ubegrenset bruk.',
+        description: 'For enkeltpersonforetak (1 aktiv håndverker). 100% autonom MesterAI byggeleder.',
       },
       {
         '@type': 'Offer',
@@ -79,7 +79,16 @@ export function StructuredData({ breadcrumbs, faqs }: StructuredDataProps = {}) 
         priceCurrency: 'NOK',
         priceValidUntil: '2027-12-31',
         availability: 'https://schema.org/InStock',
-        description: 'For bedrifter inntil 5 håndverkere. Inkluderer tverrfaglig koordinering.',
+        description: 'For bedrifter inntil 5-10 håndverkere. Inkluderer tverrfaglig lukkesperre og NS 8406.',
+      },
+      {
+        '@type': 'Offer',
+        name: 'VikingMester Totalentreprenør',
+        price: '6900',
+        priceCurrency: 'NOK',
+        priceValidUntil: '2027-12-31',
+        availability: 'https://schema.org/InStock',
+        description: 'For større entreprenører. Full autonom AI-arkitektur og ubegrensede prosjekter.',
       },
     ],
     publisher: {

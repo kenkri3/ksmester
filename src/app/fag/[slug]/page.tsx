@@ -1,4 +1,4 @@
-﻿import type { Metadata } from 'next';
+import type { Metadata } from 'next';
 import Link from 'next/link';
 import { notFound } from 'next/navigation';
 import ReactMarkdown from 'react-markdown';
@@ -203,7 +203,7 @@ export default async function FagArticlePage({
               href="/priser"
               className="px-6 py-3.5 bg-navy-900 border border-navy-700 hover:bg-navy-800 text-white font-bold rounded-2xl text-center text-sm transition-colors"
             >
-              Se priser (fra kr 990,-)
+              Se priser (fra kr 1 490,-)
             </Link>
           </div>
         </div>

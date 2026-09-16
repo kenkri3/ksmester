@@ -463,7 +463,7 @@ function AppContent() {
           </div>
           <h1 className="text-2xl font-bold mb-4">{t('trial_expired', 'Prøveperioden er utløpt')}</h1>
           <p className="text-slate-400 mb-8">
-            {t('trial_expired_desc', 'Din 7-dagers gratis prøveperiode er over. For å fortsette å bruke VikingMester må du registrere deg for et abonnement.')}
+            {t('trial_expired_desc', 'Din 14-dagers gratis prøveperiode er over. For å fortsette å bruke VikingMester må du registrere deg for et abonnement.')}
           </p>
           <button className="w-full bg-emerald-600 text-navy-900 py-4 rounded-2xl font-bold hover:bg-slate-500 transition-all mb-4">
             {t('choose_plan', 'Velg abonnement')}

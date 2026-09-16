@@ -47,17 +47,17 @@ export const PLAN_LIMITS: Record<string, { tokens: number; images: number; month
   solo: {
     tokens: 2_500_000, // 2.5 mill tokens/mnd (Vår tokenkostnad: ca. 8-15 kr)
     images: 250,       // 250 TEK17 bildeanalyser
-    monthlyPrice: 1490 // 1 490 kr/mnd -> 98% bruttomargin
+    monthlyPrice: 1490  // 1 490 kr/mnd -> 99% bruttomargin
   },
   team: {
     tokens: 10_000_000, // 10 mill tokens/mnd (Vår tokenkostnad: ca. 35-60 kr)
     images: 1000,
-    monthlyPrice: 3490  // 3 490 kr/mnd -> 98% bruttomargin
+    monthlyPrice: 3490  // 3 490 kr/mnd -> 98.5% bruttomargin
   },
   entreprenor: {
     tokens: 30_000_000, // 30 mill tokens/mnd (Vår tokenkostnad: ca. 120-180 kr)
     images: 3000,
-    monthlyPrice: 6900  // 6 900 kr/mnd -> 97% bruttomargin
+    monthlyPrice: 6900  // 6 900 kr/mnd -> 97.5% bruttomargin
   }
 };
 
@@ -218,29 +218,64 @@ export async function checkCompanyQuota(companyId?: string, planKey?: string) {
   const planInfo = PLAN_LIMITS[resolvedPlanKey];
 
   try {
-    const allCosts = await getCollectionItems('token_costs');
+    const [allCosts, allTopups] = await Promise.all([
+      getCollectionItems('token_costs'),
+      getCollectionItems('token_topups').catch(() => [])
+    ]);
+
     const companyCosts = allCosts.filter((c: any) => 
       c.companyId === companyId && 
       c.timestamp && 
       c.timestamp.startsWith(currentMonthPrefix)
     );
 
+    // Hent aktive top-up-kjøp for bedriften denne måneden (eller aktive generelt)
+    const companyTopups = (allTopups || []).filter((t: any) =>
+      t.companyId === companyId &&
+      (t.status === 'active' || (t.purchasedAt && t.purchasedAt.startsWith(currentMonthPrefix)))
+    );
+
+    const topupTokens = companyTopups.reduce((sum: number, t: any) => sum + (Number(t.tokensGranted) || 0), 0);
+    const topupImages = companyTopups.reduce((sum: number, t: any) => sum + (Number(t.imagesGranted) || 0), 0);
+
     const usedTokens = companyCosts.reduce((sum: number, c: any) => sum + (c.totalTokens || 0), 0);
-    const limitTokens = planInfo.tokens;
-    const percentUsed = Math.min(100, Math.round((usedTokens / limitTokens) * 100));
+    const limitTokens = planInfo.tokens + topupTokens;
+    const remainingTokens = Math.max(0, limitTokens - usedTokens);
+    const percentUsed = limitTokens > 0 ? Math.min(100, Math.round((usedTokens / limitTokens) * 100)) : 100;
 
     return {
       allowed: usedTokens < limitTokens,
       usedTokens,
       limitTokens,
+      baseTokens: planInfo.tokens,
+      topupTokens,
+      topupImages,
+      remainingTokens,
       percentUsed,
       isWarning: percentUsed >= 80,
       needsTopUp: percentUsed >= 100,
       plan: resolvedPlanKey,
-      planMonthlyPrice: planInfo.monthlyPrice
+      planMonthlyPrice: planInfo.monthlyPrice,
+      baseImages: planInfo.images,
+      totalImages: planInfo.images + topupImages
     };
   } catch {
-    return { allowed: true, percentUsed: 0, isWarning: false, needsTopUp: false, plan: resolvedPlanKey };
+    return { 
+      allowed: true, 
+      usedTokens: 0, 
+      limitTokens: planInfo.tokens, 
+      baseTokens: planInfo.tokens,
+      topupTokens: 0,
+      topupImages: 0,
+      remainingTokens: planInfo.tokens, 
+      percentUsed: 0, 
+      isWarning: false, 
+      needsTopUp: false, 
+      plan: resolvedPlanKey,
+      planMonthlyPrice: planInfo.monthlyPrice,
+      baseImages: planInfo.images,
+      totalImages: planInfo.images
+    };
   }
 }
 

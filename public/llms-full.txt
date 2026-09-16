@@ -51,20 +51,20 @@
 
 ---
 
-## 4. Prismodell
+## 4. Prismodell (20 moduler & Marginvern)
 
 1. **VikingMester Solo:**
-   - Pris: Kr 990,- eks mva per måned.
-   - For: Enkeltpersonforetak (ENK) og én-mannsbedrifter.
-   - Funksjoner: Ubegrenset byggedagbok, avvik, SJA, tale-til-tekst og mobilapp.
+   - Pris: Kr 1 490,- eks mva per måned (1 190,- ved årlig avtale).
+   - For: Enkeltpersonforetak (ENK) og én-mannsbedrifter (1 bruker, inntil 5 prosjekter).
+   - Funksjoner: Alle 20 moduler, 2.5M AI-tokens/mnd, ubegrenset byggedagbok, avvik, SJA, tale-til-tekst og mobilapp.
 2. **VikingMester Team:**
-   - Pris: Kr 3 490,- eks mva per måned.
-   - For: Små og mellomstore håndverksbedrifter (inntil 5 aktive brukere inkludert, kr 390/mnd per ekstra bruker).
-   - Funksjoner: Alt i Solo + tverrfaglig koordinering, NOBB-vareintegrasjon, avanserte kalkyler og revisjonsrapporter.
+   - Pris: Kr 3 490,- eks mva per måned (2 790,- ved årlig avtale).
+   - For: Små og mellomstore håndverksbedrifter (inntil 5-10 aktive brukere inkludert, kr 249/mnd per ekstra bruker).
+   - Funksjoner: Alle 20 moduler for hele laget, 10M AI-tokens/mnd, tverrfaglig koordinering, TEK17 AI Vision, NS 8406 endringsordrebygger.
 3. **VikingMester Entreprenør:**
-   - Pris: Tilpasset avtale for større selskaper med spesifikke API-behov og ERP-koblinger.
+   - Pris: Fra kr 6 900,- per måned for større selskaper med spesifikke API-behov, underentreprenør-portal og 30M tokens/mnd.
 
-Ingen bindingstid. Gratis prøveperiode og gratis opplæring.
+Ingen bindingstid. 100% forutsigbart marginvern med Mester Top-up ved ekstra kapasitetsbehov. Gratis prøveperiode og opplæring.
 
 ---
 

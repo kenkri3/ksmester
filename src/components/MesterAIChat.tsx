@@ -789,6 +789,10 @@ export default function MesterAIChat({
       onOpenAIVision?.();
       return;
     }
+    if (action.type === 'navigate_settings' || action.id === 'open_settings_billing') {
+      window.dispatchEvent(new CustomEvent('navigate_view', { detail: { view: 'settings', tab: 'billing' } }));
+      return;
+    }
 
     if (action.prompt || action.data?.prompt) {
       handleSendMessage(action.prompt || action.data?.prompt);

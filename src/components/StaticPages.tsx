@@ -72,72 +72,75 @@ export const PricingPage = () => {
   const plans = [
     {
       id: 'solo',
-      name: 'Mester Solo',
-      tag: 'Enkeltpersonforetak & små lag',
-      desc: 'For deg som jobber alene eller driver et mindre håndverkerlag.',
-      monthlyPrice: 990,
-      annualPrice: 890,
+      name: 'VikingMester Solo',
+      tag: 'Enkeltpersonforetak & 1 håndverker',
+      desc: 'For deg som jobber alene og vil ha 100% autonom kontroll på byggeplass og dokumentasjon.',
+      monthlyPrice: 1490,
+      annualPrice: 1190,
       popular: false,
       features: [
-        '1 aktiv bruker (enkelt å legge til flere)',
-        'Inntil 3 aktive prosjekter samtidig',
-        '2 GB lynrask skylagring (~10 000 WebP-bilder)',
-        'Inntil 100 AI-analyser / mnd (tale, SJA & bilde)',
-        'Autonom AI-agent i WhatsApp, SMS, Teams eller Web',
-        'Ubegrenset stemme-til-byggedagbok på farten',
-        'Automatisk værdata via Yr.no i alle rapporter (0 kr)',
-        '1-klikks Boligmappa & PDF-eksport'
+        '100% Autonom MesterAI byggelederagent',
+        '1 aktiv bruker (enkelt å oppgradere)',
+        'Inntil 5 aktive prosjekter samtidig',
+        'Zero-Entry AI: Snakk eller ta bilde, MesterAI gjør resten',
+        'Handsfree stemme-til-byggedagbok med Yr.no værsynk',
+        'Lovpålagt Sikker Jobb Analyse (SJA) & risikovurdering',
+        'TEK17 AI Vision bildekontroll & avviksfoto',
+        '2 GB lynrask skylagring & 1-klikks Boligmappa PDF',
+        '14 dagers gratis prøveperiode (start på 2 minutter)'
       ]
     },
     {
       id: 'team',
-      name: 'Mester Team',
-      tag: 'Mest populær',
-      desc: 'For voksende håndverkerbedrifter som vil fjerne alt papirarbeid.',
-      monthlyPrice: 2490,
-      annualPrice: 1990,
+      name: 'VikingMester Team',
+      tag: 'Mest populær for bedrifter',
+      desc: 'For voksende håndverkerbedrifter som vil ha en autonom byggeleder og sikre marginene.',
+      monthlyPrice: 3490,
+      annualPrice: 2790,
       popular: true,
       features: [
-        'Inntil 5 aktive fagarbeidere (+249,- per ekstra)',
+        '100% Autonom MesterAI byggelederagent for hele laget',
+        'Inntil 5-10 aktive fagarbeidere (+249,- per ekstra)',
         'Inntil 15 aktive prosjekter samtidig',
-        '10 GB skylagring (~50 000 WebP-bilder & FDV)',
-        'Inntil 500 AI-analyser / mnd (Gemini 3.8 Flash Vision)',
-        'Full integrasjon i bedriftens Microsoft Teams & Slack',
-        'Flerspråklig oversettelse (Polsk, Litauisk, Ukrainsk)',
-        'AI Vision bildekontroll (TEK17 & Våtromsnormen BVN)',
-        'Endringsordrer & fristforlengelse (NS 8406)'
+        'Tale-til-Endringsordre & automatisk fristvarsel (NS 8406)',
+        'Tverrfaglig Lukkesperre (digital signering før vegger lukkes)',
+        'TEK17 AI Vision bildekontroll & avviksrapporter',
+        'Yr.no sanntids værlogging i byggedagboken',
+        'Flerspråklig oversettelse (Norsk, Engelsk, Polsk, Litauisk)',
+        'Digitalt Stoffkartotek (offline) & 10 GB skylagring',
+        '14 dagers gratis prøveperiode uten bindingstid'
       ]
     },
     {
       id: 'enterprise',
       name: 'Totalentreprenør',
       tag: 'Større bedrifter & konsern',
-      desc: 'For entreprenører (15+ ansatte), kjeder og komplekse byggeplasser.',
-      monthlyPrice: 'Fra 4 900 kr',
-      annualPrice: 'Fra 4 900 kr',
+      desc: 'For entreprenører (10+ ansatte), kjeder og komplekse byggeplasser.',
+      monthlyPrice: 'Fra 6 900 kr',
+      annualPrice: 'Fra 5 500 kr',
       popular: false,
       features: [
-        'Inntil 15 aktive brukere (skalerbart til 100+)',
-        'Inntil 50 aktive prosjekter & 30 GB lagring',
-        'Inntil 2 000 AI-analyser / mnd',
-        'Egen skreddersydd AI-bot i bedriftens Teams Tenant',
+        'Full autonom AI-arkitektur & skreddersydd MesterAI',
+        'Ubegrenset antall aktive brukere & prosjekter',
+        'Alle 20 moduler + underentreprenør-portal (UE)',
+        'Juridisk NS 8405 / NS 8406 endringsordremotor',
+        'Tverrfaglig Lukkesperre med tidslås og soner',
+        'Omnichannel tilkobling (Discord, Slack, Teams, E-post, SMS)',
         'Tripletex, PowerOffice Go & Fiken API-bro',
-        'SHA-koordinator iht. Byggherreforskriften',
-        'Underentreprenør-portal med automatisk avviksruting',
-        'Dedikert onboarding & garantert oppetid'
+        'Dedikert onboarding, opplæring & prioritert support'
       ]
     }
   ];
 
   const addons = [
-    { title: 'Ekstra brukerlisens', price: 'kr 249,- / mnd', desc: 'Legg til ekstra fagarbeidere ved behov' },
+    { title: 'Liten Mester Top-up (+5M tokens)', price: 'kr 490,- / pakke', desc: '+5 000 000 tokens & 200 TEK17-bildeanalyser (nullstilles ikke)' },
+    { title: 'Stor Mester Top-up (+20M tokens)', price: 'kr 1 490,- / pakke', desc: '+20 000 000 tokens & 1 000 TEK17-bildeanalyser for stordrift' },
+    { title: 'Ekstra fagarbeider', price: 'kr 249,- / mnd', desc: 'Legg til ekstra fagarbeidere i Team-pakken' },
     { title: 'Ekstra prosjektpakke (+10)', price: 'kr 490,- / mnd', desc: 'Utvider grensen med 10 aktive byggeprosjekter' },
     { title: 'Ekstra lagringsvolum (+10 GB)', price: 'kr 149,- / mnd', desc: 'Plass til ytterligere ~50 000 WebP-bilder og FDV' },
     { title: 'Våtrom & Membran (BVN)', price: 'kr 490,- / mnd', desc: 'Dypkontroll iht. Byggebransjens Våtromsnorm BVN 31.205' },
     { title: 'Elektro & NEK 400', price: 'kr 490,- / mnd', desc: 'Samsvarserklæring og risikovurdering for el-installasjon' },
-    { title: 'Asbest & Miljøsanering', price: 'kr 690,- / mnd', desc: 'Arbeidstilsynets meldeskjema og avfallsdeklarering' },
-    { title: 'Tripletex / PowerOffice API', price: 'kr 490,- / mnd', desc: 'Synkroniserer timer, ordre og prosjekter automatisk' },
-    { title: '40-t Verneombudskurs (Lovpålagt)', price: 'kr 4 490,- engangs', desc: '100% fleksibelt nettkurs iht. AML § 6-5' }
+    { title: 'Tripletex / PowerOffice API', price: 'kr 490,- / mnd', desc: 'Synkroniserer timer, ordre og prosjekter automatisk' }
   ];
 
   const handleSelectPlan = (planId: string) => {
@@ -150,9 +153,9 @@ export const PricingPage = () => {
 
   return (
     <PageWrapper 
-      badge="Forutsigbare priser"
+      badge="Forutsigbare priser & 20 moduler"
       title="Invester i mer fritid og bedre kvalitet" 
-      subtitle="Ingen bindingstid, ingen etableringsgebyrer. Enkel månedlig faktura med full oppstartsgaranti for din bedrift."
+      subtitle="Ingen bindingstid, ingen etableringsgebyrer. Alle 20 spesialiserte moduler inkludert med 100% forutsigbart marginvern og garanti mot overraskelsesfakturaer."
     >
       {/* Billing toggle */}
       <div className="flex items-center justify-center gap-3 mb-12">
