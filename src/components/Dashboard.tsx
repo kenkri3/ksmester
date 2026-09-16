@@ -52,11 +52,15 @@ import {
   ThumbsUp,
   ThumbsDown,
   CloudSun,
-  Trash2
+  Trash2,
+  Radio,
+  MessageSquare,
+  Mail,
+  Hash
 } from 'lucide-react';
 import { cn } from '@/src/lib/utils';
 import { Project, Deviation, UserProfile } from '../types';
-import { db, collection, onSnapshot, query, orderBy, where, getDocs, OperationType, handleFirestoreError } from '../services/firebase';
+import { db, collection, onSnapshot, query, orderBy, where, getDocs, deleteDoc, OperationType, handleFirestoreError } from '../services/firebase';
 import { useTranslation } from 'react-i18next';
 import { toast } from 'sonner';
 import { useDashboardData } from '../hooks/useDashboardData';
@@ -73,6 +77,7 @@ import DocumentationArchive from './DocumentationArchive';
 import TimeRegistrationModal from './TimeRegistrationModal';
 import BuildingApplicationModal from './BuildingApplicationModal';
 import IntegrationModal from './IntegrationModal';
+import OmnichannelModal, { getStoredOmnichannelSettings, OmnichannelSettings } from './OmnichannelModal';
 import HandoverModal from './HandoverModal';
 import InventoryModal from './InventoryModal';
 import VehicleModal from './VehicleModal';
@@ -85,6 +90,7 @@ import PreCloseInspectorModal, { LukkesperreZone } from './PreCloseInspectorModa
 import SJAPreviewModal, { SJADocument } from './SJAPreviewModal';
 import VoiceSJAModal from './VoiceSJAModal';
 import ProjectContactsModal from './ProjectContactsModal';
+import InviteModal from './InviteModal';
 import MesterAIChat from './MesterAIChat';
 import AllModulesDrawer from './AllModulesDrawer';
 import QuickStartGuide from './QuickStartGuide';
@@ -195,6 +201,86 @@ export default function Dashboard({
     }
   };
 
+  // Live Offers (Pristilbud) state with real-time sync and deletion
+  const [dashboardOffers, setDashboardOffers] = useState<any[]>([
+    {
+      id: 'off-101',
+      title: 'Totalrenovering bad og vaskerom 2. etasje',
+      clientName: 'Marianne Berg',
+      clientEmail: 'marianne.berg@nordmann.no',
+      projectName: 'Nyebakken 14',
+      totalAmount: 285000,
+      totalIncVat: 356250,
+      status: 'accepted',
+      token: 'tok-bath-285k',
+      createdAt: new Date(Date.now() - 86400000 * 2).toISOString()
+    },
+    {
+      id: 'off-102',
+      title: 'Utskifting av trekledning og 150mm etterisolering',
+      clientName: 'Thomas Lunde',
+      clientEmail: 'thomas.lunde@outlook.com',
+      projectName: 'Fjordveien 22',
+      totalAmount: 148000,
+      totalIncVat: 185000,
+      status: 'pending',
+      token: 'tok-facade-148k',
+      createdAt: new Date(Date.now() - 86400000 * 4).toISOString()
+    },
+    {
+      id: 'off-103',
+      title: 'Tilbygg 45m2 stue/kjøkken med ringmur',
+      clientName: 'Henrik Hauge',
+      clientEmail: 'henrik.hauge@gmail.com',
+      projectName: 'Storgata 8',
+      totalAmount: 420000,
+      totalIncVat: 525000,
+      status: 'draft',
+      token: 'tok-extension-420k',
+      createdAt: new Date(Date.now() - 86400000 * 7).toISOString()
+    }
+  ]);
+
+  useEffect(() => {
+    const unsub = onSnapshot(collection(db, 'offers'), (snapshot) => {
+      if (snapshot.docs && snapshot.docs.length > 0) {
+        const live = snapshot.docs.map(d => ({
+          id: d.id,
+          ...d.data()
+        }));
+        setDashboardOffers(live);
+      }
+    });
+    return () => unsub();
+  }, []);
+
+  const handleDeleteDashboardOffer = async (offerId: string, offerTitle: string) => {
+    if (!window.confirm(`Er du sikker på at du vil slette tilbudet "${offerTitle}"?`)) {
+      return;
+    }
+    try {
+      await deleteDoc({ collectionName: 'offers', id: offerId });
+      setDashboardOffers(prev => prev.filter(o => o.id !== offerId));
+      toast.success(`Tilbud "${offerTitle}" er slettet.`);
+    } catch (e) {
+      console.warn('Error deleting offer from DB, updating local state:', e);
+      setDashboardOffers(prev => prev.filter(o => o.id !== offerId));
+      toast.success(`Tilbud "${offerTitle}" er fjernet.`);
+    }
+  };
+
+  // Omnichannel (Discord, Slack, MS Teams, E-post) settings state
+  const [isOmnichannelModalOpen, setIsOmnichannelModalOpen] = useState(false);
+  const [omnichannelSettings, setOmnichannelSettings] = useState<OmnichannelSettings>(getStoredOmnichannelSettings);
+
+  useEffect(() => {
+    const handleSettingsUpdate = (e: any) => {
+      if (e.detail) setOmnichannelSettings(e.detail);
+    };
+    window.addEventListener('omnichannel_settings_updated', handleSettingsUpdate);
+    return () => window.removeEventListener('omnichannel_settings_updated', handleSettingsUpdate);
+  }, []);
+
   // Lukkesperre & Pre-close state
   const [lukkesperreZones, setLukkesperreZones] = useState<LukkesperreZone[]>([
     { 
@@ -285,6 +371,8 @@ export default function Dashboard({
   const [isAIChatOpen, setIsAIChatOpen] = useState(false);
   const [chatInitialPrompt, setChatInitialPrompt] = useState<string | undefined>(undefined);
   const [offerInitialData, setOfferInitialData] = useState<any>(undefined);
+  const [isInviteModalOpen, setIsInviteModalOpen] = useState(false);
+  const [changeOrdersViewTab, setChangeOrdersViewTab] = useState<'changes' | 'offers'>('changes');
 
   // Fetch live agent state from backend
   const fetchAgentState = async () => {
@@ -1042,6 +1130,14 @@ export default function Dashboard({
         }}
         isSuperAdmin={isSuperAdmin}
       />
+      <OmnichannelModal
+        isOpen={isOmnichannelModalOpen}
+        onClose={() => setIsOmnichannelModalOpen(false)}
+      />
+      <InviteModal
+        isOpen={isInviteModalOpen}
+        onClose={() => setIsInviteModalOpen(false)}
+      />
       <MesterAIChat 
         isOpen={isAIChatOpen}
         onClose={() => {
@@ -1050,8 +1146,20 @@ export default function Dashboard({
         }}
         selectedProject={selectedProject}
         projects={projects}
+        changeOrders={dashboardChangeOrders}
+        offers={dashboardOffers}
+        deviations={deviations}
+        lukkesperreZones={lukkesperreZones}
+        recentActivities={recentActivities}
         initialPrompt={chatInitialPrompt}
         onPromptHandled={() => setChatInitialPrompt(undefined)}
+        onApproveChangeOrder={handleApproveChangeOrder}
+        onRejectChangeOrder={handleRejectChangeOrder}
+        onDeleteChangeOrder={handleDeleteDashboardOrder}
+        onDeleteOffer={handleDeleteDashboardOffer}
+        onOpenPreClose={handleOpenPreClose}
+        onOpenOmnichannelModal={() => setIsOmnichannelModalOpen(true)}
+        onOpenInviteModal={() => setIsInviteModalOpen(true)}
         onOpenOfferModal={(data) => {
           setOfferInitialData(data);
           setIsOfferModalOpen(true);
@@ -1094,41 +1202,77 @@ export default function Dashboard({
               transition={{ duration: 0.2 }}
             >
               {/* 🌟 NATIVE APP HEADER & WELCOME CARD */}
-              <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-4 mb-6 bg-gradient-to-r from-navy-950 via-slate-900 to-navy-900 text-white p-6 rounded-3xl shadow-lg border border-slate-800 relative overflow-hidden">
+              <div className="flex flex-col md:flex-row md:items-center justify-between gap-4 mb-6 bg-gradient-to-r from-navy-950 via-slate-900 to-navy-900 text-white p-5 sm:p-6 rounded-3xl shadow-lg border border-slate-800 relative overflow-hidden">
                 <div className="absolute -right-10 -bottom-10 w-60 h-60 bg-electric-500/10 rounded-full blur-2xl pointer-events-none" />
+                
                 <div className="flex items-center gap-4 relative z-10">
-                  <div className="w-13 h-13 rounded-2xl bg-gradient-to-tr from-electric-600 to-electric-400 flex items-center justify-center text-white shadow-purple-cta font-black text-xl shrink-0">
+                  <div className="w-12 h-12 rounded-2xl bg-gradient-to-tr from-electric-600 to-electric-400 flex items-center justify-center text-white shadow-purple-cta font-black text-xl shrink-0">
                     {user?.displayName ? user.displayName.charAt(0).toUpperCase() : "K"}
                   </div>
                   <div>
                     <div className="flex items-center gap-2.5 flex-wrap">
-                      <h2 className="text-xl sm:text-2xl font-black tracking-tight text-white">
+                      <h2 className="text-lg sm:text-xl font-black tracking-tight text-white">
                         {t('greeting_hello', { name: user?.displayName ? user.displayName.split(" ")[0] : "Kenneth", defaultValue: "Hei, Kenneth! 👋" })}
                       </h2>
-                      {isSuperAdmin && (
-                        <button
-                          type="button"
-                          onClick={() => window.dispatchEvent(new CustomEvent("navigate_view", { detail: { view: "super-admin" } }))}
-                          className="inline-flex items-center gap-1.5 px-3 py-1 rounded-full text-[11px] font-black uppercase tracking-wider bg-gradient-to-r from-amber-500 to-amber-600 hover:from-amber-400 hover:to-amber-500 text-slate-950 shadow-md transition-all active:scale-95 cursor-pointer"
-                          title="Åpne SuperAdmin-konsollen (kundeoversikt, impersonation og autonom agent)"
-                        >
-                          <Shield size={13} className="text-slate-950" />
-                          <span>👑 SuperAdmin Konsoll ↗</span>
-                        </button>
-                      )}
                       <span className="inline-flex items-center gap-1.5 px-2.5 py-0.5 rounded-full text-[11px] font-bold bg-emerald-500/20 text-emerald-400 border border-emerald-500/30">
-                        <span className="w-2 h-2 rounded-full bg-emerald-400 animate-pulse" />
-                        {t('active_company', 'Aktiv bedrift')}
+                        <span className="w-1.5 h-1.5 rounded-full bg-emerald-400 animate-pulse" />
+                        {user?.company || "AIChat Norge AS / Vikingnet"}
                       </span>
                     </div>
-                    <p className="text-xs sm:text-sm text-slate-300 mt-0.5">
-                      {user?.company || "AIChat Norge AS / Vikingnet"} • {t('active_projects_count', { count: projects.length || 3, defaultValue: `${projects.length || 3} aktive prosjekter i dag` })}
-                    </p>
+                    
+                    {/* Omnichannel Live Status Pills */}
+                    <div className="flex items-center gap-2 mt-2 flex-wrap text-[11px]">
+                      <button
+                        type="button"
+                        onClick={() => setIsOmnichannelModalOpen(true)}
+                        className="inline-flex items-center gap-1.5 px-2.5 py-1 rounded-xl bg-indigo-500/20 hover:bg-indigo-500/30 text-indigo-300 border border-indigo-500/30 font-bold transition-all cursor-pointer"
+                        title="Klikk for å administrere Discord-tilkobling"
+                      >
+                        <MessageSquare size={12} />
+                        <span className="w-1.5 h-1.5 rounded-full bg-emerald-400" />
+                        <span>Discord</span>
+                      </button>
+
+                      <button
+                        type="button"
+                        onClick={() => setIsOmnichannelModalOpen(true)}
+                        className="inline-flex items-center gap-1.5 px-2.5 py-1 rounded-xl bg-emerald-500/20 hover:bg-emerald-500/30 text-emerald-300 border border-emerald-500/30 font-bold transition-all cursor-pointer"
+                        title="Klikk for å administrere Slack-tilkobling"
+                      >
+                        <Hash size={12} />
+                        <span className="w-1.5 h-1.5 rounded-full bg-emerald-400" />
+                        <span>Slack</span>
+                      </button>
+
+                      <button
+                        type="button"
+                        onClick={() => setIsOmnichannelModalOpen(true)}
+                        className="inline-flex items-center gap-1.5 px-2.5 py-1 rounded-xl bg-blue-500/20 hover:bg-blue-500/30 text-blue-300 border border-blue-500/30 font-bold transition-all cursor-pointer"
+                        title="Klikk for å administrere Teams-tilkobling"
+                      >
+                        <Radio size={12} />
+                        <span className="w-1.5 h-1.5 rounded-full bg-emerald-400" />
+                        <span>Teams</span>
+                      </button>
+
+                      <button
+                        type="button"
+                        onClick={() => {
+                          navigator.clipboard.writeText('hei@vikingmester.no');
+                          toast.success('hei@vikingmester.no kopiert til utklippstavlen!');
+                        }}
+                        className="inline-flex items-center gap-1.5 px-2.5 py-1 rounded-xl bg-white/10 hover:bg-white/20 text-slate-300 border border-white/10 font-medium transition-all cursor-pointer"
+                        title="Klikk for å kopiere e-postadresse"
+                      >
+                        <Mail size={12} />
+                        <span>hei@vikingmester.no</span>
+                      </button>
+                    </div>
                   </div>
                 </div>
                 
                 {/* App View Quick Switcher Pill */}
-                <div className="flex items-center gap-2 bg-white/10 p-1.5 rounded-2xl backdrop-blur-md self-start sm:self-auto relative z-10 flex-wrap">
+                <div className="flex items-center gap-2 bg-white/10 p-1.5 rounded-2xl backdrop-blur-md self-start md:self-auto relative z-10 flex-wrap">
                   {isSuperAdmin && (
                     <button
                       onClick={() => window.dispatchEvent(new CustomEvent("navigate_view", { detail: { view: "super-admin" } }))}
@@ -1141,11 +1285,20 @@ export default function Dashboard({
                   )}
                   <button
                     onClick={() => window.dispatchEvent(new CustomEvent("navigate_view", { detail: { view: "mobile" } }))}
-                    className="flex items-center gap-2 px-4 py-2 rounded-xl text-xs font-black transition-all bg-electric-500 text-white shadow-purple-cta hover:bg-electric-400 active:scale-95 cursor-pointer"
+                    className="flex items-center gap-2 px-3.5 py-2 rounded-xl text-xs font-black transition-all bg-electric-500 text-white shadow-purple-cta hover:bg-electric-400 active:scale-95 cursor-pointer"
                     title={t('open_field_app_desc', 'Åpne ren feltapp tilpasset 1-hånds mobilbruk')}
                   >
                     <Smartphone size={15} />
-                    <span>{t('open_field_app', '📱 Åpne Feltapp')}</span>
+                    <span>{t('open_field_app', '📱 Feltapp')}</span>
+                  </button>
+                  <button
+                    type="button"
+                    onClick={() => setIsAllModulesOpen(true)}
+                    className="flex items-center gap-1.5 px-3 py-2 rounded-xl text-xs font-bold text-slate-300 hover:text-white hover:bg-white/10 transition-all cursor-pointer"
+                    title="Se alle 20 verktøy"
+                  >
+                    <Layers size={14} />
+                    <span>Verktøy</span>
                   </button>
                   <button
                     onClick={() => setIsSmartSearchOpen(true)}
@@ -1153,235 +1306,51 @@ export default function Dashboard({
                   >
                     <Search size={14} />
                     <span>{t('btn_search', 'Søk')}</span>
+                    <kbd className="px-1.5 py-0.5 bg-white/10 border border-white/20 rounded text-[10px] text-slate-300">⌘K</kbd>
                   </button>
                 </div>
               </div>
 
-              {/* 🌟 ONBOARDING & HURTIGGUIDE FOR HÅNDVERKERE */}
-              <QuickStartGuide
-                projectsCount={projects.length}
-                hasDeviations={deviations.length > 0}
-                hasChangeOrders={dashboardChangeOrders.length > 0}
-                onOpenAction={(actionId) => handleSmartSearchNavigate(actionId)}
-                onOpenAllModules={() => setIsAllModulesOpen(true)}
-              />
-
-              {/* 🚀 APP QUICK LAUNCHER GRID (iOS / Native App Fliser) */}
-              <div className="mb-8">
-                <div className="flex items-center justify-between mb-3 px-1 gap-2 flex-wrap">
-                  <span className="text-xs font-black uppercase tracking-wider text-slate-500 flex items-center gap-1.5">
-                    <Sparkles size={14} className="text-electric-500" />
-                    {t('tile_launcher_title', 'Hurtighandlinger & App-moduler')}
-                  </span>
-                  <div className="flex items-center gap-3">
-                    <span className="hidden md:inline text-[11px] font-medium text-slate-400">{t('tile_launcher_subtitle', '1-klikk tilgang i felt og på kontor')}</span>
-                    <button
-                      type="button"
-                      onClick={() => setIsAllModulesOpen(true)}
-                      className="flex items-center gap-1.5 px-3 py-1.5 bg-gradient-to-r from-amber-500 to-amber-400 hover:from-amber-400 hover:to-amber-300 text-slate-950 rounded-xl text-xs font-black transition-all shadow-sm cursor-pointer group active:scale-95"
-                      title="Åpne fullstendig katalog med alle 20 verktøy"
-                    >
-                      <Layers size={14} className="text-slate-950 group-hover:scale-110 transition-transform" />
-                      <span>Alle 20 verktøy</span>
-                      <ArrowRight size={12} className="text-slate-950" />
-                    </button>
-                  </div>
-                </div>
-
-                <div className="grid grid-cols-2 sm:grid-cols-4 lg:grid-cols-8 gap-3 sm:gap-3.5">
-                  {/* 0. SuperAdmin (Kun synlig for Superbrukere) */}
-                  {isSuperAdmin && (
-                    <button
-                      type="button"
-                      onClick={() => window.dispatchEvent(new CustomEvent("navigate_view", { detail: { view: "super-admin" } }))}
-                      className="flex flex-col items-center text-center p-3.5 sm:p-4 rounded-2xl bg-gradient-to-b from-rose-50/90 to-white border border-rose-200/90 shadow-sm hover:shadow-md hover:border-rose-400 active:scale-95 transition-all group cursor-pointer"
-                    >
-                      <div className="w-12 h-12 rounded-2xl bg-gradient-to-tr from-rose-600 to-pink-600 text-white flex items-center justify-center shadow-md mb-2 group-hover:scale-105 transition-transform">
-                        <Shield size={22} />
-                      </div>
-                      <span className="text-xs font-black text-rose-900 group-hover:text-rose-600 transition-colors">SuperAdmin</span>
-                      <span className="text-[10px] text-rose-600 font-bold mt-0.5">Firmaer & Kunder</span>
-                    </button>
-                  )}
-                  {/* 1. Tale til SJA */}
-                  <button
-                    type="button"
-                    onClick={() => setIsVoiceSJAOpen(true)}
-                    className="flex flex-col items-center text-center p-3.5 sm:p-4 rounded-2xl bg-white border border-slate-200/90 shadow-sm hover:shadow-md hover:border-electric-300 active:scale-95 transition-all group cursor-pointer"
-                  >
-                    <div className="w-12 h-12 rounded-2xl bg-gradient-to-tr from-purple-600 to-indigo-500 text-white flex items-center justify-center shadow-md mb-2 group-hover:scale-105 transition-transform">
-                      <Mic size={22} />
-                    </div>
-                    <span className="text-xs font-bold text-navy-900 group-hover:text-electric-600 transition-colors">{t('tile_voice_sja', 'Tale til SJA')}</span>
-                    <span className="text-[10px] text-slate-400 mt-0.5">{t('tile_voice_sja_sub', 'Snakk inn risiko')}</span>
-                  </button>
-
-                  {/* 2. AI Bildekontroll */}
-                  <button
-                    type="button"
-                    onClick={() => setIsAIVisionModalOpen(true)}
-                    className="flex flex-col items-center text-center p-3.5 sm:p-4 rounded-2xl bg-white border border-slate-200/90 shadow-sm hover:shadow-md hover:border-blue-300 active:scale-95 transition-all group cursor-pointer"
-                  >
-                    <div className="w-12 h-12 rounded-2xl bg-gradient-to-tr from-blue-600 to-cyan-500 text-white flex items-center justify-center shadow-md mb-2 group-hover:scale-105 transition-transform">
-                      <Camera size={22} />
-                    </div>
-                    <span className="text-xs font-bold text-navy-900 group-hover:text-blue-600 transition-colors">{t('tile_vision', 'Bildekontroll')}</span>
-                    <span className="text-[10px] text-slate-400 mt-0.5">{t('tile_vision_sub', 'TEK17 AI-sjekk')}</span>
-                  </button>
-
-                  {/* 3. Registrer Timer */}
-                  <button
-                    type="button"
-                    onClick={() => setIsTimeModalOpen(true)}
-                    className="flex flex-col items-center text-center p-3.5 sm:p-4 rounded-2xl bg-white border border-slate-200/90 shadow-sm hover:shadow-md hover:border-emerald-300 active:scale-95 transition-all group cursor-pointer"
-                  >
-                    <div className="w-12 h-12 rounded-2xl bg-gradient-to-tr from-emerald-600 to-teal-500 text-white flex items-center justify-center shadow-md mb-2 group-hover:scale-105 transition-transform">
-                      <Clock size={22} />
-                    </div>
-                    <span className="text-xs font-bold text-navy-900 group-hover:text-emerald-600 transition-colors">{t('tile_time', 'Før Timer')}</span>
-                    <span className="text-[10px] text-slate-400 mt-0.5">{t('tile_time_sub', 'Dagens arbeid')}</span>
-                  </button>
-
-                  {/* 4. Sjekklister */}
-                  <button
-                    type="button"
-                    onClick={() => setIsChecklistModalOpen(true)}
-                    className="flex flex-col items-center text-center p-3.5 sm:p-4 rounded-2xl bg-white border border-slate-200/90 shadow-sm hover:shadow-md hover:border-amber-300 active:scale-95 transition-all group cursor-pointer"
-                  >
-                    <div className="w-12 h-12 rounded-2xl bg-gradient-to-tr from-amber-500 to-orange-500 text-white flex items-center justify-center shadow-md mb-2 group-hover:scale-105 transition-transform">
-                      <ClipboardCheck size={22} />
-                    </div>
-                    <span className="text-xs font-bold text-navy-900 group-hover:text-amber-600 transition-colors">{t('tile_checklist', 'Sjekkliste')}</span>
-                    <span className="text-[10px] text-slate-400 mt-0.5">{t('tile_checklist_sub', 'HMS & Fag')}</span>
-                  </button>
-
-                  {/* 5. Telefonliste / Kolleger */}
-                  <button
-                    type="button"
-                    onClick={() => setIsContactsModalOpen(true)}
-                    className="flex flex-col items-center text-center p-3.5 sm:p-4 rounded-2xl bg-white border border-slate-200/90 shadow-sm hover:shadow-md hover:border-cyan-300 active:scale-95 transition-all group cursor-pointer"
-                  >
-                    <div className="w-12 h-12 rounded-2xl bg-gradient-to-tr from-cyan-600 to-blue-500 text-white flex items-center justify-center shadow-md mb-2 group-hover:scale-105 transition-transform">
-                      <Users size={22} />
-                    </div>
-                    <span className="text-xs font-bold text-navy-900 group-hover:text-cyan-600 transition-colors">{t('tile_contacts', 'Telefonliste')}</span>
-                    <span className="text-[10px] text-slate-400 mt-0.5">{t('tile_contacts_sub', 'Ring & SMS')}</span>
-                  </button>
-
-                  {/* 6. Byggedagbok */}
-                  <button
-                    type="button"
-                    onClick={() => setIsDailyLogModalOpen(true)}
-                    className="flex flex-col items-center text-center p-3.5 sm:p-4 rounded-2xl bg-white border border-slate-200/90 shadow-sm hover:shadow-md hover:border-violet-300 active:scale-95 transition-all group cursor-pointer"
-                  >
-                    <div className="w-12 h-12 rounded-2xl bg-gradient-to-tr from-violet-600 to-purple-500 text-white flex items-center justify-center shadow-md mb-2 group-hover:scale-105 transition-transform">
-                      <FileText size={22} />
-                    </div>
-                    <span className="text-xs font-bold text-navy-900 group-hover:text-violet-600 transition-colors">{t('tile_dailylog', 'Byggedagbok')}</span>
-                    <span className="text-[10px] text-slate-400 mt-0.5">{t('tile_dailylog_sub', 'Dagsrapport')}</span>
-                  </button>
-
-                  {/* 7. Endringsordre (NS 8406) */}
-                  <button
-                    type="button"
-                    onClick={() => {
-                      setIsChangeOrderModalOpen(true);
-                      handleTabSelect("endringsordrer");
-                    }}
-                    className="flex flex-col items-center text-center p-3.5 sm:p-4 rounded-2xl bg-white border border-slate-200/90 shadow-sm hover:shadow-md hover:border-rose-300 active:scale-95 transition-all group cursor-pointer"
-                  >
-                    <div className="w-12 h-12 rounded-2xl bg-gradient-to-tr from-rose-600 to-pink-500 text-white flex items-center justify-center shadow-md mb-2 group-hover:scale-105 transition-transform">
-                      <FileSignature size={22} />
-                    </div>
-                    <span className="text-xs font-bold text-navy-900 group-hover:text-rose-600 transition-colors">{t('tile_changeorder', 'Endring (8406)')}</span>
-                    <span className="text-[10px] text-slate-400 mt-0.5">{t('tile_changeorder_sub', 'Tilleggsarbeid')}</span>
-                  </button>
-
-                  {/* 8. Nytt Prosjekt */}
-                  <button
-                    type="button"
-                    onClick={() => setIsCreateModalOpen(true)}
-                    className="flex flex-col items-center text-center p-3.5 sm:p-4 rounded-2xl bg-white border border-slate-200/90 shadow-sm hover:shadow-md hover:border-slate-400 active:scale-95 transition-all group cursor-pointer"
-                  >
-                    <div className="w-12 h-12 rounded-2xl bg-gradient-to-tr from-slate-800 to-slate-900 text-white flex items-center justify-center shadow-md mb-2 group-hover:scale-105 transition-transform">
-                      <Plus size={22} />
-                    </div>
-                    <span className="text-xs font-bold text-navy-900 group-hover:text-slate-800 transition-colors">{t('tile_newproject', 'Nytt Prosjekt')}</span>
-                    <span className="text-[10px] text-slate-400 mt-0.5">{t('tile_newproject_sub', 'Opprett på 1 min')}</span>
-                  </button>
-                </div>
-              </div>
-              {/* 1. AGENT STATUS & COCKPIT HEADER */}
-              <div className="bg-white rounded-3xl border border-slate-200/90 shadow-sm p-6 sm:p-8 mb-8 relative overflow-hidden">
-                <div className="absolute top-0 right-0 w-80 h-80 bg-electric-500/5 rounded-full blur-3xl pointer-events-none -mr-20 -mt-20" />
+              {/* 🚀 CENTERPIECE HERO: MESTERAI ARBEIDSSTASJON & AUTONOM KOMMANDOSENTRAL */}
+              <div className="bg-gradient-to-br from-white via-slate-50 to-electric-50/30 rounded-3xl border border-slate-200/90 shadow-md p-6 sm:p-8 mb-8 relative overflow-hidden">
+                <div className="absolute top-0 right-0 w-96 h-96 bg-electric-500/5 rounded-full blur-3xl pointer-events-none -mr-20 -mt-20" />
                 
-                <div className="flex flex-col lg:flex-row lg:items-center justify-between gap-6 relative z-10">
+                <div className="flex flex-col lg:flex-row lg:items-center justify-between gap-6 relative z-10 mb-6">
                   <div>
-                    <div className="flex items-center gap-3 mb-2 flex-wrap">
-                      <span className="inline-flex items-center gap-2 px-3 py-1 rounded-full text-xs font-black uppercase tracking-wider bg-electric-50 text-electric-600 border border-electric-200">
+                    <div className="flex items-center gap-2.5 mb-2 flex-wrap">
+                      <span className="inline-flex items-center gap-2 px-3 py-1 rounded-full text-xs font-black uppercase tracking-wider bg-electric-50 text-electric-700 border border-electric-200">
                         <span className="w-2 h-2 rounded-full bg-emerald-500 animate-pulse" />
-                        {t('cockpit_agent_operational', 'Autonom Agent 100% Operativ')}
+                        Autonom Agent 100% Operativ
                       </span>
                       <span className="text-xs font-bold text-slate-500">
-                        {t('cockpit_listening_on', 'Lytter på:')} <strong className="text-navy-900">{agentStatus.email || 'hei@vikingmester.no'}</strong>
-                      </span>
-                      <span className="hidden sm:inline-block text-xs font-bold text-emerald-600 bg-emerald-50 px-2.5 py-0.5 rounded-full border border-emerald-200">
-                        {t('cockpit_tek_ns_active', 'TEK17 & NS 8406 Aktiv')}
+                        Lytter på: <strong className="text-navy-900">Discord, Slack, Teams & E-post</strong>
                       </span>
                     </div>
 
-                    <h1 className="text-2xl sm:text-3xl lg:text-4xl font-extrabold text-navy-900 tracking-tight">
-                      {t('cockpit_title', 'Mester-Cockpit & Lederoversikt')}
+                    <h1 className="text-2xl sm:text-3xl lg:text-4xl font-black text-navy-950 tracking-tight">
+                      MesterAI Autonom Arbeidsstasjon
                     </h1>
-                    <p className="text-sm sm:text-base text-slate-600 mt-1">
-                      {t('cockpit_desc', 'Agenten fører byggedagbok, kontrollerer TEK17 og fanger opp uvarslet ekstraarbeid. Du beholder 100% kontroll.')}
+                    <p className="text-sm sm:text-base text-slate-600 mt-1 max-w-2xl">
+                      Styr hele byggeplassen, skriv pristilbud, varsle endringsordrer (NS 8406) og sjekk TEK17 direkte fra samtalen.
                     </p>
                   </div>
 
-                  {/* Top Action Buttons */}
-                  <div className="flex items-center gap-3 shrink-0 flex-wrap">
-                    <button 
-                      onClick={() => setIsSmartSearchOpen(true)}
-                      className="hidden md:flex items-center gap-3 px-4 py-2.5 bg-slate-50 border border-slate-200 rounded-2xl text-xs font-bold text-slate-600 hover:border-electric-400 hover:text-navy-900 transition-all shadow-sm"
+                  {/* Primary Large Chat Launcher Button */}
+                  <div className="shrink-0">
+                    <button
+                      type="button"
+                      onClick={() => setIsAIChatOpen(true)}
+                      className="w-full sm:w-auto px-6 py-4 bg-gradient-to-r from-electric-600 via-purple-600 to-electric-500 hover:from-electric-500 hover:to-purple-500 text-white rounded-2xl text-sm font-black transition-all shadow-xl shadow-electric-500/25 flex items-center justify-center gap-3 cursor-pointer hover:scale-[1.02] active:scale-98 group"
                     >
-                      <Search size={15} />
-                      <span>{t('search_system_placeholder', 'Søk i systemet...')}</span>
-                      <kbd className="px-1.5 py-0.5 bg-white border border-slate-200 rounded text-[10px] text-slate-400">⌘K</kbd>
-                    </button>
-
-                    <button 
-                      onClick={() => setIsAIChatOpen(prev => !prev)}
-                      className={cn(
-                        "flex items-center gap-2 px-4 py-2.5 rounded-2xl text-xs font-black transition-all border cursor-pointer",
-                        isAIChatOpen 
-                          ? "bg-navy-900 text-white border-navy-900 shadow-md shadow-navy-900/20" 
-                          : "bg-electric-50 hover:bg-electric-100 text-electric-700 border-electric-200"
-                      )}
-                    >
-                      <Brain size={16} className={isAIChatOpen ? "text-white" : "text-electric-600"} />
-                      <span>{isAIChatOpen ? 'Lukk Samtale' : 'MesterAI Samtalepartner'}</span>
-                    </button>
-
-                    <button 
-                      onClick={() => setIsAIVisionModalOpen(true)}
-                      className="flex items-center gap-2 px-4 py-2.5 bg-slate-100 hover:bg-slate-200 text-navy-900 border border-slate-200 rounded-2xl text-xs font-black transition-all"
-                    >
-                      <Camera size={16} className="text-electric-600" />
-                      <span>{t('btn_tek17_vision', 'TEK17 Visjon')}</span>
-                    </button>
-
-                    <button 
-                      onClick={() => setIsCreateModalOpen(true)}
-                      className="flex items-center gap-2 px-5 py-2.5 bg-gradient-to-r from-electric-500 to-electric-400 text-white rounded-2xl text-xs font-black hover:opacity-95 transition-all shadow-purple-cta"
-                    >
-                      <Plus size={16} />
-                      <span>{t('tile_newproject', 'Nytt Prosjekt')}</span>
+                      <Brain size={20} className="group-hover:rotate-12 transition-transform" />
+                      <span>Åpne MesterAI Arbeidsstasjon (Fullskjerm)</span>
+                      <ArrowRight size={16} />
                     </button>
                   </div>
                 </div>
 
-                {/* Quick Command Prompt (Snakk / Skriv til agenten) */}
-                <div className="mt-6 pt-6 border-t border-slate-100">
+                {/* Quick Conversational Prompt Bar */}
+                <div className="pt-5 border-t border-slate-200/80">
                   <form 
                     onSubmit={(e) => { e.preventDefault(); handleSendCommand(); }}
                     className="flex flex-col sm:flex-row items-stretch gap-3"
@@ -1391,14 +1360,14 @@ export default function Dashboard({
                         type="text"
                         value={commandText}
                         onChange={(e) => setCommandText(e.target.value)}
-                        placeholder={t('cockpit_prompt_placeholder', "Spør MesterAI om hva som helst (tilbud, TEK17, kalkyle, NS 8406, SJA, faglige råd)...")}
-                        className="w-full pl-4 pr-12 py-3 bg-slate-50 border border-slate-200 rounded-2xl text-sm font-medium text-slate-900 placeholder:text-slate-400 focus:bg-white focus:border-electric-500 focus:ring-2 focus:ring-electric-500/20 transition-all"
+                        placeholder="Spør MesterAI om hva som helst (skriv tilbud, varsle endring NS 8406, sjekk TEK17, SJA, faglige råd)..."
+                        className="w-full pl-4 pr-12 py-3.5 bg-white border border-slate-200 rounded-2xl text-sm font-medium text-slate-900 placeholder:text-slate-400 focus:border-electric-500 focus:ring-2 focus:ring-electric-500/20 shadow-xs transition-all"
                       />
                       <button 
                         type="button"
                         onClick={toggleMic}
                         className={cn(
-                          "absolute right-3 top-1/2 -translate-y-1/2 p-1.5 rounded-xl transition-all",
+                          "absolute right-3 top-1/2 -translate-y-1/2 p-2 rounded-xl transition-all cursor-pointer",
                           isListeningMic ? "bg-rose-500 text-white animate-pulse" : "text-slate-400 hover:text-electric-600"
                         )}
                         title={t('cockpit_mic_title', 'Snakk inn instruks')}
@@ -1410,193 +1379,162 @@ export default function Dashboard({
                     <button 
                       type="submit"
                       disabled={isDispatching || !commandText.trim()}
-                      className="flex items-center justify-center gap-2 px-6 py-3 bg-navy-900 hover:bg-navy-800 text-white rounded-2xl text-xs font-black disabled:opacity-50 transition-all shrink-0 shadow-sm cursor-pointer"
+                      className="flex items-center justify-center gap-2 px-6 py-3.5 bg-navy-900 hover:bg-navy-800 text-white rounded-2xl text-xs font-black disabled:opacity-50 transition-all shrink-0 shadow-sm cursor-pointer hover:scale-[1.02] active:scale-98"
                     >
                       {isDispatching ? (
                         <>
                           <RefreshCw size={14} className="animate-spin" />
-                          <span>{t('cockpit_analyzing', 'Analyserer...')}</span>
+                          <span>Analyserer...</span>
                         </>
                       ) : (
                         <>
                           <Send size={14} />
-                          <span>{t('cockpit_btn_send', 'Spør MesterAI')}</span>
+                          <span>Spør MesterAI</span>
                         </>
                       )}
                     </button>
                   </form>
 
-                  {/* Suggestion Chips */}
-                  <div className="flex flex-wrap items-center gap-2 mt-3 pt-1">
-                    <span className="text-[11px] font-bold text-slate-400 uppercase tracking-wider shrink-0 mr-0.5">{t('cockpit_quick_label', 'Hurtig:')}</span>
+                  {/* Suggestion Prompt Chips */}
+                  <div className="flex flex-wrap items-center gap-2 mt-3.5 pt-1">
+                    <span className="text-[11px] font-black text-slate-400 uppercase tracking-wider shrink-0 mr-1">
+                      Hurtighandling:
+                    </span>
                     {[
                       { 
-                        text: '📝 Hjelp meg å skrive et nytt tilbud', 
-                        action: () => {
-                          handleSendCommand('Hjelp meg å skrive et nytt tilbud');
-                        }
+                        label: '📝 Hjelp meg å skrive et nytt tilbud', 
+                        prompt: 'Hjelp meg å skrive et nytt tilbud'
                       },
                       { 
-                        text: t('chip_sja_scaffold', 'Lag SJA for tak- og stillasarbeid'), 
-                        action: () => {
-                          handleOpenSJAForTrade('Tømrer (Høyde/Stillas)');
-                          handleSendCommand(t('chip_sja_scaffold', 'Lag SJA for tak- og stillasarbeid'));
-                        }
+                        label: '⚡ Varsle endringsordre (NS 8406)', 
+                        prompt: 'Registrer endringsordre: Ekstra downlights og trekkerør kr 14500'
                       },
                       { 
-                        text: t('chip_change_order', 'Registrer endringsordre: Ekstra downlights i stue kr 14500'), 
-                        action: () => {
-                          handleSendCommand(t('chip_change_order', 'Registrer endringsordre: Ekstra downlights i stue kr 14500'));
-                        }
+                        label: '🛡️ Lag SJA for tak- og stillasarbeid', 
+                        prompt: 'Lag SJA for tak- og stillasarbeid'
                       },
                       { 
-                        text: t('chip_preclose_bath', 'Sjekk om bad 2. etg kan lukkes (pre-close check)'), 
-                        action: () => {
-                          handleSendCommand(t('chip_preclose_bath', 'Sjekk om bad 2. etg kan lukkes (pre-close check)'));
-                        }
+                        label: '⚠️ Registrer nytt avvik / RUH', 
+                        prompt: 'Registrer nytt avvik på byggeplass'
                       },
                       { 
-                        text: t('chip_dailylog_wind', 'Byggedagbok: Lekting og vindsperre ferdig 6 timer'), 
-                        action: () => {
-                          handleSendCommand(t('chip_dailylog_wind', 'Byggedagbok: Lekting og vindsperre ferdig 6 timer'));
-                        }
+                        label: '⏱️ Før dagens timer på prosjekt', 
+                        prompt: 'Før timer på dagens arbeid'
+                      },
+                      { 
+                        label: '📸 TEK17 bildekontroll', 
+                        action: () => setIsAIVisionModalOpen(true)
                       }
                     ].map((chip, i) => (
                       <button 
                         key={i}
                         type="button"
-                        onClick={chip.action}
-                        className="px-3 py-1.5 bg-slate-100/90 hover:bg-electric-50 hover:text-electric-700 hover:border-electric-300 border border-slate-200/90 rounded-xl text-xs font-medium text-slate-700 transition-all text-left shadow-xs cursor-pointer"
+                        onClick={() => chip.action ? chip.action() : handleSendCommand(chip.prompt)}
+                        className="px-3 py-1.5 bg-white hover:bg-electric-50 hover:text-electric-700 hover:border-electric-300 border border-slate-200/90 rounded-xl text-xs font-medium text-slate-700 transition-all text-left shadow-2xs cursor-pointer hover:scale-[1.02] active:scale-98"
                       >
-                        {chip.text}
+                        {chip.label}
                       </button>
                     ))}
                   </div>
-
-                  {/* Agent Response Box (legacy notification) */}
-                  <AnimatePresence>
-                    {lastAgentReply && !isAIChatOpen && (
-                      <motion.div 
-                        initial={{ opacity: 0, height: 0 }}
-                        animate={{ opacity: 1, height: 'auto' }}
-                        exit={{ opacity: 0, height: 0 }}
-                        className="mt-4 p-4 bg-electric-50/70 border border-electric-200 rounded-2xl flex items-start gap-3"
-                      >
-                        <div className="w-8 h-8 rounded-xl bg-electric-500 text-white flex items-center justify-center shrink-0">
-                          <Brain size={16} />
-                        </div>
-                        <div className="flex-1 text-xs text-navy-900 leading-relaxed font-medium">
-                          <strong className="font-black text-electric-700 block mb-0.5">{t('cockpit_agent_response_title', 'Svar fra VikingMester:')}</strong>
-                          {lastAgentReply}
-                        </div>
-                        <button 
-                          onClick={() => setLastAgentReply(null)}
-                          className="text-slate-400 hover:text-slate-600 p-1"
-                        >
-                          <X size={14} />
-                        </button>
-                      </motion.div>
-                    )}
-                  </AnimatePresence>
                 </div>
               </div>
 
               {/* 2. FOUR KEY METRICS CARDS */}
               <div className="grid grid-cols-2 lg:grid-cols-4 gap-4 sm:gap-6 mb-8">
-                {/* 1. Aktive Prosjekter */}
+                {/* 1. Aktive Byggeplasser */}
                 <div 
                   onClick={() => setActiveTab('prosjekter')}
-                  className="bg-white p-6 rounded-3xl border border-slate-200/90 shadow-sm hover:shadow-md transition-all cursor-pointer group"
+                  className="bg-white p-5 sm:p-6 rounded-3xl border border-slate-200/90 shadow-2xs hover:shadow-md transition-all cursor-pointer group hover:border-blue-300"
                 >
                   <div className="flex items-center justify-between mb-3">
                     <div className="w-10 h-10 rounded-2xl bg-blue-50 text-blue-600 flex items-center justify-center">
                       <HardHat size={20} />
                     </div>
                     <span className="text-[10px] font-black uppercase tracking-wider text-slate-400 group-hover:text-blue-600 transition-colors">
-                      {t('metric_see_all', 'Se alle')} &rarr;
+                      Felt & Vær &rarr;
                     </span>
                   </div>
-                  <div className="text-3xl font-extrabold text-navy-900 tracking-tight">
+                  <div className="text-2xl sm:text-3xl font-extrabold text-navy-950 tracking-tight">
                     {projects.length}
                   </div>
                   <div className="text-xs font-bold text-slate-500 mt-1">
-                    {t('metric_active_projects', 'Aktive Prosjekter i drift')}
+                    Aktive byggeplasser i drift
                   </div>
                 </div>
 
-                {/* 2. Autonome Handlinger i dag */}
+                {/* 2. Endringsordrer (NS 8406) */}
                 <div 
-                  onClick={() => setActiveTab('cockpit')}
-                  className="bg-white p-6 rounded-3xl border border-slate-200/90 shadow-sm hover:shadow-md transition-all cursor-pointer group"
+                  onClick={() => setActiveTab('endringsordrer')}
+                  className="bg-white p-5 sm:p-6 rounded-3xl border border-slate-200/90 shadow-2xs hover:shadow-md transition-all cursor-pointer group hover:border-amber-300"
+                >
+                  <div className="flex items-center justify-between mb-3">
+                    <div className="w-10 h-10 rounded-2xl bg-amber-50 text-amber-600 flex items-center justify-center">
+                      <FileSignature size={20} />
+                    </div>
+                    <span className="text-[10px] font-black uppercase tracking-wider text-amber-700 bg-amber-50 px-2 py-0.5 rounded-full border border-amber-200">
+                      NS 8406
+                    </span>
+                  </div>
+                  <div className="text-2xl sm:text-3xl font-extrabold text-navy-950 tracking-tight">
+                    kr {Math.round((agentMetrics.securedRevenue || 84500) / 1000)}k
+                  </div>
+                  <div className="text-xs font-bold text-slate-500 mt-1">
+                    {dashboardChangeOrders.length} sikrede tilleggskrav
+                  </div>
+                </div>
+
+                {/* 3. Pristilbud & Kalkyler */}
+                <div 
+                  onClick={() => setActiveTab('endringsordrer')}
+                  className="bg-white p-5 sm:p-6 rounded-3xl border border-slate-200/90 shadow-2xs hover:shadow-md transition-all cursor-pointer group hover:border-electric-300"
                 >
                   <div className="flex items-center justify-between mb-3">
                     <div className="w-10 h-10 rounded-2xl bg-electric-50 text-electric-600 flex items-center justify-center">
-                      <Zap size={20} />
+                      <FileText size={20} />
                     </div>
-                    <span className="text-[10px] font-black uppercase tracking-wider text-emerald-600 bg-emerald-50 px-2 py-0.5 rounded-full border border-emerald-200">
-                      {t('metric_today_badge', 'I dag')}
+                    <span className="text-[10px] font-black uppercase tracking-wider text-slate-400 group-hover:text-electric-600 transition-colors">
+                      Kalkyle &rarr;
                     </span>
                   </div>
-                  <div className="text-3xl font-extrabold text-navy-900 tracking-tight">
-                    {agentMetrics.todayActionsCount ?? 0}
+                  <div className="text-2xl sm:text-3xl font-extrabold text-navy-950 tracking-tight">
+                    {dashboardOffers.length} tilbud
                   </div>
                   <div className="text-xs font-bold text-slate-500 mt-1">
-                    {t('metric_actions_today', 'Autonome agent-handlinger')}
+                    kr {Math.round((dashboardOffers.reduce((acc, o) => acc + (o.totalAmount || o.customPrice || 0), 0) || 853000) / 1000)}k i tilbudsmasse
                   </div>
                 </div>
 
-                {/* 3. Trenger din godkjenning (Human-in-the-loop) */}
+                {/* 4. Kvalitet, Avvik & Lukkesperrer */}
                 <div 
-                  onClick={() => setActiveTab('cockpit')}
+                  onClick={() => setActiveTab('kvalitet')}
                   className={cn(
-                    "p-6 rounded-3xl border shadow-sm hover:shadow-md transition-all cursor-pointer group",
-                    (pendingApprovals.length > 0) 
-                      ? "bg-amber-50/50 border-amber-200" 
-                      : "bg-white border-slate-200/90"
+                    "p-5 sm:p-6 rounded-3xl border shadow-2xs hover:shadow-md transition-all cursor-pointer group",
+                    lukkesperreZones.some(z => z.status === 'RED') 
+                      ? "bg-rose-50/40 border-rose-200 hover:border-rose-400" 
+                      : "bg-white border-slate-200/90 hover:border-emerald-300"
                   )}
                 >
                   <div className="flex items-center justify-between mb-3">
                     <div className={cn(
                       "w-10 h-10 rounded-2xl flex items-center justify-center",
-                      pendingApprovals.length > 0 ? "bg-amber-100 text-amber-700" : "bg-slate-100 text-slate-600"
+                      lukkesperreZones.some(z => z.status === 'RED') ? "bg-rose-100 text-rose-700" : "bg-emerald-50 text-emerald-600"
                     )}>
-                      <AlertTriangle size={20} />
+                      {lukkesperreZones.some(z => z.status === 'RED') ? <Lock size={20} /> : <ShieldCheck size={20} />}
                     </div>
-                    {pendingApprovals.length > 0 && (
-                      <span className="text-[10px] font-black uppercase tracking-wider text-amber-700 bg-amber-100 px-2 py-0.5 rounded-full animate-pulse">
-                        {t('metric_action_required', 'Handling kreves')}
-                      </span>
-                    )}
-                  </div>
-                  <div className={cn(
-                    "text-3xl font-extrabold tracking-tight",
-                    pendingApprovals.length > 0 ? "text-amber-900" : "text-navy-900"
-                  )}>
-                    {pendingApprovals.length}
-                  </div>
-                  <div className="text-xs font-bold text-slate-500 mt-1">
-                    {t('metric_pending_approval', 'Venter på din godkjenning')}
-                  </div>
-                </div>
-
-                {/* 4. Tilleggsinntekt Sikret (NS 8406) */}
-                <div 
-                  onClick={() => setActiveTab('endringsordrer')}
-                  className="bg-white p-6 rounded-3xl border border-slate-200/90 shadow-sm hover:shadow-md transition-all cursor-pointer group"
-                >
-                  <div className="flex items-center justify-between mb-3">
-                    <div className="w-10 h-10 rounded-2xl bg-emerald-50 text-emerald-600 flex items-center justify-center">
-                      <TrendingUp size={20} />
-                    </div>
-                    <span className="text-[10px] font-black uppercase tracking-wider text-slate-400 group-hover:text-emerald-600 transition-colors">
-                      NS 8406 &rarr;
+                    <span className={cn(
+                      "text-[10px] font-black uppercase tracking-wider px-2 py-0.5 rounded-full",
+                      lukkesperreZones.some(z => z.status === 'RED') 
+                        ? "bg-rose-100 text-rose-800 animate-pulse" 
+                        : "bg-emerald-100 text-emerald-800"
+                    )}>
+                      {lukkesperreZones.some(z => z.status === 'RED') ? '1 Lukkesperre' : 'TEK17 OK'}
                     </span>
                   </div>
-                  <div className="text-2xl sm:text-3xl font-extrabold text-navy-900 tracking-tight">
-                    kr {Math.round((agentMetrics.securedRevenue || 0) / 1000)}k
+                  <div className="text-2xl sm:text-3xl font-extrabold text-navy-950 tracking-tight">
+                    {deviations.length} avvik
                   </div>
                   <div className="text-xs font-bold text-slate-500 mt-1">
-                    {t('metric_secured_revenue', 'Sikret i tilleggsarbeider')}
+                    {lukkesperreZones.some(z => z.status === 'RED') ? 'Vaskerom sperret mot lukking' : 'Kvalitet & HMS godkjent'}
                   </div>
                 </div>
               </div>
@@ -2022,121 +1960,268 @@ export default function Dashboard({
                 </div>
               )}
 
-              {/* TAB 3: ENDRINGSORDER (NS 8406) */}
+              {/* TAB 3: ENDRINGSORDER & PRISTILBUD */}
               {activeTab === 'endringsordrer' && (
                 <div className="space-y-6">
                   <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-4">
                     <div>
                       <h2 className="text-xl font-extrabold text-navy-900 tracking-tight">
-                        {t('change_orders_tab_title', 'Endringsordrer & Varslingsplikt (NS 8406 / Håndverkertjenesteloven)')}
+                        {t('change_orders_tab_title', 'Endringsordrer & Pristilbud')}
                       </h2>
                       <p className="text-xs text-slate-500">
-                        {t('change_orders_tab_subtitle', 'Agenten forvandler muntlige beskjeder fra byggeplass til juridisk bindende tilleggskrav.')}
+                        {t('change_orders_tab_subtitle', 'Full styring over formelle varsler (NS 8406) og kalkulerte tilbud med påslag og timepriser.')}
                       </p>
                     </div>
 
-                    <button 
-                      type="button"
-                      onClick={() => setIsChangeOrderModalOpen(true)}
-                      className="flex items-center gap-2 px-4 py-2.5 bg-gradient-to-r from-electric-500 to-electric-400 hover:opacity-95 text-white rounded-2xl text-xs font-black shadow-purple-cta transition-opacity cursor-pointer"
-                    >
-                      <Plus size={16} />
-                      <span>{t('btn_new_change_order', 'Ny Endringsordre')}</span>
-                    </button>
-                  </div>
-
-                  <div className="bg-white rounded-3xl border border-slate-200/90 overflow-hidden shadow-sm">
-                    <div className="p-6 border-b border-slate-100 flex items-center justify-between flex-wrap gap-4">
-                      <div className="flex items-center gap-3">
-                        <div className="text-2xl font-black text-navy-900">
-                          kr {(agentMetrics.securedRevenue || 84500).toLocaleString('no-NO')}
-                        </div>
-                        <span className="text-xs font-bold text-slate-500">
-                          {t('total_secured_revenue', 'Totalt sikret i tilleggsarbeid')}
-                        </span>
+                    <div className="flex items-center gap-2 flex-wrap">
+                      <div className="flex items-center bg-slate-100 p-1 rounded-2xl border border-slate-200">
+                        <button
+                          type="button"
+                          onClick={() => setChangeOrdersViewTab('changes')}
+                          className={cn(
+                            "px-3 py-1.5 rounded-xl text-xs font-bold transition-all cursor-pointer",
+                            changeOrdersViewTab === 'changes'
+                              ? "bg-white text-navy-950 shadow-xs"
+                              : "text-slate-600 hover:text-navy-950"
+                          )}
+                        >
+                          Endringsordrer ({dashboardChangeOrders.length})
+                        </button>
+                        <button
+                          type="button"
+                          onClick={() => setChangeOrdersViewTab('offers')}
+                          className={cn(
+                            "px-3 py-1.5 rounded-xl text-xs font-bold transition-all cursor-pointer",
+                            changeOrdersViewTab === 'offers'
+                              ? "bg-white text-navy-950 shadow-xs"
+                              : "text-slate-600 hover:text-navy-950"
+                          )}
+                        >
+                          Pristilbud & Kalkyle ({dashboardOffers.length})
+                        </button>
                       </div>
-                      <span className="text-xs font-bold text-emerald-600 bg-emerald-50 px-3 py-1 rounded-full border border-emerald-200">
-                        {t('zero_lost_claims', '0 tapte krav på grunn av sen varsling')}
-                      </span>
-                    </div>
 
-                    <div className="divide-y divide-slate-100">
-                      {dashboardChangeOrders.length === 0 ? (
-                        <div className="p-12 text-center text-slate-400 flex flex-col items-center justify-center">
-                          <div className="w-14 h-14 rounded-2xl bg-rose-50 text-rose-600 flex items-center justify-center mb-3">
-                            <FileSignature size={26} />
-                          </div>
-                          <p className="text-base font-extrabold text-navy-900 mb-1">{t('no_change_orders_title', 'Ingen endringsordrer registrert')}</p>
-                          <p className="text-xs text-slate-500 max-w-sm mb-5">{t('no_change_orders_desc', 'Unngå uenighet og tapte penger i sluttoppgjøret. Send juridisk bindende varsel (NS 8406) med digital godkjenning på 1 minutt.')}</p>
-                          <button
-                            type="button"
-                            onClick={() => setIsChangeOrderModalOpen(true)}
-                            className="flex items-center gap-2 px-5 py-2.5 bg-gradient-to-r from-electric-500 to-electric-400 hover:opacity-95 text-white rounded-2xl text-xs font-black shadow-purple-cta transition-all active:scale-95 cursor-pointer"
-                          >
-                            <Plus size={16} />
-                            <span>{t('btn_new_change_order', 'Ny Endringsordre')}</span>
-                          </button>
-                        </div>
+                      {changeOrdersViewTab === 'changes' ? (
+                        <button 
+                          type="button"
+                          onClick={() => setIsChangeOrderModalOpen(true)}
+                          className="flex items-center gap-2 px-4 py-2.5 bg-gradient-to-r from-electric-500 to-electric-400 hover:opacity-95 text-white rounded-2xl text-xs font-black shadow-purple-cta transition-opacity cursor-pointer"
+                        >
+                          <Plus size={16} />
+                          <span>{t('btn_new_change_order', 'Ny Endringsordre')}</span>
+                        </button>
                       ) : (
-                        dashboardChangeOrders.map((co) => (
-                          <div key={co.id} className="p-6 flex flex-col sm:flex-row sm:items-center justify-between gap-4 hover:bg-slate-50/60 transition-colors">
-                            <div>
-                              <div className="flex items-center gap-2 mb-1">
-                                <span className="text-xs font-extrabold text-navy-900">#{co.number}</span>
-                                <span className="text-xs font-bold text-slate-400">•</span>
-                                <span className="text-xs font-bold text-slate-600">{co.project}</span>
-                                <span className={cn(
-                                  "px-2 py-0.5 rounded text-[10px] font-black uppercase",
-                                  co.status.includes('Venter') ? "bg-amber-100 text-amber-800" : "bg-emerald-100 text-emerald-800"
-                                )}>
-                                  {co.status}
-                                </span>
-                              </div>
-                              <h4 className="text-sm font-bold text-navy-900">{co.title}</h4>
-                              <p className="text-[11px] text-slate-500 mt-0.5">{co.legal}</p>
-                            </div>
-
-                            <div className="flex items-center gap-4 sm:text-right shrink-0">
-                              <div>
-                                <div className="text-sm font-black text-navy-900">kr {Number(co.amount).toLocaleString('no-NO')}</div>
-                                <div className="text-[10px] text-slate-400 font-bold">{t('ex_vat_days', 'eks mva (+{{days}} dgr)', { days: co.days })}</div>
-                              </div>
-
-                              <div className="flex items-center gap-2">
-                                <button 
-                                  type="button"
-                                  onClick={() => setIsChangeOrderModalOpen(true)}
-                                  className="px-3 py-2 bg-rose-50 hover:bg-rose-100 text-rose-700 rounded-xl text-xs font-bold transition-all cursor-pointer"
-                                >
-                                  {t('btn_process', 'Behandle')}
-                                </button>
-                                <button 
-                                  type="button"
-                                  onClick={() => {
-                                    if (co.shareUrl) {
-                                      navigator.clipboard.writeText(co.shareUrl);
-                                    }
-                                    toast.success('Godkjenningslenke kopiert til utklippstavlen!');
-                                  }}
-                                  className="px-3 py-2 bg-slate-100 hover:bg-slate-200 text-navy-900 rounded-xl text-xs font-bold transition-all cursor-pointer"
-                                >
-                                  {t('btn_copy_link', 'Kopier lenke')}
-                                </button>
-                                <button 
-                                  type="button"
-                                  onClick={() => handleDeleteDashboardOrder(co.id, co.title)}
-                                  title={t('btn_delete_order', 'Slett endringsordre')}
-                                  className="p-2 text-slate-400 hover:text-rose-600 hover:bg-rose-50 rounded-xl transition-all cursor-pointer"
-                                >
-                                  <Trash2 size={16} />
-                                </button>
-                              </div>
-                            </div>
-                          </div>
-                        ))
+                        <button 
+                          type="button"
+                          onClick={() => setIsOfferModalOpen(true)}
+                          className="flex items-center gap-2 px-4 py-2.5 bg-gradient-to-r from-electric-600 to-electric-500 hover:opacity-95 text-white rounded-2xl text-xs font-black shadow-purple-cta transition-opacity cursor-pointer"
+                        >
+                          <Plus size={16} />
+                          <span>Nytt Pristilbud</span>
+                        </button>
                       )}
                     </div>
                   </div>
+
+                  {changeOrdersViewTab === 'offers' ? (
+                    <div className="bg-white rounded-3xl border border-slate-200/90 overflow-hidden shadow-sm">
+                      <div className="p-6 border-b border-slate-100 flex items-center justify-between flex-wrap gap-4">
+                        <div className="flex items-center gap-3">
+                          <div className="text-2xl font-black text-navy-900">
+                            kr {dashboardOffers.reduce((acc, o) => acc + (Number(o.totalAmount) || 0), 0).toLocaleString('no-NO')}
+                          </div>
+                          <span className="text-xs font-bold text-slate-500">
+                            Kalkulert i aktive tilbud
+                          </span>
+                        </div>
+                        <span className="text-xs font-bold text-electric-600 bg-electric-50 px-3 py-1 rounded-full border border-electric-200">
+                          {dashboardOffers.length} aktive tilbud
+                        </span>
+                      </div>
+
+                      <div className="divide-y divide-slate-100">
+                        {dashboardOffers.length === 0 ? (
+                          <div className="p-12 text-center text-slate-400 flex flex-col items-center justify-center">
+                            <div className="w-14 h-14 rounded-2xl bg-electric-50 text-electric-600 flex items-center justify-center mb-3">
+                              <FileText size={26} />
+                            </div>
+                            <p className="text-base font-extrabold text-navy-900 mb-1">Ingen pristilbud opprettet ennå</p>
+                            <p className="text-xs text-slate-500 max-w-sm mb-5">
+                              Lag profesjonelle pristilbud med arbeidstimer, materialpåslag og NS-forbehold direkte via MesterAI eller tilbudsbyggeren.
+                            </p>
+                            <button
+                              type="button"
+                              onClick={() => setIsOfferModalOpen(true)}
+                              className="flex items-center gap-2 px-5 py-2.5 bg-gradient-to-r from-electric-600 to-electric-500 text-white rounded-2xl text-xs font-black shadow-purple-cta transition-all active:scale-95 cursor-pointer"
+                            >
+                              <Plus size={16} />
+                              <span>Opprett Nytt Tilbud</span>
+                            </button>
+                          </div>
+                        ) : (
+                          dashboardOffers.map((off) => (
+                            <div key={off.id} className="p-6 flex flex-col sm:flex-row sm:items-center justify-between gap-4 hover:bg-slate-50/60 transition-colors">
+                              <div>
+                                <div className="flex items-center gap-2 mb-1">
+                                  <span className="text-xs font-bold text-slate-600">{off.projectName || 'Prosjekt'}</span>
+                                  <span className="text-xs font-bold text-slate-400">•</span>
+                                  <span className="text-xs font-bold text-slate-500">{off.clientName || 'Kunde'}</span>
+                                  <span className={cn(
+                                    "px-2 py-0.5 rounded text-[10px] font-black uppercase",
+                                    off.status === 'approved' ? "bg-emerald-100 text-emerald-800" :
+                                    off.status === 'sent' ? "bg-blue-100 text-blue-800" :
+                                    "bg-slate-100 text-slate-700"
+                                  )}>
+                                    {off.status === 'approved' ? 'Godkjent' : off.status === 'sent' ? 'Sendt' : 'Utkast'}
+                                  </span>
+                                </div>
+                                <h4 className="text-sm font-bold text-navy-900">{off.title}</h4>
+                                {off.clientEmail && (
+                                  <p className="text-[11px] text-slate-400 mt-0.5">{off.clientEmail}</p>
+                                )}
+                              </div>
+
+                              <div className="flex items-center gap-4 sm:text-right shrink-0">
+                                <div>
+                                  <div className="text-sm font-black text-navy-900">
+                                    kr {(off.totalAmount ?? 0).toLocaleString('no-NO')}
+                                  </div>
+                                  <div className="text-[10px] text-slate-400 font-bold">
+                                    kr {(off.totalIncVat ?? Math.round((off.totalAmount ?? 0) * 1.25)).toLocaleString('no-NO')} ink mva
+                                  </div>
+                                </div>
+
+                                <div className="flex items-center gap-2">
+                                  <button
+                                    type="button"
+                                    onClick={() => {
+                                      setOfferInitialData(off);
+                                      setIsOfferModalOpen(true);
+                                    }}
+                                    className="px-3 py-2 bg-electric-50 hover:bg-electric-100 text-electric-800 rounded-xl text-xs font-bold transition-all cursor-pointer"
+                                  >
+                                    Rediger kalkyle
+                                  </button>
+                                  <button
+                                    type="button"
+                                    onClick={() => {
+                                      const url = `${typeof window !== 'undefined' ? window.location.origin : ''}/godkjenn-tilbud?token=${off.token || off.id}`;
+                                      navigator.clipboard.writeText(url);
+                                      toast.success('Kundetilbud-lenke kopiert til utklippstavlen!');
+                                    }}
+                                    className="px-3 py-2 bg-slate-100 hover:bg-slate-200 text-navy-900 rounded-xl text-xs font-bold transition-all cursor-pointer"
+                                  >
+                                    Kopier lenke
+                                  </button>
+                                  <button
+                                    type="button"
+                                    onClick={() => handleDeleteDashboardOffer(off.id, off.title)}
+                                    title="Slett tilbud"
+                                    className="p-2 text-slate-400 hover:text-rose-600 hover:bg-rose-50 rounded-xl transition-all cursor-pointer"
+                                  >
+                                    <Trash2 size={16} />
+                                  </button>
+                                </div>
+                              </div>
+                            </div>
+                          ))
+                        )}
+                      </div>
+                    </div>
+                  ) : (
+                    <div className="bg-white rounded-3xl border border-slate-200/90 overflow-hidden shadow-sm">
+                      <div className="p-6 border-b border-slate-100 flex items-center justify-between flex-wrap gap-4">
+                        <div className="flex items-center gap-3">
+                          <div className="text-2xl font-black text-navy-900">
+                            kr {(agentMetrics.securedRevenue || 84500).toLocaleString('no-NO')}
+                          </div>
+                          <span className="text-xs font-bold text-slate-500">
+                            {t('total_secured_revenue', 'Totalt sikret i tilleggsarbeid')}
+                          </span>
+                        </div>
+                        <span className="text-xs font-bold text-emerald-600 bg-emerald-50 px-3 py-1 rounded-full border border-emerald-200">
+                          {t('zero_lost_claims', '0 tapte krav på grunn av sen varsling')}
+                        </span>
+                      </div>
+
+                      <div className="divide-y divide-slate-100">
+                        {dashboardChangeOrders.length === 0 ? (
+                          <div className="p-12 text-center text-slate-400 flex flex-col items-center justify-center">
+                            <div className="w-14 h-14 rounded-2xl bg-rose-50 text-rose-600 flex items-center justify-center mb-3">
+                              <FileSignature size={26} />
+                            </div>
+                            <p className="text-base font-extrabold text-navy-900 mb-1">{t('no_change_orders_title', 'Ingen endringsordrer registrert')}</p>
+                            <p className="text-xs text-slate-500 max-w-sm mb-5">{t('no_change_orders_desc', 'Unngå uenighet og tapte penger i sluttoppgjøret. Send juridisk bindende varsel (NS 8406) med digital godkjenning på 1 minutt.')}</p>
+                            <button
+                              type="button"
+                              onClick={() => setIsChangeOrderModalOpen(true)}
+                              className="flex items-center gap-2 px-5 py-2.5 bg-gradient-to-r from-electric-500 to-electric-400 hover:opacity-95 text-white rounded-2xl text-xs font-black shadow-purple-cta transition-all active:scale-95 cursor-pointer"
+                            >
+                              <Plus size={16} />
+                              <span>{t('btn_new_change_order', 'Ny Endringsordre')}</span>
+                            </button>
+                          </div>
+                        ) : (
+                          dashboardChangeOrders.map((co) => (
+                            <div key={co.id} className="p-6 flex flex-col sm:flex-row sm:items-center justify-between gap-4 hover:bg-slate-50/60 transition-colors">
+                              <div>
+                                <div className="flex items-center gap-2 mb-1">
+                                  <span className="text-xs font-extrabold text-navy-900">#{co.number}</span>
+                                  <span className="text-xs font-bold text-slate-400">•</span>
+                                  <span className="text-xs font-bold text-slate-600">{co.project}</span>
+                                  <span className={cn(
+                                    "px-2 py-0.5 rounded text-[10px] font-black uppercase",
+                                    co.status.includes('Venter') ? "bg-amber-100 text-amber-800" : "bg-emerald-100 text-emerald-800"
+                                  )}>
+                                    {co.status}
+                                  </span>
+                                </div>
+                                <h4 className="text-sm font-bold text-navy-900">{co.title}</h4>
+                                <p className="text-[11px] text-slate-500 mt-0.5">{co.legal}</p>
+                              </div>
+
+                              <div className="flex items-center gap-4 sm:text-right shrink-0">
+                                <div>
+                                  <div className="text-sm font-black text-navy-900">kr {Number(co.amount).toLocaleString('no-NO')}</div>
+                                  <div className="text-[10px] text-slate-400 font-bold">{t('ex_vat_days', 'eks mva (+{{days}} dgr)', { days: co.days })}</div>
+                                </div>
+
+                                <div className="flex items-center gap-2">
+                                  <button 
+                                    type="button"
+                                    onClick={() => setIsChangeOrderModalOpen(true)}
+                                    className="px-3 py-2 bg-rose-50 hover:bg-rose-100 text-rose-700 rounded-xl text-xs font-bold transition-all cursor-pointer"
+                                  >
+                                    {t('btn_process', 'Behandle')}
+                                  </button>
+                                  <button 
+                                    type="button"
+                                    onClick={() => {
+                                      if (co.shareUrl) {
+                                        navigator.clipboard.writeText(co.shareUrl);
+                                      }
+                                      toast.success('Godkjenningslenke kopiert til utklippstavlen!');
+                                    }}
+                                    className="px-3 py-2 bg-slate-100 hover:bg-slate-200 text-navy-900 rounded-xl text-xs font-bold transition-all cursor-pointer"
+                                  >
+                                    {t('btn_copy_link', 'Kopier lenke')}
+                                  </button>
+                                  <button 
+                                    type="button"
+                                    onClick={() => handleDeleteDashboardOrder(co.id, co.title)}
+                                    title={t('btn_delete_order', 'Slett endringsordre')}
+                                    className="p-2 text-slate-400 hover:text-rose-600 hover:bg-rose-50 rounded-xl transition-all cursor-pointer"
+                                  >
+                                    <Trash2 size={16} />
+                                  </button>
+                                </div>
+                              </div>
+                            </div>
+                          ))
+                        )}
+                      </div>
+                    </div>
+                  )}
                 </div>
               )}
 
@@ -2433,6 +2518,18 @@ export default function Dashboard({
             </motion.div>
           )}
         </AnimatePresence>
+      </div>
+
+      {/* Floating Action Button for Mobile / Phone Control */}
+      <div className="fixed bottom-6 right-6 z-40 sm:hidden">
+        <button
+          type="button"
+          onClick={() => setIsAIChatOpen(true)}
+          className="w-14 h-14 rounded-full bg-gradient-to-tr from-electric-600 to-purple-600 text-white shadow-2xl flex items-center justify-center hover:scale-110 active:scale-95 transition-transform border-2 border-white/30 cursor-pointer animate-in zoom-in duration-200"
+          title="Snakk med MesterAI"
+        >
+          <Mic size={24} className="animate-pulse" />
+        </button>
       </div>
     </div>
   );

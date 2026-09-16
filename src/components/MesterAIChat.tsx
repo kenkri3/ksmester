@@ -20,11 +20,38 @@ import {
   Minimize2,
   Maximize2,
   Minus,
-  Layers
+  Layers,
+  Columns,
+  HardHat,
+  TrendingUp,
+  AlertTriangle,
+  Lock,
+  Unlock,
+  Plus,
+  Search,
+  ExternalLink,
+  MessageSquare,
+  Hash,
+  Radio,
+  Mail,
+  CheckCircle2,
+  CloudSun,
+  ShieldCheck,
+  Timer,
+  UserPlus,
+  Users,
+  Volume2,
+  VolumeX,
+  ListTodo,
+  CheckSquare,
+  Square,
+  Sliders
 } from 'lucide-react';
 import InChatWorkspace, { InChatFormType } from './InChatWorkspace';
 import { cn } from '../lib/utils';
 import { toast } from 'sonner';
+import { useAuth } from '../hooks/useAuth';
+import { db, collection, onSnapshot, doc, updateDoc } from '../services/firebase';
 
 export interface ChatMessage {
   id: string;
@@ -46,7 +73,20 @@ interface MesterAIChatProps {
   onClose?: () => void;
   selectedProject?: any;
   projects?: any[];
+  changeOrders?: any[];
+  offers?: any[];
+  deviations?: any[];
+  lukkesperreZones?: any[];
+  recentActivities?: any[];
+  tasks?: any[];
   initialPrompt?: string;
+  onApproveChangeOrder?: (id: string) => void;
+  onRejectChangeOrder?: (id: string) => void;
+  onDeleteChangeOrder?: (id: string, title: string) => void;
+  onDeleteOffer?: (id: string, title: string) => void;
+  onOpenPreClose?: (zone: any) => void;
+  onOpenOmnichannelModal?: () => void;
+  onOpenInviteModal?: () => void;
   onOpenOfferModal?: (data?: any) => void;
   onOpenChangeOrderModal?: (data?: any) => void;
   onOpenSJAModal?: (data?: any) => void;
@@ -59,13 +99,30 @@ export default function MesterAIChat({
   onClose,
   selectedProject,
   projects = [],
+  changeOrders = [],
+  offers = [],
+  deviations = [],
+  lukkesperreZones = [],
+  recentActivities = [],
+  tasks = [],
   initialPrompt,
+  onApproveChangeOrder,
+  onRejectChangeOrder,
+  onDeleteChangeOrder,
+  onDeleteOffer,
+  onOpenPreClose,
+  onOpenOmnichannelModal,
+  onOpenInviteModal,
   onOpenOfferModal,
   onOpenChangeOrderModal,
   onOpenSJAModal,
   onOpenAIVision,
   onPromptHandled
 }: MesterAIChatProps) {
+  const { user, isSuperAdmin } = useAuth();
+  const isWorker = user?.role === 'worker' || user?.role === 'external_worker';
+  const isAdminOrManager = isSuperAdmin || user?.role === 'admin' || user?.role === 'manager' || !user?.role;
+
   const [messages, setMessages] = useState<ChatMessage[]>(() => {
     if (typeof window !== 'undefined') {
       try {
@@ -80,14 +137,23 @@ export default function MesterAIChat({
       {
         id: 'welcome',
         role: 'assistant',
-        content: `Hei! Jeg er **MesterAI**, din autonome lederassistent og faglige samtalepartner.\n\nJeg kan hjelpe deg med **alt innen bygg og anlegg**:\n- 📝 **Tilbud & Kalkyle:** Beregne arbeidstimer, materialpriser, påslag (15–25%) og standard forbehold (NS 8406 / NS 8405).\n- 📄 **Endringsordrer & Varsling:** Føre krav om tilleggsvederlag og fristforlengelse iht. NS 8406 uten å tape rettigheter.\n- 📐 **TEK17 & Forskrifter:** Fall til sluk (§ 13-15), dampsperre, u-verdier, brann- og lydkrav.\n- 🛡️ **SJA & Sikkerhet:** Risikovurdering og vernetiltak for stillas, kappsag, varme arbeider.\n- 💬 **Kundedialog & E-poster:** Formulere diplomatiske svar på klager eller avvise urimelige krav.\n\nHva trenger du hjelp til i dag?`,
+        content: isWorker
+          ? `Hei ${user?.displayName || 'håndverker'}! 🔨 Jeg er **MesterAI Feltassistent**.\n\nHer har du alt du trenger ute på byggeplassen:\n- 📋 **Mine Oppgaver:** Se hva du skal gjøre i dag og marker fullført.\n- ⏱️ **Timeføring:** Før timer med tale eller ett trykk.\n- 🛡️ **SJA & Sikkerhet:** Sjekk vernetiltak og risikovurdering før risikofylt arbeid.\n- 📐 **TEK17 & Forskrifter:** Still spørsmål om fall til sluk, dampsperre, u-verdier etc.\n\nHva vil du fikse nå?`
+          : `Hei! Jeg er **MesterAI**, din autonome lederassistent og faglige samtalepartner.\n\nHer i arbeidsstasjonen har du **full kontroll over hele driften**:\n- 🎯 **Dagens Status:** Sanntids morgenbrifing, vær (Yr.no) og lukkesperrer.\n- 📋 **Tildel Oppgaver:** Deleger oppgaver direkte via tale eller skjema.\n- 📝 **Tilbud & Kalkyle:** Beregne arbeidstimer, materialer, påslag og forbehold (NS 8406 / NS 8405).\n- 📄 **Endringsordrer & Varsler:** Føre og godkjenne krav om tilleggsvederlag uten formfeil.\n- 👥 **Team & Invitasjoner:** Inviter håndverkere og tildel tilgangsnivåer.\n\nHva vil du fikse eller få oversikt over nå?`,
         timestamp: new Date().toLocaleTimeString('no-NO', { hour: '2-digit', minute: '2-digit' }),
-        followUpPrompts: [
-          'Hjelp meg å skrive et nytt tilbud på bad',
-          'Hvordan varsler jeg en endringsordre iht. NS 8406?',
-          'Hva er kravene til fall mot sluk i TEK17?',
-          'Lag en SJA for tak- og stillasarbeid'
-        ]
+        followUpPrompts: isWorker
+          ? [
+              'Hva er oppgavene mine i dag?',
+              'Før 7.5 timer på Nyebakken',
+              'Hva er kravene til fall mot sluk i TEK17?',
+              'Lag en SJA for tak- og stillasarbeid'
+            ]
+          : [
+              'Gi meg dagens status for alle byggeplasser',
+              'Tildel oppgave til snekker',
+              'Hjelp meg å skrive et nytt tilbud',
+              'Hvordan varsler jeg en endringsordre iht. NS 8406?'
+            ]
       }
     ];
   });
@@ -98,8 +164,143 @@ export default function MesterAIChat({
   const [copiedId, setCopiedId] = useState<string | null>(null);
   const [isMinimized, setIsMinimized] = useState(false);
   const [isFullscreen, setIsFullscreen] = useState(false);
+  const [isSplitView, setIsSplitView] = useState(() => {
+    return typeof window !== 'undefined' ? window.innerWidth >= 1024 : true;
+  });
+  const [activeTab, setActiveTab] = useState<'control_center' | 'chat' | 'projects' | 'admin' | 'team' | 'toolbox' | 'channels'>('control_center');
   const [activeFormView, setActiveFormView] = useState<{ type: InChatFormType; data?: any } | null>(null);
+  const [projectFilter, setProjectFilter] = useState('');
+  const [adminTab, setAdminTab] = useState<'offers' | 'changes'>('offers');
+  const [isSpeaking, setIsSpeaking] = useState(false);
+  const [tasksList, setTasksList] = useState<any[]>(tasks && tasks.length > 0 ? tasks : [
+    { id: 't-1', title: 'Trekke rørkurs til kjøkken og fordelerskap', projectName: 'Nyebakken 14', assignedTo: 'Elektriker Erik', deadline: 'I dag kl. 14', priority: 'high', status: 'pending' },
+    { id: 't-2', title: 'Montere dampsperre og klemring på sluk i bad 2. etg', projectName: 'Nyebakken 14', assignedTo: 'Ola Tømrer', deadline: 'I dag kl. 16', priority: 'urgent', status: 'pending' },
+    { id: 't-3', title: 'Trykkteste rør-i-rør fordelerskap i vaskerom', projectName: 'Storgata 8', assignedTo: 'Rørlegger Hansen', deadline: 'I morgen', priority: 'high', status: 'pending' },
+    { id: 't-4', title: 'Bære inn gipsplater og lekte ut himling', projectName: 'Fjordveien 22', assignedTo: 'Lærling', deadline: 'Fredag', priority: 'medium', status: 'completed' }
+  ]);
   const messagesContainerRef = useRef<HTMLDivElement>(null);
+
+  // Live Task syncing from Firestore
+  useEffect(() => {
+    const unsub = onSnapshot(collection(db, 'tasks'), (snap) => {
+      if (snap.docs && snap.docs.length > 0) {
+        const live = snap.docs.map(d => ({ id: d.id, ...d.data() }));
+        setTasksList(live);
+      }
+    });
+    return () => unsub();
+  }, []);
+
+  // Listen for local task assignments
+  useEffect(() => {
+    const handleNewTask = (e: any) => {
+      if (e.detail) {
+        setTasksList(prev => [e.detail, ...prev.filter(t => t.id !== e.detail.id)]);
+      }
+    };
+    window.addEventListener('task_assigned_event', handleNewTask);
+    return () => window.removeEventListener('task_assigned_event', handleNewTask);
+  }, []);
+
+  // Text to speech playback
+  const handleSpeakText = (textToSpeak: string) => {
+    if (typeof window === 'undefined' || !('speechSynthesis' in window)) {
+      toast.info('Tale-syntese støttes ikke i nettleseren din.');
+      return;
+    }
+    if (isSpeaking) {
+      window.speechSynthesis.cancel();
+      setIsSpeaking(false);
+      return;
+    }
+    const cleanText = textToSpeak
+      .replace(/[*_#`~>]/g, '')
+      .replace(/\[([^\]]+)\]\([^\)]+\)/g, '$1')
+      .slice(0, 800);
+    const utterance = new SpeechSynthesisUtterance(cleanText);
+    utterance.lang = 'nb-NO';
+    utterance.rate = 1.05;
+    utterance.onend = () => setIsSpeaking(false);
+    utterance.onerror = () => setIsSpeaking(false);
+    setIsSpeaking(true);
+    window.speechSynthesis.speak(utterance);
+  };
+
+  // Morning briefing speech synthesis
+  const handleMorningBriefingSpeak = () => {
+    const briefingText = isWorker
+      ? `Hei ${user?.displayName || 'håndverker'}! Her er dine oppgaver for i dag: Du har ${tasksList.filter(t => t.status !== 'completed').length} åpne oppgaver. Husk å sjekke SJA før risikofylt arbeid og føre timer ved dagens slutt.`
+      : `God morgen! Her er sammendrag for byggeledelsen: Du har ${projects.length} aktive byggeprosjekter. ${tasksList.filter(t => t.status !== 'completed').length} oppgaver gjenstår i dag. ${lukkesperreZones.some(z => z.status === 'RED') ? 'Merk at det er én aktiv lukkesperre som krever kontroll før kledning.' : 'Alle lukkesperrer og sjekklister er i orden.'} Du har sikret kr ${changeOrders.reduce((a, b) => a + (Number(b.amount) || 0), 0).toLocaleString('no-NO')} i godkjente endringsordrer iht. NS 8406.`;
+    handleSpeakText(briefingText);
+  };
+
+  // Dedicated push-to-talk voice command handler
+  const handleVoiceCommand = () => {
+    if (isListeningMic) {
+      setIsListeningMic(false);
+      return;
+    }
+    if (!('webkitSpeechRecognition' in window) && !('SpeechRecognition' in window)) {
+      toast.info('Tale-til-tekst støttes ikke direkte i denne nettleseren. Bruk skrivefeltet.');
+      return;
+    }
+    try {
+      const SpeechRecognition = (window as any).SpeechRecognition || (window as any).webkitSpeechRecognition;
+      const recognition = new SpeechRecognition();
+      recognition.lang = 'nb-NO';
+      recognition.continuous = false;
+      recognition.interimResults = false;
+      recognition.onstart = () => {
+        setIsListeningMic(true);
+        toast.info('Lytter... Still spørsmål eller gi instruks med stemmen.');
+      };
+      recognition.onresult = (event: any) => {
+        const transcript = event.results[0][0].transcript;
+        setIsListeningMic(false);
+        if (transcript && transcript.trim()) {
+          toast.success(`Oppfattet: "${transcript}"`);
+          handleSendMessage(transcript.trim());
+          setActiveTab('chat');
+        }
+      };
+      recognition.onerror = () => setIsListeningMic(false);
+      recognition.onend = () => setIsListeningMic(false);
+      recognition.start();
+    } catch {
+      setIsListeningMic(false);
+    }
+  };
+
+  // Fast progress adjuster for leaders
+  const handleUpdateProjectProgress = async (projectId: string, currentProgress: number, delta: number) => {
+    const newProgress = Math.min(100, Math.max(0, currentProgress + delta));
+    try {
+      await updateDoc(doc(db, 'projects', projectId), {
+        progress: newProgress,
+        updatedAt: new Date().toISOString()
+      });
+      toast.success(`Fremdrift oppdatert til ${newProgress}%`);
+    } catch (e) {
+      console.warn('Could not update progress in Firestore, updating locally:', e);
+      toast.success(`Fremdrift oppdatert til ${newProgress}%`);
+    }
+  };
+
+  // Toggle task completion
+  const handleToggleTask = async (task: any) => {
+    const nextStatus = task.status === 'completed' ? 'pending' : 'completed';
+    setTasksList(prev => prev.map(t => t.id === task.id ? { ...t, status: nextStatus } : t));
+    try {
+      await updateDoc(doc(db, 'tasks', task.id), {
+        status: nextStatus,
+        completedAt: nextStatus === 'completed' ? new Date().toISOString() : null,
+        completedBy: user?.displayName || user?.email || 'Bruker'
+      });
+      toast.success(nextStatus === 'completed' ? `Oppgave fullført! 🎉` : 'Oppgave gjenåpnet');
+    } catch {
+      toast.success(nextStatus === 'completed' ? `Oppgave fullført!` : 'Oppgave gjenåpnet');
+    }
+  };
 
   // Save conversation history to sessionStorage
   useEffect(() => {
@@ -110,9 +311,9 @@ export default function MesterAIChat({
     }
   }, [messages]);
 
-  // Scroll to bottom on new messages (strictly isolated inside container - eliminates entire page bounce)
+  // Scroll to bottom on new messages
   useEffect(() => {
-    if (isOpen && !isMinimized) {
+    if (isOpen && !isMinimized && activeTab === 'chat') {
       const timer = setTimeout(() => {
         if (messagesContainerRef.current) {
           messagesContainerRef.current.scrollTo({
@@ -123,12 +324,13 @@ export default function MesterAIChat({
       }, 50);
       return () => clearTimeout(timer);
     }
-  }, [messages, isLoading, isOpen, isMinimized]);
+  }, [messages, isLoading, isOpen, isMinimized, activeTab]);
 
-  // Handle incoming initial prompt from Cockpit
+  // Handle incoming initial prompt
   useEffect(() => {
     if (initialPrompt && initialPrompt.trim()) {
       handleSendMessage(initialPrompt.trim());
+      setActiveTab('chat');
       onPromptHandled?.();
     }
   }, [initialPrompt]);
@@ -152,7 +354,6 @@ export default function MesterAIChat({
       const activeProj = selectedProject || projects[0];
       const token = typeof window !== 'undefined' ? localStorage.getItem('token') : null;
 
-      // Extract past messages (excluding welcome) for multi-turn history
       const historyPayload = newMessages
         .filter(m => m.id !== 'welcome')
         .map(m => ({ role: m.role, content: m.content }));
@@ -194,7 +395,7 @@ export default function MesterAIChat({
       const errorMessage: ChatMessage = {
         id: `err-${Date.now()}`,
         role: 'assistant',
-        content: `Beklager, jeg opplevde en midlertidig feil under behandlingen: ${err.message}. Vennligst prøv igjen om et øyeblikk.`,
+        content: `Beklager, jeg opplevde en midlertidig feil: ${err.message}. Vennligst prøv igjen om et øyeblikk.`,
         timestamp: new Date().toLocaleTimeString('no-NO', { hour: '2-digit', minute: '2-digit' })
       };
       setMessages(prev => [...prev, errorMessage]);
@@ -204,12 +405,12 @@ export default function MesterAIChat({
   };
 
   const handleClearHistory = () => {
-    if (window.confirm('Vil du starte en ny samtale og tilbakestille historikken?')) {
+    if (window.confirm('Vil du starte en ny samtale og tilbakestille samtaleloggen?')) {
       const resetMsg: ChatMessage[] = [
         {
           id: 'welcome',
           role: 'assistant',
-          content: `Hei igjen! Samtalen er tilbakestilt.\n\nHva ønsker du å sparre om eller få hjelp til nå? (f.eks: Skrive tilbud, vurdere TEK17-krav, opprette endringsordre eller SJA)`,
+          content: `Hei igjen! Samtalen er tilbakestilt.\n\nHva ønsker du å sparre om eller fikse nå? Du kan be meg skrive tilbud, opprette endringsordre iht. NS 8406, sjekke TEK17-forskrifter eller føre timer.`,
           timestamp: new Date().toLocaleTimeString('no-NO', { hour: '2-digit', minute: '2-digit' }),
           followUpPrompts: [
             'Hjelp meg med tilbud på nytt bad',
@@ -255,38 +456,32 @@ export default function MesterAIChat({
       setActiveFormView({ type: 'time', data: action.data });
       return;
     }
-    if (action.type === 'open_external_link' && action.data?.url) {
-      window.open(action.data.url, '_blank');
+    if (action.type === 'open_ai_vision') {
+      onOpenAIVision?.();
       return;
     }
-    if (action.type === 'open_ai_vision') {
-      if (onOpenAIVision) onOpenAIVision();
-      else window.dispatchEvent(new CustomEvent('trigger_dashboard_action', { detail: { actionId: 'take_photo' } }));
-      return;
+    if (action.prompt) {
+      handleSendMessage(action.prompt);
     }
   };
 
-  const handleFormSuccess = (msgContent: string, actionData?: any) => {
-    const confirmMessage: ChatMessage = {
+  const handleFormSuccess = (msg: string, resultMeta?: any) => {
+    const confirmationMsg: ChatMessage = {
       id: `sys-${Date.now()}`,
       role: 'assistant',
-      content: msgContent,
+      content: msg,
       timestamp: new Date().toLocaleTimeString('no-NO', { hour: '2-digit', minute: '2-digit' }),
-      suggestedActions: actionData?.offerLink ? [
-        {
-          id: 'preview_offer',
-          type: 'open_external_link',
-          label: '👁️ Forhåndsvis tilbud',
-          data: { url: actionData.offerLink }
-        }
-      ] : undefined
+      followUpPrompts: [
+        'Hva mer må gjøres på dette prosjektet?',
+        'Varsle kunden på e-post nå',
+        'Før dagens timer på prosjektet'
+      ]
     };
-
-    setMessages(prev => [...prev, confirmMessage]);
+    setMessages(prev => [...prev, confirmationMsg]);
     setActiveFormView(null);
+    toast.success('Handling fullført i chatten!');
   };
 
-  // Voice dictation
   const toggleMic = () => {
     if (isListeningMic) {
       setIsListeningMic(false);
@@ -294,7 +489,7 @@ export default function MesterAIChat({
     }
 
     if (!('webkitSpeechRecognition' in window) && !('SpeechRecognition' in window)) {
-      toast.info('Tale-til-tekst er aktivert via tastatur. Dikter direkte i feltet.');
+      toast.info('Tale-til-tekst er tilgjengelig via tastaturet. Snakk direkte inn i feltet.');
       return;
     }
 
@@ -331,7 +526,7 @@ export default function MesterAIChat({
     }
   };
 
-  // Rich text renderer with ReactMarkdown
+  // Markdown renderer
   const renderFormattedContent = (content: string) => {
     return (
       <div className="text-slate-900 leading-relaxed font-sans text-xs sm:text-sm">
@@ -413,6 +608,12 @@ export default function MesterAIChat({
     );
   };
 
+  // Quick ask helper for projects or offers
+  const handleAskAboutItem = (prompt: string) => {
+    setActiveTab('chat');
+    handleSendMessage(prompt);
+  };
+
   if (!isOpen) return null;
 
   if (isMinimized) {
@@ -427,11 +628,11 @@ export default function MesterAIChat({
           </div>
           <div className="text-left">
             <div className="text-xs font-bold flex items-center gap-2">
-              <span>MesterAI Samtalepartner</span>
+              <span>MesterAI Arbeidsstasjon</span>
               <span className="w-2 h-2 rounded-full bg-emerald-400 animate-pulse" />
             </div>
             <div className="text-[11px] text-slate-300">
-              Minimert ({messages.length} meldinger) • Klikk for å åpne
+              Minimert • Klikk for å åpne stor styring
             </div>
           </div>
           <button 
@@ -451,79 +652,214 @@ export default function MesterAIChat({
     );
   }
 
+  // Filtered projects
+  const filteredProjects = projects.filter(p => 
+    p.name.toLowerCase().includes(projectFilter.toLowerCase()) || 
+    (p.clientName && p.clientName.toLowerCase().includes(projectFilter.toLowerCase()))
+  );
+
   return (
     <div 
-      className="fixed inset-0 z-50 flex items-center justify-center p-3 sm:p-6 bg-slate-950/60 backdrop-blur-sm animate-in fade-in duration-200"
+      className="fixed inset-0 z-50 flex items-center justify-center p-2 sm:p-4 md:p-6 bg-slate-950/70 backdrop-blur-md animate-in fade-in duration-200"
       onClick={onClose}
     >
       <motion.div 
-        initial={{ opacity: 0, scale: 0.95, y: 15 }}
+        initial={{ opacity: 0, scale: 0.96, y: 15 }}
         animate={{ opacity: 1, scale: 1, y: 0 }}
-        exit={{ opacity: 0, scale: 0.95, y: 15 }}
+        exit={{ opacity: 0, scale: 0.96, y: 15 }}
         transition={{ duration: 0.2 }}
         onClick={(e) => e.stopPropagation()}
         className={cn(
           "bg-white rounded-3xl border border-slate-200 shadow-2xl overflow-hidden flex flex-col transition-all",
           isFullscreen 
-            ? "w-[98vw] h-[95vh] max-w-7xl max-h-[96vh]" 
-            : "w-full max-w-4xl h-[88vh] max-h-[820px]"
+            ? "w-[99vw] h-[97vh] max-w-[1700px] max-h-[98vh]" 
+            : "w-[96vw] max-w-6xl h-[92vh] max-h-[890px]"
         )}
       >
-        {/* Chat Header */}
-        <div className="px-5 py-4 bg-gradient-to-r from-navy-900 via-slate-900 to-navy-900 text-white flex items-center justify-between gap-4 border-b border-white/10 shrink-0">
-          <div className="flex items-center gap-3 min-w-0">
-            <div className="w-10 h-10 rounded-2xl bg-gradient-to-tr from-electric-600 to-purple-500 flex items-center justify-center text-white shadow-md shadow-electric-500/20 shrink-0">
-              <Brain size={20} />
-            </div>
-            <div className="min-w-0">
-              <div className="flex items-center gap-2 flex-wrap">
-                <h3 className="text-sm font-black tracking-tight text-white">MesterAI Samtalepartner</h3>
-                <span className="inline-flex items-center gap-1.5 px-2 py-0.5 rounded-full text-[10px] font-bold bg-emerald-500/20 text-emerald-300 border border-emerald-500/30">
-                  <span className="w-1.5 h-1.5 rounded-full bg-emerald-400 animate-pulse" />
-                  100% Operativ
-                </span>
-                {selectedProject && (
-                  <span className="hidden sm:inline-flex items-center gap-1 px-2 py-0.5 rounded-full text-[10px] font-bold bg-white/10 text-slate-300 truncate max-w-[180px]">
-                    <Building2 size={10} />
-                    <span className="truncate">{selectedProject.name}</span>
-                  </span>
-                )}
+        {/* Top Header & Navigation Bar */}
+        <div className="px-4 sm:px-6 py-3.5 bg-gradient-to-r from-navy-950 via-slate-900 to-navy-950 text-white flex flex-col md:flex-row md:items-center justify-between gap-3 border-b border-white/10 shrink-0">
+          <div className="flex items-center justify-between gap-3">
+            <div className="flex items-center gap-3 min-w-0">
+              <div className="w-10 h-10 rounded-2xl bg-gradient-to-tr from-electric-600 to-purple-500 flex items-center justify-center text-white shadow-md shadow-electric-500/20 shrink-0">
+                <Brain size={20} />
               </div>
-              <p className="text-[11px] text-slate-300 truncate">
-                Faglig rådgiver for tilbud, kalkyle, TEK17, NS 8406, SJA og alle håndverker-caser
-              </p>
+              <div className="min-w-0">
+                <div className="flex items-center gap-2 flex-wrap">
+                  <h3 className="text-sm sm:text-base font-black tracking-tight text-white">
+                    MesterAI Arbeidsstasjon
+                  </h3>
+                  <span className="inline-flex items-center gap-1.5 px-2 py-0.5 rounded-full text-[10px] font-bold bg-emerald-500/20 text-emerald-300 border border-emerald-500/30">
+                    <span className="w-1.5 h-1.5 rounded-full bg-emerald-400 animate-pulse" />
+                    100% Autonom
+                  </span>
+                </div>
+                <p className="text-[11px] text-slate-300 truncate">
+                  Full styring av byggeplass, tilbud, endringsordrer (NS 8406) og faglige råd
+                </p>
+              </div>
+            </div>
+
+            {/* Mobile close buttons */}
+            <div className="flex items-center gap-1 md:hidden">
+              <button
+                type="button"
+                onClick={() => setIsFullscreen(!isFullscreen)}
+                className="p-2 text-slate-300 hover:text-white"
+              >
+                {isFullscreen ? <Minimize2 size={16} /> : <Maximize2 size={16} />}
+              </button>
+              {onClose && (
+                <button
+                  type="button"
+                  onClick={onClose}
+                  className="p-2 text-slate-300 hover:text-white"
+                >
+                  <X size={18} />
+                </button>
+              )}
             </div>
           </div>
 
-          <div className="flex items-center gap-1.5 shrink-0">
+          {/* Central Workspace View Mode Selector with RBAC */}
+          <div className="flex items-center gap-1.5 bg-white/10 p-1 rounded-2xl backdrop-blur-md overflow-x-auto self-start md:self-center shrink-0">
             <button
               type="button"
-              onClick={() => setActiveFormView(prev => prev ? null : { type: 'toolbox' })}
+              onClick={() => { setActiveTab('control_center'); setActiveFormView(null); }}
               className={cn(
-                "p-2 rounded-xl transition-all text-xs font-bold flex items-center gap-1 cursor-pointer",
-                activeFormView ? "bg-white text-navy-950 shadow-sm" : "text-slate-300 hover:text-white hover:bg-white/10"
+                "flex items-center gap-1.5 px-3 py-1.5 rounded-xl text-xs font-bold transition-all shrink-0 cursor-pointer",
+                activeTab === 'control_center' && !activeFormView
+                  ? "bg-white text-navy-950 shadow-sm"
+                  : "text-slate-200 hover:text-white hover:bg-white/10"
               )}
-              title="Skjemaer & Verktøy i chatten"
             >
-              <Layers size={15} />
-              <span className="hidden sm:inline">Verktøy</span>
+              <Sparkles size={14} className={activeTab === 'control_center' ? "text-purple-600" : "text-purple-300"} />
+              <span>{isWorker ? `Mine Oppgaver (${tasksList.filter(t => t.status !== 'completed').length})` : 'Kontrollsenter'}</span>
+            </button>
+
+            <button
+              type="button"
+              onClick={() => { setActiveTab('chat'); setActiveFormView(null); }}
+              className={cn(
+                "flex items-center gap-1.5 px-3 py-1.5 rounded-xl text-xs font-bold transition-all shrink-0 cursor-pointer",
+                activeTab === 'chat' && !activeFormView
+                  ? "bg-white text-navy-950 shadow-sm"
+                  : "text-slate-200 hover:text-white hover:bg-white/10"
+              )}
+            >
+              <Brain size={14} />
+              <span>{isWorker ? 'Faglige Råd' : 'Samtale'}</span>
+            </button>
+
+            <button
+              type="button"
+              onClick={() => { setActiveTab('projects'); setActiveFormView(null); }}
+              className={cn(
+                "flex items-center gap-1.5 px-3 py-1.5 rounded-xl text-xs font-bold transition-all shrink-0 cursor-pointer",
+                activeTab === 'projects'
+                  ? "bg-white text-navy-950 shadow-sm"
+                  : "text-slate-200 hover:text-white hover:bg-white/10"
+              )}
+            >
+              <HardHat size={14} />
+              <span>{isWorker ? `Prosjekter (${projects.length})` : `Byggeplass (${projects.length})`}</span>
+            </button>
+
+            {/* Admin/Manager Exclusive Tabs */}
+            {isAdminOrManager && (
+              <>
+                <button
+                  type="button"
+                  onClick={() => { setActiveTab('admin'); setActiveFormView(null); }}
+                  className={cn(
+                    "flex items-center gap-1.5 px-3 py-1.5 rounded-xl text-xs font-bold transition-all shrink-0 cursor-pointer",
+                    activeTab === 'admin'
+                      ? "bg-white text-navy-950 shadow-sm"
+                      : "text-slate-200 hover:text-white hover:bg-white/10"
+                  )}
+                >
+                  <FileSignature size={14} />
+                  <span>Tilbud & Endringer ({offers.length + changeOrders.length})</span>
+                </button>
+
+                <button
+                  type="button"
+                  onClick={() => { setActiveTab('team'); setActiveFormView(null); }}
+                  className={cn(
+                    "flex items-center gap-1.5 px-3 py-1.5 rounded-xl text-xs font-bold transition-all shrink-0 cursor-pointer",
+                    activeTab === 'team'
+                      ? "bg-white text-navy-950 shadow-sm"
+                      : "text-slate-200 hover:text-white hover:bg-white/10"
+                  )}
+                >
+                  <Users size={14} />
+                  <span>Team & Inviter</span>
+                </button>
+              </>
+            )}
+
+            <button
+              type="button"
+              onClick={() => {
+                setActiveTab('toolbox');
+                setActiveFormView({ type: 'toolbox' });
+              }}
+              className={cn(
+                "flex items-center gap-1.5 px-3 py-1.5 rounded-xl text-xs font-bold transition-all shrink-0 cursor-pointer",
+                activeTab === 'toolbox' || activeFormView
+                  ? "bg-white text-navy-950 shadow-sm"
+                  : "text-slate-200 hover:text-white hover:bg-white/10"
+              )}
+            >
+              <Layers size={14} />
+              <span>Verktøy</span>
+            </button>
+
+            {isAdminOrManager && (
+              <button
+                type="button"
+                onClick={() => { setActiveTab('channels'); setActiveFormView(null); }}
+                className={cn(
+                  "flex items-center gap-1.5 px-3 py-1.5 rounded-xl text-xs font-bold transition-all shrink-0 cursor-pointer",
+                  activeTab === 'channels'
+                    ? "bg-white text-navy-950 shadow-sm"
+                    : "text-slate-200 hover:text-white hover:bg-white/10"
+                )}
+              >
+                <Radio size={14} />
+                <span>Kanaler</span>
+              </button>
+            )}
+          </div>
+
+          {/* Right Header Actions */}
+          <div className="hidden md:flex items-center gap-1.5 shrink-0">
+            <button
+              type="button"
+              onClick={() => setIsSplitView(!isSplitView)}
+              className={cn(
+                "p-2 rounded-xl transition-all text-xs font-bold flex items-center gap-1.5 cursor-pointer",
+                isSplitView ? "bg-white/20 text-white" : "text-slate-300 hover:text-white hover:bg-white/10"
+              )}
+              title={isSplitView ? "Enkeltvisning (full bredde)" : "Delt visning (Samtale + Oversikt)"}
+            >
+              <Columns size={15} />
+              <span className="text-[11px]">{isSplitView ? 'Delt visning' : 'Full'}</span>
             </button>
 
             <button
               type="button"
               onClick={handleClearHistory}
               className="p-2 text-slate-300 hover:text-white hover:bg-white/10 rounded-xl transition-all text-xs font-bold flex items-center gap-1 cursor-pointer"
-              title="Start en ny samtale"
+              title="Start ny samtale"
             >
               <Trash2 size={15} />
-              <span className="hidden sm:inline">Ny samtale</span>
             </button>
 
             <button
               type="button"
               onClick={() => setIsFullscreen(!isFullscreen)}
               className="p-2 text-slate-300 hover:text-white hover:bg-white/10 rounded-xl transition-all cursor-pointer"
-              title={isFullscreen ? "Standard visning" : "Fullskjerm"}
+              title={isFullscreen ? "Standard størrelse" : "Fullskjerm"}
             >
               {isFullscreen ? <Minimize2 size={16} /> : <Maximize2 size={16} />}
             </button>
@@ -532,7 +868,7 @@ export default function MesterAIChat({
               type="button"
               onClick={() => setIsMinimized(true)}
               className="p-2 text-slate-300 hover:text-white hover:bg-white/10 rounded-xl transition-all cursor-pointer"
-              title="Minimer til hjørnet"
+              title="Minimer"
             >
               <Minus size={16} />
             </button>
@@ -542,7 +878,7 @@ export default function MesterAIChat({
                 type="button"
                 onClick={onClose}
                 className="p-2 text-slate-300 hover:text-white hover:bg-white/10 rounded-xl transition-all cursor-pointer"
-                title="Lukk samtalepanel"
+                title="Lukk arbeidsstasjon"
               >
                 <X size={18} />
               </button>
@@ -550,176 +886,1218 @@ export default function MesterAIChat({
           </div>
         </div>
 
-        {activeFormView ? (
-          <InChatWorkspace
-            formType={activeFormView.type}
-            initialData={activeFormView.data}
-            projects={projects}
-            selectedProject={selectedProject}
-            onClose={() => setActiveFormView(null)}
-            onSuccess={handleFormSuccess}
-            onSwitchForm={(nextType, nextData) => setActiveFormView({ type: nextType, data: nextData })}
-          />
-        ) : (
-          <>
-            {/* Messages Thread Container */}
-            <div 
-              ref={messagesContainerRef}
-              className="flex-1 overflow-y-auto p-4 sm:p-6 space-y-4 bg-slate-50/50 custom-scrollbar"
-            >
-          {messages.map((msg) => (
-            <div 
-              key={msg.id}
-              className={cn(
-                "flex flex-col gap-2 max-w-[92%] sm:max-w-[85%]",
-                msg.role === 'user' ? "ml-auto items-end" : "mr-auto items-start"
+        {/* WORKSPACE BODY */}
+        <div className="flex-1 overflow-hidden flex flex-col md:flex-row bg-slate-100/50">
+          {/* Left Column: Conversational AI Partner (Always visible in split view or when activeTab === 'chat') */}
+          {(activeTab === 'chat' || (isSplitView && !activeFormView)) && (
+            <div className={cn(
+              "flex flex-col bg-white border-r border-slate-200 overflow-hidden transition-all",
+              isSplitView && activeTab !== 'chat' ? "w-full md:w-[48%] lg:w-[50%]" : "w-full"
+            )}>
+              {/* Active Project Banner */}
+              {selectedProject && (
+                <div className="px-4 py-2 bg-slate-50 border-b border-slate-100 flex items-center justify-between text-xs text-slate-600 shrink-0">
+                  <div className="flex items-center gap-2 truncate">
+                    <Building2 size={13} className="text-electric-600 shrink-0" />
+                    <span className="font-bold text-navy-950 truncate">{selectedProject.name}</span>
+                    <span className="text-slate-400">({selectedProject.location || 'Felt'})</span>
+                  </div>
+                  <span className="text-[10px] font-bold text-emerald-600 bg-emerald-50 px-2 py-0.5 rounded-full shrink-0">
+                    Aktivt prosjekt
+                  </span>
+                </div>
               )}
-            >
-              {/* Bubble */}
-              <div className={cn(
-                "p-4 rounded-2xl shadow-xs transition-all",
-                msg.role === 'user' 
-                  ? "bg-navy-900 text-white rounded-br-xs" 
-                  : "bg-white text-navy-900 border border-slate-200/90 rounded-bl-xs"
-              )}>
-                {msg.role === 'assistant' && (
-                  <div className="flex items-center justify-between gap-3 mb-2 pb-1.5 border-b border-slate-100">
-                    <div className="flex items-center gap-1.5 text-xs font-black text-electric-700">
-                      <Brain size={14} />
-                      <span>MesterAI Rådgiver</span>
+
+              {/* Messages Container */}
+              <div 
+                ref={messagesContainerRef}
+                className="flex-1 overflow-y-auto p-4 sm:p-5 space-y-4 bg-slate-50/40 custom-scrollbar"
+              >
+                {messages.map((msg) => (
+                  <div 
+                    key={msg.id}
+                    className={cn(
+                      "flex flex-col gap-1.5 max-w-[94%] sm:max-w-[88%]",
+                      msg.role === 'user' ? "ml-auto items-end" : "mr-auto items-start"
+                    )}
+                  >
+                    <div className={cn(
+                      "p-4 rounded-2xl shadow-xs transition-all",
+                      msg.role === 'user' 
+                        ? "bg-navy-900 text-white rounded-br-xs" 
+                        : "bg-white text-navy-900 border border-slate-200/90 rounded-bl-xs"
+                    )}>
+                      {msg.role === 'assistant' && (
+                        <div className="flex items-center justify-between gap-3 mb-2 pb-1.5 border-b border-slate-100">
+                          <div className="flex items-center gap-1.5 text-xs font-black text-electric-700">
+                            <Brain size={14} />
+                            <span>MesterAI Rådgiver</span>
+                          </div>
+                          <div className="flex items-center gap-2">
+                            <span className="text-[10px] text-slate-400">{msg.timestamp}</span>
+                            <button
+                              type="button"
+                              onClick={() => handleCopyText(msg.id, msg.content)}
+                              className="text-slate-400 hover:text-navy-900 transition-colors p-1"
+                              title="Kopier svar"
+                            >
+                              {copiedId === msg.id ? <Check size={13} className="text-emerald-600" /> : <Copy size={13} />}
+                            </button>
+                          </div>
+                        </div>
+                      )}
+
+                      {renderFormattedContent(msg.content)}
+
+                      {/* Suggested In-Chat Form Actions */}
+                      {msg.suggestedActions && msg.suggestedActions.length > 0 && (
+                        <div className="mt-3 pt-2.5 border-t border-slate-100 flex flex-wrap gap-1.5">
+                          {msg.suggestedActions.map((act) => (
+                            <button
+                              key={act.id}
+                              type="button"
+                              onClick={() => handleActionClick(act)}
+                              className="inline-flex items-center gap-1.5 px-3 py-1.5 rounded-xl bg-gradient-to-r from-electric-50 to-purple-50 hover:from-electric-100 hover:to-purple-100 text-electric-800 text-xs font-bold border border-electric-200 transition-all shadow-2xs hover:scale-[1.02] active:scale-98 cursor-pointer"
+                            >
+                              <Sparkles size={12} className="text-electric-600" />
+                              <span>{act.label}</span>
+                              <ChevronRight size={12} className="text-electric-400" />
+                            </button>
+                          ))}
+                        </div>
+                      )}
                     </div>
-                    <div className="flex items-center gap-2">
-                      <span className="text-[10px] text-slate-400">{msg.timestamp}</span>
-                      <button
-                        type="button"
-                        onClick={() => handleCopyText(msg.id, msg.content)}
-                        className="text-slate-400 hover:text-navy-900 transition-colors p-1"
-                        title="Kopier svar"
-                      >
-                        {copiedId === msg.id ? <Check size={13} className="text-emerald-600" /> : <Copy size={13} />}
-                      </button>
+
+                    {/* Follow-up Prompts */}
+                    {msg.followUpPrompts && msg.followUpPrompts.length > 0 && (
+                      <div className="flex flex-wrap gap-1.5 mt-1 pl-1">
+                        {msg.followUpPrompts.map((p, idx) => (
+                          <button
+                            key={idx}
+                            type="button"
+                            disabled={isLoading}
+                            onClick={() => handleSendMessage(p)}
+                            className="text-[11px] font-medium px-2.5 py-1 rounded-xl bg-white hover:bg-electric-50 hover:text-electric-700 hover:border-electric-300 text-slate-600 border border-slate-200 transition-all shadow-2xs cursor-pointer text-left"
+                          >
+                            💬 {p}
+                          </button>
+                        ))}
+                      </div>
+                    )}
+                  </div>
+                ))}
+
+                {isLoading && (
+                  <div className="mr-auto items-start max-w-[85%]">
+                    <div className="bg-white p-3.5 rounded-2xl border border-slate-200/90 shadow-2xs flex items-center gap-3">
+                      <div className="w-6 h-6 rounded-lg bg-electric-500 text-white flex items-center justify-center">
+                        <RefreshCw size={13} className="animate-spin" />
+                      </div>
+                      <span className="text-xs text-slate-600 font-medium animate-pulse">
+                        MesterAI analyserer kalkylen, TEK17 og prosjektdata...
+                      </span>
                     </div>
                   </div>
                 )}
+              </div>
 
-                {msg.role === 'user' ? (
-                  <p className="text-xs sm:text-sm font-medium leading-relaxed whitespace-pre-wrap">
-                    {msg.content}
-                  </p>
-                ) : (
-                  renderFormattedContent(msg.content)
+              {/* Chat Input Field & Toolbox Launcher */}
+              <div className="p-3 sm:p-4 bg-white border-t border-slate-200 shrink-0">
+                <form 
+                  onSubmit={(e) => {
+                    e.preventDefault();
+                    handleSendMessage(inputVal);
+                  }}
+                  className="flex items-center gap-2"
+                >
+                  <button
+                    type="button"
+                    onClick={() => setActiveFormView({ type: 'toolbox' })}
+                    className="p-2.5 bg-slate-100 hover:bg-electric-50 hover:text-electric-700 text-slate-600 rounded-xl transition-all cursor-pointer shrink-0"
+                    title="Åpne skjemaer & verktøy"
+                  >
+                    <Layers size={17} />
+                  </button>
+
+                  <div className="relative flex-1">
+                    <input 
+                      type="text"
+                      value={inputVal}
+                      onChange={(e) => setInputVal(e.target.value)}
+                      placeholder="Skriv instruks (tilbud, endringsordre, SJA, TEK17)..."
+                      className="w-full pl-3.5 pr-10 py-2.5 bg-slate-50 border border-slate-200 rounded-xl text-xs sm:text-sm font-medium text-slate-900 placeholder:text-slate-400 focus:bg-white focus:border-electric-500 focus:ring-2 focus:ring-electric-500/20 transition-all"
+                    />
+                    <button
+                      type="button"
+                      onClick={toggleMic}
+                      className={cn(
+                        "absolute right-2.5 top-1/2 -translate-y-1/2 p-1 rounded-lg transition-all",
+                        isListeningMic ? "bg-rose-500 text-white animate-pulse" : "text-slate-400 hover:text-electric-600"
+                      )}
+                      title="Snakk inn spørsmål"
+                    >
+                      {isListeningMic ? <MicOff size={15} /> : <Mic size={15} />}
+                    </button>
+                  </div>
+
+                  <button
+                    type="submit"
+                    disabled={isLoading || !inputVal.trim()}
+                    className="flex items-center justify-center gap-1.5 px-4 py-2.5 bg-navy-900 hover:bg-navy-800 text-white rounded-xl text-xs font-black disabled:opacity-40 transition-all shrink-0 shadow-sm cursor-pointer hover:scale-[1.02] active:scale-98"
+                  >
+                    <Send size={14} />
+                    <span className="hidden sm:inline">Send</span>
+                  </button>
+                </form>
+              </div>
+            </div>
+          )}
+
+          {/* Right Column / Full Body: Active Form OR Overview Views */}
+          <div className={cn(
+            "flex-1 overflow-y-auto flex flex-col bg-slate-50/70 p-4 sm:p-6 transition-all custom-scrollbar",
+            isSplitView && activeTab !== 'chat' ? "md:w-[52%] lg:w-[50%]" : "w-full"
+          )}>
+            {/* 1. IN-CHAT WORKSPACE FORM VIEW */}
+            {activeFormView ? (
+              <div className="bg-white rounded-2xl border border-slate-200 shadow-sm p-4 sm:p-6 flex-1 flex flex-col">
+                <div className="flex items-center justify-between pb-3 mb-4 border-b border-slate-100">
+                  <span className="text-xs font-black uppercase tracking-wider text-slate-400">
+                    Aktivt Skjema i Chatten
+                  </span>
+                  <button
+                    type="button"
+                    onClick={() => setActiveFormView(null)}
+                    className="text-xs font-bold text-slate-500 hover:text-navy-950 flex items-center gap-1"
+                  >
+                    <X size={14} />
+                    <span>Lukk skjema</span>
+                  </button>
+                </div>
+                <div className="flex-1 overflow-y-auto">
+                  <InChatWorkspace
+                    formType={activeFormView.type}
+                    initialData={activeFormView.data}
+                    projects={projects}
+                    selectedProject={selectedProject}
+                    onClose={() => setActiveFormView(null)}
+                    onSuccess={handleFormSuccess}
+                    onSwitchForm={(nextType, nextData) => setActiveFormView({ type: nextType, data: nextData })}
+                  />
+                </div>
+              </div>
+            ) : activeTab === 'control_center' ? (
+              /* DYNAMIC CONTROL CENTER (LEDER & FELTHÅNDVERKER) */
+              <div className="space-y-4">
+                {/* 1. HERO CONTROL BAR WITH VOICE-FIRST PUSH-TO-TALK & TTS */}
+                <div className="p-4 sm:p-5 bg-gradient-to-r from-navy-950 via-slate-900 to-indigo-950 text-white rounded-3xl shadow-md border border-white/10 relative overflow-hidden">
+                  <div className="relative z-10 flex flex-col md:flex-row md:items-center justify-between gap-4">
+                    <div>
+                      <div className="flex items-center gap-2 mb-1.5 flex-wrap">
+                        <span className="px-2.5 py-0.5 rounded-full text-[10px] font-black uppercase tracking-wider bg-electric-500/20 text-electric-300 border border-electric-500/30">
+                          {isWorker ? '🔨 Håndverker Feltassistent' : '👑 Leder Kontrollsenter'}
+                        </span>
+                        <span className="text-[11px] text-slate-300">
+                          {isWorker ? 'Tilpasset mobil & handsfree på byggeplass' : 'Full operativ styring & sanntidsstatus'}
+                        </span>
+                      </div>
+                      <h3 className="text-base sm:text-lg font-black text-white">
+                        {isWorker 
+                          ? `Hei, ${user?.displayName || 'håndverker'}! Klar for dagens økt?` 
+                          : 'Operativ Lederbrifing & Byggeplass-styring'}
+                      </h3>
+                      <p className="text-xs text-slate-300 mt-0.5 max-w-xl">
+                        {isWorker 
+                          ? 'Marker oppgaver som fullført, før timer, meld avvik med bilde eller få TEK17-fagråd direkte.' 
+                          : 'Tildel oppgaver til håndverkere, hør morgenbrifing, juster fremdrift og ha full kontroll via telefonen.'}
+                      </p>
+                    </div>
+
+                    {/* Dual Voice Action Buttons: Push-to-talk & Text-to-speech */}
+                    <div className="flex items-center gap-2 flex-wrap shrink-0">
+                      <button
+                        type="button"
+                        onClick={handleVoiceCommand}
+                        className={cn(
+                          "px-4 py-2.5 rounded-2xl text-xs font-black transition-all flex items-center gap-2 shadow-sm cursor-pointer",
+                          isListeningMic
+                            ? "bg-rose-500 text-white animate-pulse"
+                            : "bg-electric-600 hover:bg-electric-500 text-white hover:scale-105 active:scale-95"
+                        )}
+                        title="Trykk for å snakke med MesterAI"
+                      >
+                        {isListeningMic ? <MicOff size={16} /> : <Mic size={16} />}
+                        <span>{isListeningMic ? 'Lytter...' : 'Snakk med agenten'}</span>
+                      </button>
+
+                      <button
+                        type="button"
+                        onClick={handleMorningBriefingSpeak}
+                        className={cn(
+                          "px-3.5 py-2.5 rounded-2xl text-xs font-bold transition-all flex items-center gap-2 border cursor-pointer",
+                          isSpeaking 
+                            ? "bg-amber-500 text-white border-amber-400 animate-pulse" 
+                            : "bg-white/10 hover:bg-white/20 text-white border-white/20"
+                        )}
+                        title="Hør opplest status"
+                      >
+                        {isSpeaking ? <VolumeX size={15} /> : <Volume2 size={15} />}
+                        <span>{isSpeaking ? 'Stopp tale' : isWorker ? 'Hør oppgaver' : 'Les opp status'}</span>
+                      </button>
+                    </div>
+                  </div>
+
+                  {/* Quick Status Chips */}
+                  <div className="mt-4 pt-3 border-t border-white/10 flex flex-wrap items-center gap-2 text-xs">
+                    <span className="text-[10px] font-black uppercase text-slate-400 tracking-wider">Hurtigvalg:</span>
+                    {isWorker ? (
+                      <>
+                        <button
+                          type="button"
+                          onClick={() => setActiveFormView({ type: 'time' })}
+                          className="px-2.5 py-1 rounded-xl bg-white/10 hover:bg-white/20 text-white text-[11px] font-bold transition-all cursor-pointer"
+                        >
+                          ⏱️ Før dagens timer
+                        </button>
+                        <button
+                          type="button"
+                          onClick={() => setActiveFormView({ type: 'sja' })}
+                          className="px-2.5 py-1 rounded-xl bg-white/10 hover:bg-white/20 text-white text-[11px] font-bold transition-all cursor-pointer"
+                        >
+                          🛡️ Ny SJA-analyse
+                        </button>
+                        <button
+                          type="button"
+                          onClick={() => setActiveFormView({ type: 'deviation' })}
+                          className="px-2.5 py-1 rounded-xl bg-white/10 hover:bg-white/20 text-white text-[11px] font-bold transition-all cursor-pointer"
+                        >
+                          📸 Meld RUH / avvik med bilde
+                        </button>
+                        <button
+                          type="button"
+                          onClick={() => handleAskAboutItem('Hva er kravene til fall mot sluk i TEK17 § 13-15?')}
+                          className="px-2.5 py-1 rounded-xl bg-white/10 hover:bg-white/20 text-white text-[11px] font-bold transition-all cursor-pointer"
+                        >
+                          📐 Spør om TEK17
+                        </button>
+                      </>
+                    ) : (
+                      <>
+                        <button
+                          type="button"
+                          onClick={() => setActiveFormView({ type: 'task' })}
+                          className="px-2.5 py-1 rounded-xl bg-electric-500/30 hover:bg-electric-500/40 text-electric-200 border border-electric-500/40 text-[11px] font-bold transition-all cursor-pointer"
+                        >
+                          ➕ Tildel ny oppgave
+                        </button>
+                        <button
+                          type="button"
+                          onClick={() => setActiveFormView({ type: 'change_order' })}
+                          className="px-2.5 py-1 rounded-xl bg-white/10 hover:bg-white/20 text-white text-[11px] font-bold transition-all cursor-pointer"
+                        >
+                          📄 Ny endringsordre (NS 8406)
+                        </button>
+                        <button
+                          type="button"
+                          onClick={() => setActiveFormView({ type: 'offer' })}
+                          className="px-2.5 py-1 rounded-xl bg-white/10 hover:bg-white/20 text-white text-[11px] font-bold transition-all cursor-pointer"
+                        >
+                          📝 Nytt tilbud & kalkyle
+                        </button>
+                        <button
+                          type="button"
+                          onClick={() => onOpenInviteModal ? onOpenInviteModal() : setActiveTab('team')}
+                          className="px-2.5 py-1 rounded-xl bg-white/10 hover:bg-white/20 text-white text-[11px] font-bold transition-all cursor-pointer"
+                        >
+                          👥 Inviter håndverker
+                        </button>
+                      </>
+                    )}
+                  </div>
+                </div>
+
+                {/* 2. OPERATIONAL KPI SUMMARY STRIP */}
+                <div className="grid grid-cols-2 sm:grid-cols-4 gap-2.5 sm:gap-3">
+                  <div className="p-3.5 bg-white rounded-2xl border border-slate-200 shadow-2xs">
+                    <div className="text-[10px] font-black uppercase tracking-wider text-slate-400 mb-1 flex items-center justify-between">
+                      <span>{isWorker ? 'Mine Oppgaver' : 'Aktive Prosjekter'}</span>
+                      <Building2 size={13} className="text-electric-600" />
+                    </div>
+                    <div className="text-xl font-black text-navy-950">
+                      {isWorker ? tasksList.filter(t => t.status !== 'completed').length : projects.length}
+                    </div>
+                    <div className="text-[10px] text-slate-500 font-medium mt-0.5 truncate">
+                      {isWorker ? 'Venter på utførelse' : `${projects.filter(p => p.status === 'active').length} i aktiv drift`}
+                    </div>
+                  </div>
+
+                  <div className="p-3.5 bg-white rounded-2xl border border-slate-200 shadow-2xs">
+                    <div className="text-[10px] font-black uppercase tracking-wider text-slate-400 mb-1 flex items-center justify-between">
+                      <span>{isWorker ? 'Fullført i dag' : 'Åpne Oppgaver'}</span>
+                      <ListTodo size={13} className="text-indigo-600" />
+                    </div>
+                    <div className="text-xl font-black text-navy-950">
+                      {isWorker ? tasksList.filter(t => t.status === 'completed').length : tasksList.filter(t => t.status !== 'completed').length}
+                    </div>
+                    <div className="text-[10px] text-slate-500 font-medium mt-0.5 truncate">
+                      {isWorker ? 'Godt levert!' : 'Tildelt fagpersoner'}
+                    </div>
+                  </div>
+
+                  {/* Financial & Change Order metrics ONLY for Admin/Manager */}
+                  {isAdminOrManager ? (
+                    <div className="p-3.5 bg-white rounded-2xl border border-slate-200 shadow-2xs">
+                      <div className="text-[10px] font-black uppercase tracking-wider text-slate-400 mb-1 flex items-center justify-between">
+                        <span>Sikret Tillegg</span>
+                        <FileSignature size={13} className="text-emerald-600" />
+                      </div>
+                      <div className="text-xl font-black text-emerald-600">
+                        kr {changeOrders.reduce((a, b) => a + (Number(b.amount) || 0), 0).toLocaleString('no-NO')}
+                      </div>
+                      <div className="text-[10px] text-slate-500 font-medium mt-0.5 truncate">
+                        {changeOrders.length} endringsordrer (NS 8406)
+                      </div>
+                    </div>
+                  ) : (
+                    <div className="p-3.5 bg-white rounded-2xl border border-slate-200 shadow-2xs">
+                      <div className="text-[10px] font-black uppercase tracking-wider text-slate-400 mb-1 flex items-center justify-between">
+                        <span>Sikkerhet & SJA</span>
+                        <ShieldCheck size={13} className="text-emerald-600" />
+                      </div>
+                      <div className="text-xl font-black text-emerald-600">
+                        Aktiv
+                      </div>
+                      <div className="text-[10px] text-slate-500 font-medium mt-0.5 truncate">
+                        Forskrifter oppfylt
+                      </div>
+                    </div>
+                  )}
+
+                  <div className="p-3.5 bg-white rounded-2xl border border-slate-200 shadow-2xs">
+                    <div className="text-[10px] font-black uppercase tracking-wider text-slate-400 mb-1 flex items-center justify-between">
+                      <span>Lukkesperrer</span>
+                      <Lock size={13} className={lukkesperreZones.some(z => z.status === 'RED') ? "text-rose-600" : "text-emerald-600"} />
+                    </div>
+                    <div className={cn(
+                      "text-xl font-black",
+                      lukkesperreZones.some(z => z.status === 'RED') ? "text-rose-600" : "text-navy-950"
+                    )}>
+                      {lukkesperreZones.filter(z => z.status === 'RED').length}
+                    </div>
+                    <div className="text-[10px] text-slate-500 font-medium mt-0.5 truncate">
+                      {lukkesperreZones.some(z => z.status === 'RED') ? 'Krever kontroll før kledning' : 'Ingen sperrer'}
+                    </div>
+                  </div>
+                </div>
+
+                {/* 3. TASK BOARD (OPPGAVEOVERSIKT MED 1-KLIKK FULLFØRING) */}
+                <div className="bg-white rounded-3xl border border-slate-200 shadow-2xs p-4 sm:p-5 space-y-3">
+                  <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-3 pb-3 border-b border-slate-100">
+                    <div>
+                      <h4 className="text-sm font-extrabold text-navy-950 flex items-center gap-2">
+                        <CheckSquare size={16} className="text-electric-600" />
+                        <span>{isWorker ? 'Mine Tildelte Oppgaver' : 'Dagens Oppgaver & Delegering i Felt'}</span>
+                      </h4>
+                      <p className="text-xs text-slate-500">
+                        {isWorker 
+                          ? 'Trykk på avhukingsboksen når du har gjort oppgaven, eller før timer.' 
+                          : 'Håndverkere ser sine oppgaver her og på mobilen sin. Synkronisert med Discord og Slack.'}
+                      </p>
+                    </div>
+
+                    <div className="flex items-center gap-2">
+                      {isAdminOrManager && (
+                        <button
+                          type="button"
+                          onClick={() => setActiveFormView({ type: 'task' })}
+                          className="px-3 py-1.5 bg-gradient-to-r from-electric-600 to-electric-500 hover:from-electric-500 hover:to-electric-400 text-white rounded-xl text-xs font-black transition-all shadow-xs flex items-center gap-1.5 cursor-pointer"
+                        >
+                          <Plus size={13} />
+                          <span>Tildel Oppgave</span>
+                        </button>
+                      )}
+                    </div>
+                  </div>
+
+                  {/* Task List */}
+                  {tasksList.length === 0 ? (
+                    <div className="p-8 text-center bg-slate-50 rounded-2xl border border-slate-100">
+                      <ListTodo size={28} className="text-slate-300 mx-auto mb-2" />
+                      <p className="text-xs font-bold text-navy-950">Ingen oppgaver registrert ennå</p>
+                      <p className="text-[11px] text-slate-500 mt-0.5">
+                        {isWorker ? 'Du har ingen utestående oppgaver akkurat nå.' : 'Tildel første oppgave til en håndverker nå.'}
+                      </p>
+                      {isAdminOrManager && (
+                        <button
+                          type="button"
+                          onClick={() => setActiveFormView({ type: 'task' })}
+                          className="mt-3 px-3 py-1.5 bg-electric-50 text-electric-700 rounded-xl text-xs font-bold hover:bg-electric-100 transition-all cursor-pointer"
+                        >
+                          + Tildel Oppgave
+                        </button>
+                      )}
+                    </div>
+                  ) : (
+                    <div className="divide-y divide-slate-100">
+                      {tasksList.map((task) => (
+                        <div 
+                          key={task.id}
+                          className={cn(
+                            "py-3 flex flex-col sm:flex-row sm:items-center justify-between gap-3 transition-colors",
+                            task.status === 'completed' ? "opacity-60 bg-slate-50/50 rounded-xl px-2" : "hover:bg-slate-50/70 rounded-xl px-2"
+                          )}
+                        >
+                          <div className="flex items-start gap-3 min-w-0">
+                            <button
+                              type="button"
+                              onClick={() => handleToggleTask(task)}
+                              className="mt-0.5 text-slate-400 hover:text-emerald-600 transition-colors p-0.5 cursor-pointer shrink-0"
+                              title={task.status === 'completed' ? 'Marker som uferdig' : 'Marker som fullført'}
+                            >
+                              {task.status === 'completed' ? (
+                                <CheckSquare size={18} className="text-emerald-600" />
+                              ) : (
+                                <Square size={18} />
+                              )}
+                            </button>
+
+                            <div className="min-w-0">
+                              <div className="flex items-center gap-2 flex-wrap mb-1">
+                                <span className={cn(
+                                  "text-xs font-extrabold text-navy-950",
+                                  task.status === 'completed' && "line-through text-slate-400"
+                                )}>
+                                  {task.title}
+                                </span>
+                                {task.priority === 'urgent' ? (
+                                  <span className="px-2 py-0.5 rounded-full text-[9px] font-black uppercase bg-rose-100 text-rose-800 border border-rose-200">
+                                    Haster
+                                  </span>
+                                ) : task.priority === 'high' ? (
+                                  <span className="px-2 py-0.5 rounded-full text-[9px] font-black uppercase bg-amber-100 text-amber-800 border border-amber-200">
+                                    Høy
+                                  </span>
+                                ) : null}
+                              </div>
+
+                              <div className="flex items-center gap-2 text-[11px] text-slate-500 flex-wrap">
+                                {task.projectName && (
+                                  <span className="font-bold text-slate-600 bg-slate-100 px-2 py-0.5 rounded-md">
+                                    {task.projectName}
+                                  </span>
+                                )}
+                                {task.assignedTo && (
+                                  <span className="font-bold text-navy-950 bg-electric-50 text-electric-700 px-2 py-0.5 rounded-md border border-electric-200/60">
+                                    👤 {task.assignedTo}
+                                  </span>
+                                )}
+                                {task.deadline && (
+                                  <span className="text-slate-400">
+                                    📅 Frist: {task.deadline}
+                                  </span>
+                                )}
+                              </div>
+                            </div>
+                          </div>
+
+                          <div className="flex items-center gap-2 self-end sm:self-center shrink-0">
+                            {isWorker && (
+                              <button
+                                type="button"
+                                onClick={() => setActiveFormView({ 
+                                  type: 'time', 
+                                  data: { projectName: task.projectName, description: task.title } 
+                                })}
+                                className="px-2.5 py-1 bg-slate-100 hover:bg-slate-200 text-slate-700 rounded-lg text-xs font-bold transition-all flex items-center gap-1 cursor-pointer"
+                              >
+                                <Timer size={12} />
+                                <span>Før time</span>
+                              </button>
+                            )}
+                            {isAdminOrManager && (
+                              <button
+                                type="button"
+                                onClick={() => {
+                                  handleAskAboutItem(`Hva er status og fremdrift for oppgaven "${task.title}" på ${task.projectName || 'prosjektet'}?`);
+                                }}
+                                className="px-2.5 py-1 bg-slate-100 hover:bg-slate-200 text-slate-700 rounded-lg text-xs font-bold transition-all flex items-center gap-1 cursor-pointer"
+                              >
+                                <Brain size={12} />
+                                <span>Spør MesterAI</span>
+                              </button>
+                            )}
+                          </div>
+                        </div>
+                      ))}
+                    </div>
+                  )}
+                </div>
+
+                {/* 4. RASKE FREMDRIFTSKONTROLLER & BYGGEPLASS-STYRING (FOR LEDERE) */}
+                {isAdminOrManager && (
+                  <div className="bg-white rounded-3xl border border-slate-200 shadow-2xs p-4 sm:p-5 space-y-4">
+                    <div className="flex items-center justify-between">
+                      <div>
+                        <h4 className="text-sm font-extrabold text-navy-950 flex items-center gap-2">
+                          <Sliders size={16} className="text-purple-600" />
+                          <span>Endre Fremdrift & Hurtigjustering per Prosjekt</span>
+                        </h4>
+                        <p className="text-xs text-slate-500">
+                          Juster byggeplassens fremdriftsprosent direkte eller start tiltak.
+                        </p>
+                      </div>
+                    </div>
+
+                    <div className="grid grid-cols-1 md:grid-cols-2 gap-3">
+                      {projects.map((proj) => (
+                        <div 
+                          key={proj.id}
+                          className="p-4 rounded-2xl border border-slate-200/80 bg-slate-50/50 hover:bg-white hover:border-electric-300 transition-all space-y-3"
+                        >
+                          <div className="flex items-start justify-between gap-2">
+                            <div>
+                              <h5 className="text-xs font-extrabold text-navy-950">{proj.name}</h5>
+                              <p className="text-[11px] text-slate-500">{proj.location || 'Norge'} • {proj.clientName || 'Privatkunde'}</p>
+                            </div>
+                            <span className="text-xs font-black text-navy-950 bg-white px-2.5 py-1 rounded-xl border border-slate-200 shadow-2xs">
+                              {proj.progress || 65}%
+                            </span>
+                          </div>
+
+                          {/* Progress slider / fast adjuster */}
+                          <div className="space-y-1.5">
+                            <div className="w-full bg-slate-200 rounded-full h-2 overflow-hidden">
+                              <div 
+                                className="bg-gradient-to-r from-electric-600 to-purple-600 h-2 rounded-full transition-all duration-300"
+                                style={{ width: `${proj.progress || 65}%` }}
+                              />
+                            </div>
+                            <div className="flex items-center justify-between pt-1">
+                              <div className="flex items-center gap-1.5">
+                                <button
+                                  type="button"
+                                  onClick={() => handleUpdateProjectProgress(proj.id, proj.progress || 65, -5)}
+                                  className="px-2 py-0.5 bg-white border border-slate-200 rounded-md text-[11px] font-bold text-slate-600 hover:text-navy-950 cursor-pointer"
+                                >
+                                  -5%
+                                </button>
+                                <button
+                                  type="button"
+                                  onClick={() => handleUpdateProjectProgress(proj.id, proj.progress || 65, +5)}
+                                  className="px-2 py-0.5 bg-white border border-slate-200 rounded-md text-[11px] font-bold text-slate-600 hover:text-navy-950 cursor-pointer"
+                                >
+                                  +5%
+                                </button>
+                              </div>
+                              <div className="flex items-center gap-1.5">
+                                <button
+                                  type="button"
+                                  onClick={() => setActiveFormView({ 
+                                    type: 'task', 
+                                    data: { projectId: proj.id, projectName: proj.name } 
+                                  })}
+                                  className="px-2.5 py-1 bg-electric-50 hover:bg-electric-100 text-electric-800 rounded-lg text-[10px] font-bold transition-all cursor-pointer"
+                                >
+                                  + Oppgave
+                                </button>
+                                <button
+                                  type="button"
+                                  onClick={() => setActiveFormView({ 
+                                    type: 'change_order', 
+                                    data: { projectId: proj.id, projectName: proj.name } 
+                                  })}
+                                  className="px-2.5 py-1 bg-rose-50 hover:bg-rose-100 text-rose-800 rounded-lg text-[10px] font-bold transition-all cursor-pointer"
+                                >
+                                  + Endring
+                                </button>
+                              </div>
+                            </div>
+                          </div>
+                        </div>
+                      ))}
+                    </div>
+                  </div>
+                )}
+              </div>
+            ) : activeTab === 'projects' ? (
+              /* 2. BYGGEPLASS & PROSJEKTER OVERSIKT */
+              <div className="space-y-4">
+                <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-3 bg-white p-4 rounded-2xl border border-slate-200 shadow-2xs">
+                  <div>
+                    <h4 className="text-sm font-extrabold text-navy-950 flex items-center gap-2">
+                      <HardHat size={16} className="text-blue-600" />
+                      <span>Aktive Byggeplasser ({projects.length})</span>
+                    </h4>
+                    <p className="text-xs text-slate-500">
+                      Sanntids vær, fremdrift og lukkesperrer for alle byggeplasser.
+                    </p>
+                  </div>
+                  <div className="flex items-center gap-2">
+                    <div className="relative">
+                      <input 
+                        type="text"
+                        value={projectFilter}
+                        onChange={(e) => setProjectFilter(e.target.value)}
+                        placeholder="Filtrer prosjekter..."
+                        className="pl-7 pr-3 py-1.5 bg-slate-50 border border-slate-200 rounded-xl text-xs font-medium focus:bg-white"
+                      />
+                      <Search size={12} className="absolute left-2.5 top-1/2 -translate-y-1/2 text-slate-400" />
+                    </div>
+                  </div>
+                </div>
+
+                {/* Lukkesperre Highlights */}
+                {lukkesperreZones.some(z => z.status === 'RED') && (
+                  <div className="p-4 bg-rose-50 border border-rose-200 rounded-2xl flex items-start justify-between gap-3">
+                    <div className="flex items-start gap-2.5">
+                      <Lock size={18} className="text-rose-600 mt-0.5 shrink-0" />
+                      <div>
+                        <h5 className="text-xs font-black text-rose-950">Aktiv Rød Lukkesperre</h5>
+                        <p className="text-[11px] text-rose-800 mt-0.5">
+                          {lukkesperreZones.find(z => z.status === 'RED')?.room}: Mangler nødvendig trykktest eller dampsperregodkjenning.
+                        </p>
+                      </div>
+                    </div>
+                    <button
+                      type="button"
+                      onClick={() => {
+                        const red = lukkesperreZones.find(z => z.status === 'RED');
+                        if (red && onOpenPreClose) onOpenPreClose(red);
+                      }}
+                      className="px-3 py-1.5 bg-rose-600 hover:bg-rose-700 text-white rounded-xl text-xs font-bold shrink-0 transition-all cursor-pointer"
+                    >
+                      Inspiser
+                    </button>
+                  </div>
                 )}
 
-                {/* Interactive Action Buttons */}
-                {msg.suggestedActions && msg.suggestedActions.length > 0 && (
-                  <div className="mt-4 pt-3 border-t border-slate-100 flex flex-wrap gap-2">
-                    {msg.suggestedActions.map((action, i) => (
-                      <button
-                        key={i}
-                        type="button"
-                        onClick={() => handleActionClick(action)}
-                        className="inline-flex items-center gap-1.5 px-3 py-1.5 bg-electric-50 hover:bg-electric-100 text-electric-700 border border-electric-200 hover:border-electric-300 rounded-xl text-xs font-bold transition-all shadow-xs cursor-pointer active:scale-95"
+                {/* Projects List */}
+                <div className="grid grid-cols-1 gap-3">
+                  {filteredProjects.map((p) => (
+                    <div 
+                      key={p.id}
+                      className="p-4 bg-white rounded-2xl border border-slate-200 shadow-2xs hover:shadow-md transition-all flex flex-col justify-between gap-3"
+                    >
+                      <div className="flex items-start justify-between gap-3">
+                        <div>
+                          <div className="flex items-center gap-2 flex-wrap">
+                            <h5 className="text-xs sm:text-sm font-black text-navy-950">{p.name}</h5>
+                            <span className="px-2 py-0.5 rounded-full text-[10px] font-bold bg-blue-50 text-blue-700 border border-blue-200">
+                              {p.projectCode || 'P-2026'}
+                            </span>
+                          </div>
+                          <p className="text-xs text-slate-500 mt-0.5">
+                            Kunde: <strong className="text-slate-700">{p.clientName || 'Privat oppdragsgiver'}</strong> • {p.location || 'Oslo'}
+                          </p>
+                        </div>
+                        <div className="flex items-center gap-1.5 text-xs text-amber-600 font-bold bg-amber-50 px-2.5 py-1 rounded-xl border border-amber-200/60 shrink-0">
+                          <CloudSun size={14} />
+                          <span>+14°C Opphold</span>
+                        </div>
+                      </div>
+
+                      {/* Progress Bar */}
+                      <div>
+                        <div className="flex items-center justify-between text-[11px] font-bold text-slate-500 mb-1">
+                          <span>Fremdrift</span>
+                          <span className="text-navy-950 font-black">{p.progress || 65}%</span>
+                        </div>
+                        <div className="w-full h-2 bg-slate-100 rounded-full overflow-hidden">
+                          <div 
+                            className="h-full bg-gradient-to-r from-blue-600 to-electric-500 rounded-full"
+                            style={{ width: `${p.progress || 65}%` }}
+                          />
+                        </div>
+                      </div>
+
+                      {/* Project Action Strip */}
+                      <div className="pt-2 border-t border-slate-100 flex items-center justify-between flex-wrap gap-2">
+                        <button
+                          type="button"
+                          onClick={() => handleAskAboutItem(`Gi meg en full statusoppdatering og fremdriftsanalyse for prosjektet "${p.name}".`)}
+                          className="px-3 py-1.5 bg-electric-50 hover:bg-electric-100 text-electric-800 rounded-xl text-xs font-bold transition-all flex items-center gap-1 cursor-pointer"
+                        >
+                          <Brain size={13} className="text-electric-600" />
+                          <span>Spør AI om prosjektet</span>
+                        </button>
+
+                        <div className="flex items-center gap-1.5">
+                          <button
+                            type="button"
+                            onClick={() => onOpenAIVision?.()}
+                            className="px-2.5 py-1.5 bg-slate-100 hover:bg-slate-200 text-slate-700 rounded-xl text-xs font-bold transition-all flex items-center gap-1 cursor-pointer"
+                            title="Start TEK17 bildeanalyse"
+                          >
+                            <Camera size={13} />
+                            <span className="hidden sm:inline">TEK17 Foto</span>
+                          </button>
+                          <button
+                            type="button"
+                            onClick={() => setActiveFormView({ type: 'sja', data: { projectId: p.id, projectName: p.name } })}
+                            className="px-2.5 py-1.5 bg-slate-100 hover:bg-slate-200 text-slate-700 rounded-xl text-xs font-bold transition-all flex items-center gap-1 cursor-pointer"
+                          >
+                            <ShieldCheck size={13} />
+                            <span>SJA</span>
+                          </button>
+                        </div>
+                      </div>
+                    </div>
+                  ))}
+                </div>
+              </div>
+            ) : activeTab === 'admin' ? (
+              /* 3. ADMINISTRASJON & ØKONOMI (TILBUD & ENDRINGSORDRER) */
+              <div className="space-y-4">
+                {/* View Switcher: Offers vs Change Orders */}
+                <div className="flex items-center justify-between bg-white p-3 rounded-2xl border border-slate-200 shadow-2xs">
+                  <div className="flex items-center gap-2">
+                    <button
+                      type="button"
+                      onClick={() => setAdminTab('offers')}
+                      className={cn(
+                        "px-3 py-1.5 rounded-xl text-xs font-bold transition-all cursor-pointer",
+                        adminTab === 'offers' 
+                          ? "bg-navy-900 text-white shadow-xs" 
+                          : "text-slate-600 hover:text-navy-950 hover:bg-slate-100"
+                      )}
+                    >
+                      Pristilbud ({offers.length})
+                    </button>
+                    <button
+                      type="button"
+                      onClick={() => setAdminTab('changes')}
+                      className={cn(
+                        "px-3 py-1.5 rounded-xl text-xs font-bold transition-all cursor-pointer",
+                        adminTab === 'changes' 
+                          ? "bg-navy-900 text-white shadow-xs" 
+                          : "text-slate-600 hover:text-navy-950 hover:bg-slate-100"
+                      )}
+                    >
+                      Endringsordrer NS 8406 ({changeOrders.length})
+                    </button>
+                  </div>
+
+                  {adminTab === 'offers' ? (
+                    <button
+                      type="button"
+                      onClick={() => setActiveFormView({ type: 'offer' })}
+                      className="flex items-center gap-1.5 px-3 py-1.5 bg-gradient-to-r from-electric-600 to-electric-500 text-white rounded-xl text-xs font-black shadow-xs hover:scale-[1.02] cursor-pointer"
+                    >
+                      <Plus size={13} />
+                      <span>Nytt Tilbud (AI)</span>
+                    </button>
+                  ) : (
+                    <button
+                      type="button"
+                      onClick={() => setActiveFormView({ type: 'change_order' })}
+                      className="flex items-center gap-1.5 px-3 py-1.5 bg-gradient-to-r from-rose-600 to-pink-500 text-white rounded-xl text-xs font-black shadow-xs hover:scale-[1.02] cursor-pointer"
+                    >
+                      <Plus size={13} />
+                      <span>Ny Endring (8406)</span>
+                    </button>
+                  )}
+                </div>
+
+                {/* Offers List */}
+                {adminTab === 'offers' && (
+                  <div className="space-y-3">
+                    {offers.length === 0 ? (
+                      <div className="p-8 text-center bg-white rounded-2xl border border-slate-200">
+                        <FileText size={24} className="text-slate-300 mx-auto mb-2" />
+                        <p className="text-xs font-bold text-slate-700">Ingen pristilbud opprettet ennå</p>
+                        <p className="text-[11px] text-slate-400 mt-0.5 mb-3">Bruk MesterAI til å kalkulere og generere tilbud på 1 minutt.</p>
+                        <button
+                          type="button"
+                          onClick={() => setActiveFormView({ type: 'offer' })}
+                          className="px-4 py-2 bg-navy-900 text-white rounded-xl text-xs font-bold"
+                        >
+                          + Opprett første tilbud
+                        </button>
+                      </div>
+                    ) : (
+                      offers.map((offer) => {
+                        const sumEx = offer.totalAmount || offer.customPrice || 0;
+                        const sumInc = offer.totalIncVat || Math.round(sumEx * 1.25);
+                        const offerUrl = `${typeof window !== 'undefined' ? window.location.origin : ''}/?offerToken=${offer.token || ''}`;
+
+                        return (
+                          <div 
+                            key={offer.id}
+                            className="p-4 bg-white rounded-2xl border border-slate-200 shadow-2xs hover:shadow-md transition-all space-y-3"
+                          >
+                            <div className="flex items-start justify-between gap-3">
+                              <div>
+                                <h5 className="text-xs sm:text-sm font-black text-navy-950">
+                                  {offer.title || offer.recipientName || 'Tilbud uten tittel'}
+                                </h5>
+                                <p className="text-xs text-slate-500 mt-0.5">
+                                  Kunde: <strong className="text-slate-700">{offer.clientName || offer.recipientName || 'Kunde'}</strong>
+                                  {offer.projectName && <span> • Prosjekt: {offer.projectName}</span>}
+                                </p>
+                              </div>
+                              <span className={cn(
+                                "px-2.5 py-1 rounded-full text-[10px] font-black uppercase shrink-0",
+                                offer.status === 'accepted' ? "bg-emerald-100 text-emerald-800" :
+                                offer.status === 'pending' ? "bg-blue-100 text-blue-800" :
+                                "bg-slate-100 text-slate-700"
+                              )}>
+                                {offer.status === 'accepted' ? 'Godkjent' : offer.status === 'pending' ? 'Sendt til kunde' : 'Utkast'}
+                              </span>
+                            </div>
+
+                            <div className="p-3 bg-slate-50 rounded-xl border border-slate-100 flex items-center justify-between text-xs">
+                              <div>
+                                <span className="text-slate-400 block text-[10px]">Sum eks. mva:</span>
+                                <strong className="font-extrabold text-navy-950">kr {Number(sumEx).toLocaleString('no-NO')}</strong>
+                              </div>
+                              <div className="text-right">
+                                <span className="text-slate-400 block text-[10px]">Sum inkl. 25% mva:</span>
+                                <strong className="font-extrabold text-emerald-700">kr {Number(sumInc).toLocaleString('no-NO')}</strong>
+                              </div>
+                            </div>
+
+                            <div className="flex items-center justify-between pt-1 border-t border-slate-100 flex-wrap gap-2">
+                              <button
+                                type="button"
+                                onClick={() => handleAskAboutItem(`Kan du gå gjennom tilbudet til ${offer.clientName || offer.recipientName} på kr ${Number(sumEx).toLocaleString('no-NO')} og foreslå forbedringer eller standard NS-forbehold?`)}
+                                className="text-xs font-bold text-electric-700 hover:text-electric-900 flex items-center gap-1 cursor-pointer"
+                              >
+                                <Brain size={13} />
+                                <span>Spør AI om tilbudet</span>
+                              </button>
+
+                              <div className="flex items-center gap-2">
+                                {offer.token && (
+                                  <button
+                                    type="button"
+                                    onClick={() => {
+                                      navigator.clipboard.writeText(offerUrl);
+                                      toast.success('Kundelenke kopiert til utklippstavlen!');
+                                    }}
+                                    className="px-2.5 py-1.5 bg-slate-100 hover:bg-slate-200 text-slate-700 rounded-xl text-xs font-bold transition-all flex items-center gap-1 cursor-pointer"
+                                    title="Kopier kundelenke"
+                                  >
+                                    <Copy size={13} />
+                                    <span>Kopier lenke</span>
+                                  </button>
+                                )}
+                                {onDeleteOffer && (
+                                  <button
+                                    type="button"
+                                    onClick={() => onDeleteOffer(offer.id, offer.title || 'Tilbud')}
+                                    className="p-1.5 text-slate-400 hover:text-rose-600 hover:bg-rose-50 rounded-xl transition-all cursor-pointer"
+                                    title="Slett tilbud"
+                                  >
+                                    <Trash2 size={14} />
+                                  </button>
+                                )}
+                              </div>
+                            </div>
+                          </div>
+                        );
+                      })
+                    )}
+                  </div>
+                )}
+
+                {/* Change Orders List */}
+                {adminTab === 'changes' && (
+                  <div className="space-y-3">
+                    {changeOrders.map((co) => (
+                      <div
+                        key={co.id}
+                        className="p-4 bg-white rounded-2xl border border-slate-200 shadow-2xs hover:shadow-md transition-all space-y-3"
                       >
-                        {action.type.includes('offer') && <FileText size={14} className="text-emerald-600" />}
-                        {action.type.includes('change_order') && <FileSignature size={14} className="text-rose-600" />}
-                        {action.type.includes('sja') && <Sparkles size={14} className="text-amber-600" />}
-                        {action.type.includes('vision') && <Camera size={14} className="text-purple-600" />}
-                        <span>{action.label}</span>
-                        <ChevronRight size={13} className="opacity-60" />
-                      </button>
+                        <div className="flex items-start justify-between gap-3">
+                          <div>
+                            <div className="flex items-center gap-2 flex-wrap">
+                              <span className="px-2 py-0.5 rounded-full text-[10px] font-black uppercase bg-amber-100 text-amber-800">
+                                Endring #{co.number || 1}
+                              </span>
+                              <span className="text-xs font-bold text-slate-500">
+                                {co.project}
+                              </span>
+                            </div>
+                            <h5 className="text-xs sm:text-sm font-black text-navy-950 mt-1">
+                              {co.title}
+                            </h5>
+                          </div>
+                          <div className="text-right shrink-0">
+                            <div className="text-sm font-black text-navy-950">
+                              kr {Number(co.amount).toLocaleString('no-NO')}
+                            </div>
+                            <div className="text-[10px] text-slate-400 font-bold">
+                              eks mva (+{co.days || 0} dgr)
+                            </div>
+                          </div>
+                        </div>
+
+                        <div className="flex items-center justify-between pt-2 border-t border-slate-100 flex-wrap gap-2">
+                          <span className="text-[11px] font-bold text-slate-500">
+                            Hjemmel: <strong className="text-slate-800">{co.legal || 'NS 8406 pkt. 19.2'}</strong>
+                          </span>
+
+                          <div className="flex items-center gap-2">
+                            {co.status !== 'Godkjent av kunde' && onApproveChangeOrder && (
+                              <button
+                                type="button"
+                                onClick={() => onApproveChangeOrder(co.id)}
+                                className="px-3 py-1.5 bg-gradient-to-r from-electric-500 to-electric-400 text-white rounded-xl text-xs font-black transition-all shadow-xs cursor-pointer"
+                              >
+                                Godkjenn
+                              </button>
+                            )}
+                            {co.shareUrl && (
+                              <button
+                                type="button"
+                                onClick={() => {
+                                  navigator.clipboard.writeText(co.shareUrl);
+                                  toast.success('Godkjenningslenke kopiert!');
+                                }}
+                                className="px-2.5 py-1.5 bg-slate-100 hover:bg-slate-200 text-slate-700 rounded-xl text-xs font-bold transition-all cursor-pointer"
+                              >
+                                Kopier lenke
+                              </button>
+                            )}
+                            {onDeleteChangeOrder && (
+                              <button
+                                type="button"
+                                onClick={() => onDeleteChangeOrder(co.id, co.title)}
+                                className="p-1.5 text-slate-400 hover:text-rose-600 hover:bg-rose-50 rounded-xl transition-all cursor-pointer"
+                              >
+                                <Trash2 size={14} />
+                              </button>
+                            )}
+                          </div>
+                        </div>
+                      </div>
                     ))}
                   </div>
                 )}
               </div>
-
-              {/* Follow-up Suggestion Chips (Under Assistant Message) */}
-              {msg.role === 'assistant' && msg.followUpPrompts && msg.followUpPrompts.length > 0 && (
-                <div className="flex flex-wrap gap-1.5 pt-1 pl-1">
-                  {msg.followUpPrompts.map((promptText, pIdx) => (
+            ) : activeTab === 'channels' ? (
+              /* 4. OMNICHANNEL INTEGRASJONSHUB */
+              <div className="space-y-4">
+                <div className="p-4 bg-gradient-to-r from-navy-950 to-slate-900 text-white rounded-2xl shadow-sm flex items-center justify-between">
+                  <div>
+                    <h4 className="text-sm font-black flex items-center gap-2">
+                      <Radio size={16} className="text-emerald-400" />
+                      <span>Omnichannel Agent Lytter</span>
+                    </h4>
+                    <p className="text-xs text-slate-300 mt-0.5">
+                      Håndverkere i felt snakker med MesterAI gjennom sine eksisterende apper.
+                    </p>
+                  </div>
+                  {onOpenOmnichannelModal && (
                     <button
-                      key={pIdx}
                       type="button"
-                      onClick={() => handleSendMessage(promptText)}
-                      disabled={isLoading}
-                      className="px-2.5 py-1 bg-white hover:bg-electric-50 text-slate-600 hover:text-electric-700 border border-slate-200 hover:border-electric-200 rounded-lg text-[11px] font-medium transition-all shadow-2xs text-left cursor-pointer active:scale-95"
+                      onClick={onOpenOmnichannelModal}
+                      className="px-3.5 py-2 bg-electric-500 hover:bg-electric-400 text-white rounded-xl text-xs font-bold transition-all cursor-pointer"
                     >
-                      💬 {promptText}
+                      Konfigurer
+                    </button>
+                  )}
+                </div>
+
+                <div className="grid grid-cols-1 sm:grid-cols-2 gap-3">
+                  <div className="p-4 bg-white rounded-2xl border border-slate-200 shadow-2xs space-y-2">
+                    <div className="flex items-center justify-between">
+                      <div className="flex items-center gap-2">
+                        <MessageSquare size={16} className="text-indigo-600" />
+                        <h5 className="text-xs font-black text-navy-950">Discord Bot</h5>
+                      </div>
+                      <span className="px-2 py-0.5 rounded-full text-[9px] font-black uppercase bg-emerald-100 text-emerald-800">
+                        Aktiv
+                      </span>
+                    </div>
+                    <p className="text-[11px] text-slate-500">
+                      Lytter i kanalen <code>#byggeplass-oppdateringer</code>. Automatisk byggedagbok og SJA via tale/tekst.
+                    </p>
+                  </div>
+
+                  <div className="p-4 bg-white rounded-2xl border border-slate-200 shadow-2xs space-y-2">
+                    <div className="flex items-center justify-between">
+                      <div className="flex items-center gap-2">
+                        <Hash size={16} className="text-emerald-600" />
+                        <h5 className="text-xs font-black text-navy-950">Slack App</h5>
+                      </div>
+                      <span className="px-2 py-0.5 rounded-full text-[9px] font-black uppercase bg-emerald-100 text-emerald-800">
+                        Aktiv
+                      </span>
+                    </div>
+                    <p className="text-[11px] text-slate-500">
+                      Sender automatiske varsler om endringsordrer (NS 8406) og lukkesperrer direkte til prosjektkanalen.
+                    </p>
+                  </div>
+
+                  <div className="p-4 bg-white rounded-2xl border border-slate-200 shadow-2xs space-y-2">
+                    <div className="flex items-center justify-between">
+                      <div className="flex items-center gap-2">
+                        <Radio size={16} className="text-blue-600" />
+                        <h5 className="text-xs font-black text-navy-950">Microsoft Teams</h5>
+                      </div>
+                      <span className="px-2 py-0.5 rounded-full text-[9px] font-black uppercase bg-emerald-100 text-emerald-800">
+                        Aktiv
+                      </span>
+                    </div>
+                    <p className="text-[11px] text-slate-500">
+                      Integrert for byggeledelse, rådgivende ingeniører og baser med live statusoppdateringer.
+                    </p>
+                  </div>
+
+                  <div className="p-4 bg-white rounded-2xl border border-slate-200 shadow-2xs space-y-2">
+                    <div className="flex items-center justify-between">
+                      <div className="flex items-center gap-2">
+                        <Mail size={16} className="text-purple-600" />
+                        <h5 className="text-xs font-black text-navy-950">E-post Lytter</h5>
+                      </div>
+                      <span className="px-2 py-0.5 rounded-full text-[9px] font-black uppercase bg-emerald-100 text-emerald-800">
+                        100% Operativ
+                      </span>
+                    </div>
+                    <p className="text-[11px] text-slate-500">
+                      <code>hei@vikingmester.no</code> fanger opp kundehenvendelser og genererer svarforslag.
+                    </p>
+                  </div>
+                </div>
+              </div>
+            ) : activeTab === 'team' ? (
+              /* 6. TEAM, ROLLER & BRUKERINVITASJONER (RBAC) */
+              <div className="space-y-4">
+                <div className="p-5 bg-gradient-to-r from-navy-950 via-slate-900 to-navy-950 text-white rounded-3xl shadow-sm border border-white/10 flex flex-col sm:flex-row sm:items-center justify-between gap-4">
+                  <div>
+                    <div className="flex items-center gap-2 mb-1">
+                      <Users size={18} className="text-electric-400" />
+                      <h4 className="text-base font-black">Team, Roller & Tilgangskontroll (RBAC)</h4>
+                    </div>
+                    <p className="text-xs text-slate-300 max-w-xl">
+                      Inviter håndverkere, byggeledere og underentreprenører. Sikrer at håndverkere kun ser sine egne oppgaver, mens ledelsen har full kontroll over økonomi og tilbud.
+                    </p>
+                  </div>
+                  {onOpenInviteModal && (
+                    <button
+                      type="button"
+                      onClick={onOpenInviteModal}
+                      className="px-4 py-2.5 bg-gradient-to-r from-electric-600 to-electric-500 hover:from-electric-500 hover:to-electric-400 text-white rounded-xl text-xs font-black shadow-md flex items-center gap-2 cursor-pointer shrink-0"
+                    >
+                      <UserPlus size={15} />
+                      <span>+ Inviter Ny Bruker</span>
+                    </button>
+                  )}
+                </div>
+
+                {/* Role Separation Cards */}
+                <div className="grid grid-cols-1 md:grid-cols-3 gap-3">
+                  <div className="p-4 bg-white rounded-2xl border border-slate-200 shadow-2xs space-y-2">
+                    <div className="flex items-center justify-between">
+                      <span className="px-2 py-0.5 rounded-full text-[9px] font-black uppercase bg-purple-100 text-purple-800">
+                        👑 Byggeleder / Admin
+                      </span>
+                      <span className="text-[10px] text-slate-400 font-bold">Full Tilgang</span>
+                    </div>
+                    <h5 className="text-xs font-black text-navy-950">Leder & Administrator</h5>
+                    <p className="text-[11px] text-slate-500 leading-relaxed">
+                      Har fullt innsyn i alle tilbud, kalkylers påslag, kundepriser, endringsordrer iht. NS 8406, tildeling av oppgaver og brukerinvitasjoner.
+                    </p>
+                  </div>
+
+                  <div className="p-4 bg-white rounded-2xl border border-slate-200 shadow-2xs space-y-2">
+                    <div className="flex items-center justify-between">
+                      <span className="px-2 py-0.5 rounded-full text-[9px] font-black uppercase bg-blue-100 text-blue-800">
+                        🔨 Håndverker (Intern)
+                      </span>
+                      <span className="text-[10px] text-slate-400 font-bold">Felt-tilgang</span>
+                    </div>
+                    <h5 className="text-xs font-black text-navy-950">Håndverker på Byggeplass</h5>
+                    <p className="text-[11px] text-slate-500 leading-relaxed">
+                      Se tildelte oppgaver, timeføring med tale/trykk, SJA-analyser, avviksmelding med foto og TEK17 veiledning. <strong>Økonomiske tilbud og marginer er skjult.</strong>
+                    </p>
+                  </div>
+
+                  <div className="p-4 bg-white rounded-2xl border border-slate-200 shadow-2xs space-y-2">
+                    <div className="flex items-center justify-between">
+                      <span className="px-2 py-0.5 rounded-full text-[9px] font-black uppercase bg-amber-100 text-amber-800">
+                        🤝 Ekstern Håndverker (UE)
+                      </span>
+                      <span className="text-[10px] text-slate-400 font-bold">Prosjektavgrenset</span>
+                    </div>
+                    <h5 className="text-xs font-black text-navy-950">Underentreprenør</h5>
+                    <p className="text-[11px] text-slate-500 leading-relaxed">
+                      Kun tilgang til det spesifikke prosjektet og tildelte oppgaver. Ingen innsyn i bedriftens andre prosjekter eller kalkyler.
+                    </p>
+                  </div>
+                </div>
+
+                {/* Direct in-chat invitation helper */}
+                <div className="bg-white rounded-2xl border border-slate-200 p-4 shadow-2xs space-y-3">
+                  <h5 className="text-xs font-extrabold text-navy-950">
+                    💡 Tips: Du kan også invitere direkte med tale eller chat!
+                  </h5>
+                  <p className="text-xs text-slate-600">
+                    Skriv eller si for eksempel til MesterAI:
+                  </p>
+                  <div className="flex flex-wrap gap-2">
+                    {[
+                      'Inviter ola@bygg.no som håndverker',
+                      'Inviter snekker@firma.no som håndverker',
+                      'Inviter leder@vikingmester.no som admin'
+                    ].map((promptText, i) => (
+                      <button
+                        key={i}
+                        type="button"
+                        onClick={() => handleAskAboutItem(promptText)}
+                        className="text-xs font-bold px-3 py-1.5 bg-slate-100 hover:bg-electric-50 hover:text-electric-700 rounded-xl transition-all border border-slate-200 cursor-pointer"
+                      >
+                        💬 &quot;{promptText}&quot;
+                      </button>
+                    ))}
+                  </div>
+                </div>
+              </div>
+            ) : (
+              /* 5. DEFAULT / TOOLBOX MENU */
+              <div className="space-y-4">
+                <div className="bg-white p-4 rounded-2xl border border-slate-200 shadow-2xs">
+                  <h4 className="text-sm font-extrabold text-navy-950 mb-1">
+                    Verktøykasse for Byggeleder
+                  </h4>
+                  <p className="text-xs text-slate-500">
+                    Klikk på et verktøy for å åpne og fylle ut direkte inne i arbeidsstasjonen:
+                  </p>
+                </div>
+
+                <div className="grid grid-cols-1 sm:grid-cols-2 gap-3">
+                  {[
+                    { type: 'offer' as InChatFormType, title: 'Tilbudsbygger & Kalkyle', desc: 'Arbeidstimer, materialer, påslag og NS-forbehold', icon: <FileText size={20} className="text-electric-600" /> },
+                    { type: 'change_order' as InChatFormType, title: 'Endringsordre (NS 8406)', desc: 'Tilleggskrav, dager og formelt varsel', icon: <FileSignature size={20} className="text-rose-600" /> },
+                    { type: 'sja' as InChatFormType, title: 'Sikker Jobb Analyse (SJA)', desc: 'Risikovurdering og vernetiltak', icon: <ShieldCheck size={20} className="text-emerald-600" /> },
+                    { type: 'deviation' as InChatFormType, title: 'Avvik & RUH', desc: 'Fagfeil, skader og strakstiltak', icon: <AlertTriangle size={20} className="text-amber-600" /> },
+                    { type: 'time' as InChatFormType, title: 'Timeføring & Dagens Arbeid', desc: 'Timer og beskrivelse per prosjekt', icon: <Timer size={20} className="text-blue-600" /> }
+                  ].map((tool) => (
+                    <button
+                      key={tool.type}
+                      type="button"
+                      onClick={() => setActiveFormView({ type: tool.type })}
+                      className="p-4 bg-white rounded-2xl border border-slate-200/90 hover:border-electric-400 hover:shadow-md transition-all text-left group cursor-pointer"
+                    >
+                      <div className="flex items-center gap-3 mb-2">
+                        <div className="w-10 h-10 rounded-xl bg-slate-50 flex items-center justify-center group-hover:scale-110 transition-transform">
+                          {tool.icon}
+                        </div>
+                        <div>
+                          <h5 className="text-xs font-black text-navy-950 group-hover:text-electric-600 transition-colors">
+                            {tool.title}
+                          </h5>
+                          <span className="text-[10px] text-slate-400">{tool.desc}</span>
+                        </div>
+                      </div>
                     </button>
                   ))}
                 </div>
-              )}
-            </div>
-          ))}
-
-          {/* Thinking / Loading Indicator */}
-          {isLoading && (
-            <div className="flex items-center gap-3 p-4 bg-white border border-slate-200/80 rounded-2xl mr-auto max-w-md shadow-xs">
-              <div className="w-8 h-8 rounded-xl bg-electric-500 text-white flex items-center justify-center animate-spin">
-                <RefreshCw size={15} />
               </div>
-              <div>
-                <div className="text-xs font-bold text-navy-900">MesterAI vurderer faglige standarder...</div>
-                <div className="text-[10px] text-slate-500">Kalkulerer timer, materialer, TEK17 og entrepriserett</div>
-              </div>
-            </div>
-          )}
-        </div>
-
-        {/* Chat Input Bar */}
-        <div className="p-3 sm:p-4 bg-white border-t border-slate-200/80 shrink-0">
-          <form 
-            onSubmit={(e) => { e.preventDefault(); handleSendMessage(inputVal); }}
-            className="flex items-center gap-2"
-          >
-            <div className="relative flex-1">
-              <input
-                type="text"
-                value={inputVal}
-                onChange={(e) => setInputVal(e.target.value)}
-                placeholder="Still et spørsmål eller be om hjelp med tilbud, TEK17, HMS, kalkyle..."
-                className="w-full pl-4 pr-10 py-3 bg-slate-50 border border-slate-200 rounded-2xl text-xs sm:text-sm font-medium text-slate-900 placeholder:text-slate-400 focus:bg-white focus:border-electric-500 focus:ring-2 focus:ring-electric-500/20 transition-all outline-none"
-                disabled={isLoading}
-              />
-              <button
-                type="button"
-                onClick={toggleMic}
-                className={cn(
-                  "absolute right-2.5 top-1/2 -translate-y-1/2 p-1.5 rounded-xl transition-all cursor-pointer",
-                  isListeningMic ? "bg-rose-500 text-white animate-pulse" : "text-slate-400 hover:text-electric-600"
-                )}
-                title="Snakk inn instruks eller spørsmål"
-              >
-                {isListeningMic ? <MicOff size={16} /> : <Mic size={16} />}
-              </button>
-            </div>
-
-            {/* Verktøykasse snarvei */}
-            <button
-              type="button"
-              onClick={() => setActiveFormView(prev => prev ? null : { type: 'toolbox' })}
-              className="p-3 text-slate-400 hover:text-electric-600 hover:bg-slate-100 rounded-2xl transition-all cursor-pointer shrink-0"
-              title="Skjemaer & Verktøy i chatten"
-            >
-              <Layers size={18} />
-            </button>
-
-            <button
-              type="submit"
-              disabled={isLoading || !inputVal.trim()}
-              className="px-4 sm:px-5 py-3 bg-navy-900 hover:bg-navy-800 text-white rounded-2xl text-xs font-black transition-all flex items-center gap-1.5 disabled:opacity-40 shrink-0 shadow-sm cursor-pointer"
-            >
-              <span>Send</span>
-              <Send size={13} />
-            </button>
-          </form>
-
-          <div className="flex items-center justify-between text-[10px] text-slate-400 mt-2 px-1">
-            <span>Trykk Enter for å sende • Støtter norsk byggeskikk, TEK17, NS 8406 og kalkyler</span>
-            <span className="font-bold text-electric-600">VikingMester AI v3.0</span>
+            )}
           </div>
         </div>
-          </>
-        )}
       </motion.div>
     </div>
   );

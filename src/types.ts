@@ -221,6 +221,22 @@ export interface ProjectMaterial {
   createdAt: string;
 }
 
+export interface ProjectTask {
+  id: string;
+  projectId?: string;
+  projectName?: string;
+  title: string;
+  description?: string;
+  assignedTo?: string;
+  assignedToId?: string;
+  priority: 'low' | 'medium' | 'high' | 'urgent';
+  status: 'pending' | 'in_progress' | 'completed' | 'cancelled';
+  deadline?: string;
+  createdAt: string;
+  createdBy?: string;
+  voiceNote?: string;
+}
+
 export interface TimeEntry {
   id: string;
   projectId: string;

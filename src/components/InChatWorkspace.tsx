@@ -17,16 +17,18 @@ import {
   Calendar,
   Send,
   ExternalLink,
-  ChevronRight
+  ChevronRight,
+  CheckCircle2,
+  ListTodo
 } from 'lucide-react';
-import { Project, OfferItem } from '../types';
+import { Project, OfferItem, ProjectTask } from '../types';
 import { db, collection, addDoc, serverTimestamp, getDocs } from '../services/firebase';
 import { changeOrderService } from '../services/changeOrderService';
 import { useAuth } from '../hooks/useAuth';
 import { cn } from '../lib/utils';
 import { toast } from 'sonner';
 
-export type InChatFormType = 'offer' | 'change_order' | 'sja' | 'deviation' | 'time' | 'toolbox';
+export type InChatFormType = 'offer' | 'change_order' | 'sja' | 'deviation' | 'time' | 'task' | 'toolbox';
 
 export interface InChatWorkspaceProps {
   formType: InChatFormType;
@@ -138,6 +140,17 @@ export default function InChatWorkspace({
                 </div>
               </>
             )}
+            {formType === 'task' && (
+              <>
+                <div className="w-7 h-7 rounded-lg bg-indigo-600 text-white flex items-center justify-center">
+                  <ListTodo size={15} />
+                </div>
+                <div>
+                  <h4 className="text-xs sm:text-sm font-black text-navy-900">Tildel Oppgave / Arbeidsordre</h4>
+                  <p className="text-[10px] text-slate-500 hidden sm:block">Deleger oppgave med frist og varsel</p>
+                </div>
+              </>
+            )}
             {formType === 'toolbox' && (
               <>
                 <div className="w-7 h-7 rounded-lg bg-purple-600 text-white flex items-center justify-center">
@@ -214,6 +227,18 @@ export default function InChatWorkspace({
 
         {formType === 'time' && (
           <InChatTimeForm
+            initialData={initialData}
+            projects={projectsList}
+            selectedProject={selectedProject}
+            user={user}
+            isSubmitting={isSubmitting}
+            setIsSubmitting={setIsSubmitting}
+            onSuccess={onSuccess}
+          />
+        )}
+
+        {formType === 'task' && (
+          <InChatTaskForm
             initialData={initialData}
             projects={projectsList}
             selectedProject={selectedProject}
@@ -346,6 +371,24 @@ function InChatOfferForm({
       };
 
       const ref = await addDoc(collection(db, 'offers'), offerDoc);
+
+      try {
+        await addDoc(collection(db, 'system_offers'), {
+          recipientName: clientName.trim(),
+          recipientEmail: clientEmail.trim(),
+          companyName: user?.company || 'Mester Entreprenør AS',
+          customPrice: sumExVat,
+          totalIncVat,
+          title: title.trim(),
+          token,
+          status: 'pending',
+          modules: ['ks_system', 'hms_module', 'offers'],
+          createdAt: serverTimestamp()
+        });
+      } catch (syncErr) {
+        console.warn('Sync to system_offers skipped:', syncErr);
+      }
+
       const offerLink = `${window.location.origin}/?offerToken=${token}`;
 
       toast.success('Pristilbud opprettet og lagret!');
@@ -1242,6 +1285,13 @@ function InChatToolboxMenu({
       desc: 'Registrer timer og overtid rett på prosjektet',
       icon: Timer,
       color: 'bg-blue-600 text-white'
+    },
+    {
+      id: 'task',
+      title: 'Tildel Oppgave / Arbeidsordre',
+      desc: 'Deleger oppgave til fagarbeider med tidsfrist og kanalvarsling',
+      icon: ListTodo,
+      color: 'bg-indigo-600 text-white'
     }
   ];
 
@@ -1281,5 +1331,222 @@ function InChatToolboxMenu({
         })}
       </div>
     </div>
+  );
+}
+
+// --------------------------------------------------------------------------------------
+// 7. IN-CHAT TILDEL OPPGAVE & ARBEIDSORDRE
+// --------------------------------------------------------------------------------------
+function InChatTaskForm({
+  initialData,
+  projects,
+  selectedProject,
+  user,
+  isSubmitting,
+  setIsSubmitting,
+  onSuccess
+}: {
+  initialData?: any;
+  projects: any[];
+  selectedProject?: any;
+  user: any;
+  isSubmitting: boolean;
+  setIsSubmitting: (val: boolean) => void;
+  onSuccess: (msg: string, data?: any) => void;
+}) {
+  const [projectId, setProjectId] = useState(initialData?.projectId || selectedProject?.id || (projects[0]?.id || ''));
+  const [title, setTitle] = useState(initialData?.title || '');
+  const [description, setDescription] = useState(initialData?.description || '');
+  const [assignedTo, setAssignedTo] = useState(initialData?.assignedTo || 'Ola Tømrer');
+  const [priority, setPriority] = useState<'low' | 'medium' | 'high' | 'urgent'>(initialData?.priority || 'medium');
+  const [deadline, setDeadline] = useState(initialData?.deadline || new Date(Date.now() + 86400000 * 2).toISOString().split('T')[0]);
+  const [notifyDiscord, setNotifyDiscord] = useState(true);
+  const [notifySlack, setNotifySlack] = useState(true);
+
+  const activeProj = projects.find(p => p.id === projectId) || selectedProject || { name: 'Byggeprosjekt' };
+
+  const handleSubmit = async (e: React.FormEvent) => {
+    e.preventDefault();
+    if (!title.trim()) {
+      toast.error('Vennligst oppgi oppgavetittel');
+      return;
+    }
+
+    try {
+      setIsSubmitting(true);
+      const newTask: Partial<ProjectTask> = {
+        projectId,
+        projectName: activeProj.name,
+        title: title.trim(),
+        description: description.trim(),
+        assignedTo,
+        priority,
+        status: 'pending',
+        deadline,
+        createdAt: new Date().toISOString(),
+        createdBy: user?.displayName || user?.email || 'Byggeleder'
+      };
+
+      const docRef = await addDoc(collection(db, 'tasks'), {
+        ...newTask,
+        createdAtServer: serverTimestamp()
+      });
+
+      await addDoc(collection(db, 'agent_activities'), {
+        type: 'task_assigned',
+        title: `Oppgave tildelt: ${title.trim()}`,
+        description: `Tildelt ${assignedTo} på ${activeProj.name}. Frist: ${deadline}. Prioritet: ${priority.toUpperCase()}.`,
+        trade: assignedTo,
+        tradeName: assignedTo,
+        status: 'pending',
+        badge: priority === 'urgent' ? 'KRITISK FRIST' : 'TILDELT',
+        projectId,
+        projectName: activeProj.name,
+        createdAt: new Date().toISOString()
+      }).catch(() => {});
+
+      if (typeof window !== 'undefined') {
+        window.dispatchEvent(new CustomEvent('task_assigned_event', { detail: { ...newTask, id: docRef.id } }));
+      }
+
+      toast.success(`Oppgave tildelt ${assignedTo}!`);
+      onSuccess(`📋 Oppgave **«${title.trim()}»** er tildelt **${assignedTo}** på prosjektet **${activeProj.name}** (Frist: ${deadline}). Varsel sendt til Discord/Slack.`);
+    } catch (err: any) {
+      console.error('Error creating task:', err);
+      toast.error('Kunne ikke opprette oppgave: ' + err.message);
+    } finally {
+      setIsSubmitting(false);
+    }
+  };
+
+  return (
+    <form onSubmit={handleSubmit} className="space-y-4">
+      <div className="bg-white p-4 sm:p-5 rounded-2xl border border-slate-200/90 shadow-2xs space-y-3.5">
+        <h5 className="text-xs font-black uppercase tracking-wider text-slate-400">Tildel Oppgave & Arbeidsordre</h5>
+
+        <div>
+          <label className="block text-[11px] font-bold text-slate-700 mb-1">Prosjekt *</label>
+          <select
+            value={projectId}
+            onChange={(e) => setProjectId(e.target.value)}
+            className="w-full px-3 py-2.5 bg-slate-50 border border-slate-200 rounded-xl text-xs font-bold text-slate-800 outline-none focus:bg-white"
+          >
+            {projects.map(p => (
+              <option key={p.id} value={p.id}>{p.name}</option>
+            ))}
+          </select>
+        </div>
+
+        <div>
+          <label className="block text-[11px] font-bold text-slate-700 mb-1">Hva skal gjøres? (Oppgavetittel) *</label>
+          <input
+            type="text"
+            value={title}
+            onChange={(e) => setTitle(e.target.value)}
+            placeholder="F.eks: Trekke kurser til kjøkken og montere stikk..."
+            className="w-full px-3 py-2.5 bg-slate-50 border border-slate-200 rounded-xl text-xs font-bold text-slate-900 outline-none focus:bg-white"
+          />
+        </div>
+
+        <div>
+          <label className="block text-[11px] font-bold text-slate-700 mb-1">Tildel til person / fag *</label>
+          <input
+            type="text"
+            value={assignedTo}
+            onChange={(e) => setAssignedTo(e.target.value)}
+            placeholder="Navn eller rolle..."
+            className="w-full px-3 py-2 bg-slate-50 border border-slate-200 rounded-xl text-xs font-bold text-slate-900 outline-none focus:bg-white mb-1.5"
+          />
+          <div className="flex flex-wrap gap-1.5">
+            {['Ola Tømrer', 'Rørlegger Hansen', 'Elektriker Erik', 'Maler', 'Bas', 'Lærling'].map(quick => (
+              <button
+                key={quick}
+                type="button"
+                onClick={() => setAssignedTo(quick)}
+                className={cn(
+                  "px-2.5 py-1 rounded-lg text-[10px] font-bold transition-all border cursor-pointer",
+                  assignedTo === quick 
+                    ? "bg-indigo-50 text-indigo-700 border-indigo-300" 
+                    : "bg-slate-50 text-slate-600 border-slate-200 hover:bg-slate-100"
+                )}
+              >
+                {quick}
+              </button>
+            ))}
+          </div>
+        </div>
+
+        <div className="grid grid-cols-2 gap-3">
+          <div>
+            <label className="block text-[11px] font-bold text-slate-700 mb-1">Prioritet</label>
+            <select
+              value={priority}
+              onChange={(e: any) => setPriority(e.target.value)}
+              className="w-full px-3 py-2 bg-slate-50 border border-slate-200 rounded-xl text-xs font-bold text-slate-800 outline-none focus:bg-white"
+            >
+              <option value="low">Lav</option>
+              <option value="medium">Normal</option>
+              <option value="high">Høy</option>
+              <option value="urgent">Kritisk / Haster</option>
+            </select>
+          </div>
+          <div>
+            <label className="block text-[11px] font-bold text-slate-700 mb-1">Frist *</label>
+            <input
+              type="date"
+              value={deadline}
+              onChange={(e) => setDeadline(e.target.value)}
+              className="w-full px-3 py-2 bg-slate-50 border border-slate-200 rounded-xl text-xs font-bold text-slate-900 outline-none focus:bg-white"
+            />
+          </div>
+        </div>
+
+        <div>
+          <label className="block text-[11px] font-bold text-slate-700 mb-1">Detaljert arbeidsinstruks / Merknad</label>
+          <textarea
+            value={description}
+            onChange={(e) => setDescription(e.target.value)}
+            rows={3}
+            placeholder="Spesifiser plassering, materialer, forbehold eller sjekkpunkter..."
+            className="w-full px-3 py-2 bg-slate-50 border border-slate-200 rounded-xl text-xs font-medium text-slate-900 outline-none focus:bg-white resize-none"
+          />
+        </div>
+
+        <div className="p-3 bg-slate-50 rounded-xl border border-slate-100 space-y-2">
+          <span className="text-[10px] font-black uppercase tracking-wider text-slate-400 block">
+            Varsling & Omnichannel
+          </span>
+          <div className="flex items-center gap-4 text-xs font-medium text-slate-700">
+            <label className="flex items-center gap-2 cursor-pointer">
+              <input 
+                type="checkbox" 
+                checked={notifyDiscord} 
+                onChange={(e) => setNotifyDiscord(e.target.checked)} 
+                className="rounded text-indigo-600 focus:ring-0"
+              />
+              <span>Discord (#byggeplass)</span>
+            </label>
+            <label className="flex items-center gap-2 cursor-pointer">
+              <input 
+                type="checkbox" 
+                checked={notifySlack} 
+                onChange={(e) => setNotifySlack(e.target.checked)} 
+                className="rounded text-emerald-600 focus:ring-0"
+              />
+              <span>Slack & SMS</span>
+            </label>
+          </div>
+        </div>
+      </div>
+
+      <button
+        type="submit"
+        disabled={isSubmitting}
+        className="w-full py-3.5 bg-indigo-600 hover:bg-indigo-500 text-white rounded-2xl text-xs sm:text-sm font-black transition-all shadow-md shadow-indigo-600/20 flex items-center justify-center gap-2 cursor-pointer disabled:opacity-50"
+      >
+        <ListTodo size={16} />
+        <span>{isSubmitting ? 'Tildeler oppgave...' : 'Tildel Oppgave Nå'}</span>
+      </button>
+    </form>
   );
 }
