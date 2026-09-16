@@ -260,8 +260,13 @@ export default function Dashboard({
     const handleSettingsUpdate = (e: any) => {
       if (e.detail) setOmnichannelSettings(e.detail);
     };
+    const handleOpenOmniModal = () => setIsOmnichannelModalOpen(true);
     window.addEventListener('omnichannel_settings_updated', handleSettingsUpdate);
-    return () => window.removeEventListener('omnichannel_settings_updated', handleSettingsUpdate);
+    window.addEventListener('open_omnichannel_modal', handleOpenOmniModal);
+    return () => {
+      window.removeEventListener('omnichannel_settings_updated', handleSettingsUpdate);
+      window.removeEventListener('open_omnichannel_modal', handleOpenOmniModal);
+    };
   }, []);
 
   // Lukkesperre & Pre-close state
@@ -396,6 +401,9 @@ export default function Dashboard({
           setActiveTab('kvalitet');
           setSelectedLukkesperreZone(lukkesperreZones[0]);
           setIsPreCloseModalOpen(true);
+          break;
+        case 'omnichannel':
+          setIsOmnichannelModalOpen(true);
           break;
         default:
           break;

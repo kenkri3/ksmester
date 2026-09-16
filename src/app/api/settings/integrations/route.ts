@@ -1,5 +1,5 @@
 import { NextRequest, NextResponse } from 'next/server';
-import { saveCollectionItem, getCollectionItems } from '@/src/lib/server/db';
+import { saveCollectionItem, getCollectionItems, deleteCollectionItem } from '@/src/lib/server/db';
 import { getUserFromRequest } from '@/src/lib/server/auth';
 
 export async function POST(req: NextRequest) {
@@ -115,3 +115,35 @@ export async function GET(req: NextRequest) {
     return NextResponse.json({ error: err.message }, { status: 500 });
   }
 }
+
+export async function DELETE(req: NextRequest) {
+  try {
+    const user = getUserFromRequest(req);
+    if (!user) {
+      return NextResponse.json({ error: 'Uautorisert tilgang' }, { status: 401 });
+    }
+    const { searchParams } = new URL(req.url);
+    const service = searchParams.get('service');
+    if (!service) {
+      return NextResponse.json({ error: 'Mangler tjenestenavn' }, { status: 400 });
+    }
+
+    const all = await getCollectionItems('integrations');
+    const target = all.find((i: any) => 
+      i.service === service && 
+      (user.role === 'admin' || i.companyId === user.companyId)
+    );
+
+    if (target) {
+      await deleteCollectionItem('integrations', target.id);
+    }
+
+    return NextResponse.json({
+      success: true,
+      message: `Integrasjon med ${service} er koblet fra.`
+    });
+  } catch (err: any) {
+    return NextResponse.json({ error: err.message || 'Kunne ikke koble fra' }, { status: 500 });
+  }
+}
+

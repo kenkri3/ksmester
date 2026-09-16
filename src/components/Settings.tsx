@@ -1179,7 +1179,10 @@ export default function Settings() {
                     </div>
                     <div className="p-4 bg-white/5 rounded-xl border border-white/10">
                       <div className="text-[10px] text-neutral-400 uppercase font-black mb-1">Region</div>
-                      <div className="text-sm font-bold text-white">europe-west3 (Frankfurt)</div>
+                      <div className="text-sm font-bold text-white flex items-center gap-1.5">
+                        <span>🇳🇱</span>
+                        <span>EU West (Amsterdam, Nederland)</span>
+                      </div>
                     </div>
                     <div className="p-4 bg-white/5 rounded-xl border border-white/10">
                       <div className="text-[10px] text-neutral-400 uppercase font-black mb-1">Database</div>

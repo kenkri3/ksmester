@@ -39,7 +39,7 @@ export async function GET() {
     databaseHealthy: dbHealthy,
     renderReady: true,
     hosting: 'Railway',
-    region: 'europe-west3 (Frankfurt)',
+    region: 'EU West (Amsterdam, Netherlands)',
     nobbConfigured: !!process.env.NOBB_API_KEY,
     resendConfigured,
     scraperActive: true,
