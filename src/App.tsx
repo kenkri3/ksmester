@@ -5,7 +5,7 @@
  * SPDX-License-Identifier: Apache-2.0
  */
 
-import { useState, useEffect, lazy, Suspense } from 'react';
+import { useState, useEffect, useRef, lazy, Suspense } from 'react';
 import { motion, AnimatePresence } from 'motion/react';
 import { 
   ShieldCheck, 
@@ -136,17 +136,22 @@ function AppContent() {
       setMobileScreen('contacts');
       setView('mobile');
     };
+    const handleOpenMobileMenu = () => setIsMenuOpen(true);
     window.addEventListener('navigate_view', handleNav);
     window.addEventListener('open_mobile_contacts', handleOpenContacts);
+    window.addEventListener('open_mobile_menu', handleOpenMobileMenu);
     return () => {
       window.removeEventListener('navigate_view', handleNav);
       window.removeEventListener('open_mobile_contacts', handleOpenContacts);
+      window.removeEventListener('open_mobile_menu', handleOpenMobileMenu);
     };
   }, []);
 
-  // 🚀 Auto-route into dashboard whenever user is authenticated
+  // 🚀 Auto-route into dashboard on initial authentication
+  const hasInitiallyRouted = useRef(false);
   useEffect(() => {
-    if (isAuthReady && user) {
+    if (isAuthReady && user && !hasInitiallyRouted.current) {
+      hasInitiallyRouted.current = true;
       if (['landing', 'login'].includes(view)) {
         setView('dashboard');
       }
@@ -499,11 +504,12 @@ function AppContent() {
         </div>
       )}
 
-      {/* Navigation */}
-      <nav className={cn(
-        "fixed left-0 right-0 z-50 bg-white/90 backdrop-blur-md border-b border-slate-200/80 transition-all shadow-card-soft",
-        (user && subscriptionStatus === 'trial') || impersonatedCompanyId ? "top-6" : "top-0"
-      )}>
+      {/* Navigation: Skjult i backend kommandosentralen slik at brukeren kun har Kommandosentralens egen toppmeny */}
+      {(!user || view !== 'dashboard') && (
+        <nav className={cn(
+          "fixed left-0 right-0 z-50 bg-white/90 backdrop-blur-md border-b border-slate-200/80 transition-all shadow-card-soft",
+          (user && subscriptionStatus === 'trial') || impersonatedCompanyId ? "top-6" : "top-0"
+        )}>
         <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8">
           {(!user || ['landing', 'pricing', 'about', 'contact', 'privacy', 'terms'].includes(view)) ? (
             /* PUBLIC MARKETING NAVBAR */
@@ -1364,9 +1370,14 @@ function AppContent() {
           )}
         </AnimatePresence>
       </nav>
+      )}
 
       {/* Main Content */}
-      <main className={cn("pt-16", user && view !== 'dashboard' ? "pb-24 md:pb-8" : "")}>
+      <main className={cn(
+        view !== 'dashboard' ? "pt-16" : "",
+        ((user && subscriptionStatus === 'trial') || impersonatedCompanyId) && (view === 'dashboard' ? "pt-6" : "pt-22"),
+        user && view !== 'dashboard' ? "pb-24 md:pb-8" : ""
+      )}>
         <AnimatePresence mode="wait">
           <motion.div
             key={view}

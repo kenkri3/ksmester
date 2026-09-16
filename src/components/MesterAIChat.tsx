@@ -51,7 +51,13 @@ import {
   Home,
   ChevronLeft,
   Globe,
-  RotateCcw
+  RotateCcw,
+  Settings,
+  LogOut,
+  Download,
+  User as UserIcon,
+  ChevronDown,
+  Menu
 } from 'lucide-react';
 import InChatWorkspace, { InChatFormType } from './InChatWorkspace';
 import AutonomousControlPost from './AutonomousControlPost';
@@ -60,8 +66,12 @@ import { visionService } from '../services/visionService';
 import { cn } from '../lib/utils';
 import { toast } from 'sonner';
 import { useAuth } from '../hooks/useAuth';
-import { db, collection, onSnapshot, doc, updateDoc } from '../services/firebase';
+import { db, collection, onSnapshot, doc, updateDoc, updateUserProfile } from '../services/firebase';
 import { getStoredOmnichannelSettings, OmnichannelSettings } from './OmnichannelModal';
+import { NotificationBell } from './NotificationBell';
+import { isPWAInstalled, triggerAppDownloadOrInstall } from '../lib/pwa';
+import { getStandardLang } from '../i18n';
+import { useTranslation } from 'react-i18next';
 
 export interface ChatMessage {
   id: string;
@@ -146,9 +156,68 @@ export default function MesterAIChat({
   onPromptHandled,
   onNavigate
 }: MesterAIChatProps) {
-  const { user, isSuperAdmin } = useAuth();
+  const { user, isSuperAdmin, logout } = useAuth();
+  const { t, i18n } = useTranslation();
   const isWorker = user?.role === 'worker' || user?.role === 'external_worker';
   const isAdminOrManager = isSuperAdmin || user?.role === 'admin' || user?.role === 'manager' || !user?.role;
+
+  const [isProfileMenuOpen, setIsProfileMenuOpen] = useState(false);
+  const profileMenuRef = useRef<HTMLDivElement>(null);
+
+  useEffect(() => {
+    const handleClickOutside = (event: MouseEvent) => {
+      if (profileMenuRef.current && !profileMenuRef.current.contains(event.target as Node)) {
+        setIsProfileMenuOpen(false);
+      }
+    };
+    if (isProfileMenuOpen) {
+      document.addEventListener('mousedown', handleClickOutside);
+    }
+    return () => {
+      document.removeEventListener('mousedown', handleClickOutside);
+    };
+  }, [isProfileMenuOpen]);
+
+  const changeLanguage = async (lng: string) => {
+    try {
+      await i18n.changeLanguage(lng);
+      localStorage.setItem('i18nextLng', lng);
+      if (user?.uid) {
+        await updateUserProfile(user.uid, { language: lng });
+      }
+      toast.success(
+        lng === 'no' 
+          ? 'Språk endret til Norsk' 
+          : lng === 'pl' 
+            ? 'Język zmieniony na Polski' 
+            : lng === 'lt' 
+              ? 'Kalba pakeista į Lietuvių' 
+              : 'Language changed to English'
+      );
+    } catch (err) {
+      console.error('Error changing language:', err);
+    }
+  };
+
+  const handleInstallApp = async () => {
+    if (isPWAInstalled()) {
+      toast.info('VikingMester er allerede installert som app på denne enheten!');
+      return;
+    }
+
+    await triggerAppDownloadOrInstall({
+      onInstalled: () => toast.info('VikingMester er allerede installert som app på denne enheten!'),
+      onAccepted: () => toast.success('Laster ned og installerer VikingMester på telefonen...'),
+      onFallback: () => {
+        toast.success('Laster ned snarvei til VikingMester...');
+      }
+    });
+  };
+
+  const handleNavigate = (targetView: string) => {
+    setIsProfileMenuOpen(false);
+    window.dispatchEvent(new CustomEvent('navigate_view', { detail: { view: targetView } }));
+  };
 
   const getInitialMessages = (): ChatMessage[] => [
     {
@@ -651,7 +720,7 @@ export default function MesterAIChat({
             id: 'retry_prompt',
             type: 'retry_prompt',
             label: '🔄 Prøv på nytt nå',
-            prompt: textToSend
+            data: { prompt: textToSend }
           }
         ]
       };
@@ -721,8 +790,8 @@ export default function MesterAIChat({
       return;
     }
 
-    if (action.prompt) {
-      handleSendMessage(action.prompt);
+    if (action.prompt || action.data?.prompt) {
+      handleSendMessage(action.prompt || action.data?.prompt);
     } else if (action.label) {
       const cleanPrompt = action.label.replace(/^[\p{Emoji}\s•\-–—]+/u, '').trim();
       handleSendMessage(cleanPrompt || action.label);
@@ -962,7 +1031,7 @@ export default function MesterAIChat({
     <div 
       className={cn(
         isEmbedded 
-          ? "w-full flex-1 flex flex-col bg-slate-100 min-h-[calc(100dvh-4rem)] md:h-[calc(100vh-4rem)] overflow-hidden relative" 
+          ? "w-full flex-1 flex flex-col bg-slate-900 min-h-screen h-screen overflow-hidden relative" 
           : "fixed inset-0 z-50 flex items-center justify-center p-2 sm:p-4 md:p-6 bg-slate-950/70 backdrop-blur-md animate-in fade-in duration-200"
       )}
       onClick={isEmbedded ? undefined : onClose}
@@ -972,7 +1041,7 @@ export default function MesterAIChat({
         className={cn(
           "bg-white flex flex-col transition-all overflow-hidden",
           isEmbedded
-            ? "w-full h-full flex-1 rounded-none md:rounded-3xl border-0 md:border md:border-slate-200 md:shadow-lg"
+            ? "w-full h-full flex-1 rounded-none border-0 shadow-none"
             : cn(
                 "rounded-3xl border border-slate-200 shadow-2xl",
                 isFullscreen 
@@ -982,11 +1051,16 @@ export default function MesterAIChat({
         )}
       >
         {/* 📱 1. MOBILE NATIVE APP HEADER (Visible only on mobile screens) */}
-        <div className="flex md:hidden items-center justify-between px-3.5 py-2.5 bg-navy-950 text-white border-b border-white/10 shrink-0">
+        <div className="flex md:hidden items-center justify-between px-3.5 py-2.5 bg-navy-950 text-white border-b border-white/10 shrink-0 relative z-30">
           <div className="flex items-center gap-2.5 min-w-0">
-            <div className="w-8 h-8 rounded-xl bg-gradient-to-tr from-electric-600 to-purple-500 flex items-center justify-center text-white shadow-sm font-black text-xs shrink-0">
+            <button
+              type="button"
+              onClick={() => setIsProfileMenuOpen(!isProfileMenuOpen)}
+              className="w-8 h-8 rounded-xl bg-gradient-to-tr from-electric-600 to-purple-500 flex items-center justify-center text-white shadow-sm font-black text-xs shrink-0 cursor-pointer hover:opacity-90 transition-opacity"
+              title="Brukerprofil & meny"
+            >
               {user?.displayName ? user.displayName.charAt(0).toUpperCase() : "M"}
-            </div>
+            </button>
             <div className="min-w-0">
               <div className="flex items-center gap-1.5">
                 <span className="text-xs font-black tracking-tight text-white truncate">
@@ -1001,6 +1075,9 @@ export default function MesterAIChat({
           </div>
 
           <div className="flex items-center gap-1 shrink-0">
+            {/* Mobile Notifications */}
+            <NotificationBell darkMode={true} />
+
             {onOpenSmartSearch && (
               <button
                 type="button"
@@ -1021,6 +1098,17 @@ export default function MesterAIChat({
                 <Layers size={16} />
               </button>
             )}
+            <button
+              type="button"
+              onClick={() => setIsProfileMenuOpen(!isProfileMenuOpen)}
+              className={cn(
+                "p-2 rounded-xl transition-colors cursor-pointer",
+                isProfileMenuOpen ? "bg-white/20 text-white" : "text-slate-300 hover:text-white hover:bg-white/10"
+              )}
+              title="Profil & meny"
+            >
+              <UserIcon size={16} />
+            </button>
             {!isEmbedded && onClose && (
               <button
                 type="button"
@@ -1032,6 +1120,133 @@ export default function MesterAIChat({
             )}
           </div>
         </div>
+
+        {/* 📱 Mobile Profile & System Menu Dropdown */}
+        <AnimatePresence>
+          {isProfileMenuOpen && (
+            <motion.div
+              initial={{ opacity: 0, height: 0 }}
+              animate={{ opacity: 1, height: 'auto' }}
+              exit={{ opacity: 0, height: 0 }}
+              className="md:hidden bg-slate-900 border-b border-white/15 px-4 py-3 text-slate-200 z-40 shadow-2xl shrink-0"
+            >
+              {/* User Info */}
+              <div className="flex items-center justify-between pb-3 border-b border-white/10">
+                <div className="flex items-center gap-3">
+                  <div className="w-9 h-9 rounded-xl bg-gradient-to-tr from-electric-600 to-purple-500 flex items-center justify-center text-white font-black text-sm">
+                    {user?.displayName ? user.displayName.charAt(0).toUpperCase() : <UserIcon size={16} />}
+                  </div>
+                  <div>
+                    <p className="text-xs font-bold text-white truncate">{user?.displayName || 'Bruker'}</p>
+                    <p className="text-[10px] text-slate-400 truncate">{user?.email || ''}</p>
+                    <span className="inline-block text-[9px] font-black uppercase text-emerald-400">
+                      {isAdminOrManager ? 'Admin / Leder' : 'Håndverker'}
+                    </span>
+                  </div>
+                </div>
+                <button
+                  type="button"
+                  onClick={() => setIsProfileMenuOpen(false)}
+                  className="p-1.5 text-slate-400 hover:text-white rounded-lg hover:bg-white/10"
+                >
+                  <X size={16} />
+                </button>
+              </div>
+
+              {/* Language Switcher in Mobile Drawer */}
+              <div className="py-2.5 border-b border-white/10 flex items-center justify-between">
+                <span className="text-xs text-slate-300 font-bold flex items-center gap-1.5">
+                  <Globe size={13} className="text-slate-400" /> Språk
+                </span>
+                <div className="flex items-center gap-1">
+                  {(['no', 'en', 'pl', 'lt'] as const).map((lng) => (
+                    <button
+                      key={lng}
+                      type="button"
+                      onClick={() => changeLanguage(lng)}
+                      className={cn(
+                        "px-2.5 py-1 rounded-lg text-xs font-black uppercase transition-all cursor-pointer",
+                        getStandardLang(i18n.language) === lng
+                          ? "bg-electric-500 text-white shadow-sm"
+                          : "bg-white/10 text-slate-300 hover:bg-white/20"
+                      )}
+                    >
+                      {lng}
+                    </button>
+                  ))}
+                </div>
+              </div>
+
+              {/* Menu items */}
+              <div className="py-2 space-y-1">
+                <button
+                  type="button"
+                  onClick={() => handleNavigate('settings')}
+                  className="w-full flex items-center gap-3 px-3 py-2.5 rounded-xl text-xs font-bold text-slate-200 hover:bg-white/10 text-left cursor-pointer"
+                >
+                  <Settings size={16} className="text-electric-400" />
+                  <span>Innstillinger & Profil</span>
+                </button>
+
+                <button
+                  type="button"
+                  onClick={() => handleNavigate('mobile')}
+                  className="w-full flex items-center gap-3 px-3 py-2.5 rounded-xl text-xs font-bold text-slate-200 hover:bg-white/10 text-left cursor-pointer"
+                >
+                  <Smartphone size={16} className="text-purple-400" />
+                  <span>Mobilapp visning</span>
+                </button>
+
+                <button
+                  type="button"
+                  onClick={() => {
+                    setIsProfileMenuOpen(false);
+                    handleInstallApp();
+                  }}
+                  className="w-full flex items-center gap-3 px-3 py-2.5 rounded-xl text-xs font-bold text-slate-200 hover:bg-white/10 text-left cursor-pointer"
+                >
+                  <Download size={16} className="text-emerald-400" />
+                  <span>Last ned app på telefon</span>
+                </button>
+
+                {isSuperAdmin && (
+                  <button
+                    type="button"
+                    onClick={() => handleNavigate('super-admin')}
+                    className="w-full flex items-center gap-3 px-3 py-2.5 rounded-xl text-xs font-bold text-rose-300 hover:bg-rose-500/20 text-left cursor-pointer"
+                  >
+                    <Shield size={16} className="text-rose-400" />
+                    <span>SuperAdmin Kontrollpanel</span>
+                  </button>
+                )}
+
+                <button
+                  type="button"
+                  onClick={() => handleNavigate('landing')}
+                  className="w-full flex items-center gap-3 px-3 py-2.5 rounded-xl text-xs font-bold text-slate-300 hover:bg-white/10 text-left cursor-pointer"
+                >
+                  <Home size={16} className="text-slate-400" />
+                  <span>Se Nettside</span>
+                </button>
+              </div>
+
+              {/* Logout */}
+              <div className="pt-2 border-t border-white/10">
+                <button
+                  type="button"
+                  onClick={async () => {
+                    setIsProfileMenuOpen(false);
+                    await logout();
+                  }}
+                  className="w-full flex items-center gap-3 px-3 py-2.5 rounded-xl text-xs font-bold text-red-400 hover:bg-red-500/20 text-left cursor-pointer"
+                >
+                  <LogOut size={16} />
+                  <span>Logg ut</span>
+                </button>
+              </div>
+            </motion.div>
+          )}
+        </AnimatePresence>
 
         {/* 💻 2. DESKTOP & TABLET HEADER & NAVIGATION BAR (Visible md and up) */}
         <div className="hidden md:flex px-4 sm:px-6 py-2.5 bg-gradient-to-r from-navy-950 via-slate-900 to-navy-950 text-white items-center justify-between gap-3 border-b border-white/10 shrink-0">
@@ -1194,6 +1409,157 @@ export default function MesterAIChat({
               <RotateCcw size={15} />
               <span className="hidden xl:inline text-[11px]">Nullstill</span>
             </button>
+
+            {/* Divider */}
+            <div className="h-5 w-px bg-white/15 mx-1" />
+
+            {/* Language Selector */}
+            <div className="flex items-center gap-1 px-2.5 py-1.5 bg-white/10 hover:bg-white/15 rounded-xl border border-white/15 transition-all">
+              <Globe size={13} className="text-slate-300 shrink-0" />
+              <select 
+                onChange={(e) => changeLanguage(e.target.value)}
+                value={getStandardLang(i18n.language)}
+                className="text-xs font-black bg-transparent border-none focus:ring-0 cursor-pointer uppercase text-white pr-0.5 outline-none [&>option]:bg-slate-900 [&>option]:text-white"
+                title={t('language', 'Bytt språk')}
+              >
+                <option value="no">NO</option>
+                <option value="en">EN</option>
+                <option value="pl">PL</option>
+                <option value="lt">LT</option>
+              </select>
+            </div>
+
+            {/* Notifications */}
+            <NotificationBell darkMode={true} />
+
+            {/* User Profile & Operational Dropdown Menu */}
+            <div className="relative" ref={profileMenuRef}>
+              <button
+                type="button"
+                onClick={() => setIsProfileMenuOpen(!isProfileMenuOpen)}
+                className="flex items-center gap-2 px-2.5 py-1.5 rounded-xl bg-white/10 hover:bg-white/15 border border-white/15 text-white transition-all cursor-pointer select-none"
+                title="Brukerprofil og systemmeny"
+              >
+                {user?.photoURL ? (
+                  <img 
+                    src={user.photoURL} 
+                    alt={user.displayName || 'Bruker'} 
+                    className="w-6 h-6 rounded-lg object-cover shrink-0"
+                    referrerPolicy="no-referrer"
+                  />
+                ) : (
+                  <div className="w-6 h-6 rounded-lg bg-gradient-to-tr from-electric-600 to-purple-500 flex items-center justify-center text-white text-[11px] font-black shrink-0">
+                    {user?.displayName ? user.displayName.charAt(0).toUpperCase() : <UserIcon size={12} />}
+                  </div>
+                )}
+                <div className="text-left leading-tight hidden xl:block">
+                  <p className="text-xs font-bold text-white truncate max-w-[120px]">
+                    {user?.displayName || 'Bruker'}
+                  </p>
+                  <p className="text-[9px] font-black uppercase text-slate-300">
+                    {isAdminOrManager ? 'Admin / Leder' : isWorker ? 'Håndverker' : 'Bruker'}
+                  </p>
+                </div>
+                <ChevronDown size={14} className={cn("text-slate-300 transition-transform duration-200", isProfileMenuOpen && "rotate-180")} />
+              </button>
+
+              {/* Desktop Profile Dropdown Menu */}
+              <AnimatePresence>
+                {isProfileMenuOpen && (
+                  <motion.div
+                    initial={{ opacity: 0, y: 8, scale: 0.96 }}
+                    animate={{ opacity: 1, y: 0, scale: 1 }}
+                    exit={{ opacity: 0, y: 8, scale: 0.96 }}
+                    transition={{ duration: 0.15 }}
+                    className="absolute right-0 top-full mt-2 w-64 bg-slate-900 border border-white/15 rounded-2xl shadow-2xl p-2 z-50 text-slate-200 backdrop-blur-xl"
+                  >
+                    {/* User Info Header */}
+                    <div className="px-3 py-2.5 border-b border-white/10 mb-1">
+                      <p className="text-xs font-bold text-white truncate">
+                        {user?.displayName || 'Bruker'}
+                      </p>
+                      <p className="text-[11px] text-slate-400 truncate">
+                        {user?.email || ''}
+                      </p>
+                      {user?.company && (
+                        <div className="mt-1.5 inline-flex items-center gap-1 px-2 py-0.5 rounded-md bg-white/10 text-[10px] font-bold text-slate-300">
+                          <Building2 size={10} className="text-electric-400" />
+                          <span className="truncate">{user.company}</span>
+                        </div>
+                      )}
+                    </div>
+
+                    {/* Menu Actions */}
+                    <div className="space-y-0.5">
+                      <button
+                        type="button"
+                        onClick={() => handleNavigate('settings')}
+                        className="w-full flex items-center gap-2.5 px-3 py-2 rounded-xl text-xs font-bold text-slate-200 hover:text-white hover:bg-white/10 transition-colors text-left cursor-pointer"
+                      >
+                        <Settings size={15} className="text-electric-400" />
+                        <span>Innstillinger & Profil</span>
+                      </button>
+
+                      <button
+                        type="button"
+                        onClick={() => handleNavigate('mobile')}
+                        className="w-full flex items-center gap-2.5 px-3 py-2 rounded-xl text-xs font-bold text-slate-200 hover:text-white hover:bg-white/10 transition-colors text-left cursor-pointer"
+                      >
+                        <Smartphone size={15} className="text-purple-400" />
+                        <span>Mobilapp visning</span>
+                      </button>
+
+                      <button
+                        type="button"
+                        onClick={() => {
+                          setIsProfileMenuOpen(false);
+                          handleInstallApp();
+                        }}
+                        className="w-full flex items-center gap-2.5 px-3 py-2 rounded-xl text-xs font-bold text-slate-200 hover:text-white hover:bg-white/10 transition-colors text-left cursor-pointer"
+                      >
+                        <Download size={15} className="text-emerald-400" />
+                        <span>Last ned app på telefon</span>
+                      </button>
+
+                      {isSuperAdmin && (
+                        <button
+                          type="button"
+                          onClick={() => handleNavigate('super-admin')}
+                          className="w-full flex items-center gap-2.5 px-3 py-2 rounded-xl text-xs font-bold text-rose-300 hover:text-rose-100 hover:bg-rose-500/20 transition-colors text-left cursor-pointer"
+                        >
+                          <Shield size={15} className="text-rose-400" />
+                          <span>SuperAdmin Kontrollpanel</span>
+                        </button>
+                      )}
+
+                      <button
+                        type="button"
+                        onClick={() => handleNavigate('landing')}
+                        className="w-full flex items-center gap-2.5 px-3 py-2 rounded-xl text-xs font-bold text-slate-300 hover:text-white hover:bg-white/10 transition-colors text-left cursor-pointer"
+                      >
+                        <Home size={15} className="text-slate-400" />
+                        <span>Se Nettside</span>
+                      </button>
+                    </div>
+
+                    {/* Divider & Logout */}
+                    <div className="border-t border-white/10 mt-1 pt-1">
+                      <button
+                        type="button"
+                        onClick={async () => {
+                          setIsProfileMenuOpen(false);
+                          await logout();
+                        }}
+                        className="w-full flex items-center gap-2.5 px-3 py-2 rounded-xl text-xs font-bold text-red-400 hover:text-red-300 hover:bg-red-500/15 transition-colors text-left cursor-pointer"
+                      >
+                        <LogOut size={15} />
+                        <span>Logg ut</span>
+                      </button>
+                    </div>
+                  </motion.div>
+                )}
+              </AnimatePresence>
+            </div>
 
             {!isEmbedded && (
               <>

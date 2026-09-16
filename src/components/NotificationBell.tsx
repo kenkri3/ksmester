@@ -5,7 +5,12 @@ import { useNotifications } from '../hooks/useNotifications';
 import { cn } from '@/src/lib/utils';
 import { useTranslation } from 'react-i18next';
 
-export const NotificationBell: React.FC = () => {
+interface NotificationBellProps {
+  className?: string;
+  darkMode?: boolean;
+}
+
+export const NotificationBell: React.FC<NotificationBellProps> = ({ className, darkMode }) => {
   const { notifications, unreadCount, markAsRead, markAllAsRead } = useNotifications();
   const [isOpen, setIsOpen] = useState(false);
   const { t } = useTranslation();
@@ -26,11 +31,17 @@ export const NotificationBell: React.FC = () => {
         aria-expanded={isOpen}
         aria-label={t('notifications', 'Varslinger')}
         title={t('notifications', 'Varslinger')}
-        className="relative p-2 text-neutral-400 hover:text-neutral-600 hover:bg-neutral-100 rounded-xl transition-all active:scale-95"
+        className={cn(
+          "relative p-2 rounded-xl transition-all active:scale-95 cursor-pointer",
+          darkMode 
+            ? "text-slate-300 hover:text-white hover:bg-white/10" 
+            : "text-neutral-400 hover:text-neutral-600 hover:bg-neutral-100",
+          className
+        )}
       >
-        <Bell size={20} />
+        <Bell size={18} />
         {unreadCount > 0 && (
-          <span className="absolute top-1.5 right-1.5 w-4 h-4 bg-rose-500 text-white text-[10px] font-black flex items-center justify-center rounded-full border-2 border-white">
+          <span className="absolute top-1.5 right-1.5 w-4 h-4 bg-rose-500 text-white text-[10px] font-black flex items-center justify-center rounded-full border-2 border-slate-900">
             {unreadCount > 9 ? '9+' : unreadCount}
           </span>
         )}
