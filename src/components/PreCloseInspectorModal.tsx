@@ -1,4 +1,4 @@
-﻿'use client';
+'use client';
 
 import React, { useState, useEffect } from 'react';
 import { motion } from 'motion/react';
@@ -23,9 +23,9 @@ export interface LukkesperreZone {
   canClose: boolean;
   detail: string;
   checks: {
-    plumbing: boolean;      // Ror-i-ror trykktest & fordelerskap (TEK17 § 13-15)
-    electric: boolean;      // El-skjultanlegg & rorkurs (NEK 400:2022)
-    vaporBarrier: boolean;  // Dampsperre, klemte skjoter & mansjetter (BVN 31.205)
+    plumbing: boolean;      // Rør-i-rør trykktest & fordelerskap (TEK17 § 13-15)
+    electric: boolean;      // El-skjultanlegg & rørkurs (NEK 400:2022)
+    vaporBarrier: boolean;  // Dampsperre, klemte skjøter & mansjetter (BVN 31.205)
     insulation: boolean;    // Lyd- og brannisolasjon uten kuldebroer (TEK17 § 11-12)
   };
   lastChecked?: string;
@@ -72,8 +72,8 @@ export default function PreCloseInspectorModal({
       canClose: allPassed,
       status: allPassed ? 'GREEN' : 'RED',
       detail: allPassed 
-        ? 'Alle tverrfaglige forutsetninger (ror, el, dampsperre, isolasjon) er godkjent.' 
-        : 'Mangler godkjenning pa 1 eller flere tverrfaglige kontrollpunkter.',
+        ? 'Alle tverrfaglige forutsetninger (rør, el, dampsperre, isolasjon) er godkjent.' 
+        : 'Mangler godkjenning på 1 eller flere tverrfaglige kontrollpunkter.',
       lastChecked: new Date().toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' })
     };
 
@@ -106,8 +106,8 @@ export default function PreCloseInspectorModal({
     };
     setCurrentZone(updated);
     onUpdateZone(updated);
-    toast.success(`Gront lys godkjent for ${currentZone.room}!`, {
-      description: 'Lukkesperren er opphevet. Tomrer/montor kan na plate veggen.'
+    toast.success(`Grønt lys godkjent for ${currentZone.room}!`, {
+      description: 'Lukkesperren er opphevet. Tømrer/montør kan nå plate veggen.'
     });
   };
 
@@ -116,13 +116,13 @@ export default function PreCloseInspectorModal({
       ...currentZone,
       canClose: false,
       status: 'RED',
-      detail: 'Lukkesperre aktivert av byggeleder. Lukking er strengt forbudt for feil er utbedret.',
+      detail: 'Lukkesperre aktivert av byggeleder. Lukking er strengt forbudt før feil er utbedret.',
       lastChecked: new Date().toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' })
     };
     setCurrentZone(updated);
     onUpdateZone(updated);
-    toast.error(`RØD SPERRE satt pa ${currentZone.room}!`, {
-      description: 'Vegg og sjakt ma ikke lukkes for ny kontroll er gjennomfort.'
+    toast.error(`RØD SPERRE satt på ${currentZone.room}!`, {
+      description: 'Vegg og sjakt må ikke lukkes før ny kontroll er gjennomført.'
     });
   };
 
@@ -181,7 +181,7 @@ export default function PreCloseInspectorModal({
           <div className="p-4 rounded-2xl bg-slate-50 border border-slate-200/80 flex items-start gap-3 text-xs text-slate-600">
             <Info size={18} className="text-electric-600 shrink-0 mt-0.5" />
             <p className="leading-relaxed">
-              <strong>Tverrfaglig lukkesperre</strong> sikrer at vegger, sjakter og bjelkelag ikke plates eller flislegges for alle fag har godkjent sine skjulte installasjoner iht. <strong>TEK17 § 13-15</strong> og <strong>BVN 31.205</strong>.
+              <strong>Tverrfaglig lukkesperre</strong> sikrer at vegger, sjakter og bjelkelag ikke plates eller flislegges før alle fag har godkjent sine skjulte installasjoner iht. <strong>TEK17 § 13-15</strong> og <strong>BVN 31.205</strong>.
             </p>
           </div>
 
@@ -214,10 +214,10 @@ export default function PreCloseInspectorModal({
                   </div>
                   <div>
                     <h5 className="text-xs font-bold text-navy-900 group-hover:text-electric-600 transition-colors">
-                      Rorlegger: Trykktestrapport & Ror-i-ror fordelerskap
+                      Rørlegger: Trykktestrapport & Rør-i-rør fordelerskap
                     </h5>
                     <p className="text-[11px] text-slate-500 mt-0.5">
-                      TEK17 § 13-15: Lekkasjesikre installasjoner, vareror og avlop til sluk dokumentert.
+                      TEK17 § 13-15: Lekkasjesikre installasjoner, varerør og avløp til sluk dokumentert.
                     </p>
                   </div>
                 </div>
@@ -248,10 +248,10 @@ export default function PreCloseInspectorModal({
                   </div>
                   <div>
                     <h5 className="text-xs font-bold text-navy-900 group-hover:text-electric-600 transition-colors">
-                      Elektriker: Skjultanlegg & Rorkurs fotografert
+                      Elektriker: Skjultanlegg & Rørkurs fotografert
                     </h5>
                     <p className="text-[11px] text-slate-500 mt-0.5">
-                      NEK 400:2022: K-ror, koblingsbokser og trekkror verifisert uten klemfare.
+                      NEK 400:2022: K-rør, koblingsbokser og trekkrør verifisert uten klemfare.
                     </p>
                   </div>
                 </div>
@@ -282,10 +282,10 @@ export default function PreCloseInspectorModal({
                   </div>
                   <div>
                     <h5 className="text-xs font-bold text-navy-900 group-hover:text-electric-600 transition-colors">
-                      Dampsperre: Klemte skjoter & mansjetter
+                      Dampsperre: Klemte skjøter & mansjetter
                     </h5>
                     <p className="text-[11px] text-slate-500 mt-0.5">
-                      BVN 31.205 & TEK17: Dampsperre er uavbrutt og alle rorgjennomforinger er tapet med godkjent mansjett.
+                      BVN 31.205 & TEK17: Dampsperre er uavbrutt og alle rørgjennomføringer er tapet med godkjent mansjett.
                     </p>
                   </div>
                 </div>
@@ -319,7 +319,7 @@ export default function PreCloseInspectorModal({
                       Isolasjon & Lyd: Fullisolert uten kuldebroer
                     </h5>
                     <p className="text-[11px] text-slate-500 mt-0.5">
-                      TEK17 § 11-12 & § 14-2: Mineralull fyller hulrom bak ror og kasser uten komprimering.
+                      TEK17 § 11-12 & § 14-2: Mineralull fyller hulrom bak rør og kasser uten komprimering.
                     </p>
                   </div>
                 </div>
@@ -333,7 +333,7 @@ export default function PreCloseInspectorModal({
             </div>
           </div>
 
-          {/* AI Vision & Bevisforing */}
+          {/* AI Vision & Bevisføring */}
           <div className="p-4 rounded-2xl bg-gradient-to-r from-blue-50 to-indigo-50 border border-blue-200/80 flex flex-col sm:flex-row sm:items-center justify-between gap-3">
             <div>
               <div className="flex items-center gap-1.5 text-xs font-extrabold text-blue-900 mb-0.5">
@@ -341,7 +341,7 @@ export default function PreCloseInspectorModal({
                 <span>AI-Fotokontroll med TEK17-sjekk</span>
               </div>
               <p className="text-[11px] text-blue-700">
-                Ta bilde av veggen for kledning. AI identifiserer ror-i-ror, dampsperre og klemte skjoter.
+                Ta bilde av veggen før kledning. AI identifiserer rør-i-rør, dampsperre og klemte skjøter.
               </p>
             </div>
             <button
@@ -391,7 +391,7 @@ export default function PreCloseInspectorModal({
                 className="px-4 py-2 bg-emerald-600 hover:bg-emerald-700 text-white rounded-xl text-xs font-black transition-all flex items-center gap-1.5 shadow-md active:scale-95 cursor-pointer"
               >
                 <Check size={14} />
-                <span>Godkjenn & Gi Gront Lys</span>
+                <span>Godkjenn & Gi Grønt Lys</span>
               </button>
             )}
 
