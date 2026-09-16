@@ -86,6 +86,8 @@ import SJAPreviewModal, { SJADocument } from './SJAPreviewModal';
 import VoiceSJAModal from './VoiceSJAModal';
 import ProjectContactsModal from './ProjectContactsModal';
 import MesterAIChat from './MesterAIChat';
+import AllModulesDrawer from './AllModulesDrawer';
+import QuickStartGuide from './QuickStartGuide';
 
 interface DashboardProps {
   initialTab?: any;
@@ -147,6 +149,7 @@ export default function Dashboard({
   const [isActivityLogModalOpen, setIsActivityLogModalOpen] = useState(false);
   const [isDailyLogModalOpen, setIsDailyLogModalOpen] = useState(false);
   const [isChangeOrderModalOpen, setIsChangeOrderModalOpen] = useState(false);
+  const [isAllModulesOpen, setIsAllModulesOpen] = useState(false);
 
   // Live Endringsordrer state with deletion capability
   const [dashboardChangeOrders, setDashboardChangeOrders] = useState<any[]>([
@@ -420,6 +423,7 @@ export default function Dashboard({
 
       case 'start_checklist':
       case 'checklist':
+      case 'checklists':
         if (id) setChecklistProjectId(id);
         else if (projects.length > 0) setChecklistProjectId(projects[0].id);
         setIsChecklistModalOpen(true);
@@ -434,6 +438,7 @@ export default function Dashboard({
       case 'time_registration':
       case 'time':
       case 'timer':
+      case 'time_tracking':
         setIsTimeModalOpen(true);
         break;
 
@@ -442,17 +447,20 @@ export default function Dashboard({
         setIsChangeOrderModalOpen(true);
         break;
 
+      case 'change_orders':
       case 'endringsordrer':
         setSelectedProject(null);
         setActiveTab('endringsordrer');
         break;
 
       case 'offer':
+      case 'offers':
       case 'tilbud':
         setIsOfferModalOpen(true);
         break;
 
       case 'contract':
+      case 'contracts':
       case 'kontrakt':
       case 'kontrakter':
         setIsContractModalOpen(true);
@@ -461,6 +469,37 @@ export default function Dashboard({
       case 'hms':
       case 'hms_handbook':
         setIsHMSModalOpen(true);
+        break;
+
+      case 'voice_sja':
+        setIsVoiceSJAOpen(true);
+        break;
+
+      case 'contacts':
+      case 'telefonliste':
+        setIsContactsModalOpen(true);
+        break;
+
+      case 'weather':
+      case 'yr':
+        setSelectedProject(null);
+        setActiveTab('prosjekter');
+        toast.info('Viser værdata fra Yr.no på prosjektene');
+        break;
+
+      case 'translator':
+      case 'oversetter':
+        window.dispatchEvent(new CustomEvent("navigate_view", { detail: { view: "mobile" } }));
+        break;
+
+      case 'apprentice':
+      case 'laerling':
+        handleOpenSJAForTrade('Tømrer');
+        break;
+
+      case 'super_admin':
+      case 'superadmin':
+        window.dispatchEvent(new CustomEvent("navigate_view", { detail: { view: "super-admin" } }));
         break;
 
       case 'sja':
@@ -994,6 +1033,15 @@ export default function Dashboard({
         onClose={() => setIsContactsModalOpen(false)}
         project={selectedProject || projects[0]}
       />
+      <AllModulesDrawer
+        isOpen={isAllModulesOpen}
+        onClose={() => setIsAllModulesOpen(false)}
+        onOpenAction={(actionId) => {
+          setIsAllModulesOpen(false);
+          handleSmartSearchNavigate(actionId);
+        }}
+        isSuperAdmin={isSuperAdmin}
+      />
 
       <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 pt-8">
         {/* Selected Project Full Details View */}
@@ -1085,14 +1133,35 @@ export default function Dashboard({
                 </div>
               </div>
 
+              {/* 🌟 ONBOARDING & HURTIGGUIDE FOR HÅNDVERKERE */}
+              <QuickStartGuide
+                projectsCount={projects.length}
+                hasDeviations={deviations.length > 0}
+                hasChangeOrders={dashboardChangeOrders.length > 0}
+                onOpenAction={(actionId) => handleSmartSearchNavigate(actionId)}
+                onOpenAllModules={() => setIsAllModulesOpen(true)}
+              />
+
               {/* 🚀 APP QUICK LAUNCHER GRID (iOS / Native App Fliser) */}
               <div className="mb-8">
-                <div className="flex items-center justify-between mb-3 px-1">
+                <div className="flex items-center justify-between mb-3 px-1 gap-2 flex-wrap">
                   <span className="text-xs font-black uppercase tracking-wider text-slate-500 flex items-center gap-1.5">
                     <Sparkles size={14} className="text-electric-500" />
                     {t('tile_launcher_title', 'Hurtighandlinger & App-moduler')}
                   </span>
-                  <span className="text-[11px] font-medium text-slate-400">{t('tile_launcher_subtitle', '1-klikk tilgang i felt og på kontor')}</span>
+                  <div className="flex items-center gap-3">
+                    <span className="hidden md:inline text-[11px] font-medium text-slate-400">{t('tile_launcher_subtitle', '1-klikk tilgang i felt og på kontor')}</span>
+                    <button
+                      type="button"
+                      onClick={() => setIsAllModulesOpen(true)}
+                      className="flex items-center gap-1.5 px-3 py-1.5 bg-gradient-to-r from-amber-500 to-amber-400 hover:from-amber-400 hover:to-amber-300 text-slate-950 rounded-xl text-xs font-black transition-all shadow-sm cursor-pointer group active:scale-95"
+                      title="Åpne fullstendig katalog med alle 20 verktøy"
+                    >
+                      <Layers size={14} className="text-slate-950 group-hover:scale-110 transition-transform" />
+                      <span>Alle 20 verktøy</span>
+                      <ArrowRight size={12} className="text-slate-950" />
+                    </button>
+                  </div>
                 </div>
 
                 <div className="grid grid-cols-2 sm:grid-cols-4 lg:grid-cols-8 gap-3 sm:gap-3.5">
@@ -1601,9 +1670,25 @@ export default function Dashboard({
                           <CheckCircle2 size={24} />
                         </div>
                         <h3 className="text-sm font-bold text-navy-900">{t('no_pending_approvals_title', 'Ingen ventende godkjenninger')}</h3>
-                        <p className="text-xs text-slate-500 max-w-sm mx-auto mt-1">
+                        <p className="text-xs text-slate-500 max-w-sm mx-auto mt-1 mb-4">
                           {t('no_pending_approvals_desc', 'Alle endringsordrer, byggedagbøker og varsler er godkjent og synkronisert med kunden og VikingCRM.')}
                         </p>
+                        <div className="flex items-center justify-center gap-2 flex-wrap">
+                          <button
+                            type="button"
+                            onClick={() => setIsDailyLogModalOpen(true)}
+                            className="px-3.5 py-1.5 bg-slate-100 hover:bg-slate-200 text-slate-700 rounded-xl text-xs font-bold transition-all cursor-pointer"
+                          >
+                            + Ny Byggedagbok
+                          </button>
+                          <button
+                            type="button"
+                            onClick={() => setIsChangeOrderModalOpen(true)}
+                            className="px-3.5 py-1.5 bg-electric-50 hover:bg-electric-100 text-electric-700 rounded-xl text-xs font-bold transition-all cursor-pointer"
+                          >
+                            + Ny Endringsordre (NS 8406)
+                          </button>
+                        </div>
                       </div>
                     ) : (
                       <div className="space-y-4">
@@ -1979,9 +2064,20 @@ export default function Dashboard({
 
                     <div className="divide-y divide-slate-100">
                       {dashboardChangeOrders.length === 0 ? (
-                        <div className="p-12 text-center text-slate-400">
-                          <p className="text-sm font-bold text-slate-600">{t('no_change_orders_title', 'Ingen endringsordrer registrert')}</p>
-                          <p className="text-xs mt-1">{t('no_change_orders_desc', 'Opprett en ny endringsordre for å sikre betaling for tilleggsarbeid.')}</p>
+                        <div className="p-12 text-center text-slate-400 flex flex-col items-center justify-center">
+                          <div className="w-14 h-14 rounded-2xl bg-rose-50 text-rose-600 flex items-center justify-center mb-3">
+                            <FileSignature size={26} />
+                          </div>
+                          <p className="text-base font-extrabold text-navy-900 mb-1">{t('no_change_orders_title', 'Ingen endringsordrer registrert')}</p>
+                          <p className="text-xs text-slate-500 max-w-sm mb-5">{t('no_change_orders_desc', 'Unngå uenighet og tapte penger i sluttoppgjøret. Send juridisk bindende varsel (NS 8406) med digital godkjenning på 1 minutt.')}</p>
+                          <button
+                            type="button"
+                            onClick={() => setIsChangeOrderModalOpen(true)}
+                            className="flex items-center gap-2 px-5 py-2.5 bg-gradient-to-r from-electric-500 to-electric-400 hover:opacity-95 text-white rounded-2xl text-xs font-black shadow-purple-cta transition-all active:scale-95 cursor-pointer"
+                          >
+                            <Plus size={16} />
+                            <span>{t('btn_new_change_order', 'Ny Endringsordre')}</span>
+                          </button>
                         </div>
                       ) : (
                         dashboardChangeOrders.map((co) => (
