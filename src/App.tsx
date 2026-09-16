@@ -450,7 +450,10 @@ function AppContent() {
   }
 
 
-  if (user && subscriptionStatus === 'expired') {
+  const isSubscriptionLocked = user && !isSuperAdmin && (subscriptionStatus === 'expired' || subscriptionStatus === 'cancelled' || subscriptionStatus === 'deactivated');
+
+  if (isSubscriptionLocked) {
+    const isCancelled = subscriptionStatus === 'cancelled' || subscriptionStatus === 'deactivated';
     return (
       <div className="min-h-screen bg-[#08090d] bg-tactical-grid bg-radial-amber flex items-center justify-center p-4">
         <motion.div 
@@ -461,16 +464,29 @@ function AppContent() {
           <div className="w-16 h-16 bg-red-100 text-red-600 rounded-2xl flex items-center justify-center mx-auto mb-8">
             <AlertTriangle size={32} />
           </div>
-          <h1 className="text-2xl font-bold mb-4">{t('trial_expired', 'Prøveperioden er utløpt')}</h1>
-          <p className="text-slate-400 mb-8">
-            {t('trial_expired_desc', 'Din 14-dagers gratis prøveperiode er over. For å fortsette å bruke VikingMester må du registrere deg for et abonnement.')}
+          <h1 className="text-2xl font-bold mb-4 text-white">
+            {isCancelled ? 'Abonnementet er deaktivert' : t('trial_expired', '14-dagers prøveperiode er over')}
+          </h1>
+          <p className="text-slate-400 mb-8 text-sm leading-relaxed">
+            {isCancelled 
+              ? 'Tilgangen til din bedrift er deaktivert etter oppsigelse eller endring. Ta kontakt med oss for å gjenåpne eller reaktivere kontoen.'
+              : t('trial_expired_desc', 'Din 14-dagers gratis prøveperiode er fullført. For å fortsette å bruke VikingMester må du velge et abonnement.')}
           </p>
-          <button className="w-full bg-emerald-600 text-navy-900 py-4 rounded-2xl font-bold hover:bg-slate-500 transition-all mb-4">
-            {t('choose_plan', 'Velg abonnement')}
+          <button 
+            onClick={() => setView('pricing')}
+            className="w-full bg-emerald-600 hover:bg-emerald-500 text-white py-4 rounded-2xl font-bold transition-all mb-3 cursor-pointer shadow-lg shadow-emerald-900/30"
+          >
+            {isCancelled ? 'Se abonnement og priser' : t('choose_plan', 'Velg abonnement nå')}
+          </button>
+          <button 
+            onClick={() => setView('contact')}
+            className="w-full bg-white/10 hover:bg-white/15 text-white py-3 rounded-2xl font-bold transition-all mb-4 text-xs cursor-pointer"
+          >
+            Ta kontakt med kundeservice
           </button>
           <button 
             onClick={logout}
-            className="text-neutral-400 hover:text-neutral-600 font-medium text-sm"
+            className="text-neutral-400 hover:text-neutral-200 font-medium text-sm cursor-pointer transition-colors"
           >
             {t('logout', 'Logg ut')}
           </button>

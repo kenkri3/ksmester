@@ -159,7 +159,7 @@ export async function createAutonomousChangeOrder(params: {
     impactDays: parsed.impactDays,
     legalHjemmel: parsed.legalHjemmel,
     status: 'pending_approval',
-    projectName: params.projectName || 'Nyebakken 14 - Totalrenovering',
+    projectName: params.projectName || 'Byggeprosjekt',
     token,
     shareUrl,
     clientName: params.clientName || 'Kunde',

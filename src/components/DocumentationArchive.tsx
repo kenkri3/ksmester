@@ -320,58 +320,9 @@ const DocumentationArchive: React.FC<DocumentationArchiveProps> = ({
       }
 
       if (docsToCreate.length === 0) {
-        const standardNOBBItems = [
-          {
-            title: `FDV - Rockwool Flexi A-plate 100mm (${activeProject?.name || 'Prosjekt'})`,
-            category: 'FDV Dokumentasjon',
-            source: 'nobb',
-            nobbNumber: '21543892',
-            supplier: 'AS Rockwool',
-            url: 'https://export.byggtjeneste.no/fdv/21543892'
-          },
-          {
-            title: `FDV - Norgips Standard Gipsplate 12,5mm (${activeProject?.name || 'Prosjekt'})`,
-            category: 'FDV Dokumentasjon',
-            source: 'nobb',
-            nobbNumber: '12345678',
-            supplier: 'Norgips Norge AS',
-            url: 'https://export.byggtjeneste.no/fdv/12345678'
-          },
-          {
-            title: `FDV - Litex Membranplate Våtrom 13mm (${activeProject?.name || 'Prosjekt'})`,
-            category: 'FDV Dokumentasjon',
-            source: 'nobb',
-            nobbNumber: '44556677',
-            supplier: 'Litex AS',
-            url: 'https://export.byggtjeneste.no/fdv/44556677'
-          },
-          {
-            title: `FDV - Jotun Lady Vegg & Tak Maling (${activeProject?.name || 'Prosjekt'})`,
-            category: 'FDV Dokumentasjon',
-            source: 'nobb',
-            nobbNumber: '55667788',
-            supplier: 'Jotun A/S',
-            url: 'https://export.byggtjeneste.no/fdv/55667788'
-          }
-        ];
-
-        for (const item of standardNOBBItems) {
-          if (!existingTitles.has(item.title.toLowerCase())) {
-            docsToCreate.push({
-              projectId: selectedProjectId || 'general',
-              projectName: activeProject?.name || 'Prosjekt',
-              title: item.title,
-              type: 'fdv',
-              url: item.url,
-              category: item.category,
-              source: item.source,
-              nobbNumber: item.nobbNumber,
-              supplier: item.supplier,
-              createdAt: new Date().toISOString().split('T')[0]
-            });
-            existingTitles.add(item.title.toLowerCase());
-          }
-        }
+        toast.info('Ingen nye materialer eller FDV-blader ble funnet for prosjektet. Du kan laste opp dokumenter med «Last opp manuelt».');
+        setIsSyncing(false);
+        return;
       }
 
       const savedDocs: any[] = [];

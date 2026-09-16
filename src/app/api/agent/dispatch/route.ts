@@ -716,10 +716,11 @@ Returner KUN et gyldig JSON-objekt:
             .map((p: any) => `• ${p.name} (${p.location || 'Byggeplass'})`)
             .join('\n');
 
+          const exampleNames = allProjects.slice(0, 2).map((p: any) => `«${p.name}»`).join(' eller ');
           return NextResponse.json({
             success: true,
             action: 'need_project_clarification',
-            reply: `Hvilket prosjekt gjelder dette? Du har flere aktive prosjekter i systemet:\n\n${projectListText}\n\nVennligst oppgi hvilket prosjekt endringen eller oppgaven tilhører (f.eks: «Kongeveien» eller «Nyebakken»), så kobler jeg alt sammen direkte.`,
+            reply: `Hvilket prosjekt gjelder dette? Du har flere aktive prosjekter i systemet:\n\n${projectListText}\n\nVennligst oppgi hvilket prosjekt endringen eller oppgaven tilhører${exampleNames ? ` (f.eks: ${exampleNames})` : ''}, så kobler jeg alt sammen direkte.`,
             availableProjects: allProjects.map((p: any) => ({ id: p.id, name: p.name, location: p.location }))
           });
         } else if (allProjects.length === 1) {
@@ -728,8 +729,8 @@ Returner KUN et gyldig JSON-objekt:
         }
       }
 
-      const resolvedProjectId = targetProject?.id || projectId || allProjects[0]?.id || 'proj-101';
-      const resolvedProjectName = targetProject?.name || projectName || allProjects[0]?.name || 'Byggeprosjekt';
+      const resolvedProjectId = targetProject?.id || projectId || allProjects[0]?.id || 'proj-main';
+      const resolvedProjectName = targetProject?.name || projectName || allProjects[0]?.name || 'Hovedprosjekt';
 
       // 🎯 HÅNDTERING AV HENVENDELSER & SAMTALEPARTNER (MesterAI)
       const isOfferIntent = 
@@ -1196,7 +1197,7 @@ Returner KUN et gyldig JSON-objekt:
             followUpPrompts: [
               'Godkjenn målet for lærlingen',
               'Generer halvårsrapport for opplæringskontoret',
-              'Tildel lærling oppgave på Kongeveien',
+              allProjects[0]?.name ? `Tildel lærling oppgave på ${allProjects[0].name}` : 'Tildel ny oppgave til lærling',
               'Hvilke krav gjelder til vurderingssamtale for lærlinger?'
             ]
           });
@@ -1483,7 +1484,7 @@ Returner KUN et gyldig JSON-objekt:
               { id: 'open_dev', type: 'open_deviation_modal', label: '⚠️ Meld avvik / RUH' }
             ],
             followUpPrompts: [
-              'Før 7.5 timer på Nyebakken',
+              allProjects[0]?.name ? `Før dagens timer på ${allProjects[0].name}` : 'Før dagens timer',
               'Sett oppgaven min som fullført',
               'Hva er kravene til fall mot sluk i TEK17?'
             ]
@@ -1495,20 +1496,32 @@ Returner KUN et gyldig JSON-objekt:
 
           let execReply = `☀️ **Dagens Status & Morgenbrifing for Byggeledelse:**\n\n`;
           execReply += `🏗️ **Aktive Byggeplasser (${allProjects.length}):**\n`;
-          allProjects.slice(0, 3).forEach((p: any) => {
-            execReply += `• **${p.name}** (${p.location || 'Felt'}): ${p.progress || 65}% fremdrift • Yr: 14°C opphold\n`;
-          });
+          if (allProjects.length === 0) {
+            execReply += `• Ingen aktive prosjekter registrert ennå. Opprett et prosjekt for å starte.\n`;
+          } else {
+            allProjects.slice(0, 3).forEach((p: any) => {
+              execReply += `• **${p.name}** (${p.location || 'Byggeplass'}): ${p.progress || 0}% fremdrift\n`;
+            });
+          }
+
+          const openDevs = allDevs.filter((d: any) => d.status === 'åpen' || d.status === 'open');
+          const redDevs = openDevs.filter((d: any) => d.severity === 'kritisk' || d.severity === 'high');
 
           execReply += `\n🔒 **Kvalitet & Lukkesperrer:**\n`;
-          execReply += `• ⚠️ **1 Rød Sperre:** Storgata 8 (Vaskerom) – mangler rørleggerens trykktest for rør-i-rør fordelerskap.\n`;
-          execReply += `• ✅ Bad 2. etg (Nyebakken): Grønt lys, klart for lukking.\n\n`;
+          if (redDevs.length > 0) {
+            execReply += `• ⚠️ **${redDevs.length} rød lukkesperre:** ${redDevs[0].title} (${redDevs[0].project || 'Byggeplass'})\n\n`;
+          } else if (openDevs.length > 0) {
+            execReply += `• ⚠️ **${openDevs.length} åpne avvik** under utbedring.\n\n`;
+          } else {
+            execReply += `• ✅ **Ingen kritiske avvik:** Grønt lys for lukking og fremdrift.\n\n`;
+          }
 
           execReply += `📄 **Endringsordrer & Økonomi (NS 8406):**\n`;
           execReply += `• **${pendingOrders.length} ventende endringsordrer** sikrer **kr ${securedKr.toLocaleString('no-NO')} eks. mva** i tilleggsvederlag.\n\n`;
 
           execReply += `📋 **Oppgavefordeling:**\n`;
           execReply += `• **${pendingTasks.length} aktive oppgaver** ute hos håndverkere.\n\n`;
-          execReply += `Vil du tildele en ny oppgave, godkjenne en endringsordre, eller oppdatere fremdriften på et prosjekt?`;
+          execReply += `Hva vil du gjøre nå? Du kan tildele en oppgave, registrere en endringsordre, eller oppdatere fremdriften.`;
 
           return NextResponse.json({
             success: true,
@@ -1517,14 +1530,14 @@ Returner KUN et gyldig JSON-objekt:
             suggestedActions: [
               { id: 'assign_task', type: 'open_task_modal', label: '📋 Tildel ny oppgave' },
               { id: 'open_offer', type: 'open_offer_modal', label: '📝 Skriv tilbud' },
-              { id: 'open_co', type: 'open_change_order_modal', label: '📄 Godkjenn endringsordre' },
+              { id: 'open_co', type: 'open_change_order_modal', label: '📄 Ny endringsordre' },
               { id: 'invite_user', type: 'open_invite_modal', label: '👥 Inviter håndverker' }
             ],
             followUpPrompts: [
-              'Tildel oppgave til elektriker Erik',
-              'Godkjenn forrige endringsordre',
-              'Inviter ny håndverker til bedriften',
-              'Oppdater fremdrift på Nyebakken til 80%'
+              allProjects[0]?.name ? `Oppdater fremdrift på ${allProjects[0].name} til 80%` : 'Tildel ny oppgave til teamet',
+              'Hjelp meg å skrive et nytt tilbud',
+              'Hvordan varsler jeg en endringsordre iht. NS 8406?',
+              'Hva er kravene til fall mot sluk i TEK17?'
             ]
           });
         }
@@ -1666,6 +1679,59 @@ Returner KUN et gyldig JSON-objekt:
         }
       }
 
+      // E5b. SPØRSMÅL OM STATUS/FREMDRIFT FOR OPPGAVE
+      const isTaskStatusCheck = 
+        (lower.includes('status') || lower.includes('fremdrift') || lower.includes('hvordan går det')) &&
+        (lower.includes('oppgave') || lower.includes('oppgaven') || lower.includes('arbeidet'));
+
+      if (isTaskStatusCheck) {
+        const quoteMatch = text.match(/["'«]([^"'»]+)["'»]/);
+        const searchedTitle = quoteMatch ? quoteMatch[1].trim().toLowerCase() : '';
+
+        const allTasksList = await getCollectionItems('tasks').catch(() => []);
+        let matchedTask = searchedTitle 
+          ? allTasksList.find((t: any) => (t.title || '').toLowerCase().includes(searchedTitle) || searchedTitle.includes((t.title || '').toLowerCase()))
+          : null;
+
+        if (!matchedTask && searchedTitle.length > 3) {
+          const words = searchedTitle.split(/\s+/).filter((w: string) => w.length > 3);
+          matchedTask = allTasksList.find((t: any) => {
+            const tLower = (t.title || '').toLowerCase();
+            return words.some((w: string) => tLower.includes(w));
+          });
+        }
+
+        if (matchedTask) {
+          const isDone = matchedTask.status === 'completed';
+          const pName = matchedTask.projectName || resolvedProjectName;
+          const taskReply = `📋 **Status og fremdrift for oppgaven «${matchedTask.title}»:**\n\n` +
+            `• **Prosjekt:** ${pName}\n` +
+            `• **Gjeldende status:** ${isDone ? '✅ **Fullført**' : '⏳ **Utestående / Pågående**'}\n` +
+            `• **Tildelt håndverker:** **${matchedTask.assignedTo || 'Ikke spesifisert'}**\n` +
+            `• **Frist:** ${matchedTask.deadline || 'Ingen frist satt'}\n` +
+            `• **Prioritet:** ${matchedTask.priority === 'urgent' ? '🔴 Haster' : matchedTask.priority === 'high' ? '🟠 Høy' : '🔵 Normal'}\n\n` +
+            (isDone 
+              ? `Oppgaven er registrert som fullført og loggført i prosjektets KS-arkiv.` 
+              : `Oppgaven er aktiv ute i felt. Håndverkeren kan føre timer eller markere den som ferdig i mobilappen.`);
+
+          return NextResponse.json({
+            success: true,
+            action: 'task_status_inquiry',
+            reply: taskReply,
+            suggestedActions: [
+              !isDone ? { id: 'complete_task', type: 'complete_task', label: '✅ Marker oppgave som fullført' } : null,
+              { id: 'open_task', type: 'open_task_modal', label: '📋 Se alle oppgaver' },
+              { id: 'open_time', type: 'open_time_modal', label: '⏱️ Før time på oppgaven' }
+            ].filter(Boolean),
+            followUpPrompts: [
+              `Før dagens timer på ${pName}`,
+              'Tildel ny oppgave til teamet',
+              'Sjekk kvalitet og KS for byggeplassen'
+            ]
+          });
+        }
+      }
+
       // E6. MESTERAI: AUTONOM SAMTALEPARTNER & FAGLIG RÅDGIVER (Alle caser: Tilbud, TEK17, NS 8406, Sparring)
       let replyText = '';
       let offerDraft: any = null;
@@ -1674,7 +1740,7 @@ Returner KUN et gyldig JSON-objekt:
 
       try {
         const systemInstruction = `Du er VikingMester AI – håndverkernes og mesterbedriftens autonome lederassistent, kalkulatør, faglige rådgiver og dedikerte samtalepartner.
-Du kan ABSOLUTT ALT innen norsk bygg og anlegg, og du veileder, regner, formulerer og sparrer med håndverkeren uansett hva slags case de står i ("uansett case"):
+Du kan ABSOLUTT ALT innen norsk bygg og anlegg, og du veileder, regner, formulerer og sparrer med håndverkeren uansett hva slags case de står i:
 
 DINE KJERNEOMRÅDER & EKSPERTISE:
 1. Tilbud, Prissetting & Kalkyle:
@@ -1698,11 +1764,10 @@ DINE KJERNEOMRÅDER & EKSPERTISE:
    - Formulere diplomatiske, profesjonelle e-poster, svare på klager, avvise urimelige krav ryddig.
 
 RETNINGSLINJER FOR SVARENE:
-- Vær en aktiv, imøtekommende samtalepartner (en klok, erfaren mester du sparrer med på byggeplassen eller kontoret).
-- Skriv grundige, strukturerte, lettleste svar (bruk overskrifter, punkter og tydelige priser).
-- Hvis brukeren trenger hjelp med et tilbud:
-  * Sett opp en konkret tilbudsstruktur med arbeidsomfang, time- og materialoverslag, nødvendige forbehold og prisestimat.
-  * Still 1-2 gode oppfølgingsspørsmål for å spisse tilbudet ytterligere.
+- Svar ALLTID direkte, konkret og faglig på det håndverkeren spør om.
+- Du skal ALDRI stille unødige eller tilfeldige motspørsmål når håndverkeren spør deg om noe. Gi håndverkeren direkte svar, løsninger, faglige råd, tall og regelverk (TEK17, NS-standarder) umiddelbart!
+- Hvis brukeren etterspør tilbud eller kalkyle:
+  * Sett opp en konkret tilbudsstruktur med arbeidsomfang, time- og materialoverslag, nødvendige forbehold og prisestimat umiddelbart.
   * Legg VED en strukturert JSON-blokk på slutten med estimerte kalkyleposter for tilbudet:
 \`\`\`kalkyle_json
 [
@@ -1729,29 +1794,25 @@ RETNINGSLINJER FOR SVARENE:
           detectedClient = clientMatch[1].trim();
         }
 
-        if (isOfferIntent || lower.includes('tilbud') || lower.includes('lunde') || lower.includes('148')) {
+        if (isOfferIntent || lower.includes('tilbud') || lower.includes('kalkyle')) {
           try {
             const allDbOffers = await getCollectionItems('offers').catch(() => []);
             const matchedOffer = allDbOffers.find((o: any) => {
               const cName = (o.clientName || '').toLowerCase();
               const oTitle = (o.title || '').toLowerCase();
               const textLower = lower;
-              const hasThomas = textLower.includes('thomas') && (cName.includes('thomas') || oTitle.includes('thomas'));
-              const hasLunde = textLower.includes('lunde') && (cName.includes('lunde') || oTitle.includes('lunde'));
-              const matchesAmount = (o.totalAmount && textLower.includes(String(o.totalAmount))) || 
-                                    (o.amountExVat && textLower.includes(String(o.amountExVat))) ||
-                                    (o.total && textLower.includes(String(o.total)));
-              return hasThomas || hasLunde || matchesAmount;
+              return (detectedClient && cName.includes(detectedClient.toLowerCase())) ||
+                     (oTitle.length > 4 && textLower.includes(oTitle));
             });
 
             if (matchedOffer) {
               existingOfferInfo = `\n\nFUNNET LAGRET TILBUD I SYSTEMET:\n- Tittel: ${matchedOffer.title || 'Uten tittel'}\n- Oppdragsgiver: ${matchedOffer.clientName || 'Ukjent'}\n- Beløp eks mva: kr ${matchedOffer.amountExVat || 'Ikke spesifisert'}\n- Totalbeløp inkl mva: kr ${matchedOffer.totalAmount || matchedOffer.total || 'Ikke spesifisert'}\n- Status: ${matchedOffer.status || 'draft'}\n- Eksisterende poster: ${JSON.stringify(matchedOffer.items || [])}\n- Beskrivelse: ${matchedOffer.description || ''}`;
             } else {
-              existingOfferInfo = `\n\nSYSTEMMERKNAD ANGÅENDE TILBUDET:\nBrukeren etterspør en faglig vurdering av et tilbud${detectedClient ? ` til ${detectedClient}` : ''}${lower.includes('148') ? ' på ca. kr 148 000' : ''}.
-Dette tilbudet finnes ikke allerede registrert i systemets tilbudsdatabase. Du skal opptre som en høyt kvalifisert byggmester og kalkulatør og levere en komplett analyse:
-1. Gjennomgang av budsjettrammen / tilbudssummen: Gi en realistisk fordeling av fagarbeid (tømrer ca 890 kr/t), materialer med 15–20% påslag, rigg/drift, avfall og mva.
+              existingOfferInfo = `\n\nSYSTEMMERKNAD ANGÅENDE TILBUDET:\nBrukeren etterspør en faglig vurdering eller kalkyle av et tilbud${detectedClient ? ` til ${detectedClient}` : ''}.
+Du skal opptre som en høyt kvalifisert byggmester og kalkulatør og levere en komplett analyse:
+1. Gjennomgang av budsjettrammen: Realistisk fordeling av fagarbeid (tømrer ca 890 kr/t), materialer med 15–20% påslag, rigg/drift, avfall og mva.
 2. 3–5 konkrete forbedringspunkter for å øke lønnsomheten, forhindre timelekkasje og sikre profesjonalitet mot kunde.
-3. Viktige standard NS 8406 / Håndverkertjenesteloven forbehold (f.eks. forbehold om skjulte feil, fukt/råte, uforutsette rør/el-føringer, eksisterende bæreevne, prisstigning på trelast og betalingsplan iht. milepæler).
+3. Viktige standard NS 8406 / Håndverkertjenesteloven forbehold (skjulte feil, fukt/råte, uforutsette rør/el-føringer, eksisterende bæreevne, prisstigning på trelast).
 4. Avslutt med en ryddig \`\`\`kalkyle_json\`\`\` blokk med estimerte poster for prosjektet så håndverkeren kan opprette tilbudet direkte!`;
             }
           } catch (offerErr) {
@@ -1785,7 +1846,42 @@ Dette tilbudet finnes ikke allerede registrert i systemets tilbudsdatabase. Du s
         }
       } catch (err: any) {
         console.warn('[Dispatch] MesterAI conversation error:', err);
-        replyText = `Jeg er klar til å hjelpe deg med dette! For tilbud og kalkyler kan jeg hjelpe deg å beregne timer, materialer, påslag og standard forbehold iht. NS 8406 / NS 8405. Hva er omfanget på arbeidet du skal prise?`;
+        if (lower.includes('tek17') || lower.includes('sluk') || lower.includes('fall') || lower.includes('våtrom')) {
+          replyText = `📐 **Krav til fall mot sluk og våtrom iht. TEK17 § 13-15:**\n\n` +
+            `1. **Fallforhold mot sluk:**\n` +
+            `   - Gulvet skal ha fall mot sluk på alle arealer som kan bli utsatt for vannsøl.\n` +
+            `   - I dusjsonen skal det være fall på minst **1:50** (2 cm per meter) i en radius på minst 0,8 m fra sluket.\n` +
+            `   - Øvrig gulvflate skal ha fall på minst **1:100** mot sluk, eller være utført med oppkant på minst 25 mm ved døråpning slik at vann ikke renner ut i tilstøtende rom.\n\n` +
+            `2. **Tettesjikt og membran:**\n` +
+            `   - Membran eller tettesjikt skal føres minst 25 mm høyere enn overkant slukrist ved terskel/døråpning.\n` +
+            `   - Rørgjennomføringer skal ha tette mansjetter tilpasset rørdiameter.\n\n` +
+            `3. **BVN (Byggebransjens Våtromsnorm):**\n` +
+            `   - Følg BVN blad 31.205 for klemring og membranoverganger for å sikre garanti og godkjent FDV.`;
+        } else if (lower.includes('ns 8406') || lower.includes('endringsordre') || lower.includes('varsel') || lower.includes('tillegg')) {
+          replyText = `📄 **Varsling av endringsordre iht. NS 8406 pkt. 19:**\n\n` +
+            `Når det oppstår uforutsette forhold eller byggherren ber om tilleggsarbeid:\n` +
+            `1. **Varsle «uten ugrunnet opphold»:** Skriftlig varsel må sendes umiddelbart for å unngå preklusjon (tap av rett til tilleggsvederlag eller fristforlengelse).\n` +
+            `2. **Innhold i varselet:**\n` +
+            `   - Beskrivelse av hva som kreves utført.\n` +
+            `   - Hjemmel (f.eks. NS 8406 pkt. 19.2 for byggherrepålegg, eller pkt. 19.3 for uforutsette grunn/bygningsforhold).\n` +
+            `   - Estimert tilleggsvederlag (kr eks. mva).\n` +
+            `   - Konsekvens for fremdriftsplan (antall virkedager fristforlengelse).\n\n` +
+            `Bruk skjemaet for endringsordre her i systemet for å sende formelt, juridisk vanntett varsel direkte til kunde.`;
+        } else if (lower.includes('sja') || lower.includes('sikkerhet') || lower.includes('hms')) {
+          replyText = `🛡️ **Sikker Jobb Analyse (SJA) – Krav og sjekkpunkter:**\n\n` +
+            `Før oppstart av risikofylt arbeid skal det alltid gjennomføres SJA:\n` +
+            `1. **Arbeid i høyden (> 2m):** Stillas skal ha godkjent grønt skilt, rekkverk (topp/mellom/fotlist) og fallsikringssele ved montering/demontering.\n` +
+            `2. **Varme arbeider:** Sertifikat, 2x 6kg pulverapparat, 10m ryddesone og 60 min kontinuerlig brannvakt etter avsluttet arbeid.\n` +
+            `3. **Kapping og støv:** Punktavsug med hepa-filter (kvartsstøv / asbest / trevirke) og P3 åndedrettsvern.\n` +
+            `4. **Tverrfaglig koordinering:** Varsle andre fag før trykktesting eller kranløft.`;
+        } else {
+          replyText = `Hei! Jeg er MesterAI, din faglige lederassistent for byggeplassen.\n\n` +
+            `Jeg er klar til å bistå direkte med:\n` +
+            `• **Prissetting & Kalkyle:** Nøyaktige beregninger av arbeidstimer, materialer og påslag iht. NS 8406.\n` +
+            `• **Tekniske krav:** TEK17, Våtromsnormen (BVN) og SINTEF Byggforsk.\n` +
+            `• **Varsling & Endringsordrer:** Sikre betaling for ekstraarbeid uten preklusjon.\n` +
+            `• **KS & Byggeplasskontroll:** Sjekklister, SJA og fotodokumentasjon.`;
+        }
       }
 
       // Build rich suggested actions
@@ -1799,17 +1895,7 @@ Dette tilbudet finnes ikke allerede registrert i systemets tilbudsdatabase. Du s
           { description: 'Rigg, drift og avfallshåndtering', quantity: 1, unit: 'stk', pricePerUnit: 4500, total: 4500 }
         ];
 
-        if (parsedOfferItems.length === 0 && (lower.includes('148') || lower.includes('lunde'))) {
-          finalItems = [
-            { description: 'Fagarbeid (tømrer/rehabilitering)', quantity: 75, unit: 'timer', pricePerUnit: 890, total: 66750 },
-            { description: 'Materialer, festemidler og byggevarer (inkl. 18% påslag)', quantity: 1, unit: 'stk', pricePerUnit: 35000, total: 35000 },
-            { description: 'Koordinering el/vvs & fagspesialister', quantity: 1, unit: 'stk', pricePerUnit: 18500, total: 18500 },
-            { description: 'Rigg, drift, støvsuging, tildekking og avfallskontainer', quantity: 1, unit: 'stk', pricePerUnit: 14500, total: 14500 },
-            { description: 'Prosjektledelse, verifikasjon og FDV-dokumentasjon', quantity: 1, unit: 'stk', pricePerUnit: 13250, total: 13250 }
-          ];
-        }
-
-        const clientForDraft = detectedClient || targetProject?.clientName || (lower.includes('lunde') ? 'Thomas Lunde' : '');
+        const clientForDraft = detectedClient || targetProject?.clientName || '';
 
         offerDraft = {
           title: clientForDraft ? `Tilbud: ${clientForDraft}` : (targetProject ? `Tilbud: ${targetProject.name}` : `Tilbud: ${text.slice(0, 45)}`),
@@ -2078,7 +2164,7 @@ Dette tilbudet finnes ikke allerede registrert i systemets tilbudsdatabase. Du s
     // 4. Tale-til-Endringsordre
     if (action === 'change_order') {
       const result = await createAutonomousChangeOrder({
-        projectId: projectId || 'proj-101',
+        projectId: projectId || 'proj-general',
         projectName: projectName || 'Byggeprosjekt',
         spokenText: text,
         authorId: 'agent_user',
@@ -2164,7 +2250,7 @@ Dette tilbudet finnes ikke allerede registrert i systemets tilbudsdatabase. Du s
     // 7. Byggedagbok og timeføring
     if (action === 'daily_log') {
       const logEntry = {
-        projectId: projectId || 'proj-101',
+        projectId: projectId || 'proj-general',
         authorName,
         note: text,
         trade,

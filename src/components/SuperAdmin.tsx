@@ -616,6 +616,42 @@ Svar KUN med gyldig rå JSON (uten markdown \`\`\`json klammer):
     }
   };
 
+  const handleSetSubscriptionStatus = async (companyId: string, newStatus: 'active' | 'trial' | 'cancelled') => {
+    try {
+      const updateData: any = {
+        subscriptionStatus: newStatus,
+        updatedAt: serverTimestamp()
+      };
+      if (newStatus === 'trial') {
+        updateData.trialStartDate = new Date().toISOString();
+      }
+      await updateDoc(doc(db, 'companies', companyId), updateData);
+
+      const token = typeof window !== 'undefined' ? localStorage.getItem('token') : null;
+      await fetch(`/api/data/companies/${companyId}`, {
+        method: 'PUT',
+        headers: {
+          'Content-Type': 'application/json',
+          ...(token ? { 'Authorization': 'Bearer ' + token } : {})
+        },
+        body: JSON.stringify(updateData)
+      }).catch(() => {});
+
+      setCompanies(prev => prev.map(c => c.id === companyId ? { ...c, subscriptionStatus: newStatus } : c));
+
+      if (newStatus === 'active') {
+        toast.success('Kunde er nå aktivert som betalende kunde! 🎉');
+      } else if (newStatus === 'trial') {
+        toast.success('Ny 14-dagers prøveperiode er aktivert!');
+      } else {
+        toast.info('Kunde er deaktivert (oppsagt).');
+      }
+    } catch (error) {
+      console.error('Feil ved endring av abonnementsstatus:', error);
+      toast.error('Kunne ikke oppdatere abonnementsstatus.');
+    }
+  };
+
   const handleAdminDispatch = async (e?: React.FormEvent) => {
     if (e) e.preventDefault();
     if (!adminCommandText.trim() || isAdminDispatching) return;
@@ -1581,14 +1617,50 @@ Svar KUN med gyldig rå JSON (uten markdown \`\`\`json klammer):
                         </div>
                       </td>
                       <td className="px-8 py-6">
-                        <span className={cn(
-                          "px-3 py-1 rounded-full text-[10px] font-black uppercase tracking-widest",
-                          company.subscriptionStatus === 'active' ? "bg-emerald-100 text-emerald-700" :
-                          company.subscriptionStatus === 'trial' ? "bg-orange-100 text-orange-700" :
-                          "bg-red-100 text-red-700"
-                        )}>
-                          {company.subscriptionStatus}
-                        </span>
+                        <div className="flex flex-col gap-2 items-start">
+                          <span className={cn(
+                            "px-3 py-1 rounded-full text-[10px] font-black uppercase tracking-widest border shadow-2xs",
+                            company.subscriptionStatus === 'active' ? "bg-emerald-100 text-emerald-800 border-emerald-300" :
+                            company.subscriptionStatus === 'trial' ? "bg-amber-100 text-amber-800 border-amber-300" :
+                            "bg-rose-100 text-rose-800 border-rose-300"
+                          )}>
+                            {company.subscriptionStatus === 'active' ? '🟢 Aktiv Kunde' :
+                             company.subscriptionStatus === 'trial' ? '🟠 14 dgr Prøve' :
+                             '🔴 Deaktivert / Utløpt'}
+                          </span>
+                          <div className="flex items-center gap-1.5 flex-wrap">
+                            {company.subscriptionStatus !== 'active' && (
+                              <button
+                                type="button"
+                                onClick={() => handleSetSubscriptionStatus(company.id, 'active')}
+                                className="px-2.5 py-1 bg-emerald-600 hover:bg-emerald-700 text-white rounded-lg text-[10px] font-black transition-all cursor-pointer shadow-xs"
+                                title="Aktiver bedriften som betalende kunde"
+                              >
+                                Aktiver
+                              </button>
+                            )}
+                            {company.subscriptionStatus !== 'trial' && (
+                              <button
+                                type="button"
+                                onClick={() => handleSetSubscriptionStatus(company.id, 'trial')}
+                                className="px-2 py-1 bg-amber-500 hover:bg-amber-600 text-white rounded-lg text-[10px] font-black transition-all cursor-pointer shadow-xs"
+                                title="Gi 14 dagers gratis prøveperiode"
+                              >
+                                14 dgr prøve
+                              </button>
+                            )}
+                            {company.subscriptionStatus !== 'cancelled' && (
+                              <button
+                                type="button"
+                                onClick={() => handleSetSubscriptionStatus(company.id, 'cancelled')}
+                                className="px-2 py-1 bg-rose-50 hover:bg-rose-100 text-rose-700 border border-rose-200 rounded-lg text-[10px] font-bold transition-all cursor-pointer"
+                                title="Deaktiver bedriften ved oppsigelse"
+                              >
+                                Deaktiver
+                              </button>
+                            )}
+                          </div>
+                        </div>
                       </td>
                       <td className="px-8 py-6">
                         <div className="flex flex-wrap gap-1">

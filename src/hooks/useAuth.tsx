@@ -95,6 +95,7 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
           setTrade(u.trade || 'Byggmester');
           setCompany(u.company || 'Mester Entreprenør AS');
           setSubscriptionStatus(u.subscriptionStatus || 'active');
+          setTrialDaysLeft(typeof u.trialDaysLeft === 'number' ? u.trialDaysLeft : null);
         } else {
           setUser(null);
           setCurrentAuthUser(null);
@@ -165,6 +166,7 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
       setCompany(u.company || company);
       setTrade(u.trade || 'Byggmester');
       setSubscriptionStatus(u.subscriptionStatus || 'trial');
+      setTrialDaysLeft(14);
     } else {
       throw new Error('Kunne ikke registrere bruker.');
     }

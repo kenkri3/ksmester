@@ -4,7 +4,8 @@ import {
   getApprenticeProfiles, 
   syncApprenticeProgressFromTimeEntries, 
   approveApprenticeGoal, 
-  generateApprenticeHalfYearReport 
+  generateApprenticeHalfYearReport,
+  OFFICIAL_CURRICULUM_GOALS
 } from '@/src/lib/server/apprenticeEngine';
 import { saveCollectionItem } from '@/src/lib/server/db';
 
@@ -50,7 +51,10 @@ export async function POST(req: NextRequest) {
 
     // 1. Synkroniser fremdrift fra timelister og oppgaver
     if (action === 'sync_progress') {
-      const apprenticeId = body.apprenticeId || 'apprentice-001';
+      const apprenticeId = body.apprenticeId;
+      if (!apprenticeId) {
+        return NextResponse.json({ error: 'Mangler apprenticeId' }, { status: 400 });
+      }
       const result = await syncApprenticeProgressFromTimeEntries(apprenticeId);
       return NextResponse.json({ success: true, result });
     }
@@ -74,19 +78,35 @@ export async function POST(req: NextRequest) {
 
     // 3. Generer offisiell halvårsrapport / vurderingssamtale-underlag
     if (action === 'generate_report') {
-      const apprenticeId = body.apprenticeId || 'apprentice-001';
+      const apprenticeId = body.apprenticeId;
+      if (!apprenticeId) {
+        return NextResponse.json({ error: 'Mangler apprenticeId' }, { status: 400 });
+      }
       const report = await generateApprenticeHalfYearReport(apprenticeId);
       return NextResponse.json({ success: true, report });
     }
 
     // 4. Registrer ny lærling
     if (action === 'create_apprentice') {
+      const trade = body.trade || 'carpenter';
+      const goals = (body.goals && body.goals.length > 0) ? body.goals : (OFFICIAL_CURRICULUM_GOALS[trade] || OFFICIAL_CURRICULUM_GOALS.carpenter || []).map(g => ({
+        goalId: g.id,
+        title: g.title,
+        category: g.category,
+        description: g.description,
+        requiredHours: g.requiredHoursEstimate,
+        hoursLogged: 0,
+        progress: 0,
+        status: 'not_started' as const,
+        evidenceNotes: []
+      }));
+
       const newApprentice = {
         id: `apprentice-${Date.now()}`,
         name: body.name,
         email: body.email,
         phone: body.phone || '',
-        trade: body.trade || 'carpenter',
+        trade: trade,
         tradeName: body.tradeName || 'Tømrerfaget',
         tradeYear: Number(body.tradeYear) || 1,
         startDate: body.startDate || new Date().toISOString().split('T')[0],
@@ -95,7 +115,7 @@ export async function POST(req: NextRequest) {
         mentorId: user?.id || 'admin-001',
         companyId: user?.companyId || 'comp-001',
         totalHoursWorked: 0,
-        goals: body.goals || [],
+        goals,
         nextAssessmentDate: new Date(Date.now() + 180 * 86400000).toISOString().split('T')[0],
         aiRecommendation: 'Lærling registrert. Sett opp første introduksjon til HMS og verktøyopplæring.',
         createdAt: new Date().toISOString(),

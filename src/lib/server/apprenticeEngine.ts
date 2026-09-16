@@ -188,132 +188,20 @@ export const OFFICIAL_CURRICULUM_GOALS: Record<string, CurriculumGoal[]> = {
 };
 
 /**
- * Henter eller oppretter bedriftens lærlinger
+ * Henter bedriftens lærlinger
  */
 export async function getApprenticeProfiles(companyId?: string): Promise<ApprenticeProfileRecord[]> {
   try {
     const all = await getCollectionItems('apprentice_profiles');
-    let list = companyId ? all.filter((a: any) => !a.companyId || a.companyId === companyId) : all;
-
-    // Hvis tom, generer et realistisk startsett for tømrerbedriften
-    if (list.length === 0) {
-      const defaultApprentice = createDefaultCarpenterApprentice(companyId || 'comp-001');
-      await saveCollectionItem('apprentice_profiles', defaultApprentice);
-      return [defaultApprentice];
-    }
-
+    const list = companyId ? all.filter((a: any) => !a.companyId || a.companyId === companyId) : all;
     return list;
   } catch (e: any) {
     console.warn('[ApprenticeEngine] Feil ved lesing av profiler:', e.message);
-    return [createDefaultCarpenterApprentice(companyId || 'comp-001')];
+    return [];
   }
 }
 
-function createDefaultCarpenterApprentice(companyId: string): ApprenticeProfileRecord {
-  const goals: ApprenticeGoalRecord[] = OFFICIAL_CURRICULUM_GOALS.carpenter.map((g, idx) => {
-    // Sett litt realistisk startprogresjon
-    if (idx === 0) {
-      return {
-        goalId: g.id,
-        title: g.title,
-        category: g.category,
-        description: g.description,
-        requiredHours: g.requiredHoursEstimate,
-        hoursLogged: 38,
-        progress: 95,
-        status: 'ready_for_review',
-        evidenceNotes: [
-          'Gjennomført SJA for stillasarbeid på Nyebakken 14.',
-          'Bruker påbudt fallsikringssele og vernehjelm ved kapping.'
-        ],
-        lastUpdated: new Date().toISOString()
-      };
-    }
-    if (idx === 1) {
-      return {
-        goalId: g.id,
-        title: g.title,
-        category: g.category,
-        description: g.description,
-        requiredHours: g.requiredHoursEstimate,
-        hoursLogged: 45,
-        progress: 90,
-        status: 'in_progress',
-        evidenceNotes: [
-          'Nivellert sviller på tilbygg med rotasjonslaser (toleranse < 2mm).',
-          'Sjekket diagonalmål 3-4-5 på grunnmur.'
-        ],
-        lastUpdated: new Date().toISOString()
-      };
-    }
-    if (idx === 2) {
-      return {
-        goalId: g.id,
-        title: g.title,
-        category: g.category,
-        description: g.description,
-        requiredHours: g.requiredHoursEstimate,
-        hoursLogged: 82,
-        progress: 68,
-        status: 'in_progress',
-        evidenceNotes: [
-          'Bygget stenderverk cc 60 og montert overdekninger på Kongeveien.',
-          'Deltatt på heising og avstiving av W-takstoler.'
-        ],
-        lastUpdated: new Date().toISOString()
-      };
-    }
-    if (idx === 3) {
-      return {
-        goalId: g.id,
-        title: g.title,
-        category: g.category,
-        description: g.description,
-        requiredHours: g.requiredHoursEstimate,
-        hoursLogged: 30,
-        progress: 33,
-        status: 'in_progress',
-        evidenceNotes: ['Montert 50mm Glava etterisolering og diffusjonstett dampsperre med klemte skjøter.'],
-        lastUpdated: new Date().toISOString()
-      };
-    }
-    return {
-      goalId: g.id,
-      title: g.title,
-      category: g.category,
-      description: g.description,
-      requiredHours: g.requiredHoursEstimate,
-      hoursLogged: 0,
-      progress: 0,
-      status: 'not_started',
-      evidenceNotes: []
-    };
-  });
 
-  const totalWorked = goals.reduce((acc, g) => acc + g.hoursLogged, 0);
-
-  return {
-    id: 'apprentice-001',
-    name: 'Jonas Berg',
-    email: 'jonas.laerling@mesterbygg.no',
-    phone: '988 12 345',
-    trade: 'carpenter',
-    tradeName: 'Tømrerfaget',
-    tradeYear: 2,
-    startDate: '2025-08-15',
-    contractEndDate: '2027-08-14',
-    mentorName: 'Per Mester (Faglig leder)',
-    mentorId: 'admin-001',
-    companyId,
-    totalHoursWorked: totalWorked,
-    goals,
-    lastAssessmentDate: '2026-02-10',
-    nextAssessmentDate: '2026-09-30',
-    aiRecommendation: 'Jonas har nådd 95% på HMS/SJA og bør godkjennes av faglig leder. Neste fokus bør være å opparbeide timer på underlag for våtrom og tverrfaglige lukkesperrer (mål 7) på neste prosjekt.',
-    createdAt: new Date().toISOString(),
-    updatedAt: new Date().toISOString()
-  };
-}
 
 /**
  * ⚡ AUTONOM MOTOR: Knytter førte timer og oppgaver mot lærlingens læreplanmål

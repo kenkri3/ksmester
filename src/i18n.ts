@@ -658,7 +658,7 @@ const resources = {
       "activity_empty_title": "Agenten er aktiv og lytter",
       "activity_empty_desc": "Handlinger som byggedagbok via tale, TEK17 bildeanalyser og endringsordrer loggføres her i sanntid.",
       "preclose_alert_title": "1 Tverrfaglig Lukkesperre Aktiv",
-      "preclose_alert_desc": "Storgata 8 (Vaskerom): Rørleggerens trykktestrapport mangler. Veggen er rødmerket mot kledning for å hindre reklamasjoner og erstatningsansvar.",
+      "preclose_alert_desc": "Vaskerom: Rørleggerens trykktestrapport mangler. Veggen er rødmerket mot kledning for å hindre reklamasjoner og erstatningsansvar.",
       "btn_inspect_matrix": "Inspiser lukkesperrematrise",
 
       // --- PROSJEKTER TAB ---
@@ -1435,7 +1435,7 @@ const resources = {
       "activity_empty_title": "Agent is active and listening",
       "activity_empty_desc": "Actions including voice daily logs, TEK17 photo checks, and variation orders are logged here in real-time.",
       "preclose_alert_title": "1 Multidisciplinary Pre-Close Lockout Active",
-      "preclose_alert_desc": "Storgata 8 (Laundry room): Plumber's pressure test report missing. Wall is red-locked against boarding to prevent structural damage and liability.",
+      "preclose_alert_desc": "Laundry room: Plumber's pressure test report missing. Wall is red-locked against boarding to prevent structural damage and liability.",
       "btn_inspect_matrix": "Inspect pre-close matrix",
 
       // --- PROJECTS TAB ---
@@ -2212,7 +2212,7 @@ const resources = {
       "activity_empty_title": "Agent jest aktywny i nasłuchuje",
       "activity_empty_desc": "Działania takie jak dziennik budowy głosem, inspekcje foto TEK17 i zamówienia zmian są logowane tutaj na żywo.",
       "preclose_alert_title": "1 Interdyscyplinarna Blokada Zamknięcia Aktywna",
-      "preclose_alert_desc": "Storgata 8 (Pralnia): Brak protokołu z próby ciśnieniowej hydraulika. Ściana jest zablokowana przed płytami, aby zapobiec szkodom i odpowiedzialności.",
+      "preclose_alert_desc": "Pralnia: Brak protokołu z próby ciśnieniowej hydraulika. Ściana jest zablokowana przed płytami, aby zapobiec szkodom i odpowiedzialności.",
       "btn_inspect_matrix": "Zbadaj macierz blokady zamknięcia",
 
       // --- PROJEKTY TAB ---
@@ -2990,7 +2990,7 @@ const resources = {
       "activity_empty_title": "Agentas yra aktyvus ir klausosi",
       "activity_empty_desc": "Veiksmai, tokie kaip balso dienoraštis, TEK17 nuotraukų analizė ir pakeitimų užsakymai, čia registruojami realiuoju laiku.",
       "preclose_alert_title": "1 Tarpdalykinis Uždarymo Blokavimas Aktyvus",
-      "preclose_alert_desc": "Storgata 8 (Skalbykla): Trūksta santechniko slėgio bandymo ataskaitos. Siena užblokuota prieš apdailą, siekiant išvengti žalos.",
+      "preclose_alert_desc": "Skalbykla: Trūksta santechniko slėgio bandymo ataskaitos. Siena užblokuota prieš apdailą, siekiant išvengti žalos.",
       "btn_inspect_matrix": "Patikrinti uždarymo matricą",
 
       // --- PROJEKTAI TAB ---

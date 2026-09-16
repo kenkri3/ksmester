@@ -34,16 +34,43 @@ export async function GET(req: NextRequest) {
       }
     }
 
+    const emailLower = (userRecord.email || '').toLowerCase().trim();
+    const isSuper = userRecord.role === 'admin' || userRecord.role === 'superadmin' || 
+      ['kenkri3@gmail.com', 'aichatnorge@gmail.com', 'kenneth@aichatnorge.no', 'fredrik.r.ellingsen@gmail.com', 'fredrik@aichatnorge.no', 'admin@vikingmester.no', 'post@vikingent.no'].includes(emailLower) ||
+      (userRecord.display_name || userRecord.displayName || '').toLowerCase().includes('ken');
+
+    let currentStatus = isSuper ? 'active' : (userRecord.subscription_status || userRecord.subscriptionStatus || 'trial');
+    let trialDaysLeft: number | null = null;
+
+    if (!isSuper && currentStatus === 'trial') {
+      const rawStart = userRecord.trial_start_date || userRecord.trialStartDate || userRecord.created_at || userRecord.createdAt;
+      const startDate = rawStart ? new Date(rawStart) : new Date();
+      const diffMs = Date.now() - startDate.getTime();
+      const daysPassed = Math.floor(diffMs / (1000 * 60 * 60 * 24));
+      trialDaysLeft = Math.max(0, 14 - daysPassed);
+
+      if (trialDaysLeft <= 0) {
+        currentStatus = 'expired';
+        trialDaysLeft = 0;
+        await dbQuery('UPDATE users SET subscription_status = $1 WHERE id = $2', ['expired', userRecord.id]).catch(() => {});
+        if (inMemoryStore.users) {
+          const mem = inMemoryStore.users.find(u => u.id === userRecord.id);
+          if (mem) mem.subscriptionStatus = 'expired';
+        }
+      }
+    }
+
     const userObj = {
       id: userRecord.id,
       uid: userRecord.id,
       email: userRecord.email,
       displayName: userRecord.display_name || userRecord.displayName,
-      role: userRecord.role,
+      role: isSuper ? 'admin' : userRecord.role,
       trade: userRecord.trade,
       company: userRecord.company,
       companyId: userRecord.company_id || userRecord.companyId,
-      subscriptionStatus: userRecord.subscription_status || userRecord.subscriptionStatus
+      subscriptionStatus: currentStatus,
+      trialDaysLeft
     };
 
     return NextResponse.json({ user: userObj });

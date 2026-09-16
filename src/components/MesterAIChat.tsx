@@ -230,13 +230,13 @@ export default function MesterAIChat({
       followUpPrompts: isWorker
         ? [
             'Hva er oppgavene mine i dag?',
-            'Før 7.5 timer på Nyebakken',
+            projects?.[0]?.name ? `Før 7.5 timer på ${projects[0].name}` : 'Før dagens arbeidstimer',
             'Hva er kravene til fall mot sluk i TEK17?',
-            'Lag en SJA for tak- og stillasarbeid'
+            'Lag en SJA for sikkert arbeid'
           ]
         : [
-            'Gi meg dagens status for alle byggeplasser',
-            'Tildel oppgave til snekker',
+            projects?.[0]?.name ? `Dagens status for ${projects[0].name}` : 'Gi meg dagens status for byggeplassene',
+            'Tildel ny oppgave til en håndverker',
             'Hjelp meg å skrive et nytt tilbud',
             'Hvordan varsler jeg en endringsordre iht. NS 8406?'
           ]
@@ -270,12 +270,13 @@ export default function MesterAIChat({
   const [projectFilter, setProjectFilter] = useState('');
   const [adminTab, setAdminTab] = useState<'offers' | 'changes'>('offers');
   const [isSpeaking, setIsSpeaking] = useState(false);
-  const [tasksList, setTasksList] = useState<any[]>(tasks && tasks.length > 0 ? tasks : [
-    { id: 't-1', title: 'Trekke rørkurs til kjøkken og fordelerskap', projectName: 'Nyebakken 14', assignedTo: 'Elektriker Erik', deadline: 'I dag kl. 14', priority: 'high', status: 'pending' },
-    { id: 't-2', title: 'Montere dampsperre og klemring på sluk i bad 2. etg', projectName: 'Nyebakken 14', assignedTo: 'Ola Tømrer', deadline: 'I dag kl. 16', priority: 'urgent', status: 'pending' },
-    { id: 't-3', title: 'Trykkteste rør-i-rør fordelerskap i vaskerom', projectName: 'Storgata 8', assignedTo: 'Rørlegger Hansen', deadline: 'I morgen', priority: 'high', status: 'pending' },
-    { id: 't-4', title: 'Bære inn gipsplater og lekte ut himling', projectName: 'Fjordveien 22', assignedTo: 'Lærling', deadline: 'Fredag', priority: 'medium', status: 'completed' }
-  ]);
+  const [tasksList, setTasksList] = useState<any[]>(tasks || []);
+
+  useEffect(() => {
+    if (tasks) {
+      setTasksList(tasks);
+    }
+  }, [tasks]);
   const [omniSettings, setOmniSettings] = useState<OmnichannelSettings>(getStoredOmnichannelSettings);
   const messagesContainerRef = useRef<HTMLDivElement>(null);
   const messagesEndRef = useRef<HTMLDivElement>(null);

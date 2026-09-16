@@ -160,11 +160,7 @@ export default function Dashboard({
   const [isAllModulesOpen, setIsAllModulesOpen] = useState(false);
 
   // Live Endringsordrer state with deletion capability
-  const [dashboardChangeOrders, setDashboardChangeOrders] = useState<any[]>([
-    { id: 'co-101', number: 1, title: '6 ekstra downlights og trekkerør i stue', project: 'Nyebakken 14', amount: 14500, days: 2, status: 'Venter på bas', legal: 'NS 8406 pkt. 19.2' },
-    { id: 'co-102', number: 2, title: 'Uforutsett råte i bjelkelag under sluk', project: 'Storgata 8', amount: 28000, days: 4, status: 'Venter på bas', legal: 'NS 8406 pkt. 19.3' },
-    { id: 'co-103', number: 3, title: 'Oppgradering til royalimpregnert kledning', project: 'Fjordveien 22', amount: 42000, days: 0, status: 'Godkjent av kunde', legal: 'NS 8406 pkt. 19.2' }
-  ]);
+  const [dashboardChangeOrders, setDashboardChangeOrders] = useState<any[]>([]);
 
   useEffect(() => {
     const unsub = onSnapshot(collection(db, 'change_orders'), (snapshot) => {
@@ -184,6 +180,8 @@ export default function Dashboard({
           };
         });
         setDashboardChangeOrders(liveOrders);
+      } else {
+        setDashboardChangeOrders([]);
       }
     });
     return () => unsub();
@@ -204,44 +202,7 @@ export default function Dashboard({
   };
 
   // Live Offers (Pristilbud) state with real-time sync and deletion
-  const [dashboardOffers, setDashboardOffers] = useState<any[]>([
-    {
-      id: 'off-101',
-      title: 'Totalrenovering bad og vaskerom 2. etasje',
-      clientName: 'Marianne Berg',
-      clientEmail: 'marianne.berg@nordmann.no',
-      projectName: 'Nyebakken 14',
-      totalAmount: 285000,
-      totalIncVat: 356250,
-      status: 'accepted',
-      token: 'tok-bath-285k',
-      createdAt: new Date(Date.now() - 86400000 * 2).toISOString()
-    },
-    {
-      id: 'off-102',
-      title: 'Utskifting av trekledning og 150mm etterisolering',
-      clientName: 'Thomas Lunde',
-      clientEmail: 'thomas.lunde@outlook.com',
-      projectName: 'Fjordveien 22',
-      totalAmount: 148000,
-      totalIncVat: 185000,
-      status: 'pending',
-      token: 'tok-facade-148k',
-      createdAt: new Date(Date.now() - 86400000 * 4).toISOString()
-    },
-    {
-      id: 'off-103',
-      title: 'Tilbygg 45m2 stue/kjøkken med ringmur',
-      clientName: 'Henrik Hauge',
-      clientEmail: 'henrik.hauge@gmail.com',
-      projectName: 'Storgata 8',
-      totalAmount: 420000,
-      totalIncVat: 525000,
-      status: 'draft',
-      token: 'tok-extension-420k',
-      createdAt: new Date(Date.now() - 86400000 * 7).toISOString()
-    }
-  ]);
+  const [dashboardOffers, setDashboardOffers] = useState<any[]>([]);
 
   useEffect(() => {
     const unsub = onSnapshot(collection(db, 'offers'), (snapshot) => {
@@ -251,7 +212,27 @@ export default function Dashboard({
           ...d.data()
         }));
         setDashboardOffers(live);
+      } else {
+        setDashboardOffers([]);
       }
+    });
+    return () => unsub();
+  }, []);
+
+  // Live Tasks listener
+  const [dashboardTasks, setDashboardTasks] = useState<any[]>([]);
+
+  useEffect(() => {
+    const unsub = onSnapshot(collection(db, 'tasks'), (snapshot) => {
+      if (snapshot.docs) {
+        const live = snapshot.docs.map(d => ({
+          id: d.id,
+          ...d.data()
+        }));
+        setDashboardTasks(live);
+      }
+    }, (err) => {
+      console.warn('Firestore tasks listener notice:', err);
     });
     return () => unsub();
   }, []);
@@ -284,56 +265,7 @@ export default function Dashboard({
   }, []);
 
   // Lukkesperre & Pre-close state
-  const [lukkesperreZones, setLukkesperreZones] = useState<LukkesperreZone[]>([
-    { 
-      id: 'z-1',
-      room: 'Bad 2. etg (Nyebakken)', 
-      project: 'Nyebakken 14 - Totalrenovering',
-      status: 'GREEN', 
-      canClose: true, 
-      detail: 'Rør-i-rør trykktest og dampsperre godkjent.',
-      checks: {
-        plumbing: true,
-        electric: true,
-        vaporBarrier: true,
-        insulation: true
-      },
-      lastChecked: 'I dag kl. 10:15',
-      inspector: 'Rørleggermester Hansen & Byggmester Ken'
-    },
-    { 
-      id: 'z-2',
-      room: 'Vaskerom 1. etg (Storgata 8)', 
-      project: 'Storgata 8 - Nybygg',
-      status: 'RED', 
-      canClose: false, 
-      detail: 'Rørlegger mangler trykktestrapport for fordelerskap.',
-      checks: {
-        plumbing: false,
-        electric: true,
-        vaporBarrier: false,
-        insulation: true
-      },
-      lastChecked: 'I dag kl. 09:15',
-      inspector: 'Byggmester Ken'
-    },
-    { 
-      id: 'z-3',
-      room: 'Kjøkken (Fjordveien 22)', 
-      project: 'Fjordveien 22 - Tilbygg',
-      status: 'GREEN', 
-      canClose: true, 
-      detail: 'El-skjultanlegg og rørkurs verifisert.',
-      checks: {
-        plumbing: true,
-        electric: true,
-        vaporBarrier: true,
-        insulation: true
-      },
-      lastChecked: '14. sep kl. 14:30',
-      inspector: 'Elektroinstallatør Erik'
-    }
-  ]);
+  const [lukkesperreZones, setLukkesperreZones] = useState<LukkesperreZone[]>([]);
   const [selectedLukkesperreZone, setSelectedLukkesperreZone] = useState<LukkesperreZone | null>(null);
   const [isPreCloseModalOpen, setIsPreCloseModalOpen] = useState(false);
 
@@ -702,7 +634,7 @@ export default function Dashboard({
     const newZone: LukkesperreZone = {
       id: `z-${Date.now()}`,
       room: `Ny Sone / Rom ${lukkesperreZones.length + 1}`,
-      project: selectedProject?.name || projects[0]?.name || 'Nyebakken 14',
+      project: selectedProject?.name || projects[0]?.name || 'Byggeplass',
       status: 'RED',
       canClose: false,
       detail: 'Ny kontrollsone under oppføring. Påkrevet 4 tverrfaglige kontroller.',
@@ -723,7 +655,7 @@ export default function Dashboard({
 
   // Handler for SJA Modal
   const handleOpenSJAForTrade = (tradeName: string) => {
-    const activeProj = selectedProject || projects[0] || { name: 'Nyebakken 14 - Totalrenovering' };
+    const activeProj = selectedProject || projects[0] || { name: 'Byggeplass' };
     let sja: SJADocument;
 
     if (tradeName.includes('Tømrer') || tradeName.includes('Stillas') || tradeName.includes('tak')) {
@@ -1085,22 +1017,22 @@ export default function Dashboard({
           fetchAgentState();
         }}
         project={(selectedProject || projects[0] || {
-          id: 'proj-101',
-          name: 'Nyebakken 14 - Totalrenovering',
-          projectCode: 'P-2026-01',
-          description: 'Totalrenovering',
-          location: 'Oslo',
-          progress: 65,
+          id: 'proj-default',
+          name: 'Nytt Prosjekt',
+          projectCode: 'P-01',
+          description: 'Hovedprosjekt',
+          location: 'Byggeplass',
+          progress: 0,
           status: 'active',
           stage: 'active',
-          documentationLevel: 85,
-          clientName: 'Ole Nordmann',
-          clientEmail: 'ole@nordmann.no',
-          clientPhone: '912 34 567',
-          company: 'Mester Entreprenør AS',
-          companyId: 'comp-001',
-          companyName: 'Mester Entreprenør AS',
-          projectManager: 'Ken (Byggmester)',
+          documentationLevel: 0,
+          clientName: 'Oppdragsgiver',
+          clientEmail: '',
+          clientPhone: '',
+          company: user?.company || 'Bedrift',
+          companyId: user?.companyId || 'comp',
+          companyName: user?.company || 'Bedrift',
+          projectManager: user?.displayName || 'Byggeleder',
           startDate: new Date().toISOString(),
           lastUpdate: new Date().toISOString(),
           createdAt: new Date().toISOString(),
@@ -1195,6 +1127,7 @@ export default function Dashboard({
             initialTab={initialTab || (activeTab === 'cockpit' ? 'control_center' : (activeTab === 'prosjekter' ? 'projects' : (activeTab === 'endringsordrer' ? 'admin' : (activeTab === 'kvalitet' ? 'control_center' : 'chat'))))}
             selectedProject={selectedProject}
             projects={projects}
+            tasks={dashboardTasks}
             changeOrders={dashboardChangeOrders}
             offers={dashboardOffers}
             deviations={deviations}

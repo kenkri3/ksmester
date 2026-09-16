@@ -1,4 +1,4 @@
-﻿'use client';
+'use client';
 
 import React, { useState } from 'react';
 import Link from 'next/link';
@@ -133,8 +133,8 @@ const SJA_TEMPLATES: Record<string, {
 
 export default function SjaGeneratorPage() {
   const [selectedKey, setSelectedKey] = useState('hoyde');
-  const [projectTitle, setProjectTitle] = useState('Enebolig Storgata 12');
-  const [leaderName, setLeaderName] = useState('Kari Håndverker');
+  const [projectTitle, setProjectTitle] = useState('');
+  const [leaderName, setLeaderName] = useState('');
 
   const currentTemplate = SJA_TEMPLATES[selectedKey];
 
@@ -217,7 +217,8 @@ export default function SjaGeneratorPage() {
                 type="text"
                 value={projectTitle}
                 onChange={(e) => setProjectTitle(e.target.value)}
-                className="w-full p-3 bg-white border border-slate-300 rounded-xl text-navy-900 text-sm font-semibold outline-none focus:ring-2 focus:ring-electric-500"
+                placeholder="F.eks. Enebolig Bjerkelundveien 4"
+                className="w-full p-3 bg-white border border-slate-300 rounded-xl text-navy-900 text-sm font-semibold outline-none focus:ring-2 focus:ring-electric-500 placeholder:font-normal placeholder:text-slate-400"
               />
             </div>
 
@@ -229,7 +230,8 @@ export default function SjaGeneratorPage() {
                 type="text"
                 value={leaderName}
                 onChange={(e) => setLeaderName(e.target.value)}
-                className="w-full p-3 bg-white border border-slate-300 rounded-xl text-navy-900 text-sm font-semibold outline-none focus:ring-2 focus:ring-electric-500"
+                placeholder="F.eks. Ola Nordmann (Bas)"
+                className="w-full p-3 bg-white border border-slate-300 rounded-xl text-navy-900 text-sm font-semibold outline-none focus:ring-2 focus:ring-electric-500 placeholder:font-normal placeholder:text-slate-400"
               />
             </div>
 
@@ -253,7 +255,7 @@ export default function SjaGeneratorPage() {
                   Sikker Jobb Analyse (SJA)
                 </span>
                 <h3 className="text-xl font-black text-navy-900 mt-2">{currentTemplate.title}</h3>
-                <p className="text-xs text-slate-500 mt-1">Prosjekt: {projectTitle} • Leder: {leaderName}</p>
+                <p className="text-xs text-slate-500 mt-1">Prosjekt: {projectTitle || 'Ikke oppgitt'} • Leder: {leaderName || 'Ikke oppgitt'}</p>
               </div>
               <button
                 onClick={() => window.print()}
