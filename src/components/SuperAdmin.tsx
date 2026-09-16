@@ -61,7 +61,7 @@ interface Company {
   userCount?: number;
 }
 
-export default function SuperAdmin() {
+export default function SuperAdmin({ onBackToDashboard }: { onBackToDashboard?: () => void } = {}) {
   const { user, startImpersonation, stopImpersonation, impersonatedCompanyId, isSuperAdmin: authIsSuperAdmin } = useAuth();
   const [selectedProject, setSelectedProject] = useState<any | null>(null);
   const isSuperAdmin = authIsSuperAdmin || user?.role === 'admin' || user?.role === 'superadmin' || user?.email === 'kenkri3@gmail.com' || user?.email?.toLowerCase() === 'admin@vikingmester.no' || user?.email === 'aichatnorge@gmail.com' || user?.email === 'kenneth@aichatnorge.no' || user?.email === 'post@vikingent.no';
@@ -603,9 +603,27 @@ export default function SuperAdmin() {
   }
 
   return (
-    <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 py-12">
+    <div className="max-w-7xl mx-auto px-3.5 sm:px-6 lg:px-8 py-4 sm:py-10 pb-32 md:pb-16 overflow-x-hidden">
+      {/* Impersonation Notice & Navigation bar */}
+      <div className="flex items-center justify-between gap-3 mb-4">
+        {onBackToDashboard ? (
+          <button
+            onClick={onBackToDashboard}
+            className="inline-flex items-center gap-2 px-3 py-1.5 bg-neutral-100 hover:bg-neutral-200 text-neutral-700 rounded-xl text-xs font-bold transition-all shadow-xs cursor-pointer"
+          >
+            <ArrowLeft size={14} />
+            <span>← Tilbake til Håndverker Dashboard</span>
+          </button>
+        ) : (
+          <div />
+        )}
+        <span className="px-2.5 py-0.5 rounded-full bg-purple-100 text-purple-800 text-[10px] sm:text-[11px] font-black uppercase tracking-wider">
+          SuperAdmin Modus
+        </span>
+      </div>
+
       {impersonatedCompanyId && (
-        <div className="mb-8 p-4 bg-red-50 border border-red-200 rounded-2xl flex flex-col sm:flex-row items-start sm:items-center justify-between gap-4">
+        <div className="mb-6 p-4 bg-red-50 border border-red-200 rounded-2xl flex flex-col sm:flex-row items-start sm:items-center justify-between gap-4">
           <div className="flex items-center gap-3">
             <AlertTriangle className="text-red-600 shrink-0" size={20} />
             <div className="text-xs text-red-900">
@@ -623,108 +641,114 @@ export default function SuperAdmin() {
           </button>
         </div>
       )}
-      <div className="flex flex-col md:flex-row md:items-center justify-between gap-4 mb-12">
+
+      {/* Header & Quick Action Buttons */}
+      <div className="flex flex-col md:flex-row md:items-center justify-between gap-4 mb-6 sm:mb-10">
         <div>
-          <h1 className="text-4xl font-black tracking-tight text-neutral-900 mb-2">SuperAdmin Dashboard</h1>
-          <p className="text-neutral-500">Administrer alle kunder, moduler og systemtilgang.</p>
+          <h1 className="text-2xl sm:text-4xl font-black tracking-tight text-neutral-900 mb-1 sm:mb-2">
+            SuperAdmin Dashboard
+          </h1>
+          <p className="text-xs sm:text-sm text-neutral-500">
+            Administrer alle kunder, moduler og systemtilgang.
+          </p>
         </div>
-        <div className="flex gap-4">
+        <div className="grid grid-cols-3 gap-2 w-full sm:flex sm:w-auto sm:gap-3">
           <button 
             onClick={() => setIsTemplateModalOpen(true)}
-            className="flex items-center gap-2 px-6 py-3 bg-neutral-100 text-neutral-600 rounded-2xl font-bold hover:bg-neutral-200 transition-all"
+            className="flex items-center justify-center gap-1.5 px-2.5 py-2.5 sm:px-5 sm:py-3 bg-neutral-100 text-neutral-700 rounded-xl sm:rounded-2xl font-bold hover:bg-neutral-200 transition-all text-xs sm:text-sm shadow-xs"
           >
-            <FileText size={20} />
-            Ny mal
+            <FileText size={16} className="shrink-0" />
+            <span className="truncate">Ny mal</span>
           </button>
           <button 
             onClick={() => setIsOfferModalOpen(true)}
-            className="flex items-center gap-2 px-6 py-3 bg-blue-600 text-white rounded-2xl font-bold hover:bg-blue-500 transition-all shadow-lg shadow-blue-100"
+            className="flex items-center justify-center gap-1.5 px-2.5 py-2.5 sm:px-5 sm:py-3 bg-blue-600 text-white rounded-xl sm:rounded-2xl font-bold hover:bg-blue-500 transition-all shadow-md shadow-blue-100 text-xs sm:text-sm"
           >
-            <Send size={20} />
-            Send tilbud
+            <Send size={16} className="shrink-0" />
+            <span className="truncate">Send tilbud</span>
           </button>
           <button 
             onClick={() => setIsCreateModalOpen(true)}
-            className="flex items-center gap-2 px-6 py-3 bg-gradient-to-r from-electric-500 to-electric-400 text-white rounded-2xl font-black hover:opacity-95 transition-all shadow-purple-cta"
+            className="flex items-center justify-center gap-1.5 px-2.5 py-2.5 sm:px-5 sm:py-3 bg-gradient-to-r from-electric-500 to-electric-400 text-white rounded-xl sm:rounded-2xl font-black hover:opacity-95 transition-all shadow-purple-cta text-xs sm:text-sm"
           >
-            <Plus size={20} />
-            Opprett ny kunde
+            <Plus size={16} className="shrink-0" />
+            <span className="truncate">Ny kunde</span>
           </button>
         </div>
       </div>
 
-      {/* Tabs */}
-      <div className="flex flex-wrap gap-2 mb-8 pb-2">
+      {/* Tabs - Horisontalt rullbare på mobil for å unngå stor vertikal blokk */}
+      <div className="flex items-center gap-2 mb-6 sm:mb-8 pb-2 overflow-x-auto no-scrollbar -mx-3.5 px-3.5 sm:mx-0 sm:px-0 scroll-smooth">
         {[
-          { id: 'agent', label: 'Autonom Agent & Logg', icon: <BrainCircuit size={18} /> },
-          { id: 'projects', label: 'Alle Prosjekter', icon: <Layers size={18} /> },
-          { id: 'deviations', label: 'Avvik & HMS', icon: <AlertTriangle size={18} /> },
-          { id: 'logs', label: 'Byggedagbøker', icon: <BookOpen size={18} /> },
-          { id: 'companies', label: 'Kunder', icon: <Building2 size={18} /> },
-          { id: 'leads', label: 'Henvendelser', icon: <MessageSquare size={18} /> },
-          { id: 'offers', label: 'Sendte tilbud', icon: <Send size={18} /> },
-          { id: 'templates', label: 'Maler', icon: <FileText size={18} /> },
+          { id: 'agent', label: 'Autonom Agent & Logg', icon: <BrainCircuit size={16} /> },
+          { id: 'projects', label: 'Alle Prosjekter', icon: <Layers size={16} /> },
+          { id: 'deviations', label: 'Avvik & HMS', icon: <AlertTriangle size={16} /> },
+          { id: 'logs', label: 'Byggedagbøker', icon: <BookOpen size={16} /> },
+          { id: 'companies', label: 'Kunder', icon: <Building2 size={16} /> },
+          { id: 'leads', label: 'Henvendelser', icon: <MessageSquare size={16} /> },
+          { id: 'offers', label: 'Sendte tilbud', icon: <Send size={16} /> },
+          { id: 'templates', label: 'Maler', icon: <FileText size={16} /> },
         ].map(tab => (
           <button
             key={tab.id}
             onClick={() => setActiveTab(tab.id as any)}
             className={cn(
-              "flex items-center gap-2 px-5 py-3 rounded-2xl font-bold transition-all whitespace-nowrap text-sm",
+              "flex items-center gap-2 px-3.5 py-2.5 sm:px-5 sm:py-3 rounded-xl sm:rounded-2xl font-bold transition-all whitespace-nowrap text-xs sm:text-sm shrink-0",
               activeTab === tab.id 
                 ? "bg-neutral-900 text-white shadow-lg shadow-neutral-900/20" 
                 : "bg-white text-neutral-600 hover:bg-neutral-50 border border-neutral-200"
             )}
           >
             {tab.icon}
-            {tab.label}
+            <span>{tab.label}</span>
             {tab.id === 'leads' && leads.filter(l => l.status === 'new').length > 0 && (
-              <span className="ml-1.5 px-2 py-0.5 bg-red-500 text-white text-[10px] rounded-full">
+              <span className="ml-1 px-1.5 py-0.5 bg-red-500 text-white text-[10px] rounded-full">
                 {leads.filter(l => l.status === 'new').length}
               </span>
             )}
             {tab.id === 'deviations' && allDeviations.filter(d => d.status !== 'closed' && d.status !== 'resolved').length > 0 && (
-              <span className="ml-1.5 px-2 py-0.5 bg-amber-500 text-white text-[10px] rounded-full">
+              <span className="ml-1 px-1.5 py-0.5 bg-amber-500 text-white text-[10px] rounded-full">
                 {allDeviations.filter(d => d.status !== 'closed' && d.status !== 'resolved').length}
               </span>
             )}
             {tab.id === 'agent' && (
-              <span className="ml-1.5 w-2 h-2 rounded-full bg-emerald-500 animate-ping inline-block" />
+              <span className="ml-1 w-2 h-2 rounded-full bg-emerald-500 animate-ping inline-block" />
             )}
           </button>
         ))}
       </div>
 
-      {/* Stats */}
-      <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-6 mb-12">
+      {/* Stats Cards - Responsiv 2-kolonner på mobil, 4 på desktop */}
+      <div className="grid grid-cols-2 lg:grid-cols-4 gap-3 sm:gap-6 mb-8 sm:mb-12">
         {[
-          { tab: 'agent', label: 'Agenthandlinger i dag', value: agentMetrics.todayActionsCount || agentActivities.length, icon: <BrainCircuit className="text-purple-600" />, bg: 'bg-purple-50' },
-          { tab: 'projects', label: 'Aktive Prosjekter', value: allProjects.filter(p => p.status !== 'completed').length || allProjects.length, icon: <Layers className="text-blue-600" />, bg: 'bg-blue-50' },
-          { tab: 'deviations', label: 'Åpne Avvik & HMS', value: allDeviations.filter(d => d.status !== 'closed' && d.status !== 'resolved').length, icon: <AlertTriangle className="text-amber-600" />, bg: 'bg-amber-50' },
-          { tab: 'companies', label: 'Kunder / Bedrifter', value: companies.length, icon: <Building2 className="text-emerald-600" />, bg: 'bg-emerald-50' },
+          { tab: 'agent', label: 'Agenthandlinger i dag', value: agentMetrics.todayActionsCount || agentActivities.length, icon: <BrainCircuit className="text-purple-600" size={18} />, bg: 'bg-purple-50' },
+          { tab: 'projects', label: 'Aktive Prosjekter', value: allProjects.filter(p => p.status !== 'completed').length || allProjects.length, icon: <Layers className="text-blue-600" size={18} />, bg: 'bg-blue-50' },
+          { tab: 'deviations', label: 'Åpne Avvik & HMS', value: allDeviations.filter(d => d.status !== 'closed' && d.status !== 'resolved').length, icon: <AlertTriangle className="text-amber-600" size={18} />, bg: 'bg-amber-50' },
+          { tab: 'companies', label: 'Kunder / Bedrifter', value: companies.length, icon: <Building2 className="text-emerald-600" size={18} />, bg: 'bg-emerald-50' },
         ].map((stat, i) => (
           <div 
             key={i} 
             onClick={() => setActiveTab(stat.tab as any)}
-            className={cn("p-6 rounded-[2rem] border border-neutral-200 shadow-sm cursor-pointer hover:scale-[1.02] hover:shadow-md transition-all", stat.bg)}
+            className={cn("p-4 sm:p-6 rounded-2xl sm:rounded-[2rem] border border-neutral-200 shadow-sm cursor-pointer hover:scale-[1.02] hover:shadow-md transition-all", stat.bg)}
             title={`Klikk for å åpne ${stat.label}`}
           >
-            <div className="flex items-center justify-between mb-4">
-              <div className="w-10 h-10 bg-white rounded-xl flex items-center justify-center shadow-sm">
+            <div className="flex items-center justify-between mb-2 sm:mb-4">
+              <div className="w-8 h-8 sm:w-10 sm:h-10 bg-white rounded-lg sm:rounded-xl flex items-center justify-center shadow-xs">
                 {stat.icon}
               </div>
-              <span className="text-[10px] font-bold text-neutral-400 uppercase tracking-wider bg-white/70 px-2 py-0.5 rounded-md">Se alle</span>
+              <span className="text-[9px] sm:text-[10px] font-bold text-neutral-400 uppercase tracking-wider bg-white/70 px-1.5 sm:px-2 py-0.5 rounded-md">Se alle</span>
             </div>
-            <div className="text-3xl font-black text-neutral-900">{stat.value}</div>
-            <div className="text-xs font-bold text-neutral-500 uppercase tracking-widest mt-1">{stat.label}</div>
+            <div className="text-xl sm:text-3xl font-black text-neutral-900">{stat.value}</div>
+            <div className="text-[10px] sm:text-xs font-bold text-neutral-500 uppercase tracking-wider sm:tracking-widest mt-0.5 sm:mt-1 truncate">{stat.label}</div>
           </div>
         ))}
       </div>
 
       {/* Content based on active tab */}
       {activeTab === 'agent' && (
-        <div className="space-y-8 mb-12">
+        <div className="space-y-6 sm:space-y-8 mb-12">
           {/* Autonomous Status Banner */}
-          <div className="bg-gradient-to-r from-neutral-900 via-purple-950 to-neutral-900 rounded-[2.5rem] p-8 text-white border border-purple-500/20 shadow-xl relative overflow-hidden">
+          <div className="bg-gradient-to-r from-neutral-900 via-purple-950 to-neutral-900 rounded-2xl sm:rounded-[2.5rem] p-5 sm:p-8 text-white border border-purple-500/20 shadow-xl relative overflow-hidden">
             <div className="absolute top-0 right-0 w-96 h-96 bg-purple-500/10 rounded-full blur-3xl pointer-events-none" />
             <div className="relative z-10 flex flex-col md:flex-row md:items-center justify-between gap-6">
               <div>

@@ -1343,7 +1343,7 @@ function AppContent() {
               {view === 'settings' && <SettingsPage />}
               {view === 'super-admin' && (
                 (isSuperAdmin || user?.role === 'admin' || user?.role === 'superadmin' || user?.email === 'kenkri3@gmail.com' || user?.email === 'aichatnorge@gmail.com' || user?.email === 'kenneth@aichatnorge.no' || user?.email?.toLowerCase() === 'admin@vikingmester.no' || user?.email === 'post@vikingent.no') ? (
-                  <SuperAdmin />
+                  <SuperAdmin onBackToDashboard={() => setView('dashboard')} />
                 ) : (
                   <div className="max-w-md mx-auto my-20 p-8 bg-white rounded-3xl shadow-xl border border-red-100 text-center">
                     <div className="w-16 h-16 bg-red-100 text-red-600 rounded-2xl flex items-center justify-center mx-auto mb-4">
