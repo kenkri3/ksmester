@@ -38,6 +38,8 @@ export async function GET() {
     database: isDbConnected() ? 'postgresql' : 'in-memory',
     databaseHealthy: dbHealthy,
     renderReady: true,
+    hosting: 'Railway',
+    region: 'europe-west3 (Frankfurt)',
     nobbConfigured: !!process.env.NOBB_API_KEY,
     resendConfigured,
     scraperActive: true,

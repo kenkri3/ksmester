@@ -494,17 +494,36 @@ export default function MesterAIChat({
     }
   };
 
-  // Toggle task completion
+  // Toggle task completion & recalculate project progress automatically
   const handleToggleTask = async (task: any) => {
     const nextStatus = task.status === 'completed' ? 'pending' : 'completed';
-    setTasksList(prev => prev.map(t => t.id === task.id ? { ...t, status: nextStatus } : t));
+    const updatedTasks = tasksList.map(t => t.id === task.id ? { ...t, status: nextStatus } : t);
+    setTasksList(updatedTasks);
+
+    // 🤖 Autonom fremdriftskalkulering
+    const projId = task.projectId || selectedProject?.id || projects[0]?.id;
+    if (projId) {
+      const projTasks = updatedTasks.filter(t => t.projectId === projId);
+      if (projTasks.length > 0) {
+        const completedCount = projTasks.filter(t => t.status === 'completed').length;
+        const autoProgress = Math.round((completedCount / projTasks.length) * 100);
+        const targetProj = projects.find(p => p.id === projId);
+        updateDoc(doc(db, 'projects', projId), {
+          ...(targetProj || {}),
+          progress: autoProgress,
+          lastUpdate: new Date().toISOString(),
+          updatedAt: new Date().toISOString()
+        }).catch(() => {});
+      }
+    }
+
     try {
       await updateDoc(doc(db, 'tasks', task.id), {
         status: nextStatus,
         completedAt: nextStatus === 'completed' ? new Date().toISOString() : null,
         completedBy: user?.displayName || user?.email || 'Bruker'
       });
-      toast.success(nextStatus === 'completed' ? `Oppgave fullført! 🎉` : 'Oppgave gjenåpnet');
+      toast.success(nextStatus === 'completed' ? `Oppgave fullført! 🎉 Fremdrift oppdatert automatisk.` : 'Oppgave gjenåpnet');
     } catch {
       toast.success(nextStatus === 'completed' ? `Oppgave fullført!` : 'Oppgave gjenåpnet');
     }
@@ -2228,11 +2247,11 @@ export default function MesterAIChat({
                     <div className="flex items-center justify-between">
                       <div>
                         <h4 className="text-sm font-extrabold text-navy-950 flex items-center gap-2">
-                          <Sliders size={16} className="text-purple-600" />
-                          <span>Endre Fremdrift & Hurtigjustering per Prosjekt</span>
+                          <TrendingUp size={16} className="text-emerald-600" />
+                          <span>Fremdrift & Prosjektstyring (100% Autonom)</span>
                         </h4>
                         <p className="text-xs text-slate-500">
-                          Juster byggeplassens fremdriftsprosent direkte eller start tiltak.
+                          Fremdriften beregnes og oppdateres automatisk etter hvert som oppgaver utføres på byggeplassen.
                         </p>
                       </div>
                     </div>
@@ -2242,7 +2261,11 @@ export default function MesterAIChat({
                         const projName = proj.name || (proj.id?.toLowerCase().includes('kongeveien') ? 'Totalrenovering Kongeveien 93A' : 'Byggeplass');
                         const projLocation = proj.location || 'Norge';
                         const projClient = proj.clientName || 'Privatkunde';
-                        const projProgress = typeof proj.progress === 'number' ? proj.progress : 15;
+                        const projTasks = tasksList.filter(t => t.projectId === proj.id);
+                        const completedTasksCount = projTasks.filter(t => t.status === 'completed').length;
+                        const totalTasksCount = projTasks.length;
+                        const autoCalcProgress = totalTasksCount > 0 ? Math.round((completedTasksCount / totalTasksCount) * 100) : null;
+                        const projProgress = autoCalcProgress !== null ? autoCalcProgress : (typeof proj.progress === 'number' ? proj.progress : 15);
 
                         return (
                           <div 
@@ -2254,64 +2277,79 @@ export default function MesterAIChat({
                                 <h5 className="text-xs font-black text-slate-900">{projName}</h5>
                                 <p className="text-[11px] text-slate-500">{projLocation} • {projClient}</p>
                               </div>
-                              <span className="text-xs font-black text-slate-900 bg-slate-100 px-2.5 py-1 rounded-xl border border-slate-300 shadow-2xs">
-                                {projProgress}%
-                              </span>
+                              <div className="text-right">
+                                <span className="text-xs font-black text-slate-900 bg-slate-100 px-2.5 py-1 rounded-xl border border-slate-300 shadow-2xs inline-block">
+                                  {projProgress}%
+                                </span>
+                              </div>
                             </div>
 
-                            {/* Progress slider / fast adjuster */}
-                            <div className="space-y-2">
+                            {/* Task progress breakdown */}
+                            <div className="space-y-1.5">
+                              <div className="flex items-center justify-between text-[11px] text-slate-500">
+                                <span className="flex items-center gap-1 font-bold text-slate-700 text-[10px]">
+                                  <Sparkles size={12} className="text-indigo-600" />
+                                  {totalTasksCount > 0 
+                                    ? `${completedTasksCount} av ${totalTasksCount} oppgaver fullført` 
+                                    : 'Fremdrift styrt av fullførte oppgaver'}
+                                </span>
+                                <span className="text-[9px] font-semibold text-emerald-600 bg-emerald-50 px-1.5 py-0.5 rounded border border-emerald-200/60">
+                                  Autonom
+                                </span>
+                              </div>
                               <div className="w-full bg-slate-100 rounded-full h-2.5 overflow-hidden border border-slate-200">
                                 <div 
                                   className="bg-gradient-to-r from-blue-600 to-indigo-600 h-2.5 rounded-full transition-all duration-300"
                                   style={{ width: `${projProgress}%` }}
                                 />
                               </div>
-                              <div className="flex items-center justify-between pt-1 gap-2 flex-wrap">
-                                <div className="flex items-center gap-1.5">
-                                  <button
-                                    type="button"
-                                    onClick={() => handleUpdateProjectProgress(proj.id, projProgress, -5)}
-                                    className="px-2.5 py-1 bg-white hover:bg-slate-100 border border-slate-300 shadow-2xs rounded-lg text-xs font-black text-slate-900 cursor-pointer transition-all active:scale-95"
-                                    title="Trekk fra 5% fremdrift"
-                                  >
-                                    -5%
-                                  </button>
-                                  <button
-                                    type="button"
-                                    onClick={() => handleUpdateProjectProgress(proj.id, projProgress, +5)}
-                                    className="px-2.5 py-1 bg-white hover:bg-slate-100 border border-slate-300 shadow-2xs rounded-lg text-xs font-black text-slate-900 cursor-pointer transition-all active:scale-95"
-                                    title="Legg til 5% fremdrift"
-                                  >
-                                    +5%
-                                  </button>
-                                </div>
-                                <div className="flex items-center gap-2">
-                                  <button
-                                    type="button"
-                                    onClick={() => setActiveFormView({ 
-                                      type: 'task', 
-                                      data: { projectId: proj.id, projectName: projName } 
-                                    })}
-                                    className="px-3 py-1.5 bg-indigo-600 hover:bg-indigo-700 text-white font-black rounded-xl text-xs shadow-xs transition-all cursor-pointer flex items-center gap-1.5 active:scale-95"
-                                    title="Opprett ny oppgave for dette prosjektet"
-                                  >
-                                    <Plus size={13} className="stroke-[3]" />
-                                    <span>Oppgave</span>
-                                  </button>
-                                  <button
-                                    type="button"
-                                    onClick={() => setActiveFormView({ 
-                                      type: 'change_order', 
-                                      data: { projectId: proj.id, projectName: projName } 
-                                    })}
-                                    className="px-3 py-1.5 bg-amber-500 hover:bg-amber-600 text-slate-950 font-black rounded-xl text-xs shadow-xs transition-all cursor-pointer flex items-center gap-1.5 active:scale-95"
-                                    title="Opprett ny endringsordre (NS 8406)"
-                                  >
-                                    <Plus size={13} className="stroke-[3]" />
-                                    <span>Endring</span>
-                                  </button>
-                                </div>
+                            </div>
+
+                            <div className="flex items-center justify-between pt-1 gap-2 flex-wrap">
+                              <div className="flex items-center gap-1.5" title="Manuell overstyring for leder ved behov">
+                                <span className="text-[9px] text-slate-400 font-bold uppercase tracking-wider mr-0.5">Overstyr:</span>
+                                <button
+                                  type="button"
+                                  onClick={() => handleUpdateProjectProgress(proj.id, projProgress, -5)}
+                                  className="px-2 py-0.5 bg-white hover:bg-slate-100 border border-slate-300 shadow-2xs rounded-md text-[11px] font-black text-slate-800 cursor-pointer transition-all active:scale-95"
+                                  title="Manuell overstyring: Trekk fra 5%"
+                                >
+                                  -5%
+                                </button>
+                                <button
+                                  type="button"
+                                  onClick={() => handleUpdateProjectProgress(proj.id, projProgress, +5)}
+                                  className="px-2 py-0.5 bg-white hover:bg-slate-100 border border-slate-300 shadow-2xs rounded-md text-[11px] font-black text-slate-800 cursor-pointer transition-all active:scale-95"
+                                  title="Manuell overstyring: Legg til 5%"
+                                >
+                                  +5%
+                                </button>
+                              </div>
+                              <div className="flex items-center gap-2">
+                                <button
+                                  type="button"
+                                  onClick={() => setActiveFormView({ 
+                                    type: 'task', 
+                                    data: { projectId: proj.id, projectName: projName } 
+                                  })}
+                                  className="px-3 py-1.5 bg-indigo-600 hover:bg-indigo-700 text-white font-black rounded-xl text-xs shadow-xs transition-all cursor-pointer flex items-center gap-1.5 active:scale-95"
+                                  title="Opprett ny oppgave for dette prosjektet"
+                                >
+                                  <Plus size={13} className="stroke-[3]" />
+                                  <span>Oppgave</span>
+                                </button>
+                                <button
+                                  type="button"
+                                  onClick={() => setActiveFormView({ 
+                                    type: 'change_order', 
+                                    data: { projectId: proj.id, projectName: projName } 
+                                  })}
+                                  className="px-3 py-1.5 bg-amber-500 hover:bg-amber-600 text-slate-950 font-black rounded-xl text-xs shadow-xs transition-all cursor-pointer flex items-center gap-1.5 active:scale-95"
+                                  title="Opprett ny endringsordre (NS 8406)"
+                                >
+                                  <Plus size={13} className="stroke-[3]" />
+                                  <span>Endring</span>
+                                </button>
                               </div>
                             </div>
                           </div>

@@ -1163,15 +1163,27 @@ export default function Settings() {
                 </div>
 
                 <div className="p-6 bg-neutral-900 text-white rounded-2xl">
-                  <h4 className="font-bold mb-4">Produksjonsmiljø</h4>
-                  <div className="grid grid-cols-2 gap-4">
+                  <div className="flex items-center justify-between mb-4">
+                    <h4 className="font-bold flex items-center gap-2">
+                      <span className="w-2.5 h-2.5 rounded-full bg-emerald-400 animate-pulse" />
+                      Produksjonsmiljø
+                    </h4>
+                    <span className="text-[10px] uppercase font-black tracking-widest px-2.5 py-1 rounded bg-emerald-500/20 text-emerald-300 border border-emerald-500/30">
+                      Railway Cloud
+                    </span>
+                  </div>
+                  <div className="grid grid-cols-1 sm:grid-cols-3 gap-4">
+                    <div className="p-4 bg-white/5 rounded-xl border border-white/10">
+                      <div className="text-[10px] text-neutral-400 uppercase font-black mb-1">Plattform</div>
+                      <div className="text-sm font-bold text-white">Railway (PaaS)</div>
+                    </div>
                     <div className="p-4 bg-white/5 rounded-xl border border-white/10">
                       <div className="text-[10px] text-neutral-400 uppercase font-black mb-1">Region</div>
-                      <div className="text-sm font-bold">europe-west2 (London)</div>
+                      <div className="text-sm font-bold text-white">europe-west3 (Frankfurt)</div>
                     </div>
                     <div className="p-4 bg-white/5 rounded-xl border border-white/10">
                       <div className="text-[10px] text-neutral-400 uppercase font-black mb-1">Database</div>
-                      <div className="text-sm font-bold">PostgreSQL (Relasjonell Cloud DB)</div>
+                      <div className="text-sm font-bold text-white">PostgreSQL (Railway Managed DB)</div>
                     </div>
                   </div>
                 </div>

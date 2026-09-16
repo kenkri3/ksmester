@@ -1,6 +1,7 @@
 import { NextRequest, NextResponse } from 'next/server';
 import { getCollectionItemById, updateCollectionItem, deleteCollectionItem, saveCollectionItem } from '@/src/lib/server/db';
 import { getUserFromRequest, isUserAdmin } from '@/src/lib/server/auth';
+import { recalculateProjectProgress } from '@/src/lib/server/progressEngine';
 
 const ALLOWED_COLLECTIONS = [
   'users', 'projects', 'deviations', 'sja_reports',
@@ -182,6 +183,13 @@ export async function PUT(
     };
 
     const item = await updateCollectionItem(targetCollection, id, updatedData);
+
+    // 🤖 Autonom fremdriftskalkulering: Oppdater prosjektfremdrift automatisk hvis oppgave endres
+    if (targetCollection === 'tasks' && (item.projectId || existing?.projectId)) {
+      const projId = item.projectId || existing?.projectId;
+      recalculateProjectProgress(projId).catch(() => {});
+    }
+
     return NextResponse.json(item);
   } catch (err: any) {
     console.error('Data PUT error:', err);
@@ -226,7 +234,11 @@ export async function DELETE(
       }
     }
 
+    const existingTask = targetCollection === 'tasks' ? await getCollectionItemById('tasks', id) : null;
     await deleteCollectionItem(targetCollection, id);
+    if (existingTask?.projectId) {
+      recalculateProjectProgress(existingTask.projectId).catch(() => {});
+    }
     return NextResponse.json({ success: true, id });
   } catch (err: any) {
     console.error('Data DELETE error:', err);

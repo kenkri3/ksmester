@@ -1,6 +1,7 @@
 import { NextRequest, NextResponse } from 'next/server';
 import { getCollectionItems, saveCollectionItem } from '@/src/lib/server/db';
 import { getUserFromRequest, isUserAdmin } from '@/src/lib/server/auth';
+import { recalculateProjectProgress } from '@/src/lib/server/progressEngine';
 
 const ALLOWED_COLLECTIONS = [
   'users', 'projects', 'deviations', 'sja_reports',
@@ -128,6 +129,12 @@ export async function POST(
     };
 
     const item = await saveCollectionItem(targetCollection, itemData);
+
+    // 🤖 Autonom fremdriftskalkulering: Oppdater prosjektfremdrift automatisk hvis ny oppgave opprettes
+    if (targetCollection === 'tasks' && item.projectId) {
+      recalculateProjectProgress(item.projectId).catch(() => {});
+    }
+
     return NextResponse.json(item);
   } catch (err: any) {
     console.error('Data POST error:', err);
