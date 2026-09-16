@@ -45,7 +45,12 @@ import {
   ListTodo,
   CheckSquare,
   Square,
-  Sliders
+  Sliders,
+  Shield,
+  Smartphone,
+  Home,
+  ChevronLeft,
+  Globe
 } from 'lucide-react';
 import InChatWorkspace, { InChatFormType } from './InChatWorkspace';
 import { cn } from '../lib/utils';
@@ -80,6 +85,12 @@ interface MesterAIChatProps {
   recentActivities?: any[];
   tasks?: any[];
   initialPrompt?: string;
+  isEmbedded?: boolean;
+  onSelectProject?: (project: any) => void;
+  onOpenPortal?: (project: any) => void;
+  onOpenCreateProject?: () => void;
+  onOpenSmartSearch?: () => void;
+  onOpenAllModules?: () => void;
   onApproveChangeOrder?: (id: string) => void;
   onRejectChangeOrder?: (id: string) => void;
   onDeleteChangeOrder?: (id: string, title: string) => void;
@@ -92,6 +103,7 @@ interface MesterAIChatProps {
   onOpenSJAModal?: (data?: any) => void;
   onOpenAIVision?: () => void;
   onPromptHandled?: () => void;
+  onNavigate?: (tab: string) => void;
 }
 
 export default function MesterAIChat({
@@ -106,6 +118,12 @@ export default function MesterAIChat({
   recentActivities = [],
   tasks = [],
   initialPrompt,
+  isEmbedded = false,
+  onSelectProject,
+  onOpenPortal,
+  onOpenCreateProject,
+  onOpenSmartSearch,
+  onOpenAllModules,
   onApproveChangeOrder,
   onRejectChangeOrder,
   onDeleteChangeOrder,
@@ -117,7 +135,8 @@ export default function MesterAIChat({
   onOpenChangeOrderModal,
   onOpenSJAModal,
   onOpenAIVision,
-  onPromptHandled
+  onPromptHandled,
+  onNavigate
 }: MesterAIChatProps) {
   const { user, isSuperAdmin } = useAuth();
   const isWorker = user?.role === 'worker' || user?.role === 'external_worker';
@@ -614,9 +633,9 @@ export default function MesterAIChat({
     handleSendMessage(prompt);
   };
 
-  if (!isOpen) return null;
+  if (!isOpen && !isEmbedded) return null;
 
-  if (isMinimized) {
+  if (isMinimized && !isEmbedded) {
     return (
       <div className="fixed bottom-6 right-6 z-50 animate-in slide-in-from-bottom-5 duration-200">
         <div 
@@ -660,24 +679,81 @@ export default function MesterAIChat({
 
   return (
     <div 
-      className="fixed inset-0 z-50 flex items-center justify-center p-2 sm:p-4 md:p-6 bg-slate-950/70 backdrop-blur-md animate-in fade-in duration-200"
-      onClick={onClose}
+      className={cn(
+        isEmbedded 
+          ? "w-full flex-1 flex flex-col bg-slate-100 min-h-[calc(100dvh-4rem)] md:h-[calc(100vh-4rem)] overflow-hidden relative" 
+          : "fixed inset-0 z-50 flex items-center justify-center p-2 sm:p-4 md:p-6 bg-slate-950/70 backdrop-blur-md animate-in fade-in duration-200"
+      )}
+      onClick={isEmbedded ? undefined : onClose}
     >
-      <motion.div 
-        initial={{ opacity: 0, scale: 0.96, y: 15 }}
-        animate={{ opacity: 1, scale: 1, y: 0 }}
-        exit={{ opacity: 0, scale: 0.96, y: 15 }}
-        transition={{ duration: 0.2 }}
+      <div 
         onClick={(e) => e.stopPropagation()}
         className={cn(
-          "bg-white rounded-3xl border border-slate-200 shadow-2xl overflow-hidden flex flex-col transition-all",
-          isFullscreen 
-            ? "w-[99vw] h-[97vh] max-w-[1700px] max-h-[98vh]" 
-            : "w-[96vw] max-w-6xl h-[92vh] max-h-[890px]"
+          "bg-white flex flex-col transition-all overflow-hidden",
+          isEmbedded
+            ? "w-full h-full flex-1 rounded-none md:rounded-3xl border-0 md:border md:border-slate-200 md:shadow-lg"
+            : cn(
+                "rounded-3xl border border-slate-200 shadow-2xl",
+                isFullscreen 
+                  ? "w-[99vw] h-[97vh] max-w-[1700px] max-h-[98vh]" 
+                  : "w-[96vw] max-w-6xl h-[92vh] max-h-[890px]"
+              )
         )}
       >
-        {/* Top Header & Navigation Bar */}
-        <div className="px-4 sm:px-6 py-3.5 bg-gradient-to-r from-navy-950 via-slate-900 to-navy-950 text-white flex flex-col md:flex-row md:items-center justify-between gap-3 border-b border-white/10 shrink-0">
+        {/* 📱 1. MOBILE NATIVE APP HEADER (Visible only on mobile screens) */}
+        <div className="flex md:hidden items-center justify-between px-3.5 py-2.5 bg-navy-950 text-white border-b border-white/10 shrink-0">
+          <div className="flex items-center gap-2.5 min-w-0">
+            <div className="w-8 h-8 rounded-xl bg-gradient-to-tr from-electric-600 to-purple-500 flex items-center justify-center text-white shadow-sm font-black text-xs shrink-0">
+              {user?.displayName ? user.displayName.charAt(0).toUpperCase() : "M"}
+            </div>
+            <div className="min-w-0">
+              <div className="flex items-center gap-1.5">
+                <span className="text-xs font-black tracking-tight text-white truncate">
+                  MesterAI
+                </span>
+                <span className="w-2 h-2 rounded-full bg-emerald-400 animate-pulse shrink-0" />
+              </div>
+              <p className="text-[10px] text-slate-400 truncate">
+                {selectedProject?.name || `${projects.length} byggeplasser`}
+              </p>
+            </div>
+          </div>
+
+          <div className="flex items-center gap-1 shrink-0">
+            {onOpenSmartSearch && (
+              <button
+                type="button"
+                onClick={onOpenSmartSearch}
+                className="p-2 text-slate-300 hover:text-white rounded-xl hover:bg-white/10 transition-colors cursor-pointer"
+                title="Søk"
+              >
+                <Search size={16} />
+              </button>
+            )}
+            {onOpenAllModules && (
+              <button
+                type="button"
+                onClick={onOpenAllModules}
+                className="p-2 text-slate-300 hover:text-white rounded-xl hover:bg-white/10 transition-colors cursor-pointer"
+                title="Alle Verktøy"
+              >
+                <Layers size={16} />
+              </button>
+            )}
+            {!isEmbedded && onClose && (
+              <button
+                type="button"
+                onClick={onClose}
+                className="p-2 text-slate-300 hover:text-white rounded-xl hover:bg-white/10 transition-colors cursor-pointer"
+              >
+                <X size={18} />
+              </button>
+            )}
+          </div>
+        </div>
+
+        {/* 💻 2. DESKTOP & TABLET HEADER & NAVIGATION BAR (Visible md and up) */}
+        <div className="hidden md:flex px-4 sm:px-6 py-3.5 bg-gradient-to-r from-navy-950 via-slate-900 to-navy-950 text-white flex-col md:flex-row md:items-center justify-between gap-3 border-b border-white/10 shrink-0">
           <div className="flex items-center justify-between gap-3">
             <div className="flex items-center gap-3 min-w-0">
               <div className="w-10 h-10 rounded-2xl bg-gradient-to-tr from-electric-600 to-purple-500 flex items-center justify-center text-white shadow-md shadow-electric-500/20 shrink-0">
@@ -686,42 +762,28 @@ export default function MesterAIChat({
               <div className="min-w-0">
                 <div className="flex items-center gap-2 flex-wrap">
                   <h3 className="text-sm sm:text-base font-black tracking-tight text-white">
-                    MesterAI Arbeidsstasjon
+                    MesterAI Kontrollsenter
                   </h3>
                   <span className="inline-flex items-center gap-1.5 px-2 py-0.5 rounded-full text-[10px] font-bold bg-emerald-500/20 text-emerald-300 border border-emerald-500/30">
                     <span className="w-1.5 h-1.5 rounded-full bg-emerald-400 animate-pulse" />
                     100% Autonom
                   </span>
+                  {selectedProject && (
+                    <span className="inline-flex items-center gap-1 px-2 py-0.5 rounded-full text-[10px] font-bold bg-white/10 text-slate-200 border border-white/10">
+                      <Building2 size={11} className="text-electric-400" />
+                      <span className="truncate max-w-[140px]">{selectedProject.name}</span>
+                    </span>
+                  )}
                 </div>
                 <p className="text-[11px] text-slate-300 truncate">
-                  Full styring av byggeplass, tilbud, endringsordrer (NS 8406) og faglige råd
+                  Full styring av byggeplass, oppgaver, tilbud, endringsordrer (NS 8406) og faglige råd
                 </p>
               </div>
-            </div>
-
-            {/* Mobile close buttons */}
-            <div className="flex items-center gap-1 md:hidden">
-              <button
-                type="button"
-                onClick={() => setIsFullscreen(!isFullscreen)}
-                className="p-2 text-slate-300 hover:text-white"
-              >
-                {isFullscreen ? <Minimize2 size={16} /> : <Maximize2 size={16} />}
-              </button>
-              {onClose && (
-                <button
-                  type="button"
-                  onClick={onClose}
-                  className="p-2 text-slate-300 hover:text-white"
-                >
-                  <X size={18} />
-                </button>
-              )}
             </div>
           </div>
 
           {/* Central Workspace View Mode Selector with RBAC */}
-          <div className="flex items-center gap-1.5 bg-white/10 p-1 rounded-2xl backdrop-blur-md overflow-x-auto self-start md:self-center shrink-0">
+          <div className="flex items-center gap-1.5 bg-white/10 p-1 rounded-2xl backdrop-blur-md overflow-x-auto shrink-0">
             <button
               type="button"
               onClick={() => { setActiveTab('control_center'); setActiveFormView(null); }}
@@ -832,7 +894,54 @@ export default function MesterAIChat({
           </div>
 
           {/* Right Header Actions */}
-          <div className="hidden md:flex items-center gap-1.5 shrink-0">
+          <div className="flex items-center gap-2 shrink-0">
+            {onOpenOmnichannelModal && (
+              <button
+                type="button"
+                onClick={onOpenOmnichannelModal}
+                className="p-2 text-slate-300 hover:text-white hover:bg-white/10 rounded-xl transition-all cursor-pointer"
+                title="Omnichannel Lytter (Discord, Slack, Teams, E-post)"
+              >
+                <Radio size={15} className="text-emerald-400" />
+              </button>
+            )}
+
+            {onOpenSmartSearch && (
+              <button
+                type="button"
+                onClick={onOpenSmartSearch}
+                className="flex items-center gap-1.5 px-3 py-1.5 rounded-xl text-xs font-bold text-slate-300 hover:text-white hover:bg-white/10 transition-all cursor-pointer"
+              >
+                <Search size={14} />
+                <span>Søk</span>
+                <kbd className="px-1.5 py-0.5 bg-white/10 border border-white/20 rounded text-[10px] text-slate-300">⌘K</kbd>
+              </button>
+            )}
+
+            {onOpenAllModules && (
+              <button
+                type="button"
+                onClick={onOpenAllModules}
+                className="flex items-center gap-1.5 px-3 py-1.5 rounded-xl text-xs font-bold text-slate-300 hover:text-white hover:bg-white/10 transition-all cursor-pointer"
+                title="Se alle 20 moduler"
+              >
+                <Layers size={14} />
+                <span>Moduler</span>
+              </button>
+            )}
+
+            {isSuperAdmin && (
+              <button
+                type="button"
+                onClick={() => window.dispatchEvent(new CustomEvent("navigate_view", { detail: { view: "super-admin" } }))}
+                className="flex items-center gap-1.5 px-3 py-1.5 rounded-xl text-xs font-black transition-all bg-gradient-to-r from-rose-600 to-pink-600 hover:from-rose-500 hover:to-pink-500 text-white shadow-sm cursor-pointer"
+                title="SuperAdmin"
+              >
+                <Shield size={13} />
+                <span>SuperAdmin</span>
+              </button>
+            )}
+
             <button
               type="button"
               onClick={() => setIsSplitView(!isSplitView)}
@@ -843,7 +952,7 @@ export default function MesterAIChat({
               title={isSplitView ? "Enkeltvisning (full bredde)" : "Delt visning (Samtale + Oversikt)"}
             >
               <Columns size={15} />
-              <span className="text-[11px]">{isSplitView ? 'Delt visning' : 'Full'}</span>
+              <span className="text-[11px]">{isSplitView ? 'Delt' : 'Full'}</span>
             </button>
 
             <button
@@ -855,33 +964,27 @@ export default function MesterAIChat({
               <Trash2 size={15} />
             </button>
 
-            <button
-              type="button"
-              onClick={() => setIsFullscreen(!isFullscreen)}
-              className="p-2 text-slate-300 hover:text-white hover:bg-white/10 rounded-xl transition-all cursor-pointer"
-              title={isFullscreen ? "Standard størrelse" : "Fullskjerm"}
-            >
-              {isFullscreen ? <Minimize2 size={16} /> : <Maximize2 size={16} />}
-            </button>
-
-            <button
-              type="button"
-              onClick={() => setIsMinimized(true)}
-              className="p-2 text-slate-300 hover:text-white hover:bg-white/10 rounded-xl transition-all cursor-pointer"
-              title="Minimer"
-            >
-              <Minus size={16} />
-            </button>
-
-            {onClose && (
-              <button
-                type="button"
-                onClick={onClose}
-                className="p-2 text-slate-300 hover:text-white hover:bg-white/10 rounded-xl transition-all cursor-pointer"
-                title="Lukk arbeidsstasjon"
-              >
-                <X size={18} />
-              </button>
+            {!isEmbedded && (
+              <>
+                <button
+                  type="button"
+                  onClick={() => setIsFullscreen(!isFullscreen)}
+                  className="p-2 text-slate-300 hover:text-white hover:bg-white/10 rounded-xl transition-all cursor-pointer"
+                  title={isFullscreen ? "Standard størrelse" : "Fullskjerm"}
+                >
+                  {isFullscreen ? <Minimize2 size={16} /> : <Maximize2 size={16} />}
+                </button>
+                {onClose && (
+                  <button
+                    type="button"
+                    onClick={onClose}
+                    className="p-2 text-slate-300 hover:text-white hover:bg-white/10 rounded-xl transition-all cursor-pointer"
+                    title="Lukk"
+                  >
+                    <X size={18} />
+                  </button>
+                )}
+              </>
             )}
           </div>
         </div>
@@ -892,7 +995,7 @@ export default function MesterAIChat({
           {(activeTab === 'chat' || (isSplitView && !activeFormView)) && (
             <div className={cn(
               "flex flex-col bg-white border-r border-slate-200 overflow-hidden transition-all",
-              isSplitView && activeTab !== 'chat' ? "w-full md:w-[48%] lg:w-[50%]" : "w-full"
+              isSplitView && activeTab !== 'chat' ? "hidden md:flex md:w-[48%] lg:w-[50%]" : "w-full flex-1"
             )}>
               {/* Active Project Banner */}
               {selectedProject && (
@@ -1002,7 +1105,7 @@ export default function MesterAIChat({
               </div>
 
               {/* Chat Input Field & Toolbox Launcher */}
-              <div className="p-3 sm:p-4 bg-white border-t border-slate-200 shrink-0">
+              <div className="p-3 sm:p-4 bg-white border-t border-slate-200 shrink-0 mb-16 md:mb-0">
                 <form 
                   onSubmit={(e) => {
                     e.preventDefault();
@@ -1055,8 +1158,9 @@ export default function MesterAIChat({
 
           {/* Right Column / Full Body: Active Form OR Overview Views */}
           <div className={cn(
-            "flex-1 overflow-y-auto flex flex-col bg-slate-50/70 p-4 sm:p-6 transition-all custom-scrollbar",
-            isSplitView && activeTab !== 'chat' ? "md:w-[52%] lg:w-[50%]" : "w-full"
+            "flex-1 overflow-y-auto flex flex-col bg-slate-50/70 p-4 sm:p-6 transition-all custom-scrollbar pb-28 md:pb-6",
+            activeTab === 'chat' && !activeFormView ? "hidden md:flex md:w-[52%] lg:w-[50%]" : "w-full",
+            isSplitView && activeTab !== 'chat' ? "md:w-[52%] lg:w-[50%]" : ""
           )}>
             {/* 1. IN-CHAT WORKSPACE FORM VIEW */}
             {activeFormView ? (
@@ -1533,6 +1637,16 @@ export default function MesterAIChat({
                     </p>
                   </div>
                   <div className="flex items-center gap-2">
+                    {onOpenCreateProject && (
+                      <button
+                        type="button"
+                        onClick={onOpenCreateProject}
+                        className="flex items-center gap-1.5 px-3 py-1.5 bg-gradient-to-r from-blue-600 to-electric-600 hover:from-blue-500 hover:to-electric-500 text-white rounded-xl text-xs font-black shadow-xs cursor-pointer shrink-0"
+                      >
+                        <Plus size={13} />
+                        <span>+ Nytt Prosjekt</span>
+                      </button>
+                    )}
                     <div className="relative">
                       <input 
                         type="text"
@@ -1621,7 +1735,28 @@ export default function MesterAIChat({
                           <span>Spør AI om prosjektet</span>
                         </button>
 
-                        <div className="flex items-center gap-1.5">
+                        <div className="flex items-center gap-1.5 flex-wrap">
+                          {onSelectProject && (
+                            <button
+                              type="button"
+                              onClick={() => onSelectProject(p)}
+                              className="px-3 py-1.5 bg-navy-950 hover:bg-navy-800 text-white rounded-xl text-xs font-black transition-all flex items-center gap-1.5 shadow-xs cursor-pointer"
+                            >
+                              <ExternalLink size={13} />
+                              <span>Åpne Prosjekt</span>
+                            </button>
+                          )}
+                          {onOpenPortal && (
+                            <button
+                              type="button"
+                              onClick={() => onOpenPortal(p)}
+                              className="px-2.5 py-1.5 bg-blue-50 hover:bg-blue-100 text-blue-700 rounded-xl text-xs font-bold transition-all flex items-center gap-1 cursor-pointer"
+                              title="Åpne Kundeportal for dette prosjektet"
+                            >
+                              <Globe size={13} />
+                              <span className="hidden sm:inline">Kundeportal</span>
+                            </button>
+                          )}
                           <button
                             type="button"
                             onClick={() => onOpenAIVision?.()}
@@ -2098,7 +2233,107 @@ export default function MesterAIChat({
             )}
           </div>
         </div>
-      </motion.div>
+
+        {/* NATIVE MOBILE BOTTOM APP DOCK (md:hidden) */}
+        <div className="fixed bottom-0 left-0 right-0 z-40 bg-navy-950/95 backdrop-blur-xl border-t border-white/10 md:hidden px-2 py-1.5 flex items-center justify-around shadow-2xl safe-bottom">
+          {/* 1. Kontroll */}
+          <button
+            type="button"
+            onClick={() => { setActiveTab('control_center'); setActiveFormView(null); }}
+            className={cn(
+              "flex flex-col items-center justify-center gap-1 transition-all py-1 px-2.5 rounded-xl cursor-pointer",
+              activeTab === 'control_center' && !activeFormView
+                ? "text-electric-400 font-black"
+                : "text-slate-400 hover:text-white"
+            )}
+          >
+            <Sparkles size={19} className={activeTab === 'control_center' && !activeFormView ? "text-electric-400 scale-110" : "text-slate-400"} />
+            <span className="text-[10px] font-bold tracking-tight">Kontroll</span>
+          </button>
+
+          {/* 2. MesterAI Chat */}
+          <button
+            type="button"
+            onClick={() => { setActiveTab('chat'); setActiveFormView(null); }}
+            className={cn(
+              "flex flex-col items-center justify-center gap-1 transition-all py-1 px-2.5 rounded-xl cursor-pointer",
+              activeTab === 'chat' && !activeFormView
+                ? "text-electric-400 font-black"
+                : "text-slate-400 hover:text-white"
+            )}
+          >
+            <MessageSquare size={19} className={activeTab === 'chat' && !activeFormView ? "text-electric-400 scale-110" : "text-slate-400"} />
+            <span className="text-[10px] font-bold tracking-tight">MesterAI</span>
+          </button>
+
+          {/* 3. CENTER ELEVATED PUSH-TO-TALK BUTTON */}
+          <div className="relative -top-5 flex flex-col items-center">
+            <button
+              type="button"
+              onClick={handleVoiceCommand}
+              className={cn(
+                "w-13 h-13 rounded-full flex items-center justify-center shadow-lg transition-transform active:scale-95 cursor-pointer border-3 border-navy-900",
+                isListeningMic 
+                  ? "bg-rose-500 text-white animate-pulse shadow-rose-500/50 scale-110" 
+                  : "bg-gradient-to-tr from-electric-600 via-blue-500 to-cyan-400 text-white shadow-electric-500/40 hover:scale-105"
+              )}
+              title="Snakk med MesterAI"
+            >
+              {isListeningMic ? <MicOff size={24} /> : <Mic size={24} />}
+            </button>
+            <span className="text-[9px] font-black text-slate-300 mt-1 uppercase tracking-wider">
+              {isListeningMic ? 'Lytter...' : 'Snakk'}
+            </span>
+          </div>
+
+          {/* 4. Prosjekter */}
+          <button
+            type="button"
+            onClick={() => { setActiveTab('projects'); setActiveFormView(null); }}
+            className={cn(
+              "flex flex-col items-center justify-center gap-1 transition-all py-1 px-2.5 rounded-xl cursor-pointer",
+              activeTab === 'projects' && !activeFormView
+                ? "text-electric-400 font-black"
+                : "text-slate-400 hover:text-white"
+            )}
+          >
+            <HardHat size={19} className={activeTab === 'projects' && !activeFormView ? "text-electric-400 scale-110" : "text-slate-400"} />
+            <span className="text-[10px] font-bold tracking-tight">Prosjekt</span>
+          </button>
+
+          {/* 5. Verktøy (Worker) / Tilbud & Adm (Leader) */}
+          <button
+            type="button"
+            onClick={() => {
+              if (isWorker) {
+                setActiveTab('toolbox');
+                setActiveFormView(null);
+              } else {
+                setActiveTab('admin');
+                setActiveFormView(null);
+              }
+            }}
+            className={cn(
+              "flex flex-col items-center justify-center gap-1 transition-all py-1 px-2.5 rounded-xl cursor-pointer",
+              (activeTab === 'toolbox' || activeTab === 'admin') && !activeFormView
+                ? "text-electric-400 font-black"
+                : "text-slate-400 hover:text-white"
+            )}
+          >
+            {isWorker ? (
+              <>
+                <Sliders size={19} className={activeTab === 'toolbox' ? "text-electric-400 scale-110" : "text-slate-400"} />
+                <span className="text-[10px] font-bold tracking-tight">Verktøy</span>
+              </>
+            ) : (
+              <>
+                <FileText size={19} className={activeTab === 'admin' ? "text-electric-400 scale-110" : "text-slate-400"} />
+                <span className="text-[10px] font-bold tracking-tight">Tilbud</span>
+              </>
+            )}
+          </button>
+        </div>
+      </div>
     </div>
   );
 }

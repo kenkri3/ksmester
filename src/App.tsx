@@ -1291,7 +1291,7 @@ function AppContent() {
       </nav>
 
       {/* Main Content */}
-      <main className={cn("pt-16", user ? "pb-24 md:pb-8" : "")}>
+      <main className={cn("pt-16", user && view !== 'dashboard' ? "pb-24 md:pb-8" : "")}>
         <AnimatePresence mode="wait">
           <motion.div
             key={view}
@@ -1377,7 +1377,7 @@ function AppContent() {
       </main>
 
       {/* Native Mobile Bottom Navigation Dock (Fixed at bottom on phones) */}
-      {user && !['offer', 'invite', 'customer-portal'].includes(view) && (
+      {user && !['offer', 'invite', 'customer-portal', 'dashboard'].includes(view) && (
         <MobileBottomNav
           currentView={view}
           activeTab={dashboardTab}
