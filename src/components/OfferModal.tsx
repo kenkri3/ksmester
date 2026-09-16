@@ -525,7 +525,7 @@ const OfferModal: React.FC<OfferModalProps> = ({ isOpen, onClose, initialData })
                             className="w-full p-2 bg-neutral-50 border border-neutral-200 rounded-lg outline-none text-xs sm:text-sm font-bold text-neutral-900"
                           />
                         </div>
-                        <div className="col-span-4 md:col-span-2 space-y-1">
+                        <div className="col-span-6 sm:col-span-4 md:col-span-2 space-y-1">
                           <label className="text-[10px] font-black uppercase tracking-widest text-neutral-400 ml-1">Antall</label>
                           <input 
                             type="number" 
@@ -534,7 +534,7 @@ const OfferModal: React.FC<OfferModalProps> = ({ isOpen, onClose, initialData })
                             className="w-full p-2 bg-neutral-50 border border-neutral-200 rounded-lg outline-none text-xs sm:text-sm font-bold text-neutral-900"
                           />
                         </div>
-                        <div className="col-span-4 md:col-span-2 space-y-1">
+                        <div className="col-span-6 sm:col-span-4 md:col-span-2 space-y-1">
                           <label className="text-[10px] font-black uppercase tracking-widest text-neutral-400 ml-1">Enhet</label>
                           <input 
                             type="text" 
@@ -543,7 +543,7 @@ const OfferModal: React.FC<OfferModalProps> = ({ isOpen, onClose, initialData })
                             className="w-full p-2 bg-neutral-50 border border-neutral-200 rounded-lg outline-none text-xs sm:text-sm font-bold text-neutral-900"
                           />
                         </div>
-                        <div className="col-span-4 md:col-span-2 space-y-1">
+                        <div className="col-span-12 sm:col-span-4 md:col-span-2 space-y-1">
                           <label className="text-[10px] font-black uppercase tracking-widest text-neutral-400 ml-1">Pris/Enh (NOK)</label>
                           <input 
                             type="number" 

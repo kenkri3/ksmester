@@ -137,7 +137,7 @@ export default function ChangeOrderModal({
           initial={{ opacity: 0, scale: 0.95 }}
           animate={{ opacity: 1, scale: 1 }}
           exit={{ opacity: 0, scale: 0.95 }}
-          className="bg-white rounded-3xl shadow-2xl max-w-4xl w-full p-6 sm:p-8 max-h-[90vh] flex flex-col border border-neutral-200"
+          className="bg-white rounded-3xl shadow-2xl max-w-4xl w-full p-4 sm:p-8 max-h-[90vh] flex flex-col border border-neutral-200"
         >
           {/* Header */}
           <div className="flex justify-between items-start pb-6 border-b border-neutral-100">
@@ -164,7 +164,7 @@ export default function ChangeOrderModal({
           </div>
 
           {/* Quick Metrics Bar */}
-          <div className="grid grid-cols-3 gap-4 my-6">
+          <div className="grid grid-cols-1 sm:grid-cols-3 gap-3 sm:gap-4 my-4 sm:my-6">
             <div className="p-4 bg-neutral-50 rounded-2xl border border-neutral-100">
               <div className="text-[10px] font-black uppercase tracking-widest text-neutral-400">{t('approved_addition', 'Godkjent tillegg')}</div>
               <div className="text-xl font-black text-emerald-600">

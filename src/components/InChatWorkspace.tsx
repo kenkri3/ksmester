@@ -70,21 +70,21 @@ export default function InChatWorkspace({
   return (
     <div className="flex-1 flex flex-col bg-slate-50 overflow-hidden animate-in fade-in slide-in-from-bottom-3 duration-200">
       {/* Form Header */}
-      <div className="px-4 sm:px-6 py-3.5 bg-white border-b border-slate-200 flex items-center justify-between gap-3 shrink-0 shadow-xs">
-        <div className="flex items-center gap-3">
+      <div className="px-3 sm:px-6 py-3 bg-white border-b border-slate-200 flex items-center justify-between gap-2 shrink-0 shadow-xs sticky top-0 z-20">
+        <div className="flex items-center gap-2 sm:gap-3 min-w-0">
           <button
             type="button"
             onClick={onClose}
-            className="p-1.5 -ml-1 text-slate-500 hover:text-navy-900 hover:bg-slate-100 rounded-xl transition-all flex items-center gap-1 text-xs font-bold cursor-pointer"
+            className="p-1.5 -ml-1 text-slate-600 hover:text-navy-900 hover:bg-slate-100 rounded-xl transition-all flex items-center gap-1 text-xs font-bold cursor-pointer shrink-0"
             title="Gå tilbake til samtalen"
           >
             <ArrowLeft size={16} />
-            <span className="hidden sm:inline">Samtale</span>
+            <span className="text-xs">Tilbake</span>
           </button>
 
-          <div className="h-4 w-px bg-slate-200" />
+          <div className="h-4 w-px bg-slate-200 shrink-0" />
 
-          <div className="flex items-center gap-2">
+          <div className="flex items-center gap-2 min-w-0">
             {formType === 'offer' && (
               <>
                 <div className="w-7 h-7 rounded-lg bg-emerald-500 text-white flex items-center justify-center">
@@ -176,7 +176,7 @@ export default function InChatWorkspace({
       </div>
 
       {/* Form Body */}
-      <div className="flex-1 overflow-y-auto p-4 sm:p-6 custom-scrollbar">
+      <div className="flex-1 overflow-y-auto px-3.5 py-4 sm:p-6 custom-scrollbar pb-32 sm:pb-8">
         {formType === 'offer' && (
           <InChatOfferForm
             initialData={initialData}
@@ -312,18 +312,27 @@ function AIFormAutofillAssistant({ formType, projectId, onApply }: AIFormAutofil
     const textToRun = (customPrompt || promptText).trim();
     setIsLoading(true);
     try {
+      const token = typeof window !== 'undefined' ? (localStorage.getItem('token') || localStorage.getItem('auth_token')) : null;
       const res = await fetch('/api/agent/dispatch', {
         method: 'POST',
-        headers: { 'Content-Type': 'application/json' },
+        headers: {
+          'Content-Type': 'application/json',
+          ...(token ? { 'Authorization': `Bearer ${token}` } : {})
+        },
+        credentials: 'include',
         body: JSON.stringify({
           action: 'autofill_form',
           formType,
           prompt: textToRun,
-          projectId
+          projectId,
+          userToken: token
         })
       });
 
-      if (!res.ok) throw new Error(`Status ${res.status}`);
+      if (!res.ok) {
+        const errJson = await res.json().catch(() => null);
+        throw new Error(errJson?.error || `Status ${res.status}`);
+      }
       const json = await res.json();
       if (json.data) {
         onApply(json.data);
@@ -333,7 +342,7 @@ function AIFormAutofillAssistant({ formType, projectId, onApply }: AIFormAutofil
       }
     } catch (e: any) {
       console.error('Autofill error:', e);
-      toast.error('Autofyll feilet. Vennligst prøv igjen.');
+      toast.error(e.message || 'Autofyll feilet. Vennligst prøv igjen.');
     } finally {
       setIsLoading(false);
     }
@@ -350,27 +359,27 @@ function AIFormAutofillAssistant({ formType, projectId, onApply }: AIFormAutofil
   }[formType] || 'Beskriv hva AI skal fylle ut...';
 
   return (
-    <div className="p-4 bg-gradient-to-r from-navy-950 via-slate-900 to-indigo-950 rounded-2xl text-white shadow-sm border border-indigo-500/20 space-y-3 mb-2">
+    <div className="p-3.5 sm:p-4 bg-gradient-to-r from-navy-950 via-slate-900 to-indigo-950 rounded-2xl text-white shadow-sm border border-indigo-500/20 space-y-3 mb-3 max-w-full overflow-hidden">
       <div className="flex items-center justify-between">
-        <div className="flex items-center gap-2">
-          <div className="w-7 h-7 rounded-xl bg-electric-500/20 text-electric-300 border border-electric-500/30 flex items-center justify-center">
+        <div className="flex items-center gap-2 min-w-0">
+          <div className="w-7 h-7 rounded-xl bg-electric-500/20 text-electric-300 border border-electric-500/30 flex items-center justify-center shrink-0">
             <Sparkles size={14} className="text-electric-300 animate-pulse" />
           </div>
-          <div>
-            <h5 className="text-xs font-black tracking-tight text-white flex items-center gap-1.5">
+          <div className="min-w-0">
+            <h5 className="text-xs font-black tracking-tight text-white flex flex-wrap items-center gap-1.5">
               <span>MesterAI Autofyll & Historikk</span>
-              <span className="px-1.5 py-0.2 rounded-full text-[9px] font-black bg-emerald-500/20 text-emerald-300 border border-emerald-500/30">
+              <span className="px-1.5 py-0.2 rounded-full text-[9px] font-black bg-emerald-500/20 text-emerald-300 border border-emerald-500/30 shrink-0">
                 100% Autonom
               </span>
             </h5>
-            <p className="text-[10px] text-slate-300">
+            <p className="text-[10px] text-slate-300 leading-tight mt-0.5">
               Beregner timer, priser og standardtekst basert på historiske kalkyler og NS 8406.
             </p>
           </div>
         </div>
       </div>
 
-      <div className="flex items-center gap-2">
+      <div className="flex flex-col sm:flex-row items-stretch sm:items-center gap-2 w-full">
         <input 
           type="text"
           value={promptText}
@@ -382,20 +391,20 @@ function AIFormAutofillAssistant({ formType, projectId, onApply }: AIFormAutofil
             }
           }}
           placeholder={placeholderText}
-          className="flex-1 px-3 py-2 bg-white/10 border border-white/15 rounded-xl text-xs text-white placeholder:text-slate-400 focus:bg-white/15 focus:border-electric-400 outline-none transition-all"
+          className="w-full sm:flex-1 min-w-0 px-3 py-2.5 bg-white/10 border border-white/15 rounded-xl text-xs text-white placeholder:text-slate-400 focus:bg-white/15 focus:border-electric-400 outline-none transition-all"
         />
         <button
           type="button"
           onClick={() => handleRunAutofill()}
           disabled={isLoading}
-          className="px-3.5 py-2 bg-electric-500 hover:bg-electric-400 text-white rounded-xl text-xs font-black transition-all flex items-center gap-1.5 shrink-0 shadow-xs cursor-pointer disabled:opacity-50"
+          className="w-full sm:w-auto px-4 py-2.5 bg-electric-500 hover:bg-electric-400 text-white rounded-xl text-xs font-black transition-all flex items-center justify-center gap-1.5 shrink-0 shadow-xs cursor-pointer disabled:opacity-50 active:scale-98"
         >
           {isLoading ? (
             <div className="w-3.5 h-3.5 border-2 border-white/30 border-t-white rounded-full animate-spin" />
           ) : (
             <Sparkles size={13} />
           )}
-          <span>{isLoading ? 'Beregner...' : 'AI Fyll Ut'}</span>
+          <span>{isLoading ? 'Beregner...' : '✨ AI Fyll Ut'}</span>
         </button>
       </div>
 
@@ -404,17 +413,17 @@ function AIFormAutofillAssistant({ formType, projectId, onApply }: AIFormAutofil
           <span className="block text-[10px] font-bold uppercase tracking-wider text-slate-400">
             Ofte brukt fra historikk:
           </span>
-          <div className="flex flex-wrap gap-1.5">
+          <div className="flex flex-wrap gap-1.5 max-w-full">
             {currentTemplates.map((t, idx) => (
               <button
                 key={idx}
                 type="button"
                 onClick={() => handleRunAutofill(t.prompt)}
                 disabled={isLoading}
-                className="px-2.5 py-1 bg-white/10 hover:bg-white/20 text-slate-200 hover:text-white rounded-lg text-[11px] font-bold transition-all flex items-center gap-1.5 border border-white/10 cursor-pointer disabled:opacity-50 active:scale-98"
+                className="px-2.5 py-1.5 bg-white/10 hover:bg-white/20 text-slate-200 hover:text-white rounded-lg text-[11px] font-bold transition-all flex items-center gap-1.5 border border-white/10 cursor-pointer disabled:opacity-50 active:scale-98 max-w-full"
               >
-                <span>{t.icon}</span>
-                <span>{t.label}</span>
+                <span className="shrink-0">{t.icon}</span>
+                <span className="truncate">{t.label}</span>
               </button>
             ))}
           </div>
@@ -699,24 +708,24 @@ function InChatOfferForm({
                 </button>
               </div>
 
-              <div className="grid grid-cols-4 gap-2">
+              <div className="grid grid-cols-2 sm:grid-cols-4 gap-2.5 sm:gap-2 pt-1">
                 <div>
-                  <span className="block text-[10px] text-slate-500 font-bold">Antall</span>
+                  <span className="block text-[10px] text-slate-500 font-bold mb-0.5">Antall</span>
                   <input
                     type="number"
                     min="0.1"
                     step="any"
                     value={item.quantity}
                     onChange={(e) => handleUpdateItem(idx, 'quantity', e.target.value)}
-                    className="w-full px-2 py-1 bg-white border border-slate-200 rounded-lg text-xs font-bold text-slate-900"
+                    className="w-full px-2.5 py-1.5 bg-white border border-slate-200 rounded-lg text-xs font-bold text-slate-900 outline-none focus:border-emerald-500"
                   />
                 </div>
                 <div>
-                  <span className="block text-[10px] text-slate-500 font-bold">Enhet</span>
+                  <span className="block text-[10px] text-slate-500 font-bold mb-0.5">Enhet</span>
                   <select
                     value={item.unit}
                     onChange={(e) => handleUpdateItem(idx, 'unit', e.target.value)}
-                    className="w-full px-1.5 py-1 bg-white border border-slate-200 rounded-lg text-xs font-bold text-slate-900"
+                    className="w-full px-2 py-1.5 bg-white border border-slate-200 rounded-lg text-xs font-bold text-slate-900 outline-none focus:border-emerald-500"
                   >
                     <option value="timer">timer</option>
                     <option value="stk">stk</option>
@@ -727,20 +736,20 @@ function InChatOfferForm({
                   </select>
                 </div>
                 <div>
-                  <span className="block text-[10px] text-slate-500 font-bold">Enhetspris</span>
+                  <span className="block text-[10px] text-slate-500 font-bold mb-0.5">Enhetspris (kr)</span>
                   <input
                     type="number"
                     min="0"
                     step="1"
                     value={item.pricePerUnit}
                     onChange={(e) => handleUpdateItem(idx, 'pricePerUnit', e.target.value)}
-                    className="w-full px-2 py-1 bg-white border border-slate-200 rounded-lg text-xs font-bold text-slate-900"
+                    className="w-full px-2.5 py-1.5 bg-white border border-slate-200 rounded-lg text-xs font-bold text-slate-900 outline-none focus:border-emerald-500"
                   />
                 </div>
                 <div>
-                  <span className="block text-[10px] text-slate-500 font-bold">Sum</span>
-                  <div className="px-2 py-1 bg-slate-100 rounded-lg text-xs font-black text-slate-900 truncate">
-                    {item.total.toLocaleString('no-NO')} kr
+                  <span className="block text-[10px] text-slate-500 font-bold mb-0.5">Sum</span>
+                  <div className="px-2.5 py-1.5 bg-slate-100 border border-slate-200/80 rounded-lg text-xs font-black text-slate-900 flex items-center justify-between">
+                    <span>{item.total.toLocaleString('no-NO')} kr</span>
                   </div>
                 </div>
               </div>
@@ -903,7 +912,7 @@ function InChatChangeOrderForm({
           </select>
         </div>
 
-        <div className="grid grid-cols-2 gap-3">
+        <div className="grid grid-cols-1 sm:grid-cols-2 gap-3">
           <div>
             <label className="block text-[11px] font-bold text-slate-700 mb-1">Tilleggsvederlag (kr eks. mva)</label>
             <input
@@ -1271,7 +1280,7 @@ function InChatDeviationForm({
           />
         </div>
 
-        <div className="grid grid-cols-2 gap-3">
+        <div className="grid grid-cols-1 sm:grid-cols-2 gap-3">
           <div>
             <label className="block text-[11px] font-bold text-slate-700 mb-1">Kategori</label>
             <select
@@ -1436,7 +1445,7 @@ function InChatTimeForm({
           </div>
         )}
 
-        <div className="grid grid-cols-2 gap-3">
+        <div className="grid grid-cols-1 sm:grid-cols-2 gap-3">
           <div>
             <label className="block text-[11px] font-bold text-slate-700 mb-1">Dato *</label>
             <input
@@ -1750,13 +1759,13 @@ function InChatTaskForm({
           </div>
         </div>
 
-        <div className="grid grid-cols-2 gap-3">
+        <div className="grid grid-cols-1 sm:grid-cols-2 gap-3">
           <div>
             <label className="block text-[11px] font-bold text-slate-700 mb-1">Prioritet</label>
             <select
               value={priority}
               onChange={(e: any) => setPriority(e.target.value)}
-              className="w-full px-3 py-2 bg-slate-50 border border-slate-200 rounded-xl text-xs font-bold text-slate-800 outline-none focus:bg-white"
+              className="w-full px-3 py-2.5 bg-slate-50 border border-slate-200 rounded-xl text-xs font-bold text-slate-800 outline-none focus:bg-white"
             >
               <option value="low">Lav</option>
               <option value="medium">Normal</option>
@@ -1770,7 +1779,7 @@ function InChatTaskForm({
               type="date"
               value={deadline}
               onChange={(e) => setDeadline(e.target.value)}
-              className="w-full px-3 py-2 bg-slate-50 border border-slate-200 rounded-xl text-xs font-bold text-slate-900 outline-none focus:bg-white"
+              className="w-full px-3 py-2.5 bg-slate-50 border border-slate-200 rounded-xl text-xs font-bold text-slate-900 outline-none focus:bg-white"
             />
           </div>
         </div>
@@ -1790,7 +1799,7 @@ function InChatTaskForm({
           <span className="text-[10px] font-black uppercase tracking-wider text-slate-400 block">
             Varsling & Omnichannel
           </span>
-          <div className="flex items-center gap-4 text-xs font-medium text-slate-700">
+          <div className="flex flex-col sm:flex-row sm:items-center gap-2 sm:gap-4 text-xs font-medium text-slate-700">
             <label className="flex items-center gap-2 cursor-pointer">
               <input 
                 type="checkbox" 

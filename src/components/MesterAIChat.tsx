@@ -1807,42 +1807,23 @@ export default function MesterAIChat({
 
           {/* Right Column / Full Body: Active Form OR Overview Views */}
           <div className={cn(
-            "flex-1 overflow-y-auto flex flex-col bg-slate-50/70 p-4 sm:p-6 transition-all custom-scrollbar pb-28 md:pb-6",
+            "flex-1 overflow-y-auto flex flex-col bg-slate-50/70 transition-all custom-scrollbar",
+            activeFormView ? "p-0 sm:p-6 pb-0 sm:pb-6" : "p-4 sm:p-6 pb-28 md:pb-6",
             activeTab === 'chat' && !activeFormView ? "hidden md:flex md:w-[56%] lg:w-[60%] xl:w-[62%]" : "w-full",
             isSplitView && activeTab !== 'chat' ? "md:w-[56%] lg:w-[60%] xl:w-[62%]" : ""
           )}>
             {/* 1. IN-CHAT WORKSPACE FORM VIEW */}
             {activeFormView ? (
-              <div className="bg-white rounded-2xl border border-slate-200 shadow-sm p-4 sm:p-6 flex-1 flex flex-col">
-                <div className="flex items-center justify-between pb-3 mb-4 border-b border-slate-100">
-                  <button
-                    type="button"
-                    onClick={() => setActiveFormView(null)}
-                    className="text-xs font-bold text-electric-700 hover:text-electric-800 flex items-center gap-1.5 py-1.5 px-3 bg-electric-50 hover:bg-electric-100 rounded-xl border border-electric-200 cursor-pointer active:scale-95 transition-all"
-                  >
-                    <ChevronLeft size={16} />
-                    <span>← Tilbake til samtale</span>
-                  </button>
-                  <button
-                    type="button"
-                    onClick={() => setActiveFormView(null)}
-                    className="p-1.5 text-slate-400 hover:text-slate-700 rounded-lg cursor-pointer"
-                    title="Lukk skjema"
-                  >
-                    <X size={18} />
-                  </button>
-                </div>
-                <div className="flex-1 overflow-y-auto">
-                  <InChatWorkspace
-                    formType={activeFormView.type}
-                    initialData={activeFormView.data}
-                    projects={projects}
-                    selectedProject={selectedProject}
-                    onClose={() => setActiveFormView(null)}
-                    onSuccess={handleFormSuccess}
-                    onSwitchForm={(nextType, nextData) => setActiveFormView({ type: nextType, data: nextData })}
-                  />
-                </div>
+              <div className="bg-white rounded-none sm:rounded-2xl border-0 sm:border border-slate-200 shadow-sm flex-1 flex flex-col overflow-hidden min-h-0">
+                <InChatWorkspace
+                  formType={activeFormView.type}
+                  initialData={activeFormView.data}
+                  projects={projects}
+                  selectedProject={selectedProject}
+                  onClose={() => setActiveFormView(null)}
+                  onSuccess={handleFormSuccess}
+                  onSwitchForm={(nextType, nextData) => setActiveFormView({ type: nextType, data: nextData })}
+                />
               </div>
             ) : activeTab === 'control_center' ? (
               /* DYNAMIC CONTROL CENTER (LEDER & FELTHÅNDVERKER) */
@@ -2957,105 +2938,107 @@ export default function MesterAIChat({
           </div>
         </div>
 
-        {/* NATIVE MOBILE BOTTOM APP DOCK (md:hidden) */}
-        <div className="fixed bottom-0 left-0 right-0 z-40 bg-navy-950/95 backdrop-blur-xl border-t border-white/10 md:hidden px-2 py-1.5 flex items-center justify-around shadow-2xl safe-bottom">
-          {/* 1. Kontroll */}
-          <button
-            type="button"
-            onClick={() => { setActiveTab('control_center'); setActiveFormView(null); }}
-            className={cn(
-              "flex flex-col items-center justify-center gap-1 transition-all py-1 px-2.5 rounded-xl cursor-pointer",
-              activeTab === 'control_center' && !activeFormView
-                ? "text-electric-400 font-black"
-                : "text-slate-400 hover:text-white"
-            )}
-          >
-            <Sparkles size={19} className={activeTab === 'control_center' && !activeFormView ? "text-electric-400 scale-110" : "text-slate-400"} />
-            <span className="text-[10px] font-bold tracking-tight">Kontroll</span>
-          </button>
-
-          {/* 2. MesterAI Chat */}
-          <button
-            type="button"
-            onClick={() => { setActiveTab('chat'); setActiveFormView(null); }}
-            className={cn(
-              "flex flex-col items-center justify-center gap-1 transition-all py-1 px-2.5 rounded-xl cursor-pointer",
-              activeTab === 'chat' && !activeFormView
-                ? "text-electric-400 font-black"
-                : "text-slate-400 hover:text-white"
-            )}
-          >
-            <MessageSquare size={19} className={activeTab === 'chat' && !activeFormView ? "text-electric-400 scale-110" : "text-slate-400"} />
-            <span className="text-[10px] font-bold tracking-tight">MesterAI</span>
-          </button>
-
-          {/* 3. CENTER ELEVATED PUSH-TO-TALK BUTTON */}
-          <div className="relative -top-5 flex flex-col items-center">
+        {/* NATIVE MOBILE BOTTOM APP DOCK (md:hidden) - Skjules når skjemavisning er aktiv så knapper aldri dekkes */}
+        {!activeFormView && (
+          <div className="fixed bottom-0 left-0 right-0 z-40 bg-navy-950/95 backdrop-blur-xl border-t border-white/10 md:hidden px-2 py-1.5 flex items-center justify-around shadow-2xl safe-bottom">
+            {/* 1. Kontroll */}
             <button
               type="button"
-              onClick={handleVoiceCommand}
+              onClick={() => { setActiveTab('control_center'); setActiveFormView(null); }}
               className={cn(
-                "w-13 h-13 rounded-full flex items-center justify-center shadow-lg transition-transform active:scale-95 cursor-pointer border-3 border-navy-900",
-                isListeningMic 
-                  ? "bg-rose-500 text-white animate-pulse shadow-rose-500/50 scale-110" 
-                  : "bg-gradient-to-tr from-electric-600 via-blue-500 to-cyan-400 text-white shadow-electric-500/40 hover:scale-105"
+                "flex flex-col items-center justify-center gap-1 transition-all py-1 px-2.5 rounded-xl cursor-pointer",
+                activeTab === 'control_center' && !activeFormView
+                  ? "text-electric-400 font-black"
+                  : "text-slate-400 hover:text-white"
               )}
-              title="Snakk med MesterAI"
             >
-              {isListeningMic ? <MicOff size={24} /> : <Mic size={24} />}
+              <Sparkles size={19} className={activeTab === 'control_center' && !activeFormView ? "text-electric-400 scale-110" : "text-slate-400"} />
+              <span className="text-[10px] font-bold tracking-tight">Kontroll</span>
             </button>
-            <span className="text-[9px] font-black text-slate-300 mt-1 uppercase tracking-wider">
-              {isListeningMic ? 'Lytter...' : 'Snakk'}
-            </span>
+
+            {/* 2. MesterAI Chat */}
+            <button
+              type="button"
+              onClick={() => { setActiveTab('chat'); setActiveFormView(null); }}
+              className={cn(
+                "flex flex-col items-center justify-center gap-1 transition-all py-1 px-2.5 rounded-xl cursor-pointer",
+                activeTab === 'chat' && !activeFormView
+                  ? "text-electric-400 font-black"
+                  : "text-slate-400 hover:text-white"
+              )}
+            >
+              <MessageSquare size={19} className={activeTab === 'chat' && !activeFormView ? "text-electric-400 scale-110" : "text-slate-400"} />
+              <span className="text-[10px] font-bold tracking-tight">MesterAI</span>
+            </button>
+
+            {/* 3. CENTER ELEVATED PUSH-TO-TALK BUTTON */}
+            <div className="relative -top-5 flex flex-col items-center">
+              <button
+                type="button"
+                onClick={handleVoiceCommand}
+                className={cn(
+                  "w-13 h-13 rounded-full flex items-center justify-center shadow-lg transition-transform active:scale-95 cursor-pointer border-3 border-navy-900",
+                  isListeningMic 
+                    ? "bg-rose-500 text-white animate-pulse shadow-rose-500/50 scale-110" 
+                    : "bg-gradient-to-tr from-electric-600 via-blue-500 to-cyan-400 text-white shadow-electric-500/40 hover:scale-105"
+                )}
+                title="Snakk med MesterAI"
+              >
+                {isListeningMic ? <MicOff size={24} /> : <Mic size={24} />}
+              </button>
+              <span className="text-[9px] font-black text-slate-300 mt-1 uppercase tracking-wider">
+                {isListeningMic ? 'Lytter...' : 'Snakk'}
+              </span>
+            </div>
+
+            {/* 4. Prosjekter */}
+            <button
+              type="button"
+              onClick={() => { setActiveTab('projects'); setActiveFormView(null); }}
+              className={cn(
+                "flex flex-col items-center justify-center gap-1 transition-all py-1 px-2.5 rounded-xl cursor-pointer",
+                activeTab === 'projects' && !activeFormView
+                  ? "text-electric-400 font-black"
+                  : "text-slate-400 hover:text-white"
+              )}
+            >
+              <HardHat size={19} className={activeTab === 'projects' && !activeFormView ? "text-electric-400 scale-110" : "text-slate-400"} />
+              <span className="text-[10px] font-bold tracking-tight">Prosjekt</span>
+            </button>
+
+            {/* 5. Verktøy (Worker) / Tilbud & Adm (Leader) */}
+            <button
+              type="button"
+              onClick={() => {
+                if (isWorker) {
+                  setActiveTab('toolbox');
+                  setActiveFormView(null);
+                } else {
+                  setActiveTab('admin');
+                  setActiveFormView(null);
+                }
+              }}
+              className={cn(
+                "flex flex-col items-center justify-center gap-1 transition-all py-1 px-2.5 rounded-xl cursor-pointer",
+                (activeTab === 'toolbox' || activeTab === 'admin') && !activeFormView
+                  ? "text-electric-400 font-black"
+                  : "text-slate-400 hover:text-white"
+              )}
+            >
+              {isWorker ? (
+                <>
+                  <Sliders size={19} className={activeTab === 'toolbox' ? "text-electric-400 scale-110" : "text-slate-400"} />
+                  <span className="text-[10px] font-bold tracking-tight">Verktøy</span>
+                </>
+              ) : (
+                <>
+                  <FileText size={19} className={activeTab === 'admin' ? "text-electric-400 scale-110" : "text-slate-400"} />
+                  <span className="text-[10px] font-bold tracking-tight">Tilbud</span>
+                </>
+              )}
+            </button>
           </div>
-
-          {/* 4. Prosjekter */}
-          <button
-            type="button"
-            onClick={() => { setActiveTab('projects'); setActiveFormView(null); }}
-            className={cn(
-              "flex flex-col items-center justify-center gap-1 transition-all py-1 px-2.5 rounded-xl cursor-pointer",
-              activeTab === 'projects' && !activeFormView
-                ? "text-electric-400 font-black"
-                : "text-slate-400 hover:text-white"
-            )}
-          >
-            <HardHat size={19} className={activeTab === 'projects' && !activeFormView ? "text-electric-400 scale-110" : "text-slate-400"} />
-            <span className="text-[10px] font-bold tracking-tight">Prosjekt</span>
-          </button>
-
-          {/* 5. Verktøy (Worker) / Tilbud & Adm (Leader) */}
-          <button
-            type="button"
-            onClick={() => {
-              if (isWorker) {
-                setActiveTab('toolbox');
-                setActiveFormView(null);
-              } else {
-                setActiveTab('admin');
-                setActiveFormView(null);
-              }
-            }}
-            className={cn(
-              "flex flex-col items-center justify-center gap-1 transition-all py-1 px-2.5 rounded-xl cursor-pointer",
-              (activeTab === 'toolbox' || activeTab === 'admin') && !activeFormView
-                ? "text-electric-400 font-black"
-                : "text-slate-400 hover:text-white"
-            )}
-          >
-            {isWorker ? (
-              <>
-                <Sliders size={19} className={activeTab === 'toolbox' ? "text-electric-400 scale-110" : "text-slate-400"} />
-                <span className="text-[10px] font-bold tracking-tight">Verktøy</span>
-              </>
-            ) : (
-              <>
-                <FileText size={19} className={activeTab === 'admin' ? "text-electric-400 scale-110" : "text-slate-400"} />
-                <span className="text-[10px] font-bold tracking-tight">Tilbud</span>
-              </>
-            )}
-          </button>
-        </div>
+        )}
       </div>
     </div>
   );
