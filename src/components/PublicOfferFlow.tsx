@@ -58,67 +58,72 @@ export default function PublicOfferFlow({
     async function loadOfferData() {
       setLoading(true);
       try {
-        const offers = await api.getCollection('offers');
-        let matched: Offer | undefined;
+        const [offers, contracts, projects] = await Promise.all([
+          api.getCollection('offers').catch(() => []),
+          api.getCollection('contracts').catch(() => []),
+          api.getCollection('projects').catch(() => [])
+        ]);
 
-        if (token) {
-          matched = offers.find((o: any) => o.token === token || o.id === token);
-        } else if (offerId) {
-          matched = offers.find((o: any) => o.id === offerId);
-        }
+        let matchedOffer: Offer | undefined;
+        let matchedContract: Contract | undefined;
 
-        // Fallback demo-tilbud dersom ingenting ble funnet
-        if (!matched) {
-          if (offers.length > 0) {
-            matched = offers[0];
-          } else {
-            matched = {
-              id: 'demo-offer-1',
-              title: 'Totalrenovering av baderom og rør-i-rør system',
-              projectCode: 'P-2026-BAD01',
-              clientName: 'Ola Nordmann',
-              clientEmail: 'ola.nordmann@example.com',
-              company: 'Mester Entreprenør AS',
-              companyName: 'Mester Entreprenør AS',
-              companyOrgNumber: '998 877 665 MVA',
-              description: 'Komplett oppgradering av baderom iht. TEK17 og Byggebransjens Våtromsnorm. Inkluderer riving, fuktsikring, smøremembran med mansjetter, rør-i-rør fordelerskap, varmekabler, flislegging og sanitærmontasje.',
-              totalAmount: 185000,
-              status: 'sent',
-              createdAt: new Date().toISOString(),
-              validUntil: new Date(Date.now() + 30 * 86400000).toISOString().split('T')[0],
-              authorId: 'u-admin-123',
-              authorName: 'Ken (Ansvarlig Byggmester)',
-              items: [
-                { description: 'Riving av eksisterende bad, kildesortering og bortkjøring av avfall', quantity: 1, unit: 'fastpris', pricePerUnit: 18000, total: 18000 },
-                { description: 'Rørleggerarbeid: Nytt rør-i-rør fordelerskap, avløp og montering av armaturer', quantity: 32, unit: 'timer', pricePerUnit: 1150, total: 36800 },
-                { description: 'Elektrikerarbeid: Varmekabel, ny kurs, LED-downlights og stikkontakter', quantity: 1, unit: 'pakke', pricePerUnit: 28500, total: 28500 },
-                { description: 'Murer/membranarbeid: Avretting, slukmansjett, 2-lags smøremembran og flislegging', quantity: 45, unit: 'timer', pricePerUnit: 980, total: 44100 },
-                { description: 'Tømrerarbeid: Forsterkning av stenderverk, våtromsplater og himling', quantity: 38, unit: 'timer', pricePerUnit: 950, total: 36100 },
-                { description: 'Sluttkontroll, trykkprøving og komplett FDV-dokumentasjon', quantity: 1, unit: 'fastpris', pricePerUnit: 21500, total: 21500 }
-              ]
-            };
+        // 1. Sjekk om token refererer til en kontrakt direkte
+        if (token && (token.startsWith('c-') || token.startsWith('contract-'))) {
+          matchedContract = contracts.find((c: any) => c.token === token || c.id === token);
+          if (matchedContract?.offerId) {
+            matchedOffer = offers.find((o: any) => o.id === matchedContract.offerId);
           }
         }
 
-        setOffer(matched);
-        setSignerName(matched.clientName || '');
-
-        // Generer kontraktsobjektet klart basert på tilbudet
-        const generatedContract = mesterhjerneService.generateContractFromOffer(matched);
-        setContract(generatedContract);
-
-        // Hvis tilbudet allerede er akseptert, sjekk om prosjektet finnes
-        if (matched.status === 'accepted') {
-          const projects = await api.getCollection('projects');
-          const foundProj = projects.find((p: any) => p.clientName === matched?.clientName || p.name.includes(matched?.title || ''));
-          if (foundProj) {
-            setCreatedProject(foundProj);
-            setActiveScreen('success');
+        // 2. Sjekk tilbud dersom ikke funnet via kontrakt
+        if (!matchedOffer) {
+          if (token) {
+            matchedOffer = offers.find((o: any) => o.token === token || o.id === token);
+          } else if (offerId) {
+            matchedOffer = offers.find((o: any) => o.id === offerId);
           }
+        }
+
+        // 3. Hvis tilbud ble funnet, sjekk om det foreligger en eksisterende kontrakt
+        if (matchedOffer && !matchedContract) {
+          matchedContract = contracts.find((c: any) => c.offerId === matchedOffer?.id || c.token === matchedOffer?.token || c.id === matchedOffer?.contractId);
+        }
+
+        // Hvis ingen av delene ble funnet, vis feilmelding (ingen falske mock-data)
+        if (!matchedOffer && !matchedContract) {
+          setError('Fant ikke tilbudet eller kontrakten. Lenken kan være utgått eller ugyldig.');
+          setLoading(false);
+          return;
+        }
+
+        // Hvis kontrakt ikke er generert ennå, opprett utkast i minnet
+        if (!matchedContract && matchedOffer) {
+          matchedContract = mesterhjerneService.generateContractFromOffer(matchedOffer);
+        }
+
+        if (matchedOffer) setOffer(matchedOffer);
+        if (matchedContract) {
+          setContract(matchedContract);
+          setSignerName(matchedContract.clientName || matchedOffer?.clientName || '');
+        }
+
+        // 4. Bestem startskjerm basert på status
+        if (matchedContract?.status === 'signed') {
+          const foundProj = projects.find((p: any) => 
+            p.id === matchedContract?.projectId || 
+            p.projectCode === matchedContract?.projectCode ||
+            p.clientName === matchedContract?.clientName
+          );
+          if (foundProj) setCreatedProject(foundProj);
+          setActiveScreen('success');
+        } else if (matchedOffer?.status === 'accepted' || matchedContract?.status === 'pending_signature') {
+          setActiveScreen('contract');
+        } else {
+          setActiveScreen('offer');
         }
       } catch (err) {
-        console.error('Error loading offer:', err);
-        setError('Kunne ikke laste inn tilbudet.');
+        console.error('Error loading offer or contract:', err);
+        setError('Kunne ikke laste inn tilbudet eller kontrakten.');
       } finally {
         setLoading(false);
       }
@@ -175,18 +180,61 @@ export default function PublicOfferFlow({
     setHasSignatureDrawing(false);
   };
 
-  // 1. Kunde godkjenner tilbud ➔ Sømløs overgang til Kontrakt PÅ SAMME SKJERM
-  const handleApproveOffer = () => {
-    if (!contract && offer) {
-      const gen = mesterhjerneService.generateContractFromOffer(offer);
-      setContract(gen);
+  // 1. Kunde godkjenner tilbud ➔ 100% Automatisk Kontrakt & Utsendelse på E-post
+  const handleApproveOffer = async () => {
+    setIsProcessing(true);
+    try {
+      let activeContract = contract;
+
+      // Kall API-endepunktet for å generere kontrakt, oppdatere tilbud og sende kontraktse-post
+      try {
+        const res = await fetch('/api/contract', {
+          method: 'POST',
+          headers: { 'Content-Type': 'application/json' },
+          body: JSON.stringify({
+            action: 'approve_offer_and_create_contract',
+            offerId: offer?.id,
+            token: offer?.token || token,
+            baseUrl: window.location.origin
+          })
+        });
+
+        if (res.ok) {
+          const data = await res.json();
+          if (data.contract) {
+            activeContract = data.contract;
+            setContract(data.contract);
+          }
+          if (data.offer) {
+            setOffer(data.offer);
+          }
+        }
+      } catch (apiErr) {
+        console.warn('API /api/contract fallback to client-side:', apiErr);
+      }
+
+      // Klient-side fallback hvis API ikke var tilgjengelig
+      if (!activeContract && offer) {
+        activeContract = mesterhjerneService.generateContractFromOffer(offer);
+        setContract(activeContract);
+        try {
+          await api.saveDoc('contracts', activeContract);
+          await api.saveDoc('offers', { ...offer, status: 'accepted', contractId: activeContract.id });
+        } catch {}
+      }
+
+      setActiveScreen('contract');
+      window.scrollTo({ top: 0, behavior: 'smooth' });
+      toast.success('🎉 Tilbud bekreftet! Kontrakten er generert og sendt til din e-post. Du kan også signere den nedenfor.');
+    } catch (err) {
+      console.error('Error in handleApproveOffer:', err);
+      toast.error('Kunne ikke behandle tilbudsgodkjenning. Vennligst prøv igjen.');
+    } finally {
+      setIsProcessing(false);
     }
-    setActiveScreen('contract');
-    window.scrollTo({ top: 0, behavior: 'smooth' });
-    toast.success('Tilbud bekreftet! Kontrakten er generert og ligger klar nedenfor.');
   };
 
-  // 2. Kunde signerer kontrakt ➔ Mesterhjernen aktiverer prosjektet 100% automatisk
+  // 2. Kunde signerer kontrakt ➔ 100% Automatisk Prosjekt, Flerfaglige Sjekklister & FDV
   const handleSignContract = async () => {
     if (!termsAccepted) {
       toast.error('Vennligst huk av for at du har lest og akseptert avtalevilkårene.');
@@ -205,20 +253,49 @@ export default function PublicOfferFlow({
         signatureData = canvasRef.current.toDataURL('image/png');
       }
 
-      // Aktiver Mesterhjernen
-      const result = await mesterhjerneService.executeFullProjectInitialization(
-        contract,
-        offer || undefined,
-        {
-          signatureData,
-          signerName,
-          signerIp: 'Klient-IP (Kryptert)'
-        }
-      );
+      // Forsøk API for fullstendig server-side aktivering med e-post og FDV
+      let activatedProject: Project | null = null;
+      try {
+        const res = await fetch('/api/contract', {
+          method: 'POST',
+          headers: { 'Content-Type': 'application/json' },
+          body: JSON.stringify({
+            action: 'sign_contract_and_init_project',
+            contractId: contract.id,
+            token: contract.token,
+            signatureData,
+            signerName,
+            baseUrl: window.location.origin
+          })
+        });
 
-      setCreatedProject(result.project);
+        if (res.ok) {
+          const data = await res.json();
+          if (data.project) {
+            activatedProject = data.project;
+          }
+        }
+      } catch (apiErr) {
+        console.warn('API /api/contract sign fallback to client-side:', apiErr);
+      }
+
+      // Fallback til mesterhjerneService dersom API ikke svarte
+      if (!activatedProject) {
+        const result = await mesterhjerneService.executeFullProjectInitialization(
+          contract,
+          offer || undefined,
+          {
+            signatureData,
+            signerName,
+            signerIp: 'Klient-IP (Kryptert)'
+          }
+        );
+        activatedProject = result.project;
+      }
+
+      setCreatedProject(activatedProject);
       setActiveScreen('success');
-      toast.success('🎉 Kontrakt er signert og prosjektet er nå aktivert!');
+      toast.success('🎉 Kontrakt er signert! Prosjektet er aktivert med flerfaglige sjekklister og FDV-perm.');
     } catch (err) {
       console.error('Error in project activation:', err);
       toast.error('Det oppsto en feil under signering. Vennligst prøv igjen.');

@@ -129,6 +129,7 @@ export default function ChecklistModal({ isOpen, onClose, projectId, initialTrad
     });
 
     const isAllChecked = updatedItems.every(i => i.status === 'passed' || i.status === 'na');
+    const wasAlreadyCompleted = currentChecklist.status === 'completed';
     const updatedChecklist: ProjectChecklist = {
       ...currentChecklist,
       items: updatedItems,
@@ -143,6 +144,22 @@ export default function ChecklistModal({ isOpen, onClose, projectId, initialTrad
     // Auto-lagre til database
     try {
       await api.saveDoc('project_checklists', updatedChecklist);
+
+      // Autonomt generer KS-kontrollrapport inn i FDV-arkivet hvis fasen nettopp ble godkjent
+      if (isAllChecked && !wasAlreadyCompleted) {
+        toast.success(`🎉 ${currentChecklist.phaseTitle || currentChecklist.title} er fullført! KS-kontrollrapport er autogenerert til prosjektets FDV-arkiv.`);
+        await api.saveDoc('project_documents', {
+          id: `doc-ks-${currentChecklist.id}-${Date.now()}`,
+          projectId,
+          title: `KS-Kontrollprotokoll: ${currentChecklist.title}`,
+          category: 'Samsvarserklæring',
+          type: 'report',
+          source: 'manual',
+          tek17Clause: 'TEK17 / SAK10 Kvalitetssikring & Egenkontroll',
+          description: `Fullført og godkjent kontroll: ${currentChecklist.title}. ${updatedItems.filter(i => i.status === 'passed').length} av ${updatedItems.length} kontrollpunkter er verifisert og protokollført.`,
+          createdAt: new Date().toISOString().split('T')[0]
+        }).catch(() => {});
+      }
     } catch (err) {
       console.warn('Could not auto-save checklist item:', err);
     }

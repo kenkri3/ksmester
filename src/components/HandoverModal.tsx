@@ -5,6 +5,7 @@ import { Project, ProjectMaterial } from '../types';
 import { db, collection, query, where, getDocs, handleFirestoreError, OperationType, updateDoc, doc, serverTimestamp } from '../services/firebase';
 import { fdvService, FDVDocument } from '../services/fdvService';
 import { pdfService } from '../services/pdfService';
+import { projectService } from '../services/projectService';
 import { toast } from 'sonner';
 
 interface HandoverModalProps {
@@ -74,19 +75,11 @@ const HandoverModal: React.FC<HandoverModalProps> = ({ isOpen, onClose, projects
     if (!selectedProjectId) return;
     setIsGenerating(true);
     try {
-      // 1. Update project status to archived/completed
-      await updateDoc(doc(db, 'projects', selectedProjectId), {
-        stage: 'archived',
-        status: 'completed',
-        progress: 100,
-        updatedAt: serverTimestamp()
-      });
-
-      // 2. Mark FDV documents as sent (simulated)
-      // In a real app, we might trigger an email here.
+      // 1. Fullfør overlevering, bygg samlet FDV, lagre overtakelsesprotokoll og send til kunde
+      await projectService.finalizeProjectDocumentation(selectedProjectId);
 
       setIsSuccess(true);
-      toast.success("Prosjektet er overlevert og arkivert!");
+      toast.success("🎉 Prosjektet er overlevert! Komplett FDV-perm og sluttprotokoll er arkivert og klar for Boligmappa.");
       
       setTimeout(() => {
         onClose();

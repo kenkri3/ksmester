@@ -339,3 +339,291 @@ export async function sendChangeOrderByEmail(params: {
     metadata: { changeOrderId: changeOrder.id, token, clientEmail }
   });
 }
+
+/**
+ * Sender formell byggekontrakt (NS 8406 / Håndverkertjenesteloven) til kunde for digital e-signering
+ */
+export async function sendContractByEmail(params: {
+  contract: any;
+  clientEmail: string;
+  clientName?: string;
+  companyName?: string;
+  authorName?: string;
+  baseUrl?: string;
+}): Promise<{ success: boolean; message: string; id: string }> {
+  const {
+    contract,
+    clientEmail,
+    clientName,
+    companyName = 'Mester Entreprenør AS',
+    authorName = 'Ansvarlig Byggmester',
+    baseUrl = 'https://vikingmester.no'
+  } = params;
+
+  const token = contract.token || contract.id;
+  const signUrl = `${baseUrl}/?contractToken=${token}`;
+  const cName = clientName || contract.clientName || 'Kjære kunde';
+  const totalAmount = Number(contract.totalAmount || 0);
+  const amountExVat = Math.round(totalAmount / 1.25);
+  const vatAmount = totalAmount - amountExVat;
+
+  const emailHtml = `
+    <!DOCTYPE html>
+    <html>
+    <head>
+      <meta charset="utf-8">
+      <style>
+        body { font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, sans-serif; background: #f8fafc; margin: 0; padding: 24px; color: #1e293b; }
+        .card { max-width: 620px; margin: 0 auto; background: #ffffff; border-radius: 16px; border: 1px solid #e2e8f0; overflow: hidden; box-shadow: 0 4px 6px -1px rgba(0, 0, 0, 0.05); }
+        .header { background: #0f172a; padding: 28px; color: white; }
+        .badge { display: inline-block; background: #10b981; color: white; font-size: 11px; font-weight: bold; padding: 4px 10px; border-radius: 999px; text-transform: uppercase; margin-bottom: 8px; }
+        .content { padding: 28px; line-height: 1.6; }
+        .meta-box { background: #f8fafc; border: 1px solid #e2e8f0; border-radius: 12px; padding: 18px; margin: 20px 0; }
+        .btn-container { text-align: center; margin: 32px 0; }
+        .btn { background: #059669; color: #ffffff !important; font-weight: 700; padding: 16px 32px; border-radius: 10px; text-decoration: none; display: inline-block; font-size: 16px; box-shadow: 0 4px 12px rgba(5, 150, 105, 0.3); }
+        .footer { padding: 20px 28px; background: #f1f5f9; border-top: 1px solid #e2e8f0; font-size: 12px; color: #64748b; text-align: center; }
+      </style>
+    </head>
+    <body>
+      <div class="card">
+        <div class="header">
+          <span class="badge">Norsk Byggekontrakt NS 8406</span>
+          <h1 style="margin: 0; font-size: 22px;">${contract.title || 'Byggekontrakt'}</h1>
+          <p style="margin: 6px 0 0 0; color: #94a3b8; font-size: 13px;">Utstedt av ${companyName} • Prosjektkode ${contract.projectCode || 'P-2026'}</p>
+        </div>
+        <div class="content">
+          <p style="font-size: 16px; margin-top: 0;">Hei <strong>${cName}</strong>,</p>
+          <p>
+            Ditt aksepterte tilbud er nå omgjort til en formell, juridisk gyldig byggekontrakt i henhold til <strong>NS 8406</strong> og <strong>Håndverkertjenesteloven</strong>.
+          </p>
+
+          <div class="meta-box">
+            <table style="width: 100%; font-size: 14px; border-collapse: collapse;">
+              <tr>
+                <td style="color: #64748b; padding-bottom: 6px;">Oppdragsgiver:</td>
+                <td style="text-align: right; font-weight: 600; color: #0f172a;">${cName}</td>
+              </tr>
+              <tr>
+                <td style="color: #64748b; padding-bottom: 6px;">Utførende entreprenør:</td>
+                <td style="text-align: right; font-weight: 600; color: #0f172a;">${companyName} (${contract.companyOrgNumber || 'Org.nr registrert'})</td>
+              </tr>
+              <tr>
+                <td style="color: #64748b; padding-bottom: 6px;">Frist for ferdigstillelse:</td>
+                <td style="text-align: right; font-weight: 600; color: #0f172a;">${contract.completionDate || 'Iht. avtalt fremdriftsplan'}</td>
+              </tr>
+              <tr style="border-top: 1px solid #cbd5e1;">
+                <td style="color: #64748b; padding-top: 8px;">Sum ekskl. mva:</td>
+                <td style="text-align: right; font-weight: 600; color: #1e293b; padding-top: 8px;">kr ${amountExVat.toLocaleString('no-NO')}</td>
+              </tr>
+              <tr>
+                <td style="color: #64748b; padding-bottom: 8px;">Merverdiavgift (25% mva):</td>
+                <td style="text-align: right; font-weight: 600; color: #1e293b; padding-bottom: 8px;">kr ${vatAmount.toLocaleString('no-NO')}</td>
+              </tr>
+              <tr style="border-top: 2px solid #0f172a; font-size: 16px;">
+                <td style="font-weight: 800; color: #0f172a; padding-top: 10px;">AVTALT KONTRAKTSSUM:</td>
+                <td style="text-align: right; font-weight: 800; color: #059669; padding-top: 10px;">kr ${totalAmount.toLocaleString('no-NO')} inkl. mva</td>
+              </tr>
+            </table>
+          </div>
+
+          <p style="font-size: 14px; color: #334155;">
+            Så snart du signerer kontrakten digitalt, vil prosjektet opprettes 100% automatisk i systemet med lovpålagte KS-sjekklister, risikovurdering (SJA) og forberedelse av komplett FDV-dokumentasjon.
+          </p>
+
+          <div class="btn-container">
+            <a href="${signUrl}" class="btn" target="_blank">✍️ Signer kontrakten digitalt</a>
+          </div>
+
+          <p style="font-size: 12px; color: #64748b; margin-top: 24px; line-height: 1.5;">
+            🔒 <strong>Juridisk gyldighet:</strong> Digital signatur oppfyller kravene i eIDAS og norsk avtalerett med full loggføring av signaturbilde, tidsstempel og IP-adresse.
+          </p>
+
+          <p style="margin-bottom: 0;">
+            Med vennlig hilsen,<br>
+            <strong>${authorName}</strong><br>
+            ${companyName}
+          </p>
+        </div>
+        <div class="footer">
+          Levert via <a href="https://vikingmester.no" style="color: #059669; text-decoration: none;">VikingMester</a> – Norges ledende autonome KS- og prosjektsystem for håndverkere.
+        </div>
+      </div>
+    </body>
+    </html>
+  `;
+
+  return await sendSystemEmail({
+    to: clientEmail,
+    subject: `Byggekontrakt for digital signering: ${contract.title || 'Byggeprosjekt'} – ${companyName}`,
+    html: emailHtml,
+    text: `Hei ${cName}!\n\nDitt tilbud er godkjent og kontrakten «${contract.title}» på kr ${totalAmount.toLocaleString('no-NO')} ligger klar for signering.\n\nKlikk her for å signere digitalt: ${signUrl}\n\nMed vennlig hilsen,\n${authorName}\n${companyName}`,
+    type: 'general',
+    companyName,
+    authorName,
+    metadata: { contractId: contract.id, token, clientEmail }
+  });
+}
+
+/**
+ * Sender bekreftelse på at kontrakt er signert og prosjektet er igangsatt
+ */
+export async function sendProjectStartedEmail(params: {
+  project: any;
+  clientEmail: string;
+  clientName?: string;
+  companyName?: string;
+  authorName?: string;
+  baseUrl?: string;
+}): Promise<{ success: boolean; message: string; id: string }> {
+  const {
+    project,
+    clientEmail,
+    clientName,
+    companyName = 'Mester Entreprenør AS',
+    authorName = 'Ansvarlig Byggmester',
+    baseUrl = 'https://vikingmester.no'
+  } = params;
+
+  const portalUrl = `${baseUrl}/?portal=${project.id}`;
+  const cName = clientName || project.clientName || 'Kjære kunde';
+
+  const emailHtml = `
+    <!DOCTYPE html>
+    <html>
+    <head>
+      <meta charset="utf-8">
+      <style>
+        body { font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, sans-serif; background: #f8fafc; margin: 0; padding: 24px; color: #1e293b; }
+        .card { max-width: 600px; margin: 0 auto; background: #ffffff; border-radius: 16px; border: 1px solid #e2e8f0; overflow: hidden; }
+        .header { background: #059669; padding: 28px; color: white; text-align: center; }
+        .content { padding: 28px; line-height: 1.6; }
+        .btn { background: #0f172a; color: #ffffff !important; font-weight: 700; padding: 14px 28px; border-radius: 10px; text-decoration: none; display: inline-block; }
+      </style>
+    </head>
+    <body>
+      <div class="card">
+        <div class="header">
+          <h1 style="margin: 0; font-size: 24px;">🎉 Prosjektet er igangsatt!</h1>
+          <p style="margin: 6px 0 0 0; opacity: 0.9; font-size: 14px;">Kontrakten er signert og arbeidene er planlagt</p>
+        </div>
+        <div class="content">
+          <p style="font-size: 16px; margin-top: 0;">Hei <strong>${cName}</strong>,</p>
+          <p>
+            Takk for din signatur! Kontrakten for <strong>${project.name}</strong> (Prosjektkode: <code>${project.projectCode}</code>) er nå arkivert.
+          </p>
+          <p>
+            Mesterhjernen har automatisk etablert prosjektet med alle lovpålagte HMS-rutiner, faseinndelte KS-sjekklister for fagene og påbegynt FDV-dokumentasjonspermen.
+          </p>
+          <div style="text-align: center; margin: 30px 0;">
+            <a href="${portalUrl}" class="btn" target="_blank">📲 Følg fremdriften i Byggherreportalen</a>
+          </div>
+          <p style="font-size: 13px; color: #64748b;">
+            Du vil motta løpende oppdateringer og fotodokumentasjon underveis i byggeperioden.
+          </p>
+          <p>Med vennlig hilsen,<br><strong>${authorName}</strong><br>${companyName}</p>
+        </div>
+      </div>
+    </body>
+    </html>
+  `;
+
+  return await sendSystemEmail({
+    to: clientEmail,
+    subject: `🎉 Kontrakt signert & Prosjekt igangsatt: ${project.name} – ${companyName}`,
+    html: emailHtml,
+    text: `Hei ${cName}!\n\nTakk for din signatur! Prosjektet ${project.name} (${project.projectCode}) er nå igangsatt.\n\nFølg prosjektet i byggherreportalen her: ${portalUrl}\n\nMed vennlig hilsen,\n${authorName}\n${companyName}`,
+    type: 'general',
+    companyName,
+    authorName,
+    metadata: { projectId: project.id, clientEmail }
+  });
+}
+
+/**
+ * Sender komplett overlevert FDV-perm og sluttprotokoll ved prosjektets ferdigstillelse
+ */
+export async function sendHandoverDocumentationEmail(params: {
+  project: any;
+  clientEmail: string;
+  clientName?: string;
+  companyName?: string;
+  authorName?: string;
+  baseUrl?: string;
+}): Promise<{ success: boolean; message: string; id: string }> {
+  const {
+    project,
+    clientEmail,
+    clientName,
+    companyName = 'Mester Entreprenør AS',
+    authorName = 'Ansvarlig Byggmester',
+    baseUrl = 'https://vikingmester.no'
+  } = params;
+
+  const portalUrl = `${baseUrl}/?portal=${project.id}`;
+  const cName = clientName || project.clientName || 'Kjære kunde';
+
+  const emailHtml = `
+    <!DOCTYPE html>
+    <html>
+    <head>
+      <meta charset="utf-8">
+      <style>
+        body { font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, sans-serif; background: #f8fafc; margin: 0; padding: 24px; color: #1e293b; }
+        .card { max-width: 600px; margin: 0 auto; background: #ffffff; border-radius: 16px; border: 1px solid #e2e8f0; overflow: hidden; }
+        .header { background: #0f172a; padding: 28px; color: white; }
+        .badge { background: #10b981; color: white; padding: 4px 10px; border-radius: 999px; font-size: 11px; font-weight: bold; text-transform: uppercase; }
+        .content { padding: 28px; line-height: 1.6; }
+        .doc-list { background: #f8fafc; border: 1px solid #e2e8f0; border-radius: 12px; padding: 16px; margin: 20px 0; font-size: 13px; }
+        .btn { background: #059669; color: #ffffff !important; font-weight: 700; padding: 14px 28px; border-radius: 10px; text-decoration: none; display: inline-block; }
+      </style>
+    </head>
+    <body>
+      <div class="card">
+        <div class="header">
+          <span class="badge">Overlevering & Sluttdokumentasjon</span>
+          <h1 style="margin: 8px 0 0 0; font-size: 22px;">📁 ${project.name} er ferdigstilt!</h1>
+          <p style="margin: 4px 0 0 0; color: #94a3b8; font-size: 13px;">Offisiell overlevering fra ${companyName}</p>
+        </div>
+        <div class="content">
+          <p style="font-size: 16px; margin-top: 0;">Hei <strong>${cName}</strong>,</p>
+          <p>
+            Arbeidene på <strong>${project.name}</strong> er nå ferdigstilt, kontrollert og godkjent iht. TEK17 og NS 8406.
+          </p>
+
+          <div class="doc-list">
+            <p style="margin: 0 0 8px 0; font-weight: bold; color: #0f172a;">Innhold i overlevert dokumentasjonspakke:</p>
+            <ul style="margin: 0; padding-left: 20px; color: #475569;">
+              <li>✓ Komplett samlet FDV-perm med drifts- og vedlikeholdsinstrukser</li>
+              <li>✓ Formell TEK17 Samsvarserklæring og sluttkontroll</li>
+              <li>✓ Signert Overtakelsesprotokoll med 5 års reklamasjonsgaranti</li>
+              <li>✓ Produktdatablader med NOBB-numre og SINTEF-godkjenninger</li>
+              <li>✓ Klargjort overføring til Boligmappa (skjulte konstruksjoner og fotobevis)</li>
+            </ul>
+          </div>
+
+          <div style="text-align: center; margin: 28px 0;">
+            <a href="${portalUrl}" class="btn" target="_blank">📄 Åpne FDV-perm & Last ned PDF</a>
+          </div>
+
+          <p style="font-size: 12px; color: #64748b;">
+            Dersom du har spørsmål til vedlikehold eller garantier, finner du full kontaktinformasjon i overleveringsprotokollen.
+          </p>
+          <p>Med vennlig hilsen,<br><strong>${authorName}</strong><br>${companyName}</p>
+        </div>
+      </div>
+    </body>
+    </html>
+  `;
+
+  return await sendSystemEmail({
+    to: clientEmail,
+    subject: `📁 FDV-perm & Sluttdokumentasjon overlevert: ${project.name} – ${companyName}`,
+    html: emailHtml,
+    text: `Hei ${cName}!\n\nArbeidene på ${project.name} er ferdigstilt og komplett FDV-perm er klar.\n\nÅpne og last ned dokumentasjonen her: ${portalUrl}\n\nMed vennlig hilsen,\n${authorName}\n${companyName}`,
+    type: 'general',
+    companyName,
+    authorName,
+    metadata: { projectId: project.id, clientEmail }
+  });
+}
+

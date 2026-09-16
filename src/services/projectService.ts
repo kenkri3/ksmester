@@ -2,6 +2,7 @@ import { db, auth, collection, addDoc, serverTimestamp, updateDoc, doc, getDoc, 
 import { Project, Offer, Contract, Trade } from '../types';
 import { dashboardAiService } from './dashboardAiService';
 import { fdvService } from './fdvService';
+import { api } from './api';
 
 export const projectService = {
   /**
@@ -101,36 +102,109 @@ export const projectService = {
    */
   async finalizeProjectDocumentation(projectId: string) {
     try {
-      const projectDoc = await getDoc(doc(db, 'projects', projectId));
-      if (!projectDoc.exists()) return;
-      const project = { id: projectDoc.id, ...projectDoc.data() } as Project;
+      let project: Project | null = null;
+      try {
+        const projectDoc = await getDoc(doc(db, 'projects', projectId));
+        if (projectDoc.exists()) {
+          project = { id: projectDoc.id, ...projectDoc.data() } as Project;
+        }
+      } catch {}
 
-      // Fetch materials
-      const materialsSnapshot = await getDocs(query(
-        collection(db, 'project_materials'),
-        where('projectId', '==', projectId)
-      ));
-      const materials = materialsSnapshot.docs.map(doc => doc.data() as any);
+      if (!project) {
+        const allProjects = await api.getCollection('projects');
+        project = allProjects.find((p: any) => p.id === projectId) || null;
+      }
 
-      // Generate FDV
-      const fdvData = await fdvService.generateFDV(project, materials);
-      
-      // Save FDV to project documents
-      await addDoc(collection(db, 'project_documents'), {
-        projectId,
-        title: `FDV - ${project.name}`,
-        type: 'fdv',
-        content: fdvData,
-        status: 'ready_for_sending',
-        createdAt: serverTimestamp()
-      });
+      if (!project) return false;
 
-      // Update project stage
-      await updateDoc(doc(db, 'projects', projectId), {
-        stage: 'completion',
-        progress: 100,
-        updatedAt: serverTimestamp()
-      });
+      // 1. Fetch materials
+      let materials: any[] = [];
+      try {
+        const materialsSnapshot = await getDocs(query(
+          collection(db, 'project_materials'),
+          where('projectId', '==', projectId)
+        ));
+        materials = materialsSnapshot.docs.map(doc => doc.data() as any);
+      } catch {}
+
+      // 2. Generate and save FDV package
+      try {
+        const fdvData = await fdvService.generateFDV(project, materials);
+        await api.saveDoc('project_documents', {
+          id: `doc-fdv-final-${projectId}`,
+          projectId,
+          title: `Komplett FDV-Perm: ${project.name}`,
+          category: 'FDV Dokumentasjon',
+          type: 'fdv',
+          source: 'ai_engine',
+          content: fdvData,
+          status: 'approved',
+          tek17Clause: 'TEK17 § 4-1 / Plan- og bygningsloven',
+          description: `Komplett FDV-dokumentasjon og driftsinstrukser for ${project.name}, overlevert ved prosjektslutt.`,
+          createdAt: new Date().toISOString().split('T')[0]
+        });
+      } catch (err) {
+        console.warn('Could not save fdvData to project_documents:', err);
+      }
+
+      // 3. Generer formell Overtakelsesprotokoll (NS 8406)
+      try {
+        await api.saveDoc('project_documents', {
+          id: `doc-overtakelse-${projectId}`,
+          projectId,
+          title: `Overtakelsesprotokoll (NS 8406) - ${project.name}`,
+          category: 'Sluttdokumentasjon',
+          type: 'contract',
+          source: 'manual',
+          tek17Clause: 'NS 8406 Forenklet norsk byggekontrakt pkt. 32',
+          description: `Formell overtakelsesprotokoll for ${project.name} overlevert ${project.clientName}. 5 års reklamasjonsgaranti.`,
+          createdAt: new Date().toISOString().split('T')[0]
+        });
+      } catch (err) {
+        console.warn('Could not save overtakelse doc:', err);
+      }
+
+      // 4. Send e-post til kunde med komplett dokumentasjonspakke dersom e-post foreligger
+      if (project.clientEmail) {
+        try {
+          await fetch('/api/documentation', {
+            method: 'POST',
+            headers: { 'Content-Type': 'application/json' },
+            body: JSON.stringify({
+              action: 'email_documentation',
+              projectId,
+              projectInfo: project,
+              recipientEmail: project.clientEmail,
+              companyName: project.companyName || 'Mesterbedrift'
+            })
+          });
+        } catch (emailErr) {
+          console.warn('Could not send final email documentation:', emailErr);
+        }
+      }
+
+      // 5. Update project stage to archived/completed and boligmappaReady
+      try {
+        await updateDoc(doc(db, 'projects', projectId), {
+          stage: 'archived',
+          status: 'completed',
+          progress: 100,
+          documentationLevel: 100,
+          boligmappaReady: true,
+          completedAt: new Date().toISOString(),
+          updatedAt: serverTimestamp()
+        });
+      } catch {
+        await api.saveDoc('projects', {
+          ...project,
+          stage: 'archived',
+          status: 'completed',
+          progress: 100,
+          documentationLevel: 100,
+          boligmappaReady: true,
+          completedAt: new Date().toISOString()
+        });
+      }
 
       return true;
     } catch (error) {

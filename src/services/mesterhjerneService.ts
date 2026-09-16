@@ -236,12 +236,30 @@ Oppdragsgiver har 5 års reklamasjonsrett i henhold til norsk lov fra dato for s
       }
     }
 
-    // F. Logg aktivitet og send notifikasjon
+    // F. Initialiser prosjektets FDV- og sluttdokumentasjonsarkiv fra dag 1
+    try {
+      if (typeof window !== 'undefined') {
+        fetch('/api/documentation', {
+          method: 'POST',
+          headers: { 'Content-Type': 'application/json' },
+          body: JSON.stringify({
+            action: 'generate_project_fdv',
+            projectId,
+            projectInfo: newProject,
+            companyName: newProject.companyName
+          })
+        }).catch(e => console.warn('Background FDV init warning:', e));
+      }
+    } catch (err) {
+      console.warn('Could not trigger initial FDV generation:', err);
+    }
+
+    // G. Logg aktivitet og send notifikasjon
     const notif: AppNotification = {
       id: `notif-${Date.now()}`,
       userId: 'all',
       title: '🎉 Kontrakt signert & Prosjekt opprettet!',
-      message: `Kunden ${contract.clientName} har signert kontrakten for "${projectName}". Mesterhjernen har aktivert prosjektet med full sjekklistepakke og SJA.`,
+      message: `Kunden ${contract.clientName} har signert kontrakten for "${projectName}". Mesterhjernen har aktivert prosjektet med flerfaglige sjekklister, SJA og FDV-perm.`,
       type: 'success',
       category: 'project',
       read: false,
@@ -254,7 +272,7 @@ Oppdragsgiver har 5 års reklamasjonsrett i henhold til norsk lov fra dato for s
         id: `act-${Date.now()}`,
         projectId,
         title: 'Kontrakt digitalt signert av kunde',
-        description: `Kontrakt ${contract.projectCode} signert av ${contract.clientName}. Prosjekt, KS-sjekklister og HMS automatisk etablert.`,
+        description: `Kontrakt ${contract.projectCode} signert av ${contract.clientName}. Flerfaglige KS-sjekklister og FDV-arkiv etablert.`,
         author: 'Mesterhjernen',
         timestamp: now
       });
