@@ -54,6 +54,9 @@ import {
   RotateCcw
 } from 'lucide-react';
 import InChatWorkspace, { InChatFormType } from './InChatWorkspace';
+import AutonomousControlPost from './AutonomousControlPost';
+import { optimizeImageForVision } from '@/src/lib/imageOptimizer';
+import { visionService } from '../services/visionService';
 import { cn } from '../lib/utils';
 import { toast } from 'sonner';
 import { useAuth } from '../hooks/useAuth';
@@ -204,6 +207,8 @@ export default function MesterAIChat({
   const [omniSettings, setOmniSettings] = useState<OmnichannelSettings>(getStoredOmnichannelSettings);
   const messagesContainerRef = useRef<HTMLDivElement>(null);
   const messagesEndRef = useRef<HTMLDivElement>(null);
+  const chatFileInputRef = useRef<HTMLInputElement>(null);
+  const [isAnalyzingImage, setIsAnalyzingImage] = useState(false);
 
   // Keep omnichannel settings updated in real time
   useEffect(() => {
@@ -375,6 +380,74 @@ export default function MesterAIChat({
       onPromptHandled?.();
     }
   }, [initialPrompt]);
+
+  // Direct in-chat photo analysis (TEK17 / BVN Vision AI)
+  const handleChatPhotoUpload = async (e: React.ChangeEvent<HTMLInputElement>) => {
+    const file = e.target.files?.[0];
+    if (!file) return;
+
+    const userMsgId = `usr-${Date.now()}`;
+
+    setMessages(prev => [
+      ...prev,
+      {
+        id: userMsgId,
+        role: 'user',
+        content: `📸 **Bilde lastet opp for KS-kontroll:** ${file.name}\n\n*Analyserer mot TEK17 og Byggebransjens Våtromsnorm (BVN)...*`,
+        timestamp: new Date().toLocaleTimeString('no-NO', { hour: '2-digit', minute: '2-digit' })
+      }
+    ]);
+
+    setIsLoading(true);
+    setIsAnalyzingImage(true);
+    try {
+      const { base64, mimeType } = await optimizeImageForVision(file);
+      const analysis = await visionService.analyzeImage(base64, mimeType);
+
+      const isApproved = analysis.status === 'approved';
+      const aiMsgContent = `${isApproved ? '✅ **TEK17 / BVN-KONTROLL GODKJENT**' : '⚠️ **AVVIK DETEKTERT / LUKKESPERRE AKTIVERT**'}\n\n` +
+        `**Vurdering:** ${analysis.description}\n\n` +
+        `**Detekterte elementer:** ${analysis.elements.join(', ')}\n\n` +
+        (analysis.tips && analysis.tips.length > 0 ? `**Faglige råd:**\n${analysis.tips.map(t => `- ${t}`).join('\n')}\n\n` : '') +
+        (analysis.recommendation ? `**Anbefalt tiltak:** ${analysis.recommendation}` : '');
+
+      const assistantMsg: ChatMessage = {
+        id: `ai-${Date.now()}`,
+        role: 'assistant',
+        content: aiMsgContent,
+        timestamp: new Date().toLocaleTimeString('no-NO', { hour: '2-digit', minute: '2-digit' }),
+        suggestedActions: isApproved ? [
+          {
+            id: 'log_photo',
+            type: 'open_time_modal',
+            label: '⏱️ Før timer på prosjektet',
+            data: { projectId: selectedProject?.id }
+          }
+        ] : [
+          {
+            id: 'create_dev',
+            type: 'open_deviation_modal',
+            label: '🚨 Registrer formelt avvik (RUH)',
+            data: {
+              title: analysis.title || 'Avvik oppdaget ved bildekontroll',
+              description: analysis.description,
+              projectId: selectedProject?.id
+            }
+          }
+        ]
+      };
+
+      setMessages(prev => [...prev, assistantMsg]);
+      toast.success(isApproved ? 'Bilde godkjent iht. TEK17!' : 'Avvik identifisert av AI!');
+    } catch (err: any) {
+      console.error('Vision chat error:', err);
+      toast.error('Kunne ikke analysere bildet: ' + (err.message || 'Prøv et skarpere bilde'));
+    } finally {
+      setIsLoading(false);
+      setIsAnalyzingImage(false);
+      if (chatFileInputRef.current) chatFileInputRef.current.value = '';
+    }
+  };
 
   const handleSendMessage = async (textToSend: string) => {
     if (!textToSend.trim() || isLoading) return;
@@ -1113,6 +1186,14 @@ export default function MesterAIChat({
                   }}
                   className="flex items-center gap-2"
                 >
+                  <input 
+                    type="file" 
+                    ref={chatFileInputRef} 
+                    accept="image/*" 
+                    className="hidden" 
+                    onChange={handleChatPhotoUpload} 
+                  />
+
                   <button
                     type="button"
                     onClick={() => setActiveFormView({ type: 'toolbox' })}
@@ -1120,6 +1201,21 @@ export default function MesterAIChat({
                     title="Åpne skjemaer & verktøy"
                   >
                     <Layers size={17} />
+                  </button>
+
+                  <button
+                    type="button"
+                    disabled={isAnalyzingImage}
+                    onClick={() => chatFileInputRef.current?.click()}
+                    className={cn(
+                      "p-2.5 rounded-xl transition-all cursor-pointer shrink-0 border",
+                      isAnalyzingImage 
+                        ? "bg-electric-100 border-electric-300 text-electric-700 animate-pulse" 
+                        : "bg-slate-100 hover:bg-electric-50 hover:text-electric-700 text-slate-600 border-slate-200/80"
+                    )}
+                    title="Ta bilde eller last opp for direkte TEK17/BVN analyse"
+                  >
+                    <Camera size={17} />
                   </button>
 
                   <div className="relative flex-1">
@@ -1319,6 +1415,19 @@ export default function MesterAIChat({
                     )}
                   </div>
                 </div>
+
+                {/* 🌟 MESTERENS AUTONOME KONTROLLPOST (100% Autonom drift med 100% Kontroll) */}
+                {isAdminOrManager && (
+                  <AutonomousControlPost 
+                    onOpenProject={(id) => {
+                      const p = projects.find(pr => pr.id === id);
+                      if (p) onSelectProject?.(p);
+                    }}
+                    onOpenChangeOrder={(data) => {
+                      onOpenChangeOrderModal?.(data);
+                    }}
+                  />
+                )}
 
                 {/* 2. OPERATIONAL KPI SUMMARY STRIP */}
                 <div className="grid grid-cols-2 sm:grid-cols-4 gap-2.5 sm:gap-3">

@@ -1,5 +1,6 @@
 import { NextRequest, NextResponse } from 'next/server';
 import { runDailyAudit } from '@/src/lib/server/cronScheduler';
+import { runAutonomousAuditCycle } from '@/src/lib/server/autonomousAgent';
 import { verifyCronOrInternalSecret } from '@/src/lib/server/auth';
 
 export async function GET(req: NextRequest) {
@@ -16,11 +17,19 @@ async function handleCron(req: NextRequest) {
   }
 
   try {
-    const summary = await runDailyAudit();
+    const [summary, autonomyCycle] = await Promise.all([
+      runDailyAudit(),
+      runAutonomousAuditCycle().catch(err => {
+        console.warn('Autonomy cycle warning in cron:', err.message);
+        return null;
+      })
+    ]);
+
     return NextResponse.json({
       success: true,
-      message: 'Daglig cron-kjøring fullført',
-      summary
+      message: 'Daglig cron- og autonomisyklus fullført',
+      summary,
+      autonomyCycle
     });
   } catch (error: any) {
     console.error('Cron route error:', error);
