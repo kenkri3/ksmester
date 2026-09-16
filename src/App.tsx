@@ -1467,7 +1467,12 @@ function AppContent() {
               )}
               {view === 'offer' && offerToken && <OfferPage token={offerToken} />}
               {view === 'invite' && inviteToken && <InviteAcceptancePage token={inviteToken} />}
-              {view === 'customer-portal' && portalProject && <CustomerPortal project={portalProject} />}
+              {view === 'customer-portal' && portalProject && (
+                <CustomerPortal 
+                  project={portalProject} 
+                  onClose={() => setView(user ? 'dashboard' : 'login')} 
+                />
+              )}
               {view === 'pricing' && <PricingPage />}
               {view === 'about' && <AboutPage />}
               {view === 'contact' && <ContactPage />}
