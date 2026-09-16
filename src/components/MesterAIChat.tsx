@@ -1,5 +1,6 @@
 import React, { useState, useEffect, useRef } from 'react';
 import { motion, AnimatePresence } from 'motion/react';
+import ReactMarkdown from 'react-markdown';
 import { 
   Brain, 
   Send, 
@@ -293,76 +294,86 @@ export default function MesterAIChat({
     }
   };
 
-  // Simple, robust text renderer with markdown highlights
+  // Rich text renderer with ReactMarkdown
   const renderFormattedContent = (content: string) => {
-    const lines = content.split('\n');
     return (
-      <div className="space-y-2 text-xs sm:text-sm leading-relaxed">
-        {lines.map((line, idx) => {
-          const trimmed = line.trim();
-
-          // Header 3 or 4
-          if (trimmed.startsWith('### ') || trimmed.startsWith('#### ')) {
-            return (
-              <h4 key={idx} className="font-extrabold text-navy-900 text-sm sm:text-base mt-2 mb-1">
-                {trimmed.replace(/^#+\s/, '')}
-              </h4>
-            );
-          }
-          if (trimmed.startsWith('## ')) {
-            return (
-              <h3 key={idx} className="font-black text-electric-700 text-base sm:text-lg mt-3 mb-1">
-                {trimmed.replace(/^#+\s/, '')}
+      <div className="text-slate-900 leading-relaxed font-sans text-xs sm:text-sm">
+        <ReactMarkdown
+          components={{
+            h1: ({ children }) => (
+              <h3 className="text-base font-black text-navy-950 mt-3 mb-1.5 pb-1 border-b border-slate-200">
+                {children}
               </h3>
-            );
-          }
-
-          // Bullet list
-          if (trimmed.startsWith('- ') || trimmed.startsWith('• ') || trimmed.startsWith('* ')) {
-            const rawText = trimmed.replace(/^[-•*]\s*/, '');
-            return (
-              <div key={idx} className="flex items-start gap-2 pl-2">
-                <span className="text-electric-500 font-bold shrink-0 leading-5">•</span>
-                <span dangerouslySetInnerHTML={{ __html: formatInlineMarkdown(rawText) }} />
-              </div>
-            );
-          }
-
-          // Numbered list
-          if (/^\d+\.\s/.test(trimmed)) {
-            const match = trimmed.match(/^(\d+)\.\s*(.*)/);
-            if (match) {
-              return (
-                <div key={idx} className="flex items-start gap-2 pl-2">
-                  <span className="font-bold text-electric-600 shrink-0 text-xs">{match[1]}.</span>
-                  <span dangerouslySetInnerHTML={{ __html: formatInlineMarkdown(match[2]) }} />
-                </div>
+            ),
+            h2: ({ children }) => (
+              <h4 className="text-sm font-black text-electric-800 mt-3 mb-1 pb-0.5 border-b border-slate-100 flex items-center gap-1.5">
+                <span className="w-1.5 h-3.5 bg-electric-600 rounded-full inline-block shrink-0" />
+                {children}
+              </h4>
+            ),
+            h3: ({ children }) => (
+              <h5 className="text-xs sm:text-sm font-black text-navy-950 mt-2.5 mb-1 flex items-center gap-1.5">
+                <span className="w-1.5 h-3 bg-electric-600 rounded-full inline-block shrink-0" />
+                {children}
+              </h5>
+            ),
+            p: ({ children }) => (
+              <p className="text-xs sm:text-sm text-slate-800 leading-relaxed my-1.5 first:mt-0 last:mb-0">
+                {children}
+              </p>
+            ),
+            strong: ({ children }) => (
+              <strong className="font-extrabold text-navy-950">
+                {children}
+              </strong>
+            ),
+            em: ({ children }) => (
+              <em className="italic text-slate-700">
+                {children}
+              </em>
+            ),
+            ul: ({ children }) => (
+              <ul className="space-y-1 my-2 pl-0.5">
+                {children}
+              </ul>
+            ),
+            ol: ({ children }) => (
+              <ol className="list-decimal space-y-1 my-2 pl-5 text-xs sm:text-sm text-slate-800 font-medium">
+                {children}
+              </ol>
+            ),
+            li: ({ children }) => (
+              <li className="text-xs sm:text-sm text-slate-800 flex items-start gap-2">
+                <span className="text-electric-600 font-bold shrink-0 leading-5">•</span>
+                <span className="flex-1">{children}</span>
+              </li>
+            ),
+            hr: () => (
+              <hr className="my-3 border-slate-200" />
+            ),
+            blockquote: ({ children }) => (
+              <blockquote className="border-l-4 border-electric-500 bg-electric-50/80 pl-3 py-2 my-2 rounded-r-xl text-xs text-navy-950 font-medium shadow-2xs">
+                💡 {children}
+              </blockquote>
+            ),
+            code: ({ children, className }) => {
+              const isInline = !className;
+              return isInline ? (
+                <code className="px-1.5 py-0.5 rounded bg-electric-100/80 text-electric-900 font-mono text-[11px] font-bold">
+                  {children}
+                </code>
+              ) : (
+                <pre className="p-3 my-2 bg-navy-950 text-slate-100 rounded-xl text-xs font-mono overflow-x-auto">
+                  <code>{children}</code>
+                </pre>
               );
             }
-          }
-
-          // Empty line
-          if (!trimmed) {
-            return <div key={idx} className="h-1" />;
-          }
-
-          // Regular paragraph
-          return (
-            <p key={idx} dangerouslySetInnerHTML={{ __html: formatInlineMarkdown(line) }} />
-          );
-        })}
+          }}
+        >
+          {content}
+        </ReactMarkdown>
       </div>
     );
-  };
-
-  const formatInlineMarkdown = (text: string) => {
-    return text
-      // Bold
-      .replace(/\*\*(.*?)\*\*/g, '<strong class="font-extrabold text-navy-900">$1</strong>')
-      // Code / Price highlight
-      .replace(/`([^`]+)`/g, '<code class="px-1.5 py-0.5 rounded bg-electric-100/70 text-electric-800 font-mono text-[11px] font-bold">$1</code>')
-      // Currency styling (kr 12 000, 1500 kr)
-      .replace(/(\bkr\s*[\d\s.,]+|\b[\d\s.,]+\s*kr\b)/gi, '<span class="font-bold text-emerald-700">$1</span>');
   };
 
   if (!isOpen) return null;

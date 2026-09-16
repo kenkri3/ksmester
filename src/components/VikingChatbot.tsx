@@ -1,5 +1,6 @@
 import React, { useState, useEffect, useRef } from 'react';
 import { motion, AnimatePresence } from 'motion/react';
+import ReactMarkdown from 'react-markdown';
 import { 
   Bot, 
   Send, 
@@ -404,77 +405,91 @@ export default function VikingChatbot({
     '🔒 Bindingstid og oppstart'
   ];
 
-  const formatBotMarkdown = (text: string) => {
-    return text
-      // Bold (**text**) -> dark neutral-950 font-black (NEVER white or dark:text-neutral-100)
-      .replace(/\*\*(.*?)\*\*/g, '<strong class="font-extrabold text-neutral-950">$1</strong>')
-      // Inline code (`code`)
-      .replace(/`([^`]+)`/g, '<code class="px-1.5 py-0.5 rounded bg-purple-100 text-purple-900 font-mono text-[11px] font-bold">$1</code>')
-      // Currency styling (kr 12 000, 1500 kr, kr 1.490,-)
-      .replace(/(\bkr\s*[\d\s.,]+(?:,-)?|\b[\d\s.,]+\s*kr\b)/gi, '<span class="font-bold text-emerald-700">$1</span>')
-      // Italics (*text*)
-      .replace(/(?<!\*)\*(?!\*)(.*?)(?<!\*)\*(?!\*)/g, '<em class="italic text-neutral-700">$1</em>');
-  };
-
   const renderMessageContent = (content: string, isUser: boolean) => {
     if (isUser) {
       return (
-        <div className="whitespace-pre-wrap font-sans text-white font-medium">
-          {content.split(/(\*\*.*?\*\*)/g).map((part, pIdx) => {
-            if (part.startsWith('**') && part.endsWith('**')) {
-              return <strong key={pIdx} className="font-extrabold text-white">{part.slice(2, -2)}</strong>;
-            }
-            return <span key={pIdx}>{part}</span>;
-          })}
+        <div className="whitespace-pre-wrap font-sans text-white font-medium text-xs sm:text-sm">
+          {content}
         </div>
       );
     }
 
-    const lines = content.split('\n');
     return (
-      <div className="space-y-1 text-neutral-800 leading-relaxed font-sans">
-        {lines.map((line, idx) => {
-          const trimmed = line.trim();
-
-          // Empty line
-          if (!trimmed) {
-            return <div key={idx} className="h-1.5" />;
-          }
-
-          // Bullet points (- or *)
-          if (trimmed.startsWith('- ') || (trimmed.startsWith('* ') && !trimmed.endsWith('*'))) {
-            const itemText = trimmed.replace(/^[-*]\s+/, '');
-            return (
-              <div key={idx} className="flex items-start gap-2 pl-0.5 py-0.5">
-                <span className="text-purple-600 font-black text-xs leading-5 shrink-0">•</span>
-                <span 
-                  className="flex-1 text-neutral-800 text-xs sm:text-sm"
-                  dangerouslySetInnerHTML={{ __html: formatBotMarkdown(itemText) }} 
-                />
-              </div>
-            );
-          }
-
-          // Tips / highlighted box (*Tips: ...*)
-          if (trimmed.startsWith('*') && trimmed.endsWith('*') && trimmed.length > 2) {
-            const innerText = trimmed.slice(1, -1);
-            return (
-              <div key={idx} className="mt-2 p-2.5 bg-purple-50/90 border border-purple-200/90 rounded-xl text-[11px] sm:text-xs text-purple-950 font-medium shadow-2xs">
-                <span className="font-bold text-purple-700 mr-1">💡 Tips:</span>
-                <span dangerouslySetInnerHTML={{ __html: formatBotMarkdown(innerText.replace(/^Tips:\s*/i, '')) }} />
-              </div>
-            );
-          }
-
-          // Regular paragraph
-          return (
-            <p 
-              key={idx} 
-              className="text-neutral-800 text-xs sm:text-sm"
-              dangerouslySetInnerHTML={{ __html: formatBotMarkdown(line) }} 
-            />
-          );
-        })}
+      <div className="text-neutral-900 leading-relaxed font-sans text-xs sm:text-sm">
+        <ReactMarkdown
+          components={{
+            h1: ({ children }) => (
+              <h3 className="text-base font-black text-neutral-950 mt-3 mb-1.5 pb-1 border-b border-neutral-200">
+                {children}
+              </h3>
+            ),
+            h2: ({ children }) => (
+              <h4 className="text-sm font-black text-neutral-950 mt-3 mb-1 pb-0.5 border-b border-neutral-100 flex items-center gap-1.5">
+                <span className="w-1.5 h-3.5 bg-purple-600 rounded-full inline-block shrink-0" />
+                {children}
+              </h4>
+            ),
+            h3: ({ children }) => (
+              <h5 className="text-xs sm:text-sm font-black text-neutral-950 mt-2.5 mb-1 flex items-center gap-1.5">
+                <span className="w-1.5 h-3 bg-purple-600 rounded-full inline-block shrink-0" />
+                {children}
+              </h5>
+            ),
+            p: ({ children }) => (
+              <p className="text-xs sm:text-sm text-neutral-800 leading-relaxed my-1.5 first:mt-0 last:mb-0">
+                {children}
+              </p>
+            ),
+            strong: ({ children }) => (
+              <strong className="font-extrabold text-neutral-950">
+                {children}
+              </strong>
+            ),
+            em: ({ children }) => (
+              <em className="italic text-neutral-700">
+                {children}
+              </em>
+            ),
+            ul: ({ children }) => (
+              <ul className="space-y-1 my-2 pl-0.5">
+                {children}
+              </ul>
+            ),
+            ol: ({ children }) => (
+              <ol className="list-decimal space-y-1 my-2 pl-5 text-xs sm:text-sm text-neutral-800 font-medium">
+                {children}
+              </ol>
+            ),
+            li: ({ children }) => (
+              <li className="text-xs sm:text-sm text-neutral-800 flex items-start gap-2">
+                <span className="text-purple-600 font-bold shrink-0 leading-5">•</span>
+                <span className="flex-1">{children}</span>
+              </li>
+            ),
+            hr: () => (
+              <hr className="my-3 border-neutral-200" />
+            ),
+            blockquote: ({ children }) => (
+              <blockquote className="border-l-4 border-purple-500 bg-purple-50/80 pl-3 py-2 my-2 rounded-r-xl text-xs text-purple-950 font-medium shadow-2xs">
+                💡 {children}
+              </blockquote>
+            ),
+            code: ({ children, className }) => {
+              const isInline = !className;
+              return isInline ? (
+                <code className="px-1.5 py-0.5 rounded bg-purple-100/80 text-purple-900 font-mono text-[11px] font-bold">
+                  {children}
+                </code>
+              ) : (
+                <pre className="p-3 my-2 bg-neutral-900 text-neutral-100 rounded-xl text-xs font-mono overflow-x-auto">
+                  <code>{children}</code>
+                </pre>
+              );
+            }
+          }}
+        >
+          {content}
+        </ReactMarkdown>
       </div>
     );
   };
