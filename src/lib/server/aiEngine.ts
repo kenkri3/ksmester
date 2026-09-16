@@ -232,7 +232,7 @@ async function call1MinAi(
       'API-KEY': apiKey
     },
     body: JSON.stringify(payload),
-    signal: AbortSignal.timeout(9000)
+    signal: AbortSignal.timeout(25000)
   });
 
   if (!res.ok) {
@@ -339,7 +339,7 @@ async function callGeminiBackup(
       });
 
       const timeoutPromise = new Promise((_, reject) =>
-        setTimeout(() => reject(new Error(`Timeout på ${cand} etter 10s`)), 10000)
+        setTimeout(() => reject(new Error(`Timeout på ${cand} etter 25s`)), 25000)
       );
 
       const res: any = await Promise.race([generatePromise, timeoutPromise]);

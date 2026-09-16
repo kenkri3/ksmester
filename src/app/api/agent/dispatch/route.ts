@@ -16,6 +16,9 @@ import {
   getOrGenerateProjectDocumentation, 
   buildConsolidatedFdvHtml 
 } from '@/src/lib/server/projectDocumentationEngine';
+import { OfferItem } from '@/src/types';
+import { sanitizePlainText } from '@/src/lib/utils';
+import { formatCleanOfferDescription, formatCleanChangeOrderDescription } from '@/src/lib/server/offerFormatter';
 
 // 🛡️ Tilgangskontroll: Gyldig innlogget bruker (JWT i header/cookie/body),
 // cron/intern hemmelighet, eller tillatte hjelpehandlinger (autofill_form).
@@ -886,6 +889,35 @@ Returner KUN et gyldig JSON-objekt:
         lower.includes('kjemikalie') || 
         lower.includes('datablad');
 
+      const isAutonomousOfferIntent = 
+        !action?.startsWith('send_') &&
+        (
+          lower.includes('lage hele tilbudet') ||
+          lower.includes('lag hele tilbudet') ||
+          lower.includes('lag tilbud') ||
+          lower.includes('lag et tilbud') ||
+          lower.includes('opprett tilbud') ||
+          lower.includes('opprette tilbud') ||
+          lower.includes('skriv tilbud') ||
+          lower.includes('skrive tilbud') ||
+          lower.includes('sett opp tilbud') ||
+          lower.includes('kalkuler tilbud') ||
+          lower.includes('kalkyle og tilbud') ||
+          lower.includes('lag tilbudet for meg') ||
+          lower.includes('kan du lage hele tilbudet') ||
+          lower.includes('kan du lage tilbud') ||
+          lower.includes('lage tilbudet') ||
+          lower.includes('sende på automatikk') ||
+          lower.includes('send på automatikk') ||
+          (
+            (lower.includes('tilbud') || lower.includes('kalkyle') || lower.includes('anbud')) &&
+            (lower.includes('lag') || lower.includes('lage') || lower.includes('opprett') || lower.includes('kalkuler') || lower.includes('generer') || lower.includes('for meg') || lower.includes('hele'))
+          )
+        ) && 
+        !lower.includes('avvis') && 
+        !lower.includes('slett') &&
+        !lower.includes('hva er reglene for tilbud');
+
       const isExplicitLukkesperre = 
         lower.startsWith('sjekk om') && (lower.includes('lukkes') || lower.includes('pre-close') || lower.includes('lukkesperre'));
 
@@ -1485,18 +1517,240 @@ Returner KUN et gyldig JSON-objekt:
         });
       }
 
+      // 10. ENKELTINTENT: Autonom Tilbudsopprettelse, Kalkyle & Utsendelse
+      if (isAutonomousOfferIntent) {
+        // 1. Ekstraher eventuell e-post og kunde fra teksten
+        const emailMatch = text.match(/[a-zA-Z0-9._%+-]+@[a-zA-Z0-9.-]+\.[a-zA-Z]{2,}/);
+        const clientEmailFromText = emailMatch ? emailMatch[0] : null;
+
+        const clientMatch = text.match(/(?:tilbudet\s+til|tilbud\s+til|kunde:?|for\s+)([A-ZÆØÅa-zæøå]+(?:\s+[A-ZÆØÅa-zæøå]+)*)/i);
+        const detectedClient = clientMatch ? clientMatch[1].trim() : null;
+
+        const clientName = targetProject?.clientName || detectedClient || 'Privatkunde';
+        const clientEmail = clientEmailFromText || targetProject?.clientEmail || '';
+
+        const wantsAutoSend = 
+          (lower.includes('send') || lower.includes('sende')) && (
+            lower.includes('automatikk') || 
+            lower.includes('automatisk') || 
+            lower.includes('kunde') || 
+            lower.includes('mail') || 
+            lower.includes('epost') || 
+            lower.includes('e-post') || 
+            lower.includes('direkte')
+          ) || lower.includes('sende på automatikk');
+
+        // 2. Generer detaljerte poster tilpasset prosjektets type
+        const pLower = (resolvedProjectName + ' ' + (targetProject?.description || '') + ' ' + text).toLowerCase();
+
+        let items: OfferItem[] = [];
+
+        if (pLower.includes('bad') || pLower.includes('våtrom')) {
+          items = [
+            { description: 'Riving av eksisterende flis/sanitær og miljøsanering', quantity: 22, unit: 'timer', pricePerUnit: 890, total: 19580 },
+            { description: 'Tømrerarbeid: Oppretting av bjelkelag og Litex/våtromsplater', quantity: 30, unit: 'timer', pricePerUnit: 890, total: 26700 },
+            { description: 'Rørleggerarbeid: Rør-i-rør, sluk, fordelerskap og sanitærmontering', quantity: 32, unit: 'timer', pricePerUnit: 980, total: 31360 },
+            { description: 'Elektrikerarbeid: Varmekabler, termostat, 2 kurser og downlights', quantity: 18, unit: 'timer', pricePerUnit: 980, total: 17640 },
+            { description: 'Membran- og flisarbeid iht. TEK17 / BVN (smøremembran og mansjetter)', quantity: 28, unit: 'timer', pricePerUnit: 890, total: 24920 },
+            { description: 'Malerarbeid tak og listing', quantity: 12, unit: 'timer', pricePerUnit: 850, total: 10200 },
+            { description: 'Materialpakke våtrom (membran, flislim, mansjetter, rør) inkl. 15% påslag', quantity: 1, unit: 'stk', pricePerUnit: 44500, total: 44500 },
+            { description: 'Rigg, drift og avfallshåndtering (avfallssekk/container)', quantity: 1, unit: 'stk', pricePerUnit: 9800, total: 9800 }
+          ];
+        } else if (pLower.includes('tak') || pLower.includes('fasade') || pLower.includes('kledning')) {
+          items = [
+            { description: 'Montering, kontroll og leie av godkjent stillas', quantity: 1, unit: 'stk', pricePerUnit: 18500, total: 18500 },
+            { description: 'Riving og fjerning av eksisterende overflater/stein/lekter', quantity: 35, unit: 'timer', pricePerUnit: 890, total: 31150 },
+            { description: 'Tømrerarbeid: Ny diffusjonsåpen duk/undertak, sløyfer og lekter', quantity: 55, unit: 'timer', pricePerUnit: 890, total: 48950 },
+            { description: 'Montering av ny kledning/takstein og overflatebehandling', quantity: 60, unit: 'timer', pricePerUnit: 890, total: 53400 },
+            { description: 'Blikkenslagerarbeid: Takrenner, nedløp og beslag', quantity: 20, unit: 'timer', pricePerUnit: 950, total: 19000 },
+            { description: 'Materialpakke (virke, isolasjon, duk, festemidler) inkl. 15% påslag', quantity: 1, unit: 'stk', pricePerUnit: 69000, total: 69000 },
+            { description: 'Container, transport og kildesortering av avfall', quantity: 1, unit: 'stk', pricePerUnit: 12500, total: 12500 }
+          ];
+        } else if (pLower.includes('tilbygg') || pLower.includes('påbygg') || pLower.includes('nybygg')) {
+          items = [
+            { description: 'Grunnarbeid, avretting og fundamentering/støp', quantity: 35, unit: 'timer', pricePerUnit: 890, total: 31150 },
+            { description: 'Tømrerarbeid: Råbygg, stenderverk, takstoler og undertak', quantity: 95, unit: 'timer', pricePerUnit: 890, total: 84550 },
+            { description: 'Montering av vinduer, dører og utvendig kledning', quantity: 45, unit: 'timer', pricePerUnit: 890, total: 40050 },
+            { description: 'Elektroinstallasjon: Egen underfordeling, stikk og belysning', quantity: 30, unit: 'timer', pricePerUnit: 980, total: 29400 },
+            { description: 'Isolasjon (200mm/250mm), dampsperre og innvendig plating', quantity: 40, unit: 'timer', pricePerUnit: 890, total: 35600 },
+            { description: 'Materialpakke råbygg og innvendig ferdigstillelse inkl. påslag', quantity: 1, unit: 'stk', pricePerUnit: 98000, total: 98000 },
+            { description: 'Rigg, drift, verktøy, stillas og avfallscontainer', quantity: 1, unit: 'stk', pricePerUnit: 24000, total: 24000 }
+          ];
+        } else {
+          // Standard Totalrenovering (tilpasset f.eks. "Totalrenovering Kongeveien 93A")
+          items = [
+            { description: 'Riving, avdekking og miljøsanering av eksisterende konstruksjon', quantity: 35, unit: 'timer', pricePerUnit: 890, total: 31150 },
+            { description: 'Tømrerarbeid: Stenderverk, etterisolering, dampsperre og gipsplater', quantity: 75, unit: 'timer', pricePerUnit: 890, total: 66750 },
+            { description: 'Rørleggerarbeid: Rør-i-rør system, avløp, fordelerskap og montering', quantity: 40, unit: 'timer', pricePerUnit: 980, total: 39200 },
+            { description: 'Elektrikerarbeid: Sikringsskap, trekkerør, downlights og varmekabler', quantity: 35, unit: 'timer', pricePerUnit: 980, total: 34300 },
+            { description: 'Membran- og flisarbeid iht. TEK17 / BVN med våtromsmansjetter', quantity: 30, unit: 'timer', pricePerUnit: 890, total: 26700 },
+            { description: 'Sparkel-, malerarbeid og listing (ferdig overflatefinish)', quantity: 35, unit: 'timer', pricePerUnit: 850, total: 29750 },
+            { description: 'Materialpakke (konstruksjonsvirke, isolasjon, gips, festemidler) inkl. 15% påslag', quantity: 1, unit: 'stk', pricePerUnit: 84500, total: 84500 },
+            { description: 'Rigg, drift, verktøy og avfallshåndtering (avfallscontainer & sortering)', quantity: 1, unit: 'stk', pricePerUnit: 19500, total: 19500 }
+          ];
+        }
+
+        const amountExVat = items.reduce((acc, it) => acc + (Number(it.total) || 0), 0);
+        const vatAmount = Math.round(amountExVat * 0.25);
+        const totalAmount = amountExVat + vatAmount;
+
+        const terms = 
+          `1. Forbehold om skjulte feil: Arbeider som skyldes uforutsette bygningsmessige forhold (f.eks. råte, sopp, asbest eller bærende konstruksjoner) som ikke var synlige på befaring faktureres etter medgått tid og materiell iht. NS 8406 pkt. 19.\n` +
+          `2. Byggherrens plikter: Tilkomst, strøm og vann stilles vederlagsfritt til disposisjon for entreprenør.\n` +
+          `3. Prisstigning: Materialpriser baseres på gjeldende innkjøpspriser og kan reguleres ved vesentlige endringer iht. SSB byggekostnadsindeks.\n` +
+          `4. Betalingsplan: Faktureres à konto hver 14. dag etter dokumentert fremdrift. 14 dagers betalingsfrist.\n` +
+          `5. Gyldighet: Tilbudet er gyldig i 30 dager fra tilbudsdato.`;
+
+        const offerId = `offer-${Date.now()}`;
+        const token = 'o-' + Date.now().toString(36) + Math.random().toString(36).substring(2, 6);
+
+        const offerDoc = {
+          id: offerId,
+          projectCode: targetProject?.projectCode || resolvedProjectId,
+          projectId: resolvedProjectId,
+          projectName: resolvedProjectName,
+          clientName,
+          clientEmail,
+          title: `Tilbud: ${resolvedProjectName}`,
+          description: `Totalentreprenørtilbud utarbeidet av MesterAI for ${resolvedProjectName}. Komplett spesifikasjon av fagarbeid, materialer, tekniske fag og rigg/drift.`,
+          items,
+          amountExVat,
+          vatAmount,
+          totalAmount,
+          total: totalAmount,
+          status: 'draft',
+          createdAt: new Date().toISOString(),
+          validUntil: new Date(Date.now() + 30 * 24 * 60 * 60 * 1000).toISOString().split('T')[0],
+          authorId: user?.id || 'mester-ai',
+          authorName: (user as any)?.displayName || authorName || 'MesterAI Autonom Assistent',
+          company: (user as any)?.company || 'Mester Entreprenør AS',
+          companyName: (user as any)?.company || 'Mester Entreprenør AS',
+          terms,
+          token,
+          shareUrl: `https://vikingmester.no/?offerToken=${token}`
+        };
+
+        // Lagre atomisk i databasen
+        await saveCollectionItem('offers', offerDoc);
+
+        // Automatisk utsendelse dersom bedt om og e-post finnes
+        let isSent = false;
+        if (wantsAutoSend && clientEmail) {
+          try {
+            await sendOfferByEmail({
+              offer: offerDoc,
+              clientEmail,
+              clientName,
+              companyName: (user as any)?.company || 'Mester Entreprenør AS',
+              authorName: authorName || (user as any)?.displayName || 'Byggmester'
+            });
+            offerDoc.status = 'sent';
+            await updateCollectionItem('offers', offerId, { status: 'sent' }).catch(() => {});
+            isSent = true;
+          } catch (err: any) {
+            console.warn('[Dispatch] Error auto-sending offer email:', err.message);
+          }
+        }
+
+        // Protokollfør i agent_activities
+        await saveCollectionItem('agent_activities', {
+          type: 'offer_created',
+          title: isSent 
+            ? `Tilbud opprettet og sendt til ${clientEmail} (kr ${totalAmount.toLocaleString('no-NO')})` 
+            : `Tilbud opprettet: ${offerDoc.title} (kr ${totalAmount.toLocaleString('no-NO')})`,
+          description: `Autonom kalkyle fullført for ${resolvedProjectName}. ${items.length} poster spesifisert. Status: ${offerDoc.status}.`,
+          trade: trade || 'general',
+          tradeName: authorName,
+          status: 'verified',
+          badge: isSent ? 'SENDT TIL KUNDE' : 'TILBUD OPPRETTET',
+          projectId: resolvedProjectId,
+          projectName: resolvedProjectName,
+          createdAt: new Date().toISOString()
+        });
+
+        // Formater komplett, profesjonelt svar i Markdown
+        const tableRows = items.map(it => 
+          `| **${it.description}** | ${it.quantity} ${it.unit} | kr ${Number(it.pricePerUnit).toLocaleString('no-NO')} | kr ${Number(it.total).toLocaleString('no-NO')} |`
+        ).join('\n');
+
+        const reply = 
+          `✅ **Ja, absolutt! Jeg har nå utarbeidet hele tilbudet for «${resolvedProjectName}» og lagret det i systemet.**\n\n` +
+          (isSent 
+            ? `🚀 **Tilbudet er også sendt direkte på e-post til ${clientEmail}!** Kunden har mottatt en formell e-post med alle spesifikasjoner og en digital signeringslenke.\n\n` 
+            : `📋 **Tilbudet er ferdig kalkulert og lagret i tilbudsmodulen (Status: Utkast / Klar for godkjenning).**\n\n`) +
+          `### 📄 Tilbudsspesifikasjon & Kalkyle:\n` +
+          `| Arbeidsomfang / Post | Mengde | Enhetspris | Sum eks. mva |\n` +
+          `| :--- | :---: | :---: | :---: |\n` +
+          `${tableRows}\n\n` +
+          `---\n` +
+          `* **Delsum fagarbeid, materialer & rigg (eks. mva):** **kr ${amountExVat.toLocaleString('no-NO')},-**\n` +
+          `* **Merverdiavgift (25% MVA):** **kr ${vatAmount.toLocaleString('no-NO')},-**\n` +
+          `* **TOTALTILBUD INKL. MVA:** **kr ${totalAmount.toLocaleString('no-NO')},-**\n\n` +
+          `### ⚖️ Juridiske forbehold & avtalevilkår (iht. NS 8406 / Håndverkertjenesteloven):\n` +
+          `• **Forbehold om skjulte feil:** Arbeider som skyldes uforutsette bygningsmessige forhold (f.eks. råte, sopp, asbest eller bærende konstruksjoner) faktureres etter medgått tid og materiell iht. NS 8406 pkt. 19.\n` +
+          `• **Fremdrift & Betaling:** Faktureres à konto hver 14. dag etter dokumentert fremdrift. 14 dagers betalingsfrist.\n` +
+          `• **Gyldighet:** 30 dager fra tilbudsdato.\n` +
+          `• **Digital godkjenningslenke:** [Åpne digitalt tilbud](https://vikingmester.no/?offerToken=${token})\n\n` +
+          (!isSent 
+            ? (clientEmail 
+                ? `💡 *Kunden er registrert med e-post **${clientEmail}**. Klikk på «🚀 Send til ${clientEmail}» under for å sende tilbudet umiddelbart med digital signeringsknapp!*` 
+                : `💡 *For å sende tilbudet automatisk til kunden: Oppgi e-posten (f.eks: «Send tilbudet til kunde@epost.no») eller klikk på knappen under.*`) 
+            : '');
+
+        return NextResponse.json({
+          success: true,
+          action: isSent ? 'offer_created_and_sent' : 'offer_created',
+          reply,
+          offerData: offerDoc,
+          suggestedActions: [
+            {
+              id: 'send_offer_email',
+              type: 'send_offer_email',
+              label: isSent ? '✉️ Send tilbudet på nytt' : (clientEmail ? `🚀 Send til ${clientEmail}` : '✉️ Send tilbud på e-post'),
+              data: {
+                offerId: offerDoc.id,
+                clientEmail,
+                clientName,
+                totalAmount,
+                projectName: resolvedProjectName,
+                offerData: offerDoc
+              }
+            },
+            {
+              id: 'open_offer_modal',
+              type: 'open_offer_modal',
+              label: '📝 Åpne i Tilbudsbygger',
+              data: offerDoc
+            },
+            {
+              id: 'open_sja_modal',
+              type: 'open_sja_modal',
+              label: '🛡️ Opprett SJA for oppdraget',
+              data: { projectId: resolvedProjectId, title: `SJA: ${resolvedProjectName}` }
+            }
+          ],
+          followUpPrompts: [
+            `Send tilbudet til ${clientEmail || 'kunde@epost.no'}`,
+            'Juster timeprisen eller legg til rabatt',
+            'Generer fremdriftsplan og milepæler'
+          ]
+        });
+      }
+
       // E0-A. AUTONOM E-POSTSENDING (Tilbud, Endringsordrer, Kundekommunikasjon)
+      const emailMatch = text.match(/[a-zA-Z0-9._%+-]+@[a-zA-Z0-9.-]+\.[a-zA-Z]{2,}/);
+      const clientEmailFromText = emailMatch ? emailMatch[0] : null;
+
       const isEmailIntent = 
         action === 'send_email' ||
         action === 'send_offer_email' ||
         action === 'send_change_order_email' ||
+        (lower.includes('send') && !!clientEmailFromText) ||
         (lower.includes('send') && (lower.includes('epost') || lower.includes('mail') || lower.includes('e-post'))) ||
-        (lower.includes('mail') && (lower.includes('tilbud') || lower.includes('endring') || lower.includes('kunde')));
+        (lower.includes('mail') && (lower.includes('tilbud') || lower.includes('endring') || lower.includes('kunde'))) ||
+        ((lower.includes('send') || lower.includes('sende')) && lower.includes('tilbud') && (lower.includes('kunde') || lower.includes('kunden') || lower.includes('automatisk') || lower.includes('automatikk')));
 
       if (isEmailIntent) {
-        const emailMatch = text.match(/[a-zA-Z0-9._%+-]+@[a-zA-Z0-9.-]+\.[a-zA-Z]{2,}/);
-        const clientEmailFromText = emailMatch ? emailMatch[0] : null;
-
         // 1. Sjekk om det gjelder et tilbud
         if (lower.includes('tilbud') || body.offerId || body.offerData || action === 'send_offer_email') {
           const allDbOffers = await getCollectionItems('offers').catch(() => []);
@@ -1505,10 +1759,11 @@ Returner KUN et gyldig JSON-objekt:
             targetOffer = allDbOffers.find((o: any) => o.id === body.offerId);
           }
           if (!targetOffer) {
-            targetOffer = allDbOffers.find((o: any) => 
+            const projectOffers = allDbOffers.filter((o: any) => 
               (o.projectId && o.projectId === resolvedProjectId) ||
               (targetProject?.name && o.title?.toLowerCase().includes(targetProject.name.toLowerCase()))
-            ) || allDbOffers[0];
+            );
+            targetOffer = projectOffers[projectOffers.length - 1] || allDbOffers[allDbOffers.length - 1] || allDbOffers[0];
           }
 
           const recipientEmail = clientEmailFromText || body.to || targetOffer?.clientEmail || targetProject?.clientEmail;
@@ -2304,6 +2559,7 @@ Returner KUN et gyldig JSON-objekt:
       let replyText = '';
       let offerDraft: any = null;
       let parsedOfferItems: any[] = [];
+      let parsedOfferDescription = '';
       let detectedClient = '';
 
       try {
@@ -2404,7 +2660,15 @@ Du skal opptre som en høyt kvalifisert byggmester og kalkulatør og levere en k
           const matchKalkyle = rawText.match(/```kalkyle_json([\s\S]*?)```/);
           if (matchKalkyle) {
             try {
-              parsedOfferItems = JSON.parse(matchKalkyle[1].trim());
+              const parsed = JSON.parse(matchKalkyle[1].trim());
+              if (Array.isArray(parsed)) {
+                parsedOfferItems = parsed;
+              } else if (parsed && typeof parsed === 'object') {
+                if (Array.isArray(parsed.items)) parsedOfferItems = parsed.items;
+                if (parsed.description && typeof parsed.description === 'string') {
+                  parsedOfferDescription = sanitizePlainText(parsed.description);
+                }
+              }
             } catch (e) {
               console.warn('Could not parse kalkyle_json:', e);
             }
@@ -2442,6 +2706,13 @@ Du skal opptre som en høyt kvalifisert byggmester og kalkulatør og levere en k
             `2. **Varme arbeider:** Sertifikat, 2x 6kg pulverapparat, 10m ryddesone og 60 min kontinuerlig brannvakt etter avsluttet arbeid.\n` +
             `3. **Kapping og støv:** Punktavsug med hepa-filter (kvartsstøv / asbest / trevirke) og P3 åndedrettsvern.\n` +
             `4. **Tverrfaglig koordinering:** Varsle andre fag før trykktesting eller kranløft.`;
+        } else if (isOfferIntent || lower.includes('tilbud') || lower.includes('kalkyle')) {
+          replyText = `📋 **Kalkyle- og tilbudsrådgivning for «${resolvedProjectName}»:**\n\n` +
+            `For å sikre god dekningsgrad og unngå økonomiske overraskelser anbefales følgende modell:\n\n` +
+            `1. **Fagarbeid & Timepris:** Benytt reelle markedspriser (tømrer ca. 890 kr/t, rørlegger/elektro ca. 980 kr/t eks. mva). Sørg for at rigg, drift og avfallshåndtering spesifiseres som egne poster.\n` +
+            `2. **Materialpåslag:** Legg til 15–20% entreprenørpåslag på innkjøpspriser for å dekke lagerhold, svinn og reklamasjonsrisiko.\n` +
+            `3. **NS 8406 Forbehold:** Ta alltid skriftlig forbehold om skjulte feil (fukt/råte/skjulte bærekonstruksjoner) slik at ekstraarbeid kan faktureres som tillegg.\n\n` +
+            `Klikk på «Åpne Tilbudsbygger» for å justere poster eller sende formelt tilbud til kunden med digital signeringslenke.`;
         } else {
           const cleanSubject = text.slice(0, 80).trim();
           replyText = `👷‍♂️ **Faglig rådgivning for «${cleanSubject}» på ${resolvedProjectName}:**\n\n` +
@@ -2465,10 +2736,11 @@ Du skal opptre som en høyt kvalifisert byggmester og kalkulatør og levere en k
         ];
 
         const clientForDraft = detectedClient || targetProject?.clientName || '';
+        const cleanOfferScope = text.replace(/^["'«]+|["'»]+$/g, '').slice(0, 120).trim();
 
         offerDraft = {
-          title: clientForDraft ? `Tilbud: ${clientForDraft}` : (targetProject ? `Tilbud: ${targetProject.name}` : `Tilbud: ${text.slice(0, 45)}`),
-          description: replyText.slice(0, 500),
+          title: clientForDraft ? `Tilbud: ${clientForDraft}` : (targetProject ? `Tilbud: ${targetProject.name}` : `Tilbud: ${cleanOfferScope.slice(0, 45)}`),
+          description: parsedOfferDescription || formatCleanOfferDescription(cleanOfferScope || text, resolvedProjectName, clientForDraft),
           items: finalItems,
           projectId: targetProject?.id || resolvedProjectId,
           projectCode: targetProject?.projectCode,
@@ -2505,7 +2777,7 @@ Du skal opptre som en høyt kvalifisert byggmester og kalkulatør og levere en k
           label: '📄 Opprett Endringsordre (NS 8406)',
           data: {
             title: `Endring: ${text.slice(0, 45)}`,
-            description: replyText.slice(0, 300),
+            description: formatCleanChangeOrderDescription(text, resolvedProjectName),
             projectId: resolvedProjectId
           }
         });

@@ -789,7 +789,13 @@ export default function MesterAIChat({
 
       setMessages(prev => [...prev, assistantMessage]);
 
-      if (data.action === 'deviation_registered') {
+      if (data.action === 'offer_created' || data.action === 'offer_created_and_sent') {
+        toast.success(data.action === 'offer_created_and_sent' 
+          ? 'Tilbud opprettet og sendt direkte til kunden!' 
+          : 'Komplett tilbud opprettet og lagret i systemet!');
+      } else if (data.action === 'offer_email_sent') {
+        toast.success('Tilbudet er sendt på e-post til kunden!');
+      } else if (data.action === 'deviation_registered') {
         toast.success('Avvik registrert i kvalitetssystemet (KS)!');
       } else if (data.action === 'building_application_created') {
         toast.success('Byggesøknad forberedt for prosjektet!');
@@ -864,6 +870,18 @@ export default function MesterAIChat({
     }
     if (action.type === 'open_offer_modal' || action.id === 'open_offer') {
       setActiveFormView({ type: 'offer', data: action.data });
+      return;
+    }
+    if (action.type === 'send_offer_email' || action.id === 'send_offer_email') {
+      const email = action.data?.clientEmail;
+      if (email && email.includes('@')) {
+        handleSendMessage(`Send tilbudet på e-post til ${email.trim()}`);
+      } else {
+        const inputEmail = window.prompt('Hvilken e-postadresse skal tilbudet sendes til?');
+        if (inputEmail && inputEmail.includes('@')) {
+          handleSendMessage(`Send tilbudet på e-post til ${inputEmail.trim()}`);
+        }
+      }
       return;
     }
     if (action.type === 'open_change_order_modal' || action.id === 'open_co') {
