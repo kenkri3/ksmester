@@ -17,6 +17,7 @@ import {
   Building2,
   Minimize2,
   Maximize2,
+  Minus,
   HardHat,
   MessageSquare,
   ArrowRight,
@@ -78,6 +79,7 @@ export default function VikingChatbot({
 }: VikingChatbotProps) {
   const [isOpen, setIsOpen] = useState(false);
   const [isMinimized, setIsMinimized] = useState(false);
+  const [isFullscreen, setIsFullscreen] = useState(false);
   const [inputVal, setInputVal] = useState('');
   const [isLoading, setIsLoading] = useState(false);
   const [isListeningMic, setIsListeningMic] = useState(false);
@@ -170,10 +172,13 @@ export default function VikingChatbot({
     }
   }, [messages, isAuthenticated]);
 
-  // Auto-scroll on new messages
+  // Auto-scroll on new messages & modal opening
   useEffect(() => {
     if (isOpen && !isMinimized) {
-      messagesEndRef.current?.scrollIntoView({ behavior: 'smooth' });
+      const timer = setTimeout(() => {
+        messagesEndRef.current?.scrollIntoView({ behavior: 'smooth' });
+      }, 100);
+      return () => clearTimeout(timer);
     }
   }, [messages, isLoading, isOpen, isMinimized]);
 
@@ -399,6 +404,81 @@ export default function VikingChatbot({
     '🔒 Bindingstid og oppstart'
   ];
 
+  const formatBotMarkdown = (text: string) => {
+    return text
+      // Bold (**text**) -> dark neutral-950 font-black (NEVER white or dark:text-neutral-100)
+      .replace(/\*\*(.*?)\*\*/g, '<strong class="font-extrabold text-neutral-950">$1</strong>')
+      // Inline code (`code`)
+      .replace(/`([^`]+)`/g, '<code class="px-1.5 py-0.5 rounded bg-purple-100 text-purple-900 font-mono text-[11px] font-bold">$1</code>')
+      // Currency styling (kr 12 000, 1500 kr, kr 1.490,-)
+      .replace(/(\bkr\s*[\d\s.,]+(?:,-)?|\b[\d\s.,]+\s*kr\b)/gi, '<span class="font-bold text-emerald-700">$1</span>')
+      // Italics (*text*)
+      .replace(/(?<!\*)\*(?!\*)(.*?)(?<!\*)\*(?!\*)/g, '<em class="italic text-neutral-700">$1</em>');
+  };
+
+  const renderMessageContent = (content: string, isUser: boolean) => {
+    if (isUser) {
+      return (
+        <div className="whitespace-pre-wrap font-sans text-white font-medium">
+          {content.split(/(\*\*.*?\*\*)/g).map((part, pIdx) => {
+            if (part.startsWith('**') && part.endsWith('**')) {
+              return <strong key={pIdx} className="font-extrabold text-white">{part.slice(2, -2)}</strong>;
+            }
+            return <span key={pIdx}>{part}</span>;
+          })}
+        </div>
+      );
+    }
+
+    const lines = content.split('\n');
+    return (
+      <div className="space-y-1 text-neutral-800 leading-relaxed font-sans">
+        {lines.map((line, idx) => {
+          const trimmed = line.trim();
+
+          // Empty line
+          if (!trimmed) {
+            return <div key={idx} className="h-1.5" />;
+          }
+
+          // Bullet points (- or *)
+          if (trimmed.startsWith('- ') || (trimmed.startsWith('* ') && !trimmed.endsWith('*'))) {
+            const itemText = trimmed.replace(/^[-*]\s+/, '');
+            return (
+              <div key={idx} className="flex items-start gap-2 pl-0.5 py-0.5">
+                <span className="text-purple-600 font-black text-xs leading-5 shrink-0">•</span>
+                <span 
+                  className="flex-1 text-neutral-800 text-xs sm:text-sm"
+                  dangerouslySetInnerHTML={{ __html: formatBotMarkdown(itemText) }} 
+                />
+              </div>
+            );
+          }
+
+          // Tips / highlighted box (*Tips: ...*)
+          if (trimmed.startsWith('*') && trimmed.endsWith('*') && trimmed.length > 2) {
+            const innerText = trimmed.slice(1, -1);
+            return (
+              <div key={idx} className="mt-2 p-2.5 bg-purple-50/90 border border-purple-200/90 rounded-xl text-[11px] sm:text-xs text-purple-950 font-medium shadow-2xs">
+                <span className="font-bold text-purple-700 mr-1">💡 Tips:</span>
+                <span dangerouslySetInnerHTML={{ __html: formatBotMarkdown(innerText.replace(/^Tips:\s*/i, '')) }} />
+              </div>
+            );
+          }
+
+          // Regular paragraph
+          return (
+            <p 
+              key={idx} 
+              className="text-neutral-800 text-xs sm:text-sm"
+              dangerouslySetInnerHTML={{ __html: formatBotMarkdown(line) }} 
+            />
+          );
+        })}
+      </div>
+    );
+  };
+
   return (
     <>
       {/* 🚀 FLYTENDE KNAPP (LAV HØYRE, TILPASSET MOBIL & DESKTOP) */}
@@ -466,7 +546,7 @@ export default function VikingChatbot({
         )}
       </AnimatePresence>
 
-      {/* 🚀 CHATBOT HOVEDVINDU (FULL SKJERM PÅ MOBIL / FLYTENDE KORT PÅ DESKTOP) */}
+      {/* 🚀 CHATBOT HOVEDVINDU (FULL SKJERM PÅ MOBIL / FLYTENDE KORT ELLER FULLSKJERM PÅ DESKTOP) */}
       <AnimatePresence>
         {isOpen && (
           <motion.div
@@ -475,24 +555,32 @@ export default function VikingChatbot({
               opacity: 1, 
               y: 0, 
               scale: 1,
-              height: isMinimized ? '70px' : 'auto'
+              height: isMinimized ? '70px' : undefined
             }}
             exit={{ opacity: 0, y: 30, scale: 0.95 }}
             transition={{ duration: 0.25 }}
             className={cn(
-              "fixed z-50 flex flex-col bg-white shadow-2xl border border-neutral-200 overflow-hidden",
-              // På mobil: Full skjerm for perfekt mobiltastatur og oversikt
-              "inset-0 sm:inset-auto sm:bottom-6 sm:right-6 sm:w-[430px] sm:h-[650px] sm:max-h-[88vh] sm:rounded-3xl",
+              "fixed z-50 flex flex-col bg-white shadow-2xl border border-neutral-200 overflow-hidden transition-all duration-300",
+              // Fullskjerm på PC (dekker hele skjermen / siden) vs standard flytende hjørne
+              isFullscreen
+                ? "inset-0 sm:inset-3 md:inset-5 sm:rounded-3xl sm:max-w-6xl sm:mx-auto sm:my-auto sm:h-[94vh]"
+                : "inset-0 h-full sm:h-[650px] sm:inset-auto sm:bottom-6 sm:right-6 sm:w-[440px] sm:max-h-[88vh] sm:rounded-3xl",
               isMinimized && "sm:h-[70px] sm:w-[320px] rounded-2xl"
             )}
           >
             {/* TOP BAR / HEADER */}
-            <div className={cn(
-              "flex items-center justify-between px-4 py-3.5 sm:px-5 border-b select-none",
-              isAuthenticated 
-                ? "bg-gradient-to-r from-neutral-950 via-neutral-900 to-neutral-950 text-white border-neutral-800" 
-                : "bg-gradient-to-r from-purple-900 via-indigo-900 to-neutral-900 text-white border-purple-800/40"
-            )}>
+            <div 
+              onClick={() => {
+                if (isMinimized) setIsMinimized(false);
+              }}
+              className={cn(
+                "flex items-center justify-between px-4 py-3.5 sm:px-5 border-b select-none",
+                isMinimized && "cursor-pointer hover:bg-opacity-95",
+                isAuthenticated 
+                  ? "bg-gradient-to-r from-neutral-950 via-neutral-900 to-neutral-950 text-white border-neutral-800" 
+                  : "bg-gradient-to-r from-purple-900 via-indigo-900 to-neutral-900 text-white border-purple-800/40"
+              )}
+            >
               <div className="flex items-center gap-3 min-w-0">
                 <div className="relative shrink-0">
                   <div className={cn(
@@ -521,19 +609,21 @@ export default function VikingChatbot({
                     </span>
                   </div>
                   <p className="text-[11px] text-neutral-300 truncate">
-                    {isAuthenticated 
-                      ? `${userCompany} • ${activeProject?.name || 'Byggeleder i felt'}` 
-                      : 'VikingMester AS • Svarer direkte'}
+                    {isMinimized
+                      ? 'Samtale minimert (klikk for å åpne)'
+                      : (isAuthenticated 
+                          ? `${userCompany} • ${activeProject?.name || 'Byggeleder i felt'}` 
+                          : 'VikingMester AS • Svarer direkte')}
                   </p>
                 </div>
               </div>
 
               {/* Handlingsknapper i header */}
               <div className="flex items-center gap-1">
-                {!isAuthenticated && (
+                {!isAuthenticated && !isMinimized && (
                   <button
                     type="button"
-                    onClick={() => setShowLeadDrawer(!showLeadDrawer)}
+                    onClick={(e) => { e.stopPropagation(); setShowLeadDrawer(!showLeadDrawer); }}
                     className="hidden sm:flex items-center gap-1 text-[11px] font-bold px-2 py-1 rounded-lg bg-white/10 hover:bg-white/20 text-white transition-colors cursor-pointer mr-1"
                     title="Bli kontaktet / Start prøveperiode"
                   >
@@ -544,25 +634,40 @@ export default function VikingChatbot({
 
                 <button
                   type="button"
-                  onClick={handleClearHistory}
+                  onClick={(e) => { e.stopPropagation(); handleClearHistory(); }}
                   className="p-1.5 text-neutral-400 hover:text-white rounded-lg hover:bg-white/10 transition-colors cursor-pointer"
                   title="Nullstill samtale"
                 >
                   <RotateCcw size={16} />
                 </button>
 
+                {/* Minimer-knapp */}
                 <button
                   type="button"
-                  onClick={() => setIsMinimized(!isMinimized)}
+                  onClick={(e) => { e.stopPropagation(); setIsMinimized(!isMinimized); }}
                   className="hidden sm:block p-1.5 text-neutral-400 hover:text-white rounded-lg hover:bg-white/10 transition-colors cursor-pointer"
-                  title={isMinimized ? "Maksimer" : "Minimer"}
+                  title={isMinimized ? "Gjenopprett samtale" : "Minimer"}
                 >
-                  {isMinimized ? <Maximize2 size={16} /> : <Minimize2 size={16} />}
+                  <Minus size={16} />
+                </button>
+
+                {/* Fullskjerm / Dekk hele siden på PC */}
+                <button
+                  type="button"
+                  onClick={(e) => { 
+                    e.stopPropagation(); 
+                    setIsFullscreen(!isFullscreen);
+                    if (isMinimized) setIsMinimized(false);
+                  }}
+                  className="hidden sm:block p-1.5 text-neutral-400 hover:text-white rounded-lg hover:bg-white/10 transition-colors cursor-pointer"
+                  title={isFullscreen ? "Gjenopprett normal størrelse" : "Dekk hele skjermen (Fullskjerm)"}
+                >
+                  {isFullscreen ? <Minimize2 size={16} /> : <Maximize2 size={16} />}
                 </button>
 
                 <button
                   type="button"
-                  onClick={() => setIsOpen(false)}
+                  onClick={(e) => { e.stopPropagation(); setIsOpen(false); }}
                   className="p-1.5 text-neutral-400 hover:text-white rounded-lg hover:bg-white/10 transition-colors cursor-pointer"
                   title="Lukk chat"
                 >
@@ -650,7 +755,10 @@ export default function VikingChatbot({
                 </AnimatePresence>
 
                 {/* MELDINGSLOGG (SCROLLBAR) */}
-                <div className="flex-1 p-3 sm:p-4 overflow-y-auto space-y-3.5 bg-neutral-50/60">
+                <div className={cn(
+                  "flex-1 p-3 sm:p-4 overflow-y-auto space-y-3.5 bg-neutral-50/60",
+                  isFullscreen && "px-6 md:px-16"
+                )}>
                   {messages.map((msg) => {
                     const isUser = msg.role === 'user';
                     return (
@@ -658,7 +766,11 @@ export default function VikingChatbot({
                         key={msg.id}
                         initial={{ opacity: 0, y: 8 }}
                         animate={{ opacity: 1, y: 0 }}
-                        className={cn("flex flex-col", isUser ? "items-end" : "items-start")}
+                        className={cn(
+                          "flex flex-col", 
+                          isUser ? "items-end" : "items-start",
+                          isFullscreen && "max-w-4xl mx-auto w-full"
+                        )}
                       >
                         <div className={cn(
                           "max-w-[88%] sm:max-w-[85%] rounded-2xl px-3.5 py-2.5 text-xs sm:text-sm leading-relaxed shadow-sm relative group",
@@ -678,23 +790,8 @@ export default function VikingChatbot({
                             </button>
                           )}
 
-                          {/* Meldingstekst med støtte for fet skrift og linjeskift */}
-                          <div className="whitespace-pre-wrap font-sans">
-                            {msg.content.split('\n').map((line, lIdx) => {
-                              // Replace **bold** with <strong>
-                              const parts = line.split(/(\*\*.*?\*\*)/g);
-                              return (
-                                <p key={lIdx} className={cn(lIdx > 0 && "mt-1.5")}>
-                                  {parts.map((part, pIdx) => {
-                                    if (part.startsWith('**') && part.endsWith('**')) {
-                                      return <strong key={pIdx} className="font-bold text-neutral-950 dark:text-neutral-100">{part.slice(2, -2)}</strong>;
-                                    }
-                                    return <span key={pIdx}>{part}</span>;
-                                  })}
-                                </p>
-                              );
-                            })}
-                          </div>
+                          {/* Meldingstekst med støtte for punktlister, fet skrift og tips-bokser */}
+                          {renderMessageContent(msg.content, isUser)}
 
                           <div className={cn(
                             "mt-1 text-[10px] text-right font-medium",
@@ -772,27 +869,35 @@ export default function VikingChatbot({
                 </div>
 
                 {/* HURTIG-CHIPS / SPØRSMÅLSFORSLAG (HORISONTAL SCROLL) */}
-                <div className="px-3 py-2 bg-white border-t border-neutral-100 overflow-x-auto no-scrollbar flex gap-1.5 shrink-0">
-                  {activeChips.map((chip, idx) => (
-                    <button
-                      key={idx}
-                      type="button"
-                      onClick={() => handleSendMessage(chip.replace(/^[^\w\s]+/, '').trim())}
-                      className="shrink-0 text-[11px] font-bold px-2.5 py-1 rounded-lg bg-neutral-100 hover:bg-purple-50 hover:text-purple-900 text-neutral-600 border border-neutral-200 transition-all cursor-pointer active:scale-95 whitespace-nowrap"
-                    >
-                      {chip}
-                    </button>
-                  ))}
+                <div className={cn(
+                  "px-3 py-2 bg-white border-t border-neutral-100 overflow-x-auto no-scrollbar flex gap-1.5 shrink-0",
+                  isFullscreen && "px-6 md:px-16 justify-center"
+                )}>
+                  <div className={cn("flex gap-1.5", isFullscreen && "max-w-4xl w-full justify-start")}>
+                    {activeChips.map((chip, idx) => (
+                      <button
+                        key={idx}
+                        type="button"
+                        onClick={() => handleSendMessage(chip.replace(/^[^\w\s]+/, '').trim())}
+                        className="shrink-0 text-[11px] font-bold px-2.5 py-1 rounded-lg bg-neutral-100 hover:bg-purple-50 hover:text-purple-900 text-neutral-600 border border-neutral-200 transition-all cursor-pointer active:scale-95 whitespace-nowrap"
+                      >
+                        {chip}
+                      </button>
+                    ))}
+                  </div>
                 </div>
 
                 {/* INPUT-OMRÅDE (OPTIMALISERT FOR MOBIL & TASTETUR) */}
-                <div className="p-2.5 sm:p-3 bg-white border-t border-neutral-200 shrink-0">
+                <div className={cn("p-2.5 sm:p-3 bg-white border-t border-neutral-200 shrink-0", isFullscreen && "px-6 md:px-16")}>
                   <form
                     onSubmit={(e) => {
                       e.preventDefault();
                       handleSendMessage(inputVal);
                     }}
-                    className="flex items-center gap-1.5 bg-neutral-100/90 border border-neutral-300/80 rounded-2xl px-2 py-1.5 focus-within:ring-2 focus-within:ring-purple-500 focus-within:bg-white transition-all shadow-inner"
+                    className={cn(
+                      "flex items-center gap-1.5 bg-neutral-100/90 border border-neutral-300/80 rounded-2xl px-2 py-1.5 focus-within:ring-2 focus-within:ring-purple-500 focus-within:bg-white transition-all shadow-inner",
+                      isFullscreen && "max-w-4xl mx-auto"
+                    )}
                   >
                     {/* Stemme-mikrofonknapp */}
                     <button
@@ -837,7 +942,7 @@ export default function VikingChatbot({
                   </form>
 
                   {/* Liten bunn-tekst med garanti / status */}
-                  <div className="flex items-center justify-between mt-1.5 px-1 text-[10px] text-neutral-400">
+                  <div className={cn("flex items-center justify-between mt-1.5 px-1 text-[10px] text-neutral-400", isFullscreen && "max-w-4xl mx-auto")}>
                     <span>
                       {isAuthenticated 
                         ? '🟢 MesterAI Autonom Agent aktiv' 
