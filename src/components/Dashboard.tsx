@@ -1042,6 +1042,30 @@ export default function Dashboard({
         }}
         isSuperAdmin={isSuperAdmin}
       />
+      <MesterAIChat 
+        isOpen={isAIChatOpen}
+        onClose={() => {
+          setIsAIChatOpen(false);
+          setChatInitialPrompt(undefined);
+        }}
+        selectedProject={selectedProject}
+        projects={projects}
+        initialPrompt={chatInitialPrompt}
+        onPromptHandled={() => setChatInitialPrompt(undefined)}
+        onOpenOfferModal={(data) => {
+          setOfferInitialData(data);
+          setIsOfferModalOpen(true);
+        }}
+        onOpenChangeOrderModal={(_data) => {
+          setIsChangeOrderModalOpen(true);
+        }}
+        onOpenSJAModal={(_data) => {
+          setIsVoiceSJAOpen(true);
+        }}
+        onOpenAIVision={() => {
+          setIsAIVisionModalOpen(true);
+        }}
+      />
 
       <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 pt-8">
         {/* Selected Project Full Details View */}
@@ -1476,32 +1500,6 @@ export default function Dashboard({
                   </AnimatePresence>
                 </div>
               </div>
-
-              {/* MesterAI Samtalepartner Interactive Chat Panel */}
-              <MesterAIChat 
-                isOpen={isAIChatOpen}
-                onClose={() => {
-                  setIsAIChatOpen(false);
-                  setChatInitialPrompt(undefined);
-                }}
-                selectedProject={selectedProject}
-                projects={projects}
-                initialPrompt={chatInitialPrompt}
-                onPromptHandled={() => setChatInitialPrompt(undefined)}
-                onOpenOfferModal={(data) => {
-                  setOfferInitialData(data);
-                  setIsOfferModalOpen(true);
-                }}
-                onOpenChangeOrderModal={(data) => {
-                  setIsChangeOrderModalOpen(true);
-                }}
-                onOpenSJAModal={(data) => {
-                  setIsVoiceSJAOpen(true);
-                }}
-                onOpenAIVision={() => {
-                  setIsAIVisionModalOpen(true);
-                }}
-              />
 
               {/* 2. FOUR KEY METRICS CARDS */}
               <div className="grid grid-cols-2 lg:grid-cols-4 gap-4 sm:gap-6 mb-8">
@@ -2293,25 +2291,56 @@ export default function Dashboard({
               {/* TAB 5: AGENT-KANALER, SAMTALEPARTNER & REGLER */}
               {activeTab === 'agent' && (
                 <div className="space-y-6">
-                  {/* Dedicated MesterAI Samtalepartner Workstation */}
-                  <MesterAIChat 
-                    isOpen={true}
-                    selectedProject={selectedProject}
-                    projects={projects}
-                    onOpenOfferModal={(data) => {
-                      setOfferInitialData(data);
-                      setIsOfferModalOpen(true);
-                    }}
-                    onOpenChangeOrderModal={(data) => {
-                      setIsChangeOrderModalOpen(true);
-                    }}
-                    onOpenSJAModal={(data) => {
-                      setIsVoiceSJAOpen(true);
-                    }}
-                    onOpenAIVision={() => {
-                      setIsAIVisionModalOpen(true);
-                    }}
-                  />
+                  {/* Dedicated MesterAI Samtalepartner Workstation Card */}
+                  <div className="bg-gradient-to-br from-navy-950 via-slate-900 to-navy-900 rounded-3xl p-6 sm:p-8 text-white shadow-xl border border-white/10 relative overflow-hidden">
+                    <div className="absolute top-0 right-0 w-96 h-96 bg-electric-600/10 rounded-full blur-3xl pointer-events-none" />
+                    
+                    <div className="relative z-10 flex flex-col md:flex-row md:items-center justify-between gap-6">
+                      <div className="space-y-3 max-w-2xl">
+                        <div className="inline-flex items-center gap-2 px-3 py-1 rounded-full bg-emerald-500/20 text-emerald-300 border border-emerald-500/30 text-xs font-bold">
+                          <span className="w-2 h-2 rounded-full bg-emerald-400 animate-pulse" />
+                          <span>Autonom Rådgiver & Fagpartner</span>
+                        </div>
+                        <h2 className="text-xl sm:text-2xl font-black text-white tracking-tight">
+                          MesterAI Samtalepartner & Lederassistent
+                        </h2>
+                        <p className="text-xs sm:text-sm text-slate-300 leading-relaxed">
+                          Få øyeblikkelig veiledning i tilbudskalkyler med påslag og NS-forbehold, varsling av endringsordrer iht. NS 8406, TEK17-forskrifter, SJA-risikovurderinger og kundedialog.
+                        </p>
+                        
+                        {/* Quick Prompts */}
+                        <div className="pt-2 flex flex-wrap gap-2">
+                          {[
+                            'Hjelp meg å skrive et nytt tilbud på bad',
+                            'Hvordan varsler jeg en endringsordre iht. NS 8406?',
+                            'Hva er kravene til fall mot sluk i TEK17?',
+                            'Lag en SJA for tak- og stillasarbeid'
+                          ].map((chipPrompt, idx) => (
+                            <button
+                              key={idx}
+                              type="button"
+                              onClick={() => handleSendCommand(chipPrompt)}
+                              className="px-3 py-1.5 rounded-xl bg-white/10 hover:bg-white/20 text-slate-200 hover:text-white text-xs font-semibold border border-white/10 transition-all cursor-pointer text-left"
+                            >
+                              💬 {chipPrompt}
+                            </button>
+                          ))}
+                        </div>
+                      </div>
+
+                      <div className="shrink-0 flex flex-col items-center sm:items-end gap-3">
+                        <button
+                          type="button"
+                          onClick={() => setIsAIChatOpen(true)}
+                          className="w-full sm:w-auto px-6 py-3.5 bg-gradient-to-r from-electric-600 to-purple-600 hover:from-electric-500 hover:to-purple-500 text-white rounded-2xl text-sm font-black transition-all shadow-lg shadow-electric-600/30 flex items-center justify-center gap-2.5 cursor-pointer hover:scale-[1.02] active:scale-98"
+                        >
+                          <Brain size={18} />
+                          <span>Start samtale med MesterAI</span>
+                        </button>
+                        <span className="text-[11px] text-slate-400">Åpnes i et lynraskt og behagelig popup-vindu</span>
+                      </div>
+                    </div>
+                  </div>
 
                   <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
                     {/* Active Inboxes & Channels */}
