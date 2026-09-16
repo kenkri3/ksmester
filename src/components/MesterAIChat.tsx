@@ -1,4 +1,4 @@
-﻿import React, { useState, useEffect, useRef } from 'react';
+import React, { useState, useEffect, useRef } from 'react';
 import { motion, AnimatePresence } from 'motion/react';
 import { 
   Brain, 
@@ -47,6 +47,7 @@ interface MesterAIChatProps {
   onOpenChangeOrderModal?: (data?: any) => void;
   onOpenSJAModal?: (data?: any) => void;
   onOpenAIVision?: () => void;
+  onPromptHandled?: () => void;
 }
 
 export default function MesterAIChat({
@@ -58,7 +59,8 @@ export default function MesterAIChat({
   onOpenOfferModal,
   onOpenChangeOrderModal,
   onOpenSJAModal,
-  onOpenAIVision
+  onOpenAIVision,
+  onPromptHandled
 }: MesterAIChatProps) {
   const [messages, setMessages] = useState<ChatMessage[]>(() => {
     if (typeof window !== 'undefined') {
@@ -113,6 +115,7 @@ export default function MesterAIChat({
   useEffect(() => {
     if (initialPrompt && initialPrompt.trim()) {
       handleSendMessage(initialPrompt.trim());
+      onPromptHandled?.();
     }
   }, [initialPrompt]);
 

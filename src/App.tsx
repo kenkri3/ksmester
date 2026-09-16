@@ -60,6 +60,7 @@ import Link from 'next/link';
 import { PublicFooter } from './components/PublicFooter';
 import MobileBottomNav from './components/MobileBottomNav';
 import MobileQuickActionSheet from './components/MobileQuickActionSheet';
+import VikingChatbot from './components/VikingChatbot';
 
 // 🚀 CODE SPLITTING: Lazy load heavy app modules to keep the landing bundle lightweight and fast
 const Dashboard = lazy(() => import('./components/Dashboard'));
@@ -1481,6 +1482,45 @@ function AppContent() {
       <Suspense fallback={null}>
         <IntegrationModal isOpen={isIntegrationModalOpen} onClose={() => setIsIntegrationModalOpen(false)} />
       </Suspense>
+
+      {/* 🛡️ Universal VikingMester AI Chatbot (Ragnar for visitors, MesterAI Autonom Agent for logged in users) */}
+      <VikingChatbot
+        user={user}
+        currentView={view}
+        onOpenPricing={() => {
+          setView('pricing');
+          window.scrollTo({ top: 0, behavior: 'smooth' });
+        }}
+        onOpenRegister={() => {
+          setView('landing');
+          setLandingTab('home');
+          window.scrollTo({ top: 0, behavior: 'smooth' });
+        }}
+        onOpenChangeOrderModal={(data) => {
+          if (view !== 'dashboard') setView('dashboard');
+          setTimeout(() => {
+            window.dispatchEvent(new CustomEvent('trigger_dashboard_action', { detail: { actionId: 'change_order', data } }));
+          }, 150);
+        }}
+        onOpenSJAModal={(data) => {
+          if (view !== 'dashboard') setView('dashboard');
+          setTimeout(() => {
+            window.dispatchEvent(new CustomEvent('trigger_dashboard_action', { detail: { actionId: 'sja', data } }));
+          }, 150);
+        }}
+        onOpenOfferModal={(data) => {
+          if (view !== 'dashboard') setView('dashboard');
+          setTimeout(() => {
+            window.dispatchEvent(new CustomEvent('trigger_dashboard_action', { detail: { actionId: 'offers', data } }));
+          }, 150);
+        }}
+        onOpenAIVision={() => {
+          if (view !== 'dashboard') setView('dashboard');
+          setTimeout(() => {
+            window.dispatchEvent(new CustomEvent('trigger_dashboard_action', { detail: { actionId: 'take_photo' } }));
+          }, 150);
+        }}
+      />
 
       {/* GDPR Cookie Banner */}
       <CookieBanner onOpenPrivacyPolicy={() => setView('privacy')} />

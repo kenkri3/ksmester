@@ -13,6 +13,8 @@ export interface TokenPayload {
   role: string;
   companyId?: string;
   company?: string;
+  displayName?: string;
+  trade?: string;
 }
 
 export function signToken(payload: TokenPayload): string {

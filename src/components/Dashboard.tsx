@@ -85,6 +85,7 @@ import PreCloseInspectorModal, { LukkesperreZone } from './PreCloseInspectorModa
 import SJAPreviewModal, { SJADocument } from './SJAPreviewModal';
 import VoiceSJAModal from './VoiceSJAModal';
 import ProjectContactsModal from './ProjectContactsModal';
+import MesterAIChat from './MesterAIChat';
 
 interface DashboardProps {
   initialTab?: any;
@@ -276,6 +277,11 @@ export default function Dashboard({
   const [isDispatching, setIsDispatching] = useState(false);
   const [lastAgentReply, setLastAgentReply] = useState<string | null>(null);
   const [isListeningMic, setIsListeningMic] = useState(false);
+
+  // MesterAI Conversational Partner state
+  const [isAIChatOpen, setIsAIChatOpen] = useState(false);
+  const [chatInitialPrompt, setChatInitialPrompt] = useState<string | undefined>(undefined);
+  const [offerInitialData, setOfferInitialData] = useState<any>(undefined);
 
   // Fetch live agent state from backend
   const fetchAgentState = async () => {
@@ -717,48 +723,14 @@ export default function Dashboard({
     setIsSJAPreviewOpen(true);
   };
 
-  // Handle Quick Command / Voice prompt
-  const handleSendCommand = async (customPrompt?: string) => {
+  // Handle Quick Command / Conversational AI prompt
+  const handleSendCommand = (customPrompt?: string) => {
     const textToSend = customPrompt || commandText;
     if (!textToSend.trim()) return;
 
-    try {
-      setIsDispatching(true);
-      setLastAgentReply(null);
-
-      const activeProj = selectedProject || projects[0];
-
-      const res = await fetch('/api/agent/dispatch', {
-        method: 'POST',
-        // FIX (11.09.2026): Send med Authorization-token – /api/agent/dispatch krever nå pålogging.
-        headers: { 'Content-Type': 'application/json', ...(typeof window !== 'undefined' && localStorage.getItem('token') ? { 'Authorization': `Bearer ${localStorage.getItem('token')}` } : {}) },
-        body: JSON.stringify({
-          action: 'quick_command',
-          text: textToSend,
-          projectId: activeProj?.id || '',
-          projectName: activeProj?.name || 'Byggeprosjekt',
-          authorName: user?.displayName || user?.email?.split('@')[0] || 'Admin / Byggmester'
-        })
-      });
-
-      const data = await res.json();
-      if (data.reply) {
-        setLastAgentReply(data.reply);
-        toast.success('Agent utførte oppgaven!', {
-          description: data.reply
-        });
-      } else if (data.error) {
-        toast.error('Feil fra agent:', { description: data.error });
-      }
-
-      setCommandText('');
-      // Refresh state to reflect new activity / approvals
-      fetchAgentState();
-    } catch (err: any) {
-      toast.error('Kunne ikke nå agenten: ' + err.message);
-    } finally {
-      setIsDispatching(false);
-    }
+    setChatInitialPrompt(textToSend.trim());
+    setIsAIChatOpen(true);
+    setCommandText('');
   };
 
   // 1-Click Approve Change Order
@@ -910,7 +882,14 @@ export default function Dashboard({
         projectId={selectedProject?.id || projects[0]?.id}
         projectName={selectedProject?.name || projects[0]?.name}
       />
-      <OfferModal isOpen={isOfferModalOpen} onClose={() => setIsOfferModalOpen(false)} />
+      <OfferModal 
+        isOpen={isOfferModalOpen} 
+        onClose={() => {
+          setIsOfferModalOpen(false);
+          setOfferInitialData(undefined);
+        }} 
+        initialData={offerInitialData}
+      />
       <ContractModal isOpen={isContractModalOpen} onClose={() => setIsContractModalOpen(false)} />
       <DocumentationArchive isOpen={isArchiveModalOpen} onClose={() => setIsArchiveModalOpen(false)} />
       <TimeRegistrationModal 
@@ -1278,6 +1257,19 @@ export default function Dashboard({
                     </button>
 
                     <button 
+                      onClick={() => setIsAIChatOpen(prev => !prev)}
+                      className={cn(
+                        "flex items-center gap-2 px-4 py-2.5 rounded-2xl text-xs font-black transition-all border cursor-pointer",
+                        isAIChatOpen 
+                          ? "bg-navy-900 text-white border-navy-900 shadow-md shadow-navy-900/20" 
+                          : "bg-electric-50 hover:bg-electric-100 text-electric-700 border-electric-200"
+                      )}
+                    >
+                      <Brain size={16} className={isAIChatOpen ? "text-white" : "text-electric-600"} />
+                      <span>{isAIChatOpen ? 'Lukk Samtale' : 'MesterAI Samtalepartner'}</span>
+                    </button>
+
+                    <button 
                       onClick={() => setIsAIVisionModalOpen(true)}
                       className="flex items-center gap-2 px-4 py-2.5 bg-slate-100 hover:bg-slate-200 text-navy-900 border border-slate-200 rounded-2xl text-xs font-black transition-all"
                     >
@@ -1306,7 +1298,7 @@ export default function Dashboard({
                         type="text"
                         value={commandText}
                         onChange={(e) => setCommandText(e.target.value)}
-                        placeholder={t('cockpit_prompt_placeholder', "Gi en instruks til agenten (f.eks: 'Registrer 4 timer ekstraarbeid på bad', 'Opprett SJA for stillas')...")}
+                        placeholder={t('cockpit_prompt_placeholder', "Spør MesterAI om hva som helst (tilbud, TEK17, kalkyle, NS 8406, SJA, faglige råd)...")}
                         className="w-full pl-4 pr-12 py-3 bg-slate-50 border border-slate-200 rounded-2xl text-sm font-medium text-slate-900 placeholder:text-slate-400 focus:bg-white focus:border-electric-500 focus:ring-2 focus:ring-electric-500/20 transition-all"
                       />
                       <button 
@@ -1325,7 +1317,7 @@ export default function Dashboard({
                     <button 
                       type="submit"
                       disabled={isDispatching || !commandText.trim()}
-                      className="flex items-center justify-center gap-2 px-6 py-3 bg-navy-900 hover:bg-navy-800 text-white rounded-2xl text-xs font-black disabled:opacity-50 transition-all shrink-0 shadow-sm"
+                      className="flex items-center justify-center gap-2 px-6 py-3 bg-navy-900 hover:bg-navy-800 text-white rounded-2xl text-xs font-black disabled:opacity-50 transition-all shrink-0 shadow-sm cursor-pointer"
                     >
                       {isDispatching ? (
                         <>
@@ -1335,7 +1327,7 @@ export default function Dashboard({
                       ) : (
                         <>
                           <Send size={14} />
-                          <span>{t('cockpit_btn_send', 'Send Instruks')}</span>
+                          <span>{t('cockpit_btn_send', 'Spør MesterAI')}</span>
                         </>
                       )}
                     </button>
@@ -1346,6 +1338,12 @@ export default function Dashboard({
                     <span className="text-[11px] font-bold text-slate-400 uppercase tracking-wider shrink-0 mr-0.5">{t('cockpit_quick_label', 'Hurtig:')}</span>
                     {[
                       { 
+                        text: '📝 Hjelp meg å skrive et nytt tilbud', 
+                        action: () => {
+                          handleSendCommand('Hjelp meg å skrive et nytt tilbud');
+                        }
+                      },
+                      { 
                         text: t('chip_sja_scaffold', 'Lag SJA for tak- og stillasarbeid'), 
                         action: () => {
                           handleOpenSJAForTrade('Tømrer (Høyde/Stillas)');
@@ -1355,23 +1353,18 @@ export default function Dashboard({
                       { 
                         text: t('chip_change_order', 'Registrer endringsordre: Ekstra downlights i stue kr 14500'), 
                         action: () => {
-                          setIsChangeOrderModalOpen(true);
-                          handleTabSelect('endringsordrer');
                           handleSendCommand(t('chip_change_order', 'Registrer endringsordre: Ekstra downlights i stue kr 14500'));
                         }
                       },
                       { 
                         text: t('chip_preclose_bath', 'Sjekk om bad 2. etg kan lukkes (pre-close check)'), 
                         action: () => {
-                          handleTabSelect('kvalitet');
-                          handleOpenPreClose(lukkesperreZones[0]);
                           handleSendCommand(t('chip_preclose_bath', 'Sjekk om bad 2. etg kan lukkes (pre-close check)'));
                         }
                       },
                       { 
                         text: t('chip_dailylog_wind', 'Byggedagbok: Lekting og vindsperre ferdig 6 timer'), 
                         action: () => {
-                          setIsActivityLogModalOpen(true);
                           handleSendCommand(t('chip_dailylog_wind', 'Byggedagbok: Lekting og vindsperre ferdig 6 timer'));
                         }
                       }
@@ -1387,9 +1380,9 @@ export default function Dashboard({
                     ))}
                   </div>
 
-                  {/* Agent Response Box */}
+                  {/* Agent Response Box (legacy notification) */}
                   <AnimatePresence>
-                    {lastAgentReply && (
+                    {lastAgentReply && !isAIChatOpen && (
                       <motion.div 
                         initial={{ opacity: 0, height: 0 }}
                         animate={{ opacity: 1, height: 'auto' }}
@@ -1414,6 +1407,32 @@ export default function Dashboard({
                   </AnimatePresence>
                 </div>
               </div>
+
+              {/* MesterAI Samtalepartner Interactive Chat Panel */}
+              <MesterAIChat 
+                isOpen={isAIChatOpen}
+                onClose={() => {
+                  setIsAIChatOpen(false);
+                  setChatInitialPrompt(undefined);
+                }}
+                selectedProject={selectedProject}
+                projects={projects}
+                initialPrompt={chatInitialPrompt}
+                onPromptHandled={() => setChatInitialPrompt(undefined)}
+                onOpenOfferModal={(data) => {
+                  setOfferInitialData(data);
+                  setIsOfferModalOpen(true);
+                }}
+                onOpenChangeOrderModal={(data) => {
+                  setIsChangeOrderModalOpen(true);
+                }}
+                onOpenSJAModal={(data) => {
+                  setIsVoiceSJAOpen(true);
+                }}
+                onOpenAIVision={() => {
+                  setIsAIVisionModalOpen(true);
+                }}
+              />
 
               {/* 2. FOUR KEY METRICS CARDS */}
               <div className="grid grid-cols-2 lg:grid-cols-4 gap-4 sm:gap-6 mb-8">
@@ -2175,11 +2194,32 @@ export default function Dashboard({
                 </div>
               )}
 
-              {/* TAB 5: AGENT-KANALER & REGLER */}
+              {/* TAB 5: AGENT-KANALER, SAMTALEPARTNER & REGLER */}
               {activeTab === 'agent' && (
-                <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
-                  {/* Active Inboxes & Channels */}
-                  <div className="bg-white rounded-3xl border border-slate-200/90 p-6 shadow-sm space-y-4">
+                <div className="space-y-6">
+                  {/* Dedicated MesterAI Samtalepartner Workstation */}
+                  <MesterAIChat 
+                    isOpen={true}
+                    selectedProject={selectedProject}
+                    projects={projects}
+                    onOpenOfferModal={(data) => {
+                      setOfferInitialData(data);
+                      setIsOfferModalOpen(true);
+                    }}
+                    onOpenChangeOrderModal={(data) => {
+                      setIsChangeOrderModalOpen(true);
+                    }}
+                    onOpenSJAModal={(data) => {
+                      setIsVoiceSJAOpen(true);
+                    }}
+                    onOpenAIVision={() => {
+                      setIsAIVisionModalOpen(true);
+                    }}
+                  />
+
+                  <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
+                    {/* Active Inboxes & Channels */}
+                    <div className="bg-white rounded-3xl border border-slate-200/90 p-6 shadow-sm space-y-4">
                     <h3 className="text-base font-extrabold text-navy-900">
                       {t('channels_title', 'Tilknyttede Kommunikasjonskanaler')}
                     </h3>
@@ -2263,7 +2303,8 @@ export default function Dashboard({
                     </ul>
                   </div>
                 </div>
-              )}
+              </div>
+            )}
             </motion.div>
           )}
         </AnimatePresence>

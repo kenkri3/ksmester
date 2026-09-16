@@ -20,6 +20,7 @@ interface OfferModalProps {
     description?: string;
     clientName?: string;
     clientEmail?: string;
+    items?: any[];
   };
 }
 
