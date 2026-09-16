@@ -5,6 +5,7 @@ import { getUserFromRequest, isUserAdmin } from '@/src/lib/server/auth';
 import { checkCompanyQuota } from '@/src/lib/server/costTracker';
 import { sanitize, sanitizeEmail, sanitizePhone, sanitizeHeader } from '@/src/lib/sanitize';
 import { checkRateLimit, getClientIp } from '@/src/lib/server/rateLimit';
+import { formatCleanOfferDescription, formatCleanChangeOrderDescription } from '@/src/lib/server/offerFormatter';
 
 // 🛡️ Helper for å sende lead-epostvarsel til aichatnorge@gmail.com
 async function sendLeadNotificationEmail(lead: {
@@ -491,7 +492,7 @@ INSTRUKSJON FOR SVAR:
         projectId: resolvedProjectId,
         projectName: resolvedProjectName,
         title: userText.slice(0, 60),
-        description: agentReply.slice(0, 300),
+        description: formatCleanChangeOrderDescription(userText, resolvedProjectName),
         status: 'pending_approval',
         contractClause: 'NS 8406 pkt. 19.2',
         totalAmount: 14500,
@@ -609,7 +610,7 @@ INSTRUKSJON FOR SVAR:
     else if (isOfferIntent) {
       const offerDraft = {
         title: `Tilbud: ${resolvedProjectName} - ${userText.slice(0, 40)}`,
-        description: agentReply.slice(0, 400),
+        description: formatCleanOfferDescription(userText, resolvedProjectName, targetProject?.clientName),
         projectId: resolvedProjectId,
         projectName: resolvedProjectName,
         clientName: targetProject?.clientName || 'Oppdragsgiver',
