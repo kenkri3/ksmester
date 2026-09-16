@@ -27,6 +27,7 @@ import { changeOrderService } from '../services/changeOrderService';
 import { useAuth } from '../hooks/useAuth';
 import { cn } from '../lib/utils';
 import { toast } from 'sonner';
+import { getStoredOmnichannelSettings, OmnichannelSettings } from './OmnichannelModal';
 
 export type InChatFormType = 'offer' | 'change_order' | 'sja' | 'deviation' | 'time' | 'task' | 'toolbox';
 
@@ -38,6 +39,7 @@ export interface InChatWorkspaceProps {
   onClose: () => void;
   onSuccess: (message: string, actionData?: any) => void;
   onSwitchForm?: (formType: InChatFormType, data?: any) => void;
+  onOpenOmnichannelModal?: () => void;
 }
 
 export default function InChatWorkspace({
@@ -47,7 +49,8 @@ export default function InChatWorkspace({
   selectedProject,
   onClose,
   onSuccess,
-  onSwitchForm
+  onSwitchForm,
+  onOpenOmnichannelModal
 }: InChatWorkspaceProps) {
   const { user } = useAuth();
   const [projectsList, setProjectsList] = useState<any[]>(propProjects);
@@ -246,6 +249,7 @@ export default function InChatWorkspace({
             isSubmitting={isSubmitting}
             setIsSubmitting={setIsSubmitting}
             onSuccess={onSuccess}
+            onOpenOmnichannelModal={onOpenOmnichannelModal}
           />
         )}
 
@@ -1608,7 +1612,8 @@ function InChatTaskForm({
   user,
   isSubmitting,
   setIsSubmitting,
-  onSuccess
+  onSuccess,
+  onOpenOmnichannelModal
 }: {
   initialData?: any;
   projects: any[];
@@ -1617,6 +1622,7 @@ function InChatTaskForm({
   isSubmitting: boolean;
   setIsSubmitting: (val: boolean) => void;
   onSuccess: (msg: string, data?: any) => void;
+  onOpenOmnichannelModal?: () => void;
 }) {
   const [projectId, setProjectId] = useState(initialData?.projectId || selectedProject?.id || (projects[0]?.id || ''));
   const [title, setTitle] = useState(initialData?.title || '');
@@ -1624,8 +1630,31 @@ function InChatTaskForm({
   const [assignedTo, setAssignedTo] = useState(initialData?.assignedTo || 'Ola Tømrer');
   const [priority, setPriority] = useState<'low' | 'medium' | 'high' | 'urgent'>(initialData?.priority || 'medium');
   const [deadline, setDeadline] = useState(initialData?.deadline || new Date(Date.now() + 86400000 * 2).toISOString().split('T')[0]);
-  const [notifyDiscord, setNotifyDiscord] = useState(true);
-  const [notifySlack, setNotifySlack] = useState(true);
+
+  // Omnichannel integration settings
+  const [omniSettings, setOmniSettings] = useState<OmnichannelSettings>(getStoredOmnichannelSettings);
+
+  useEffect(() => {
+    const handleSettingsUpdate = () => {
+      setOmniSettings(getStoredOmnichannelSettings());
+    };
+    window.addEventListener('omnichannel_settings_updated', handleSettingsUpdate);
+    return () => window.removeEventListener('omnichannel_settings_updated', handleSettingsUpdate);
+  }, []);
+
+  const hasDiscord = Boolean(omniSettings.discordEnabled && omniSettings.discordWebhook?.trim());
+  const hasSlack = Boolean(omniSettings.slackEnabled && omniSettings.slackWebhook?.trim());
+  const hasTeams = Boolean(omniSettings.teamsEnabled && omniSettings.teamsWebhook?.trim());
+
+  const [notifyDiscord, setNotifyDiscord] = useState(hasDiscord);
+  const [notifySlack, setNotifySlack] = useState(hasSlack);
+  const [notifyTeams, setNotifyTeams] = useState(hasTeams);
+
+  useEffect(() => {
+    setNotifyDiscord(hasDiscord);
+    setNotifySlack(hasSlack);
+    setNotifyTeams(hasTeams);
+  }, [hasDiscord, hasSlack, hasTeams]);
 
   const activeProj = projects.find(p => p.id === projectId) || selectedProject || { name: 'Byggeprosjekt' };
 
@@ -1639,6 +1668,14 @@ function InChatTaskForm({
       setProjectId(data.projectId);
     }
     toast.success('Oppgave utfylt av AI basert på historikk!');
+  };
+
+  const handleOpenConfig = () => {
+    if (onOpenOmnichannelModal) {
+      onOpenOmnichannelModal();
+    } else if (typeof window !== 'undefined') {
+      window.dispatchEvent(new CustomEvent('open_omnichannel_modal'));
+    }
   };
 
   const handleSubmit = async (e: React.FormEvent) => {
@@ -1685,8 +1722,48 @@ function InChatTaskForm({
         window.dispatchEvent(new CustomEvent('task_assigned_event', { detail: { ...newTask, id: docRef.id } }));
       }
 
+      // Send notifications to connected webhooks
+      const notifiedChannels: string[] = [];
+      if (notifyDiscord && omniSettings.discordWebhook) {
+        notifiedChannels.push('Discord');
+        fetch(omniSettings.discordWebhook, {
+          method: 'POST',
+          headers: { 'Content-Type': 'application/json' },
+          body: JSON.stringify({
+            content: `📋 **Ny oppgave tildelt**: **${title.trim()}**\n• **Prosjekt**: ${activeProj.name}\n• **Tildelt**: ${assignedTo}\n• **Frist**: ${deadline}\n• **Prioritet**: ${priority.toUpperCase()}\n${description ? `• **Beskrivelse**: ${description}` : ''}`
+          })
+        }).catch(err => console.warn('Discord notification error:', err));
+      }
+
+      if (notifySlack && omniSettings.slackWebhook) {
+        notifiedChannels.push('Slack');
+        fetch(omniSettings.slackWebhook, {
+          method: 'POST',
+          headers: { 'Content-Type': 'application/json' },
+          body: JSON.stringify({
+            text: `📋 *Ny oppgave tildelt*: *${title.trim()}*\n• *Prosjekt*: ${activeProj.name}\n• *Tildelt*: ${assignedTo}\n• *Frist*: ${deadline}\n• *Prioritet*: ${priority.toUpperCase()}`
+          })
+        }).catch(err => console.warn('Slack notification error:', err));
+      }
+
+      if (notifyTeams && omniSettings.teamsWebhook) {
+        notifiedChannels.push('MS Teams');
+        fetch(omniSettings.teamsWebhook, {
+          method: 'POST',
+          headers: { 'Content-Type': 'application/json' },
+          body: JSON.stringify({
+            title: `Ny oppgave: ${title.trim()}`,
+            text: `Prosjekt: ${activeProj.name} | Tildelt: ${assignedTo} | Frist: ${deadline} | Prioritet: ${priority.toUpperCase()}`
+          })
+        }).catch(err => console.warn('Teams notification error:', err));
+      }
+
       toast.success(`Oppgave tildelt ${assignedTo}!`);
-      onSuccess(`📋 Oppgave **«${title.trim()}»** er tildelt **${assignedTo}** på prosjektet **${activeProj.name}** (Frist: ${deadline}). Varsel sendt til Discord/Slack.`);
+      const notifyMessage = notifiedChannels.length > 0 
+        ? `Varsel sendt direkte til ${notifiedChannels.join(', ')}.` 
+        : `(Ingen eksterne varslingskanaler er tilkoblet ennå. Klikk 'Konfigurer kanaler' for å koble til Discord, Slack eller Teams).`;
+
+      onSuccess(`📋 Oppgave **«${title.trim()}»** er tildelt **${assignedTo}** på prosjektet **${activeProj.name}** (Frist: ${deadline}). ${notifyMessage}`);
     } catch (err: any) {
       console.error('Error creating task:', err);
       toast.error('Kunne ikke opprette oppgave: ' + err.message);
@@ -1795,30 +1872,110 @@ function InChatTaskForm({
           />
         </div>
 
-        <div className="p-3 bg-slate-50 rounded-xl border border-slate-100 space-y-2">
-          <span className="text-[10px] font-black uppercase tracking-wider text-slate-400 block">
-            Varsling & Omnichannel
-          </span>
-          <div className="flex flex-col sm:flex-row sm:items-center gap-2 sm:gap-4 text-xs font-medium text-slate-700">
-            <label className="flex items-center gap-2 cursor-pointer">
-              <input 
-                type="checkbox" 
-                checked={notifyDiscord} 
-                onChange={(e) => setNotifyDiscord(e.target.checked)} 
-                className="rounded text-indigo-600 focus:ring-0"
-              />
-              <span>Discord (#byggeplass)</span>
+        {/* Omnichannel Section */}
+        <div className="p-3.5 bg-slate-50 rounded-2xl border border-slate-200/80 space-y-2.5">
+          <div className="flex items-center justify-between">
+            <span className="text-[10px] font-black uppercase tracking-wider text-slate-500 block">
+              Varsling & Omnichannel (Håndverkere i felt)
+            </span>
+            <button
+              type="button"
+              onClick={handleOpenConfig}
+              className="text-[11px] font-bold text-indigo-600 hover:text-indigo-700 flex items-center gap-1 cursor-pointer transition-colors"
+            >
+              <span>⚙️ Konfigurer kanaler</span>
+            </button>
+          </div>
+
+          <div className="grid grid-cols-1 sm:grid-cols-3 gap-2 text-xs font-medium text-slate-700">
+            {/* Discord */}
+            <label className={cn(
+              "flex items-center justify-between p-2 rounded-xl border transition-all cursor-pointer",
+              hasDiscord 
+                ? (notifyDiscord ? "bg-indigo-50/70 border-indigo-200 text-indigo-950" : "bg-white border-slate-200") 
+                : "bg-slate-100/70 border-dashed border-slate-200 text-slate-400 cursor-not-allowed opacity-80"
+            )}>
+              <div className="flex items-center gap-2">
+                <input 
+                  type="checkbox" 
+                  disabled={!hasDiscord}
+                  checked={notifyDiscord} 
+                  onChange={(e) => setNotifyDiscord(e.target.checked)} 
+                  className="rounded text-indigo-600 focus:ring-0 disabled:opacity-50"
+                />
+                <span className="font-bold">Discord</span>
+              </div>
+              <span className={cn(
+                "text-[9px] font-black uppercase px-1.5 py-0.5 rounded-md",
+                hasDiscord ? "bg-emerald-100 text-emerald-700" : "bg-slate-200 text-slate-500"
+              )}>
+                {hasDiscord ? 'Tilkoblet' : 'Ikke tilkoblet'}
+              </span>
             </label>
-            <label className="flex items-center gap-2 cursor-pointer">
-              <input 
-                type="checkbox" 
-                checked={notifySlack} 
-                onChange={(e) => setNotifySlack(e.target.checked)} 
-                className="rounded text-emerald-600 focus:ring-0"
-              />
-              <span>Slack & SMS</span>
+
+            {/* Slack */}
+            <label className={cn(
+              "flex items-center justify-between p-2 rounded-xl border transition-all cursor-pointer",
+              hasSlack 
+                ? (notifySlack ? "bg-emerald-50/70 border-emerald-200 text-emerald-950" : "bg-white border-slate-200") 
+                : "bg-slate-100/70 border-dashed border-slate-200 text-slate-400 cursor-not-allowed opacity-80"
+            )}>
+              <div className="flex items-center gap-2">
+                <input 
+                  type="checkbox" 
+                  disabled={!hasSlack}
+                  checked={notifySlack} 
+                  onChange={(e) => setNotifySlack(e.target.checked)} 
+                  className="rounded text-emerald-600 focus:ring-0 disabled:opacity-50"
+                />
+                <span className="font-bold">Slack</span>
+              </div>
+              <span className={cn(
+                "text-[9px] font-black uppercase px-1.5 py-0.5 rounded-md",
+                hasSlack ? "bg-emerald-100 text-emerald-700" : "bg-slate-200 text-slate-500"
+              )}>
+                {hasSlack ? 'Tilkoblet' : 'Ikke tilkoblet'}
+              </span>
+            </label>
+
+            {/* MS Teams */}
+            <label className={cn(
+              "flex items-center justify-between p-2 rounded-xl border transition-all cursor-pointer",
+              hasTeams 
+                ? (notifyTeams ? "bg-blue-50/70 border-blue-200 text-blue-950" : "bg-white border-slate-200") 
+                : "bg-slate-100/70 border-dashed border-slate-200 text-slate-400 cursor-not-allowed opacity-80"
+            )}>
+              <div className="flex items-center gap-2">
+                <input 
+                  type="checkbox" 
+                  disabled={!hasTeams}
+                  checked={notifyTeams} 
+                  onChange={(e) => setNotifyTeams(e.target.checked)} 
+                  className="rounded text-blue-600 focus:ring-0 disabled:opacity-50"
+                />
+                <span className="font-bold">MS Teams</span>
+              </div>
+              <span className={cn(
+                "text-[9px] font-black uppercase px-1.5 py-0.5 rounded-md",
+                hasTeams ? "bg-emerald-100 text-emerald-700" : "bg-slate-200 text-slate-500"
+              )}>
+                {hasTeams ? 'Tilkoblet' : 'Ikke tilkoblet'}
+              </span>
             </label>
           </div>
+          
+          {!hasDiscord && !hasSlack && !hasTeams && (
+            <p className="text-[11px] text-slate-500 bg-amber-50/80 border border-amber-200/60 p-2 rounded-xl flex items-center justify-between">
+              <span>💡 Ingen kanaler er koblet til. Håndverkere kan få oppgaver rett i sin kanal!</span>
+              <button
+                type="button"
+                onClick={handleOpenConfig}
+                className="font-black text-amber-900 underline ml-2 cursor-pointer shrink-0"
+              >
+                Koble til nå
+              </button>
+            </p>
+          )}
         </div>
       </div>
 

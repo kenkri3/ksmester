@@ -729,6 +729,7 @@ export default function MesterAIChat({
 
       const historyPayload = newMessages
         .filter(m => m.id !== 'welcome')
+        .slice(-6)
         .map(m => ({ role: m.role, content: m.content }));
 
       let res: Response | null = null;
@@ -788,7 +789,19 @@ export default function MesterAIChat({
 
       setMessages(prev => [...prev, assistantMessage]);
 
-      if (data.executedAction) {
+      if (data.action === 'deviation_registered') {
+        toast.success('Avvik registrert i kvalitetssystemet (KS)!');
+      } else if (data.action === 'building_application_created') {
+        toast.success('Byggesøknad forberedt for prosjektet!');
+      } else if (data.action === 'multi_intent_handled') {
+        toast.success('Byggesøknad og avvik registrert autonomt!');
+      } else if (data.action === 'time_logged') {
+        toast.success('Timer bokført på prosjektet!');
+      } else if (data.action === 'sja') {
+        toast.success('Sikker Jobb Analyse (SJA) generert!');
+      } else if (data.action === 'change_order') {
+        toast.success('Endringsordre generert iht. NS 8406!');
+      } else if (data.executedAction) {
         if (data.executedAction.type === 'create_task') {
           toast.success('Oppgave opprettet i MesterAI');
         } else if (data.executedAction.type === 'create_offer') {
