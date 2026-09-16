@@ -184,6 +184,296 @@ export async function POST(req: NextRequest) {
       companyId
     } = body;
 
+    // 0. AI AUTOFILL & HISTORICAL FORM ASSISTANT
+    if (action === 'autofill_form') {
+      const formType = body.formType || 'offer';
+      const promptText = (body.prompt || text || '').trim();
+      const targetProjectId = body.projectId || projectId;
+
+      const [allProjects, allOffers] = await Promise.all([
+        getCollectionItems('projects').catch(() => []),
+        getCollectionItems('offers').catch(() => [])
+      ]);
+
+      const matchedProj = allProjects.find((p: any) => p.id === targetProjectId) || (targetProjectId ? null : allProjects[0]);
+
+      // Calculate historical rate defaults from past offers
+      let hourlyRate = 890;
+      if (allOffers && allOffers.length > 0) {
+        const rates: number[] = [];
+        allOffers.forEach((o: any) => {
+          if (Array.isArray(o.items)) {
+            o.items.forEach((it: any) => {
+              if (it.unit === 'timer' && it.pricePerUnit > 500 && it.pricePerUnit < 2500) {
+                rates.push(Number(it.pricePerUnit));
+              }
+            });
+          }
+        });
+        if (rates.length > 0) {
+          hourlyRate = Math.round(rates.reduce((a, b) => a + b, 0) / rates.length);
+        }
+      }
+
+      if (formType === 'offer') {
+        let title = 'Pristilbud: Fagarbeid og utførelse';
+        let description = 'Tilbudet omfatter fagmessig utførelse av avtalte arbeider inkludert materialer, rigg og drift. Standard forbehold iht. NS 8406 tas for eventuelle skjulte feil, råte eller uforutsette bygningsmessige hindringer.';
+        let items: any[] = [];
+        const lowerPrompt = promptText.toLowerCase();
+
+        if (lowerPrompt.includes('bad') || lowerPrompt.includes('våtrom')) {
+          title = matchedProj ? `Totalrenovering Bad - ${matchedProj.name}` : 'Totalrenovering Bad (ca. 6 m²)';
+          description = 'Komplett oppgradering av bad iht. Byggebransjens Våtromsnorm (BVN) og TEK17. Inkluderer riving, rør-i-rør, membran, flislegging, elektro, downlights og montering av sanitærutstyr.';
+          items = [
+            { description: 'Riving av eksisterende overflater, membran og bortkjøring av avfall', quantity: 16, unit: 'timer', pricePerUnit: 790, total: 12640 },
+            { description: 'Rørleggerarbeid: Rør-i-rør, sluk, fordelerskap og trykkprøving', quantity: 24, unit: 'timer', pricePerUnit: 980, total: 23520 },
+            { description: 'Rørleggermateriell: Fordelerskap, rør, slukmansjett og koblinger', quantity: 1, unit: 'stk', pricePerUnit: 24500, total: 24500 },
+            { description: 'Elektroarbeid: Varmekabler, termostat, 4 downlights og stikkontakter', quantity: 16, unit: 'timer', pricePerUnit: 950, total: 15200 },
+            { description: 'Elektromateriell: Varmekabel, Elko Plus brytere/dimmer og LED', quantity: 1, unit: 'stk', pricePerUnit: 14800, total: 14800 },
+            { description: 'Tømrer: Utretting av vegger, rupanel, Litex våtromsplater og kasse for sisterne', quantity: 26, unit: 'timer', pricePerUnit: hourlyRate, total: 26 * hourlyRate },
+            { description: 'Tømrermateriell: Litex plater, stendere, skruer og mansjetter', quantity: 1, unit: 'stk', pricePerUnit: 11500, total: 11500 },
+            { description: 'Membran: Smøremembran med forsterkningsbånd og tettesjikt iht BVN', quantity: 12, unit: 'timer', pricePerUnit: 850, total: 10200 },
+            { description: 'Flisarbeid: Legging av flis på gulv og vegger, fuging og elastisk silikon', quantity: 28, unit: 'timer', pricePerUnit: 880, total: 24640 },
+            { description: 'Avfallshåndtering & containerleie', quantity: 1, unit: 'stk', pricePerUnit: 6500, total: 6500 },
+            { description: 'Rigg, drift, sluttdokumentasjon og FDV i KS-system', quantity: 1, unit: 'stk', pricePerUnit: 7500, total: 7500 }
+          ];
+        } else if (lowerPrompt.includes('kledning') || lowerPrompt.includes('fasade') || lowerPrompt.includes('isolering') || lowerPrompt.includes('etterisolere')) {
+          title = matchedProj ? `Etterisolering & Ny Kledning - ${matchedProj.name}` : 'Etterisolering & Ny Kledning (ca. 80 m²)';
+          description = 'Etterisolering med 50mm Glava/Rockwool, ny vindsperre, klemlister, musebånd og dobbelfals kledning. Forbehold om råte i eksisterende underliggende bærekonstruksjon iht. NS 8406.';
+          items = [
+            { description: 'Riving av eksisterende trekledning og transport til container', quantity: 22, unit: 'timer', pricePerUnit: 790, total: 17380 },
+            { description: 'Utlekting 48x48mm og montering av 50mm isolasjon', quantity: 32, unit: 'timer', pricePerUnit: hourlyRate, total: 32 * hourlyRate },
+            { description: 'Isolasjonsmateriell: 50mm Glava Proff 34 (ca. 80m²)', quantity: 80, unit: 'm2', pricePerUnit: 95, total: 7600 },
+            { description: 'Montering av diffusjonsåpen vindsperre, klemlister og tape skjøter', quantity: 18, unit: 'timer', pricePerUnit: hourlyRate, total: 18 * hourlyRate },
+            { description: 'Vindsperremateriell: Tyvek vindsperre, tape og klemlekter', quantity: 1, unit: 'stk', pricePerUnit: 6200, total: 6200 },
+            { description: 'Montering av grunnet dobbelfals kledning inkl. musebånd i bunn', quantity: 45, unit: 'timer', pricePerUnit: hourlyRate, total: 45 * hourlyRate },
+            { description: 'Kledningsmateriell: 19x148mm grunnet gran dobbelfals', quantity: 80, unit: 'm2', pricePerUnit: 340, total: 27200 },
+            { description: 'Beslag og vannbrett over/under vinduer samt hjørnekasser', quantity: 16, unit: 'timer', pricePerUnit: hourlyRate, total: 16 * hourlyRate },
+            { description: 'Stillasleie, container og avfallsgebyr', quantity: 1, unit: 'stk', pricePerUnit: 12500, total: 12500 }
+          ];
+        } else if (lowerPrompt.includes('vindu') || lowerPrompt.includes('dør')) {
+          title = matchedProj ? `Utskifting av Vinduer - ${matchedProj.name}` : 'Utskifting av 6 stk 3-lags lavenergivinduer';
+          description = 'Utskifting av 6 stk vinduer til moderne 3-lags tre/aluminium med U-verdi <= 0.8 iht. TEK17 § 14. Inkluderer dytteremser, bunnfyllingslist, utvendig beslag og listing.';
+          items = [
+            { description: 'Demontering av eksisterende vinduer og forsvarlig kildesortering', quantity: 8, unit: 'timer', pricePerUnit: 790, total: 6320 },
+            { description: 'Innsetting, oppretting, kiling og fastskruing av nye vinduer', quantity: 20, unit: 'timer', pricePerUnit: hourlyRate, total: 20 * hourlyRate },
+            { description: 'Tetting med bunnfyllingslist, fugemasse og dytteremser', quantity: 6, unit: 'timer', pricePerUnit: hourlyRate, total: 6 * hourlyRate },
+            { description: 'Innvendig foring og gerikter (ferdig hvitmalt)', quantity: 16, unit: 'timer', pricePerUnit: hourlyRate, total: 16 * hourlyRate },
+            { description: 'Materiell: 6 stk 3-lags lavenergivinduer 110x120cm tre/alu', quantity: 6, unit: 'stk', pricePerUnit: 7400, total: 44400 },
+            { description: 'Materiell: Foringer, lister, skruer, bunnfyllingslist og fugemasse', quantity: 1, unit: 'stk', pricePerUnit: 6800, total: 6800 }
+          ];
+        } else if (lowerPrompt.includes('el') || lowerPrompt.includes('sikring') || lowerPrompt.includes('stikk')) {
+          title = matchedProj ? `Elektroinstallasjon & Sikringsskap - ${matchedProj.name}` : 'Oppgradering av El-anlegg & Sikringsskap';
+          description = 'Komplett oppgradering av fordelingsskap til moderne automatsikringer med integrert jordfeilvern, overspenningsvern og nye kurser iht. NEK 400.';
+          items = [
+            { description: 'Montering av nytt fordelerskap med overspenningsvern og 12 kurser', quantity: 14, unit: 'timer', pricePerUnit: 950, total: 13300 },
+            { description: 'Trekking av nye kurser til kjøkken og våtrom', quantity: 12, unit: 'timer', pricePerUnit: 950, total: 11400 },
+            { description: 'Materiell: Eaton sikringsskap, jordfeilautomater og overspenningsvern', quantity: 1, unit: 'stk', pricePerUnit: 18500, total: 18500 },
+            { description: 'Materiell: PR-kabel, rør, stikkontakter og Elko Plus rammer', quantity: 1, unit: 'stk', pricePerUnit: 8200, total: 8200 },
+            { description: 'Sluttkontroll, målerapport og samsvarserklæring i Boligmappa', quantity: 1, unit: 'stk', pricePerUnit: 2500, total: 2500 }
+          ];
+        } else {
+          const cleanDesc = promptText || 'Rehabilitering og fagarbeid';
+          title = matchedProj ? `Tilbud: ${cleanDesc} - ${matchedProj.name}` : `Pristilbud: ${cleanDesc}`;
+          items = [
+            { description: `Fagarbeid og montasje: ${cleanDesc}`, quantity: 24, unit: 'timer', pricePerUnit: hourlyRate, total: 24 * hourlyRate },
+            { description: 'Nødvendige byggevarer, festemidler og forbruksmateriell', quantity: 1, unit: 'stk', pricePerUnit: 14500, total: 14500 },
+            { description: 'Rigg, drift, verneutstyr og avfallshåndtering', quantity: 1, unit: 'stk', pricePerUnit: 4500, total: 4500 }
+          ];
+        }
+
+        return NextResponse.json({
+          success: true,
+          action: 'autofill_form',
+          formType: 'offer',
+          data: {
+            projectId: matchedProj?.id || '',
+            clientName: matchedProj?.clientName || '',
+            clientEmail: matchedProj?.clientEmail || '',
+            title,
+            description,
+            items
+          }
+        });
+      }
+
+      if (formType === 'change_order') {
+        const lowerPrompt = promptText.toLowerCase();
+        let title = 'Endringsvarsel iht. NS 8406';
+        let description = 'Det varsles herved om tilleggsarbeid uten ugrunnet opphold iht. NS 8406 pkt. 19.2.';
+        let cause = 'client_request';
+        let amountExVat = 14500;
+        let impactDays = 2;
+
+        if (lowerPrompt.includes('downlight') || lowerPrompt.includes('lys') || lowerPrompt.includes('dimmer')) {
+          title = '6 ekstra downlights og dimmer i stue';
+          description = 'Byggherre har bestilt 6 stk ekstra LED downlights med skjult trekkerør og DALI-dimming. Varslet iht. NS 8406 pkt. 19.2.';
+          cause = 'client_request';
+          amountExVat = 14500;
+          impactDays = 2;
+        } else if (lowerPrompt.includes('råte') || lowerPrompt.includes('skade') || lowerPrompt.includes('bjelke')) {
+          title = 'Skjult råteskade i bjelkelag under sluk';
+          description = 'Ved riving ble det avdekket uforutsette råteskader i bærebjelker under eksisterende sluk. Krever utskifting/lasking og soppsanering før videre oppbygging iht. NS 8406 pkt. 19.3.';
+          cause = 'unforeseen';
+          amountExVat = 28000;
+          impactDays = 4;
+        } else if (lowerPrompt.includes('avretting') || lowerPrompt.includes('skjev') || lowerPrompt.includes('gulv')) {
+          title = 'Ekstra avretting av skjevt undergulv';
+          description = 'Avvik i undergulv målt til > 18 mm, noe som krever primer og 25 sekker fiberarmert avrettingsmasse for å oppnå toleranseklasse PB iht. NS 3420.';
+          cause = 'unforeseen';
+          amountExVat = 16500;
+          impactDays = 2;
+        } else {
+          title = promptText ? `Endring: ${promptText}` : 'Ekstra fagarbeid bestilt av byggherre';
+          description = `Byggherre har anmodet om følgende tilleggsarbeid: "${promptText || 'Tilleggsarbeid'}". Varsles uten ugrunnet opphold iht. NS 8406 pkt. 19.2 med krav om justering av vederlag og fristforlengelse.`;
+          cause = 'client_request';
+          amountExVat = 12500;
+          impactDays = 2;
+        }
+
+        return NextResponse.json({
+          success: true,
+          action: 'autofill_form',
+          formType: 'change_order',
+          data: {
+            projectId: matchedProj?.id || '',
+            title,
+            description,
+            cause,
+            amountExVat,
+            impactDays
+          }
+        });
+      }
+
+      if (formType === 'sja') {
+        const lowerPrompt = promptText.toLowerCase();
+        let jobTitle = 'SJA: Stillas- og takarbeid';
+        let hazards = ['Fall fra høyde (> 2 meter)', 'Gjenstander som faller ned', 'Kapp- og gjerdesag skader'];
+        let mitigations = ['Godkjent stillas med grønt kontrollskilt', 'Bruk av godkjent fallsikringssele med falldemper', 'Hjelm og hørselvern påkrevd', 'Sperrebånd på bakkeplan'];
+
+        if (lowerPrompt.includes('varm') || lowerPrompt.includes('sveis') || lowerPrompt.includes('takbelegg')) {
+          jobTitle = 'SJA: Varme arbeider & Taktekking';
+          hazards = ['Brann i brennbart underlag / isolasjon', 'Røyk- og gassutvikling', 'Forbrenningsskader ved gassbrenner'];
+          mitigations = ['Gyldig sertifikat for varme arbeider', '2 stk 6kg pulverapparater på arbeidsstedet', 'Fjerning av brennbart materiale i 10m radius', '1 times kontinuerlig brannvakt etter fullført arbeid'];
+        } else if (lowerPrompt.includes('riv') || lowerPrompt.includes('støv') || lowerPrompt.includes('asbest')) {
+          jobTitle = 'SJA: Rivearbeid av bærende konstruksjon & Støv';
+          hazards = ['Utilsiktet kollaps av konstruksjon', 'Eksponering for kvarts- og asbeststøv', 'Klemskader ved fjerning av tunge elementer'];
+          mitigations = ['Montere midlertidige stempler (soldater) før riving', 'Bruk av godkjent P3-støvmaske og punktavsug med HEPA-filter', 'Vernebriller og vernesko klasse S3'];
+        }
+
+        return NextResponse.json({
+          success: true,
+          action: 'autofill_form',
+          formType: 'sja',
+          data: {
+            projectId: matchedProj?.id || '',
+            jobTitle,
+            location: matchedProj?.location || 'Byggeplass',
+            hazards,
+            mitigations
+          }
+        });
+      }
+
+      if (formType === 'deviation') {
+        const lowerPrompt = promptText.toLowerCase();
+        let title = 'Avvik: Manglende trykktest for rør-i-rør';
+        let description = 'Rørlegger har ikke levert dokumentert trykkprøving før tømrer lukker sjakt. Aktivert som tverrfaglig lukkesperre.';
+        let category = 'quality';
+        let severity = 'critical';
+        let actionTaken = 'Vegg rødmerket. Tømrer stanser lukking til rørlegger har trykktestet og signert i KS-systemet.';
+
+        if (lowerPrompt.includes('støv') || lowerPrompt.includes('hms') || lowerPrompt.includes('sikkerhet')) {
+          title = 'HMS-avvik (RUH): Kapping uten tilkoblet punktsug';
+          description = 'Arbeid med gipskapping utført innendørs uten tilstrekkelig avsug, medførte støvflukt i fellesareal.';
+          category = 'hms';
+          severity = 'medium';
+          actionTaken = 'Arbeidet stanset umiddelbart. HEPA-støvsuger og avsug montert på sagen.';
+        } else if (lowerPrompt.includes('membran') || lowerPrompt.includes('sluk') || lowerPrompt.includes('fall')) {
+          title = 'Avvik TEK17: Fall mot sluk utilstrekkelig';
+          description = 'Kontrollmåling viste mindre enn 1:100 fall i dusjsone. Krav iht. TEK17 § 13-15 ikke oppfylt.';
+          category = 'quality';
+          severity = 'high';
+          actionTaken = 'Avrettingsmasse må legges på nytt for å sikre korrekt fall før membran påføres.';
+        }
+
+        return NextResponse.json({
+          success: true,
+          action: 'autofill_form',
+          formType: 'deviation',
+          data: {
+            projectId: matchedProj?.id || '',
+            title,
+            description,
+            category,
+            severity,
+            actionTaken
+          }
+        });
+      }
+
+      if (formType === 'time') {
+        return NextResponse.json({
+          success: true,
+          action: 'autofill_form',
+          formType: 'time',
+          data: {
+            projectId: matchedProj?.id || '',
+            hours: 7.5,
+            category: 'arbeid',
+            description: promptText || 'Ordinært tømrer- og fagarbeid utført på byggeplass iht. fremdriftsplan.'
+          }
+        });
+      }
+
+      if (formType === 'task') {
+        const lowerPrompt = promptText.toLowerCase();
+        let assignedTo = 'Ola Tømrer';
+        let priority: 'low' | 'medium' | 'high' | 'urgent' = 'medium';
+        let title = promptText || 'Trekke rørkurs og montere fordelerskap';
+        let description = 'Husk å sjekke TEK17 føringsveier og merke kurser i fordelerskap.';
+
+        if (lowerPrompt.includes('rør') || lowerPrompt.includes('sluk') || lowerPrompt.includes('lekkasje') || lowerPrompt.includes('trykk') || lowerPrompt.includes('klemring')) {
+          assignedTo = 'Rørlegger Hansen';
+          priority = 'high';
+          title = promptText || 'Montere dampsperre og klemring på sluk i bad';
+          description = 'Sjekk klemring og mansjett nøye iht. BVN og produsentanvisning før videre arbeid.';
+        } else if (lowerPrompt.includes('el') || lowerPrompt.includes('sikring') || lowerPrompt.includes('kurs') || lowerPrompt.includes('stikk')) {
+          assignedTo = 'Elektriker Erik';
+          priority = 'high';
+          title = promptText || 'Trekke rørkurs til kjøkken og montere stikk';
+          description = 'Koordiner med tømrer før isolering og platetetting. Dokumenter kabelstrekk.';
+        } else if (lowerPrompt.includes('fukt') || lowerPrompt.includes('kontroll') || lowerPrompt.includes('lukke')) {
+          assignedTo = 'Bas';
+          priority = 'urgent';
+          title = promptText || 'Fuktmåling og tverrfaglig kontroll før lukking';
+          description = 'Gjennomfør fuktmåling av treverk (<12% fuktighet). Sjekk lukkesperrer og ta bilder før tildekking.';
+        } else if (lowerPrompt.includes('stillas') || lowerPrompt.includes('hms') || lowerPrompt.includes('sikkerhet')) {
+          assignedTo = 'Bas';
+          priority = 'urgent';
+          title = promptText || 'Kontroll og godkjenning av stillas for takarbeid';
+          description = 'Gjennomfør SJA, sjekk forankring, fotlist og godkjenningsskilt.';
+        }
+
+        const deadlineDate = new Date(Date.now() + 86400000 * 2).toISOString().split('T')[0];
+
+        return NextResponse.json({
+          success: true,
+          action: 'autofill_form',
+          formType: 'task',
+          data: {
+            projectId: matchedProj?.id || '',
+            title,
+            description,
+            assignedTo,
+            priority,
+            deadline: deadlineDate
+          }
+        });
+      }
+    }
+
     // 1. Quick Intelligent Command & Conversational Partner (Chat, Advisor, Actions)
     if (action === 'quick_command' || action === 'ask' || action === 'chat') {
       if (!text) {

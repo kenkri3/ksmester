@@ -260,6 +260,171 @@ export default function InChatWorkspace({
 }
 
 // --------------------------------------------------------------------------------------
+// 0. MESTERAI AUTOFILL & HISTORIKK ASSISTENT
+// --------------------------------------------------------------------------------------
+interface AIFormAutofillAssistantProps {
+  formType: InChatFormType;
+  projectId?: string;
+  onApply: (data: any) => void;
+}
+
+function AIFormAutofillAssistant({ formType, projectId, onApply }: AIFormAutofillAssistantProps) {
+  const [promptText, setPromptText] = useState('');
+  const [isLoading, setIsLoading] = useState(false);
+
+  const quickTemplates: Record<string, Array<{ label: string; prompt: string; icon: string }>> = {
+    offer: [
+      { label: 'Totalrenovering Bad (6 m²)', prompt: 'Totalrenovering bad 6m2 med våtromsplater, rør-i-rør, membran, flis og elektro', icon: '🛀' },
+      { label: 'Etterisolering & Kledning (80 m²)', prompt: 'Etterisolering 80m2 med 50mm isolasjon, vindsperre og ny dobbelfals kledning', icon: '🏡' },
+      { label: '6 stk 3-lags Lavenergivinduer', prompt: 'Utskifting av 6 stk 3-lags vinduer inkludert foring og listing', icon: '🪟' },
+      { label: 'Sikringsskap & El-anlegg', prompt: 'Oppgradering av sikringsskap til 12 kurser og nye kurser', icon: '⚡' }
+    ],
+    change_order: [
+      { label: '6 ekstra downlights (Kunde)', prompt: '6 ekstra downlights og dimmer i stue bestilt av byggherre', icon: '💡' },
+      { label: 'Skjult råteskade i bjelkelag', prompt: 'Skjult råteskade i bjelkelag under gammelt sluk', icon: '🪵' },
+      { label: 'Ekstra avretting av gulv', prompt: 'Ekstra avretting av skjevt undergulv med 25 sekker masse', icon: '🧱' }
+    ],
+    sja: [
+      { label: 'Stillas & Takarbeid (> 2m)', prompt: 'Arbeid i stillas og på tak over 2 meter', icon: '🧗' },
+      { label: 'Varme arbeider & Taktekking', prompt: 'Varme arbeider med gassbrenner og takbelegg', icon: '🔥' },
+      { label: 'Rivearbeid & Støv/Asbest', prompt: 'Rivearbeid av bærende konstruksjon og støvhåndtering', icon: '🏗️' }
+    ],
+    deviation: [
+      { label: 'Mangler trykktest (Lukkesperre)', prompt: 'Mangler trykktest for rør-i-rør før lukking av sjakt', icon: '💧' },
+      { label: 'Støvflukt ved gipskapping', prompt: 'Støvflukt ved gipskapping innendørs uten avsug', icon: '🧹' },
+      { label: 'Fall mot sluk < 1:100 (TEK17)', prompt: 'Fall mot sluk utilstrekkelig iht TEK17', icon: '📐' }
+    ],
+    time: [
+      { label: 'Ordinær dag (7.5 t)', prompt: 'Ordinært tømrer- og fagarbeid utført på byggeplass', icon: '🔨' },
+      { label: 'Overtid ferdigstillelse (3.5 t)', prompt: 'Overtidsarbeid for å nå lukkedato', icon: '⏱️' },
+      { label: 'Befaring & oppmåling (2.0 t)', prompt: 'Befaring, kontrollmåling og materialbestilling', icon: '🚗' }
+    ],
+    task: [
+      { label: 'Trekke rørkurs til kjøkken', prompt: 'Trekke rørkurs til kjøkken og fordelerskap', icon: '⚡' },
+      { label: 'Montere dampsperre & klemring', prompt: 'Montere dampsperre og klemring på sluk i bad', icon: '🔨' },
+      { label: 'Fuktmåling før lukking', prompt: 'Fuktmåling og tverrfaglig kontroll før lukking', icon: '🔍' }
+    ]
+  };
+
+  const currentTemplates = quickTemplates[formType] || [];
+
+  const handleRunAutofill = async (customPrompt?: string) => {
+    const textToRun = (customPrompt || promptText).trim();
+    setIsLoading(true);
+    try {
+      const res = await fetch('/api/agent/dispatch', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({
+          action: 'autofill_form',
+          formType,
+          prompt: textToRun,
+          projectId
+        })
+      });
+
+      if (!res.ok) throw new Error(`Status ${res.status}`);
+      const json = await res.json();
+      if (json.data) {
+        onApply(json.data);
+        if (!customPrompt) setPromptText('');
+      } else {
+        toast.error('Kunne ikke autofylle skjemaet');
+      }
+    } catch (e: any) {
+      console.error('Autofill error:', e);
+      toast.error('Autofyll feilet. Vennligst prøv igjen.');
+    } finally {
+      setIsLoading(false);
+    }
+  };
+
+  const placeholderText = {
+    offer: 'Hva skal kalkylen inneholde? (f.eks: Totalrenovere bad 6m², eller etterisolere 80m²)...',
+    change_order: 'Hva er endringen? (f.eks: 8 ekstra downlights i stue eller råteskade under sluk)...',
+    sja: 'Hvilken arbeidsoperasjon skal analyseres? (f.eks: Stillasarbeid eller varme arbeider)...',
+    deviation: 'Beskriv avviket (f.eks: Mangler trykktest for rør-i-rør eller feil fall mot sluk)...',
+    time: 'Beskriv arbeidet (f.eks: Lekting og gipsing i 2. etasje)...',
+    task: 'Beskriv oppgaven (f.eks: Montere dampsperre og klemring før kl. 14)...',
+    toolbox: ''
+  }[formType] || 'Beskriv hva AI skal fylle ut...';
+
+  return (
+    <div className="p-4 bg-gradient-to-r from-navy-950 via-slate-900 to-indigo-950 rounded-2xl text-white shadow-sm border border-indigo-500/20 space-y-3 mb-2">
+      <div className="flex items-center justify-between">
+        <div className="flex items-center gap-2">
+          <div className="w-7 h-7 rounded-xl bg-electric-500/20 text-electric-300 border border-electric-500/30 flex items-center justify-center">
+            <Sparkles size={14} className="text-electric-300 animate-pulse" />
+          </div>
+          <div>
+            <h5 className="text-xs font-black tracking-tight text-white flex items-center gap-1.5">
+              <span>MesterAI Autofyll & Historikk</span>
+              <span className="px-1.5 py-0.2 rounded-full text-[9px] font-black bg-emerald-500/20 text-emerald-300 border border-emerald-500/30">
+                100% Autonom
+              </span>
+            </h5>
+            <p className="text-[10px] text-slate-300">
+              Beregner timer, priser og standardtekst basert på historiske kalkyler og NS 8406.
+            </p>
+          </div>
+        </div>
+      </div>
+
+      <div className="flex items-center gap-2">
+        <input 
+          type="text"
+          value={promptText}
+          onChange={(e) => setPromptText(e.target.value)}
+          onKeyDown={(e) => {
+            if (e.key === 'Enter') {
+              e.preventDefault();
+              handleRunAutofill();
+            }
+          }}
+          placeholder={placeholderText}
+          className="flex-1 px-3 py-2 bg-white/10 border border-white/15 rounded-xl text-xs text-white placeholder:text-slate-400 focus:bg-white/15 focus:border-electric-400 outline-none transition-all"
+        />
+        <button
+          type="button"
+          onClick={() => handleRunAutofill()}
+          disabled={isLoading}
+          className="px-3.5 py-2 bg-electric-500 hover:bg-electric-400 text-white rounded-xl text-xs font-black transition-all flex items-center gap-1.5 shrink-0 shadow-xs cursor-pointer disabled:opacity-50"
+        >
+          {isLoading ? (
+            <div className="w-3.5 h-3.5 border-2 border-white/30 border-t-white rounded-full animate-spin" />
+          ) : (
+            <Sparkles size={13} />
+          )}
+          <span>{isLoading ? 'Beregner...' : 'AI Fyll Ut'}</span>
+        </button>
+      </div>
+
+      {currentTemplates.length > 0 && (
+        <div className="pt-2 border-t border-white/10 space-y-1.5">
+          <span className="block text-[10px] font-bold uppercase tracking-wider text-slate-400">
+            Ofte brukt fra historikk:
+          </span>
+          <div className="flex flex-wrap gap-1.5">
+            {currentTemplates.map((t, idx) => (
+              <button
+                key={idx}
+                type="button"
+                onClick={() => handleRunAutofill(t.prompt)}
+                disabled={isLoading}
+                className="px-2.5 py-1 bg-white/10 hover:bg-white/20 text-slate-200 hover:text-white rounded-lg text-[11px] font-bold transition-all flex items-center gap-1.5 border border-white/10 cursor-pointer disabled:opacity-50 active:scale-98"
+              >
+                <span>{t.icon}</span>
+                <span>{t.label}</span>
+              </button>
+            ))}
+          </div>
+        </div>
+      )}
+    </div>
+  );
+}
+
+// --------------------------------------------------------------------------------------
 // 1. IN-CHAT TILBUDSBYGGER & KALKYLE
 // --------------------------------------------------------------------------------------
 function InChatOfferForm({
@@ -299,6 +464,24 @@ function InChatOfferForm({
       { description: 'Materiell og forbruksmateriell', quantity: 1, unit: 'stk', pricePerUnit: 8500, total: 8500 }
     ];
   });
+
+  const handleApplyAutofill = (data: any) => {
+    if (data.title) setTitle(data.title);
+    if (data.description) setDescription(data.description);
+    if (data.items && Array.isArray(data.items) && data.items.length > 0) {
+      setItems(data.items.map((it: any) => ({
+        description: it.description || 'Fagarbeid',
+        quantity: Number(it.quantity) || 1,
+        unit: it.unit || 'timer',
+        pricePerUnit: Number(it.pricePerUnit) || 0,
+        total: Math.round((Number(it.quantity) || 1) * (Number(it.pricePerUnit) || 0))
+      })));
+    }
+    if (data.clientName && !clientName) setClientName(data.clientName);
+    if (data.clientEmail && !clientEmail) setClientEmail(data.clientEmail);
+    if (data.projectId && !projectId) setProjectId(data.projectId);
+    toast.success('Kalkyle autofylt fra MesterAI og historikk!');
+  };
 
   const handleProjectChange = (pId: string) => {
     setProjectId(pId);
@@ -406,6 +589,13 @@ function InChatOfferForm({
 
   return (
     <form onSubmit={handleSubmit} className="space-y-5">
+      {/* AI Autofill Assistant with Historical Presets */}
+      <AIFormAutofillAssistant
+        formType="offer"
+        projectId={projectId}
+        onApply={handleApplyAutofill}
+      />
+
       {/* Project & Client Card */}
       <div className="bg-white p-4 sm:p-5 rounded-2xl border border-slate-200/90 shadow-2xs space-y-4">
         <h5 className="text-xs font-black uppercase tracking-wider text-slate-400">1. Prosjekt & Oppdragsgiver</h5>
@@ -612,6 +802,16 @@ function InChatChangeOrderForm({
   const [amountExVat, setAmountExVat] = useState<number>(Number(initialData?.amountExVat) || 12500);
   const [impactDays, setImpactDays] = useState<number>(Number(initialData?.impactDays) || 3);
 
+  const handleApplyAutofill = (data: any) => {
+    if (data.title) setTitle(data.title);
+    if (data.description) setDescription(data.description);
+    if (data.cause) setCause(data.cause);
+    if (data.amountExVat !== undefined) setAmountExVat(Number(data.amountExVat));
+    if (data.impactDays !== undefined) setImpactDays(Number(data.impactDays));
+    if (data.projectId && !projectId) setProjectId(data.projectId);
+    toast.success('Endringsordre autofylt iht. NS 8406!');
+  };
+
   const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault();
     if (!title.trim()) {
@@ -652,6 +852,13 @@ function InChatChangeOrderForm({
 
   return (
     <form onSubmit={handleSubmit} className="space-y-4">
+      {/* AI Autofill Assistant with Historical Presets */}
+      <AIFormAutofillAssistant
+        formType="change_order"
+        projectId={projectId}
+        onApply={handleApplyAutofill}
+      />
+
       <div className="bg-white p-4 sm:p-5 rounded-2xl border border-slate-200/90 shadow-2xs space-y-3.5">
         <h5 className="text-xs font-black uppercase tracking-wider text-slate-400">Endringsopplysninger iht. NS 8406</h5>
 
@@ -776,6 +983,15 @@ function InChatSJAForm({
   const [hazards, setHazards] = useState<string[]>(initialData?.hazards || ['Fall fra høyde (> 2m)', 'Kapp- og gjerdesag skader']);
   const [mitigations, setMitigations] = useState<string[]>(initialData?.mitigations || ['Godkjent stillas med grønt skilt', 'Bruk av fallsikringssele ved montering', 'Briller og hørselvern ved kapping']);
 
+  const handleApplyAutofill = (data: any) => {
+    if (data.jobTitle) setJobTitle(data.jobTitle);
+    if (data.location && (!location || location === 'Byggeplass')) setLocation(data.location);
+    if (data.hazards && Array.isArray(data.hazards)) setHazards(data.hazards);
+    if (data.mitigations && Array.isArray(data.mitigations)) setMitigations(data.mitigations);
+    if (data.projectId && !projectId) setProjectId(data.projectId);
+    toast.success('SJA autofylt med risikovurdering og vernetiltak!');
+  };
+
   const commonHazards = [
     'Fall fra høyde (> 2 meter)',
     'Gjenstander som faller ned',
@@ -831,6 +1047,13 @@ function InChatSJAForm({
 
   return (
     <form onSubmit={handleSubmit} className="space-y-4">
+      {/* AI Autofill Assistant with Historical Presets */}
+      <AIFormAutofillAssistant
+        formType="sja"
+        projectId={projectId}
+        onApply={handleApplyAutofill}
+      />
+
       <div className="bg-white p-4 sm:p-5 rounded-2xl border border-slate-200/90 shadow-2xs space-y-3.5">
         <h5 className="text-xs font-black uppercase tracking-wider text-slate-400">Sikker Jobb Analyse (SJA)</h5>
 
@@ -960,6 +1183,16 @@ function InChatDeviationForm({
   const [description, setDescription] = useState<string>(initialData?.description || '');
   const [actionTaken, setActionTaken] = useState<string>(initialData?.actionTaken || '');
 
+  const handleApplyAutofill = (data: any) => {
+    if (data.title) setTitle(data.title);
+    if (data.description) setDescription(data.description);
+    if (data.category) setCategory(data.category);
+    if (data.severity) setSeverity(data.severity);
+    if (data.actionTaken) setActionTaken(data.actionTaken);
+    if (data.projectId && !projectId) setProjectId(data.projectId);
+    toast.success('Avvik autofylt!');
+  };
+
   const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault();
     if (!title.trim() || !description.trim()) {
@@ -1001,6 +1234,13 @@ function InChatDeviationForm({
 
   return (
     <form onSubmit={handleSubmit} className="space-y-4">
+      {/* AI Autofill Assistant with Historical Presets */}
+      <AIFormAutofillAssistant
+        formType="deviation"
+        projectId={projectId}
+        onApply={handleApplyAutofill}
+      />
+
       <div className="bg-white p-4 sm:p-5 rounded-2xl border border-slate-200/90 shadow-2xs space-y-3.5">
         <h5 className="text-xs font-black uppercase tracking-wider text-slate-400">Avviksregistrering (KS & HMS)</h5>
 
@@ -1122,6 +1362,14 @@ function InChatTimeForm({
   const [category, setCategory] = useState<string>('arbeid');
   const [description, setDescription] = useState<string>(initialData?.description || '');
 
+  const handleApplyAutofill = (data: any) => {
+    if (data.hours !== undefined) setHours(Number(data.hours));
+    if (data.category) setCategory(data.category);
+    if (data.description) setDescription(data.description);
+    if (data.projectId && !projectId) setProjectId(data.projectId);
+    toast.success('Timeføring autofylt!');
+  };
+
   const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault();
     if (!projectId || hours <= 0) {
@@ -1163,6 +1411,13 @@ function InChatTimeForm({
 
   return (
     <form onSubmit={handleSubmit} className="space-y-4">
+      {/* AI Autofill Assistant with Historical Presets */}
+      <AIFormAutofillAssistant
+        formType="time"
+        projectId={projectId}
+        onApply={handleApplyAutofill}
+      />
+
       <div className="bg-white p-4 sm:p-5 rounded-2xl border border-slate-200/90 shadow-2xs space-y-3.5">
         <h5 className="text-xs font-black uppercase tracking-wider text-slate-400">Timeføring</h5>
 
@@ -1365,6 +1620,18 @@ function InChatTaskForm({
 
   const activeProj = projects.find(p => p.id === projectId) || selectedProject || { name: 'Byggeprosjekt' };
 
+  const handleApplyAutofill = (data: any) => {
+    if (data.title) setTitle(data.title);
+    if (data.description) setDescription(data.description);
+    if (data.assignedTo) setAssignedTo(data.assignedTo);
+    if (data.priority) setPriority(data.priority);
+    if (data.deadline) setDeadline(data.deadline);
+    if (data.projectId && projects.some(p => p.id === data.projectId)) {
+      setProjectId(data.projectId);
+    }
+    toast.success('Oppgave utfylt av AI basert på historikk!');
+  };
+
   const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault();
     if (!title.trim()) {
@@ -1421,6 +1688,13 @@ function InChatTaskForm({
 
   return (
     <form onSubmit={handleSubmit} className="space-y-4">
+      {/* AI Autofill Assistant with Historical Presets */}
+      <AIFormAutofillAssistant
+        formType="task"
+        projectId={projectId}
+        onApply={handleApplyAutofill}
+      />
+
       <div className="bg-white p-4 sm:p-5 rounded-2xl border border-slate-200/90 shadow-2xs space-y-3.5">
         <h5 className="text-xs font-black uppercase tracking-wider text-slate-400">Tildel Oppgave & Arbeidsordre</h5>
 

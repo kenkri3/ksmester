@@ -50,7 +50,8 @@ import {
   Smartphone,
   Home,
   ChevronLeft,
-  Globe
+  Globe,
+  RotateCcw
 } from 'lucide-react';
 import InChatWorkspace, { InChatFormType } from './InChatWorkspace';
 import { cn } from '../lib/utils';
@@ -143,6 +144,30 @@ export default function MesterAIChat({
   const isWorker = user?.role === 'worker' || user?.role === 'external_worker';
   const isAdminOrManager = isSuperAdmin || user?.role === 'admin' || user?.role === 'manager' || !user?.role;
 
+  const getInitialMessages = (): ChatMessage[] => [
+    {
+      id: 'welcome',
+      role: 'assistant',
+      content: isWorker
+        ? `Hei ${user?.displayName || 'håndverker'}! 🔨 Jeg er **MesterAI Feltassistent**.\n\nHer har du alt du trenger ute på byggeplassen:\n- 📋 **Mine Oppgaver:** Se hva du skal gjøre i dag og marker fullført.\n- ⏱️ **Timeføring:** Før timer med tale eller ett trykk.\n- 🛡️ **SJA & Sikkerhet:** Sjekk vernetiltak og risikovurdering før risikofylt arbeid.\n- 📐 **TEK17 & Forskrifter:** Still spørsmål om fall til sluk, dampsperre, u-verdier etc.\n\nHva vil du fikse nå?`
+        : `Hei! Jeg er **MesterAI**, din autonome lederassistent og faglige samtalepartner.\n\nHer i arbeidsstasjonen har du **full kontroll over hele driften**:\n- 🎯 **Dagens Status:** Sanntids morgenbrifing, vær (Yr.no) og lukkesperrer.\n- 📋 **Tildel Oppgaver:** Deleger oppgaver direkte via tale eller skjema.\n- 📝 **Tilbud & Kalkyle:** Beregne arbeidstimer, materialer, påslag og forbehold (NS 8406 / NS 8405).\n- 📄 **Endringsordrer & Varsler:** Føre og godkjenne krav om tilleggsvederlag uten formfeil.\n- 👥 **Team & Invitasjoner:** Inviter håndverkere og tildel tilgangsnivåer.\n\nHva vil du fikse eller få oversikt over nå?`,
+      timestamp: new Date().toLocaleTimeString('no-NO', { hour: '2-digit', minute: '2-digit' }),
+      followUpPrompts: isWorker
+        ? [
+            'Hva er oppgavene mine i dag?',
+            'Før 7.5 timer på Nyebakken',
+            'Hva er kravene til fall mot sluk i TEK17?',
+            'Lag en SJA for tak- og stillasarbeid'
+          ]
+        : [
+            'Gi meg dagens status for alle byggeplasser',
+            'Tildel oppgave til snekker',
+            'Hjelp meg å skrive et nytt tilbud',
+            'Hvordan varsler jeg en endringsordre iht. NS 8406?'
+          ]
+    }
+  ];
+
   const [messages, setMessages] = useState<ChatMessage[]>(() => {
     if (typeof window !== 'undefined') {
       try {
@@ -153,29 +178,7 @@ export default function MesterAIChat({
         }
       } catch {}
     }
-    return [
-      {
-        id: 'welcome',
-        role: 'assistant',
-        content: isWorker
-          ? `Hei ${user?.displayName || 'håndverker'}! 🔨 Jeg er **MesterAI Feltassistent**.\n\nHer har du alt du trenger ute på byggeplassen:\n- 📋 **Mine Oppgaver:** Se hva du skal gjøre i dag og marker fullført.\n- ⏱️ **Timeføring:** Før timer med tale eller ett trykk.\n- 🛡️ **SJA & Sikkerhet:** Sjekk vernetiltak og risikovurdering før risikofylt arbeid.\n- 📐 **TEK17 & Forskrifter:** Still spørsmål om fall til sluk, dampsperre, u-verdier etc.\n\nHva vil du fikse nå?`
-          : `Hei! Jeg er **MesterAI**, din autonome lederassistent og faglige samtalepartner.\n\nHer i arbeidsstasjonen har du **full kontroll over hele driften**:\n- 🎯 **Dagens Status:** Sanntids morgenbrifing, vær (Yr.no) og lukkesperrer.\n- 📋 **Tildel Oppgaver:** Deleger oppgaver direkte via tale eller skjema.\n- 📝 **Tilbud & Kalkyle:** Beregne arbeidstimer, materialer, påslag og forbehold (NS 8406 / NS 8405).\n- 📄 **Endringsordrer & Varsler:** Føre og godkjenne krav om tilleggsvederlag uten formfeil.\n- 👥 **Team & Invitasjoner:** Inviter håndverkere og tildel tilgangsnivåer.\n\nHva vil du fikse eller få oversikt over nå?`,
-        timestamp: new Date().toLocaleTimeString('no-NO', { hour: '2-digit', minute: '2-digit' }),
-        followUpPrompts: isWorker
-          ? [
-              'Hva er oppgavene mine i dag?',
-              'Før 7.5 timer på Nyebakken',
-              'Hva er kravene til fall mot sluk i TEK17?',
-              'Lag en SJA for tak- og stillasarbeid'
-            ]
-          : [
-              'Gi meg dagens status for alle byggeplasser',
-              'Tildel oppgave til snekker',
-              'Hjelp meg å skrive et nytt tilbud',
-              'Hvordan varsler jeg en endringsordre iht. NS 8406?'
-            ]
-      }
-    ];
+    return getInitialMessages();
   });
 
   const [inputVal, setInputVal] = useState('');
@@ -376,6 +379,14 @@ export default function MesterAIChat({
   const handleSendMessage = async (textToSend: string) => {
     if (!textToSend.trim() || isLoading) return;
 
+    const trimmed = textToSend.trim();
+    const lower = trimmed.toLowerCase();
+    if (lower === '/nullstill' || lower === '/reset' || lower === 'nullstill' || lower === 'nullstill samtale' || lower === 'nullstill chat' || lower === 'start på nytt') {
+      handleClearHistory();
+      setInputVal('');
+      return;
+    }
+
     const userMessage: ChatMessage = {
       id: `u-${Date.now()}`,
       role: 'user',
@@ -421,15 +432,24 @@ export default function MesterAIChat({
       const assistantMessage: ChatMessage = {
         id: `a-${Date.now()}`,
         role: 'assistant',
-        content: data.reply || 'Jeg har mottatt instruksen din. Hva mer kan jeg hjelpe deg med?',
+        content: data.reply || 'Jeg har mottatt forespørselen, men fikk ikke noe svarinnhold fra serveren.',
         timestamp: new Date().toLocaleTimeString('no-NO', { hour: '2-digit', minute: '2-digit' }),
-        suggestedActions: data.suggestedActions || [],
-        followUpPrompts: data.followUpPrompts || []
+        suggestedActions: data.suggestedActions || []
       };
 
       setMessages(prev => [...prev, assistantMessage]);
+
+      if (data.executedAction) {
+        if (data.executedAction.type === 'create_task') {
+          toast.success('Oppgave opprettet i MesterAI');
+        } else if (data.executedAction.type === 'create_offer') {
+          toast.success('Tilbudskalkyle opprettet i MesterAI');
+        } else if (data.executedAction.type === 'change_order') {
+          toast.success('Endringsordre generert');
+        }
+      }
     } catch (err: any) {
-      console.error('Chat error:', err);
+      console.error('MesterAI chat dispatch failed:', err);
       const errorMessage: ChatMessage = {
         id: `err-${Date.now()}`,
         role: 'assistant',
@@ -443,26 +463,14 @@ export default function MesterAIChat({
   };
 
   const handleClearHistory = () => {
-    if (window.confirm('Vil du starte en ny samtale og tilbakestille samtaleloggen?')) {
-      const resetMsg: ChatMessage[] = [
-        {
-          id: 'welcome',
-          role: 'assistant',
-          content: `Hei igjen! Samtalen er tilbakestilt.\n\nHva ønsker du å sparre om eller fikse nå? Du kan be meg skrive tilbud, opprette endringsordre iht. NS 8406, sjekke TEK17-forskrifter eller føre timer.`,
-          timestamp: new Date().toLocaleTimeString('no-NO', { hour: '2-digit', minute: '2-digit' }),
-          followUpPrompts: [
-            'Hjelp meg med tilbud på nytt bad',
-            'Hvordan varsler jeg en endringsordre iht. NS 8406?',
-            'Hva er kravene til fall mot sluk i TEK17?',
-            'Lag en SJA for tak- og stillasarbeid'
-          ]
-        }
-      ];
+    if (window.confirm('Vil du nullstille samtalen og starte med et rent chat-vindu?')) {
+      const resetMsg = getInitialMessages();
       setMessages(resetMsg);
+      setInputVal('');
       if (typeof window !== 'undefined') {
         sessionStorage.removeItem('mester_ai_chat_history');
       }
-      toast.success('Ny samtale startet');
+      toast.success('Chatten er nullstilt og klar for nye oppgaver');
     }
   };
 
@@ -926,10 +934,11 @@ export default function MesterAIChat({
             <button
               type="button"
               onClick={handleClearHistory}
-              className="p-2 text-slate-300 hover:text-white hover:bg-white/10 rounded-xl transition-all text-xs font-bold flex items-center gap-1 cursor-pointer"
-              title="Start ny samtale"
+              className="p-2 text-slate-300 hover:text-white hover:bg-white/10 rounded-xl transition-all text-xs font-bold flex items-center gap-1.5 cursor-pointer"
+              title="Nullstill samtale og få et rent chat-vindu"
             >
-              <Trash2 size={15} />
+              <RotateCcw size={15} />
+              <span className="hidden xl:inline text-[11px]">Nullstill</span>
             </button>
 
             {!isEmbedded && (
@@ -965,19 +974,33 @@ export default function MesterAIChat({
               "flex flex-col bg-white border-r border-slate-200 overflow-hidden transition-all",
               isSplitView && activeTab !== 'chat' ? "hidden md:flex md:w-[44%] lg:w-[40%] xl:w-[38%]" : "w-full flex-1"
             )}>
-              {/* Active Project Banner */}
-              {selectedProject && (
-                <div className="px-4 py-2 bg-slate-50 border-b border-slate-100 flex items-center justify-between text-xs text-slate-600 shrink-0">
-                  <div className="flex items-center gap-2 truncate">
-                    <Building2 size={13} className="text-electric-600 shrink-0" />
-                    <span className="font-bold text-navy-950 truncate">{selectedProject.name}</span>
-                    <span className="text-slate-400">({selectedProject.location || 'Felt'})</span>
-                  </div>
-                  <span className="text-[10px] font-bold text-emerald-600 bg-emerald-50 px-2 py-0.5 rounded-full shrink-0">
-                    Aktivt prosjekt
-                  </span>
+              {/* Chat Subheader with Active Project & Nullstill Chat Action */}
+              <div className="px-3.5 sm:px-4 py-2 bg-slate-50 border-b border-slate-200 flex items-center justify-between text-xs text-slate-600 shrink-0">
+                <div className="flex items-center gap-2 truncate">
+                  <div className="w-2 h-2 rounded-full bg-emerald-500 animate-pulse shrink-0" />
+                  <span className="font-bold text-navy-950 truncate">MesterAI Samtale</span>
+                  {selectedProject ? (
+                    <span className="flex items-center gap-1 text-[11px] text-emerald-800 bg-emerald-50 border border-emerald-200 px-2 py-0.5 rounded-full font-semibold truncate max-w-[130px] sm:max-w-[180px]">
+                      <Building2 size={11} className="shrink-0 text-emerald-600" />
+                      <span className="truncate">{selectedProject.name}</span>
+                    </span>
+                  ) : (
+                    <span className="text-[11px] text-slate-400 hidden sm:inline">• Aktiv rådgiver</span>
+                  )}
                 </div>
-              )}
+
+                <div className="flex items-center gap-1 shrink-0">
+                  <button
+                    type="button"
+                    onClick={handleClearHistory}
+                    className="flex items-center gap-1.5 px-2.5 py-1 rounded-lg text-xs font-bold text-slate-600 hover:text-navy-950 hover:bg-slate-200/80 bg-white border border-slate-200/90 shadow-2xs transition-all cursor-pointer active:scale-95"
+                    title="Nullstill chatten for å få et helt rent vindu"
+                  >
+                    <RotateCcw size={12} className="text-slate-500" />
+                    <span>Nullstill chat</span>
+                  </button>
+                </div>
+              </div>
 
               {/* Messages Container */}
               <div 
