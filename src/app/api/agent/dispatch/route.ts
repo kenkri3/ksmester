@@ -3,8 +3,7 @@ import { generateSJAAction } from '@/src/app/actions/aiActions';
 import { evaluatePreCloseWall } from '@/src/lib/server/crossTradeEngine';
 import { createAutonomousChangeOrder } from '@/src/lib/server/changeOrderAgent';
 import { saveCollectionItem, getCollectionItems, updateCollectionItem, getCollectionItemById, deleteCollectionItem } from '@/src/lib/server/db';
-import { GoogleGenAI } from '@google/genai';
-import { trackTokenCost } from '@/src/lib/server/costTracker';
+import { generateWithAiEngine } from '@/src/lib/server/aiEngine';
 import { getUserFromRequest, verifyCronOrInternalSecret } from '@/src/lib/server/auth';
 
 // 🛡️ SECURITY FIX (11.09.2026): Denne ruten var helt uten tilgangskontroll og eksponerte
@@ -464,58 +463,22 @@ export async function POST(req: NextRequest) {
         });
       }
 
-      // Default: Byggedagbok / AI Mester-svar
-      const geminiKey = process.env.GEMINI_API_KEY || process.env.GOOGLE_API_KEY;
+      // Default: Byggedagbok / AI Mester-svar via 1_MIN_AI (hovedmotor) med Gemini backup
       let replyText = `Instruks mottatt og loggført i VikingMester byggedagbok.`;
 
-      if (geminiKey) {
-        try {
-          const ai = new GoogleGenAI({ apiKey: geminiKey });
-          const candidateModels = [
-            process.env.GEMINI_MODEL,
-            'gemini-2.5-flash',
-            'gemini-2.5-flash-lite',
-            'gemini-3.5-flash-lite',
-            'gemini-2.0-flash'
-          ].filter(Boolean) as string[];
+      try {
+        const aiRes = await generateWithAiEngine({
+          prompt: `Brukeren gir følgende instruks eller spørsmål:\n"${text}"\n\nKontekst: Prosjekt "${projectName || 'Nyebakken 14'}", fag: "${trade}".\nSvar kort, faglig og handlingsorientert (maks 2-3 setninger). Bekreft hvilke tiltak som er iverksatt iht. norsk standard (TEK17, NS 8406, Byggherreforskriften).`,
+          systemInstruction: 'Du er VikingMester, byggeplassens autonome lederassistent for norske entreprenører og håndverkere.',
+          operation: 'agent_dispatch_instruction',
+          notes: `Dispatch command on project ${projectName || 'unknown'}`
+        });
 
-          let res: any = null;
-          let usedModel = 'gemini-2.5-flash';
-          for (const m of Array.from(new Set(candidateModels))) {
-            try {
-              res = await ai.models.generateContent({
-                model: m,
-                contents: `Du er VikingMester, byggeplassens autonome lederassistent for norske entreprenører og håndverkere.
-Brukeren gir følgende instruks eller spørsmål:
-"${text}"
-
-Kontekst: Prosjekt "${projectName || 'Nyebakken 14'}", fag: "${trade}".
-Svar kort, faglig og handlingsorientert (maks 2-3 setninger). Bekreft hvilke tiltak som er iverksatt iht. norsk standard (TEK17, NS 8406, Byggherreforskriften).`
-              });
-              if (res?.text) {
-                usedModel = m;
-                break;
-              }
-            } catch (err) {
-              console.warn(`[Dispatch] Modell ${m} feilet, prøver neste...`);
-            }
-          }
-
-          if (res?.text) {
-            replyText = res.text.trim();
-          }
-          const promptTokens = res?.usageMetadata?.promptTokenCount || Math.round(text.length / 4);
-          const completionTokens = res?.usageMetadata?.candidatesTokenCount || Math.round(replyText.length / 4);
-          trackTokenCost({
-            model: usedModel,
-            promptTokens,
-            completionTokens,
-            operation: 'agent_dispatch_instruction',
-            notes: `Dispatch command on project ${projectName || 'unknown'}`
-          }).catch(() => {});
-        } catch (err) {
-          console.warn('Gemini dispatch error:', err);
+        if (aiRes?.text) {
+          replyText = aiRes.text.trim();
         }
+      } catch (err) {
+        console.warn('[Dispatch] AI Engine dispatch error:', err);
       }
 
       await saveCollectionItem('daily_logs', {
@@ -812,16 +775,13 @@ Svar kort, faglig og handlingsorientert (maks 2-3 setninger). Bekreft hvilke til
 }
 
 async function translateAgentReply(reply: string, targetLanguage: string): Promise<string> {
-  const geminiKey = process.env.GEMINI_API_KEY || process.env.GOOGLE_API_KEY;
-  if (!geminiKey) return reply;
-
   try {
-    const ai = new GoogleGenAI({ apiKey: geminiKey });
-    const res = await ai.models.generateContent({
-      model: process.env.GEMINI_MODEL || 'gemini-2.5-flash-lite',
-      contents: `Oversett følgende melding til språkkode '${targetLanguage}' slik at en utenlandsk håndverker forstår det presist: "${reply}"`
+    const aiRes = await generateWithAiEngine({
+      prompt: `Oversett følgende melding til språkkode '${targetLanguage}' slik at en utenlandsk håndverker forstår det presist: "${reply}"`,
+      operation: 'agent_translate_reply',
+      notes: `Translation to ${targetLanguage}`
     });
-    return res.text?.trim() || reply;
+    return aiRes?.text?.trim() || reply;
   } catch {
     return reply;
   }

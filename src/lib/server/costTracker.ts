@@ -3,7 +3,7 @@ import { saveCollectionItem, getCollectionItems, getCollectionItemById } from '.
 export interface CostLogRecord {
   id: string;
   timestamp: string;
-  service: 'gemini' | 'railway' | 'resend' | 'database' | 'infrastructure';
+  service: '1min.ai' | 'gemini' | 'railway' | 'resend' | 'database' | 'infrastructure';
   category: 'token_inference' | 'hosting' | 'email_delivery' | 'database';
   model?: string;
   promptTokens?: number;
@@ -29,6 +29,14 @@ export const GEMINI_PROMPT_PER_M = 0.15;
 export const GEMINI_COMPLETION_PER_M = 0.60;
 export const GEMINI_LITE_PROMPT_PER_M = 0.075;
 export const GEMINI_LITE_COMPLETION_PER_M = 0.30;
+
+// 1min.ai og GPT-4o-mini priser
+export const GPT4O_MINI_PROMPT_PER_M = 0.15;
+export const GPT4O_MINI_COMPLETION_PER_M = 0.60;
+
+// Claude 3.5 Sonnet priser (høypresisjon juridisk / NS 8406)
+export const CLAUDE_SONNET_PROMPT_PER_M = 3.00;
+export const CLAUDE_SONNET_COMPLETION_PER_M = 15.00;
 
 // DeepSeek V3 chat priser
 export const DEEPSEEK_PROMPT_PER_M = 0.14;
@@ -80,7 +88,8 @@ export async function trackTokenCost({
   companyId,
   companyName,
   projectId,
-  notes
+  notes,
+  service
 }: {
   model?: string;
   promptTokens?: number;
@@ -90,16 +99,24 @@ export async function trackTokenCost({
   companyName?: string;
   projectId?: string;
   notes?: string;
+  service?: '1min.ai' | 'gemini' | 'railway' | 'resend' | 'database' | 'infrastructure';
 }): Promise<CostLogRecord> {
   const totalTokens = promptTokens + completionTokens;
 
   let promptRate = GEMINI_PROMPT_PER_M;
   let completionRate = GEMINI_COMPLETION_PER_M;
 
-  if (model.includes('lite')) {
+  const mLower = model.toLowerCase();
+  if (mLower.includes('claude-3-5-sonnet') || mLower.includes('claude-3.5-sonnet') || mLower.includes('claude-sonnet')) {
+    promptRate = CLAUDE_SONNET_PROMPT_PER_M;
+    completionRate = CLAUDE_SONNET_COMPLETION_PER_M;
+  } else if (mLower.includes('gpt-4o-mini')) {
+    promptRate = GPT4O_MINI_PROMPT_PER_M;
+    completionRate = GPT4O_MINI_COMPLETION_PER_M;
+  } else if (mLower.includes('lite') || mLower.includes('flash-lite')) {
     promptRate = GEMINI_LITE_PROMPT_PER_M;
     completionRate = GEMINI_LITE_COMPLETION_PER_M;
-  } else if (model.includes('deepseek')) {
+  } else if (mLower.includes('deepseek')) {
     promptRate = DEEPSEEK_PROMPT_PER_M;
     completionRate = DEEPSEEK_COMPLETION_PER_M;
   }
@@ -109,10 +126,15 @@ export async function trackTokenCost({
   const costUsd = Math.max(0.00001, costPromptUsd + costCompletionUsd);
   const costNok = Number((costUsd * NOK_USD_RATE).toFixed(5));
 
+  const resolvedService = service || (
+    mLower.includes('gpt') || mLower.includes('claude') || mLower.includes('1min') ? '1min.ai' :
+    mLower.includes('deepseek') ? 'gemini' : 'gemini'
+  );
+
   const record: CostLogRecord = {
     id: `cost-${Date.now()}-${Math.random().toString(36).substring(2, 7)}`,
     timestamp: new Date().toISOString(),
-    service: model.includes('deepseek') ? 'gemini' : 'gemini',
+    service: resolvedService,
     category: 'token_inference',
     model,
     promptTokens,

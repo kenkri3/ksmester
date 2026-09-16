@@ -1,5 +1,5 @@
 import { getCollectionItems, saveCollectionItem } from './db';
-import { GoogleGenAI } from '@google/genai';
+import { generateWithAiEngine, cleanAiJson } from './aiEngine';
 import { pingSearchEngines } from './indexNow';
 
 export interface SeoArticle {
@@ -418,12 +418,6 @@ export async function runAutonomousSeoCycle(): Promise<{ createdCount: number; a
   const existingArticles = await getAllSeoArticles();
   const existingSlugs = new Set(existingArticles.map(a => a.slug));
 
-  const geminiKey = process.env.GEMINI_API_KEY || process.env.GOOGLE_API_KEY || process.env.GOOGLE_GENAI_API_KEY;
-  if (!geminiKey) {
-    console.warn('[Autonomous SEO Engine] Ingen GEMINI_API_KEY funnet. Hopper over AI-artikkelgenerering.');
-    return { createdCount: 0, articlesCreated: [] };
-  }
-
   // Find the next topic that hasn't been written about yet
   const nextCandidate = CANDIDATE_TOPICS.find(t => {
     const estimatedSlug = t.topic.toLowerCase()
@@ -466,28 +460,15 @@ Returner svaret som et gyldig JSON-objekt med følgende struktur:
 }`;
 
   try {
-    const ai = new GoogleGenAI({ apiKey: geminiKey });
-    const candidateModels = [process.env.GEMINI_MODEL, 'gemini-2.5-flash', 'gemini-2.5-flash-lite', 'gemini-3.5-flash-lite', 'gemini-2.0-flash', 'gemini-1.5-flash'].filter(Boolean) as string[];
-    let aiResponse: any = null;
+    const aiRes = await generateWithAiEngine({
+      prompt,
+      operation: 'seo_generation',
+      responseMimeType: 'application/json',
+      notes: `SEO Article for ${nextCandidate.topic}`
+    });
 
-    for (const m of candidateModels) {
-      try {
-        aiResponse = await ai.models.generateContent({
-          model: m,
-          contents: prompt,
-          config: {
-            responseMimeType: 'application/json'
-          }
-        });
-        if (aiResponse && aiResponse.text) break;
-      } catch (err) {}
-    }
-
-    if (!aiResponse || !aiResponse.text) {
-      throw new Error('Gemini leverte ingen respons.');
-    }
-
-    const data = JSON.parse(aiResponse.text);
+    const cleaned = cleanAiJson(aiRes.text);
+    const data = JSON.parse(cleaned);
 
     // Apply PageRank Sculpting / Internal link injection
     const linkedMarkdown = injectInternalLinks(data.contentMarkdown || '');

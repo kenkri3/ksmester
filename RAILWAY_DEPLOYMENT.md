@@ -13,13 +13,14 @@ Denne guiden forklarer oppsett og drift av **VikingMester.no** på **Railway** m
 
 ---
 
-## 🤖 2. AI & Modelloppsett (Gemini 3.8 Flash)
-Applikasjonen er oppgradert til Googles nyeste modell: **Gemini 3.8 Flash** (`gemini-3.8-flash`).
+## 🤖 2. AI & Modelloppsett (1min.AI som hovedmotor, Gemini som backup)
+Applikasjonen bruker nå **1min.AI** som primær AI-motor for å gi tilgang til bransjeledende modeller fra OpenAI, Anthropic og Google med minimal token- og kredittkostnad, kombinert med automatisk sanntids web-søk og sikkerhetsbackup.
 
-| Variabel | Verdi / Beskrivelse |
-| :--- | :--- |
-| `GEMINI_API_KEY` | Google Gemini API-nøkkel (bruker `gemini-3.8-flash` for lynrask generering og multimodal bildeanalyse) |
-| `DEEP_SEEK_API` | *(Valgfri fallback)* Dersom Gemini-nøkkel ikke er satt, faller systemet automatisk tilbake på DeepSeek |
+| Variabel | Status | Beskrivelse / Modellvalg |
+| :--- | :--- | :--- |
+| `1_MIN_AI` | **Hovedmotor** | 1min.AI API-nøkkel. Ruter automatisk oppgaver:<br>• **Standard/Cockpit/Chat:** `gpt-4o-mini` (lavest tokenkost, lynrask)<br>• **Juridisk/Endringsordre (NS 8406):** `claude-3-5-sonnet` (maksimal juridisk presisjon)<br>• **SJA & FDV-analyse:** `gemini-2.5-flash` / `gpt-4o-mini`<br>• **Sanntids web-søk:** Live web search aktivert ved behov |
+| `GEMINI_API_KEY` | **Sikkerhetsbackup** | Google Gemini API-nøkkel (`gemini-2.5-flash`). Trer automatisk i kraft om 1min.AI er utilgjengelig eller mangler kreditter. Sikrer også 100% uavbrutt TEK17 bildescanning. |
+| `DEEP_SEEK_API` | *(Tertiær backup)* | Ekstra reservemotor (`deepseek-chat`) dersom verken 1min.AI eller Gemini svarer. |
 
 ---
 

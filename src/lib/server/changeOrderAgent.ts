@@ -7,9 +7,8 @@
  * and generates a 1-click approval link for the building owner / client.
  */
 
-import { GoogleGenAI } from '@google/genai';
+import { generateWithAiEngine, cleanAiJson } from './aiEngine';
 import { saveCollectionItem, getCollectionItems } from './db';
-import { trackTokenCost } from './costTracker';
 
 export interface ParsedVoiceChangeOrder {
   title: string;
@@ -36,12 +35,7 @@ export async function parseVoiceToChangeOrder(
   spokenText: string,
   projectContext?: { projectName?: string; clientName?: string; contractType?: 'NS8406' | 'HVT' | 'BOLIG' }
 ): Promise<ParsedVoiceChangeOrder> {
-  const geminiKey = process.env.GEMINI_API_KEY || process.env.GOOGLE_API_KEY;
-
-  if (geminiKey) {
-    try {
-      const ai = new GoogleGenAI({ apiKey: geminiKey });
-      const prompt = `Du er en norsk juridisk rådgiver og byggelederassistent.
+  const prompt = `Du er en norsk juridisk rådgiver og byggelederassistent.
 Analyser følgende muntlige beskjed fra en håndverker på byggeplass og trekk ut en formell endringsmelding/tilleggsordre:
 "${spokenText}"
 
@@ -59,47 +53,34 @@ Returner KUN et gyldig JSON-objekt med følgende felter:
 - legalHjemmel: Juridisk henvisning (f.eks. "NS 8406 punkt 19.2 (Varsel om vederlagsjustering og fristforlengelse)" eller "Bustadoppføringslova § 9 (Tilleggsarbeid)").
 - smsMessageToClient: En kort, høflig SMS-tekst til kunden med forklaring av tillegget og varsel om godkjenning.`;
 
-      const modelToUse = process.env.GEMINI_MODEL || 'gemini-2.5-flash';
-      const aiResponse = await ai.models.generateContent({
-        model: modelToUse,
-        contents: prompt,
-        config: {
-          responseMimeType: 'application/json'
-        }
-      });
+  try {
+    const aiRes = await generateWithAiEngine({
+      prompt,
+      operation: 'voice_to_change_order',
+      responseMimeType: 'application/json',
+      notes: `Change order for project ${projectContext?.projectName || 'unknown'}`
+    });
 
-      // Track token costs for 50/50 accounting
-      const promptTokens = aiResponse.usageMetadata?.promptTokenCount || Math.round(prompt.length / 4);
-      const completionTokens = aiResponse.usageMetadata?.candidatesTokenCount || 200;
-      trackTokenCost({
-        model: modelToUse,
-        promptTokens,
-        completionTokens,
-        operation: 'voice_to_change_order',
-        notes: `Change order generated for project ${projectContext?.projectName || 'unknown'}`
-      }).catch(() => {});
+    const cleaned = cleanAiJson(aiRes.text);
+    const parsed = JSON.parse(cleaned);
 
-      const text = aiResponse.text || '{}';
-      const parsed = JSON.parse(text);
+    const amountExVat = Number(parsed.amountExVat) || 3500;
+    const vatAmount = Math.round(amountExVat * 0.25);
+    const totalAmount = amountExVat + vatAmount;
 
-      const amountExVat = Number(parsed.amountExVat) || 3500;
-      const vatAmount = Math.round(amountExVat * 0.25);
-      const totalAmount = amountExVat + vatAmount;
-
-      return {
-        title: parsed.title || 'Tilleggsarbeid iht. avtale',
-        description: parsed.description || spokenText,
-        cause: parsed.cause || 'kundetillegg',
-        amountExVat,
-        vatAmount,
-        totalAmount,
-        impactDays: Number(parsed.impactDays) || 0,
-        legalHjemmel: parsed.legalHjemmel || 'NS 8406 pkt. 19.2 / Håndverkertjenesteloven § 9',
-        smsMessageToClient: parsed.smsMessageToClient || `Hei! Vi har registrert et tilleggsønske: ${parsed.title}. Se spesifikasjon og godkjenn i VikingMester.`
-      };
-    } catch (err) {
-      console.warn('Gemini change order parser fallback to heuristic:', err);
-    }
+    return {
+      title: parsed.title || 'Tilleggsarbeid iht. avtale',
+      description: parsed.description || spokenText,
+      cause: parsed.cause || 'kundetillegg',
+      amountExVat,
+      vatAmount,
+      totalAmount,
+      impactDays: Number(parsed.impactDays) || 0,
+      legalHjemmel: parsed.legalHjemmel || 'NS 8406 pkt. 19.2 / Håndverkertjenesteloven § 9',
+      smsMessageToClient: parsed.smsMessageToClient || `Hei! Vi har registrert et tilleggsønske: ${parsed.title}. Se spesifikasjon og godkjenn i VikingMester.`
+    };
+  } catch (err: any) {
+    console.warn('[ChangeOrderAgent] AI parsing feilet, bruker heuristisk fallback:', err.message);
   }
 
   // Fallback: Deterministic / Heuristic parser (0 tokens)

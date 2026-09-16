@@ -1,6 +1,6 @@
 import { NextRequest, NextResponse } from 'next/server';
 import { getUserFromRequest } from '@/src/lib/server/auth';
-import { GoogleGenAI } from '@google/genai';
+import { generateWithAiEngine, cleanAiJson } from '@/src/lib/server/aiEngine';
 
 function isBlockedUrl(urlString: string): boolean {
   try {
@@ -99,74 +99,20 @@ export async function POST(req: NextRequest) {
       .trim()
       .substring(0, 4000);
 
-    const geminiKey = process.env.GEMINI_API_KEY || process.env.GOOGLE_API_KEY || process.env.GOOGLE_GENAI_API_KEY;
-    const deepseekKey = process.env.DEEP_SEEK_API || process.env.DEEPSEEK_API_KEY;
-
-    if (geminiKey) {
-      const ai = new GoogleGenAI({ apiKey: geminiKey });
-      const aiResponse = await Promise.race([
-        ai.models.generateContent({
-          model: process.env.GEMINI_MODEL || 'gemini-2.5-flash',
-          contents: `Ekstraher produktinformasjon for en norsk byggevare fra denne nettsideteksten:\nTittel: ${ogTitle}\nBeskrivelse: ${ogDesc}\nInnhold: ${cleanText}`,
-          config: {
-            systemInstruction: 'Du er en ekspert på byggevarer og FDV-dokumentasjon i Norge. Ekstraher produktinformasjon og returner som JSON.',
-            responseMimeType: 'application/json',
-            responseSchema: {
-              type: 'OBJECT',
-              properties: {
-                nobbNumber: { type: 'STRING' },
-                name: { type: 'STRING' },
-                description: { type: 'STRING' },
-                gtin: { type: 'STRING' },
-                supplier: { type: 'STRING' },
-                category: { type: 'STRING' },
-                fdvUrl: { type: 'STRING' },
-                imageUrl: { type: 'STRING' }
-              },
-              required: ['name']
-            }
-          }
-        }),
-        new Promise((_, reject) => setTimeout(() => reject(new Error('AI Request timed out')), 10000))
-      ]) as any;
-
-      const parsed = JSON.parse(aiResponse.text || '{}');
-      if (!parsed.imageUrl && ogImage) parsed.imageUrl = ogImage;
-      return NextResponse.json(parsed);
-    } else if (deepseekKey) {
-      const dsRes = await fetch('https://api.deepseek.com/chat/completions', {
-        method: 'POST',
-        headers: {
-          'Content-Type': 'application/json',
-          'Authorization': `Bearer ${deepseekKey}`
-        },
-        body: JSON.stringify({
-          model: 'deepseek-chat',
-          messages: [
-            {
-              role: 'system',
-              content: 'Du er en ekspert på byggevarer og FDV-dokumentasjon i Norge. Ekstraher produktinformasjon og returner KUN et gyldig JSON-objekt med feltene: nobbNumber, name, description, gtin, supplier, category, fdvUrl, imageUrl.'
-            },
-            {
-              role: 'user',
-              content: `Ekstraher produktinformasjon fra følgende tekst som JSON:\nTittel: ${ogTitle}\nBeskrivelse: ${ogDesc}\nInnhold: ${cleanText}`
-            }
-          ],
-          response_format: { type: 'json_object' },
-          temperature: 0.1,
-          max_tokens: 1000
-        }),
-        signal: AbortSignal.timeout(8000)
+    try {
+      const prompt = `Ekstraher produktinformasjon for en norsk byggevare fra denne nettsideteksten:\nTittel: ${ogTitle}\nBeskrivelse: ${ogDesc}\nInnhold: ${cleanText}`;
+      const aiRes = await generateWithAiEngine({
+        prompt,
+        systemInstruction: 'Du er en ekspert på byggevarer og FDV-dokumentasjon i Norge. Ekstraher produktinformasjon og returner KUN et gyldig JSON-objekt med feltene: nobbNumber, name, description, gtin, supplier, category, fdvUrl, imageUrl.',
+        operation: 'scrape_fdv',
+        responseMimeType: 'application/json'
       });
 
-      if (dsRes.ok) {
-        const aiData = await dsRes.json();
-        let content = aiData.choices?.[0]?.message?.content || '{}';
-        content = content.replace(/^```json\s*/i, '').replace(/\s*```$/i, '').trim();
-        const parsed = JSON.parse(content);
-        if (!parsed.imageUrl && ogImage) parsed.imageUrl = ogImage;
-        return NextResponse.json(parsed);
-      }
+      const parsed = JSON.parse(cleanAiJson(aiRes.text));
+      if (!parsed.imageUrl && ogImage) parsed.imageUrl = ogImage;
+      return NextResponse.json(parsed);
+    } catch (aiErr: any) {
+      console.warn('[Scrape] AI ekstraksjon feilet, bruker metadata fallback:', aiErr.message);
     }
 
     return NextResponse.json({
