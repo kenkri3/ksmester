@@ -282,6 +282,7 @@ export default function MesterAIChat({
   const messagesEndRef = useRef<HTMLDivElement>(null);
   const chatFileInputRef = useRef<HTMLInputElement>(null);
   const recognitionRef = useRef<any>(null);
+  const audioPlayerRef = useRef<HTMLAudioElement | null>(null);
   const [isAnalyzingImage, setIsAnalyzingImage] = useState(false);
 
   // Sync initialTab with activeTab
@@ -361,27 +362,96 @@ export default function MesterAIChat({
     return () => window.removeEventListener('task_assigned_event', handleNewTask);
   }, []);
 
-  // Text to speech playback
-  const handleSpeakText = (textToSpeak: string) => {
-    if (typeof window === 'undefined' || !('speechSynthesis' in window)) {
-      toast.info('Tale-syntese støttes ikke i nettleseren din.');
-      return;
-    }
+  // Text to speech playback: Smart AI TTS via 1min.ai (OpenAI tts-1 onyx) with natural Norwegian pronunciation
+  const handleSpeakText = async (textToSpeak: string) => {
+    // 1. Hvis tale allerede spilles av -> Stopp
     if (isSpeaking) {
-      window.speechSynthesis.cancel();
+      if (audioPlayerRef.current) {
+        try {
+          audioPlayerRef.current.pause();
+        } catch {}
+        audioPlayerRef.current = null;
+      }
+      if (typeof window !== 'undefined' && 'speechSynthesis' in window) {
+        window.speechSynthesis.cancel();
+      }
       setIsSpeaking(false);
       return;
     }
+
+    setIsSpeaking(true);
+
+    try {
+      // 2. Forsøk førsteklasses AI TTS via serveren (/api/ai/tts drevet av 1min.ai / OpenAI TTS onyx)
+      const token = typeof window !== 'undefined' ? (localStorage.getItem('token') || localStorage.getItem('auth_token')) : null;
+      const ttsRes = await fetch('/api/ai/tts', {
+        method: 'POST',
+        headers: {
+          'Content-Type': 'application/json',
+          ...(token ? { 'Authorization': `Bearer ${token}` } : {})
+        },
+        credentials: 'include',
+        body: JSON.stringify({
+          text: textToSpeak,
+          voice: 'onyx', // Dyp, rolig, autoritær mesterstemme
+          model: 'tts-1'
+        })
+      });
+
+      if (ttsRes.ok) {
+        const data = await ttsRes.json();
+        if (data.success && data.audioUrl) {
+          const audio = new Audio(data.audioUrl);
+          audioPlayerRef.current = audio;
+          audio.onended = () => {
+            setIsSpeaking(false);
+            audioPlayerRef.current = null;
+          };
+          audio.onerror = () => {
+            setIsSpeaking(false);
+            audioPlayerRef.current = null;
+          };
+          await audio.play();
+          return;
+        }
+      }
+    } catch (apiErr) {
+      console.warn('[MesterAI TTS] AI TTS feilet, faller tilbake til lokal stemme:', apiErr);
+    }
+
+    // 3. Fallback: Nettleserens talesyntese (optimalisert for norsk)
+    if (typeof window === 'undefined' || !('speechSynthesis' in window)) {
+      toast.info('Tale-syntese støttes ikke på denne enheten.');
+      setIsSpeaking(false);
+      return;
+    }
+
     const cleanText = textToSpeak
       .replace(/[*_#`~>]/g, '')
       .replace(/\[([^\]]+)\]\([^\)]+\)/g, '$1')
+      .replace(/\bkr\.?\s*([\d\s]+)/gi, '$1 kroner ')
+      .replace(/\bNS\s*8406\b/gi, 'Norsk Standard 84 null 6')
+      .replace(/\bTEK17\b/gi, 'Tek 17')
+      .replace(/\bSJA\b/g, 'S-J-A')
       .slice(0, 800);
+
     const utterance = new SpeechSynthesisUtterance(cleanText);
     utterance.lang = 'nb-NO';
-    utterance.rate = 1.05;
+    utterance.rate = 1.0;
+
+    // Finn beste tilgjengelige norske stemme
+    const voices = window.speechSynthesis.getVoices();
+    const norwegianVoice = voices.find(v => 
+      (v.lang.includes('nb') || v.lang.includes('no') || v.lang.includes('nn')) && 
+      (v.name.includes('Natural') || v.name.includes('Google') || v.name.includes('Nora') || v.name.includes('Henrik'))
+    ) || voices.find(v => v.lang.startsWith('nb') || v.lang.startsWith('no'));
+
+    if (norwegianVoice) {
+      utterance.voice = norwegianVoice;
+    }
+
     utterance.onend = () => setIsSpeaking(false);
     utterance.onerror = () => setIsSpeaking(false);
-    setIsSpeaking(true);
     window.speechSynthesis.speak(utterance);
   };
 
@@ -814,6 +884,22 @@ export default function MesterAIChat({
     }
     if (action.type === 'open_apprentice_modal' || action.id === 'open_apprentice_modal') {
       window.dispatchEvent(new CustomEvent('trigger_dashboard_action', { detail: { actionId: 'apprentice' } }));
+      return;
+    }
+    if (action.type === 'open_building_app_modal' || action.id === 'open_building_app' || action.id === 'building_app') {
+      window.dispatchEvent(new CustomEvent('trigger_dashboard_action', { detail: { actionId: 'building_app', data: action.data } }));
+      return;
+    }
+    if (action.type === 'open_checklist_modal' || action.id === 'open_checklist' || action.id === 'start_checklist') {
+      window.dispatchEvent(new CustomEvent('trigger_dashboard_action', { detail: { actionId: 'start_checklist', id: action.data?.projectId } }));
+      return;
+    }
+    if (action.type === 'open_omnichannel_modal' || action.id === 'open_omnichannel') {
+      if (onOpenOmnichannelModal) {
+        onOpenOmnichannelModal();
+      } else {
+        window.dispatchEvent(new CustomEvent('open_omnichannel_modal'));
+      }
       return;
     }
     if (action.type === 'open_documentation_archive' || action.id === 'open_documentation_archive') {
@@ -1879,6 +1965,7 @@ export default function MesterAIChat({
                   onClose={() => setActiveFormView(null)}
                   onSuccess={handleFormSuccess}
                   onSwitchForm={(nextType, nextData) => setActiveFormView({ type: nextType, data: nextData })}
+                  onOpenOmnichannelModal={onOpenOmnichannelModal}
                 />
               </div>
             ) : activeTab === 'control_center' ? (
