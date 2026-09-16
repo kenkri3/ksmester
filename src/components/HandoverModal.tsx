@@ -46,7 +46,7 @@ const HandoverModal: React.FC<HandoverModalProps> = ({ isOpen, onClose, projects
     fetchMaterials();
   }, [selectedProjectId]);
 
-  const completionProjects = projects.filter(p => p.stage === 'completion' || p.progress > 90);
+  const completionProjects = (projects || []).filter(p => Boolean(p) && (p.stage === 'completion' || (Number(p.progress) || 0) > 90));
 
   const checklist = [
     { id: 'c1', label: 'Sluttbefaring utført', status: 'completed' },
@@ -191,7 +191,7 @@ const HandoverModal: React.FC<HandoverModalProps> = ({ isOpen, onClose, projects
                   >
                     <option value="">Velg prosjekt...</option>
                     {completionProjects.map(p => (
-                      <option key={p.id} value={p.id}>{p.name} ({p.progress}%)</option>
+                      <option key={p.id} value={p.id}>{p.name || 'Prosjekt'} ({p.progress || 0}%)</option>
                     ))}
                   </select>
                 </div>

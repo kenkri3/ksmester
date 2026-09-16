@@ -367,7 +367,7 @@ export default function SmartSearch({
           matches.push({
             id: p.id,
             category: 'status',
-            title: `Status: ${p.name}`,
+            title: `Status: ${p.name || 'Prosjekt'}`,
             description: `${p.progress || 0}% fremdrift • ${p.status === 'active' ? 'I drift' : 'Planlagt'} • ${p.location || 'Norge'}${devCount > 0 ? ` • ${devCount} åpne avvik` : ' • 0 åpne avvik'} • Kunde: ${p.clientName || 'Privat'}`,
             badge: `${p.progress || 0}% Fullført`,
             badgeColor: 'emerald',
@@ -405,7 +405,7 @@ export default function SmartSearch({
         matches.push({
           id: p.id,
           category: 'project',
-          title: p.name,
+          title: p.name || 'Prosjekt',
           description: `${p.projectCode ? `${p.projectCode} • ` : ''}${p.location || 'Norge'}${p.gnr && p.bnr ? ` (GNR: ${p.gnr}, BNR: ${p.bnr})` : ''} • Kunde: ${p.clientName || 'Privat'}`,
           badge: `${p.progress || 0}%`,
           badgeColor: 'blue',

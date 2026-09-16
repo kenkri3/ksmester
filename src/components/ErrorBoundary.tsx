@@ -24,41 +24,91 @@ export class ErrorBoundary extends Component<Props, State> {
 
   public componentDidCatch(error: Error, errorInfo: ErrorInfo) {
     console.error('Uncaught error:', error, errorInfo);
+    // 🛡️ Auto-heal: If render failure is caused by corrupted localStorage cache, clear project caches
+    if (typeof window !== 'undefined') {
+      try {
+        const msg = (error?.message || '').toLowerCase();
+        if (msg.includes('tolowercase') || msg.includes('name') || msg.includes('progress') || msg.includes('null') || msg.includes('undefined')) {
+          localStorage.removeItem('ks_cache_projects');
+          localStorage.removeItem('ks_cache_deviations');
+          localStorage.removeItem('ks_cache_change_orders');
+        }
+      } catch {}
+    }
   }
+
+  private handleResetCacheAndReload = () => {
+    if (typeof window !== 'undefined') {
+      try {
+        Object.keys(localStorage).forEach((key) => {
+          if (key.startsWith('ks_cache_') || key.startsWith('mester_ai_')) {
+            localStorage.removeItem(key);
+          }
+        });
+        sessionStorage.clear();
+      } catch {}
+      window.location.href = '/';
+    }
+  };
 
   public render() {
     if (this.state.hasError) {
       return (
         <div className="min-h-screen bg-neutral-50 flex items-center justify-center p-4">
-          <div className="max-w-md w-full bg-white rounded-[2.5rem] shadow-2xl p-8 lg:p-12 text-center border border-red-100">
-            <div className="w-16 h-16 bg-red-100 text-red-600 rounded-2xl flex items-center justify-center mx-auto mb-8">
+          <div className="max-w-md w-full bg-white rounded-[2.5rem] shadow-2xl p-8 lg:p-10 text-center border border-red-100 space-y-6">
+            <div className="w-16 h-16 bg-red-100 text-red-600 rounded-2xl flex items-center justify-center mx-auto">
               <AlertTriangle size={32} />
             </div>
-            <h1 className="text-2xl font-bold mb-4">Beklager, noe gikk galt</h1>
-            <p className="text-neutral-500 mb-8 text-sm">
-              En uventet feil har oppstått. Vi har logget hendelsen og jobber med å fikse det.
-            </p>
-            {process.env.NODE_ENV === 'development' && (
-              <pre className="mb-8 p-4 bg-neutral-100 rounded-xl text-[10px] text-left overflow-auto max-h-40 font-mono text-red-600">
-                {this.state.error?.message}
-                {this.state.error?.stack}
-              </pre>
+            
+            <div className="space-y-2">
+              <h1 className="text-2xl font-black text-slate-900">Beklager, noe gikk galt</h1>
+              <p className="text-slate-500 text-sm leading-relaxed">
+                En midlertidig feil har oppstått i visningen. Du kan trykke på <strong>Gjenopprett</strong> for å nullstille hurtigminnet og laste inn siden på nytt.
+              </p>
+            </div>
+
+            {/* Expandable error technical details */}
+            {this.state.error && (
+              <details className="text-left bg-slate-50 rounded-xl p-3 border border-slate-200 text-xs">
+                <summary className="font-bold text-slate-600 cursor-pointer hover:text-slate-900 select-none">
+                  Vis tekniske detaljer
+                </summary>
+                <pre className="mt-2 p-2 bg-white rounded-lg text-[10px] overflow-auto max-h-36 font-mono text-red-600 whitespace-pre-wrap">
+                  {this.state.error.message}
+                  {'\n'}
+                  {this.state.error.stack}
+                </pre>
+              </details>
             )}
-            <div className="grid grid-cols-2 gap-4">
+
+            <div className="flex flex-col gap-3">
               <button 
-                onClick={() => window.location.reload()}
-                className="flex items-center justify-center gap-2 py-4 bg-emerald-600 text-white rounded-2xl font-bold hover:bg-emerald-500 transition-all"
+                type="button"
+                onClick={this.handleResetCacheAndReload}
+                className="w-full flex items-center justify-center gap-2 py-3.5 bg-emerald-600 text-white rounded-2xl font-black hover:bg-emerald-500 transition-all shadow-md cursor-pointer active:scale-98"
               >
                 <RefreshCw size={18} />
-                Prøv igjen
+                <span>Gjenopprett & Last på nytt</span>
               </button>
-              <button 
-                onClick={() => window.location.href = '/'}
-                className="flex items-center justify-center gap-2 py-4 bg-neutral-100 text-neutral-600 rounded-2xl font-bold hover:bg-neutral-200 transition-all"
-              >
-                <Home size={18} />
-                Hjem
-              </button>
+
+              <div className="grid grid-cols-2 gap-3">
+                <button 
+                  type="button"
+                  onClick={() => window.location.reload()}
+                  className="flex items-center justify-center gap-2 py-3 bg-slate-100 text-slate-700 rounded-2xl font-bold hover:bg-slate-200 transition-all cursor-pointer"
+                >
+                  <RefreshCw size={16} />
+                  <span>Prøv igjen</span>
+                </button>
+                <button 
+                  type="button"
+                  onClick={() => window.location.href = '/'}
+                  className="flex items-center justify-center gap-2 py-3 bg-slate-100 text-slate-700 rounded-2xl font-bold hover:bg-slate-200 transition-all cursor-pointer"
+                >
+                  <Home size={16} />
+                  <span>Hjem</span>
+                </button>
+              </div>
             </div>
           </div>
         </div>
