@@ -1373,12 +1373,12 @@ function InChatTimeForm({
   const [date, setDate] = useState<string>(new Date().toISOString().split('T')[0]);
   const [hours, setHours] = useState<number>(Number(initialData?.hours) || 7.5);
   const [category, setCategory] = useState<string>('arbeid');
-  const [description, setDescription] = useState<string>(initialData?.description || '');
+  const [description, setDescription] = useState<string>(() => sanitizePlainText(initialData?.description || ''));
 
   const handleApplyAutofill = (data: any) => {
     if (data.hours !== undefined) setHours(Number(data.hours));
     if (data.category) setCategory(data.category);
-    if (data.description) setDescription(data.description);
+    if (data.description) setDescription(sanitizePlainText(data.description));
     if (data.projectId && !projectId) setProjectId(data.projectId);
     toast.success('Timeføring autofylt!');
   };
@@ -1625,8 +1625,8 @@ function InChatTaskForm({
   onOpenOmnichannelModal?: () => void;
 }) {
   const [projectId, setProjectId] = useState(initialData?.projectId || selectedProject?.id || (projects[0]?.id || ''));
-  const [title, setTitle] = useState(initialData?.title || '');
-  const [description, setDescription] = useState(initialData?.description || '');
+  const [title, setTitle] = useState(() => sanitizePlainText(initialData?.title || ''));
+  const [description, setDescription] = useState(() => sanitizePlainText(initialData?.description || ''));
   const [assignedTo, setAssignedTo] = useState(initialData?.assignedTo || 'Ola Tømrer');
   const [priority, setPriority] = useState<'low' | 'medium' | 'high' | 'urgent'>(initialData?.priority || 'medium');
   const [deadline, setDeadline] = useState(initialData?.deadline || new Date(Date.now() + 86400000 * 2).toISOString().split('T')[0]);
@@ -1659,8 +1659,8 @@ function InChatTaskForm({
   const activeProj = projects.find(p => p.id === projectId) || selectedProject || { name: 'Byggeprosjekt' };
 
   const handleApplyAutofill = (data: any) => {
-    if (data.title) setTitle(data.title);
-    if (data.description) setDescription(data.description);
+    if (data.title) setTitle(sanitizePlainText(data.title));
+    if (data.description) setDescription(sanitizePlainText(data.description));
     if (data.assignedTo) setAssignedTo(data.assignedTo);
     if (data.priority) setPriority(data.priority);
     if (data.deadline) setDeadline(data.deadline);

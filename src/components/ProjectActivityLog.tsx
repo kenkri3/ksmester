@@ -304,10 +304,10 @@ export default function ProjectActivityLog({ projectId, project }: ProjectActivi
             <div className="flex-1 min-w-0">
               <div className="flex items-center justify-between gap-2 mb-1">
                 <h4 className="text-sm font-bold text-neutral-900 truncate group-hover:text-emerald-700 transition-colors">
-                  {activity.type === 'sja' && 'SJA: '}
-                  {activity.type === 'deviation' && 'Avvik: '}
-                  {activity.type === 'photo' && 'Bilde: '}
-                  {activity.type === 'checklist' && 'KS / Sjekkliste: '}
+                  {activity.type === 'sja' && !activity.title.toLowerCase().startsWith('sja') && 'SJA: '}
+                  {activity.type === 'deviation' && !activity.title.toLowerCase().startsWith('avvik') && 'Avvik: '}
+                  {activity.type === 'photo' && !activity.title.toLowerCase().startsWith('bilde') && 'Bilde: '}
+                  {activity.type === 'checklist' && !activity.title.toLowerCase().startsWith('ks') && !activity.title.toLowerCase().startsWith('sjekkliste') && 'KS / Sjekkliste: '}
                   {activity.title}
                 </h4>
                 <span className="text-[10px] text-neutral-400 whitespace-nowrap font-medium">
