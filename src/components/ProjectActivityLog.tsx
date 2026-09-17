@@ -14,13 +14,21 @@ import {
   X,
   Download,
   ExternalLink,
-  Maximize2
+  Maximize2,
+  Printer,
+  Building2,
+  Calendar,
+  User,
+  Cloud,
+  FileCheck2,
+  Check
 } from 'lucide-react';
 import { motion, AnimatePresence } from 'motion/react';
 import { db, collection, query, where, orderBy, limit, onSnapshot, doc, getDoc, OperationType, handleFirestoreError } from '../services/firebase';
 import { cn } from '@/src/lib/utils';
 import DeviationDetailModal from './DeviationDetailModal';
 import { pdfService } from '../services/pdfService';
+import { normalizeSJAData, NormalizedSJA } from '../services/sjaService';
 import { Project } from '../types';
 import { toast } from 'sonner';
 
@@ -50,7 +58,7 @@ export default function ProjectActivityLog({ projectId, project }: ProjectActivi
   const [selectedDeviation, setSelectedDeviation] = useState<any | null>(null);
   const [isDevModalOpen, setIsDevModalOpen] = useState(false);
   const [selectedPhoto, setSelectedPhoto] = useState<any | null>(null);
-  const [selectedSja, setSelectedSja] = useState<any | null>(null);
+  const [selectedSja, setSelectedSja] = useState<NormalizedSJA | null>(null);
   const [selectedChecklist, setSelectedChecklist] = useState<any | null>(null);
   const [selectedGeneralActivity, setSelectedGeneralActivity] = useState<ActivityItem | null>(null);
   const [showFullHistory, setShowFullHistory] = useState(false);
@@ -80,11 +88,10 @@ export default function ProjectActivityLog({ projectId, project }: ProjectActivi
   useEffect(() => {
     if (!projectId) return;
 
-    // In a real app, we might have a dedicated 'activities' collection
-    // For now, we'll aggregate from multiple collections or simulate a unified feed
-    
+    // Aggregate from multiple collections for a unified feed
     const collections = [
       { name: 'sja_reports', type: 'sja' as const },
+      { name: 'sja_documents', type: 'sja' as const },
       { name: 'deviations', type: 'deviation' as const },
       { name: 'project_checklists', type: 'checklist' as const },
       { name: 'project_photos', type: 'photo' as const },
@@ -96,7 +103,7 @@ export default function ProjectActivityLog({ projectId, project }: ProjectActivi
         collection(db, coll.name),
         where('projectId', '==', projectId),
         orderBy('createdAt', 'desc'),
-        limit(10)
+        limit(15)
       );
 
       return onSnapshot(q, (snapshot) => {
@@ -105,20 +112,20 @@ export default function ProjectActivityLog({ projectId, project }: ProjectActivi
           return {
             id: doc.id,
             type: coll.type,
-            title: data.title || data.trade || 'Aktivitet',
-            description: data.description || data.task || '',
-            timestamp: data.createdAt?.toDate?.() || new Date(data.createdAt),
-            authorName: data.authorName || data.reportedBy || 'System',
+            title: data.title || data.jobTitle || data.trade || 'Aktivitet',
+            description: data.description || data.task || data.jobTitle || '',
+            timestamp: data.createdAt?.toDate?.() || (data.createdAt ? new Date(data.createdAt) : new Date()),
+            authorName: data.authorName || data.responsible || data.reportedBy || 'System',
             status: data.status,
             severity: data.severity,
-            metadata: data
+            metadata: { ...data, _collection: coll.name }
           } as ActivityItem;
         });
 
         setActivities(prev => {
-          const otherTypes = prev.filter(a => a.type !== coll.type);
-          const combined = [...otherTypes, ...items].sort((a, b) => b.timestamp - a.timestamp);
-          return combined.slice(0, 20); // Keep last 20
+          const otherColls = prev.filter(a => (a.metadata as any)?._collection !== coll.name);
+          const combined = [...otherColls, ...items].sort((a, b) => b.timestamp - a.timestamp);
+          return combined;
         });
         setLoading(false);
       }, (error) => {
@@ -174,14 +181,15 @@ export default function ProjectActivityLog({ projectId, project }: ProjectActivi
         ...activity.metadata
       });
     } else if (activity.type === 'sja') {
-      setSelectedSja({
+      const rawData = {
         id: activity.id,
         title: activity.title,
-        task: activity.description || activity.metadata?.task,
-        authorName: activity.authorName,
+        task: activity.description || activity.metadata?.task || activity.metadata?.jobTitle || activity.title,
+        authorName: activity.authorName || activity.metadata?.authorName || activity.metadata?.responsible || activity.metadata?.reportedBy,
         timestamp: activity.timestamp,
         ...activity.metadata
-      });
+      };
+      setSelectedSja(normalizeSJAData(rawData, projectData));
     } else if (activity.type === 'checklist') {
       const defaultItems = [
         { id: '1', text: 'Tverrfaglig kontroll og visuell inspeksjon iht. TEK17', checked: true, status: 'passed', category: 'Kvalitet', trade: 'Fagkontroll', comment: 'OK / Verifisert' },
@@ -473,84 +481,206 @@ export default function ProjectActivityLog({ projectId, project }: ProjectActivi
               initial={{ opacity: 0, scale: 0.95 }}
               animate={{ opacity: 1, scale: 1 }}
               exit={{ opacity: 0, scale: 0.95 }}
-              className="bg-white w-full max-w-2xl rounded-3xl overflow-hidden shadow-2xl flex flex-col max-h-[90vh]"
+              className="bg-white w-full max-w-3xl rounded-3xl overflow-hidden shadow-2xl flex flex-col max-h-[92vh] border border-neutral-200"
             >
-              <div className="p-6 border-b border-neutral-100 flex items-center justify-between shrink-0">
+              {/* Header */}
+              <div className="p-5 sm:p-6 border-b border-neutral-100 flex items-center justify-between shrink-0 bg-neutral-50/60">
                 <div className="flex items-center gap-3">
-                  <div className="p-2.5 bg-blue-50 text-blue-600 rounded-xl">
-                    <ShieldCheck size={22} />
+                  <div className="p-2.5 bg-blue-100 text-blue-700 rounded-2xl shadow-sm">
+                    <ShieldCheck size={24} />
                   </div>
                   <div>
-                    <span className="text-[10px] font-black uppercase tracking-widest text-blue-600">Sikker Jobb Analyse (SJA)</span>
-                    <h3 className="font-bold text-base sm:text-lg text-neutral-900">{selectedSja.title}</h3>
+                    <div className="flex items-center gap-2 flex-wrap">
+                      <span className="text-[10px] font-black uppercase tracking-wider text-blue-700 bg-blue-50 border border-blue-200 px-2 py-0.5 rounded-md">
+                        Sikker Jobb Analyse (SJA)
+                      </span>
+                      <span className="text-[10px] font-bold text-neutral-500">
+                        {selectedSja.tek17Reference || 'Byggherreforskriften § 18'}
+                      </span>
+                      <span className="text-[10px] font-black uppercase tracking-wider bg-emerald-100 text-emerald-800 border border-emerald-200 px-2 py-0.5 rounded-md flex items-center gap-1">
+                        <CheckCircle2 size={11} />
+                        {selectedSja.status === 'draft' ? 'Utkast' : 'Godkjent'}
+                      </span>
+                    </div>
+                    <h3 className="font-bold text-lg sm:text-xl text-neutral-900 mt-1">{selectedSja.title}</h3>
                   </div>
                 </div>
                 <button 
                   onClick={() => setSelectedSja(null)}
-                  className="p-2 hover:bg-neutral-100 rounded-xl transition-colors text-neutral-400 hover:text-neutral-700 cursor-pointer"
+                  className="p-2 hover:bg-neutral-200/70 rounded-xl transition-colors text-neutral-400 hover:text-neutral-700 cursor-pointer"
+                  title="Lukk"
                 >
                   <X size={20} />
                 </button>
               </div>
 
-              <div className="flex-1 overflow-y-auto p-6 space-y-4 text-xs">
-                {selectedSja.task && (
-                  <div className="p-4 bg-neutral-50 rounded-xl border border-neutral-100">
-                    <span className="font-bold uppercase tracking-wider text-[10px] text-neutral-400 block mb-1">Arbeidsoppgave</span>
-                    <p className="text-neutral-700 leading-relaxed">{selectedSja.task}</p>
+              {/* Scrollable Content */}
+              <div className="flex-1 overflow-y-auto p-5 sm:p-6 space-y-5 text-xs">
+                
+                {/* Meta details grid */}
+                <div className="grid grid-cols-2 sm:grid-cols-4 gap-3">
+                  <div className="p-3 bg-neutral-50 rounded-2xl border border-neutral-100">
+                    <span className="font-bold uppercase tracking-wider text-[10px] text-neutral-400 block mb-1 flex items-center gap-1">
+                      <Building2 size={12} className="text-neutral-500" /> Prosjekt
+                    </span>
+                    <p className="text-neutral-800 font-semibold truncate">{selectedSja.projectName || projectData?.name || 'Byggeprosjekt'}</p>
+                  </div>
+                  <div className="p-3 bg-neutral-50 rounded-2xl border border-neutral-100">
+                    <span className="font-bold uppercase tracking-wider text-[10px] text-neutral-400 block mb-1">
+                      Lokasjon
+                    </span>
+                    <p className="text-neutral-800 font-semibold truncate">{selectedSja.location || projectData?.address || 'Byggeplass'}</p>
+                  </div>
+                  <div className="p-3 bg-neutral-50 rounded-2xl border border-neutral-100">
+                    <span className="font-bold uppercase tracking-wider text-[10px] text-neutral-400 block mb-1 flex items-center gap-1">
+                      <User size={12} className="text-neutral-500" /> Ansvarlig
+                    </span>
+                    <p className="text-neutral-800 font-semibold truncate">{selectedSja.authorName || 'Fagansvarlig mester'}</p>
+                  </div>
+                  <div className="p-3 bg-neutral-50 rounded-2xl border border-neutral-100">
+                    <span className="font-bold uppercase tracking-wider text-[10px] text-neutral-400 block mb-1 flex items-center gap-1">
+                      <Calendar size={12} className="text-neutral-500" /> Dato / Tid
+                    </span>
+                    <p className="text-neutral-800 font-semibold truncate">{formatModalDate(selectedSja.timestamp || selectedSja.createdAt)}</p>
+                  </div>
+                </div>
+
+                {/* Deltakere if available */}
+                {selectedSja.participants && selectedSja.participants !== selectedSja.authorName && (
+                  <div className="px-4 py-2.5 bg-blue-50/50 rounded-xl border border-blue-100 text-neutral-700 flex items-center gap-2">
+                    <span className="font-bold text-[11px] text-blue-800 uppercase tracking-wider shrink-0">Deltakere på SJA:</span>
+                    <span className="text-neutral-800 font-medium">{selectedSja.participants}</span>
                   </div>
                 )}
 
-                {selectedSja.risikoer && selectedSja.risikoer.length > 0 && (
-                  <div>
-                    <span className="font-bold uppercase tracking-wider text-[10px] text-neutral-400 block mb-2">Vurderte Farer & Tiltak</span>
-                    <div className="space-y-2">
-                      {selectedSja.risikoer.map((r: any, idx: number) => (
-                        <div key={idx} className="p-3 bg-neutral-50 rounded-xl border border-neutral-100 flex flex-col sm:flex-row sm:items-center justify-between gap-2">
-                          <div>
-                            <span className="font-bold text-neutral-800">{r.aktivitet || 'Aktivitet'}: </span>
-                            <span className="text-rose-600 font-medium">{r.risiko}</span>
+                {/* Arbeidsoppgave */}
+                <div className="p-4 bg-neutral-50 rounded-2xl border border-neutral-100">
+                  <span className="font-bold uppercase tracking-wider text-[10px] text-neutral-400 block mb-1.5">
+                    Arbeidsoppgave og omfang
+                  </span>
+                  <p className="text-neutral-800 text-sm font-medium leading-relaxed">{selectedSja.task}</p>
+
+                  {selectedSja.weatherImpact && (
+                    <div className="mt-3 pt-3 border-t border-neutral-200/60 flex items-start gap-2 text-neutral-600">
+                      <Cloud size={15} className="text-sky-600 shrink-0 mt-0.5" />
+                      <div>
+                        <span className="font-bold text-[10px] uppercase tracking-wider text-sky-700 mr-1">Vær- og miljøforhold:</span>
+                        <span>{selectedSja.weatherImpact}</span>
+                      </div>
+                    </div>
+                  )}
+                </div>
+
+                {/* Vurderte Farer & Sikkerhetstiltak */}
+                <div>
+                  <div className="flex items-center justify-between mb-2.5">
+                    <span className="font-bold uppercase tracking-wider text-[11px] text-neutral-600 flex items-center gap-1.5">
+                      <AlertTriangle size={14} className="text-amber-500" />
+                      Vurderte Farer & Sikkerhetstiltak ({selectedSja.risikoer?.length || 0})
+                    </span>
+                    <span className="text-[10px] text-neutral-400">Byggherreforskriften § 18</span>
+                  </div>
+
+                  <div className="space-y-3">
+                    {selectedSja.risikoer && selectedSja.risikoer.map((r, idx) => {
+                      const levelColor = 
+                        r.riskLevel === 'Høy' ? 'bg-rose-100 text-rose-800 border-rose-200' :
+                        r.riskLevel === 'Middels' ? 'bg-amber-100 text-amber-800 border-amber-200' :
+                        'bg-blue-100 text-blue-800 border-blue-200';
+
+                      return (
+                        <div key={idx} className="p-4 bg-white rounded-2xl border border-neutral-200 shadow-sm space-y-2.5 hover:border-neutral-300 transition-colors">
+                          <div className="flex items-center justify-between border-b border-neutral-100 pb-2">
+                            <span className="font-bold text-neutral-900 text-xs sm:text-sm">
+                              {idx + 1}. {r.aktivitet || 'Aktivitet'}
+                            </span>
+                            <span className={cn("text-[9px] font-black uppercase tracking-wider px-2 py-0.5 rounded border", levelColor)}>
+                              {r.riskLevel ? `${r.riskLevel} risiko` : 'Vurdert risiko'}
+                            </span>
                           </div>
-                          <div className="text-emerald-700 font-medium bg-emerald-50 px-2.5 py-1 rounded-lg border border-emerald-100">
-                            Tiltak: {r.tiltak}
+                          
+                          <div className="grid grid-cols-1 sm:grid-cols-2 gap-3 pt-1">
+                            <div className="p-2.5 bg-rose-50/60 rounded-xl border border-rose-100">
+                              <span className="font-bold text-[10px] uppercase tracking-wider text-rose-700 flex items-center gap-1 mb-1">
+                                <AlertTriangle size={12} /> Fare / Hva kan gå galt
+                              </span>
+                              <p className="text-neutral-800 font-medium text-xs leading-relaxed">{r.risiko}</p>
+                            </div>
+
+                            <div className="p-2.5 bg-emerald-50/70 rounded-xl border border-emerald-100">
+                              <span className="font-bold text-[10px] uppercase tracking-wider text-emerald-800 flex items-center gap-1 mb-1">
+                                <ShieldCheck size={12} /> Påkrevd sikkerhetstiltak
+                              </span>
+                              <p className="text-emerald-950 font-medium text-xs leading-relaxed">{r.tiltak}</p>
+                            </div>
                           </div>
                         </div>
-                      ))}
-                    </div>
+                      );
+                    })}
                   </div>
-                )}
+                </div>
 
+                {/* Påkrevd Verneutstyr */}
                 {selectedSja.utstyr && selectedSja.utstyr.length > 0 && (
-                  <div>
-                    <span className="font-bold uppercase tracking-wider text-[10px] text-neutral-400 block mb-1.5">Påkrevd verneutstyr</span>
-                    <div className="flex flex-wrap gap-1.5">
+                  <div className="p-4 bg-amber-50/40 rounded-2xl border border-amber-100">
+                    <span className="font-bold uppercase tracking-wider text-[10px] text-amber-900 block mb-2 flex items-center gap-1.5">
+                      <HardHat size={14} className="text-amber-600" />
+                      Påkrevd Personlig Verneutstyr (PVU)
+                    </span>
+                    <div className="flex flex-wrap gap-2">
                       {selectedSja.utstyr.map((u: string, idx: number) => (
-                        <span key={idx} className="px-2.5 py-1 bg-neutral-100 text-neutral-700 rounded-lg font-bold">
+                        <span key={idx} className="px-3 py-1 bg-white border border-amber-200 text-amber-950 rounded-xl text-xs font-bold shadow-xs flex items-center gap-1.5">
+                          <Check size={12} className="text-amber-600" />
                           {u}
                         </span>
                       ))}
                     </div>
                   </div>
                 )}
+
+                {/* Compliance Footnote */}
+                <div className="p-3 bg-emerald-50/40 rounded-xl border border-emerald-100/70 flex items-start gap-2.5 text-neutral-600">
+                  <FileCheck2 size={16} className="text-emerald-600 shrink-0 mt-0.5" />
+                  <p className="text-[11px] leading-relaxed text-emerald-900">
+                    <strong>Lovpålagt HMS-dokumentasjon:</strong> Denne analysen er registrert i henhold til Byggherreforskriften § 18 og Internkontrollforskriften (IK-HMS). Alle berørte arbeidstakere skal informeres om tiltakene før igangsetting.
+                  </p>
+                </div>
               </div>
 
-              <div className="p-4 sm:p-6 border-t border-neutral-100 flex justify-between items-center bg-neutral-50">
-                {projectData && (
+              {/* Modal Footer */}
+              <div className="p-4 sm:p-5 border-t border-neutral-100 flex flex-wrap justify-between items-center gap-2 bg-neutral-50/70 shrink-0">
+                <div className="flex items-center gap-2">
                   <button
                     type="button"
-                    onClick={() => {
-                      pdfService.generateSJAReport(projectData, selectedSja);
+                    onClick={async () => {
+                      const toastId = toast.loading('Genererer Byggherreforskrift-godkjent SJA PDF...');
+                      try {
+                        const proj = projectData || { id: projectId, name: selectedSja.projectName || 'Byggeprosjekt' };
+                        await pdfService.generateSJAReport(proj, selectedSja);
+                        toast.success('SJA-rapport lastet ned som PDF!', { id: toastId });
+                      } catch (err: any) {
+                        console.error('Feil ved eksport av SJA PDF:', err);
+                        toast.error(`Kunne ikke laste ned PDF: ${err?.message || 'Ukjent feil'}`, { id: toastId });
+                      }
                     }}
                     className="px-4 py-2 bg-emerald-600 hover:bg-emerald-500 text-white rounded-xl text-xs font-bold flex items-center gap-1.5 transition-colors shadow-sm cursor-pointer"
                   >
                     <Download size={14} />
                     Last ned SJA PDF
                   </button>
-                )}
+                  <button
+                    type="button"
+                    onClick={() => window.print()}
+                    className="px-3 py-2 bg-white hover:bg-neutral-100 text-neutral-700 border border-neutral-200 rounded-xl text-xs font-bold flex items-center gap-1.5 transition-colors cursor-pointer"
+                  >
+                    <Printer size={14} />
+                    Skriv ut
+                  </button>
+                </div>
                 <button
                   type="button"
                   onClick={() => setSelectedSja(null)}
-                  className="px-4 py-2 bg-neutral-200 hover:bg-neutral-300 text-neutral-700 rounded-xl text-xs font-bold transition-colors ml-auto cursor-pointer"
+                  className="px-5 py-2 bg-neutral-200 hover:bg-neutral-300 text-neutral-800 rounded-xl text-xs font-bold transition-colors cursor-pointer"
                 >
                   Lukk
                 </button>

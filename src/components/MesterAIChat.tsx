@@ -718,7 +718,7 @@ export default function MesterAIChat({
     }
   };
 
-  const handleSendMessage = async (textToSend: string) => {
+  const handleSendMessage = async (textToSend: string, extraPayload?: Record<string, any>) => {
     if (!textToSend.trim() || isLoading) return;
 
     const trimmed = textToSend.trim();
@@ -769,7 +769,8 @@ export default function MesterAIChat({
               projectId: activeProj?.id || '',
               projectName: activeProj?.name || 'Byggeprosjekt',
               webSearch: isWebSearchEnabled,
-              authorName: typeof window !== 'undefined' && localStorage.getItem('user_display_name') ? localStorage.getItem('user_display_name') : 'Admin / Byggmester'
+              authorName: typeof window !== 'undefined' && localStorage.getItem('user_display_name') ? localStorage.getItem('user_display_name') : 'Admin / Byggmester',
+              ...(extraPayload || {})
             })
           });
 
@@ -936,12 +937,19 @@ export default function MesterAIChat({
     }
     if (action.type === 'send_offer_email' || action.id === 'send_offer_email') {
       const email = action.data?.clientEmail;
+      const offerId = action.data?.offerId || action.data?.id;
+      const offerToken = action.data?.token || action.data?.offerData?.token;
+      const extraPayload = {
+        offerId,
+        offerToken,
+        offerData: action.data?.offerData || action.data
+      };
       if (email && email.includes('@')) {
-        handleSendMessage(`Send tilbudet på e-post til ${email.trim()}`);
+        handleSendMessage(`Send tilbudet på e-post til ${email.trim()}`, extraPayload);
       } else {
         const inputEmail = window.prompt('Hvilken e-postadresse skal tilbudet sendes til?');
         if (inputEmail && inputEmail.includes('@')) {
-          handleSendMessage(`Send tilbudet på e-post til ${inputEmail.trim()}`);
+          handleSendMessage(`Send tilbudet på e-post til ${inputEmail.trim()}`, extraPayload);
         }
       }
       return;
@@ -1067,7 +1075,9 @@ export default function MesterAIChat({
           data: { 
             clientEmail: resultMeta.offerData?.clientEmail || '', 
             clientName: resultMeta.offerData?.clientName || '',
-            offerId: resultMeta.offerId 
+            offerId: resultMeta.offerId,
+            token: resultMeta.token,
+            offerData: resultMeta.offerData
           }
         }
       ];

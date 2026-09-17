@@ -1,4 +1,4 @@
-import React, { useState, useEffect, useRef } from 'react';
+import React, { useState, useEffect, useRef, useCallback } from 'react';
 import { motion, AnimatePresence } from 'motion/react';
 import { 
   CheckCircle2, 
@@ -54,90 +54,147 @@ export default function PublicOfferFlow({
   const [isDrawing, setIsDrawing] = useState(false);
   const [hasSignatureDrawing, setHasSignatureDrawing] = useState(false);
 
-  useEffect(() => {
-    async function loadOfferData() {
-      setLoading(true);
-      try {
-        const tokenQuery = token ? { token } : undefined;
-        const [offers, contracts, projects] = await Promise.all([
-          api.getCollection('offers', tokenQuery).catch(() => []),
-          api.getCollection('contracts', tokenQuery).catch(() => []),
-          api.getCollection('projects').catch(() => [])
-        ]);
+  const loadOfferData = useCallback(async () => {
+    setLoading(true);
+    setError(null);
+    try {
+      const cleanToken = token ? token.trim() : null;
+      const cleanOfferId = offerId ? offerId.trim() : null;
 
-        // Lokal cache fallback hvis nettverkskall returnerer tomt
-        const cachedOffers = api.getLocalCache?.('offers') || [];
-        const cachedContracts = api.getLocalCache?.('contracts') || [];
-        const allOffers = [...offers, ...cachedOffers.filter((c: any) => !offers.some((o: any) => o.id === c.id))];
-        const allContracts = [...contracts, ...cachedContracts.filter((c: any) => !contracts.some((o: any) => o.id === c.id))];
+      // 1. Primært: Kall det åpne /api/contract-endepunktet (optimalisert for ekstern kunde-tilgang)
+      if (cleanToken || cleanOfferId) {
+        try {
+          const queryParam = cleanToken 
+            ? `token=${encodeURIComponent(cleanToken)}` 
+            : `offerId=${encodeURIComponent(cleanOfferId!)}`;
+          
+          const controller = new AbortController();
+          const timeoutId = setTimeout(() => controller.abort(), 9000);
 
-        let matchedOffer: Offer | undefined;
-        let matchedContract: Contract | undefined;
+          const res = await fetch(`/api/contract?${queryParam}`, {
+            headers: { 'Accept': 'application/json' },
+            signal: controller.signal
+          });
+          clearTimeout(timeoutId);
 
-        // 1. Sjekk om token refererer til en kontrakt direkte
-        if (token && (token.startsWith('c-') || token.startsWith('contract-'))) {
-          matchedContract = allContracts.find((c: any) => c.token === token || c.id === token);
-          if (matchedContract?.offerId) {
-            matchedOffer = allOffers.find((o: any) => o.id === matchedContract.offerId);
+          if (res.ok) {
+            const data = await res.json();
+            if (data?.offer || data?.contract) {
+              let matchedOffer: Offer | undefined = data.offer;
+              let matchedContract: Contract | undefined = data.contract;
+
+              if (!matchedContract && matchedOffer) {
+                matchedContract = mesterhjerneService.generateContractFromOffer(matchedOffer);
+              }
+
+              if (matchedOffer) setOffer(matchedOffer);
+              if (matchedContract) {
+                setContract(matchedContract);
+                setSignerName(matchedContract.clientName || matchedOffer?.clientName || '');
+              }
+
+              if (matchedContract?.status === 'signed') {
+                setActiveScreen('success');
+              } else if (matchedOffer?.status === 'accepted' || matchedContract?.status === 'pending_signature') {
+                setActiveScreen('contract');
+              } else {
+                setActiveScreen('offer');
+              }
+              setLoading(false);
+              return;
+            }
           }
+        } catch (apiErr) {
+          console.warn('Primær /api/contract lookup feilet, prøver sekundær fallback:', apiErr);
         }
-
-        // 2. Sjekk tilbud dersom ikke funnet via kontrakt
-        if (!matchedOffer) {
-          if (token) {
-            matchedOffer = allOffers.find((o: any) => o.token === token || o.id === token);
-          } else if (offerId) {
-            matchedOffer = allOffers.find((o: any) => o.id === offerId);
-          }
-        }
-
-        // 3. Hvis tilbud ble funnet, sjekk om det foreligger en eksisterende kontrakt
-        if (matchedOffer && !matchedContract) {
-          matchedContract = allContracts.find((c: any) => c.offerId === matchedOffer?.id || c.token === matchedOffer?.token || c.id === matchedOffer?.contractId);
-        }
-
-        // Hvis ingen av delene ble funnet, vis feilmelding (ingen falske mock-data)
-        if (!matchedOffer && !matchedContract) {
-          setError('Fant ikke tilbudet eller kontrakten. Lenken kan være utgått eller ugyldig.');
-          setLoading(false);
-          return;
-        }
-
-        // Hvis kontrakt ikke er generert ennå, opprett utkast i minnet
-        if (!matchedContract && matchedOffer) {
-          matchedContract = mesterhjerneService.generateContractFromOffer(matchedOffer);
-        }
-
-        if (matchedOffer) setOffer(matchedOffer);
-        if (matchedContract) {
-          setContract(matchedContract);
-          setSignerName(matchedContract.clientName || matchedOffer?.clientName || '');
-        }
-
-        // 4. Bestem startskjerm basert på status
-        if (matchedContract?.status === 'signed') {
-          const foundProj = projects.find((p: any) => 
-            p.id === matchedContract?.projectId || 
-            p.projectCode === matchedContract?.projectCode ||
-            p.clientName === matchedContract?.clientName
-          );
-          if (foundProj) setCreatedProject(foundProj);
-          setActiveScreen('success');
-        } else if (matchedOffer?.status === 'accepted' || matchedContract?.status === 'pending_signature') {
-          setActiveScreen('contract');
-        } else {
-          setActiveScreen('offer');
-        }
-      } catch (err) {
-        console.error('Error loading offer or contract:', err);
-        setError('Kunne ikke laste inn tilbudet eller kontrakten.');
-      } finally {
-        setLoading(false);
       }
-    }
 
-    loadOfferData();
+      // 2. Sekundær fallback: Generisk api.getCollection
+      const tokenQuery = cleanToken ? { token: cleanToken } : undefined;
+      const [offers, contracts, projects] = await Promise.all([
+        api.getCollection('offers', tokenQuery).catch(() => []),
+        api.getCollection('contracts', tokenQuery).catch(() => []),
+        api.getCollection('projects').catch(() => [])
+      ]);
+
+      // Lokal cache fallback hvis nettverkskall returnerer tomt
+      const cachedOffers = api.getLocalCache?.('offers') || [];
+      const cachedContracts = api.getLocalCache?.('contracts') || [];
+      const allOffers = [...offers, ...cachedOffers.filter((c: any) => !offers.some((o: any) => o.id === c.id))];
+      const allContracts = [...contracts, ...cachedContracts.filter((c: any) => !contracts.some((o: any) => o.id === c.id))];
+
+      let matchedOffer: Offer | undefined;
+      let matchedContract: Contract | undefined;
+
+      // Sjekk om token refererer til en kontrakt direkte
+      if (cleanToken && (cleanToken.startsWith('c-') || cleanToken.startsWith('contract-'))) {
+        matchedContract = allContracts.find((c: any) => c.token === cleanToken || c.id === cleanToken);
+        if (matchedContract?.offerId) {
+          matchedOffer = allOffers.find((o: any) => o.id === matchedContract.offerId);
+        }
+      }
+
+      // Sjekk tilbud dersom ikke funnet via kontrakt
+      if (!matchedOffer) {
+        if (cleanToken) {
+          matchedOffer = allOffers.find((o: any) => 
+            o.token === cleanToken || 
+            o.id === cleanToken ||
+            (o.token && o.token.toLowerCase() === cleanToken.toLowerCase())
+          );
+        } else if (cleanOfferId) {
+          matchedOffer = allOffers.find((o: any) => o.id === cleanOfferId);
+        }
+      }
+
+      // Hvis tilbud ble funnet, sjekk om det foreligger en eksisterende kontrakt
+      if (matchedOffer && !matchedContract) {
+        matchedContract = allContracts.find((c: any) => c.offerId === matchedOffer?.id || c.token === matchedOffer?.token || c.id === matchedOffer?.contractId);
+      }
+
+      // Hvis ingen av delene ble funnet, vis feilmelding (ingen falske mock-data)
+      if (!matchedOffer && !matchedContract) {
+        setError('Fant ikke tilbudet eller kontrakten. Lenken kan være utgått eller ugyldig.');
+        setLoading(false);
+        return;
+      }
+
+      // Hvis kontrakt ikke er generert ennå, opprett utkast i minnet
+      if (!matchedContract && matchedOffer) {
+        matchedContract = mesterhjerneService.generateContractFromOffer(matchedOffer);
+      }
+
+      if (matchedOffer) setOffer(matchedOffer);
+      if (matchedContract) {
+        setContract(matchedContract);
+        setSignerName(matchedContract.clientName || matchedOffer?.clientName || '');
+      }
+
+      // Bestem startskjerm basert på status
+      if (matchedContract?.status === 'signed') {
+        const foundProj = projects.find((p: any) => 
+          p.id === matchedContract?.projectId || 
+          p.projectCode === matchedContract?.projectCode ||
+          p.clientName === matchedContract?.clientName
+        );
+        if (foundProj) setCreatedProject(foundProj);
+        setActiveScreen('success');
+      } else if (matchedOffer?.status === 'accepted' || matchedContract?.status === 'pending_signature') {
+        setActiveScreen('contract');
+      } else {
+        setActiveScreen('offer');
+      }
+    } catch (err) {
+      console.error('Error loading offer or contract:', err);
+      setError('Kunne ikke laste inn tilbudet eller kontrakten.');
+    } finally {
+      setLoading(false);
+    }
   }, [token, offerId]);
+
+  useEffect(() => {
+    loadOfferData();
+  }, [loadOfferData]);
 
   // Canvas tegnelogikk
   const startDrawing = (e: React.MouseEvent<HTMLCanvasElement> | React.TouchEvent<HTMLCanvasElement>) => {
@@ -325,15 +382,27 @@ export default function PublicOfferFlow({
   if (error || !offer) {
     return (
       <div className="min-h-screen bg-neutral-900 flex items-center justify-center p-4">
-        <div className="bg-neutral-800 border border-neutral-700 rounded-3xl p-8 max-w-md text-center text-white space-y-4">
+        <div className="bg-neutral-800 border border-neutral-700 rounded-3xl p-8 max-w-md text-center text-white space-y-5 shadow-2xl">
           <AlertCircle size={48} className="text-amber-400 mx-auto" />
           <h2 className="text-xl font-bold">Fant ikke tilbudet</h2>
           <p className="text-neutral-400 text-sm">{error || 'Tilbudslenken kan være utgått eller ugyldig.'}</p>
-          {onBackToApp && (
-            <button onClick={onBackToApp} className="px-6 py-2.5 bg-neutral-700 hover:bg-neutral-600 rounded-xl text-sm font-bold transition-all">
-              Tilbake til startsiden
+          <div className="flex flex-col sm:flex-row items-center justify-center gap-3 pt-2">
+            <button 
+              onClick={() => loadOfferData()} 
+              className="w-full sm:w-auto px-6 py-2.5 bg-emerald-600 hover:bg-emerald-500 rounded-xl text-sm font-bold transition-all shadow-lg shadow-emerald-900/30 flex items-center justify-center gap-2"
+            >
+              <RotateCcw size={16} />
+              Prøv på nytt
             </button>
-          )}
+            {onBackToApp && (
+              <button 
+                onClick={onBackToApp} 
+                className="w-full sm:w-auto px-6 py-2.5 bg-neutral-700 hover:bg-neutral-600 rounded-xl text-sm font-bold transition-all"
+              >
+                Tilbake til startsiden
+              </button>
+            )}
+          </div>
         </div>
       </div>
     );

@@ -1922,6 +1922,9 @@ Returner KUN et gyldig JSON-objekt:
           if (!targetOffer && body.offerId) {
             targetOffer = allDbOffers.find((o: any) => o.id === body.offerId);
           }
+          if (!targetOffer && body.offerToken) {
+            targetOffer = allDbOffers.find((o: any) => o.token === body.offerToken);
+          }
           if (!targetOffer) {
             const projectOffers = allDbOffers.filter((o: any) => 
               (o.projectId && o.projectId === resolvedProjectId) ||
@@ -1948,6 +1951,8 @@ Returner KUN et gyldig JSON-objekt:
             });
           }
 
+          const baseUrl = req.nextUrl?.origin || process.env.NEXT_PUBLIC_APP_URL || 'https://vikingmester.no';
+
           if (!targetOffer) {
             targetOffer = {
               id: `offer-auto-${Date.now()}`,
@@ -1955,6 +1960,7 @@ Returner KUN et gyldig JSON-objekt:
               description: `Kalkyle og tilbud utarbeidet av MesterAI for ${resolvedProjectName}.`,
               totalAmount: 148000,
               amountExVat: 118400,
+              total: 148000,
               items: [
                 { description: 'Fagarbeid og utførelse', quantity: 75, unit: 'timer', pricePerUnit: 890, total: 66750 },
                 { description: 'Materialer og forbruksmateriell', quantity: 1, unit: 'stk', pricePerUnit: 35000, total: 35000 },
@@ -1965,21 +1971,32 @@ Returner KUN et gyldig JSON-objekt:
               projectId: resolvedProjectId,
               token: 'o-' + Date.now().toString(36) + Math.random().toString(36).substring(2, 6)
             };
-            await saveCollectionItem('offers', targetOffer);
-          } else if (!targetOffer.token) {
-            targetOffer.token = 'o-' + Date.now().toString(36) + Math.random().toString(36).substring(2, 6);
-            await updateCollectionItem('offers', targetOffer.id, { token: targetOffer.token, clientEmail: recipientEmail }).catch(() => {});
           }
+
+          // 🛡️ Sikre at tilbudet alltid har gyldig id, token, mottaker-e-post og shareUrl
+          if (!targetOffer.id) {
+            targetOffer.id = `offer-${Date.now()}`;
+          }
+          if (!targetOffer.token) {
+            targetOffer.token = 'o-' + Date.now().toString(36) + Math.random().toString(36).substring(2, 6);
+          }
+          targetOffer.clientEmail = recipientEmail;
+          targetOffer.shareUrl = `${baseUrl}/?offerToken=${targetOffer.token}`;
+          targetOffer.status = 'sent';
+
+          // 🛡️ LAGRE ATOMISK I DATABASEN FØR UTSENDELSE
+          await saveCollectionItem('offers', targetOffer);
 
           const emailRes = await sendOfferByEmail({
             offer: targetOffer,
             clientEmail: recipientEmail,
             clientName: targetOffer.clientName || targetProject?.clientName,
             companyName: (user as any)?.company || 'Mester Entreprenør AS',
-            authorName: authorName || (user as any)?.displayName || 'Byggmester'
+            authorName: authorName || (user as any)?.displayName || 'Byggmester',
+            baseUrl
           });
 
-          const emailOfferLink = `${req.nextUrl?.origin || process.env.NEXT_PUBLIC_APP_URL || 'https://vikingmester.no'}/?offerToken=${targetOffer.token}`;
+          const emailOfferLink = `${baseUrl}/?offerToken=${targetOffer.token}`;
           return NextResponse.json({
             success: true,
             action: 'offer_email_sent',
@@ -2923,15 +2940,37 @@ Du skal opptre som en høyt kvalifisert byggmester og kalkulatør og levere en k
         const clientForDraft = detectedClient || targetProject?.clientName || '';
         const cleanOfferScope = text.replace(/^["'«]+|["'»]+$/g, '').slice(0, 120).trim();
 
+        const calcExVat = finalItems.reduce((sum: number, it: any) => sum + (Number(it.total) || (Number(it.quantity || 1) * Number(it.pricePerUnit || 0))), 0);
+        const calcTotal = Math.round(calcExVat * 1.25);
+        const offerId = `offer-${Date.now()}`;
+        const offerToken = 'o-' + Date.now().toString(36) + Math.random().toString(36).substring(2, 6);
+        const baseUrl = req.nextUrl?.origin || process.env.NEXT_PUBLIC_APP_URL || 'https://vikingmester.no';
+
         offerDraft = {
+          id: offerId,
+          token: offerToken,
           title: clientForDraft ? `Tilbud: ${clientForDraft}` : (targetProject ? `Tilbud: ${targetProject.name}` : `Tilbud: ${cleanOfferScope.slice(0, 45)}`),
           description: parsedOfferDescription || formatCleanOfferDescription(cleanOfferScope || text, resolvedProjectName, clientForDraft),
           items: finalItems,
+          amountExVat: calcExVat,
+          totalAmount: calcTotal,
+          total: calcTotal,
           projectId: targetProject?.id || resolvedProjectId,
           projectCode: targetProject?.projectCode,
           clientName: clientForDraft || targetProject?.clientName || '',
-          clientEmail: targetProject?.clientEmail || ''
+          clientEmail: targetProject?.clientEmail || '',
+          company: (user as any)?.company || 'Mester Entreprenør AS',
+          companyName: (user as any)?.company || 'Mester Entreprenør AS',
+          authorName: authorName || 'MesterAI Autonom Assistent',
+          status: 'draft',
+          shareUrl: `${baseUrl}/?offerToken=${offerToken}`,
+          createdAt: new Date().toISOString()
         };
+
+        // 🛡️ Persister tilbudet i databasen umiddelbart slik at det kan åpnes og sendes
+        await saveCollectionItem('offers', offerDraft).catch((err) => {
+          console.warn('[Dispatch] Kunne ikke persistere offerDraft i DB:', err);
+        });
 
         suggestedActions.push({
           id: 'open_offer_modal',

@@ -2,7 +2,7 @@ import { Pool } from 'pg';
 import bcrypt from 'bcrypt';
 import { randomBytes } from 'crypto';
 
-const DATABASE_URL = process.env.DATABASE_URL;
+const DATABASE_URL = process.env.DATABASE_URL || process.env.POSTGRES_URL || process.env.POSTGRES_PRISMA_URL;
 
 // 🛡️ SECURITY FIX: Replaced hardcoded fallback password with a dynamically generated one.
 // Hardcoded passwords in source code allow attackers to access the default admin account if the environment variable is missing.
@@ -396,7 +396,10 @@ export async function getCollectionItems(collectionName: string): Promise<any[]>
       );
       if (rows.length > 0) {
         return rows.map(r => {
-          const d = r.data || {};
+          let d = r.data || {};
+          if (typeof d === 'string') {
+            try { d = JSON.parse(d); } catch {}
+          }
           // 🛡️ Auto-heal projects with missing or corrupted fields to prevent client-side render crashes
           if (collectionName === 'projects') {
             const isKongeveien = r.id.toLowerCase().includes('kongeveien') || 
@@ -491,7 +494,11 @@ export async function getCollectionItemById(collectionName: string, id: string):
         [collectionName, id]
       );
       if (rows.length > 0) {
-        return { id: rows[0].id, ...rows[0].data };
+        let d = rows[0].data || {};
+        if (typeof d === 'string') {
+          try { d = JSON.parse(d); } catch {}
+        }
+        return { id: rows[0].id, ...d };
       }
     } catch (e) {
       console.warn('Error fetching item by ID from DB, fallback to memory:', e);
@@ -569,7 +576,11 @@ export async function updateCollectionItem(collectionName: string, id: string, d
         [collectionName, id]
       );
       if (existingRows.length > 0) {
-        existingItem = existingRows[0].data;
+        let raw = existingRows[0].data;
+        if (typeof raw === 'string') {
+          try { raw = JSON.parse(raw); } catch {}
+        }
+        existingItem = raw;
       }
     } catch (err) {
       console.warn('Could not read existing item from items_store before update:', err);

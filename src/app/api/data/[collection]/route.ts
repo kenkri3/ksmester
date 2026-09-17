@@ -33,8 +33,36 @@ export async function GET(
 
     // 1. Handle secure token lookups (for both public and authenticated users holding a valid capability token)
     if (token && (targetCollection === 'offers' || targetCollection === 'invites' || targetCollection === 'invitations' || targetCollection === 'contracts' || targetCollection === 'change_orders')) {
+      const cleanToken = token.trim();
       const items = await getCollectionItems(targetCollection);
-      const match = items.find((i: any) => i.token === token || i.id === token);
+      let match = items.find((i: any) => 
+        i.token === cleanToken || 
+        i.id === cleanToken ||
+        (i.token && i.token.toLowerCase() === cleanToken.toLowerCase()) ||
+        (i.id && i.id.toLowerCase() === cleanToken.toLowerCase()) ||
+        (typeof i.shareUrl === 'string' && i.shareUrl.includes(cleanToken))
+      );
+
+      // Fallback: If offer not found in 'offers', check 'system_offers'
+      if (!match && targetCollection === 'offers') {
+        const sysOffers = await getCollectionItems('system_offers').catch(() => []);
+        match = sysOffers.find((i: any) => 
+          i.token === cleanToken || 
+          i.id === cleanToken ||
+          (i.token && i.token.toLowerCase() === cleanToken.toLowerCase()) ||
+          (i.id && i.id.toLowerCase() === cleanToken.toLowerCase())
+        );
+      }
+
+      // If contract requested with an offer token or ID, check if a contract exists for that offer
+      if (!match && targetCollection === 'contracts') {
+        match = items.find((c: any) => c.offerId === cleanToken || c.token === cleanToken || c.id === cleanToken);
+        if (!match) {
+          // Returning empty array instead of 404 for contracts query allows client to handle uncreated contracts gracefully
+          return NextResponse.json([]);
+        }
+      }
+
       if (match) {
         return NextResponse.json([match]);
       }

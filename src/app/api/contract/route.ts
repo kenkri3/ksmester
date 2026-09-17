@@ -15,7 +15,8 @@ export const dynamic = 'force-dynamic';
 export async function GET(req: NextRequest) {
   try {
     const { searchParams } = new URL(req.url);
-    const token = searchParams.get('token') || searchParams.get('contractToken') || searchParams.get('offerToken');
+    const rawToken = searchParams.get('token') || searchParams.get('contractToken') || searchParams.get('offerToken');
+    const token = rawToken ? rawToken.trim() : null;
     const contractId = searchParams.get('contractId') || searchParams.get('id');
     const offerId = searchParams.get('offerId');
 
@@ -32,13 +33,32 @@ export async function GET(req: NextRequest) {
     if (contractId) {
       contract = allContracts.find((c: any) => c.id === contractId);
     } else if (token) {
-      contract = allContracts.find((c: any) => c.token === token || c.id === token);
+      contract = allContracts.find((c: any) => 
+        c.token === token || 
+        c.id === token ||
+        (c.token && c.token.toLowerCase() === token.toLowerCase()) ||
+        (c.id && c.id.toLowerCase() === token.toLowerCase())
+      );
     }
 
     if (offerId) {
       offer = allOffers.find((o: any) => o.id === offerId);
     } else if (token) {
-      offer = allOffers.find((o: any) => o.token === token || o.id === token);
+      offer = allOffers.find((o: any) => 
+        o.token === token || 
+        o.id === token ||
+        (o.token && o.token.toLowerCase() === token.toLowerCase()) ||
+        (o.id && o.id.toLowerCase() === token.toLowerCase()) ||
+        (typeof o.shareUrl === 'string' && o.shareUrl.includes(token))
+      );
+      if (!offer) {
+        const sysOffers = await getCollectionItems('system_offers').catch(() => []);
+        offer = sysOffers.find((o: any) => 
+          o.token === token || 
+          o.id === token ||
+          (o.token && o.token.toLowerCase() === token.toLowerCase())
+        );
+      }
     }
 
     // Hvis kontrakt ble funnet men ikke tilbud, koble via offerId
@@ -81,10 +101,23 @@ export async function POST(req: NextRequest) {
     // 1. KUNDE GODKJENNER TILBUD ➔ AUTOGENERER & SEND KONTRAKT
     if (action === 'approve_offer_and_create_contract') {
       const allOffers = await getCollectionItems('offers');
-      let offer = allOffers.find((o: any) => o.id === offerId || o.token === token);
+      const cleanToken = token ? token.trim() : null;
+      let offer = allOffers.find((o: any) => 
+        (offerId && o.id === offerId) || 
+        (cleanToken && (o.token === cleanToken || o.id === cleanToken || (o.token && o.token.toLowerCase() === cleanToken.toLowerCase())))
+      );
 
       if (!offer && offerId) {
         offer = await getCollectionItemById('offers', offerId);
+      }
+
+      if (!offer && cleanToken) {
+        const sysOffers = await getCollectionItems('system_offers').catch(() => []);
+        offer = sysOffers.find((o: any) => 
+          o.token === cleanToken || 
+          o.id === cleanToken || 
+          (o.token && o.token.toLowerCase() === cleanToken.toLowerCase())
+        );
       }
 
       if (!offer) {
