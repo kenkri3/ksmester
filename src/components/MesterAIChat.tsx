@@ -1791,7 +1791,7 @@ export default function MesterAIChat({
     <div 
       className={cn(
         isEmbedded 
-          ? "w-full flex-1 flex flex-col bg-slate-900 min-h-screen h-screen overflow-hidden relative" 
+          ? "w-full flex-1 flex flex-col bg-slate-900 min-h-[100dvh] h-[100dvh] overflow-hidden relative" 
           : "fixed inset-0 z-50 flex items-center justify-center p-2 sm:p-4 md:p-6 bg-slate-950/70 backdrop-blur-md animate-in fade-in duration-200"
       )}
       onClick={isEmbedded ? undefined : onClose}
@@ -2625,22 +2625,32 @@ export default function MesterAIChat({
                   <div className="relative z-10 flex flex-col md:flex-row md:items-center justify-between gap-4">
                     <div>
                       <div className="flex items-center gap-2 mb-1.5 flex-wrap">
-                        <span className="px-2.5 py-0.5 rounded-full text-[10px] font-black uppercase tracking-wider bg-electric-500/20 text-electric-300 border border-electric-500/30">
-                          {isWorker ? '🔨 Håndverker Feltassistent' : '👑 Leder Kontrollsenter'}
+                        <span className="px-2.5 py-0.5 rounded-full text-[10px] font-bold uppercase tracking-wider bg-electric-500/20 text-electric-300 border border-electric-500/30 inline-flex items-center gap-1">
+                          {isWorker ? (
+                            <>
+                              <HardHat size={11} className="text-amber-300" />
+                              <span>Håndverker Feltassistent</span>
+                            </>
+                          ) : (
+                            <>
+                              <Sparkles size={11} className="text-amber-300" />
+                              <span>Leder Kontrollsenter</span>
+                            </>
+                          )}
                         </span>
                         <span className="text-[11px] text-slate-300">
                           {isWorker ? 'Tilpasset mobil & handsfree på byggeplass' : 'Full operativ styring & sanntidsstatus'}
                         </span>
                       </div>
-                      <h3 className="text-base sm:text-lg font-black text-white">
+                      <h3 className="text-base sm:text-lg font-bold tracking-tight text-white">
                         {isWorker 
                           ? `Hei, ${user?.displayName || 'håndverker'}! Klar for dagens økt?` 
-                          : 'Operativ Lederbrifing & Byggeplass-styring'}
+                          : 'Operativ Lederbriefing & Prosjektstyring'}
                       </h3>
-                      <p className="text-xs text-slate-300 mt-0.5 max-w-xl">
+                      <p className="text-xs text-slate-300 mt-0.5 max-w-xl leading-relaxed">
                         {isWorker 
                           ? 'Marker oppgaver som fullført, før timer, meld avvik med bilde eller få TEK17-fagråd direkte.' 
-                          : 'Tildel oppgaver til håndverkere, hør morgenbrifing, juster fremdrift og ha full kontroll via telefonen.'}
+                          : 'Tildel oppgaver til håndverkerne, hør morgenstatus, juster fremdrift og ha full kontroll på byggeplassene.'}
                       </p>
                     </div>
 
@@ -2650,7 +2660,7 @@ export default function MesterAIChat({
                         type="button"
                         onClick={handleVoiceCommand}
                         className={cn(
-                          "px-4 py-2.5 rounded-2xl text-xs font-black transition-all flex items-center gap-2 shadow-sm cursor-pointer",
+                          "px-4 py-2.5 rounded-2xl text-xs font-bold transition-all flex items-center gap-2 shadow-sm cursor-pointer",
                           isListeningMic
                             ? "bg-rose-500 text-white animate-pulse"
                             : "bg-electric-600 hover:bg-electric-500 text-white hover:scale-105 active:scale-95"
@@ -2658,7 +2668,7 @@ export default function MesterAIChat({
                         title="Trykk for å snakke med MesterAI"
                       >
                         {isListeningMic ? <MicOff size={16} /> : <Mic size={16} />}
-                        <span>{isListeningMic ? 'Lytter...' : 'Snakk med agenten'}</span>
+                        <span>{isListeningMic ? 'Lytter...' : 'Snakk med MesterAI'}</span>
                       </button>
 
                       <button
@@ -2680,36 +2690,40 @@ export default function MesterAIChat({
 
                   {/* Quick Status Chips */}
                   <div className="mt-4 pt-3 border-t border-white/10 flex flex-wrap items-center gap-2 text-xs">
-                    <span className="text-[10px] font-black uppercase text-slate-400 tracking-wider">Hurtigvalg:</span>
+                    <span className="text-[10px] font-bold uppercase text-slate-400 tracking-wider">Hurtigvalg:</span>
                     {isWorker ? (
                       <>
                         <button
                           type="button"
                           onClick={() => setActiveFormView({ type: 'time' })}
-                          className="px-2.5 py-1 rounded-xl bg-white/10 hover:bg-white/20 text-white text-[11px] font-bold transition-all cursor-pointer"
+                          className="inline-flex items-center gap-1.5 px-2.5 py-1 rounded-xl bg-white/10 hover:bg-white/20 text-white text-[11px] font-semibold transition-all cursor-pointer"
                         >
-                          ⏱️ Før dagens timer
+                          <Timer size={12} className="text-slate-300" />
+                          <span>Før dagens timer</span>
                         </button>
                         <button
                           type="button"
                           onClick={() => setActiveFormView({ type: 'sja' })}
-                          className="px-2.5 py-1 rounded-xl bg-white/10 hover:bg-white/20 text-white text-[11px] font-bold transition-all cursor-pointer"
+                          className="inline-flex items-center gap-1.5 px-2.5 py-1 rounded-xl bg-white/10 hover:bg-white/20 text-white text-[11px] font-semibold transition-all cursor-pointer"
                         >
-                          🛡️ Ny SJA-analyse
+                          <ShieldCheck size={12} className="text-slate-300" />
+                          <span>Ny SJA-analyse</span>
                         </button>
                         <button
                           type="button"
                           onClick={() => setActiveFormView({ type: 'deviation' })}
-                          className="px-2.5 py-1 rounded-xl bg-white/10 hover:bg-white/20 text-white text-[11px] font-bold transition-all cursor-pointer"
+                          className="inline-flex items-center gap-1.5 px-2.5 py-1 rounded-xl bg-white/10 hover:bg-white/20 text-white text-[11px] font-semibold transition-all cursor-pointer"
                         >
-                          📸 Meld RUH / avvik med bilde
+                          <Camera size={12} className="text-slate-300" />
+                          <span>Meld avvik med bilde</span>
                         </button>
                         <button
                           type="button"
                           onClick={() => handleAskAboutItem('Hva er kravene til fall mot sluk i TEK17 § 13-15?')}
-                          className="px-2.5 py-1 rounded-xl bg-white/10 hover:bg-white/20 text-white text-[11px] font-bold transition-all cursor-pointer"
+                          className="inline-flex items-center gap-1.5 px-2.5 py-1 rounded-xl bg-white/10 hover:bg-white/20 text-white text-[11px] font-semibold transition-all cursor-pointer"
                         >
-                          📐 Spør om TEK17
+                          <FileText size={12} className="text-slate-300" />
+                          <span>Spør om TEK17</span>
                         </button>
                       </>
                     ) : (
@@ -2717,30 +2731,34 @@ export default function MesterAIChat({
                         <button
                           type="button"
                           onClick={() => setActiveFormView({ type: 'task' })}
-                          className="px-2.5 py-1 rounded-xl bg-electric-500/30 hover:bg-electric-500/40 text-electric-200 border border-electric-500/40 text-[11px] font-bold transition-all cursor-pointer"
+                          className="inline-flex items-center gap-1.5 px-2.5 py-1 rounded-xl bg-electric-500/30 hover:bg-electric-500/40 text-electric-200 border border-electric-500/40 text-[11px] font-semibold transition-all cursor-pointer"
                         >
-                          ➕ Tildel ny oppgave
+                          <Plus size={12} className="text-electric-300" />
+                          <span>Tildel ny oppgave</span>
                         </button>
                         <button
                           type="button"
                           onClick={() => setActiveFormView({ type: 'change_order' })}
-                          className="px-2.5 py-1 rounded-xl bg-white/10 hover:bg-white/20 text-white text-[11px] font-bold transition-all cursor-pointer"
+                          className="inline-flex items-center gap-1.5 px-2.5 py-1 rounded-xl bg-white/10 hover:bg-white/20 text-white text-[11px] font-semibold transition-all cursor-pointer"
                         >
-                          📄 Ny endringsordre (NS 8406)
+                          <FileSignature size={12} className="text-slate-300" />
+                          <span>Ny endringsordre (NS 8406)</span>
                         </button>
                         <button
                           type="button"
                           onClick={() => setActiveFormView({ type: 'offer' })}
-                          className="px-2.5 py-1 rounded-xl bg-white/10 hover:bg-white/20 text-white text-[11px] font-bold transition-all cursor-pointer"
+                          className="inline-flex items-center gap-1.5 px-2.5 py-1 rounded-xl bg-white/10 hover:bg-white/20 text-white text-[11px] font-semibold transition-all cursor-pointer"
                         >
-                          📝 Nytt tilbud & kalkyle
+                          <FileText size={12} className="text-slate-300" />
+                          <span>Nytt tilbud & kalkyle</span>
                         </button>
                         <button
                           type="button"
                           onClick={() => onOpenInviteModal ? onOpenInviteModal() : setActiveTab('team')}
-                          className="px-2.5 py-1 rounded-xl bg-white/10 hover:bg-white/20 text-white text-[11px] font-bold transition-all cursor-pointer"
+                          className="inline-flex items-center gap-1.5 px-2.5 py-1 rounded-xl bg-white/10 hover:bg-white/20 text-white text-[11px] font-semibold transition-all cursor-pointer"
                         >
-                          👥 Inviter håndverker
+                          <UserPlus size={12} className="text-slate-300" />
+                          <span>Inviter håndverker</span>
                         </button>
                       </>
                     )}

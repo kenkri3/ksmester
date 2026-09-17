@@ -264,18 +264,18 @@ export default function AutonomousControlPost({ onOpenProject, onOpenChangeOrder
       <div className="p-4 sm:p-5 bg-gradient-to-r from-slate-900 via-navy-950 to-slate-900 text-white flex flex-col md:flex-row md:items-center justify-between gap-4">
         <div>
           <div className="flex items-center gap-2 mb-1 flex-wrap">
-            <span className="px-2.5 py-0.5 rounded-full text-[10px] font-black uppercase tracking-wider bg-electric-500/20 text-electric-300 border border-electric-500/30 flex items-center gap-1.5">
+            <span className="px-2.5 py-0.5 rounded-full text-[10px] font-bold uppercase tracking-wider bg-electric-500/20 text-electric-300 border border-electric-500/30 flex items-center gap-1.5">
               <span className="w-2 h-2 rounded-full bg-emerald-400 animate-pulse inline-block" />
-              Mesterens Autonome Kontrollpost
+              Autonom Byggeleder & Kontrollpost
             </span>
             <span className="text-[11px] text-slate-300">
-              100% Autonom bakgrunnsdrift • 100% Menneskelig overoppsyn
+              100% Autonom drift • Full oversikt og kontroll
             </span>
           </div>
-          <h4 className="text-base sm:text-lg font-black text-white flex items-center gap-2">
-            <span>Handlingskø & Autopilot</span>
+          <h4 className="text-base sm:text-lg font-bold tracking-tight text-white flex items-center gap-2">
+            <span>Oppgaver til godkjenning & Autopilot</span>
             {pendingActions.length > 0 && (
-              <span className="px-2 py-0.5 rounded-full bg-rose-500 text-white text-xs font-black">
+              <span className="px-2 py-0.5 rounded-full bg-rose-500 text-white text-xs font-bold">
                 {pendingActions.length} venter
               </span>
             )}
@@ -296,7 +296,7 @@ export default function AutonomousControlPost({ onOpenProject, onOpenChangeOrder
               )}
               title="Krever din godkjenning på alle handlinger"
             >
-              <span>🟢 Assistent</span>
+              <span>🟢 Manuell</span>
             </button>
             <button
               type="button"
@@ -309,8 +309,8 @@ export default function AutonomousControlPost({ onOpenProject, onOpenChangeOrder
               )}
               title="Godkjenner og arkiverer rutinedagbøker automatisk"
             >
-              <Zap size={13} />
-              <span>⚡ Autopilot</span>
+              <Zap size={13} className="text-emerald-300" />
+              <span>Autopilot</span>
             </button>
           </div>
 
@@ -319,10 +319,10 @@ export default function AutonomousControlPost({ onOpenProject, onOpenChangeOrder
             disabled={isScanning}
             onClick={handleTriggerCycle}
             className="px-3.5 py-2 bg-white/10 hover:bg-white/20 border border-white/20 text-white rounded-2xl text-xs font-bold transition-all flex items-center gap-1.5 cursor-pointer disabled:opacity-50"
-            title="Kjør en umiddelbar skanning av vær, timer og endringsordrer"
+            title="Kjør en umiddelbar sjekk av vær, timer og endringsordrer"
           >
             <RefreshCw size={13} className={isScanning ? "animate-spin text-electric-400" : ""} />
-            <span>{isScanning ? 'Skanner...' : 'AI-skann nå'}</span>
+            <span>{isScanning ? 'Sjekker...' : 'Sjekk status nå'}</span>
           </button>
         </div>
       </div>
@@ -332,7 +332,7 @@ export default function AutonomousControlPost({ onOpenProject, onOpenChangeOrder
         {isLoading ? (
           <div className="py-8 text-center text-xs text-slate-400 flex items-center justify-center gap-2">
             <RefreshCw size={15} className="animate-spin text-electric-600" />
-            <span>Sjekker autonome handlinger og værforhold...</span>
+            <span>Sjekker oppgaver og værforhold...</span>
           </div>
         ) : pendingActions.length === 0 ? (
           <div className="p-5 rounded-2xl bg-emerald-50/70 border border-emerald-200/80 flex items-start sm:items-center justify-between gap-3 flex-col sm:flex-row">
@@ -341,11 +341,11 @@ export default function AutonomousControlPost({ onOpenProject, onOpenChangeOrder
                 <CheckCircle2 size={20} />
               </div>
               <div>
-                <div className="text-xs font-black text-emerald-950">
-                  Ingen handlinger venter på godkjenning
+                <div className="text-xs font-bold text-emerald-950">
+                  Ingen oppgaver venter på godkjenning
                 </div>
-                <div className="text-[11px] text-emerald-700 mt-0.5">
-                  MesterAI overvåker byggeplassene dine i bakgrunnen. Byggedagbøker klargjøres automatisk ved arbeidsdagens slutt (kl. 16:30).
+                <div className="text-[11px] text-emerald-800 mt-0.5 leading-relaxed">
+                  MesterAI følger opp byggeplassene dine i bakgrunnen. Byggedagbøker klargjøres automatisk ved arbeidsdagens slutt (kl. 16:30).
                 </div>
               </div>
             </div>
@@ -353,9 +353,10 @@ export default function AutonomousControlPost({ onOpenProject, onOpenChangeOrder
             <button
               type="button"
               onClick={handleTriggerCycle}
-              className="px-3 py-1.5 bg-emerald-600 hover:bg-emerald-700 text-white rounded-xl text-xs font-bold transition-all shrink-0 cursor-pointer shadow-2xs"
+              className="inline-flex items-center gap-1.5 px-3 py-1.5 bg-emerald-600 hover:bg-emerald-700 text-white rounded-xl text-xs font-bold transition-all shrink-0 cursor-pointer shadow-2xs"
             >
-              ⚡ Gjør en ekstra skanning
+              <RefreshCw size={12} className={isScanning ? "animate-spin" : ""} />
+              <span>Kjør sjekk nå</span>
             </button>
           </div>
         ) : (
@@ -455,10 +456,10 @@ export default function AutonomousControlPost({ onOpenProject, onOpenChangeOrder
             <button
               type="button"
               onClick={() => setShowWeatherRadar(!showWeatherRadar)}
-              className="text-xs font-extrabold text-navy-900 hover:text-electric-700 flex items-center gap-1.5 transition-colors cursor-pointer py-1"
+              className="text-xs font-bold text-navy-900 hover:text-electric-700 flex items-center gap-1.5 transition-colors cursor-pointer py-1"
             >
               <CloudSun size={15} className="text-amber-500" />
-              <span>Vær-radar for byggeplassene ({weatherStatuses.length} stasjoner)</span>
+              <span>Værvarsel for byggeplassene ({weatherStatuses.length} {weatherStatuses.length === 1 ? 'byggeplass' : 'byggeplasser'})</span>
               {showWeatherRadar ? <ChevronUp size={14} /> : <ChevronDown size={14} />}
             </button>
 
@@ -526,10 +527,10 @@ export default function AutonomousControlPost({ onOpenProject, onOpenChangeOrder
           <button
             type="button"
             onClick={() => setShowLog(!showLog)}
-            className="text-xs font-extrabold text-navy-900 hover:text-electric-700 flex items-center gap-1.5 transition-colors cursor-pointer py-1"
+            className="text-xs font-bold text-navy-900 hover:text-electric-700 flex items-center gap-1.5 transition-colors cursor-pointer py-1"
           >
             <Clock size={14} className="text-slate-400" />
-            <span>Autonom handlingslogg ({recentActivities.length} hendelser)</span>
+            <span>Aktivitetslogg ({recentActivities.length} {recentActivities.length === 1 ? 'hendelse' : 'hendelser'})</span>
             {showLog ? <ChevronUp size={14} /> : <ChevronDown size={14} />}
           </button>
 
