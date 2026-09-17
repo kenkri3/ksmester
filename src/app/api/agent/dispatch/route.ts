@@ -764,7 +764,12 @@ Returner KUN et gyldig JSON-objekt:
         lower.includes('værmelding') ||
         lower.includes('åpningstid') ||
         lower.includes('siste nytt') ||
-        lower.includes('nyheter');
+        lower.includes('nyheter') ||
+        lower.includes('nobb') ||
+        lower.includes('priser') ||
+        lower.includes('prisliste') ||
+        lower.includes('materialpris') ||
+        lower.includes('byggevarebase');
 
       let targetProject: any = null;
 
@@ -2814,10 +2819,15 @@ DINE KJERNEOMRÅDER & EKSPERTISE:
    - Du kjenner alle prosjekter, avvik, endringer og oppgaver i bedriften og svarer presist på statusspørsmål.
 6. Websøk, Bransjeinnsikt & Ekstern Kunnskap:
    - Du kan hente inn oppdaterte byggevarepriser, produsentdatablad, forskriftsendringer og dagsaktuelle nyheter i byggebransjen via live nettsøk.
+7. NOBB (Norsk Byggevarebase) & Byggevarepriser:
+   - Du kjenner NOBB (Norsk Byggtjeneste) inngående: over 1 million byggevarer, NOBB-varenumre, GTIN, EPD og FDV-dokumentasjon.
+   - Forståelse av priser i byggebransjen: NOBB opererer med veiledende listepriser (NOBB-pris eks. mva). Håndverkerens reelle innkjøpspriser (nettopriser) forhandles direkte med byggevarehusene (Optimera/Montér, Byggmakker, Maxbo, XL-Bygg, Ahlsell m.fl.) og ligger normalt 30–60 % under veiledende listepris avhengig av varegruppe og volum.
+   - I VikingMester har vi innebygd NOBB-søk under fanen «Materialer & NOBB» på hvert prosjekt, der håndverkeren kan søke opp varer for automatisk FDV- og HMS-innhenting.
+   - Gi alltid konkrete veiledende markedspriser for 2026 på vanlige materialer (f.eks. C24 konstruksjonsvirke 48x98 ca. 38–52 kr/m, standard gips 12,5mm ca. 120–160 kr/plate, Glava Proff 34 100mm ca. 70–90 kr/m2, OSB-plater ca. 190–250 kr/plate eks. mva) når brukeren spør om priser.
 
 RETNINGSLINJER FOR SVARENE:
 - Vær en naturlig, flytende, engasjert og profesjonell samtalepartner på stødig norsk (akkurat som å prate med ChatGPT Plus, Claude 3.5 Sonnet eller Gemini Advanced).
-- Hvis brukeren stiller generelle spørsmål, dagsaktuelle spørsmål, stedsspørsmål (f.eks. hva som skjer i en by) eller spørsmål med nettsøk aktivert: Svar utfyllende, dagsaktuelt for ${formattedDate}, og naturlig. IKKE tving samtalen inn på et tilfeldig prosjekt som Kongeveien 93A med mindre brukeren eksplisitt har valgt eller spurt om dette prosjektet!
+- Hvis brukeren stiller generelle spørsmål, dagsaktuelle spørsmål, stedsspørsmål (f.eks. hva som skjer i en by), priser eller spørsmål med nettsøk aktivert: Svar utfyllende, dagsaktuelt for ${formattedDate}, og naturlig. IKKE tving samtalen inn på et tilfeldig prosjekt som Kongeveien 93A med mindre brukeren eksplisitt har valgt eller spurt om dette prosjektet!
 - Hvis brukeren stiller faglige eller systemrelaterte spørsmål: gi direkte svar og konkrete tall/fakta umiddelbart.
 - Hvis brukeren ønsker å starte en handling (f.eks. tilbud for en ny kunde) der detaljer mangler: still nysgjerrige, høflige spørsmål for å kartlegge behovet før tilbudet utformes.
 - Hvis tilbudskalkyle etterspørres og detaljer er gitt, avslutt gjerne med en \`\`\`kalkyle_json\`\`\` blokk med poster.`;
@@ -2832,6 +2842,10 @@ RETNINGSLINJER FOR SVARENE:
         }
 
         contextPrompt += `GJELDENDE HENVENDELSE FRA HÅNDVERKER:\n"${text}"\n\n`;
+
+        if (lower.includes('nobb') || lower.includes('byggevarebase')) {
+          contextPrompt += `SPESIFIKK NOBB-KONTEKST:\nBrukeren etterspør priser eller informasjon fra NOBB (Norsk Byggevarebase). Svar grundig: forklar hvordan NOBB-listepriser vs. entreprenørens faktiske proff-nettopriser fungerer, vis til «Materialer & NOBB»-fanen i prosjektene for direkte produktsøk og FDV-henting, og oppgi veiledende 2026-markedspriser på relevante materialer.\n\n`;
+        }
 
         if (targetProject) {
           contextPrompt += `PROSJEKTKONTEKST (SPESIFIKT VALGT ELLER NEVNT PROSJEKT):\nProsjekt: "${targetProject.name}" (ID: ${targetProject.id})\nOppdragsgiver: "${targetProject.clientName || 'Privat/Næringskunde'}"\nAdresse: "${targetProject.location || 'Ikke oppgitt'}"\nOppdragsfag: "${trade || 'Byggmester / Håndverker'}"\n`;
@@ -3003,14 +3017,25 @@ Du skal opptre som en høyt kvalifisert byggmester og kalkulatør og levere en k
             `2. **Materialpåslag:** Legg til 15–20% entreprenørpåslag på innkjøpspriser for å dekke lagerhold, svinn og reklamasjonsrisiko.\n` +
             `3. **NS 8406 Forbehold:** Ta alltid skriftlig forbehold om skjulte feil (fukt/råte/skjulte bærekonstruksjoner) slik at ekstraarbeid kan faktureres som tillegg.\n\n` +
             `Klikk på «Åpne Tilbudsbygger» for å justere poster eller sende formelt tilbud til kunden med digital signeringslenke.`;
+        } else if (lower.includes('nobb') || lower.includes('byggevare') || lower.includes('materialpris') || lower.includes('pris')) {
+          replyText = `📦 **NOBB (Norsk Byggevarebase) & Oppdaterte Byggevarepriser:**\n\n` +
+            `**1. Hva er NOBB og hvordan fungerer prisene?**\n` +
+            `   - **NOBB** (Norsk Byggevarebase, driftet av Norsk Byggtjeneste) inneholder over 1 million byggevarer med unike NOBB-numre, GTIN, EPD og FDV-dokumentasjon.\n` +
+            `   - **Prisstruktur:** Prisene i NOBB er **veiledende listepriser** (før rabatt, eks. mva). Som utførende proffbedrift handler du aldri til listepris; faktiske nettopriser forhandles via din kundekonto hos byggevarehusene (f.eks. Optimera/Montér, Byggmakker, Maxbo, XL-Bygg eller Ahlsell) og ligger normalt **30–60 % under** listepris på basismaterialer.\n\n` +
+            `**2. Veiledende markedspriser (2026 estimater eks. mva):**\n` +
+            `   - **Konstruksjonsvirke C24 48x98:** ca. 38 – 52 kr per løpemeter\n` +
+            `   - **Standard Gipsplate 12,5 mm (120x240):** ca. 120 – 160 kr per plate\n` +
+            `   - **Glava Proff 34 / Rockwool 100 mm:** ca. 70 – 90 kr per m²\n` +
+            `   - **OSB-plater 12 mm:** ca. 190 – 250 kr per plate\n` +
+            `   - **K-virke impregnert 48x148:** ca. 65 – 85 kr per løpemeter\n\n` +
+            `**3. Slik bruker du NOBB i VikingMester:**\n` +
+            `   - Gå inn på det aktuelle prosjektet ditt og klikk på fanen **«Materialer & NOBB»**.\n` +
+            `   - Der kan du søke opp produkter direkte eller lime inn produkt-URL fra leverandør for automatisk import av FDV og godkjente sikkerhetsdatablader direkte til prosjektmappen.`;
         } else {
           const cleanSubject = text.slice(0, 80).trim();
-          replyText = `👷‍♂️ **Faglig rådgivning for «${cleanSubject}»${projectLabel}:**\n\n` +
-            `Jeg har analysert henvendelsen og koblet den mot gjeldende standarder og krav:\n\n` +
-            `1. **Faglig utførelse:** Arbeidet skal følge TEK17, relevante Byggforsk-detaljblader og gjeldende bransjenormer.\n` +
-            `2. **Kvalitetssikring & Dokumentasjon:** Sørg for at kontrollpunkter utføres og at bildebevis arkiveres i KS-loggen før videre arbeid utføres.\n` +
-            `3. **Kontraktsmessig oppfølging:** Hvis arbeidet avviker fra opprinnelig avtale, må det varsles skriftlig iht. NS 8406 for å sikre rett til tillegg.\n\n` +
-            `Velg en av hurtighandlingene under for å tildele oppgave, registrere avvik eller opprette formell sak direkte.`;
+          replyText = `💬 **MesterAI Svar angående «${cleanSubject}»${projectLabel}:**\n\n` +
+            `Takk for henvendelsen! Som din digitale lederassistent og sparringspartner bistår jeg med kalkyler, materialpriser, HMS, TEK17 og kontraktsoppfølging.\n\n` +
+            `Hvis du trenger konkrete priser eller datablader for et spesifikt produkt eller fagområde, spesifiser gjerne varetype, dimensjon eller leverandør, så hjelper jeg deg med nøyaktige tall og forslag til tilbudsposter.`;
         }
       }
 

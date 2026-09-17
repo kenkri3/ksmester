@@ -142,18 +142,18 @@ export function resolveOptimalModel(operation?: string, requestedModel?: string,
     };
   }
 
-  // 1. MesterAI Samtalepartner, Rådgivning, Tilbud & Kalkyle -> Claude 3.5 Sonnet / GPT-4o
+  // 1. MesterAI Samtalepartner, Rådgivning, Tilbud & Kalkyle -> GPT-4o-mini / GPT-4o / Claude
   if (op.includes('conversation') || op.includes('advisor') || op.includes('consultation') || op.includes('chat') || op.includes('offer') || op.includes('tilbud') || op.includes('kalkyle')) {
     return {
-      oneMinModel: process.env.ONE_MIN_AI_CHAT_MODEL || 'claude-3-5-sonnet',
+      oneMinModel: process.env.ONE_MIN_AI_CHAT_MODEL || 'gpt-4o-mini',
       geminiModel: 'gemini-2.5-flash'
     };
   }
 
-  // 2. Juridisk, NS 8406, Endringsordrer, Kontrakt -> Claude 3.5 Sonnet
+  // 2. Juridisk, NS 8406, Endringsordrer, Kontrakt -> GPT-4o-mini / Claude
   if (op.includes('change_order') || op.includes('contract') || op.includes('legal') || op.includes('ns8406') || op.includes('varsel')) {
     return {
-      oneMinModel: process.env.ONE_MIN_AI_LEGAL_MODEL || 'claude-3-5-sonnet',
+      oneMinModel: process.env.ONE_MIN_AI_LEGAL_MODEL || 'gpt-4o-mini',
       geminiModel: 'gemini-2.5-flash'
     };
   }
@@ -298,54 +298,83 @@ async function call1MinAi(
     };
   }
 
-  const payload = {
-    type: 'UNIFY_CHAT_WITH_AI',
-    model: effectiveModel,
-    promptObject
-  };
+  const candidateModels = [
+    effectiveModel,
+    'gpt-4o-mini',
+    'gpt-4o'
+  ].filter(Boolean);
+  const uniqueCandidateModels = Array.from(new Set(candidateModels));
 
-  const res = await fetch('https://api.1min.ai/api/chat-with-ai', {
-    method: 'POST',
-    headers: {
-      'Content-Type': 'application/json',
-      'API-KEY': apiKey,
-      'Authorization': `Bearer ${apiKey}`
-    },
-    body: JSON.stringify(payload),
-    signal: AbortSignal.timeout(35000)
-  });
+  let lastError: any = null;
+  let textResult = '';
+  let lastDetail: any = null;
+  let lastJson: any = null;
 
-  if (!res.ok) {
-    const errBody = await res.text().catch(() => '');
-    console.error(`[1min.AI Error] HTTP ${res.status}:`, errBody.slice(0, 500));
-    throw new Error(`1min.AI API feilet med HTTP ${res.status}: ${errBody.slice(0, 300)}`);
+  for (const candModel of uniqueCandidateModels) {
+    try {
+      const payload = {
+        type: 'UNIFY_CHAT_WITH_AI',
+        model: candModel,
+        promptObject
+      };
+
+      const res = await fetch('https://api.1min.ai/api/chat-with-ai', {
+        method: 'POST',
+        headers: {
+          'Content-Type': 'application/json',
+          'API-KEY': apiKey,
+          'Authorization': `Bearer ${apiKey}`
+        },
+        body: JSON.stringify(payload),
+        signal: AbortSignal.timeout(35000)
+      });
+
+      if (!res.ok) {
+        const errBody = await res.text().catch(() => '');
+        console.warn(`[1min.AI] Modell ${candModel} feilet med HTTP ${res.status}: ${errBody.slice(0, 200)}, prøver neste modell...`);
+        lastError = new Error(`1min.AI API feilet med HTTP ${res.status}: ${errBody.slice(0, 200)}`);
+        continue;
+      }
+
+      const json = await res.json();
+      lastJson = json;
+      const detail = json.aiRecord?.aiRecordDetail;
+      lastDetail = detail;
+
+      if (detail?.resultObject) {
+        if (Array.isArray(detail.resultObject)) {
+          textResult = detail.resultObject.join('');
+        } else if (typeof detail.resultObject === 'string') {
+          textResult = detail.resultObject;
+        } else {
+          textResult = JSON.stringify(detail.resultObject);
+        }
+      } else if (typeof json.text === 'string') {
+        textResult = json.text;
+      } else if (typeof json.result === 'string') {
+        textResult = json.result;
+      } else if (json.data?.text) {
+        textResult = json.data.text;
+      } else if (json.message && typeof json.message === 'string') {
+        textResult = json.message;
+      }
+
+      if (textResult && textResult.trim().length > 0) {
+        break;
+      }
+    } catch (candErr: any) {
+      lastError = candErr;
+      console.warn(`[1min.AI] Feil under kall med ${candModel}: ${candErr.message}`);
+    }
   }
 
-  const json = await res.json();
-  const detail = json.aiRecord?.aiRecordDetail;
-  let textResult = '';
-
-  if (detail?.resultObject) {
-    if (Array.isArray(detail.resultObject)) {
-      textResult = detail.resultObject.join('');
-    } else if (typeof detail.resultObject === 'string') {
-      textResult = detail.resultObject;
-    } else {
-      textResult = JSON.stringify(detail.resultObject);
-    }
-  } else if (typeof json.text === 'string') {
-    textResult = json.text;
-  } else if (typeof json.result === 'string') {
-    textResult = json.result;
-  } else if (json.data?.text) {
-    textResult = json.data.text;
-  } else if (json.message && typeof json.message === 'string') {
-    textResult = json.message;
+  if (!textResult || textResult.trim().length === 0) {
+    throw lastError || new Error('1min.AI returnerte tomt svar for alle testede modeller');
   }
 
   // Hent og formater kilder hvis nettsøk ble utført
   if (webSearch && textResult) {
-    const searchList = detail?.searchContentList || detail?.linkContentList || json.searchContentList;
+    const searchList = lastDetail?.searchContentList || lastDetail?.linkContentList || lastJson?.searchContentList;
     if (Array.isArray(searchList) && searchList.length > 0) {
       const sourceLinks = searchList
         .map((s: any) => {
