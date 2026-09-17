@@ -742,7 +742,7 @@ export default function MesterAIChat({
     setIsLoading(true);
 
     try {
-      const activeProj = selectedProject || projects[0];
+      const activeProj = selectedProject || null;
       const token = typeof window !== 'undefined' ? localStorage.getItem('token') : null;
 
       const historyPayload = newMessages
@@ -767,7 +767,7 @@ export default function MesterAIChat({
               text: textToSend,
               history: historyPayload,
               projectId: activeProj?.id || '',
-              projectName: activeProj?.name || 'Byggeprosjekt',
+              projectName: activeProj?.name || '',
               webSearch: isWebSearchEnabled,
               authorName: typeof window !== 'undefined' && localStorage.getItem('user_display_name') ? localStorage.getItem('user_display_name') : 'Admin / Byggmester',
               ...(extraPayload || {})

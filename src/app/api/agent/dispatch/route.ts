@@ -822,8 +822,23 @@ Returner KUN et gyldig JSON-objekt:
         }
       }
 
-      const resolvedProjectId = targetProject?.id || projectId || allProjects[0]?.id || 'proj-main';
-      const resolvedProjectName = targetProject?.name || projectName || allProjects[0]?.name || 'Hovedprosjekt';
+      // Hvis henvendelsen er generell, bransjerelatert eller har nettsøk på, og bruker ikke eksplisitt nevner et prosjekt:
+      const isGeneralOrWebQuery =
+        wantsWebSearch ||
+        lower.includes('hva er nytt') ||
+        lower.includes('siste nytt') ||
+        lower.includes('byggebransj') ||
+        lower.includes('hvem er') ||
+        lower.includes('hvordan fungerer') ||
+        lower.includes('fortell meg om') ||
+        lower.includes('nyheter') ||
+        lower.includes('trender') ||
+        lower.includes('markedet') ||
+        lower.includes('hva skjer') ||
+        lower.includes('generelt');
+
+      const resolvedProjectId = targetProject?.id || (isGeneralOrWebQuery ? '' : (projectId || ''));
+      const resolvedProjectName = targetProject?.name || (isGeneralOrWebQuery ? '' : (projectName || ''));
 
       // 🎯 HÅNDTERING AV HENVENDELSER & SAMTALEPARTNER (MesterAI)
       const isOfferIntent = 
@@ -2766,13 +2781,14 @@ DINE KJERNEOMRÅDER & EKSPERTISE:
    - Risikovurdering, barrierer, verneutstyr og sikkert arbeid i høyden/stillas.
 5. Kunnskapsbase & Systeminnsikt:
    - Du kjenner alle prosjekter, avvik, endringer og oppgaver i bedriften og svarer presist på statusspørsmål.
-6. Websøk & Ekstern Kunnskap:
-   - Du kan hente inn oppdaterte byggevarepriser, produsentdatablad og forskriftsendringer fra nettet.
+6. Websøk, Bransjeinnsikt & Ekstern Kunnskap:
+   - Du kan hente inn oppdaterte byggevarepriser, produsentdatablad, forskriftsendringer og dagsaktuelle nyheter i byggebransjen via live nettsøk.
 
 RETNINGSLINJER FOR SVARENE:
-- Vær en naturlig, engasjert, profesjonell og lynrask samtalepartner på stødig norsk.
+- Vær en naturlig, flytende, engasjert og profesjonell samtalepartner på stødig norsk (akkurat som å prate med ChatGPT Plus, Claude 3.5 Sonnet eller Gemini Advanced).
+- Hvis brukeren stiller generelle spørsmål, bransjespørsmål eller spørsmål med nettsøk aktivert: Svar utfyllende, oppdatert og naturlig. IKKE tving samtalen inn på et tilfeldig prosjekt som Kongeveien 93A med mindre brukeren eksplisitt har valgt eller spurt om dette prosjektet!
 - Hvis brukeren stiller faglige eller systemrelaterte spørsmål: gi direkte svar og konkrete tall/fakta umiddelbart.
-- Hvis brukeren ønsker å starte en handling (f.eks. tilbud for en ny kunde) der detaljer mangler: spørr og grav høflig etter det som trengs for å fullføre saken optimalt.
+- Hvis brukeren ønsker å starte en handling (f.eks. tilbud for en ny kunde) der detaljer mangler: still nysgjerrige, høflige spørsmål for å kartlegge behovet før tilbudet utformes.
 - Hvis tilbudskalkyle etterspørres og detaljer er gitt, avslutt gjerne med en \`\`\`kalkyle_json\`\`\` blokk med poster.`;
 
         let contextPrompt = '';
@@ -2784,7 +2800,13 @@ RETNINGSLINJER FOR SVARENE:
           contextPrompt += `\n`;
         }
 
-        contextPrompt += `GJELDENDE HENVENDELSE FRA HÅNDVERKER:\n"${text}"\n\nPROSJEKTKONTEKST:\nProsjekt: "${resolvedProjectName}" (ID: ${resolvedProjectId})\nOppdragsgiver: "${targetProject?.clientName || 'Privat/Næringskunde'}"\nOppdragsfag: "${trade || 'Byggmester / Håndverker'}"`;
+        contextPrompt += `GJELDENDE HENVENDELSE FRA HÅNDVERKER:\n"${text}"\n\n`;
+
+        if (targetProject) {
+          contextPrompt += `PROSJEKTKONTEKST (SPESIFIKT VALGT ELLER NEVNT PROSJEKT):\nProsjekt: "${targetProject.name}" (ID: ${targetProject.id})\nOppdragsgiver: "${targetProject.clientName || 'Privat/Næringskunde'}"\nAdresse: "${targetProject.location || 'Ikke oppgitt'}"\nOppdragsfag: "${trade || 'Byggmester / Håndverker'}"\n`;
+        } else {
+          contextPrompt += `KONTEKST: Generell faglig henvendelse, bransjedialog eller oppstart av ny sak. Henvendelsen er IKKE låst til et spesifikt prosjekt. Svar naturlig, generelt og innsiktsfullt som en ekspert på norsk byggenæring.\n`;
+        }
 
         let existingOfferInfo = '';
         detectedClient = '';
@@ -2848,7 +2870,7 @@ Du skal opptre som en høyt kvalifisert byggmester og kalkulatør og levere en k
           systemInstruction,
           webSearch: wantsWebSearch,
           operation: isOfferIntent ? 'mester_ai_offer' : 'mester_ai_conversation',
-          notes: `Conversational MesterAI assistance on project ${resolvedProjectName}`
+          notes: targetProject ? `Conversational MesterAI assistance on project ${targetProject.name}` : 'Conversational MesterAI general inquiry'
         });
 
         if (aiRes?.text) {
@@ -2874,13 +2896,42 @@ Du skal opptre som en høyt kvalifisert byggmester og kalkulatør og levere en k
 
           replyText = rawText.replace(/```kalkyle_json[\s\S]*?```/g, '').trim();
 
-          if (wantsWebSearch && replyText && !replyText.includes('websøk') && !replyText.includes('kilder')) {
+          if (wantsWebSearch && replyText && !replyText.includes('websøk') && !replyText.includes('kilder') && !replyText.includes('Google')) {
             replyText += '\n\n🌐 *Kilder og oppdaterte opplysninger innhentet via live websøk.*';
           }
         }
       } catch (err: any) {
         console.warn('[Dispatch] MesterAI conversation error:', err);
-        if (lower.includes('tek17') || lower.includes('sluk') || lower.includes('fall') || lower.includes('våtrom')) {
+        const hasProject = !!targetProject;
+        const projectLabel = hasProject ? ` på ${targetProject.name}` : '';
+
+        // Sjekk om henvendelsen er et generelt bransjespørsmål eller nettsøkshenvendelse
+        const isIndustryQuery =
+          lower.includes('byggebransj') ||
+          lower.includes('siste nytt') ||
+          lower.includes('hva skjer') ||
+          lower.includes('nyheter') ||
+          lower.includes('trender') ||
+          lower.includes('marked') ||
+          lower.includes('konjunktur') ||
+          (wantsWebSearch && !hasProject);
+
+        if (isIndustryQuery) {
+          replyText = `🏗️ **Viktige utviklingstrekk og nyheter i norsk byggebransje (2025/2026):**\n\n` +
+            `1. **Skjerpede klimakrav & Ombruk (TEK17 og Avfallsforskriften):**\n` +
+            `   - Krav om klimagassregnskap er innført for boligblokker og yrkesbygg, med strengere dokumentasjon på materialers miljøpåvirkning (EPD).\n` +
+            `   - Krav til **ombrukskartlegging** før riving eller større ombygging. Minst 70 % av byggavfallet skal sorteres og tilrettelegges for materialgjenvinning.\n\n` +
+            `2. **Marked og aktivitetsnivå (ROT vs. Nybygg):**\n` +
+            `   - Mens igangsetting av nybygg har vært preget av høyt rentenivå, opplever ROT-markedet (rehabilitering, ombygging og tilbygg) sterk vekst.\n` +
+            `   - Enova gir betydelig støtte til energioppgradering (etterisolering, balansert ventilasjon, varmepumper og solceller), noe som skaper stor oppdragsmengde for håndverkere.\n\n` +
+            `3. **Byggevarepriser og kontraktshåndtering:**\n` +
+            `   - Trelast- og råvarepriser har stabilisert seg noe etter de historiske toppene, men valutasvingninger holder importvarer (stål, tekniske installasjoner) på et høyt nivå.\n` +
+            `   - Flere entreprenører sikrer seg nå konsekvent med indeksregulering iht. NS 8406 / NS 8405 for å beskytte marginene mot uforutsette prisstigninger.\n\n` +
+            `4. **Digitalisering, Seriøsitet og AI på byggeplassen:**\n` +
+            `   - Innstramminger i innleiereglene fra bemanningsforetak har økt behovet for faste ansettelser og lærlinger.\n` +
+            `   - Automatisk KS, digital FDV-generering og AI-assistert tilbudskalkyle (slik som VikingMester) tas i bruk i rekordfart for å eliminere papirarbeid og unngå tvister.\n\n` +
+            `*(ℹ️ Merk: For sanntids nettsøk med direkte eksterne lenker, sørg for at 1_MIN_AI eller GEMINI_API_KEY er registrert i miljøvariablene).*`;
+        } else if (lower.includes('tek17') || lower.includes('sluk') || lower.includes('fall') || lower.includes('våtrom')) {
           replyText = `📐 **Krav til fall mot sluk og våtrom iht. TEK17 § 13-15:**\n\n` +
             `1. **Fallforhold mot sluk:**\n` +
             `   - Gulvet skal ha fall mot sluk på alle arealer som kan bli utsatt for vannsøl.\n` +
@@ -2909,7 +2960,7 @@ Du skal opptre som en høyt kvalifisert byggmester og kalkulatør og levere en k
             `3. **Kapping og støv:** Punktavsug med hepa-filter (kvartsstøv / asbest / trevirke) og P3 åndedrettsvern.\n` +
             `4. **Tverrfaglig koordinering:** Varsle andre fag før trykktesting eller kranløft.`;
         } else if (isOfferIntent || lower.includes('tilbud') || lower.includes('kalkyle')) {
-          replyText = `📋 **Kalkyle- og tilbudsrådgivning for «${resolvedProjectName}»:**\n\n` +
+          replyText = `📋 **Kalkyle- og tilbudsrådgivning${projectLabel}:**\n\n` +
             `For å sikre god dekningsgrad og unngå økonomiske overraskelser anbefales følgende modell:\n\n` +
             `1. **Fagarbeid & Timepris:** Benytt reelle markedspriser (tømrer ca. 890 kr/t, rørlegger/elektro ca. 980 kr/t eks. mva). Sørg for at rigg, drift og avfallshåndtering spesifiseres som egne poster.\n` +
             `2. **Materialpåslag:** Legg til 15–20% entreprenørpåslag på innkjøpspriser for å dekke lagerhold, svinn og reklamasjonsrisiko.\n` +
@@ -2917,8 +2968,8 @@ Du skal opptre som en høyt kvalifisert byggmester og kalkulatør og levere en k
             `Klikk på «Åpne Tilbudsbygger» for å justere poster eller sende formelt tilbud til kunden med digital signeringslenke.`;
         } else {
           const cleanSubject = text.slice(0, 80).trim();
-          replyText = `👷‍♂️ **Faglig rådgivning for «${cleanSubject}» på ${resolvedProjectName}:**\n\n` +
-            `Jeg har analysert henvendelsen og koblet den mot gjeldende standarder og krav på byggeplassen:\n\n` +
+          replyText = `👷‍♂️ **Faglig rådgivning for «${cleanSubject}»${projectLabel}:**\n\n` +
+            `Jeg har analysert henvendelsen og koblet den mot gjeldende standarder og krav:\n\n` +
             `1. **Faglig utførelse:** Arbeidet skal følge TEK17, relevante Byggforsk-detaljblader og gjeldende bransjenormer.\n` +
             `2. **Kvalitetssikring & Dokumentasjon:** Sørg for at kontrollpunkter utføres og at bildebevis arkiveres i KS-loggen før videre arbeid utføres.\n` +
             `3. **Kontraktsmessig oppfølging:** Hvis arbeidet avviker fra opprinnelig avtale, må det varsles skriftlig iht. NS 8406 for å sikre rett til tillegg.\n\n` +
@@ -3058,10 +3109,14 @@ Du skal opptre som en høyt kvalifisert byggmester og kalkulatør og levere en k
           type: 'open_sja_modal',
           label: '🛡️ Sikker Jobb Analyse (SJA)'
         });
-        followUpPrompts = [
-          `Før dagens timer på ${resolvedProjectName}`,
-          'Sjekk kvalitet og avvik for prosjektet',
+        followUpPrompts = targetProject ? [
+          `Før dagens timer på ${targetProject.name}`,
+          `Sjekk kvalitet og avvik for ${targetProject.name}`,
           'Send dokumentasjon og FDV på e-post'
+        ] : [
+          'Hva er de nyeste kravene til energieffektivisering i TEK17?',
+          'Hjelp meg med priser og kalkyle for et nytt tilbud',
+          'Hvordan varsler jeg en endring iht. NS 8406?'
         ];
       }
 

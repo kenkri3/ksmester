@@ -49,7 +49,13 @@ export function get1MinAiKey(): string | null {
     env['1_MIN_AI'] ||
     env['ONE_MIN_AI'] ||
     env['ONE_MIN_AI_KEY'] ||
+    env['ONE_MIN_AI_API_KEY'] ||
     env['1MIN_AI'] ||
+    env['ONEMIN_AI'] ||
+    env['ONEMIN_AI_KEY'] ||
+    env['ONEMINAI_API_KEY'] ||
+    env['1_min_ai'] ||
+    env['one_min_ai'] ||
     null
   );
 }
@@ -58,12 +64,46 @@ export function get1MinAiKey(): string | null {
  * Henter Google Gemini API-nøkkel (brukt som backup/sikkerhetsnett).
  */
 export function getGeminiKey(): string | null {
+  const env = process.env as Record<string, string | undefined>;
   return (
-    process.env.GEMINI_API_KEY ||
-    process.env.GOOGLE_API_KEY ||
-    process.env.GOOGLE_GENAI_API_KEY ||
+    env.GEMINI_API_KEY ||
+    env.GOOGLE_API_KEY ||
+    env.GOOGLE_GENAI_API_KEY ||
+    env.GEMINI_KEY ||
+    env.GOOGLE_AI_KEY ||
     null
   );
+}
+
+/**
+ * Henter eventuell lagret AI-nøkkel fra databasen (items_store / integrations)
+ * dersom miljøvariabel mangler i runtime-miljøet.
+ */
+export async function getStoredAiKey(type: '1min.ai' | 'gemini'): Promise<string | null> {
+  try {
+    const { getCollectionItems } = await import('./db');
+    const items = await getCollectionItems('integrations');
+    if (!Array.isArray(items)) return null;
+
+    if (type === '1min.ai') {
+      const match = items.find((i: any) => 
+        (i.service === '1min.ai' || i.service === '1min_ai' || i.service === '1min') && 
+        (i.secretToken || i.apiKey || i.token)
+      );
+      if (match?.secretToken || match?.apiKey || match?.token) {
+        return String(match.secretToken || match.apiKey || match.token).trim();
+      }
+    } else if (type === 'gemini') {
+      const match = items.find((i: any) => 
+        (i.service === 'gemini' || i.service === 'google_gemini') && 
+        (i.secretToken || i.apiKey || i.token)
+      );
+      if (match?.secretToken || match?.apiKey || match?.token) {
+        return String(match.secretToken || match.apiKey || match.token).trim();
+      }
+    }
+  } catch {}
+  return null;
 }
 
 /**
@@ -76,14 +116,23 @@ export function getDeepSeekKey(): string | null {
 /**
  * Intelligent modellruter (Kvalitet vs. Tokenkostnad).
  * Ruter oppgaver automatisk til den mest kostnadseffektive modellen uten kvalitetstap:
+ * - Nettsøk: gpt-4o-mini (1min.ai krever OpenAI-modeller for webSearchSettings)
  * - Rutine/Byggedagbok: gpt-4o-mini (ekstremt billig, lynrask)
  * - NS 8406 / Juridisk: claude-3-5-sonnet (norgesledende presisjon på entrepriserett)
  * - SEO: claude-3-5-sonnet / gpt-4o-mini (høy E-E-A-T faglig autoritet)
  * - SJA: gemini-2.5-flash / gpt-4o-mini (strukturert JSON)
  * - Vision: gemini-2.5-flash / gpt-4o-mini
  */
-export function resolveOptimalModel(operation?: string, requestedModel?: string): { oneMinModel: string; geminiModel: string } {
+export function resolveOptimalModel(operation?: string, requestedModel?: string, webSearch = false): { oneMinModel: string; geminiModel: string } {
   const op = (operation || '').toLowerCase();
+
+  // Hvis webSearch er aktivert: 1min.AI krever OpenAI-modeller for webSearchSettings
+  if (webSearch) {
+    return {
+      oneMinModel: process.env.ONE_MIN_AI_SEARCH_MODEL || 'gpt-4o-mini',
+      geminiModel: 'gemini-2.5-flash'
+    };
+  }
 
   // Hvis eksplisitt modell er bedt om og ikke er ren gemini-intern streng:
   if (requestedModel && !requestedModel.startsWith('gemini')) {
@@ -189,6 +238,11 @@ async function call1MinAi(
   webSearch = false,
   forceJson = false
 ): Promise<{ text: string; promptTokens: number; completionTokens: number }> {
+  // 1min.AI krever OpenAI-modeller for webSearchSettings
+  const effectiveModel = webSearch
+    ? (model.startsWith('gpt-') ? model : (process.env.ONE_MIN_AI_SEARCH_MODEL || 'gpt-4o-mini'))
+    : model;
+
   let combinedPrompt = prompt;
 
   if (systemInstruction) {
@@ -204,11 +258,12 @@ async function call1MinAi(
   };
 
   if (webSearch) {
+    promptObject.webSearch = true;
     promptObject.settings = {
       webSearchSettings: {
         webSearch: true,
-        numOfSite: 3,
-        maxWord: 1000
+        numOfSite: 5,
+        maxWord: 1500
       }
     };
   }
@@ -221,7 +276,7 @@ async function call1MinAi(
 
   const payload = {
     type: 'UNIFY_CHAT_WITH_AI',
-    model,
+    model: effectiveModel,
     promptObject
   };
 
@@ -229,14 +284,16 @@ async function call1MinAi(
     method: 'POST',
     headers: {
       'Content-Type': 'application/json',
-      'API-KEY': apiKey
+      'API-KEY': apiKey,
+      'Authorization': `Bearer ${apiKey}`
     },
     body: JSON.stringify(payload),
-    signal: AbortSignal.timeout(25000)
+    signal: AbortSignal.timeout(35000)
   });
 
   if (!res.ok) {
     const errBody = await res.text().catch(() => '');
+    console.error(`[1min.AI Error] HTTP ${res.status}:`, errBody.slice(0, 500));
     throw new Error(`1min.AI API feilet med HTTP ${res.status}: ${errBody.slice(0, 300)}`);
   }
 
@@ -256,6 +313,28 @@ async function call1MinAi(
     textResult = json.text;
   } else if (typeof json.result === 'string') {
     textResult = json.result;
+  } else if (json.data?.text) {
+    textResult = json.data.text;
+  } else if (json.message && typeof json.message === 'string') {
+    textResult = json.message;
+  }
+
+  // Hent og formater kilder hvis nettsøk ble utført
+  if (webSearch && textResult) {
+    const searchList = detail?.searchContentList || detail?.linkContentList || json.searchContentList;
+    if (Array.isArray(searchList) && searchList.length > 0) {
+      const sourceLinks = searchList
+        .map((s: any) => {
+          const title = s.title || s.name || s.url;
+          const url = s.url || s.link;
+          return url ? `- [${title}](${url})` : null;
+        })
+        .filter(Boolean);
+      const uniqueLinks = Array.from(new Set(sourceLinks));
+      if (uniqueLinks.length > 0 && !textResult.includes(uniqueLinks[0] as string)) {
+        textResult += `\n\n🌐 **Kilder fra nettsøk:**\n${uniqueLinks.slice(0, 5).join('\n')}`;
+      }
+    }
   }
 
   const promptTokens = Math.round(combinedPrompt.length / 4);
@@ -283,8 +362,9 @@ async function callGeminiBackup(
 ): Promise<{ text: string; promptTokens: number; completionTokens: number; executedModel: string }> {
   const ai = new GoogleGenAI({ apiKey: geminiKey });
 
+  // Kun gyldige Gemini-modeller (unngå at 'claude-*' eller andre modellnavn forårsaker feil)
   const candidateModels = [
-    model,
+    model.startsWith('gemini') ? model : null,
     process.env.GEMINI_MODEL,
     'gemini-2.5-flash',
     'gemini-2.5-flash-lite',
@@ -349,11 +429,30 @@ async function callGeminiBackup(
       const res: any = await Promise.race([generatePromise, timeoutPromise]);
 
       if (res && res.text) {
+        let finalText = res.text;
+
+        // Trekk ut kilder fra Google Search grounding hvis tilgjengelig
+        const metadata = res.candidates?.[0]?.groundingMetadata;
+        if (metadata?.groundingChunks && Array.isArray(metadata.groundingChunks)) {
+          const sources: string[] = [];
+          for (const chunk of metadata.groundingChunks) {
+            if (chunk.web?.title && chunk.web?.uri) {
+              sources.push(`- [${chunk.web.title}](${chunk.web.uri})`);
+            } else if (chunk.web?.uri) {
+              sources.push(`- [${chunk.web.uri}](${chunk.web.uri})`);
+            }
+          }
+          const uniqueSources = Array.from(new Set(sources));
+          if (uniqueSources.length > 0 && !finalText.includes(uniqueSources[0])) {
+            finalText += `\n\n🌐 **Kilder fra Google Search:**\n${uniqueSources.slice(0, 5).join('\n')}`;
+          }
+        }
+
         const promptTokens = res.usageMetadata?.promptTokenCount || Math.round(prompt.length / 4);
-        const completionTokens = res.usageMetadata?.candidatesTokenCount || Math.round(res.text.length / 4);
+        const completionTokens = res.usageMetadata?.candidatesTokenCount || Math.round(finalText.length / 4);
 
         return {
-          text: res.text,
+          text: finalText,
           promptTokens,
           completionTokens,
           executedModel: cand
@@ -419,19 +518,26 @@ async function callDeepSeekBackup(
  * Prioriterer 1_MIN_AI som hovedmotor med automatisk failover til Gemini API backup.
  */
 export async function generateWithAiEngine(options: GenerateAiOptions): Promise<AiEngineResult> {
-  const oneMinKey = get1MinAiKey();
-  const geminiKey = getGeminiKey();
+  let oneMinKey = get1MinAiKey();
+  let geminiKey = getGeminiKey();
   const deepseekKey = getDeepSeekKey();
 
+  if (!oneMinKey) {
+    oneMinKey = await getStoredAiKey('1min.ai');
+  }
+  if (!geminiKey) {
+    geminiKey = await getStoredAiKey('gemini');
+  }
+
   if (!oneMinKey && !geminiKey && !deepseekKey) {
-    throw new Error('Ingen AI-nøkkel (verken 1_MIN_AI eller GEMINI_API_KEY) er konfigurert på serveren.');
+    throw new Error('Ingen AI-nøkkel (verken 1_MIN_AI eller GEMINI_API_KEY) er konfigurert på serveren eller i innstillingene.');
   }
 
   const promptText = typeof options.prompt === 'string'
     ? options.prompt
     : (typeof options.contents === 'string' ? options.contents : JSON.stringify(options.contents || ''));
 
-  const { oneMinModel, geminiModel } = resolveOptimalModel(options.operation, options.model);
+  const { oneMinModel, geminiModel } = resolveOptimalModel(options.operation, options.model, options.webSearch);
   const isJsonExpected = options.responseMimeType === 'application/json' || !!options.responseSchema;
 
   // Samle eventuelle bilder

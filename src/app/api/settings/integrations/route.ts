@@ -24,6 +24,7 @@ export async function POST(req: NextRequest) {
       companyId: effectiveCompanyId,
       companyName: effectiveCompanyName,
       service,
+      secretToken: secretToken.trim(),
       secretTokenMasked: secretToken.length > 8 ? `${secretToken.substring(0, 4)}...${secretToken.substring(secretToken.length - 4)}` : '******',
       status: 'active',
       configuredAt: new Date().toISOString()
