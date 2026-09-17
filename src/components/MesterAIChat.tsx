@@ -1,6 +1,7 @@
 import React, { useState, useEffect, useRef } from 'react';
 import { motion, AnimatePresence } from 'motion/react';
 import ReactMarkdown from 'react-markdown';
+import remarkGfm from 'remark-gfm';
 import { 
   Brain, 
   Send, 
@@ -258,6 +259,7 @@ export default function MesterAIChat({
 
   const [inputVal, setInputVal] = useState('');
   const [isLoading, setIsLoading] = useState(false);
+  const [isWebSearchEnabled, setIsWebSearchEnabled] = useState(false);
   const [isListeningMic, setIsListeningMic] = useState(false);
   const [copiedId, setCopiedId] = useState<string | null>(null);
   const [isMinimized, setIsMinimized] = useState(false);
@@ -750,6 +752,7 @@ export default function MesterAIChat({
               history: historyPayload,
               projectId: activeProj?.id || '',
               projectName: activeProj?.name || 'Byggeprosjekt',
+              webSearch: isWebSearchEnabled,
               authorName: typeof window !== 'undefined' && localStorage.getItem('user_display_name') ? localStorage.getItem('user_display_name') : 'Admin / Byggmester'
             })
           });
@@ -864,6 +867,23 @@ export default function MesterAIChat({
   const handleActionClick = (action: any) => {
     if (!action) return;
 
+    if (action.type === 'copy_link' || action.id === 'copy_link') {
+      const url = action.data?.url || action.data?.shareUrl || (typeof action.prompt === 'string' && action.prompt.startsWith('http') ? action.prompt : null);
+      if (url) {
+        navigator.clipboard.writeText(url);
+        toast.success('Lenke kopiert til utklippstavlen!');
+      } else {
+        toast.info('Ingen gyldig lenke funnet.');
+      }
+      return;
+    }
+    if (action.type === 'open_url' || action.id === 'open_url') {
+      const url = action.data?.url || action.data?.shareUrl || (typeof action.prompt === 'string' && action.prompt.startsWith('http') ? action.prompt : null);
+      if (url) {
+        window.open(url, '_blank');
+      }
+      return;
+    }
     if (action.type === 'open_task_modal' || action.id === 'assign_task') {
       setActiveFormView({ type: 'task', data: action.data });
       return;
@@ -1076,6 +1096,7 @@ export default function MesterAIChat({
     return (
       <div className="text-slate-900 leading-relaxed font-sans text-xs sm:text-sm">
         <ReactMarkdown
+          remarkPlugins={[remarkGfm]}
           components={{
             h1: ({ children }) => (
               <h3 className="text-base font-black text-navy-950 mt-3 mb-1.5 pb-1 border-b border-slate-200">
@@ -1132,6 +1153,48 @@ export default function MesterAIChat({
               <blockquote className="border-l-4 border-electric-500 bg-electric-50/80 pl-3 py-2 my-2 rounded-r-xl text-xs text-navy-950 font-medium shadow-2xs">
                 💡 {children}
               </blockquote>
+            ),
+            table: ({ children }) => (
+              <div className="overflow-x-auto my-3 rounded-xl border border-slate-200 shadow-xs bg-white">
+                <table className="w-full border-collapse text-left text-xs sm:text-sm divide-y divide-slate-200">
+                  {children}
+                </table>
+              </div>
+            ),
+            thead: ({ children }) => (
+              <thead className="bg-navy-950 text-white font-bold text-[11px] sm:text-xs uppercase tracking-wider">
+                {children}
+              </thead>
+            ),
+            tbody: ({ children }) => (
+              <tbody className="divide-y divide-slate-100 bg-white">
+                {children}
+              </tbody>
+            ),
+            tr: ({ children }) => (
+              <tr className="hover:bg-blue-50/50 transition-colors odd:bg-white even:bg-slate-50/60">
+                {children}
+              </tr>
+            ),
+            th: ({ children }) => (
+              <th className="py-2.5 px-3 font-bold border-b border-navy-800 text-slate-100 whitespace-nowrap text-left">
+                {children}
+              </th>
+            ),
+            td: ({ children }) => (
+              <td className="py-2 px-3 text-slate-800 font-medium whitespace-normal">
+                {children}
+              </td>
+            ),
+            a: ({ href, children }) => (
+              <a
+                href={href}
+                target={href?.startsWith('http') ? '_blank' : undefined}
+                rel={href?.startsWith('http') ? 'noopener noreferrer' : undefined}
+                className="text-electric-600 hover:text-electric-800 underline font-semibold inline-flex items-center gap-1"
+              >
+                {children}
+              </a>
             ),
             code: ({ children, className }) => {
               const isInline = !className;
@@ -1216,7 +1279,7 @@ export default function MesterAIChat({
       <div 
         onClick={(e) => e.stopPropagation()}
         className={cn(
-          "bg-white flex flex-col transition-all overflow-hidden",
+          "bg-white text-navy-950 flex flex-col transition-all overflow-hidden",
           isEmbedded
             ? "w-full h-full flex-1 rounded-none border-0 shadow-none"
             : cn(
@@ -1942,6 +2005,24 @@ export default function MesterAIChat({
                     title="Ta bilde eller last opp for direkte TEK17/BVN analyse"
                   >
                     <Camera size={17} />
+                  </button>
+
+                  <button
+                    type="button"
+                    onClick={() => {
+                      setIsWebSearchEnabled(prev => !prev);
+                      toast.info(!isWebSearchEnabled ? '🌐 Websøk aktivert for neste spørsmål' : '🌐 Websøk deaktivert');
+                    }}
+                    className={cn(
+                      "p-2.5 rounded-xl transition-all cursor-pointer shrink-0 border flex items-center gap-1",
+                      isWebSearchEnabled 
+                        ? "bg-emerald-50 border-emerald-400 text-emerald-700 shadow-xs ring-2 ring-emerald-400/30" 
+                        : "bg-slate-100 hover:bg-emerald-50 hover:text-emerald-700 text-slate-600 border-slate-200/80"
+                    )}
+                    title={isWebSearchEnabled ? "Websøk er PÅ (søker på nettet via 1min.AI/Google)" : "Aktiver websøk (1min.AI / Google Search for eksterne priser og forskrifter)"}
+                  >
+                    <Globe size={17} className={isWebSearchEnabled ? "text-emerald-600" : ""} />
+                    {isWebSearchEnabled && <span className="text-[10px] font-black text-emerald-700 hidden sm:inline">SØK</span>}
                   </button>
 
                   <div className="relative flex-1">
@@ -3091,7 +3172,7 @@ export default function MesterAIChat({
                         key={i}
                         type="button"
                         onClick={() => handleAskAboutItem(promptText)}
-                        className="text-xs font-bold px-3 py-1.5 bg-slate-100 hover:bg-electric-50 hover:text-electric-700 rounded-xl transition-all border border-slate-200 cursor-pointer"
+                        className="text-xs font-bold px-3 py-1.5 bg-slate-100 hover:bg-electric-50 text-slate-800 hover:text-electric-700 rounded-xl transition-all border border-slate-200 hover:border-electric-200 cursor-pointer shadow-2xs"
                       >
                         💬 &quot;{promptText}&quot;
                       </button>

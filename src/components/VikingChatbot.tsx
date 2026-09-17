@@ -1,6 +1,7 @@
 import React, { useState, useEffect, useRef } from 'react';
 import { motion, AnimatePresence } from 'motion/react';
 import ReactMarkdown from 'react-markdown';
+import remarkGfm from 'remark-gfm';
 import { 
   Bot, 
   Send, 
@@ -460,6 +461,7 @@ export default function VikingChatbot({
     return (
       <div className="text-neutral-900 leading-relaxed font-sans text-xs sm:text-sm">
         <ReactMarkdown
+          remarkPlugins={[remarkGfm]}
           components={{
             h1: ({ children }) => (
               <h3 className="text-base font-black text-neutral-950 mt-3 mb-1.5 pb-1 border-b border-neutral-200">
@@ -516,6 +518,38 @@ export default function VikingChatbot({
               <blockquote className="border-l-4 border-purple-500 bg-purple-50/80 pl-3 py-2 my-2 rounded-r-xl text-xs text-purple-950 font-medium shadow-2xs">
                 💡 {children}
               </blockquote>
+            ),
+            table: ({ children }) => (
+              <div className="overflow-x-auto my-3 rounded-xl border border-neutral-200 shadow-xs bg-white">
+                <table className="w-full border-collapse text-left text-xs sm:text-sm divide-y divide-neutral-200">
+                  {children}
+                </table>
+              </div>
+            ),
+            thead: ({ children }) => (
+              <thead className="bg-neutral-900 text-white font-bold text-[11px] sm:text-xs uppercase tracking-wider">
+                {children}
+              </thead>
+            ),
+            tbody: ({ children }) => (
+              <tbody className="divide-y divide-neutral-100 bg-white">
+                {children}
+              </tbody>
+            ),
+            tr: ({ children }) => (
+              <tr className="hover:bg-purple-50/40 transition-colors odd:bg-white even:bg-neutral-50/60">
+                {children}
+              </tr>
+            ),
+            th: ({ children }) => (
+              <th className="py-2.5 px-3 font-bold border-b border-neutral-800 text-neutral-100 whitespace-nowrap text-left">
+                {children}
+              </th>
+            ),
+            td: ({ children }) => (
+              <td className="py-2.5 px-3 text-neutral-800 font-medium whitespace-normal">
+                {children}
+              </td>
             ),
             code: ({ children, className }) => {
               const isInline = !className;

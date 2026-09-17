@@ -267,7 +267,8 @@ export async function POST(req: NextRequest) {
       authorName = 'Håndverker', 
       language = 'no',
       changeOrderId,
-      companyId
+      companyId,
+      webSearch
     } = body;
 
     // 0. AI AUTOFILL & HISTORICAL FORM ASSISTANT
@@ -730,8 +731,33 @@ Returner KUN et gyldig JSON-objekt:
       }
 
       // 🎯 PROSJEKTKOBLING & SYSTEMINTEGRASJON:
-      // Finn hvilket prosjekt instruksen gjelder. Hvis ukjent og det finnes flere prosjekter, SPØR brukeren!
-      const allProjects = await getCollectionItems('projects');
+      // Hent hele backend som kunnskapsbase for MesterAI
+      const [allProjects, allDbDeviations, allDbChangeOrders, allDbOffers, allDbTasks] = await Promise.all([
+        getCollectionItems('projects').catch(() => []),
+        getCollectionItems('deviations').catch(() => []),
+        getCollectionItems('change_orders').catch(() => []),
+        getCollectionItems('offers').catch(() => []),
+        getCollectionItems('tasks').catch(() => [])
+      ]);
+
+      const wantsWebSearch = 
+        Boolean(webSearch) ||
+        lower.includes('søk på nettet') ||
+        lower.includes('søk opp') ||
+        lower.includes('finn på nettet') ||
+        lower.includes('google') ||
+        lower.includes('websearch') ||
+        lower.includes('hva koster') ||
+        lower.includes('pris på') ||
+        lower.includes('markedspris') ||
+        lower.includes('leverandør') ||
+        lower.includes('datablad') ||
+        lower.includes('godkjenning') ||
+        lower.includes('sintef') ||
+        lower.includes('byggevare') ||
+        lower.includes('glava') ||
+        lower.includes('rockwool');
+
       let targetProject: any = null;
 
       // 1. Hvis projectId var oppgitt
@@ -1523,11 +1549,116 @@ Returner KUN et gyldig JSON-objekt:
         const emailMatch = text.match(/[a-zA-Z0-9._%+-]+@[a-zA-Z0-9.-]+\.[a-zA-Z]{2,}/);
         const clientEmailFromText = emailMatch ? emailMatch[0] : null;
 
-        const clientMatch = text.match(/(?:tilbudet\s+til|tilbud\s+til|kunde:?|for\s+)([A-ZÆØÅa-zæøå]+(?:\s+[A-ZÆØÅa-zæøå]+)*)/i);
+        const clientMatch = text.match(/(?:tilbudet\s+til|tilbud\s+til|for\s+kunde:?|for\s+ny\s+kunde:?|ny\s+kunde:?|kunde:?|for\s+)([A-ZÆØÅa-zæøå]+(?:\s+[A-ZÆØÅa-zæøå]+)*)/i);
         const detectedClient = clientMatch ? clientMatch[1].trim() : null;
 
-        const clientName = targetProject?.clientName || detectedClient || 'Privatkunde';
-        const clientEmail = clientEmailFromText || targetProject?.clientEmail || '';
+        const hasSpecificScope = 
+          lower.includes('bad') || 
+          lower.includes('våtrom') || 
+          lower.includes('tak') || 
+          lower.includes('kledning') || 
+          lower.includes('fasade') || 
+          lower.includes('tilbygg') || 
+          lower.includes('påbygg') || 
+          lower.includes('nybygg') || 
+          lower.includes('renovering') || 
+          lower.includes('oppussing') || 
+          lower.includes('etterisolering') || 
+          lower.includes('elektro') || 
+          lower.includes('rørlegger') || 
+          lower.includes('maling') || 
+          lower.includes('sparkling') || 
+          lower.includes('gulv') || 
+          lower.includes('flis') ||
+          lower.includes('m2') ||
+          lower.includes('kvm');
+
+        const hasExplicitProject = !!targetProject;
+        const isNewClientSpecified = lower.includes('ny kunde') || lower.includes('nytt prosjekt') || !!detectedClient;
+
+        // Dersom brukeren kun ber om tilbud uten kunde, omfang eller prosjekt: SPØR OG GRAV!
+        if (!hasExplicitProject && !isNewClientSpecified && !hasSpecificScope && !clientEmailFromText) {
+          const activeProjectList = allProjects.slice(0, 3).map((p: any) => `• **${p.name}** (${p.clientName || 'Kunde'}, ${p.location || 'Byggeplass'})`).join('\n');
+
+          const promptOptions: any[] = [
+            {
+              id: 'offer_new_bath',
+              type: 'quick_prompt',
+              label: '🛁 Ny kunde: Bad / Våtrom',
+              prompt: 'Lag tilbud for ny kunde på totalrenovering av bad'
+            },
+            {
+              id: 'offer_new_cladding',
+              type: 'quick_prompt',
+              label: '🏡 Ny kunde: Kledning & Etterisolering',
+              prompt: 'Lag tilbud for ny kunde på utvendig kledning og etterisolering'
+            },
+            {
+              id: 'offer_new_extension',
+              type: 'quick_prompt',
+              label: '🔨 Ny kunde: Tilbygg / Tømrer',
+              prompt: 'Lag tilbud for ny kunde på tilbygg og tømrerarbeid'
+            }
+          ];
+
+          if (allProjects.length > 0) {
+            promptOptions.push({
+              id: 'offer_existing_proj',
+              type: 'quick_prompt',
+              label: `📁 Knytt til: ${allProjects[0].name.slice(0, 24)}...`,
+              prompt: `Lag tilbud for prosjektet «${allProjects[0].name}»`
+            });
+          }
+
+          return NextResponse.json({
+            success: true,
+            action: 'offer_clarification_needed',
+            reply: `👋 **Ja, absolutt! Jeg kan utarbeide et komplett, vinnende pristilbud med fagarbeid, materialer, kalkyle og NS 8406-forbehold.**\n\n` +
+              `Siden tilbudet kan skreddersys til **både helt nye kunder og eksisterende prosjekter**, trenger jeg litt mer informasjon for å beregne nøyaktig:\n\n` +
+              `1. 👤 **Hvem er kunden?** (Navn, ev. oppdragsadresse og e-post)\n` +
+              `2. 🔨 **Hva skal gjøres?** (F.eks. totalrenovering av bad, etterisolering og kledning, tilbygg, overflater eller tekniske fag?)\n` +
+              `3. 📁 **Er dette for en ny kunde, eller skal det knyttes til et eksisterende prosjekt?**\n` +
+              (allProjects.length > 0 ? `   *Dine aktive prosjekter i systemet:*\n${activeProjectList}\n` : '') +
+              `4. 📐 **Har du spesifikke mengder (f.eks. ca. m² eller timeestimat)**, eller vil du at jeg skal beregne standard normtider og timepriser for deg?\n\n` +
+              `💡 *Tips: Du kan bare svare meg rett her i chatten, for eksempel:*\n` +
+              `*«Lag tilbud for ny kunde Kari Nordmann, Storgata 10, totalrenovering av 8m² bad, send til kari@example.com»*`,
+            suggestedActions: promptOptions,
+            followUpPrompts: [
+              'Ny kunde: Totalrenovering av bad (ca. 8 kvm)',
+              'Ny kunde: Bytte kledning og etterisolere fasade',
+              allProjects[0] ? `Lag tilbud for ${allProjects[0].name}` : 'Sett opp tilbud på fastpris'
+            ]
+          });
+        }
+
+        let effectiveProjectId: string;
+        let effectiveProjectCode: string;
+        let effectiveProjectName: string;
+        let effectiveClientName: string;
+        let effectiveClientEmail: string = clientEmailFromText || '';
+
+        if (targetProject) {
+          effectiveProjectId = targetProject.id;
+          effectiveProjectCode = targetProject.projectCode || targetProject.id;
+          effectiveProjectName = targetProject.name;
+          effectiveClientName = detectedClient || targetProject.clientName || 'Privatkunde';
+          effectiveClientEmail = clientEmailFromText || targetProject.clientEmail || '';
+        } else {
+          // NY KUNDE / NYTT PROSJEKT
+          effectiveClientName = detectedClient || (lower.includes('ny kunde') ? 'Ny kunde' : 'Privatkunde');
+          effectiveProjectId = `lead-${Date.now().toString(36)}`;
+          effectiveProjectCode = `TILB-${Math.floor(1000 + Math.random() * 9000)}`;
+
+          let scopeTitle = 'Fagarbeid';
+          if (lower.includes('bad') || lower.includes('våtrom')) scopeTitle = 'Baderomsrenovering';
+          else if (lower.includes('tak')) scopeTitle = 'Taktekking og fornying';
+          else if (lower.includes('kledning') || lower.includes('fasade')) scopeTitle = 'Fasade & Kledning';
+          else if (lower.includes('tilbygg') || lower.includes('påbygg')) scopeTitle = 'Tilbygg og tømrerarbeid';
+          else if (lower.includes('elektro') || lower.includes('el')) scopeTitle = 'Elektroinstallasjon';
+          else if (lower.includes('rørlegger') || lower.includes('vvs')) scopeTitle = 'Rørleggerarbeid';
+
+          effectiveProjectName = `${scopeTitle}: ${effectiveClientName}`;
+        }
 
         const wantsAutoSend = 
           (lower.includes('send') || lower.includes('sende')) && (
@@ -1540,8 +1671,8 @@ Returner KUN et gyldig JSON-objekt:
             lower.includes('direkte')
           ) || lower.includes('sende på automatikk');
 
-        // 2. Generer detaljerte poster tilpasset prosjektets type
-        const pLower = (resolvedProjectName + ' ' + (targetProject?.description || '') + ' ' + text).toLowerCase();
+        // 2. Generer detaljerte poster tilpasset oppdraget
+        const pLower = (effectiveProjectName + ' ' + (targetProject?.description || '') + ' ' + text).toLowerCase();
 
         let items: OfferItem[] = [];
 
@@ -1577,7 +1708,6 @@ Returner KUN et gyldig JSON-objekt:
             { description: 'Rigg, drift, verktøy, stillas og avfallscontainer', quantity: 1, unit: 'stk', pricePerUnit: 24000, total: 24000 }
           ];
         } else {
-          // Standard Totalrenovering (tilpasset f.eks. "Totalrenovering Kongeveien 93A")
           items = [
             { description: 'Riving, avdekking og miljøsanering av eksisterende konstruksjon', quantity: 35, unit: 'timer', pricePerUnit: 890, total: 31150 },
             { description: 'Tømrerarbeid: Stenderverk, etterisolering, dampsperre og gipsplater', quantity: 75, unit: 'timer', pricePerUnit: 890, total: 66750 },
@@ -1606,13 +1736,13 @@ Returner KUN et gyldig JSON-objekt:
 
         const offerDoc = {
           id: offerId,
-          projectCode: targetProject?.projectCode || resolvedProjectId,
-          projectId: resolvedProjectId,
-          projectName: resolvedProjectName,
-          clientName,
-          clientEmail,
-          title: `Tilbud: ${resolvedProjectName}`,
-          description: `Totalentreprenørtilbud utarbeidet av MesterAI for ${resolvedProjectName}. Komplett spesifikasjon av fagarbeid, materialer, tekniske fag og rigg/drift.`,
+          projectCode: effectiveProjectCode,
+          projectId: effectiveProjectId,
+          projectName: effectiveProjectName,
+          clientName: effectiveClientName,
+          clientEmail: effectiveClientEmail,
+          title: `Tilbud: ${effectiveProjectName}`,
+          description: `Pristilbud utarbeidet av MesterAI for ${effectiveClientName}. Spesifikasjon av fagarbeid, materialer, tekniske fag og rigg/drift.`,
           items,
           amountExVat,
           vatAmount,
@@ -1635,12 +1765,12 @@ Returner KUN et gyldig JSON-objekt:
 
         // Automatisk utsendelse dersom bedt om og e-post finnes
         let isSent = false;
-        if (wantsAutoSend && clientEmail) {
+        if (wantsAutoSend && effectiveClientEmail) {
           try {
             await sendOfferByEmail({
               offer: offerDoc,
-              clientEmail,
-              clientName,
+              clientEmail: effectiveClientEmail,
+              clientName: effectiveClientName,
               companyName: (user as any)?.company || 'Mester Entreprenør AS',
               authorName: authorName || (user as any)?.displayName || 'Byggmester'
             });
@@ -1656,15 +1786,15 @@ Returner KUN et gyldig JSON-objekt:
         await saveCollectionItem('agent_activities', {
           type: 'offer_created',
           title: isSent 
-            ? `Tilbud opprettet og sendt til ${clientEmail} (kr ${totalAmount.toLocaleString('no-NO')})` 
+            ? `Tilbud opprettet og sendt til ${effectiveClientEmail} (kr ${totalAmount.toLocaleString('no-NO')})` 
             : `Tilbud opprettet: ${offerDoc.title} (kr ${totalAmount.toLocaleString('no-NO')})`,
-          description: `Autonom kalkyle fullført for ${resolvedProjectName}. ${items.length} poster spesifisert. Status: ${offerDoc.status}.`,
+          description: `Autonom kalkyle fullført for ${effectiveProjectName}. ${items.length} poster spesifisert. Status: ${offerDoc.status}.`,
           trade: trade || 'general',
           tradeName: authorName,
           status: 'verified',
           badge: isSent ? 'SENDT TIL KUNDE' : 'TILBUD OPPRETTET',
-          projectId: resolvedProjectId,
-          projectName: resolvedProjectName,
+          projectId: effectiveProjectId,
+          projectName: effectiveProjectName,
           createdAt: new Date().toISOString()
         });
 
@@ -1674,9 +1804,9 @@ Returner KUN et gyldig JSON-objekt:
         ).join('\n');
 
         const reply = 
-          `✅ **Ja, absolutt! Jeg har nå utarbeidet hele tilbudet for «${resolvedProjectName}» og lagret det i systemet.**\n\n` +
+          `✅ **Ja, absolutt! Jeg har nå utarbeidet hele tilbudet for «${effectiveProjectName}» og lagret det i systemet.**\n\n` +
           (isSent 
-            ? `🚀 **Tilbudet er også sendt direkte på e-post til ${clientEmail}!** Kunden har mottatt en formell e-post med alle spesifikasjoner og en digital signeringslenke.\n\n` 
+            ? `🚀 **Tilbudet er også sendt direkte på e-post til ${effectiveClientEmail}!** Kunden har mottatt en formell e-post med alle spesifikasjoner og en digital signeringslenke.\n\n` 
             : `📋 **Tilbudet er ferdig kalkulert og lagret i tilbudsmodulen (Status: Utkast / Klar for godkjenning).**\n\n`) +
           `### 📄 Tilbudsspesifikasjon & Kalkyle:\n` +
           `| Arbeidsomfang / Post | Mengde | Enhetspris | Sum eks. mva |\n` +
@@ -1692,8 +1822,8 @@ Returner KUN et gyldig JSON-objekt:
           `• **Gyldighet:** 30 dager fra tilbudsdato.\n` +
           `• **Digital godkjenningslenke:** [Åpne digitalt tilbud](https://vikingmester.no/?offerToken=${token})\n\n` +
           (!isSent 
-            ? (clientEmail 
-                ? `💡 *Kunden er registrert med e-post **${clientEmail}**. Klikk på «🚀 Send til ${clientEmail}» under for å sende tilbudet umiddelbart med digital signeringsknapp!*` 
+            ? (effectiveClientEmail 
+                ? `💡 *Kunden er registrert med e-post **${effectiveClientEmail}**. Klikk på «🚀 Send til ${effectiveClientEmail}» under for å sende tilbudet umiddelbart med digital signeringsknapp!*` 
                 : `💡 *For å sende tilbudet automatisk til kunden: Oppgi e-posten (f.eks: «Send tilbudet til kunde@epost.no») eller klikk på knappen under.*`) 
             : '');
 
@@ -1706,14 +1836,23 @@ Returner KUN et gyldig JSON-objekt:
             {
               id: 'send_offer_email',
               type: 'send_offer_email',
-              label: isSent ? '✉️ Send tilbudet på nytt' : (clientEmail ? `🚀 Send til ${clientEmail}` : '✉️ Send tilbud på e-post'),
+              label: isSent ? '✉️ Send tilbudet på nytt' : (effectiveClientEmail ? `🚀 Send til ${effectiveClientEmail}` : '✉️ Send tilbud på e-post'),
               data: {
                 offerId: offerDoc.id,
-                clientEmail,
-                clientName,
+                clientEmail: effectiveClientEmail,
+                clientName: effectiveClientName,
                 totalAmount,
-                projectName: resolvedProjectName,
+                projectName: effectiveProjectName,
                 offerData: offerDoc
+              }
+            },
+            {
+              id: 'copy_offer_link',
+              type: 'copy_link',
+              label: '🔗 Kopier digital signeringslenke',
+              data: {
+                url: `https://vikingmester.no/?offerToken=${token}`,
+                shareUrl: `https://vikingmester.no/?offerToken=${token}`
               }
             },
             {
@@ -1723,14 +1862,14 @@ Returner KUN et gyldig JSON-objekt:
               data: offerDoc
             },
             {
-              id: 'open_sja_modal',
-              type: 'open_sja_modal',
-              label: '🛡️ Opprett SJA for oppdraget',
-              data: { projectId: resolvedProjectId, title: `SJA: ${resolvedProjectName}` }
+              id: 'prepare_contract',
+              type: 'quick_prompt',
+              label: '📄 Klargjør NS 8406 Kontrakt',
+              prompt: `Generer NS 8406 kontrakt for tilbud ${offerDoc.title} til ${effectiveClientName}`
             }
           ],
           followUpPrompts: [
-            `Send tilbudet til ${clientEmail || 'kunde@epost.no'}`,
+            `Send tilbudet til ${effectiveClientEmail || 'kunde@epost.no'}`,
             'Juster timeprisen eller legg til rabatt',
             'Generer fremdriftsplan og milepæler'
           ]
@@ -2563,42 +2702,35 @@ Returner KUN et gyldig JSON-objekt:
       let detectedClient = '';
 
       try {
-        const systemInstruction = `Du er VikingMester AI – håndverkernes og mesterbedriftens autonome lederassistent, kalkulatør, faglige rådgiver og dedikerte samtalepartner.
-Du kan ABSOLUTT ALT innen norsk bygg og anlegg, og du veileder, regner, formulerer og sparrer med håndverkeren uansett hva slags case de står i:
+        const systemInstruction = `Du er VikingMester AI – håndverkernes og mesterbedriftens autonome lederassistent, kalkulatør, faglige rådgiver og dedikerte samtalepartner (tilsvarende en supersmart samtale-AI som Claude, ChatGPT eller Gemini, men dypt forankret i norsk bygg og anlegg).
+Du har full sanntidstilgang til HELE backend-systemet (alle prosjekter, avvik, endringsordrer, tilbud og oppgaver) og du kan finne ut av hva som helst.
 
 DINE KJERNEOMRÅDER & EKSPERTISE:
 1. Tilbud, Prissetting & Kalkyle:
-   - Veilede steg-for-steg i utforming av komplette, vinnende og lønnsomme tilbud.
-   - Beregne realistiske arbeidstimer per fag (tømrer ca 850–950 kr/t eks mva, rørlegger ca 980–1150 kr/t, elektriker ca 950–1100 kr/t, flislegger ca 880–980 kr/t, maler ca 800–900 kr/t).
+   - Veilede i utforming av komplette, vinnende og lønnsomme tilbud.
+   - Hvis brukeren ønsker et tilbud, men det mangler vesentlig informasjon (kunde, prosjektadresse, oppdragsart eller om det er ny kunde vs eksisterende prosjekt): Still nysgjerrige, konkrete og hjelpsomme oppfølgingsspørsmål for å kartlegge behovet!
+   - Beregne arbeidstimer per fag (tømrer ca 850–950 kr/t eks mva, rørlegger ca 980–1150 kr/t, elektriker ca 950–1100 kr/t, flislegger ca 880–980 kr/t, maler ca 800–900 kr/t).
    - Beregne materialforbruk og anbefale standard påslag (15–25%).
    - Spesifisere rigg/drift, avfallshåndtering/container og prosjektledelse.
    - Formulere avgjørende FORBEHOLD (skjulte feil/mangler, råte, uforutsett el/vvs iht. NS 8406 / NS 8405 / Bustadoppføringslova).
-   - Spesifisere summer eks. mva og inkl. 25% mva.
 2. Entrepriserett & Kontraktsstandarder:
    - NS 8405, NS 8406, NS 8407, Bustadoppføringslova og Håndverkertjenesteloven.
-   - Korrekt og rettidig varsling av endringer, fristforlengelse og tilleggsvederlag uten å tape rettigheter (unngå preklusjon).
+   - Rettidig varsling av endringer, fristforlengelse og tilleggsvederlag (unngå preklusjon).
 3. Tekniske Forskrifter & Fagkrav:
-   - TEK17 (alle kapitler, herunder § 13-15 for våtrom/sluk, § 14 for energi/U-verdier, § 11 for brann, § 12 for trapper/rekkverk).
-   - Våtromsnormen (BVN), SINTEF Byggforsk-detaljblader, NEK 400 (skjultanlegg).
+   - TEK17 (herunder § 13-15 for våtrom/sluk, § 14 for energi/U-verdier, § 11 brann, § 12 trapper/rekkverk).
+   - Våtromsnormen (BVN), SINTEF Byggforsk-detaljblader, NEK 400.
 4. HMS, SJA & Byggherreforskriften:
-   - Risikovurdering, barrierer, verneutstyr (EN-standarder) og sikkert arbeid i høyden/stillas.
-5. Praktisk utførelse & Problemløsning i felt:
-   - Løsninger for skjeve vegger/gulv, fuktsikring, lufting, isolering, lydkrav og materialvalg.
-6. Kundedialog & Korrespondanse:
-   - Formulere diplomatiske, profesjonelle e-poster, svare på klager, avvise urimelige krav ryddig.
+   - Risikovurdering, barrierer, verneutstyr og sikkert arbeid i høyden/stillas.
+5. Kunnskapsbase & Systeminnsikt:
+   - Du kjenner alle prosjekter, avvik, endringer og oppgaver i bedriften og svarer presist på statusspørsmål.
+6. Websøk & Ekstern Kunnskap:
+   - Du kan hente inn oppdaterte byggevarepriser, produsentdatablad og forskriftsendringer fra nettet.
 
 RETNINGSLINJER FOR SVARENE:
-- Svar ALLTID direkte, konkret og faglig på det håndverkeren spør om.
-- Du skal ALDRI stille unødige eller tilfeldige motspørsmål når håndverkeren spør deg om noe. Gi håndverkeren direkte svar, løsninger, faglige råd, tall og regelverk (TEK17, NS-standarder) umiddelbart!
-- Hvis brukeren etterspør tilbud eller kalkyle:
-  * Sett opp en konkret tilbudsstruktur med arbeidsomfang, time- og materialoverslag, nødvendige forbehold og prisestimat umiddelbart.
-  * Legg VED en strukturert JSON-blokk på slutten med estimerte kalkyleposter for tilbudet:
-\`\`\`kalkyle_json
-[
-  {"description": "Postbeskrivelse", "quantity": 1, "unit": "timer/stk/m2/lm", "pricePerUnit": 850}
-]
-\`\`\`
-- Hold språket på naturlig, faglig stødig norsk (bokmål).`;
+- Vær en naturlig, engasjert, profesjonell og lynrask samtalepartner på stødig norsk.
+- Hvis brukeren stiller faglige eller systemrelaterte spørsmål: gi direkte svar og konkrete tall/fakta umiddelbart.
+- Hvis brukeren ønsker å starte en handling (f.eks. tilbud for en ny kunde) der detaljer mangler: spørr og grav høflig etter det som trengs for å fullføre saken optimalt.
+- Hvis tilbudskalkyle etterspørres og detaljer er gitt, avslutt gjerne med en \`\`\`kalkyle_json\`\`\` blokk med poster.`;
 
         let contextPrompt = '';
         if (history && history.length > 0) {
@@ -2620,7 +2752,6 @@ RETNINGSLINJER FOR SVARENE:
 
         if (isOfferIntent || lower.includes('tilbud') || lower.includes('kalkyle')) {
           try {
-            const allDbOffers = await getCollectionItems('offers').catch(() => []);
             const matchedOffer = allDbOffers.find((o: any) => {
               const cName = (o.clientName || '').toLowerCase();
               const oTitle = (o.title || '').toLowerCase();
@@ -2646,9 +2777,33 @@ Du skal opptre som en høyt kvalifisert byggmester og kalkulatør og levere en k
 
         contextPrompt += existingOfferInfo;
 
+        // Inkluder hele bedriftens backend som kunnskapsbase
+        let backendKnowledgeSummary = `\n\nDITT SYSTEMOVERBLIKK I SANNTID (HELE BACKEND SOM KUNNSKAPSBASEN):\n`;
+        backendKnowledgeSummary += `• AKTIVE PROSJEKTER (${allProjects.length} stk):\n`;
+        allProjects.forEach((p: any) => {
+          backendKnowledgeSummary += `  - ID: ${p.id} | «${p.name}» | Oppdragsgiver: ${p.clientName || 'Ukjent'} | Adresse: ${p.location || 'Ikke oppgitt'} | Status: ${p.status || 'aktiv'}\n`;
+        });
+        backendKnowledgeSummary += `• REGISTRERTE TILBUD (${allDbOffers.length} stk):\n`;
+        allDbOffers.slice(0, 10).forEach((o: any) => {
+          backendKnowledgeSummary += `  - «${o.title}» | Kunde: ${o.clientName || 'Ukjent'} | Beløp: kr ${(o.totalAmount || o.total || 0).toLocaleString('no-NO')} | Status: ${o.status || 'draft'}\n`;
+        });
+        backendKnowledgeSummary += `• REGISTRERTE AVVIK (${allDbDeviations.length} stk):\n`;
+        allDbDeviations.filter((d: any) => d.status !== 'closed' && d.status !== 'resolved').slice(0, 8).forEach((d: any) => {
+          backendKnowledgeSummary += `  - [${d.severity || 'normal'}] «${d.title}» (Prosjekt: ${d.projectName || d.projectId}) | Status: ${d.status || 'open'}\n`;
+        });
+        backendKnowledgeSummary += `• ENDRINGSORDRER (${allDbChangeOrders.length} stk):\n`;
+        allDbChangeOrders.slice(0, 8).forEach((co: any) => {
+          backendKnowledgeSummary += `  - «${co.title}» | Beløp: kr ${(co.total || co.totalCost || 0).toLocaleString('no-NO')} | Status: ${co.status || 'pending'}\n`;
+        });
+        backendKnowledgeSummary += `• OPPGAVER (${allDbTasks.length} stk):\n`;
+        allDbTasks.slice(0, 8).forEach((t: any) => {
+          backendKnowledgeSummary += `  - «${t.title}» | Ansvarlig: ${t.assignedTo || 'Ufordelt'} | Status: ${t.status || 'todo'}\n`;
+        });
+
         const aiRes = await generateWithAiEngine({
-          prompt: contextPrompt,
+          prompt: contextPrompt + backendKnowledgeSummary,
           systemInstruction,
+          webSearch: wantsWebSearch,
           operation: isOfferIntent ? 'mester_ai_offer' : 'mester_ai_conversation',
           notes: `Conversational MesterAI assistance on project ${resolvedProjectName}`
         });
@@ -2675,6 +2830,10 @@ Du skal opptre som en høyt kvalifisert byggmester og kalkulatør og levere en k
           }
 
           replyText = rawText.replace(/```kalkyle_json[\s\S]*?```/g, '').trim();
+
+          if (wantsWebSearch && replyText && !replyText.includes('websøk') && !replyText.includes('kilder')) {
+            replyText += '\n\n🌐 *Kilder og oppdaterte opplysninger innhentet via live websøk.*';
+          }
         }
       } catch (err: any) {
         console.warn('[Dispatch] MesterAI conversation error:', err);

@@ -278,7 +278,8 @@ async function callGeminiBackup(
   systemInstruction?: string,
   images?: AiImageAttachment[],
   responseMimeType?: string,
-  responseSchema?: any
+  responseSchema?: any,
+  webSearch = false
 ): Promise<{ text: string; promptTokens: number; completionTokens: number; executedModel: string }> {
   const ai = new GoogleGenAI({ apiKey: geminiKey });
 
@@ -328,6 +329,9 @@ async function callGeminiBackup(
   if (systemInstruction) config.systemInstruction = systemInstruction;
   if (responseMimeType) config.responseMimeType = responseMimeType;
   if (responseSchema) config.responseSchema = responseSchema;
+  if (webSearch && !responseSchema) {
+    config.tools = [{ googleSearch: {} }];
+  }
 
   let lastError: any = null;
   for (const cand of uniqueModels) {
@@ -509,7 +513,8 @@ export async function generateWithAiEngine(options: GenerateAiOptions): Promise<
         options.systemInstruction,
         imagesToProcess,
         options.responseMimeType,
-        options.responseSchema
+        options.responseSchema,
+        options.webSearch || false
       );
 
       trackTokenCost({
