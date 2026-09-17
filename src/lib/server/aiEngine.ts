@@ -243,10 +243,34 @@ async function call1MinAi(
     ? (model.startsWith('gpt-') ? model : (process.env.ONE_MIN_AI_SEARCH_MODEL || 'gpt-4o-mini'))
     : model;
 
+  const now = new Date();
+  const dateStr = new Intl.DateTimeFormat('no-NO', {
+    weekday: 'long',
+    year: 'numeric',
+    month: 'long',
+    day: 'numeric',
+    timeZone: 'Europe/Oslo'
+  }).format(now);
+  const timeStr = new Intl.DateTimeFormat('no-NO', {
+    hour: '2-digit',
+    minute: '2-digit',
+    timeZone: 'Europe/Oslo'
+  }).format(now);
+  const currentYear = now.getFullYear();
+  const currentMonth = new Intl.DateTimeFormat('no-NO', { month: 'long', timeZone: 'Europe/Oslo' }).format(now);
+  const dateContext = `Dagens reelle dato er ${dateStr} (kl. ${timeStr}, ${currentYear}). Det er ${currentMonth} (${currentYear}, høst), IKKE 17. mai.`;
+
   let combinedPrompt = prompt;
 
-  if (systemInstruction) {
-    combinedPrompt = `[SYSTEM INSTRUKSJON]:\n${systemInstruction}\n\n[BRUKER HENVENDELSE]:\n${prompt}`;
+  if (webSearch) {
+    // VIKTIG FOR NETTSØK: Brukerens konkrete spørsmål og dagens sanntidsdato må ligge øverst i prompten,
+    // slik at 1min.ai sin søkemotor forstår eksakt hva den skal søke etter (f.eks. for i dag / september 2026).
+    // Systeminstruksjoner og føringer legges under for ikke å forurense søkemotoren.
+    combinedPrompt = `${prompt}\n\n[DATO & TID I SANNTID]: ${dateContext}\n\n[INSTRUKS FOR SVAR]: Svar utfyllende og dagsaktuelt for ${dateStr} på naturlig norsk, og referer gjerne til kildene fra nettsøket.${systemInstruction ? `\n\n[SYSTEMFØRINGER]:\n${systemInstruction}` : ''}`;
+  } else if (systemInstruction) {
+    combinedPrompt = `[SYSTEM INSTRUKSJON - DATO: ${dateContext}]:\n${systemInstruction}\n\n[BRUKER HENVENDELSE]:\n${prompt}`;
+  } else {
+    combinedPrompt = `[DATO: ${dateContext}]\n\n${prompt}`;
   }
 
   if (forceJson && !combinedPrompt.includes('Returner KUN et gyldig JSON-objekt') && !combinedPrompt.includes('JSON')) {
@@ -362,6 +386,23 @@ async function callGeminiBackup(
 ): Promise<{ text: string; promptTokens: number; completionTokens: number; executedModel: string }> {
   const ai = new GoogleGenAI({ apiKey: geminiKey });
 
+  const now = new Date();
+  const dateStr = new Intl.DateTimeFormat('no-NO', {
+    weekday: 'long',
+    year: 'numeric',
+    month: 'long',
+    day: 'numeric',
+    timeZone: 'Europe/Oslo'
+  }).format(now);
+  const timeStr = new Intl.DateTimeFormat('no-NO', {
+    hour: '2-digit',
+    minute: '2-digit',
+    timeZone: 'Europe/Oslo'
+  }).format(now);
+  const currentYear = now.getFullYear();
+  const currentMonth = new Intl.DateTimeFormat('no-NO', { month: 'long', timeZone: 'Europe/Oslo' }).format(now);
+  const dateContext = `Dagens reelle dato er ${dateStr} (kl. ${timeStr}, ${currentYear}). Måneden er ${currentMonth} (${currentYear}, høst), IKKE mai eller 17. mai.`;
+
   // Kun gyldige Gemini-modeller (unngå at 'claude-*' eller andre modellnavn forårsaker feil)
   const candidateModels = [
     model.startsWith('gemini') ? model : null,
@@ -374,11 +415,16 @@ async function callGeminiBackup(
 
   const uniqueModels = Array.from(new Set(candidateModels));
 
-  let finalContents: any = prompt;
+  let effectivePrompt = prompt;
+  if (webSearch && !effectivePrompt.includes(dateStr)) {
+    effectivePrompt = `${prompt}\n\n[DATO & TID I SANNTID]: ${dateContext}`;
+  }
+
+  let finalContents: any = effectivePrompt;
 
   if (images && images.length > 0) {
     const parts: any[] = [];
-    if (prompt) parts.push({ text: prompt });
+    if (effectivePrompt) parts.push({ text: effectivePrompt });
 
     for (const img of images) {
       if (img.inlineData) {
@@ -406,7 +452,11 @@ async function callGeminiBackup(
   }
 
   const config: any = {};
-  if (systemInstruction) config.systemInstruction = systemInstruction;
+  const fullSystemInstruction = systemInstruction
+    ? `${systemInstruction}\n\n[DATO & TID I SANNTID]: ${dateContext}`
+    : `[DATO & TID I SANNTID]: ${dateContext}`;
+
+  config.systemInstruction = fullSystemInstruction;
   if (responseMimeType) config.responseMimeType = responseMimeType;
   if (responseSchema) config.responseSchema = responseSchema;
   if (webSearch && !responseSchema) {

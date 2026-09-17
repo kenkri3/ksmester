@@ -756,7 +756,15 @@ Returner KUN et gyldig JSON-objekt:
         lower.includes('sintef') ||
         lower.includes('byggevare') ||
         lower.includes('glava') ||
-        lower.includes('rockwool');
+        lower.includes('rockwool') ||
+        lower.includes('hva skjer') ||
+        lower.includes('arrangement') ||
+        lower.includes('konsert') ||
+        lower.includes('været') ||
+        lower.includes('værmelding') ||
+        lower.includes('åpningstid') ||
+        lower.includes('siste nytt') ||
+        lower.includes('nyheter');
 
       let targetProject: any = null;
 
@@ -2760,8 +2768,31 @@ Returner KUN et gyldig JSON-objekt:
       let detectedClient = '';
 
       try {
+        const now = new Date();
+        const formattedDate = new Intl.DateTimeFormat('no-NO', {
+          weekday: 'long',
+          year: 'numeric',
+          month: 'long',
+          day: 'numeric',
+          timeZone: 'Europe/Oslo'
+        }).format(now);
+        const formattedTime = new Intl.DateTimeFormat('no-NO', {
+          hour: '2-digit',
+          minute: '2-digit',
+          timeZone: 'Europe/Oslo'
+        }).format(now);
+        const isoDate = now.toISOString().split('T')[0];
+        const currentYear = now.getFullYear();
+        const currentMonthName = new Intl.DateTimeFormat('no-NO', { month: 'long', timeZone: 'Europe/Oslo' }).format(now);
+
         const systemInstruction = `Du er VikingMester AI – håndverkernes og mesterbedriftens autonome lederassistent, kalkulatør, faglige rådgiver og dedikerte samtalepartner (tilsvarende en supersmart samtale-AI som Claude, ChatGPT eller Gemini, men dypt forankret i norsk bygg og anlegg).
 Du har full sanntidstilgang til HELE backend-systemet (alle prosjekter, avvik, endringsordrer, tilbud og oppgaver) og du kan finne ut av hva som helst.
+
+📅 SANNTIDSKONTEKST (DATO & TID NÅ):
+- Nåværende dato og tid: ${formattedDate} kl. ${formattedTime} (norsk tid, Europe/Oslo).
+- ISO-dato: ${isoDate} | År: ${currentYear} | Måned: ${currentMonthName}.
+- VIKTIG TIDSFORANKRING: Året er ${currentYear}, og måneden er ${currentMonthName} (høst). Det er IKKE vår/mai, og overhodet IKKE 17. mai.
+- Alle spørsmål om «i dag», «i kveld», «i helgen», arrangementer, vær, nyheter eller dagsaktuelle forhold SKAL forankres i nøyaktig denne datoen (${formattedDate}).
 
 DINE KJERNEOMRÅDER & EKSPERTISE:
 1. Tilbud, Prissetting & Kalkyle:
@@ -2786,12 +2817,12 @@ DINE KJERNEOMRÅDER & EKSPERTISE:
 
 RETNINGSLINJER FOR SVARENE:
 - Vær en naturlig, flytende, engasjert og profesjonell samtalepartner på stødig norsk (akkurat som å prate med ChatGPT Plus, Claude 3.5 Sonnet eller Gemini Advanced).
-- Hvis brukeren stiller generelle spørsmål, bransjespørsmål eller spørsmål med nettsøk aktivert: Svar utfyllende, oppdatert og naturlig. IKKE tving samtalen inn på et tilfeldig prosjekt som Kongeveien 93A med mindre brukeren eksplisitt har valgt eller spurt om dette prosjektet!
+- Hvis brukeren stiller generelle spørsmål, dagsaktuelle spørsmål, stedsspørsmål (f.eks. hva som skjer i en by) eller spørsmål med nettsøk aktivert: Svar utfyllende, dagsaktuelt for ${formattedDate}, og naturlig. IKKE tving samtalen inn på et tilfeldig prosjekt som Kongeveien 93A med mindre brukeren eksplisitt har valgt eller spurt om dette prosjektet!
 - Hvis brukeren stiller faglige eller systemrelaterte spørsmål: gi direkte svar og konkrete tall/fakta umiddelbart.
 - Hvis brukeren ønsker å starte en handling (f.eks. tilbud for en ny kunde) der detaljer mangler: still nysgjerrige, høflige spørsmål for å kartlegge behovet før tilbudet utformes.
 - Hvis tilbudskalkyle etterspørres og detaljer er gitt, avslutt gjerne med en \`\`\`kalkyle_json\`\`\` blokk med poster.`;
 
-        let contextPrompt = '';
+        let contextPrompt = `DAGENS DATO & TID I SANNTID: ${formattedDate} kl. ${formattedTime} (${currentMonthName} ${currentYear}).\n\n`;
         if (history && history.length > 0) {
           contextPrompt += `TIDLIGERE SAMTALEHISTORIKK:\n`;
           for (const msg of history.slice(-6)) {
@@ -2805,7 +2836,7 @@ RETNINGSLINJER FOR SVARENE:
         if (targetProject) {
           contextPrompt += `PROSJEKTKONTEKST (SPESIFIKT VALGT ELLER NEVNT PROSJEKT):\nProsjekt: "${targetProject.name}" (ID: ${targetProject.id})\nOppdragsgiver: "${targetProject.clientName || 'Privat/Næringskunde'}"\nAdresse: "${targetProject.location || 'Ikke oppgitt'}"\nOppdragsfag: "${trade || 'Byggmester / Håndverker'}"\n`;
         } else {
-          contextPrompt += `KONTEKST: Generell faglig henvendelse, bransjedialog eller oppstart av ny sak. Henvendelsen er IKKE låst til et spesifikt prosjekt. Svar naturlig, generelt og innsiktsfullt som en ekspert på norsk byggenæring.\n`;
+          contextPrompt += `KONTEKST: Generell faglig henvendelse, bransjedialog eller dagsaktuelt spørsmål. Henvendelsen er IKKE låst til et spesifikt prosjekt. Svar naturlig, oppdatert og innsiktsfullt som en ekspert på norsk byggenæring og samfunn.\n`;
         }
 
         let existingOfferInfo = '';
@@ -2842,28 +2873,34 @@ Du skal opptre som en høyt kvalifisert byggmester og kalkulatør og levere en k
 
         contextPrompt += existingOfferInfo;
 
-        // Inkluder hele bedriftens backend som kunnskapsbase
-        let backendKnowledgeSummary = `\n\nDITT SYSTEMOVERBLIKK I SANNTID (HELE BACKEND SOM KUNNSKAPSBASEN):\n`;
-        backendKnowledgeSummary += `• AKTIVE PROSJEKTER (${allProjects.length} stk):\n`;
-        allProjects.forEach((p: any) => {
-          backendKnowledgeSummary += `  - ID: ${p.id} | «${p.name}» | Oppdragsgiver: ${p.clientName || 'Ukjent'} | Adresse: ${p.location || 'Ikke oppgitt'} | Status: ${p.status || 'aktiv'}\n`;
-        });
-        backendKnowledgeSummary += `• REGISTRERTE TILBUD (${allDbOffers.length} stk):\n`;
-        allDbOffers.slice(0, 10).forEach((o: any) => {
-          backendKnowledgeSummary += `  - «${o.title}» | Kunde: ${o.clientName || 'Ukjent'} | Beløp: kr ${(o.totalAmount || o.total || 0).toLocaleString('no-NO')} | Status: ${o.status || 'draft'}\n`;
-        });
-        backendKnowledgeSummary += `• REGISTRERTE AVVIK (${allDbDeviations.length} stk):\n`;
-        allDbDeviations.filter((d: any) => d.status !== 'closed' && d.status !== 'resolved').slice(0, 8).forEach((d: any) => {
-          backendKnowledgeSummary += `  - [${d.severity || 'normal'}] «${d.title}» (Prosjekt: ${d.projectName || d.projectId}) | Status: ${d.status || 'open'}\n`;
-        });
-        backendKnowledgeSummary += `• ENDRINGSORDRER (${allDbChangeOrders.length} stk):\n`;
-        allDbChangeOrders.slice(0, 8).forEach((co: any) => {
-          backendKnowledgeSummary += `  - «${co.title}» | Beløp: kr ${(co.total || co.totalCost || 0).toLocaleString('no-NO')} | Status: ${co.status || 'pending'}\n`;
-        });
-        backendKnowledgeSummary += `• OPPGAVER (${allDbTasks.length} stk):\n`;
-        allDbTasks.slice(0, 8).forEach((t: any) => {
-          backendKnowledgeSummary += `  - «${t.title}» | Ansvarlig: ${t.assignedTo || 'Ufordelt'} | Status: ${t.status || 'todo'}\n`;
-        });
+        // Inkluder hele bedriftens backend som kunnskapsbase kun når det er prosjekt-/internt relatert.
+        // Ved generelle henvendelser og nettsøk unngås å forurense søkekonteksten med irrelevante prosjekter/avvik.
+        let backendKnowledgeSummary = '';
+        if (!isGeneralOrWebQuery || targetProject || isProjectScopedIntent) {
+          backendKnowledgeSummary = `\n\nDITT SYSTEMOVERBLIKK I SANNTID (HELE BACKEND SOM KUNNSKAPSBASEN):\n`;
+          backendKnowledgeSummary += `• AKTIVE PROSJEKTER (${allProjects.length} stk):\n`;
+          allProjects.forEach((p: any) => {
+            backendKnowledgeSummary += `  - ID: ${p.id} | «${p.name}» | Oppdragsgiver: ${p.clientName || 'Ukjent'} | Adresse: ${p.location || 'Ikke oppgitt'} | Status: ${p.status || 'aktiv'}\n`;
+          });
+          backendKnowledgeSummary += `• REGISTRERTE TILBUD (${allDbOffers.length} stk):\n`;
+          allDbOffers.slice(0, 10).forEach((o: any) => {
+            backendKnowledgeSummary += `  - «${o.title}» | Kunde: ${o.clientName || 'Ukjent'} | Beløp: kr ${(o.totalAmount || o.total || 0).toLocaleString('no-NO')} | Status: ${o.status || 'draft'}\n`;
+          });
+          backendKnowledgeSummary += `• REGISTRERTE AVVIK (${allDbDeviations.length} stk):\n`;
+          allDbDeviations.filter((d: any) => d.status !== 'closed' && d.status !== 'resolved').slice(0, 8).forEach((d: any) => {
+            backendKnowledgeSummary += `  - [${d.severity || 'normal'}] «${d.title}» (Prosjekt: ${d.projectName || d.projectId}) | Status: ${d.status || 'open'}\n`;
+          });
+          backendKnowledgeSummary += `• ENDRINGSORDRER (${allDbChangeOrders.length} stk):\n`;
+          allDbChangeOrders.slice(0, 8).forEach((co: any) => {
+            backendKnowledgeSummary += `  - «${co.title}» | Beløp: kr ${(co.total || co.totalCost || 0).toLocaleString('no-NO')} | Status: ${co.status || 'pending'}\n`;
+          });
+          backendKnowledgeSummary += `• OPPGAVER (${allDbTasks.length} stk):\n`;
+          allDbTasks.slice(0, 8).forEach((t: any) => {
+            backendKnowledgeSummary += `  - «${t.title}» | Ansvarlig: ${t.assignedTo || 'Ufordelt'} | Status: ${t.status || 'todo'}\n`;
+          });
+        } else {
+          backendKnowledgeSummary = `\n(Systeminfo: Bedriften har ${allProjects.length} aktive prosjekter i systemet. Dette er et generelt spørsmål eller eksternt nettsøk, så detaljerte lister utelates for optimalt fokus.)\n`;
+        }
 
         const aiRes = await generateWithAiEngine({
           prompt: contextPrompt + backendKnowledgeSummary,
