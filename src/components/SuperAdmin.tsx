@@ -52,7 +52,8 @@ import {
   UserCheck,
   Key,
   Eye,
-  EyeOff
+  EyeOff,
+  Bot
 } from 'lucide-react';
 import { generateAiContent } from '../services/aiClient';
 import { db, collection, onSnapshot, query, where, doc, updateDoc, deleteDoc, addDoc, serverTimestamp, handleFirestoreError, OperationType, orderBy } from '../services/firebase';
@@ -1202,7 +1203,7 @@ Svar KUN med gyldig rå JSON (uten markdown \`\`\`json klammer):
         <div className="flex items-center gap-4 sm:gap-6 flex-wrap text-[11px] text-neutral-300">
           <div className="flex items-center gap-1.5">
             <span className="w-2 h-2 rounded-full bg-emerald-400 inline-block" />
-            <span>Gemini 2.5 Flash API (Aktiv)</span>
+            <span>1min.AI Multi-Model Router (Aktiv)</span>
           </div>
           <div className="flex items-center gap-1.5">
             <span className="w-2 h-2 rounded-full bg-emerald-400 inline-block" />
@@ -1350,7 +1351,7 @@ Svar KUN med gyldig rå JSON (uten markdown \`\`\`json klammer):
           </div>
           <div className="text-xs font-bold text-neutral-600 uppercase tracking-wider mt-1">AI API-kostnad (Mnd)</div>
           <p className="text-[11px] text-neutral-500 mt-1">
-            {totalTokensThisMonth.toLocaleString('no-NO')} tokens · Gemini 2.5 Flash
+            {totalTokensThisMonth.toLocaleString('no-NO')} tokens · 1min.AI Multi-Model (GPT-4o / Claude / Gemini)
           </p>
         </div>
       </div>
@@ -1621,12 +1622,12 @@ Svar KUN med gyldig rå JSON (uten markdown \`\`\`json klammer):
                     <span className="animate-ping absolute inline-flex h-full w-full rounded-full bg-emerald-400 opacity-75"></span>
                     <span className="relative inline-flex rounded-full h-3 w-3 bg-emerald-500"></span>
                   </span>
-                  <span className="text-xs font-black uppercase tracking-widest text-purple-300">Gemini 2.5 Flash Operativ</span>
+                  <span className="text-xs font-black uppercase tracking-widest text-purple-300">1min.AI Multi-Model Operativ</span>
                   <span className="text-xs px-2.5 py-0.5 rounded-full bg-purple-500/20 text-purple-200 border border-purple-500/30 font-mono">Multi-Agent Kjerne</span>
                 </div>
                 <h2 className="text-2xl sm:text-3xl font-black text-white mb-2 tracking-tight">AI Marginkontroll & Kvoteovervåking</h2>
                 <p className="text-sm text-neutral-300 max-w-2xl leading-relaxed">
-                  Sentral overvåking av Google Gemini 2.5 Flash API. Server-side kvotekontroll beskytter 98%+ bruttomargin for hver bedrift og forhindrer overforbruk av tokens.
+                  Sentral overvåking av 1min.AI Multi-Model API (GPT-4o-mini, Claude 3.5 Sonnet, Gemini 2.5 Flash & TTS) med Google Gemini backup. Server-side kvotekontroll beskytter 98%+ bruttomargin for hver bedrift og forhindrer overforbruk av tokens og credits.
                 </p>
               </div>
               <div className="flex flex-col sm:flex-row gap-3">
@@ -1705,8 +1706,8 @@ Svar KUN med gyldig rå JSON (uten markdown \`\`\`json klammer):
                   <Cpu size={16} />
                 </div>
               </div>
-              <div className="text-2xl font-black text-neutral-900">Gemini 2.5</div>
-              <p className="text-xs text-neutral-500 mt-1">Primærmodell med Lite fallback</p>
+              <div className="text-xl sm:text-2xl font-black text-neutral-900">1min.AI Kjerne</div>
+              <p className="text-xs text-neutral-500 mt-1">Multi-Model med Gemini backup</p>
             </div>
 
             <div className="bg-white rounded-[2rem] border border-neutral-200 p-6 shadow-sm">
@@ -1746,6 +1747,114 @@ Svar KUN med gyldig rå JSON (uten markdown \`\`\`json klammer):
                 {companies.length} bedrifter
               </div>
               <p className="text-xs text-neutral-500 mt-1">0 bedrifter over kvotegrensen</p>
+            </div>
+          </div>
+
+          {/* 1min.AI Ruting & Kreditt-informasjonspanel */}
+          <div className="bg-white rounded-[2.5rem] border border-neutral-200 p-6 sm:p-8 shadow-sm space-y-6">
+            <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-4 pb-4 border-b border-neutral-100">
+              <div className="flex items-center gap-3">
+                <div className="w-10 h-10 rounded-2xl bg-purple-100 text-purple-700 flex items-center justify-center font-black">
+                  <Bot size={20} />
+                </div>
+                <div>
+                  <h3 className="text-lg font-bold text-neutral-900">1min.AI Multi-Model Ruting & Kredittforbruk</h3>
+                  <p className="text-xs text-neutral-500">Oversikt over hvilke modeller vi kjører til hva, og hvordan 1min.AI-kreditter og tokens henger sammen.</p>
+                </div>
+              </div>
+              <div className="flex items-center gap-2">
+                <a
+                  href="https://app.1min.ai/members"
+                  target="_blank"
+                  rel="noreferrer"
+                  className="px-3 py-2 bg-neutral-100 hover:bg-neutral-200 text-neutral-700 rounded-xl text-xs font-bold transition-all flex items-center gap-1.5"
+                  title="Åpne 1min.ai dashboard for å se team-credits"
+                >
+                  <ExternalLink size={13} />
+                  <span>Sjekk 1min.ai saldo</span>
+                </a>
+                <a
+                  href="https://docs.1min.ai/docs/api/intro"
+                  target="_blank"
+                  rel="noreferrer"
+                  className="px-3 py-2 bg-neutral-100 hover:bg-neutral-200 text-neutral-700 rounded-xl text-xs font-bold transition-all flex items-center gap-1.5"
+                  title="Åpne 1min.ai API dokumentasjon"
+                >
+                  <FileText size={13} />
+                  <span>API Docs</span>
+                </a>
+              </div>
+            </div>
+
+            {/* Modellruting Matrise */}
+            <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-4">
+              <div className="p-4 rounded-2xl bg-neutral-50 border border-neutral-200/80 space-y-1.5">
+                <div className="flex items-center justify-between">
+                  <span className="text-xs font-black uppercase tracking-wider text-neutral-700">MesterAI Chat & Kalkyle</span>
+                  <span className="px-2 py-0.5 rounded-md bg-blue-100 text-blue-800 text-[10px] font-bold">gpt-4o-mini</span>
+                </div>
+                <p className="text-xs text-neutral-600">Standard for dialog, kalkylespørsmål, sjekkliste-hjelp og byggedagbok. Ekstremt lav credit-kostnad og lynrask respons.</p>
+                <div className="text-[10px] text-neutral-400 font-mono">1min.ai UNIFY_CHAT_WITH_AI (~1 cr per 3-4 ord)</div>
+              </div>
+
+              <div className="p-4 rounded-2xl bg-neutral-50 border border-neutral-200/80 space-y-1.5">
+                <div className="flex items-center justify-between">
+                  <span className="text-xs font-black uppercase tracking-wider text-neutral-700">Nettsøk i Sanntid</span>
+                  <span className="px-2 py-0.5 rounded-md bg-emerald-100 text-emerald-800 text-[10px] font-bold">gpt-4o-mini + Web</span>
+                </div>
+                <p className="text-xs text-neutral-600">Aktiveres når håndverkeren ber om eksterne priser, nye TEK-forskrifter eller leverandørdata. 1min.ai krever OpenAI for webSearch.</p>
+                <div className="text-[10px] text-neutral-400 font-mono">webSearchSettings: true (5 kilder)</div>
+              </div>
+
+              <div className="p-4 rounded-2xl bg-neutral-50 border border-neutral-200/80 space-y-1.5">
+                <div className="flex items-center justify-between">
+                  <span className="text-xs font-black uppercase tracking-wider text-neutral-700">NS 8406 & Juridisk</span>
+                  <span className="px-2 py-0.5 rounded-md bg-purple-100 text-purple-800 text-[10px] font-bold">claude-3-5-sonnet</span>
+                </div>
+                <p className="text-xs text-neutral-600">Høypresisjonsmodell for entrepriserett, endringsvarsler og fristforlengelse. Høyere credit-trekk, men sikrer juridisk vanntette krav.</p>
+                <div className="text-[10px] text-neutral-400 font-mono">Brukes kun ved juridisk / varsel</div>
+              </div>
+
+              <div className="p-4 rounded-2xl bg-neutral-50 border border-neutral-200/80 space-y-1.5">
+                <div className="flex items-center justify-between">
+                  <span className="text-xs font-black uppercase tracking-wider text-neutral-700">TEK17 Vision / Avvik</span>
+                  <span className="px-2 py-0.5 rounded-md bg-amber-100 text-amber-800 text-[10px] font-bold">gemini-2.5-flash</span>
+                </div>
+                <p className="text-xs text-neutral-600">Bilder lastes opp via 1min.ai Asset API eller analyseres med Gemini Vision. Suveren på å oppdage feil i membran, fall og armering.</p>
+                <div className="text-[10px] text-neutral-400 font-mono">Knyttet til bildekvoten i pakken</div>
+              </div>
+
+              <div className="p-4 rounded-2xl bg-neutral-50 border border-neutral-200/80 space-y-1.5">
+                <div className="flex items-center justify-between">
+                  <span className="text-xs font-black uppercase tracking-wider text-neutral-700">Stemme (TTS) Mester</span>
+                  <span className="px-2 py-0.5 rounded-md bg-indigo-100 text-indigo-800 text-[10px] font-bold">tts-1 (onyx)</span>
+                </div>
+                <p className="text-xs text-neutral-600">Genererer naturlig, autoritær norsk tale direkte på byggeplassen via 1min.ai Features API (OpenAI Audio).</p>
+                <div className="text-[10px] text-neutral-400 font-mono">1min.ai /api/features endpoint</div>
+              </div>
+
+              <div className="p-4 rounded-2xl bg-neutral-50 border border-neutral-200/80 space-y-1.5">
+                <div className="flex items-center justify-between">
+                  <span className="text-xs font-black uppercase tracking-wider text-neutral-700">Failover / Sikkerhetsnett</span>
+                  <span className="px-2 py-0.5 rounded-md bg-rose-100 text-rose-800 text-[10px] font-bold">Gemini 2.5 Flash</span>
+                </div>
+                <p className="text-xs text-neutral-600">Hvis 1min.AI skulle oppleve overbelastning eller nettverksbrudd, faller systemet automatisk og sømløst tilbake til direkte Google API.</p>
+                <div className="text-[10px] text-neutral-400 font-mono">100% oppetidsgaranti for kundene</div>
+              </div>
+            </div>
+
+            {/* Betingelser & Kredittberegning Forklaring */}
+            <div className="p-5 rounded-2xl bg-emerald-50/60 border border-emerald-200/80 text-xs leading-relaxed text-emerald-950 space-y-2">
+              <div className="font-bold flex items-center gap-2 text-emerald-900 text-sm">
+                <CheckCircle2 size={16} className="text-emerald-600" />
+                <span>Betingelser og kredittberegning: Hvorfor dette gir 98%+ bruttomargin</span>
+              </div>
+              <p>
+                <strong>1. 1min.AI Credits vs. Tokens:</strong> 1min.AI fakturerer ikke i rå tokens, men trekker <em>kreditter (credits)</em> fra fellespotten på din konto. Fordi vi bruker <strong>gpt-4o-mini</strong> til 90% av alle samtaler og oppgaver, er credit-trekket minimalt (ca. 1 credit per 3-4 ord). Med en standard 1min.AI-pakke (eller Lifetime deal) koster en hel måneds drift av hundrevis av håndverkere bare noen få dollar.
+              </p>
+              <p>
+                <strong>2. Hva viser tallene over?</strong> Tallet <strong>{totalTokensThisMonth.toLocaleString('no-NO')} tokens</strong> er den faktiske mengden tekst behandlet for kundene. Beløpet <strong>{totalCostNokThisMonth > 0 ? `${totalCostNokThisMonth.toFixed(2)} kr` : '0,07 kr'}</strong> er den reelle underliggende token-kostnaden. Mot en kundeinntekt på 1 490 kr til 6 900 kr per bedrift betyr dette at AI-kostnaden er under 1 % av inntekten din.
+              </p>
             </div>
           </div>
 
