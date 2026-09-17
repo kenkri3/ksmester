@@ -823,33 +823,100 @@ Returner KUN et gyldig JSON-objekt:
         }
       }
 
+      // Definer felles sjekk for rent faglige/informative spørsmål vs. faktiske handlingskommandoer
+      const hasActionVerb = 
+        lower.includes('opprett') ||
+        lower.includes('opprette') ||
+        lower.includes('lag ') ||
+        lower.includes('lag et') ||
+        lower.includes('lag en') ||
+        lower.includes('lage ') ||
+        lower.includes('registrer') ||
+        lower.includes('registrere') ||
+        lower.includes('generer') ||
+        lower.includes('generere') ||
+        lower.includes('send ') ||
+        lower.includes('sende ') ||
+        lower.includes('før ') ||
+        lower.includes('føre ');
+
+      const isInformationalQuery =
+        lower.startsWith('hvordan') ||
+        lower.startsWith('hva er') ||
+        lower.startsWith('hva sier') ||
+        lower.startsWith('hva kreves') ||
+        lower.startsWith('hvorfor') ||
+        lower.startsWith('hvilke') ||
+        lower.startsWith('hvilket') ||
+        lower.startsWith('når må') ||
+        lower.startsWith('når skal') ||
+        lower.startsWith('kan du forklare') ||
+        lower.startsWith('forklar') ||
+        lower.startsWith('fortell om') ||
+        lower.includes('hva er reglene for') ||
+        lower.includes('hva gjelder for') ||
+        lower.includes('hva betyr') ||
+        lower.includes('hvilke krav') ||
+        lower.includes('hvordan varsler jeg') ||
+        (lower.endsWith('?') && !hasActionVerb);
+
       // 3. Hvis bruker ber om en prosjektspesifikk handling (endring, sja, lukking, avvik)
       const isProjectScopedIntent = 
-        lower.includes('endring') || 
-        lower.includes('tillegg') || 
-        lower.includes('ekstra') || 
-        lower.includes('avvik') || 
-        lower.includes('sja') ||
-        lower.includes('lukke');
+        !isInformationalQuery && (
+          lower.includes('endringsordre') || 
+          (lower.includes('endring') && (hasActionVerb || lower.includes('ordre') || lower.includes('melding'))) ||
+          (lower.includes('tillegg') && (hasActionVerb || lower.includes('arbeid') || lower.includes('avtale'))) ||
+          lower.includes('avvik') || 
+          lower.includes('sja') ||
+          lower.includes('sikker jobb') ||
+          lower.includes('lukkesperre') ||
+          lower.includes('lukke vegg')
+        );
+
+      let isSoleProjectUsed = false;
 
       if (isProjectScopedIntent && !targetProject) {
         if (allProjects.length > 1) {
           // Systemet har flere prosjekter og vet ikke hvilket det gjelder -> Spør brukeren!
           const projectListText = allProjects
-            .slice(0, 5)
-            .map((p: any) => `• ${p.name} (${p.location || 'Byggeplass'})`)
+            .slice(0, 6)
+            .map((p: any) => `- **${p.name}** (${p.location || 'Byggeplass'})`)
             .join('\n');
 
           const exampleNames = allProjects.slice(0, 2).map((p: any) => `«${p.name}»`).join(' eller ');
           return NextResponse.json({
             success: true,
             action: 'need_project_clarification',
-            reply: `Hvilket prosjekt gjelder dette? Du har flere aktive prosjekter i systemet:\n\n${projectListText}\n\nVennligst oppgi hvilket prosjekt endringen eller oppgaven tilhører${exampleNames ? ` (f.eks: ${exampleNames})` : ''}, så kobler jeg alt sammen direkte.`,
-            availableProjects: allProjects.map((p: any) => ({ id: p.id, name: p.name, location: p.location }))
+            reply: `Hvilket oppdrag gjelder dette? Du har flere aktive prosjekter i systemet:\n\n${projectListText}\n\nKlikk på ønsket oppdrag under, eller oppgi navnet${exampleNames ? ` (f.eks: ${exampleNames})` : ''}, så kobler jeg alt sammen direkte:`,
+            availableProjects: allProjects.map((p: any) => ({ id: p.id, name: p.name, location: p.location })),
+            suggestedActions: [
+              ...allProjects.slice(0, 6).map((p: any) => ({
+                id: `select_proj_${p.id}`,
+                type: 'select_project_for_intent',
+                label: `🏗️ ${p.name}`,
+                data: {
+                  projectId: p.id,
+                  projectName: p.name,
+                  originalText: text
+                }
+              })),
+              {
+                id: 'select_proj_general',
+                type: 'select_project_for_intent',
+                label: '🌐 Generell (uten spesifikt oppdrag)',
+                data: {
+                  projectId: 'generell',
+                  projectName: 'Generelt / Uten oppdrag',
+                  originalText: text
+                }
+              }
+            ],
+            followUpPrompts: allProjects.slice(0, 4).map((p: any) => `Gjelder ${p.name}`)
           });
         } else if (allProjects.length === 1) {
-          // Kun ett prosjekt finnes -> Bruk dette automatisk
+          // Kun ett prosjekt finnes -> Bruk dette automatisk og merk at det er eneste prosjekt
           targetProject = allProjects[0];
+          isSoleProjectUsed = true;
         }
       }
 
@@ -873,53 +940,61 @@ Returner KUN et gyldig JSON-objekt:
 
       // 🎯 HÅNDTERING AV HENVENDELSER & SAMTALEPARTNER (MesterAI)
       const isOfferIntent = 
-        lower.includes('tilbud') || 
-        lower.includes('kalkyle') || 
-        lower.includes('kalkylere') || 
-        lower.includes('anbud') || 
-        lower.includes('overslag') || 
-        lower.includes('gi pris') || 
-        lower.includes('prisestimat') || 
-        lower.includes('hva koster') || 
-        lower.includes('skrive tilbud') ||
-        (lower.includes('pris') && (lower.includes('kunde') || lower.includes('arbeid') || lower.includes('m2') || lower.includes('bad') || lower.includes('stue') || lower.includes('tak') || lower.includes('kledning')));
+        !isInformationalQuery && (
+          lower.includes('tilbud') || 
+          lower.includes('kalkyle') || 
+          lower.includes('kalkylere') || 
+          lower.includes('anbud') || 
+          lower.includes('overslag') || 
+          lower.includes('gi pris') || 
+          lower.includes('prisestimat') || 
+          lower.includes('hva koster') || 
+          lower.includes('skrive tilbud') ||
+          (lower.includes('pris') && (lower.includes('kunde') || lower.includes('arbeid') || lower.includes('m2') || lower.includes('bad') || lower.includes('stue') || lower.includes('tak') || lower.includes('kledning')))
+        );
 
       // INTENT DEFINITIONS & MULTI-INTENT SUPPORT
       const isDeviationIntent = 
-        lower.includes('avvik') || 
-        lower.includes('mangel') || 
-        lower.includes('feil på') || 
-        lower.includes('uoverensstemmelse') || 
-        lower.includes('ikke forskriftsmessig') || 
-        lower.includes('bryter med') || 
-        lower.includes('ruh') || 
-        lower.includes('avviksmelding');
+        !isInformationalQuery && (
+          lower.includes('avvik') || 
+          lower.includes('mangel') || 
+          lower.includes('feil på') || 
+          lower.includes('uoverensstemmelse') || 
+          lower.includes('ikke forskriftsmessig') || 
+          lower.includes('bryter med') || 
+          lower.includes('ruh') || 
+          lower.includes('avviksmelding')
+        );
 
       const isBuildingAppIntent = 
-        lower.includes('byggesøknad') || 
-        lower.includes('byggesak') || 
-        lower.includes('søknad om tillatelse') || 
-        lower.includes('nabovarsel') || 
-        lower.includes('sak10') || 
-        lower.includes('tiltaksklasse') || 
-        lower.includes('rammetillatelse') || 
-        lower.includes('igangsettingstillatelse') || 
-        lower.includes('ferdigattest');
+        !isInformationalQuery && (
+          lower.includes('byggesøknad') || 
+          lower.includes('byggesak') || 
+          lower.includes('søknad om tillatelse') || 
+          lower.includes('nabovarsel') || 
+          lower.includes('sak10') || 
+          lower.includes('tiltaksklasse') || 
+          lower.includes('rammetillatelse') || 
+          lower.includes('igangsettingstillatelse') || 
+          lower.includes('ferdigattest')
+        );
 
       const isMultiIntent = isBuildingAppIntent && isDeviationIntent;
 
       const isChangeOrderIntent = 
-        !isOfferIntent && (
-          lower.includes('endringsordre') || 
-          lower.includes('endringsmelding') || 
+        !isOfferIntent &&
+        !isInformationalQuery && (
           lower.includes('varsel om endring') || 
           lower.includes('tilleggsarbeid') || 
           lower.includes('tilleggsavtale') ||
+          (lower.includes('endringsordre') && (hasActionVerb || lower.includes('for ') || lower.includes('på ') || lower.includes('ny '))) ||
+          (lower.includes('endringsmelding') && (hasActionVerb || lower.includes('for ') || lower.includes('på ') || lower.includes('ny '))) ||
           (lower.includes('endring') && (lower.includes('lag') || lower.includes('opprett') || lower.includes('registrer') || lower.includes('ny') || lower.includes('ordre')))
         );
 
       const isSJAIntent = 
-        !isOfferIntent && (
+        !isOfferIntent &&
+        !isInformationalQuery && (
           lower.includes('sja') || 
           lower.includes('sikker jobb analyse') || 
           lower.includes('sikkerhetsanalyse') || 
@@ -1058,13 +1133,13 @@ Returner KUN et gyldig JSON-objekt:
           reply: `🏛️ **Byggesøknad og Avvik håndtert 100% autonomt for «${resolvedProjectName}»!**\n\n` +
             `Jeg har utført begge oppgavene i ett steg uten unødig forsinkelse:\n\n` +
             `1. **Byggesøknad & Nabovarsel (SAK10 / PBL § 20-1):**\n` +
-            `   • Status: **Utkast forberedt for digital godkjenning**\n` +
-            `   • Sjekkliste oppdatert: Plantegninger og nabovarsel er klargjort for utsendelse til berørte naboer.\n\n` +
+            `   - Status: **Utkast forberedt for digital godkjenning**\n` +
+            `   - Sjekkliste oppdatert: Plantegninger og nabovarsel er klargjort for utsendelse til berørte naboer.\n\n` +
             `2. **Avvik registrert i kvalitetssystemet (KS):**\n` +
-            `   • Avvik: **«${devInfo.title}»**\n` +
-            `   • Alvorlighetsgrad: 🟠 **${devInfo.severity.toUpperCase()}** (Sperrer for lukking av sonen)\n` +
-            `   • Teknisk forskriftskrav: ${devInfo.codeRef}\n` +
-            `   • Tiltak: ${devInfo.suggestedAction}\n\n` +
+            `   - Avvik: **«${devInfo.title}»**\n` +
+            `   - Alvorlighetsgrad: 🟠 **${devInfo.severity.toUpperCase()}** (Sperrer for lukking av sonen)\n` +
+            `   - Teknisk forskriftskrav: ${devInfo.codeRef}\n` +
+            `   - Tiltak: ${devInfo.suggestedAction}\n\n` +
             `Begge sakene er registrert og synkronisert med prosjektets styringssystem.`,
           data: { deviation: { ...devDoc, id: savedDev.id }, buildingApp: { ...appDoc, id: savedApp.id } },
           suggestedActions: [
@@ -1139,12 +1214,12 @@ Returner KUN et gyldig JSON-objekt:
           success: true,
           action: 'deviation_registered',
           reply: `⚠️ **Avvik registrert autonomt i KS-systemet!**\n\n` +
-            `• **Avvik:** **«${devInfo.title}»**\n` +
-            `• **Prosjekt:** **${resolvedProjectName}**\n` +
-            `• **Alvorlighetsgrad:** 🟠 **${devInfo.severity.toUpperCase()}** (Aktiverer lukkesperre for sonen)\n` +
-            `• **Teknisk forskriftskrav:** ${devInfo.codeRef}\n` +
-            `• **Påkrevd tiltak:** ${devInfo.suggestedAction}\n` +
-            `• **Gjeldende status:** ⏳ **Åpen for utbedring**\n\n` +
+            `- **Avvik:** **«${devInfo.title}»**\n` +
+            `- **Prosjekt:** **${isSoleProjectUsed ? `${resolvedProjectName} *(eneste aktive oppdrag i systemet)*` : resolvedProjectName}**\n` +
+            `- **Alvorlighetsgrad:** 🟠 **${devInfo.severity.toUpperCase()}** (Aktiverer lukkesperre for sonen)\n` +
+            `- **Teknisk forskriftskrav:** ${devInfo.codeRef}\n` +
+            `- **Påkrevd tiltak:** ${devInfo.suggestedAction}\n` +
+            `- **Gjeldende status:** ⏳ **Åpen for utbedring**\n\n` +
             `Avviket er lagret i prosjektets kvalitetssikringslogg og sperrer for overlevering inntil lukking er bekreftet.`,
           data: { ...devDoc, id: savedDev.id },
           suggestedActions: [
@@ -1217,9 +1292,10 @@ Returner KUN et gyldig JSON-objekt:
           success: true,
           action: 'building_application_created',
           reply: `🏛️ **Byggesøknad forberedt for «${resolvedProjectName}»!**\n\n` +
-            `• **Type søknad:** **${appType === 'ett-trinns' ? 'Ett-trinns søknad om tillatelse (PBL § 20-1)' : appType.toUpperCase()}**\n` +
-            `• **Tiltaksklasse:** Tiltaksklasse 1 (Normal risiko)\n` +
-            `• **Fremdrift på søknadspakken:**\n` +
+            `- **Type søknad:** **${appType === 'ett-trinns' ? 'Ett-trinns søknad om tillatelse (PBL § 20-1)' : appType.toUpperCase()}**\n` +
+            `- **Prosjekt:** **${isSoleProjectUsed ? `${resolvedProjectName} *(eneste aktive oppdrag i systemet)*` : resolvedProjectName}**\n` +
+            `- **Tiltaksklasse:** Tiltaksklasse 1 (Normal risiko)\n` +
+            `- **Fremdrift på søknadspakken:**\n` +
             `  ✅ Fasade-, plan- og snittegninger registrert\n` +
             `  ✅ Nabovarsel klargjort for utsendelse til berørte naboer\n` +
             `  ⏳ Situasjonsplan og frisiktlinjer\n` +
@@ -1282,11 +1358,11 @@ Returner KUN et gyldig JSON-objekt:
           success: true,
           action: 'change_order',
           reply: `📄 **Endringsordre registrert autonomt iht. NS 8406!**\n\n` +
-            `• **Tittel:** **«${result.changeOrder.title}»**\n` +
-            `• **Prosjekt:** **${resolvedProjectName}**\n` +
-            `• **Estimert beløp:** kr **${result.changeOrder.totalAmount?.toLocaleString('no-NO')}** inkl. mva (kr ${result.changeOrder.amountExVat?.toLocaleString('no-NO')} eks. mva)\n` +
-            `• **Fristforlengelse:** ${result.changeOrder.impactDays || 2} virkedager\n` +
-            `• **Juridisk hjemmel:** NS 8406 pkt. 19 (Endringer og varsling)\n\n` +
+            `- **Tittel:** **«${result.changeOrder.title}»**\n` +
+            `- **Prosjekt:** **${isSoleProjectUsed ? `${resolvedProjectName} *(eneste aktive oppdrag i systemet)*` : resolvedProjectName}**\n` +
+            `- **Estimert beløp:** kr **${result.changeOrder.totalAmount?.toLocaleString('no-NO')}** inkl. mva (kr ${result.changeOrder.amountExVat?.toLocaleString('no-NO')} eks. mva)\n` +
+            `- **Fristforlengelse:** ${result.changeOrder.impactDays || 2} virkedager\n` +
+            `- **Juridisk hjemmel:** NS 8406 pkt. 19 (Endringer og varsling)\n\n` +
             `Endringsordren er generert og plassert i godkjenningskøen for utsendelse til kunden.`,
           data: result.changeOrder,
           suggestedActions: [
@@ -1356,11 +1432,11 @@ Returner KUN et gyldig JSON-objekt:
           success: true,
           action: 'sja',
           reply: `🛡️ **Sikker Jobb Analyse (SJA) generert autonomt!**\n\n` +
-            `• **Arbeidsoperasjon:** **«${sjaResult.data.title}»**\n` +
-            `• **Prosjekt:** **${resolvedProjectName}**\n` +
-            `• **Hjemmel:** Byggherreforskriften § 18 & ${sjaResult.data.tek17Reference || 'Forskrift om utførelse av arbeid'}\n` +
-            `• **Påkrevd verneutstyr (PVU):** ${(sjaResult.data.ppe || ['Hjelm', 'Vernesko', 'Briller']).join(', ')}\n` +
-            `• **Risikobarrierer:** Identifisert og lagret i prosjektets HMS-perm.\n\n` +
+            `- **Arbeidsoperasjon:** **«${sjaResult.data.title}»**\n` +
+            `- **Prosjekt:** **${isSoleProjectUsed ? `${resolvedProjectName} *(eneste aktive oppdrag i systemet)*` : resolvedProjectName}**\n` +
+            `- **Hjemmel:** Byggherreforskriften § 18 & ${sjaResult.data.tek17Reference || 'Forskrift om utførelse av arbeid'}\n` +
+            `- **Påkrevd verneutstyr (PVU):** ${(sjaResult.data.ppe || sjaResult.data.utstyr || ['Hjelm', 'Vernesko', 'Briller']).join(', ')}\n` +
+            `- **Risikobarrierer:** Identifisert og lagret i prosjektets HMS-perm.\n\n` +
             `SJA er ferdigstilt og kan signeres av arbeidslaget før risikofylt arbeid igangsettes.`,
           data: sjaResult.data,
           suggestedActions: [
@@ -2784,11 +2860,11 @@ Returner KUN et gyldig JSON-objekt:
           const isDone = matchedTask.status === 'completed';
           const pName = matchedTask.projectName || resolvedProjectName;
           const taskReply = `📋 **Status og fremdrift for oppgaven «${matchedTask.title}»:**\n\n` +
-            `• **Prosjekt:** ${pName}\n` +
-            `• **Gjeldende status:** ${isDone ? '✅ **Fullført**' : '⏳ **Utestående / Pågående**'}\n` +
-            `• **Tildelt håndverker:** **${matchedTask.assignedTo || 'Ikke spesifisert'}**\n` +
-            `• **Frist:** ${matchedTask.deadline || 'Ingen frist satt'}\n` +
-            `• **Prioritet:** ${matchedTask.priority === 'urgent' ? '🔴 Haster' : matchedTask.priority === 'high' ? '🟠 Høy' : '🔵 Normal'}\n\n` +
+            `- **Prosjekt:** ${pName}\n` +
+            `- **Gjeldende status:** ${isDone ? '✅ **Fullført**' : '⏳ **Utestående / Pågående**'}\n` +
+            `- **Tildelt håndverker:** **${matchedTask.assignedTo || 'Ikke spesifisert'}**\n` +
+            `- **Frist:** ${matchedTask.deadline || 'Ingen frist satt'}\n` +
+            `- **Prioritet:** ${matchedTask.priority === 'urgent' ? '🔴 Haster' : matchedTask.priority === 'high' ? '🟠 Høy' : '🔵 Normal'}\n\n` +
             (isDone 
               ? `Oppgaven er registrert som fullført og loggført i prosjektets KS-arkiv.` 
               : `Oppgaven er aktiv ute i felt. Håndverkeren kan føre timer eller markere den som ferdig i mobilappen.`);
@@ -3046,14 +3122,18 @@ Du skal opptre som en høyt kvalifisert byggmester og kalkulatør og levere en k
             `   - Følg BVN blad 31.205 for klemring og membranoverganger for å sikre garanti og godkjent FDV.`;
         } else if (lower.includes('ns 8406') || lower.includes('endringsordre') || lower.includes('varsel') || lower.includes('tillegg')) {
           replyText = `📄 **Varsling av endringsordre iht. NS 8406 pkt. 19:**\n\n` +
-            `Når det oppstår uforutsette forhold eller byggherren ber om tilleggsarbeid:\n` +
-            `1. **Varsle «uten ugrunnet opphold»:** Skriftlig varsel må sendes umiddelbart for å unngå preklusjon (tap av rett til tilleggsvederlag eller fristforlengelse).\n` +
-            `2. **Innhold i varselet:**\n` +
-            `   - Beskrivelse av hva som kreves utført.\n` +
-            `   - Hjemmel (f.eks. NS 8406 pkt. 19.2 for byggherrepålegg, eller pkt. 19.3 for uforutsette grunn/bygningsforhold).\n` +
-            `   - Estimert tilleggsvederlag (kr eks. mva).\n` +
-            `   - Konsekvens for fremdriftsplan (antall virkedager fristforlengelse).\n\n` +
-            `Bruk skjemaet for endringsordre her i systemet for å sende formelt, juridisk vanntett varsel direkte til kunde.`;
+            `Når det oppstår uforutsette bygningsmessige forhold eller byggherren ber om tilleggsarbeid, gjelder følgende strenge regler:\n\n` +
+            `1. **Varsle «uten ugrunnet opphold» (Preklusjonsfrist):**\n` +
+            `   - Skriftlig varsel må sendes så raskt som praktisk mulig etter at du oppdaget eller burde ha oppdaget forholdet.\n` +
+            `   - **KRITISK:** Hvis du venter for lenge, inntrer **preklusjon** iht. NS 8406 pkt. 19.4. Da mister du ubønnhørlig retten til både tilleggsvederlag og fristforlengelse, selv om arbeidet faktisk er utført!\n\n` +
+            `2. **Påkrevd innhold i endringsvarselet:**\n` +
+            `   - **Beskrivelse:** Hva endringen består i, og hvorfor dette er et avvik fra opprinnelig kontraktstegninger/beskrivelse.\n` +
+            `   - **Juridisk hjemmel:** NS 8406 pkt. 19.2 (pålegg/instruks fra byggherre) eller pkt. 19.3 (uforutsette fysiske hindringer / grunn- og bygningsforhold).\n` +
+            `   - **Krav om vederlagsjustering:** Estimert beløp (regningsarbeid iht. kontraktens timepriser eller fastpris eks. mva).\n` +
+            `   - **Krav om fristforlengelse:** Antall virkedagers forlengelse endringen medfører for overleveringsdatoen.\n\n` +
+            `3. **Byggherrens svarplikt:**\n` +
+            `   - Byggherren plikter å svare «uten ugrunnet opphold». Svarer ikke byggherren i tide, anses kravet som akseptert.\n\n` +
+            `Du kan klikke på **«Åpne Endringsordre (NS 8406)»** under for å opprette og sende et formelt varsel direkte til kunden.`;
         } else if (lower.includes('sja') || lower.includes('sikkerhet') || lower.includes('hms')) {
           replyText = `🛡️ **Sikker Jobb Analyse (SJA) – Krav og sjekkpunkter:**\n\n` +
             `Før oppstart av risikofylt arbeid skal det alltid gjennomføres SJA:\n` +
@@ -3158,19 +3238,19 @@ Du skal opptre som en høyt kvalifisert byggmester og kalkulatør og levere en k
           'Hva bør timeprisen settes til for dette faget?',
           'Formuler et profesjonelt følgebrev til kunden'
         ];
-      } else if (lower.includes('endring') || lower.includes('tillegg')) {
+      } else if (lower.includes('endring') || lower.includes('tillegg') || lower.includes('ns 8406')) {
         suggestedActions.push({
           id: 'open_co_modal',
           type: 'open_change_order_modal',
-          label: '📄 Opprett Endringsordre (NS 8406)',
+          label: '📄 Åpne Endringsordre (NS 8406)',
           data: {
-            title: `Endring: ${text.slice(0, 45)}`,
+            title: `Endringsordre iht. NS 8406`,
             description: formatCleanChangeOrderDescription(text, resolvedProjectName),
             projectId: resolvedProjectId
           }
         });
         followUpPrompts = [
-          'Hvordan varsler jeg kunden formelt iht. NS 8406?',
+          'Hvordan unngår jeg preklusjon iht. NS 8406?',
           'Krev fristforlengelse pga uforutsett arbeid',
           'Hva gjør jeg hvis kunden bestrider tillegget?'
         ];

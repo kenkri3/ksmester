@@ -189,6 +189,41 @@ export function tryResolveDeterministicSja(taskDescription: string, weatherInfo?
     };
   }
 
+  // 5.5 Riving og åpning av bærevegg med understøtting (TEK17 kap. 10 Konstruksjonssikkerhet)
+  if (desc.includes('bærevegg') || (desc.includes('bære') && desc.includes('vegg')) || desc.includes('understøtt') || desc.includes('drager') || desc.includes('ståldrager') || desc.includes('stempling')) {
+    return {
+      title: 'SJA: Riving og åpning av bærevegg med midlertidig understøtting',
+      task: taskDescription,
+      risikoer: [
+        {
+          aktivitet: 'Etablering av midlertidig understøtting (stempling / soldater)',
+          risiko: 'Kollaps eller setningsskader i overliggende etasjeskille/tak ved feilplassert eller utilstrekkelig avstiving',
+          tiltak: 'Sett opp godkjente stålstempler med trykkfordelingsplanker i topp og bunn på begge sider av veggen før riving starter. Sikre at last føres til bærende underlag'
+        },
+        {
+          aktivitet: 'Fjerning av eksisterende bærende stendere og konstruksjonsdeler',
+          risiko: 'Plutselig svikt, klemfare eller nedfall av bygningsmaterialer under riving',
+          tiltak: 'Kapp og fjern stendere kontrollert én etter én. Verifiser jevnlig at stemplene bærer lasten og ikke forskyver seg. Etabler sikkerhetssone'
+        },
+        {
+          aktivitet: 'Innheising og montering av ny bærebjelke (limtre/ståldrager HEB/IPE)',
+          risiko: 'Tunge løft, klemskader og feil innfesting mot oppleggssøyler',
+          tiltak: 'Bruk mekanisk løftebukk/materialheis. Sikre minimum 100-150 mm oppleggslengde på godkjent opplegg og forankre iht. statiske beregninger'
+        }
+      ],
+      utstyr: [
+        'Hjelm med hakestropp',
+        'Vernesko S3 med spikertramp og stålhette',
+        'Vernebriller og hørselvern',
+        'Støvmaske P3 mot kapping og mineralullstøv',
+        'Godkjente stålstempler (soldater) med låsesplinter',
+        'Arbeidshansker EN 388 med kutt- og klembeskyttelse'
+      ],
+      tek17Reference: 'TEK17 kapittel 10 (Konstruksjonssikkerhet og pålitelighet) og Forskrift om utførelse av arbeid § 17',
+      weatherImpact: 'Innendørs konstruksjonsarbeid. Sørg for god belysning, ryddede rømningsveier og støvavsug.'
+    };
+  }
+
   // 6. Riving, Sanering og Asbest
   if (desc.includes('riv') || desc.includes('asbest') || desc.includes('saner') || desc.includes('avfall') || desc.includes('eternitt')) {
     return {

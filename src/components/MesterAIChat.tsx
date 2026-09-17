@@ -1385,6 +1385,32 @@ export default function MesterAIChat({
       return;
     }
 
+    if (action.type === 'select_project_for_intent' || action.type === 'select_project') {
+      const projId = action.data?.projectId;
+      const projName = action.data?.projectName;
+      const originalText = action.data?.originalText;
+
+      if (projId && projId !== 'generell' && projects) {
+        const foundProj = projects.find((p: any) => p.id === projId);
+        if (foundProj && onSelectProject) {
+          onSelectProject(foundProj);
+        }
+      }
+
+      if (originalText) {
+        handleSendMessage(`${originalText} (for prosjekt ${projName})`, {
+          projectId: projId || '',
+          projectName: projName || ''
+        });
+      } else if (projName) {
+        handleSendMessage(`Gjelder prosjekt ${projName}`, {
+          projectId: projId || '',
+          projectName: projName || ''
+        });
+      }
+      return;
+    }
+
     if (action.prompt || action.data?.prompt) {
       handleSendMessage(action.prompt || action.data?.prompt);
     } else if (action.label) {
@@ -1546,6 +1572,12 @@ export default function MesterAIChat({
 
   // Markdown renderer
   const renderFormattedContent = (content: string) => {
+    // 🛡️ Normaliser punktlister: Konverter unike kulepunkter (• og ●) i starten av linjer til markdown `- `
+    // slik at ReactMarkdown parser dem som ekte <li> elementer i stedet for å slå dem sammen på én linje.
+    const normalizedContent = (content || '')
+      .replace(/^[ \t]*[•●][ \t]*/gm, '- ')
+      .replace(/\n[ \t]*[•●][ \t]*/g, '\n- ');
+
     return (
       <div className="text-slate-900 leading-relaxed font-sans text-xs sm:text-sm">
         <ReactMarkdown
@@ -1584,19 +1616,19 @@ export default function MesterAIChat({
               </em>
             ),
             ul: ({ children }) => (
-              <ul className="space-y-1 my-2 pl-0.5">
+              <ul className="space-y-1.5 my-2 pl-0.5">
                 {children}
               </ul>
             ),
             ol: ({ children }) => (
-              <ol className="list-decimal space-y-1 my-2 pl-5 text-xs sm:text-sm text-slate-800 font-medium">
+              <ol className="list-decimal space-y-1.5 my-2 pl-5 text-xs sm:text-sm text-slate-800 font-medium">
                 {children}
               </ol>
             ),
             li: ({ children }) => (
               <li className="text-xs sm:text-sm text-slate-800 flex items-start gap-2">
                 <span className="text-electric-600 font-bold shrink-0 leading-5">•</span>
-                <span className="flex-1">{children}</span>
+                <span className="flex-1 leading-relaxed">{children}</span>
               </li>
             ),
             hr: () => (
@@ -1730,7 +1762,7 @@ export default function MesterAIChat({
             }
           }}
         >
-          {content}
+          {normalizedContent}
         </ReactMarkdown>
       </div>
     );

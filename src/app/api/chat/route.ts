@@ -6,6 +6,7 @@ import { checkCompanyQuota } from '@/src/lib/server/costTracker';
 import { sanitize, sanitizeEmail, sanitizePhone, sanitizeHeader } from '@/src/lib/sanitize';
 import { checkRateLimit, getClientIp } from '@/src/lib/server/rateLimit';
 import { formatCleanOfferDescription, formatCleanChangeOrderDescription } from '@/src/lib/server/offerFormatter';
+import { generateSJAAction } from '@/src/app/actions/aiActions';
 
 // 🛡️ Helper for å sende lead-epostvarsel til aichatnorge@gmail.com
 async function sendLeadNotificationEmail(lead: {
@@ -351,15 +352,59 @@ SIKKERHETSREGLER (GUARDRAILS):
 
     const lower = userText.toLowerCase();
 
+    // Definer felles sjekk for rent faglige/informative spørsmål vs. faktiske handlingskommandoer
+    const hasActionVerb = 
+      lower.includes('opprett') ||
+      lower.includes('opprette') ||
+      lower.includes('lag ') ||
+      lower.includes('lag et') ||
+      lower.includes('lag en') ||
+      lower.includes('lage ') ||
+      lower.includes('registrer') ||
+      lower.includes('registrere') ||
+      lower.includes('generer') ||
+      lower.includes('generere') ||
+      lower.includes('send ') ||
+      lower.includes('sende ') ||
+      lower.includes('før ') ||
+      lower.includes('føre ');
+
+    const isInformationalQuery =
+      lower.startsWith('hvordan') ||
+      lower.startsWith('hva er') ||
+      lower.startsWith('hva sier') ||
+      lower.startsWith('hva kreves') ||
+      lower.startsWith('hvorfor') ||
+      lower.startsWith('hvilke') ||
+      lower.startsWith('hvilket') ||
+      lower.startsWith('når må') ||
+      lower.startsWith('når skal') ||
+      lower.startsWith('kan du forklare') ||
+      lower.startsWith('forklar') ||
+      lower.startsWith('fortell om') ||
+      lower.includes('hva er reglene for') ||
+      lower.includes('hva gjelder for') ||
+      lower.includes('hva betyr') ||
+      lower.includes('hvilke krav') ||
+      lower.includes('hvordan varsler jeg') ||
+      (lower.endsWith('?') && !hasActionVerb);
+
     // 🎯 INTENSJONSANALYSE FOR PROSJEKTSPESIFIKKE OPPGAVER
-    const isChangeOrderIntent = lower.includes('endring') || lower.includes('tillegg') || lower.includes('ekstraarbeid') || lower.includes('ns 8406') || lower.includes('ns8406');
-    const isSJAIntent = lower.includes('sja') || lower.includes('sikker jobb') || lower.includes('risikovurdering') || lower.includes('vernetiltak');
-    const isLogIntent = lower.includes('dagbok') || lower.includes('før dagbok') || lower.includes('notat') || lower.includes('arbeid utført');
-    const isQualityIntent = lower.includes('lukkesperre') || lower.includes('tek17') || lower.includes('våtrom') || lower.includes('sluk') || lower.includes('membran');
-    const isOfferIntent = lower.includes('tilbud') || lower.includes('kalkyle') || lower.includes('prisestimat') || lower.includes('timepris') || lower.includes('materialkostnad');
+    const isChangeOrderIntent = 
+      !isInformationalQuery && (
+        lower.includes('varsel om endring') || 
+        lower.includes('tilleggsarbeid') || 
+        lower.includes('ekstraarbeid') ||
+        (lower.includes('endringsordre') && (hasActionVerb || lower.includes('for ') || lower.includes('på ') || lower.includes('ny '))) ||
+        (lower.includes('endring') && (hasActionVerb || lower.includes('ordre') || lower.includes('melding')))
+      );
+    const isSJAIntent = !isInformationalQuery && (lower.includes('sja') || lower.includes('sikker jobb') || lower.includes('risikovurdering') || lower.includes('vernetiltak'));
+    const isLogIntent = !isInformationalQuery && (lower.includes('dagbok') || lower.includes('før dagbok') || lower.includes('notat') || lower.includes('arbeid utført'));
+    const isQualityIntent = !isInformationalQuery && (lower.includes('lukkesperre') || (lower.includes('tek17') && hasActionVerb) || (lower.includes('våtrom') && hasActionVerb));
+    const isOfferIntent = !isInformationalQuery && (lower.includes('tilbud') || lower.includes('kalkyle') || lower.includes('prisestimat') || lower.includes('timepris') || lower.includes('materialkostnad'));
 
     // 🚨 REGEL: Dersom handlingen krever prosjekt, men prosjekt IKKE er oppgitt og bedriften har mer enn 1 prosjekt:
-    // Spør brukeren: "Hvilket prosjekt gjelder dette?" og vis listen over aktive prosjekter!
+    // Spør brukeren: "Hvilket oppdrag gjelder dette?" og vis listen over aktive prosjekter!
     if (
       (isChangeOrderIntent || isSJAIntent || isLogIntent || isQualityIntent) && 
       !targetProject && 
@@ -379,29 +424,44 @@ SIKKERHETSREGLER (GUARDRAILS):
         ? 'føringen i byggedagboken' 
         : 'kvalitetskontrollen';
 
+      const projectListText = companyProjects
+        .slice(0, 6)
+        .map((p: any) => `- **${p.name}** (${p.location || 'Byggeplass'})`)
+        .join('\n');
+
       return NextResponse.json({
         success: true,
         mode: 'authenticated_agent',
         needsProjectSelection: true,
-        reply: `Hvilket prosjekt gjelder ${actionName}? For at hele systemet skal snakke sammen og dokumentasjonen skal legges på riktig byggeplass, må jeg vite hvilket prosjekt dette tilhører.`,
+        reply: `Hvilket oppdrag gjelder ${actionName}? Du har flere aktive oppdrag i systemet:\n\n${projectListText}\n\nKlikk på ønsket oppdrag under, eller skriv navnet, så legges dokumentasjonen på riktig byggeplass:`,
         availableProjects: projectOptions,
         pendingAction: {
           intent: isChangeOrderIntent ? 'change_order' : isSJAIntent ? 'sja' : isLogIntent ? 'daily_log' : 'quality',
           originalText: userText
         },
         followUpPrompts: companyProjects.slice(0, 4).map((p: any) => `Gjelder prosjekt ${p.name}`),
-        suggestedActions: companyProjects.slice(0, 4).map((p: any) => ({
-          id: `select_proj_${p.id}`,
-          type: 'select_project',
-          label: `🏗️ ${p.name}`,
-          data: { projectId: p.id, projectName: p.name }
-        }))
+        suggestedActions: [
+          ...companyProjects.slice(0, 5).map((p: any) => ({
+            id: `select_proj_${p.id}`,
+            type: 'select_project_for_intent',
+            label: `🏗️ ${p.name}`,
+            data: { projectId: p.id, projectName: p.name, originalText: userText }
+          })),
+          {
+            id: 'select_proj_general',
+            type: 'select_project_for_intent',
+            label: '🌐 Generelt prosjekt',
+            data: { projectId: 'proj-generell', projectName: 'Generelt Prosjekt', originalText: userText }
+          }
+        ]
       });
     }
 
+    let isSoleProjectUsed = false;
     // Hvis det bare finnes 1 prosjekt, bruker vi automatisk dette
     if (!targetProject && companyProjects.length === 1) {
       targetProject = companyProjects[0];
+      isSoleProjectUsed = true;
     }
 
     const resolvedProjectId = targetProject?.id || projectId || 'proj-generell';
@@ -532,23 +592,25 @@ INSTRUKSJON FOR SVAR:
     }
     // 2. SIKKER JOBB ANALYSE (SJA)
     else if (isSJAIntent) {
+      const sjaResult = await generateSJAAction(userText).catch(() => null);
+      const sjaData = sjaResult?.data;
       const sjaId = `sja-${Date.now()}-${Math.random().toString(36).substring(2, 6)}`;
       const sjaRecord = {
         id: sjaId,
         projectId: resolvedProjectId,
         projectName: resolvedProjectName,
-        title: `SJA: ${userText.slice(0, 50)}`,
-        task: userText,
-        description: userText,
-        hazards: ['Fall fra høyde / stillas', 'Klem- og kuttskader', 'Støv og partikler'],
-        measures: ['Bruk av personlig verneutstyr (hjelm, fallsikring)', 'Inspeksjon av stillas før bruk', 'Bruk av støvmaske og vernebriller'],
-        risikoer: [
+        title: sjaData?.title || `SJA: ${userText.slice(0, 50)}`,
+        task: sjaData?.task || userText,
+        description: sjaData?.task || userText,
+        hazards: sjaData?.hazards || ['Fall fra høyde / stillas', 'Klem- og kuttskader', 'Støv og partikler'],
+        measures: sjaData?.measures || ['Bruk av personlig verneutstyr (hjelm, fallsikring)', 'Inspeksjon av stillas før bruk', 'Bruk av støvmaske og vernebriller'],
+        risikoer: sjaData?.risikoer || [
           { aktivitet: 'Arbeid i høyden / stillas', risiko: 'Fall fra høyde (> 2m)', tiltak: 'Godkjent stillas med rekkverk, fallsikringssele ved montasje' },
           { aktivitet: 'Kapping og verktøybruk', risiko: 'Kutt- og klemskader, flygende splinter', tiltak: 'Bruk av vernebriller, hørselvern og vernehansker kl. 2' },
           { aktivitet: 'Støvende og støyende arbeid', risiko: 'Innånding av svevestøv, hørselsskade', tiltak: 'P3 støvmaske og godkjent hørselvern' }
         ],
-        utstyr: ['Vernehjelm m/hakestropp', 'Vernetøy kl. 2', 'Vernesko S3', 'Vernebriller', 'Hørselvern'],
-        tek17Reference: 'Byggherreforskriften § 18 / TEK17 § 12-16',
+        utstyr: sjaData?.utstyr || sjaData?.ppe || ['Vernehjelm m/hakestropp', 'Vernetøy kl. 2', 'Vernesko S3', 'Vernebriller', 'Hørselvern'],
+        tek17Reference: sjaData?.tek17Reference || 'Byggherreforskriften § 18 / TEK17 § 12-16',
         authorName: userDisplayName,
         responsible: userDisplayName,
         status: 'approved',

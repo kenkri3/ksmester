@@ -298,6 +298,15 @@ export default function ProjectDetails({ project, onBack, onShare, onStartCheckl
     }
   };
 
+  // MesterAI Agent Reply state (vises i ryddig svarkort under søkefeltet)
+  const [agentReply, setAgentReply] = useState<{
+    reply: string;
+    action?: string;
+    data?: any;
+    suggestedActions?: { id: string; type: string; label: string; data?: any }[];
+    timestamp?: string;
+  } | null>(null);
+
   // Handle MesterAI quick project instruction
   const handleSendProjectCommand = async (customPrompt?: string) => {
     const text = customPrompt || projectCommand;
@@ -318,8 +327,30 @@ export default function ProjectDetails({ project, onBack, onShare, onStartCheckl
       });
       const data = await res.json();
       if (data.reply) {
-        toast.success('MesterAI:', { description: data.reply });
-        setAiSummary(data.reply);
+        // Ryddig, kortfattet toast i hjørnet – detaljene vises i det dedikerte svarkortet
+        if (data.action === 'time_logged') {
+          toast.success('⏱️ Timer registrert i prosjektet!', {
+            description: data.data?.hours 
+              ? `${data.data.hours} timer er bokført på prosjektregnskapet.` 
+              : 'Timer er bokført i prosjektregnskapet.'
+          });
+        } else if (data.action === 'deviation_created') {
+          toast.success('⚠️ Avvik registrert!', {
+            description: 'MesterAI har analysert og loggført avviket.'
+          });
+        } else {
+          toast.success('✨ MesterAI utførte oppgaven', {
+            description: 'Svar og detaljer vises under kommandolinjen.'
+          });
+        }
+
+        setAgentReply({
+          reply: data.reply,
+          action: data.action,
+          data: data.data,
+          suggestedActions: data.suggestedActions,
+          timestamp: new Date().toLocaleTimeString('no-NO', { hour: '2-digit', minute: '2-digit' })
+        });
       } else {
         toast.info('Instruks registrert');
       }
@@ -588,42 +619,71 @@ export default function ProjectDetails({ project, onBack, onShare, onStartCheckl
       </div>
 
       {/* 2. MESTERAI PROSJEKT-KOMMANDOLINJE (AUTONOM AGENT) */}
-      <div className="p-4 sm:p-5 rounded-3xl bg-gradient-to-r from-navy-900 via-navy-950 to-neutral-900 text-white shadow-md relative overflow-hidden">
-        <div className="absolute right-0 top-0 p-6 opacity-5 pointer-events-none">
-          <Brain size={140} />
-        </div>
-        <div className="relative z-10 space-y-3">
-          <div className="flex items-center justify-between">
-            <span className="text-xs font-black uppercase tracking-wider text-electric-400 flex items-center gap-2">
-              <span className="w-2 h-2 rounded-full bg-emerald-400 animate-pulse" />
-              MesterAI overvåker prosjektet i sanntid
-            </span>
-            <span className="text-[11px] text-slate-400">Yr.no værsynk • TEK17 aktiv</span>
+      <div className="p-4 sm:p-5 rounded-3xl bg-white border border-slate-200/90 shadow-sm relative overflow-hidden transition-all">
+        <div className="absolute top-0 left-0 right-0 h-1 bg-gradient-to-r from-electric-500 via-purple-500 to-emerald-400" />
+        <div className="relative z-10 space-y-3.5 pt-1">
+          {/* Header */}
+          <div className="flex items-center justify-between gap-2 flex-wrap">
+            <div className="flex items-center gap-2.5">
+              <div className="w-8 h-8 rounded-xl bg-electric-50 border border-electric-100 flex items-center justify-center text-electric-600 shadow-xs">
+                <Sparkles size={16} />
+              </div>
+              <div>
+                <div className="flex items-center gap-2">
+                  <span className="text-xs font-black uppercase tracking-wider text-navy-950">
+                    MesterAI Prosjektpilot
+                  </span>
+                  <span className="inline-flex items-center gap-1.5 px-2 py-0.5 rounded-full bg-emerald-50 border border-emerald-200/70 text-emerald-700 text-[10px] font-bold">
+                    <span className="w-1.5 h-1.5 rounded-full bg-emerald-500 animate-pulse" />
+                    Sanntidsovervåking aktiv
+                  </span>
+                </div>
+                <p className="text-[11px] text-slate-500 font-medium hidden sm:block">
+                  Autonom registrering av timer, endringsordrer, vær og TEK17
+                </p>
+              </div>
+            </div>
+
+            <div className="flex items-center gap-2 text-[11px] font-semibold text-slate-500">
+              <span className="inline-flex items-center gap-1 bg-slate-50 border border-slate-200/80 px-2 py-0.5 rounded-lg text-slate-600">
+                <CloudSun size={12} className="text-amber-500" /> Yr.no værsynk
+              </span>
+              <span className="inline-flex items-center gap-1 bg-slate-50 border border-slate-200/80 px-2 py-0.5 rounded-lg text-slate-600">
+                <ShieldCheck size={12} className="text-emerald-600" /> TEK17 / NS 8406
+              </span>
+            </div>
           </div>
 
-          <div className="flex items-center gap-2 bg-white/10 rounded-2xl p-1.5 border border-white/10">
-            <input 
-              type="text"
-              value={projectCommand}
-              onChange={(e) => setProjectCommand(e.target.value)}
-              onKeyDown={(e) => { if (e.key === 'Enter') handleSendProjectCommand(); }}
-              placeholder="Spør MesterAI eller gi instruks (f.eks: 'Før 6t tømrerarbeid', 'Varsle om tillegg')..."
-              className="flex-1 bg-transparent px-3 py-2 text-xs sm:text-sm text-white placeholder:text-slate-400 outline-none font-medium"
-            />
+          {/* Søkefelt / Kommandolinje */}
+          <div className="flex items-center gap-2 bg-slate-50 hover:bg-slate-100/60 focus-within:bg-white focus-within:ring-2 focus-within:ring-electric-500/20 focus-within:border-electric-500 border border-slate-200 rounded-2xl p-1.5 transition-all shadow-xs">
+            <div className="relative flex-1 flex items-center">
+              <Search size={16} className="absolute left-3 text-slate-400 pointer-events-none" />
+              <input 
+                type="text"
+                value={projectCommand}
+                onChange={(e) => setProjectCommand(e.target.value)}
+                onKeyDown={(e) => { if (e.key === 'Enter') handleSendProjectCommand(); }}
+                placeholder="Spør MesterAI eller gi instruks (f.eks: 'Før 6t tømrerarbeid', 'Varsle om tillegg')..."
+                className="w-full bg-transparent pl-9 pr-3 py-2 text-xs sm:text-sm text-navy-950 placeholder:text-slate-400 outline-none font-medium"
+              />
+            </div>
             <button
               onClick={toggleMic}
+              type="button"
               className={cn(
-                "p-2 rounded-xl transition-all",
-                isListeningMic ? "bg-rose-500 text-white animate-pulse" : "hover:bg-white/10 text-slate-300"
+                "p-2 rounded-xl transition-all cursor-pointer",
+                isListeningMic 
+                  ? "bg-rose-500 text-white animate-pulse shadow-xs" 
+                  : "text-slate-500 hover:text-navy-900 hover:bg-slate-200/60"
               )}
-              title="Dikter med tale"
+              title={isListeningMic ? "Stopper lytting" : "Dikter med tale"}
             >
               {isListeningMic ? <MicOff size={16} /> : <Mic size={16} />}
             </button>
             <button
               onClick={() => handleSendProjectCommand()}
               disabled={isCommandLoading || !projectCommand.trim()}
-              className="px-4 py-2 bg-gradient-to-r from-electric-500 to-electric-400 text-white rounded-xl text-xs font-black hover:opacity-95 transition-all shadow-sm flex items-center gap-1.5 disabled:opacity-50"
+              className="px-4 py-2 bg-gradient-to-r from-electric-500 to-electric-400 text-white rounded-xl text-xs font-black hover:opacity-95 transition-all shadow-purple-cta flex items-center gap-1.5 disabled:opacity-50 cursor-pointer"
             >
               {isCommandLoading ? <Loader2 size={14} className="animate-spin" /> : <Send size={14} />}
               <span>Utfør</span>
@@ -632,26 +692,128 @@ export default function ProjectDetails({ project, onBack, onShare, onStartCheckl
 
           {/* Hurtigvalg */}
           <div className="flex flex-wrap items-center gap-2 pt-0.5">
-            <span className="text-[10px] font-bold uppercase tracking-wider text-slate-400">Hurtig:</span>
+            <span className="text-[10px] font-black uppercase tracking-wider text-slate-400">Hurtig:</span>
             <button
               onClick={() => handleSendProjectCommand('Før 7.5 timer tømrerarbeid i dag')}
-              className="px-2.5 py-1 bg-white/10 hover:bg-white/20 rounded-lg text-[11px] font-bold text-slate-200 transition-colors"
+              className="inline-flex items-center gap-1.5 px-2.5 py-1 bg-slate-100 hover:bg-electric-50 hover:text-electric-700 hover:border-electric-200 border border-slate-200/80 rounded-lg text-[11px] font-bold text-slate-700 transition-all cursor-pointer"
             >
-              + 7.5t tømrer
+              <Clock size={12} className="text-electric-500" />
+              <span>+ 7.5t tømrer</span>
             </button>
             <button
               onClick={() => setIsChangeOrderOpen(true)}
-              className="px-2.5 py-1 bg-white/10 hover:bg-white/20 rounded-lg text-[11px] font-bold text-amber-300 transition-colors"
+              className="inline-flex items-center gap-1.5 px-2.5 py-1 bg-amber-50 hover:bg-amber-100 border border-amber-200/80 rounded-lg text-[11px] font-bold text-amber-800 transition-all cursor-pointer"
             >
-              + Endringsordre (NS 8406)
+              <FileText size={12} className="text-amber-600" />
+              <span>+ Endringsordre (NS 8406)</span>
             </button>
             <button
               onClick={() => setIsNewDeviationOpen(true)}
-              className="px-2.5 py-1 bg-white/10 hover:bg-white/20 rounded-lg text-[11px] font-bold text-rose-300 transition-colors"
+              className="inline-flex items-center gap-1.5 px-2.5 py-1 bg-rose-50 hover:bg-rose-100 border border-rose-200/80 rounded-lg text-[11px] font-bold text-rose-800 transition-all cursor-pointer"
             >
-              + Registrer Avvik
+              <AlertTriangle size={12} className="text-rose-600" />
+              <span>+ Registrer Avvik</span>
             </button>
           </div>
+
+          {/* MesterAI Svarkort (Inline respons ved fullført instruks) */}
+          <AnimatePresence>
+            {agentReply && (
+              <motion.div
+                initial={{ opacity: 0, y: -8, scale: 0.98 }}
+                animate={{ opacity: 1, y: 0, scale: 1 }}
+                exit={{ opacity: 0, y: -8, scale: 0.98 }}
+                className="mt-3 p-4 rounded-2xl bg-gradient-to-br from-purple-50/70 via-white to-slate-50 border border-purple-200/80 shadow-xs relative"
+              >
+                <div className="flex items-start justify-between gap-2 mb-2">
+                  <div className="flex items-center gap-2">
+                    <div className="w-6 h-6 rounded-lg bg-electric-100 flex items-center justify-center text-electric-600">
+                      <CheckCircle2 size={14} />
+                    </div>
+                    <div>
+                      <span className="text-xs font-black text-navy-950">
+                        {agentReply.action === 'time_logged' ? 'Timer registrert' : 'MesterAI Rapport'}
+                      </span>
+                      {agentReply.timestamp && (
+                        <span className="text-[10px] text-slate-400 ml-2">kl. {agentReply.timestamp}</span>
+                      )}
+                    </div>
+                  </div>
+                  <button
+                    onClick={() => setAgentReply(null)}
+                    className="p-1 rounded-lg text-slate-400 hover:text-slate-600 hover:bg-slate-100 transition-colors cursor-pointer"
+                    title="Lukk svar"
+                  >
+                    <X size={14} />
+                  </button>
+                </div>
+
+                {/* Formatert tekstvisning */}
+                <div className="text-xs text-slate-700 space-y-1.5 font-medium leading-relaxed">
+                  {agentReply.reply.split('\n\n').map((paragraph, pIdx) => {
+                    if (paragraph.includes('•')) {
+                      const lines = paragraph.split('\n').filter(Boolean);
+                      return (
+                        <div key={pIdx} className="space-y-1 my-1.5 pl-1">
+                          {lines.map((line, lIdx) => {
+                            const cleanLine = line.replace(/^[•\s*-]+/, '').trim();
+                            const parts = cleanLine.split(/(\*\*.*?\*\*)/g);
+                            return (
+                              <div key={lIdx} className="flex items-start gap-2 text-xs">
+                                <span className="text-electric-500 font-black">•</span>
+                                <span>
+                                  {parts.map((part, partIdx) => {
+                                    if (part.startsWith('**') && part.endsWith('**')) {
+                                      return <strong key={partIdx} className="text-navy-950 font-bold">{part.slice(2, -2)}</strong>;
+                                    }
+                                    return part;
+                                  })}
+                                </span>
+                              </div>
+                            );
+                          })}
+                        </div>
+                      );
+                    }
+
+                    const parts = paragraph.split(/(\*\*.*?\*\*)/g);
+                    return (
+                      <p key={pIdx}>
+                        {parts.map((part, partIdx) => {
+                          if (part.startsWith('**') && part.endsWith('**')) {
+                            return <strong key={partIdx} className="text-navy-950 font-bold">{part.slice(2, -2)}</strong>;
+                          }
+                          return part;
+                        })}
+                      </p>
+                    );
+                  })}
+                </div>
+
+                {/* Handlingsknapper hvis MesterAI foreslår videre steg */}
+                {agentReply.suggestedActions && agentReply.suggestedActions.length > 0 && (
+                  <div className="flex flex-wrap items-center gap-2 mt-3 pt-2.5 border-t border-purple-100">
+                    {agentReply.suggestedActions.map((action, aIdx) => (
+                      <button
+                        key={aIdx}
+                        onClick={() => {
+                          if (action.type === 'open_time_modal') {
+                            setIsDailyLogOpen(true);
+                          } else if (action.type === 'open_task_modal') {
+                            onStartChecklist?.(project.id);
+                          }
+                        }}
+                        className="inline-flex items-center gap-1.5 px-3 py-1.5 bg-white hover:bg-purple-50 text-electric-700 border border-purple-200/80 rounded-xl text-[11px] font-bold shadow-xs transition-colors cursor-pointer"
+                      >
+                        <span>{action.label}</span>
+                        <ChevronRight size={12} />
+                      </button>
+                    ))}
+                  </div>
+                )}
+              </motion.div>
+            )}
+          </AnimatePresence>
         </div>
       </div>
 

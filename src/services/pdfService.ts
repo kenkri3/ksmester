@@ -1,5 +1,5 @@
 import { jsPDF } from 'jspdf';
-import 'jspdf-autotable';
+import autoTable, { applyPlugin } from 'jspdf-autotable';
 import { 
   Project, 
   SJAReport, 
@@ -22,13 +22,61 @@ import {
 declare module 'jspdf' {
   interface jsPDF {
     autoTable: (options: any) => jsPDF;
+    lastAutoTable?: {
+      finalY: number;
+      [key: string]: any;
+    };
   }
+}
+
+// In Next.js / Webpack ESM bundlers, jspdf-autotable does not auto-apply
+// because jsPDF is not global on window. We explicitly apply the plugin and attach fallback.
+try {
+  if (typeof applyPlugin === 'function') {
+    applyPlugin(jsPDF);
+  }
+} catch (e) {
+  console.warn('Could not applyPlugin on jsPDF:', e);
+}
+
+if (typeof (jsPDF as any).API !== 'undefined' && !(jsPDF as any).API.autoTable) {
+  (jsPDF as any).API.autoTable = function(options: any) {
+    const fn = typeof autoTable === 'function' ? autoTable : ((autoTable as any)?.default || autoTable);
+    fn(this, options);
+    return this;
+  };
+}
+
+if (typeof window !== 'undefined') {
+  (window as any).jsPDF = jsPDF;
+}
+
+// Factory function to guarantee autoTable is always available on the created instance
+function createPdf(options?: any): jsPDF {
+  try {
+    const apply = typeof applyPlugin === 'function' ? applyPlugin : (applyPlugin as any)?.default;
+    if (typeof apply === 'function' && !(jsPDF as any).API?.autoTable) {
+      apply(jsPDF);
+    }
+  } catch {}
+
+  const doc = new jsPDF(options);
+
+  if (typeof (doc as any).autoTable !== 'function') {
+    (doc as any).autoTable = function(opts: any) {
+      const fn = typeof autoTable === 'function' ? autoTable : ((autoTable as any)?.default || autoTable);
+      fn(this, opts);
+      return this;
+    };
+  }
+
+  return doc;
 }
 
 export const pdfService = {
   // --- 1. SJA Report ---
   async generateSJAReport(project?: Partial<Project> | null, report?: any) {
-    const doc = new jsPDF();
+    const doc = createPdf();
     const primaryColor = [5, 150, 105]; // emerald-600
     const projectName = project?.name || report?.projectName || 'Byggeprosjekt';
 
@@ -168,7 +216,7 @@ export const pdfService = {
 
   // --- 2. Deviation / Avvik Report ---
   async generateDeviationReport(project: Project, deviation: Deviation) {
-    const doc = new jsPDF();
+    const doc = createPdf();
     const primaryColor = [220, 38, 38]; // red-600
 
     // Header
@@ -218,7 +266,7 @@ export const pdfService = {
 
   // --- 3. Offer / Prisoverslag PDF ---
   async generateOfferPDF(offer: Offer, companyInfo?: { name?: string; orgNumber?: string; email?: string }) {
-    const doc = new jsPDF();
+    const doc = createPdf();
     const primaryColor = [14, 165, 233]; // sky-500
 
     // Header
@@ -293,7 +341,7 @@ export const pdfService = {
 
   // --- 4. Contract / NS Kontrakt PDF ---
   async generateContractPDF(contract: Contract, companyInfo?: { name?: string; orgNumber?: string }) {
-    const doc = new jsPDF();
+    const doc = createPdf();
     const primaryColor = [79, 70, 229]; // indigo-600
 
     // Header
@@ -369,7 +417,7 @@ export const pdfService = {
 
   // --- 5. Full FDV Binder PDF ---
   async generateFDVPDF(project: Project, materials: ProjectMaterial[] = []) {
-    const doc = new jsPDF();
+    const doc = createPdf();
     const primaryColor = [16, 185, 129]; // emerald-500
 
     // Cover page
@@ -438,7 +486,7 @@ export const pdfService = {
     companyInfo: { name: string; orgNumber: string; address?: string; contactPerson?: string; phone?: string; email?: string },
     checklists: ProjectChecklist[] = []
   ) {
-    const doc = new jsPDF();
+    const doc = createPdf();
     const primaryColor = [30, 58, 138]; // blue-900
 
     // Header
@@ -542,7 +590,7 @@ export const pdfService = {
     checklists: ProjectChecklist[] = [],
     deviations: Deviation[] = []
   ) {
-    const doc = new jsPDF();
+    const doc = createPdf();
     const primaryColor = [15, 118, 110]; // teal-700
 
     doc.setFillColor(primaryColor[0], primaryColor[1], primaryColor[2]);
@@ -629,7 +677,7 @@ export const pdfService = {
     companyInfo: { name: string; orgNumber: string; contactPerson?: string },
     status: NorwegianComplianceStatus
   ) {
-    const doc = new jsPDF();
+    const doc = createPdf();
     const primaryColor = [67, 56, 202]; // indigo-700
 
     doc.setFillColor(primaryColor[0], primaryColor[1], primaryColor[2]);
@@ -703,7 +751,7 @@ export const pdfService = {
     sorteringsgrad: number,
     wasteRecords: WasteRecord[] = []
   ) {
-    const doc = new jsPDF();
+    const doc = createPdf();
     const primaryColor = [22, 101, 52]; // green-800
 
     doc.setFillColor(primaryColor[0], primaryColor[1], primaryColor[2]);
@@ -789,7 +837,7 @@ export const pdfService = {
     project: Project,
     companyInfo: { name: string; orgNumber: string; contactPerson?: string }
   ) {
-    const doc = new jsPDF();
+    const doc = createPdf();
     const primaryColor = [190, 24, 93]; // rose-700
 
     doc.setFillColor(primaryColor[0], primaryColor[1], primaryColor[2]);
@@ -863,7 +911,7 @@ export const pdfService = {
     companyInfo: { name: string; orgNumber: string },
     checklists: ProjectChecklist[] = []
   ) {
-    const doc = new jsPDF();
+    const doc = createPdf();
     const primaryColor = [180, 83, 9]; // amber-700
 
     doc.setFillColor(primaryColor[0], primaryColor[1], primaryColor[2]);
@@ -942,7 +990,7 @@ export const pdfService = {
 
   // --- 13. Digital Endringsavtale / Tilleggsordre (NS 8406 / Håndverkertjenesteloven) ---
   async generateChangeOrderPDF(project: Project, changeOrder: ChangeOrder) {
-    const doc = new jsPDF();
+    const doc = createPdf();
     const primaryColor = [220, 38, 38]; // amber/red for change order notice
 
     doc.setFillColor(primaryColor[0], primaryColor[1], primaryColor[2]);
@@ -1015,7 +1063,7 @@ export const pdfService = {
   // --- 14. Byggedagbok & Mannskapsliste (Byggherreforskriften & NS 8405/8406) ---
   async generateDailyLogPDF(project: Project, dailyLog: DailyLog) {
     try {
-      const doc = new jsPDF();
+      const doc = createPdf();
       const primaryColor = [2, 132, 199]; // sky-600
       const projName = project?.name || 'Prosjekt';
       const logDate = dailyLog?.date || new Date().toISOString().split('T')[0];
@@ -1125,7 +1173,7 @@ export const pdfService = {
   // --- 14b. KS Sjekkliste & Fagkontroll (TEK17 & Byggherreforskriften) ---
   async generateChecklistPDF(project: Project | any, checklist: any) {
     try {
-      const doc = new jsPDF();
+      const doc = createPdf();
       const primaryColor = [16, 185, 129]; // emerald-600
       const projName = project?.name || 'Prosjekt';
       const phaseTitle = checklist?.phaseTitle || checklist?.title || 'Kvalitetssikring & Fagkontroll';
@@ -1213,7 +1261,7 @@ export const pdfService = {
 
   // --- 15. Kjemisk Stoffkartotek (Kjemikalieforskriften / Arbeidstilsynet) ---
   async generateStoffkartotekPDF(project: Project, sheets: SafetyDataSheet[]) {
-    const doc = new jsPDF();
+    const doc = createPdf();
     const primaryColor = [217, 119, 6]; // amber-600
 
     doc.setFillColor(primaryColor[0], primaryColor[1], primaryColor[2]);
@@ -1259,7 +1307,7 @@ export const pdfService = {
 
   // --- 16. Formelt Sluttoppgjør (NS 8406 pkt. 26 / Håndverkertjenesteloven) ---
   async generateFinalSettlementPDF(project: Project, settlement: FinalSettlement) {
-    const doc = new jsPDF();
+    const doc = createPdf();
     const primaryColor = [15, 23, 42]; // slate-900
 
     doc.setFillColor(primaryColor[0], primaryColor[1], primaryColor[2]);
@@ -1311,7 +1359,7 @@ export const pdfService = {
 
   // --- 17. 1-års Befaringsprotokoll (Bustadoppføringslova § 16 / NS 8406) ---
   async generateWarrantyInspectionPDF(project: Project, inspection: WarrantyInspection) {
-    const doc = new jsPDF();
+    const doc = createPdf();
     const primaryColor = [13, 148, 136]; // teal-600
 
     doc.setFillColor(primaryColor[0], primaryColor[1], primaryColor[2]);
@@ -1376,7 +1424,7 @@ export const pdfService = {
 
   // --- 18. Krav om Fristforlengelse (NS 8406 pkt. 19.3) ---
   async generateExtensionOfTimeClaimPDF(project: Project, claim: ExtensionOfTimeClaim) {
-    const doc = new jsPDF();
+    const doc = createPdf();
     const primaryColor = [194, 65, 12]; // orange-700
 
     doc.setFillColor(primaryColor[0], primaryColor[1], primaryColor[2]);
