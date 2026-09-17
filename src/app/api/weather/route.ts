@@ -47,7 +47,15 @@ export async function GET(req: NextRequest) {
       lon = Number(lonParam);
     } else {
       const locLower = locationName.toLowerCase();
-      if (locLower.includes('bergen')) {
+      if (locLower.includes('horten') || locLower.includes('kongeveien')) {
+        lat = 59.42; lon = 10.48;
+      } else if (locLower.includes('tønsberg') || locLower.includes('tonsberg')) {
+        lat = 59.27; lon = 10.41;
+      } else if (locLower.includes('sandefjord')) {
+        lat = 59.13; lon = 10.22;
+      } else if (locLower.includes('larvik')) {
+        lat = 59.05; lon = 10.03;
+      } else if (locLower.includes('bergen')) {
         lat = 60.39; lon = 5.32;
       } else if (locLower.includes('trondheim')) {
         lat = 63.43; lon = 10.39;
@@ -94,7 +102,10 @@ export async function GET(req: NextRequest) {
         if (code === 0) {
           condition = 'Sol / Klart';
           icon = 'sun';
-        } else if (code >= 1 && code <= 3) {
+        } else if (code >= 1 && code <= 2) {
+          condition = 'Lettskyet / Sol';
+          icon = 'sun';
+        } else if (code === 3) {
           condition = 'Overskyet';
           icon = 'cloud';
         } else if ((code >= 51 && code <= 67) || (code >= 80 && code <= 82)) {

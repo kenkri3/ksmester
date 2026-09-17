@@ -1281,18 +1281,30 @@ Returner KUN et gyldig JSON-objekt:
           projectName: resolvedProjectName
         });
 
-        await saveCollectionItem('sja_reports', {
+        const sjaReportDoc = {
           projectId: resolvedProjectId,
           projectName: resolvedProjectName,
           title: sjaResult.data.title,
-          description: sjaResult.data.workTask || sjaResult.data.task || text,
-          tek17Reference: sjaResult.data.tek17Reference,
-          risks: sjaResult.data.hazards || sjaResult.data.risikoer || [],
-          mitigations: sjaResult.data.mitigations || [],
-          ppe: sjaResult.data.ppe || sjaResult.data.utstyr || [],
+          task: sjaResult.data.task || sjaResult.data.workTask || text,
+          description: sjaResult.data.task || sjaResult.data.workTask || text,
+          tek17Reference: sjaResult.data.tek17Reference || 'Byggherreforskriften § 18',
+          weatherImpact: sjaResult.data.weatherImpact || 'Normalt',
+          risikoer: sjaResult.data.risikoer || (sjaResult.data.hazards || []).map((h: string, i: number) => ({
+            aktivitet: sjaResult.data.title,
+            risiko: h,
+            tiltak: (sjaResult.data.mitigations || [])[i] || 'Følg standard vernetiltak'
+          })),
+          utstyr: sjaResult.data.utstyr || sjaResult.data.ppe || ['Hjelm med hakestropp', 'Vernetøy', 'Vernesko S3', 'Vernebriller'],
+          authorName: authorName || 'HMS-ansvarlig',
           createdBy: authorName || 'HMS-ansvarlig',
+          status: 'approved',
           createdAt: new Date().toISOString()
-        }).catch(() => {});
+        };
+
+        await Promise.all([
+          saveCollectionItem('sja_reports', sjaReportDoc).catch(() => {}),
+          saveCollectionItem('sja_documents', sjaReportDoc).catch(() => {})
+        ]);
 
         return NextResponse.json({
           success: true,
@@ -1731,8 +1743,10 @@ Returner KUN et gyldig JSON-objekt:
           `4. Betalingsplan: Faktureres à konto hver 14. dag etter dokumentert fremdrift. 14 dagers betalingsfrist.\n` +
           `5. Gyldighet: Tilbudet er gyldig i 30 dager fra tilbudsdato.`;
 
+        const baseUrl = req.nextUrl?.origin || process.env.NEXT_PUBLIC_APP_URL || 'https://vikingmester.no';
         const offerId = `offer-${Date.now()}`;
         const token = 'o-' + Date.now().toString(36) + Math.random().toString(36).substring(2, 6);
+        const offerLink = `${baseUrl}/?offerToken=${token}`;
 
         const offerDoc = {
           id: offerId,
@@ -1757,7 +1771,7 @@ Returner KUN et gyldig JSON-objekt:
           companyName: (user as any)?.company || 'Mester Entreprenør AS',
           terms,
           token,
-          shareUrl: `https://vikingmester.no/?offerToken=${token}`
+          shareUrl: offerLink
         };
 
         // Lagre atomisk i databasen
@@ -1774,11 +1788,11 @@ Returner KUN et gyldig JSON-objekt:
               companyName: (user as any)?.company || 'Mester Entreprenør AS',
               authorName: authorName || (user as any)?.displayName || 'Byggmester'
             });
-            offerDoc.status = 'sent';
-            await updateCollectionItem('offers', offerId, { status: 'sent' }).catch(() => {});
             isSent = true;
-          } catch (err: any) {
-            console.warn('[Dispatch] Error auto-sending offer email:', err.message);
+            await updateCollectionItem('offers', offerId, { status: 'sent' });
+            offerDoc.status = 'sent';
+          } catch (mailErr) {
+            console.warn('Auto send offer email failed:', mailErr);
           }
         }
 
@@ -1820,7 +1834,7 @@ Returner KUN et gyldig JSON-objekt:
           `• **Forbehold om skjulte feil:** Arbeider som skyldes uforutsette bygningsmessige forhold (f.eks. råte, sopp, asbest eller bærende konstruksjoner) faktureres etter medgått tid og materiell iht. NS 8406 pkt. 19.\n` +
           `• **Fremdrift & Betaling:** Faktureres à konto hver 14. dag etter dokumentert fremdrift. 14 dagers betalingsfrist.\n` +
           `• **Gyldighet:** 30 dager fra tilbudsdato.\n` +
-          `• **Digital godkjenningslenke:** [Åpne digitalt tilbud](https://vikingmester.no/?offerToken=${token})\n\n` +
+          `• **Digital godkjenningslenke:** [Åpne digitalt tilbud](${offerLink})\n\n` +
           (!isSent 
             ? (effectiveClientEmail 
                 ? `💡 *Kunden er registrert med e-post **${effectiveClientEmail}**. Klikk på «🚀 Send til ${effectiveClientEmail}» under for å sende tilbudet umiddelbart med digital signeringsknapp!*` 
@@ -1834,6 +1848,32 @@ Returner KUN et gyldig JSON-objekt:
           offerData: offerDoc,
           suggestedActions: [
             {
+              id: 'open_public_offer',
+              type: 'open_public_offer',
+              label: '👁️ Se digitalt tilbud (Kunde)',
+              data: {
+                token,
+                offerLink,
+                url: offerLink,
+                offer: offerDoc
+              }
+            },
+            {
+              id: 'open_offer_modal',
+              type: 'open_offer_modal',
+              label: '📝 Åpne i Tilbudsbygger',
+              data: offerDoc
+            },
+            {
+              id: 'copy_offer_link',
+              type: 'copy_link',
+              label: '🔗 Kopier digital signeringslenke',
+              data: {
+                url: offerLink,
+                shareUrl: offerLink
+              }
+            },
+            {
               id: 'send_offer_email',
               type: 'send_offer_email',
               label: isSent ? '✉️ Send tilbudet på nytt' : (effectiveClientEmail ? `🚀 Send til ${effectiveClientEmail}` : '✉️ Send tilbud på e-post'),
@@ -1845,21 +1885,6 @@ Returner KUN et gyldig JSON-objekt:
                 projectName: effectiveProjectName,
                 offerData: offerDoc
               }
-            },
-            {
-              id: 'copy_offer_link',
-              type: 'copy_link',
-              label: '🔗 Kopier digital signeringslenke',
-              data: {
-                url: `https://vikingmester.no/?offerToken=${token}`,
-                shareUrl: `https://vikingmester.no/?offerToken=${token}`
-              }
-            },
-            {
-              id: 'open_offer_modal',
-              type: 'open_offer_modal',
-              label: '📝 Åpne i Tilbudsbygger',
-              data: offerDoc
             },
             {
               id: 'prepare_contract',
@@ -1954,10 +1979,11 @@ Returner KUN et gyldig JSON-objekt:
             authorName: authorName || (user as any)?.displayName || 'Byggmester'
           });
 
+          const emailOfferLink = `${req.nextUrl?.origin || process.env.NEXT_PUBLIC_APP_URL || 'https://vikingmester.no'}/?offerToken=${targetOffer.token}`;
           return NextResponse.json({
             success: true,
             action: 'offer_email_sent',
-            reply: `✅ **Tilbudet er nå sendt på e-post!**\n\n- **Mottaker:** **${recipientEmail}**\n- **Tilbud:** «${targetOffer.title}»\n- **Totalbeløp:** kr ${(Number(targetOffer.totalAmount || targetOffer.total || 0)).toLocaleString('no-NO')} inkl. mva\n- **Digital godkjenningslenke:** [Åpne tilbud](https://vikingmester.no/?offerToken=${targetOffer.token})\n\nKunden har mottatt en formell e-post med komplett oversikt over poster, forbehold og en direkte knapp for å godkjenne tilbudet på skjermen. Hendelsen er protokollført i aktivitetsloggen.`,
+            reply: `✅ **Tilbudet er nå sendt på e-post!**\n\n- **Mottaker:** **${recipientEmail}**\n- **Tilbud:** «${targetOffer.title}»\n- **Totalbeløp:** kr ${(Number(targetOffer.totalAmount || targetOffer.total || 0)).toLocaleString('no-NO')} inkl. mva\n- **Digital godkjenningslenke:** [Åpne tilbud](${emailOfferLink})\n\nKunden har mottatt en formell e-post med komplett oversikt over poster, forbehold og en direkte knapp for å godkjenne tilbudet på skjermen. Hendelsen er protokollført i aktivitetsloggen.`,
             emailResult: emailRes
           });
         }

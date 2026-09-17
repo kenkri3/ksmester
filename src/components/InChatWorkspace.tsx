@@ -546,7 +546,7 @@ function InChatOfferForm({
 
     setIsSubmitting(true);
     try {
-      const token = 'off_' + Math.random().toString(36).substring(2, 12) + Date.now().toString(36);
+      const token = initialData?.token || 'off_' + Math.random().toString(36).substring(2, 12) + Date.now().toString(36);
       const offerDoc = {
         projectId: projectId || null,
         clientName: clientName.trim(),
@@ -585,12 +585,18 @@ function InChatOfferForm({
         console.warn('Sync to system_offers skipped:', syncErr);
       }
 
-      const offerLink = `${window.location.origin}/?offerToken=${token}`;
+      const offerLink = `${typeof window !== 'undefined' ? window.location.origin : ''}/?offerToken=${token}`;
 
       toast.success('Pristilbud opprettet og lagret!');
       onSuccess(
         `✅ **Pristilbud opprettet:** "${title}"\n- **Kunde:** ${clientName}\n- **Sum eks. mva:** kr ${sumExVat.toLocaleString('no-NO')},-\n- **Sum inkl. 25% mva:** kr ${totalIncVat.toLocaleString('no-NO')},-\n- **Lenke til tilbud:** [Åpne tilbud](${offerLink})`,
-        { type: 'offer_created', offerId: ref.id, token, offerLink }
+        { 
+          type: 'offer_created', 
+          offerId: ref.id, 
+          token, 
+          offerLink,
+          offerData: { ...offerDoc, id: ref.id }
+        }
       );
     } catch (err) {
       console.error('Error creating offer:', err);
@@ -1029,14 +1035,25 @@ function InChatSJAForm({
     setIsSubmitting(true);
     try {
       const proj = projects.find(p => p.id === projectId) || selectedProject || { name: 'Byggeplass' };
+      const risikoer = hazards.map((h, idx) => ({
+        aktivitet: jobTitle.trim(),
+        risiko: h,
+        tiltak: mitigations[idx] || mitigations[0] || 'Følg gjeldende sikkerhetsinstruks'
+      }));
+
       const sjaDoc = {
         projectId: projectId || null,
         projectName: proj.name,
+        title: jobTitle.trim(),
         jobTitle: jobTitle.trim(),
+        task: jobTitle.trim(),
         location: location.trim(),
         participants: participants.trim(),
         hazards,
         mitigations,
+        risikoer,
+        utstyr: ['Vernehjelm m/hakestropp', 'Vernetøy kl. 2', 'Vernesko S3', 'Vernebriller / Øyevern', 'Hørselvern'],
+        tek17Reference: 'Byggherreforskriften § 18 / TEK17',
         status: 'approved',
         authorId: user?.id || 'admin_user',
         authorName: user?.displayName || 'HMS-ansvarlig',
@@ -1044,7 +1061,10 @@ function InChatSJAForm({
         updatedAt: serverTimestamp()
       };
 
-      const ref = await addDoc(collection(db, 'sja_documents'), sjaDoc);
+      const [ref] = await Promise.all([
+        addDoc(collection(db, 'sja_documents'), sjaDoc),
+        addDoc(collection(db, 'sja_reports'), sjaDoc)
+      ]);
       toast.success('SJA er godkjent og lagret!');
       onSuccess(
         `🛡️ **Sikker Jobb Analyse (SJA) godkjent:** "${jobTitle}"\n- **Prosjekt:** ${proj.name}\n- **Farer identifisert:** ${hazards.length} stk\n- **Vernetiltak iverksatt:** ${mitigations.length} stk\n- **Deltakere:** ${participants}\n- **Status:** Lovkrav iht. Byggherreforskriften § 18 oppfylt.`,

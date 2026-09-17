@@ -68,7 +68,10 @@ export const weatherService = {
           if (code === 0) {
             condition = 'Sol / Klart';
             icon = 'sun';
-          } else if (code >= 1 && code <= 3) {
+          } else if (code >= 1 && code <= 2) {
+            condition = 'Lettskyet / Sol';
+            icon = 'sun';
+          } else if (code === 3) {
             condition = 'Overskyet';
             icon = 'cloud';
           } else if ((code >= 51 && code <= 67) || (code >= 80 && code <= 82)) {
@@ -162,7 +165,17 @@ export const weatherService = {
     let lon = 10.75;
     let name = 'Oslo';
 
-    if (locLower.includes('bergen')) {
+    if (locLower.includes('horten') || locLower.includes('kongeveien')) {
+      lat = 59.42; lon = 10.48; name = 'Horten';
+    } else if (locLower.includes('tønsberg') || locLower.includes('tonsberg')) {
+      lat = 59.27; lon = 10.41; name = 'Tønsberg';
+    } else if (locLower.includes('sandefjord')) {
+      lat = 59.13; lon = 10.22; name = 'Sandefjord';
+    } else if (locLower.includes('larvik')) {
+      lat = 59.05; lon = 10.03; name = 'Larvik';
+    } else if (locLower.includes('drammen')) {
+      lat = 59.74; lon = 10.20; name = 'Drammen';
+    } else if (locLower.includes('bergen')) {
       lat = 60.39; lon = 5.32; name = 'Bergen';
     } else if (locLower.includes('trondheim')) {
       lat = 63.43; lon = 10.39; name = 'Trondheim';

@@ -103,6 +103,7 @@ interface MesterAIChatProps {
   tasks?: any[];
   initialPrompt?: string;
   initialTab?: string;
+  currentTab?: string;
   isEmbedded?: boolean;
   onSelectProject?: (project: any) => void;
   onOpenPortal?: (project: any) => void;
@@ -137,6 +138,7 @@ export default function MesterAIChat({
   tasks = [],
   initialPrompt,
   initialTab,
+  currentTab,
   isEmbedded = false,
   onSelectProject,
   onOpenPortal,
@@ -287,16 +289,30 @@ export default function MesterAIChat({
   const audioPlayerRef = useRef<HTMLAudioElement | null>(null);
   const [isAnalyzingImage, setIsAnalyzingImage] = useState(false);
 
-  // Sync initialTab with activeTab
+  // Sync initialTab or currentTab with activeTab
   useEffect(() => {
-    if (!initialTab) return;
-    if (initialTab === 'prosjekter' || initialTab === 'projects') setActiveTab('projects');
-    else if (initialTab === 'chat' || initialTab === 'samtale') setActiveTab('chat');
-    else if (initialTab === 'admin' || initialTab === 'tilbud' || initialTab === 'endring' || initialTab === 'finans' || initialTab === 'endringsordrer') setActiveTab('admin');
-    else if (initialTab === 'team') setActiveTab('team');
-    else if (initialTab === 'toolbox' || initialTab === 'verktoy') setActiveTab('toolbox');
-    else if (initialTab === 'oversikt' || initialTab === 'cockpit' || initialTab === 'control_center') setActiveTab('control_center');
-  }, [initialTab]);
+    const tabToUse = currentTab || initialTab;
+    if (!tabToUse) return;
+    if (tabToUse === 'prosjekter' || tabToUse === 'projects') {
+      setActiveTab('projects');
+      setActiveFormView(null);
+    } else if (tabToUse === 'chat' || tabToUse === 'samtale') {
+      setActiveTab('chat');
+      setActiveFormView(null);
+    } else if (tabToUse === 'admin' || tabToUse === 'tilbud' || tabToUse === 'endring' || tabToUse === 'finans' || tabToUse === 'endringsordrer') {
+      setActiveTab('admin');
+      setActiveFormView(null);
+    } else if (tabToUse === 'team') {
+      setActiveTab('team');
+      setActiveFormView(null);
+    } else if (tabToUse === 'toolbox' || tabToUse === 'verktoy') {
+      setActiveTab('toolbox');
+      setActiveFormView(null);
+    } else if (tabToUse === 'oversikt' || tabToUse === 'cockpit' || tabToUse === 'control_center') {
+      setActiveTab('control_center');
+      setActiveFormView(null);
+    }
+  }, [currentTab, initialTab]);
 
   // Global event listener for tab switching from header / mobile menu
   useEffect(() => {
@@ -884,11 +900,37 @@ export default function MesterAIChat({
       }
       return;
     }
+    if (action.type === 'open_public_offer' || action.id === 'open_public_offer') {
+      const token = action.data?.token || action.data?.offerToken;
+      if (token) {
+        window.dispatchEvent(new CustomEvent('open_public_offer', { detail: { token, offer: action.data?.offer } }));
+        toast.success('Åpner digitalt tilbud...');
+        return;
+      }
+      const url = action.data?.offerLink || action.data?.url;
+      if (url) window.open(url, '_blank', 'noopener,noreferrer');
+      return;
+    }
+    if (action.type === 'open_public_change_order' || action.id === 'open_co_public') {
+      const token = action.data?.token || action.data?.changeOrderToken;
+      if (token) {
+        window.dispatchEvent(new CustomEvent('open_public_change_order', { detail: { token } }));
+        toast.success('Åpner endringsordre...');
+        return;
+      }
+      const url = action.data?.link || action.data?.url;
+      if (url) window.open(url, '_blank', 'noopener,noreferrer');
+      return;
+    }
     if (action.type === 'open_task_modal' || action.id === 'assign_task') {
       setActiveFormView({ type: 'task', data: action.data });
       return;
     }
     if (action.type === 'open_offer_modal' || action.id === 'open_offer') {
+      if (onOpenOfferModal && action.data) {
+        onOpenOfferModal(action.data);
+        return;
+      }
       setActiveFormView({ type: 'offer', data: action.data });
       return;
     }
@@ -995,11 +1037,63 @@ export default function MesterAIChat({
   };
 
   const handleFormSuccess = (msg: string, resultMeta?: any) => {
+    let actions: any[] | undefined = undefined;
+
+    if (resultMeta?.type === 'offer_created') {
+      const offerLink = resultMeta.offerLink || `${typeof window !== 'undefined' ? window.location.origin : ''}/?offerToken=${resultMeta.token || ''}`;
+      actions = [
+        {
+          id: 'open_public_offer',
+          type: 'open_public_offer',
+          label: '👁️ Se digitalt tilbud (Kunde)',
+          data: { token: resultMeta.token, offerLink, offer: resultMeta.offerData }
+        },
+        {
+          id: 'open_offer_modal',
+          type: 'open_offer_modal',
+          label: '📝 Åpne i Tilbudsbygger',
+          data: resultMeta.offerData || { id: resultMeta.offerId, token: resultMeta.token }
+        },
+        {
+          id: 'copy_offer_link',
+          type: 'copy_link',
+          label: '🔗 Kopier tilbudslenke',
+          data: { url: offerLink, shareUrl: offerLink }
+        },
+        {
+          id: 'send_offer_email',
+          type: 'send_offer_email',
+          label: '✉️ Send på e-post til kunde',
+          data: { 
+            clientEmail: resultMeta.offerData?.clientEmail || '', 
+            clientName: resultMeta.offerData?.clientName || '',
+            offerId: resultMeta.offerId 
+          }
+        }
+      ];
+    } else if (resultMeta?.type === 'change_order_created') {
+      actions = [
+        {
+          id: 'open_co_public',
+          type: 'open_public_change_order',
+          label: '👁️ Se endringsordre',
+          data: { token: resultMeta.token }
+        },
+        {
+          id: 'copy_co_link',
+          type: 'copy_link',
+          label: '🔗 Kopier signeringslenke',
+          data: { url: resultMeta.link }
+        }
+      ];
+    }
+
     const confirmationMsg: ChatMessage = {
       id: `sys-${Date.now()}`,
       role: 'assistant',
       content: msg,
       timestamp: new Date().toLocaleTimeString('no-NO', { hour: '2-digit', minute: '2-digit' }),
+      suggestedActions: actions,
       followUpPrompts: [
         'Hva mer må gjøres på dette prosjektet?',
         'Varsle kunden på e-post nå',
@@ -1186,16 +1280,83 @@ export default function MesterAIChat({
                 {children}
               </td>
             ),
-            a: ({ href, children }) => (
-              <a
-                href={href}
-                target={href?.startsWith('http') ? '_blank' : undefined}
-                rel={href?.startsWith('http') ? 'noopener noreferrer' : undefined}
-                className="text-electric-600 hover:text-electric-800 underline font-semibold inline-flex items-center gap-1"
-              >
-                {children}
-              </a>
-            ),
+            a: ({ href, children }) => {
+              const handleClick = (e: React.MouseEvent<HTMLAnchorElement>) => {
+                if (!href) return;
+
+                // 1. Sjekk om det er en tilbudslenke (offerToken, /tilbud/, /offer/, /kontrakt/)
+                if (href.includes('offerToken=') || href.includes('contractToken=') || href.includes('/tilbud/') || href.includes('/offer/') || href.includes('/kontrakt/')) {
+                  e.preventDefault();
+                  
+                  let token: string | null = null;
+                  try {
+                    const parsedUrl = new URL(href, typeof window !== 'undefined' ? window.location.origin : 'http://localhost');
+                    token = parsedUrl.searchParams.get('offerToken') || parsedUrl.searchParams.get('contractToken') || parsedUrl.searchParams.get('token');
+                    if (!token) {
+                      const parts = parsedUrl.pathname.split('/');
+                      const idx = parts.findIndex(p => p === 'tilbud' || p === 'offer' || p === 'kontrakt');
+                      if (idx !== -1 && parts[idx + 1]) token = parts[idx + 1];
+                    }
+                  } catch {
+                    const match = href.match(/(?:offerToken|contractToken|token)=([^&#]+)/);
+                    if (match) token = match[1];
+                  }
+
+                  if (token) {
+                    const matchedOffer = offers.find((o: any) => o.token === token || o.id === token);
+                    if (onOpenOfferModal && matchedOffer) {
+                      onOpenOfferModal(matchedOffer);
+                      toast.success('Åpner tilbud i tilbudsmodulen...');
+                      return;
+                    }
+                    window.dispatchEvent(new CustomEvent('open_public_offer', { detail: { token, offer: matchedOffer } }));
+                    toast.success('Åpner digitalt tilbud...');
+                    return;
+                  }
+
+                  window.open(href, '_blank', 'noopener,noreferrer');
+                  return;
+                }
+
+                // 2. Sjekk endringsordre (changeOrderToken, /endring/, /change-order/)
+                if (href.includes('changeOrderToken=') || href.includes('/endring/') || href.includes('/change-order/')) {
+                  e.preventDefault();
+                  let token: string | null = null;
+                  try {
+                    const parsedUrl = new URL(href, typeof window !== 'undefined' ? window.location.origin : 'http://localhost');
+                    token = parsedUrl.searchParams.get('changeOrderToken') || parsedUrl.searchParams.get('token');
+                    if (!token) {
+                      const parts = parsedUrl.pathname.split('/');
+                      const idx = parts.findIndex(p => p === 'endring' || p === 'change-order');
+                      if (idx !== -1 && parts[idx + 1]) token = parts[idx + 1];
+                    }
+                  } catch {
+                    const match = href.match(/(?:changeOrderToken|token)=([^&#]+)/);
+                    if (match) token = match[1];
+                  }
+
+                  if (token) {
+                    window.dispatchEvent(new CustomEvent('open_public_change_order', { detail: { token } }));
+                    toast.success('Åpner endringsordre...');
+                    return;
+                  }
+                  window.open(href, '_blank', 'noopener,noreferrer');
+                  return;
+                }
+              };
+
+              return (
+                <a
+                  href={href}
+                  onClick={handleClick}
+                  target={href?.startsWith('http') ? '_blank' : undefined}
+                  rel={href?.startsWith('http') ? 'noopener noreferrer' : undefined}
+                  className="text-electric-600 hover:text-electric-800 underline font-semibold inline-flex items-center gap-1 cursor-pointer transition-colors hover:bg-electric-50 px-1 py-0.5 rounded"
+                >
+                  {children}
+                </a>
+              );
+            },
             code: ({ children, className }) => {
               const isInline = !className;
               return isInline ? (
@@ -2836,7 +2997,36 @@ export default function MesterAIChat({
                                 <span>Spør AI om tilbudet</span>
                               </button>
 
-                              <div className="flex items-center gap-2">
+                              <div className="flex items-center gap-2 flex-wrap">
+                                {offer.token && (
+                                  <button
+                                    type="button"
+                                    onClick={() => {
+                                      window.dispatchEvent(new CustomEvent('open_public_offer', { detail: { token: offer.token, offer } }));
+                                      toast.success('Åpner digitalt tilbud...');
+                                    }}
+                                    className="px-2.5 py-1.5 bg-electric-50 hover:bg-electric-100 text-electric-700 rounded-xl text-xs font-bold transition-all flex items-center gap-1 cursor-pointer border border-electric-200"
+                                    title="Se digitalt tilbud (kundevisning)"
+                                  >
+                                    <ExternalLink size={13} />
+                                    <span>Åpne tilbud</span>
+                                  </button>
+                                )}
+                                <button
+                                  type="button"
+                                  onClick={() => {
+                                    if (onOpenOfferModal) {
+                                      onOpenOfferModal(offer);
+                                    } else {
+                                      setActiveFormView({ type: 'offer', data: offer });
+                                    }
+                                  }}
+                                  className="px-2.5 py-1.5 bg-slate-100 hover:bg-slate-200 text-slate-700 rounded-xl text-xs font-bold transition-all flex items-center gap-1 cursor-pointer"
+                                  title="Rediger tilbud i byggeren"
+                                >
+                                  <FileSignature size={13} />
+                                  <span>Rediger</span>
+                                </button>
                                 {offer.token && (
                                   <button
                                     type="button"

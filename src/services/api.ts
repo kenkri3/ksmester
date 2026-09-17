@@ -41,7 +41,7 @@ function saveOfflineQueue(queue: SyncQueueItem[]) {
   }
 }
 
-function getLocalCache<T = any>(collectionName: string): T[] {
+export function getLocalCache<T = any>(collectionName: string): T[] {
   if (typeof window === 'undefined') return [];
   try {
     const raw = localStorage.getItem(CACHE_PREFIX + collectionName);
@@ -51,7 +51,7 @@ function getLocalCache<T = any>(collectionName: string): T[] {
   }
 }
 
-function setLocalCache<T = any>(collectionName: string, data: T[]) {
+export function setLocalCache<T = any>(collectionName: string, data: T[]) {
   if (typeof window === 'undefined') return;
   try {
     localStorage.setItem(CACHE_PREFIX + collectionName, JSON.stringify(data));
@@ -63,6 +63,12 @@ function setLocalCache<T = any>(collectionName: string, data: T[]) {
 let isSyncing = false;
 
 export const api = {
+  getLocalCache<T = any>(collectionName: string): T[] {
+    return getLocalCache<T>(collectionName);
+  },
+  setLocalCache<T = any>(collectionName: string, data: T[]) {
+    return setLocalCache<T>(collectionName, data);
+  },
   // --- Auth ---
   async login(email: string, password?: string) {
     const res = await fetch('/api/auth/login', {

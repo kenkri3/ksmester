@@ -58,35 +58,42 @@ export default function PublicOfferFlow({
     async function loadOfferData() {
       setLoading(true);
       try {
+        const tokenQuery = token ? { token } : undefined;
         const [offers, contracts, projects] = await Promise.all([
-          api.getCollection('offers').catch(() => []),
-          api.getCollection('contracts').catch(() => []),
+          api.getCollection('offers', tokenQuery).catch(() => []),
+          api.getCollection('contracts', tokenQuery).catch(() => []),
           api.getCollection('projects').catch(() => [])
         ]);
+
+        // Lokal cache fallback hvis nettverkskall returnerer tomt
+        const cachedOffers = api.getLocalCache?.('offers') || [];
+        const cachedContracts = api.getLocalCache?.('contracts') || [];
+        const allOffers = [...offers, ...cachedOffers.filter((c: any) => !offers.some((o: any) => o.id === c.id))];
+        const allContracts = [...contracts, ...cachedContracts.filter((c: any) => !contracts.some((o: any) => o.id === c.id))];
 
         let matchedOffer: Offer | undefined;
         let matchedContract: Contract | undefined;
 
         // 1. Sjekk om token refererer til en kontrakt direkte
         if (token && (token.startsWith('c-') || token.startsWith('contract-'))) {
-          matchedContract = contracts.find((c: any) => c.token === token || c.id === token);
+          matchedContract = allContracts.find((c: any) => c.token === token || c.id === token);
           if (matchedContract?.offerId) {
-            matchedOffer = offers.find((o: any) => o.id === matchedContract.offerId);
+            matchedOffer = allOffers.find((o: any) => o.id === matchedContract.offerId);
           }
         }
 
         // 2. Sjekk tilbud dersom ikke funnet via kontrakt
         if (!matchedOffer) {
           if (token) {
-            matchedOffer = offers.find((o: any) => o.token === token || o.id === token);
+            matchedOffer = allOffers.find((o: any) => o.token === token || o.id === token);
           } else if (offerId) {
-            matchedOffer = offers.find((o: any) => o.id === offerId);
+            matchedOffer = allOffers.find((o: any) => o.id === offerId);
           }
         }
 
         // 3. Hvis tilbud ble funnet, sjekk om det foreligger en eksisterende kontrakt
         if (matchedOffer && !matchedContract) {
-          matchedContract = contracts.find((c: any) => c.offerId === matchedOffer?.id || c.token === matchedOffer?.token || c.id === matchedOffer?.contractId);
+          matchedContract = allContracts.find((c: any) => c.offerId === matchedOffer?.id || c.token === matchedOffer?.token || c.id === matchedOffer?.contractId);
         }
 
         // Hvis ingen av delene ble funnet, vis feilmelding (ingen falske mock-data)

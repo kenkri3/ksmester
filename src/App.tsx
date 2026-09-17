@@ -129,6 +129,9 @@ function AppContent() {
 
   useEffect(() => {
     const handleNav = (e: any) => {
+      if (e.detail?.token) setOfferToken(e.detail.token);
+      if (e.detail?.offerToken) setOfferToken(e.detail.offerToken);
+      if (e.detail?.changeOrderToken) setChangeOrderToken(e.detail.changeOrderToken);
       if (e.detail?.view) setView(e.detail.view);
       if (e.detail?.screen) setMobileScreen(e.detail.screen);
     };
@@ -137,11 +140,32 @@ function AppContent() {
       setView('mobile');
     };
     const handleOpenMobileMenu = () => setIsMenuOpen(true);
+
+    const handleOpenPublicOffer = (e: any) => {
+      const token = e.detail?.token || e.detail?.offerToken;
+      if (token) {
+        setOfferToken(token);
+        setView('public-offer');
+      }
+    };
+
+    const handleOpenPublicChangeOrder = (e: any) => {
+      const token = e.detail?.token || e.detail?.changeOrderToken;
+      if (token) {
+        setChangeOrderToken(token);
+        setView('public-change-order');
+      }
+    };
+
     window.addEventListener('navigate_view', handleNav);
+    window.addEventListener('open_public_offer', handleOpenPublicOffer);
+    window.addEventListener('open_public_change_order', handleOpenPublicChangeOrder);
     window.addEventListener('open_mobile_contacts', handleOpenContacts);
     window.addEventListener('open_mobile_menu', handleOpenMobileMenu);
     return () => {
       window.removeEventListener('navigate_view', handleNav);
+      window.removeEventListener('open_public_offer', handleOpenPublicOffer);
+      window.removeEventListener('open_public_change_order', handleOpenPublicChangeOrder);
       window.removeEventListener('open_mobile_contacts', handleOpenContacts);
       window.removeEventListener('open_mobile_menu', handleOpenMobileMenu);
     };
@@ -415,7 +439,7 @@ function AppContent() {
         <PublicOfferFlow 
           token={offerToken || undefined} 
           onNavigateToPortal={(id) => handleOpenPortal(id)} 
-          onBackToApp={() => setView('landing')} 
+          onBackToApp={() => setView(user ? 'dashboard' : 'landing')} 
         />
       </Suspense>
     );

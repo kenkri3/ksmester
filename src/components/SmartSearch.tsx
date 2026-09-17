@@ -547,6 +547,13 @@ Svar i JSON-format:
       }
     } else {
       onNavigate(item.actionType, item.id, item.metadata);
+      if (item.actionType === 'prosjekter' || item.actionType === 'projects') {
+        window.dispatchEvent(new CustomEvent('switch_mester_tab', { detail: { tab: 'projects' } }));
+      } else if (item.actionType === 'change_orders' || item.actionType === 'endringsordrer') {
+        window.dispatchEvent(new CustomEvent('switch_mester_tab', { detail: { tab: 'admin' } }));
+      } else if (item.actionType === 'team') {
+        window.dispatchEvent(new CustomEvent('switch_mester_tab', { detail: { tab: 'team' } }));
+      }
     }
     onClose();
   };
@@ -725,12 +732,23 @@ Svar i JSON-format:
                   })}
                 </div>
               ) : queryText.trim().length > 1 ? (
-                <div className="py-10 text-center space-y-2">
+                <div className="py-10 text-center space-y-3">
                   <Info className="mx-auto text-neutral-500" size={28} />
                   <p className="text-xs sm:text-sm text-neutral-300 font-semibold">Ingen direkte treff for &quot;{queryText}&quot;</p>
                   <p className="text-[11px] sm:text-xs text-neutral-500 max-w-sm mx-auto">
                     Prøv å søke etter prosjektnavn, kundenavn, GNR/BNR, verktøy eller still et fagspørsmål til MesterAI.
                   </p>
+                  <button
+                    onClick={() => {
+                      onNavigate('ask_ai', undefined, { prompt: queryText });
+                      onClose();
+                    }}
+                    className="inline-flex items-center gap-2 px-4 py-2 rounded-xl bg-emerald-500 text-slate-950 text-xs font-bold hover:bg-emerald-400 transition-all shadow-md cursor-pointer"
+                  >
+                    <Brain size={14} />
+                    <span>Spør MesterAI om &quot;{queryText}&quot;</span>
+                    <ArrowRight size={13} />
+                  </button>
                 </div>
               ) : (
                 /* Default Quick Actions / Suggestions */
@@ -741,21 +759,122 @@ Svar i JSON-format:
                     </h4>
                     <div className="grid grid-cols-1 sm:grid-cols-2 gap-2">
                       {[
-                        { title: 'Vis alle prosjekter', action: () => handleItemClick(SYSTEM_ACTIONS[0]), icon: Building2, desc: 'Prosjektoversikt og fremdrift' },
-                        { title: 'Opprett nytt avvik', action: () => handleItemClick(SYSTEM_ACTIONS[2]), icon: AlertTriangle, desc: 'Meld inn HMS- eller kvalitetsavvik' },
-                        { title: 'Sjekkliste for tømrer', action: () => handleItemClick(SYSTEM_ACTIONS[6]), icon: CheckSquare, desc: 'NS 3420 kontroll' },
-                        { title: 'Hva er status på Bjørklund?', action: () => setQueryText('Hva er status på Bjørklund?'), icon: Brain, desc: 'Still statusspørsmål til AI' },
-                        { title: 'Automatisk Byggedagbok', action: () => handleItemClick(SYSTEM_ACTIONS[10]), icon: Clock, desc: 'Yr-værsynk og aktiviteter' },
-                        { title: 'Endringsordrer (NS 8406)', action: () => handleItemClick(SYSTEM_ACTIONS[12]), icon: DollarSign, desc: 'Varsle tillegg og frist' },
-                        { title: 'Fallkalkulator (TEK17)', action: () => handleItemClick(SYSTEM_ACTIONS[18]), icon: Wrench, desc: '1:50 / 1:100 fall mot sluk' },
-                        { title: 'Tverrfaglig Lukkesperre', action: () => handleItemClick(SYSTEM_ACTIONS[4]), icon: ShieldCheck, desc: 'Stopp før vegg kles inn' }
+                        { 
+                          title: 'Vis alle prosjekter', 
+                          action: () => handleItemClick({
+                            category: 'action',
+                            title: 'Vis alle prosjekter',
+                            description: 'Prosjektoversikt og fremdrift',
+                            badge: 'Prosjekter',
+                            badgeColor: 'blue',
+                            icon: Building2,
+                            actionType: 'prosjekter'
+                          }), 
+                          icon: Building2, 
+                          desc: 'Prosjektoversikt og fremdrift' 
+                        },
+                        { 
+                          title: 'Opprett nytt avvik', 
+                          action: () => handleItemClick({
+                            category: 'action',
+                            title: 'Opprett nytt avvik',
+                            description: 'Meld inn HMS- eller kvalitetsavvik',
+                            badge: 'Kvalitet',
+                            badgeColor: 'rose',
+                            icon: AlertTriangle,
+                            actionType: 'create_deviation'
+                          }), 
+                          icon: AlertTriangle, 
+                          desc: 'Meld inn HMS- eller kvalitetsavvik' 
+                        },
+                        { 
+                          title: 'Sjekkliste for tømrer', 
+                          action: () => handleItemClick({
+                            category: 'action',
+                            title: 'Sjekkliste for tømrer',
+                            description: 'NS 3420 kontroll',
+                            badge: 'Tømrer',
+                            badgeColor: 'blue',
+                            icon: CheckSquare,
+                            actionType: 'start_checklist',
+                            metadata: { trade: 'carpenter' }
+                          }), 
+                          icon: CheckSquare, 
+                          desc: 'NS 3420 kontroll' 
+                        },
+                        { 
+                          title: liveProjects[0]?.name ? `Hva er status på ${liveProjects[0].name}?` : 'Hva er status på Bjørklund?', 
+                          action: () => {
+                            const pName = liveProjects[0]?.name || 'Bjørklund';
+                            setQueryText(`Hva er status på ${pName}?`);
+                          }, 
+                          icon: Brain, 
+                          desc: 'Still statusspørsmål til AI' 
+                        },
+                        { 
+                          title: 'Automatisk Byggedagbok', 
+                          action: () => handleItemClick({
+                            category: 'action',
+                            title: 'Automatisk Byggedagbok',
+                            description: 'Yr-værsynk og aktiviteter',
+                            badge: 'Lovpålagt',
+                            badgeColor: 'cyan',
+                            icon: Clock,
+                            actionType: 'daily_log'
+                          }), 
+                          icon: Clock, 
+                          desc: 'Yr-værsynk og aktiviteter' 
+                        },
+                        { 
+                          title: 'Endringsordrer (NS 8406)', 
+                          action: () => handleItemClick({
+                            category: 'action',
+                            title: 'Endringsordrer (NS 8406)',
+                            description: 'Varsle tillegg og frist',
+                            badge: 'NS 8406',
+                            badgeColor: 'purple',
+                            icon: DollarSign,
+                            actionType: 'change_order'
+                          }), 
+                          icon: DollarSign, 
+                          desc: 'Varsle tillegg og frist' 
+                        },
+                        { 
+                          title: 'Fallkalkulator (TEK17)', 
+                          action: () => handleItemClick({
+                            category: 'route',
+                            title: 'Fallkalkulator (TEK17 Våtrom)',
+                            description: '1:50 / 1:100 fall mot sluk',
+                            badge: 'Kalkulator',
+                            badgeColor: 'blue',
+                            icon: Wrench,
+                            actionType: 'route',
+                            id: '/verktoy/fall-kalkulator-tek17'
+                          }), 
+                          icon: Wrench, 
+                          desc: '1:50 / 1:100 fall mot sluk' 
+                        },
+                        { 
+                          title: 'Tverrfaglig Lukkesperre', 
+                          action: () => handleItemClick({
+                            category: 'action',
+                            title: 'Tverrfaglig Lukkesperre (Pre-close check)',
+                            description: 'Stopp før vegg kles inn',
+                            badge: 'TEK17 Sperre',
+                            badgeColor: 'rose',
+                            icon: ShieldCheck,
+                            actionType: 'pre_close'
+                          }), 
+                          icon: ShieldCheck, 
+                          desc: 'Stopp før vegg kles inn' 
+                        }
                       ].map((sug, i) => {
                         const Icon = sug.icon;
                         return (
                           <button
                             key={i}
                             onClick={sug.action}
-                            className="p-3 text-left rounded-xl bg-white/[0.03] hover:bg-white/[0.08] transition-all border border-white/5 hover:border-white/10 group flex items-start gap-2.5"
+                            className="p-3 text-left rounded-xl bg-white/[0.03] hover:bg-white/[0.08] transition-all border border-white/5 hover:border-white/10 group flex items-start gap-2.5 cursor-pointer"
                           >
                             <div className="p-2 rounded-lg bg-white/5 text-neutral-300 group-hover:text-emerald-400 group-hover:bg-emerald-500/10 transition-colors shrink-0">
                               <Icon size={16} />

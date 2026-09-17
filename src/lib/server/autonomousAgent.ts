@@ -53,11 +53,22 @@ const DEFAULT_AUTONOMY_SETTINGS: AutonomySettings = {
 
 const CITY_COORDINATES: Record<string, { lat: number; lon: number }> = {
   oslo: { lat: 59.91, lon: 10.75 },
+  horten: { lat: 59.42, lon: 10.48 },
+  kongeveien: { lat: 59.42, lon: 10.48 },
+  vestfold: { lat: 59.27, lon: 10.41 },
+  tønsberg: { lat: 59.27, lon: 10.41 },
+  tonsberg: { lat: 59.27, lon: 10.41 },
+  sandefjord: { lat: 59.13, lon: 10.22 },
+  larvik: { lat: 59.05, lon: 10.03 },
+  holmestrand: { lat: 59.49, lon: 10.32 },
+  åsgårdstrand: { lat: 59.35, lon: 10.47 },
+  asgardstrand: { lat: 59.35, lon: 10.47 },
+  drammen: { lat: 59.74, lon: 10.20 },
+  kongsberg: { lat: 59.67, lon: 9.65 },
   bergen: { lat: 60.39, lon: 5.32 },
   trondheim: { lat: 63.43, lon: 10.39 },
   stavanger: { lat: 58.97, lon: 5.73 },
   kristiansand: { lat: 58.15, lon: 8.00 },
-  drammen: { lat: 59.74, lon: 10.20 },
   tromsø: { lat: 69.65, lon: 18.96 },
   tromso: { lat: 69.65, lon: 18.96 },
   bodø: { lat: 67.28, lon: 14.40 },
@@ -66,7 +77,6 @@ const CITY_COORDINATES: Record<string, { lat: number; lon: number }> = {
   alesund: { lat: 62.47, lon: 6.15 },
   fredrikstad: { lat: 59.22, lon: 10.93 },
   sarpsborg: { lat: 59.28, lon: 11.11 },
-  tønsberg: { lat: 59.27, lon: 10.41 },
   sandnes: { lat: 58.85, lon: 5.74 },
   skien: { lat: 59.21, lon: 9.61 },
   porsgrunn: { lat: 59.14, lon: 9.65 },
@@ -121,9 +131,39 @@ export async function saveAutonomySettings(newSettings: Partial<AutonomySettings
 export async function getPendingActions(): Promise<PendingAction[]> {
   try {
     const allActions = await getCollectionItems('pending_actions');
-    return allActions
-      .filter((a: any) => a.status === 'pending')
-      .sort((a: any, b: any) => new Date(b.createdAt).getTime() - new Date(a.createdAt).getTime());
+    const today = new Date().toISOString().split('T')[0];
+    const validActions: PendingAction[] = [];
+
+    for (const a of allActions) {
+      if (a.status !== 'pending') continue;
+
+      // 1. Filtrer ut og auto-arkiver utgåtte eller feilaktige værvarsler
+      if (a.type === 'weather_risk_alert') {
+        const forecastDate = a.data?.forecastDate || a.id.split('-').pop();
+
+        // Passert dato -> arkiver som utgått
+        if (forecastDate && forecastDate < today) {
+          updateCollectionItem('pending_actions', a.id, {
+            status: 'auto_executed',
+            autoDismissedReason: 'Værvarseldatoen er passert.'
+          }).catch(() => {});
+          continue;
+        }
+
+        // Gamle feilvarsler generert da vind var km/h (f.eks. "21.6 m/s" eller vind > 14 km/h)
+        if (a.title?.includes('21.6') || (a.data?.windSpeedMs && a.data.windSpeedMs > 20 && !a.data?.isCorrected)) {
+          updateCollectionItem('pending_actions', a.id, {
+            status: 'auto_executed',
+            autoDismissedReason: 'Rettet: Enhetsfeil fra værstasjon (km/h konvertert til m/s).'
+          }).catch(() => {});
+          continue;
+        }
+      }
+
+      validActions.push(a);
+    }
+
+    return validActions.sort((a: any, b: any) => new Date(b.createdAt).getTime() - new Date(a.createdAt).getTime());
   } catch (e: any) {
     console.warn('[Autonomy] Feil ved henting av godkjenningskø:', e.message);
     return [];
@@ -280,7 +320,8 @@ export async function getProjectsWeatherStatus(): Promise<ProjectWeatherStatus[]
       const coords = resolveCoordinates(location);
 
       try {
-        const apiUrl = `https://api.open-meteo.com/v1/forecast?latitude=${coords.lat}&longitude=${coords.lon}&daily=temperature_2m_min,temperature_2m_max,precipitation_sum,wind_speed_10m_max,weather_code&timezone=Europe%2FOslo`;
+        // Legg til &wind_speed_unit=ms slik at Open-Meteo returnerer m/s (ikke km/h som standard)
+        const apiUrl = `https://api.open-meteo.com/v1/forecast?latitude=${coords.lat}&longitude=${coords.lon}&daily=temperature_2m_min,temperature_2m_max,precipitation_sum,wind_speed_10m_max,weather_code&wind_speed_unit=ms&timezone=Europe%2FOslo`;
         const res = await fetch(apiUrl, {
           headers: { 'Accept': 'application/json' },
           signal: AbortSignal.timeout(4000)
@@ -289,43 +330,107 @@ export async function getProjectsWeatherStatus(): Promise<ProjectWeatherStatus[]
         if (res.ok) {
           const json = await res.json();
           const daily = json.daily || {};
-          const minTemp = daily.temperature_2m_min?.[1] ?? 5; // Morgendagens min-temp
-          const maxTemp = daily.temperature_2m_max?.[1] ?? 12;
-          const precip = daily.precipitation_sum?.[1] ?? 0;
-          const wind = daily.wind_speed_10m_max?.[1] ?? 3.5;
-          const forecastDate = daily.time?.[1] || new Date(Date.now() + 86400000).toISOString().split('T')[0];
+
+          // DAGENS VÆR (Indeks 0):
+          const todayMinTemp = daily.temperature_2m_min?.[0] ?? 8;
+          const todayMaxTemp = daily.temperature_2m_max?.[0] ?? 15;
+          const todayPrecip = daily.precipitation_sum?.[0] ?? 0;
+          const todayWind = daily.wind_speed_10m_max?.[0] ?? 3.5;
+          const todayCode = daily.weather_code?.[0] ?? 1;
+          const todayDate = daily.time?.[0] || new Date().toISOString().split('T')[0];
+
+          // MORGENDAGENS VÆR (Indeks 1):
+          const tmrwMinTemp = daily.temperature_2m_min?.[1] ?? todayMinTemp;
+          const tmrwMaxTemp = daily.temperature_2m_max?.[1] ?? todayMaxTemp;
+          const tmrwPrecip = daily.precipitation_sum?.[1] ?? todayPrecip;
+          const tmrwWind = daily.wind_speed_10m_max?.[1] ?? todayWind;
+          const tmrwDate = daily.time?.[1] || new Date(Date.now() + 86400000).toISOString().split('T')[0];
 
           let riskLevel: 'safe' | 'warning' | 'critical' = 'safe';
           let riskReason: string | undefined = undefined;
-          let workAdvice = 'Stabile arbeidsforhold for både utendørs og innendørs arbeid.';
+          let workAdvice = 'Stabile og gode arbeidsforhold for både utendørs og innendørs arbeid.';
+          let forecastDate = todayDate;
 
-          if (minTemp < 0) {
-            riskLevel = minTemp < -5 ? 'critical' : 'warning';
-            riskReason = `Minusgrader (${minTemp}°C): Fare for frost i fersk støp/mørtel og glatt stillas.`;
+          // ⚠️ REELLE SIKKERHETSGRENSER FOR BYGGEPLASS (iht. Arbeidstilsynet & NS):
+          // Vind: >= 17 m/s (sterk kuling/storm) -> Kritisk stans i høyden.
+          //       >= 14 m/s (stiv kuling) -> Varsel ved kraning og stillasarbeid.
+          // Nedbør: >= 15 mm/døgn -> Fare for vanninntrenging.
+          // Temperatur: < 0°C -> Frostfare i fersk mørtel/støp.
+          if (todayMinTemp < 0) {
+            riskLevel = todayMinTemp < -5 ? 'critical' : 'warning';
+            riskReason = `Minusgrader i dag (${todayMinTemp}°C): Fare for frost i fersk støp/mørtel og glatt stillas.`;
             workAdvice = 'Utsett utvendig betong- og fasadearbeid, eller benytt vintertilsetning og aktiv tildekking.';
-          } else if (precip >= 10) {
+            forecastDate = todayDate;
+          } else if (todayPrecip >= 15) {
             riskLevel = 'critical';
-            riskReason = `Kraftig nedbør (${precip} mm meldt): Fare for vanninntrenging og fuktskader.`;
+            riskReason = `Kraftig nedbør i dag (${todayPrecip} mm meldt): Fare for vanninntrenging og fuktskader.`;
             workAdvice = 'Takarbeid og åpne konstruksjoner må tildekkes umiddelbart. Prioriter innvendige tømrerarbeider.';
-          } else if (wind >= 12) {
+            forecastDate = todayDate;
+          } else if (todayWind >= 17) {
+            riskLevel = 'critical';
+            riskReason = `Sterk kuling / storm i dag (${Math.round(todayWind * 10) / 10} m/s): Fare ved stillasarbeid, taktekking og kraning.`;
+            workAdvice = 'Stans arbeid i høyden. Sikre alle løse presenninger, plater og verktøy umiddelbart.';
+            forecastDate = todayDate;
+          } else if (todayWind >= 14) {
             riskLevel = 'warning';
-            riskReason = `Sterk vind (${wind} m/s): Fare ved stillasarbeid, taktekking og kraning.`;
-            workAdvice = 'Sikre alle løse presenninger, plater og verktøy. Vurder stans i arbeid i høyden.';
+            riskReason = `Stiv kuling i dag (${Math.round(todayWind * 10) / 10} m/s): Fare ved stillasarbeid og kraning av plater.`;
+            workAdvice = 'Sikre alle løse presenninger, plater og verktøy. Vurder stans i kraning og arbeid i høyden.';
+            forecastDate = todayDate;
+          } else if (tmrwMinTemp < 0) {
+            riskLevel = tmrwMinTemp < -5 ? 'critical' : 'warning';
+            riskReason = `Meldt kulde i morgen (${tmrwDate}, ${tmrwMinTemp}°C): Frostfare i mørtel og støp.`;
+            workAdvice = 'Planlegg tildekking eller innvendig arbeid for morgendagen.';
+            forecastDate = tmrwDate;
+          } else if (tmrwPrecip >= 15) {
+            riskLevel = 'critical';
+            riskReason = `Meldt kraftig nedbør i morgen (${tmrwDate}, ${tmrwPrecip} mm): Fare for fuktskader.`;
+            workAdvice = 'Tildekk åpne konstruksjoner og klargjør innvendige oppgaver før i morgen.';
+            forecastDate = tmrwDate;
+          } else if (tmrwWind >= 17) {
+            riskLevel = 'critical';
+            riskReason = `Meldt sterk kuling/storm i morgen (${tmrwDate}, ${Math.round(tmrwWind * 10) / 10} m/s): Ekstrem vind i høyden.`;
+            workAdvice = 'Sikre stillaser og byggeplass i ettermiddag for morgendagens vind.';
+            forecastDate = tmrwDate;
+          } else if (tmrwWind >= 14) {
+            riskLevel = 'warning';
+            riskReason = `Meldt stiv kuling i morgen (${tmrwDate}, ${Math.round(tmrwWind * 10) / 10} m/s): Vindkast ved stillasarbeid.`;
+            workAdvice = 'Sikre presenninger og materiell før arbeidsdagens slutt.';
+            forecastDate = tmrwDate;
           }
+
+          // Dagens værforhold for radaren:
+          let condition = 'Opphold';
+          if (todayPrecip > 2) {
+            condition = 'Regn';
+          } else if (todayMinTemp < 0) {
+            condition = 'Kuldegrader';
+          } else if (todayCode === 0) {
+            condition = 'Sol / Klart';
+          } else if (todayCode >= 1 && todayCode <= 2) {
+            condition = 'Lettskyet / Sol';
+          } else if (todayCode === 3) {
+            condition = 'Overskyet';
+          } else if (todayCode >= 51 && todayCode <= 67) {
+            condition = 'Lett regn / Yr';
+          }
+
+          const avgTemp = Math.round((todayMinTemp + todayMaxTemp) / 2);
+          const windMs = Math.round(todayWind * 10) / 10;
+          const precipMm = Math.round(todayPrecip * 10) / 10;
 
           statuses.push({
             projectId: proj.id,
             projectName: proj.name,
             location,
-            temp: Math.round((minTemp + maxTemp) / 2),
-            precipitationMm: Math.round(precip * 10) / 10,
-            windSpeedMs: Math.round(wind * 10) / 10,
-            condition: precip > 2 ? 'Regn' : minTemp < 0 ? 'Kuldegrader' : 'Opphold',
+            temp: avgTemp,
+            precipitationMm: precipMm,
+            windSpeedMs: windMs,
+            condition,
             riskLevel,
             riskReason,
             workAdvice,
             forecastDate,
-            weatherDescription: `${precip > 2 ? 'Regn' : minTemp < 0 ? 'Kuldegrader' : 'Opphold'}, ${Math.round((minTemp + maxTemp) / 2)}°C, ${Math.round(wind * 10) / 10} m/s vind`
+            weatherDescription: `${condition}, ${avgTemp}°C, ${windMs} m/s vind${precipMm > 0 ? `, ${precipMm} mm nedbør` : ''}`
           });
         }
       } catch (err: any) {
@@ -377,14 +482,31 @@ export async function runAutonomousAuditCycle(): Promise<{
   let changeOrdersDetected = 0;
 
   // --------------------------------------------------------------------------------------
-  // 1. VÆR-RADAR: Sjekk morgendagens vær for hvert aktivt prosjekt
+  // 1. VÆR-RADAR: Sjekk sanntidsvær og morgendagens vær for hvert aktivt prosjekt
   // --------------------------------------------------------------------------------------
   const weatherStatuses = await getProjectsWeatherStatus();
 
   for (const weather of weatherStatuses) {
+    // 🌟 REKONSILIERING: Dersom været er trygt, rydd automatisk bort eventuelle tidligere værvarsler!
+    if (weather.riskLevel === 'safe') {
+      const staleWeatherAlerts = existingActions.filter((a: any) => 
+        a.type === 'weather_risk_alert' && 
+        a.projectId === weather.projectId && 
+        a.status === 'pending'
+      );
+      for (const stale of staleWeatherAlerts) {
+        await updateCollectionItem('pending_actions', stale.id, {
+          status: 'auto_executed',
+          autoDismissedReason: 'Værforholdene er nå sjekket og verifisert trygge (sanntidsdata).'
+        });
+      }
+      continue;
+    }
+
+    // Hvis det foreligger en reell værfare:
     if (weather.riskLevel === 'warning' || weather.riskLevel === 'critical') {
       const actionId = `weather-alert-${weather.projectId}-${weather.forecastDate}`;
-      const alreadyExists = existingActions.some((a: any) => a.id === actionId);
+      const alreadyExists = existingActions.some((a: any) => a.id === actionId && a.status === 'pending');
 
       if (!alreadyExists) {
         const newAction: PendingAction = {

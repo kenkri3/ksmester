@@ -27,60 +27,131 @@ declare module 'jspdf' {
 
 export const pdfService = {
   // --- 1. SJA Report ---
-  async generateSJAReport(project: Project, report: SJAReport) {
+  async generateSJAReport(project?: Partial<Project> | null, report?: any) {
     const doc = new jsPDF();
     const primaryColor = [5, 150, 105]; // emerald-600
+    const projectName = project?.name || report?.projectName || 'Byggeprosjekt';
 
     // Header
     doc.setFillColor(primaryColor[0], primaryColor[1], primaryColor[2]);
     doc.rect(0, 0, 210, 40, 'F');
     
     doc.setTextColor(255, 255, 255);
-    doc.setFontSize(24);
+    doc.setFontSize(22);
     doc.setFont('helvetica', 'bold');
-    doc.text('SJA RAPPORT', 20, 25);
+    doc.text('SIKKER JOBB ANALYSE (SJA)', 20, 22);
     
     doc.setFontSize(10);
     doc.setFont('helvetica', 'normal');
-    doc.text(`Prosjekt: ${project.name}`, 20, 33);
+    doc.text(`Prosjekt: ${projectName} | Lovhjemmel: Byggherreforskriften § 18`, 20, 32);
 
     // Metadata
     doc.setTextColor(0, 0, 0);
     doc.setFontSize(12);
-    doc.text('Informasjon', 20, 55);
+    doc.setFont('helvetica', 'bold');
+    doc.text('Prosjekt- og analyseinformasjon', 20, 52);
     
+    let dateStr = new Date().toLocaleDateString('no-NO');
+    if (report?.createdAt) {
+      try {
+        const d = report.createdAt.toDate ? report.createdAt.toDate() : new Date(report.createdAt);
+        if (!isNaN(d.getTime())) dateStr = d.toLocaleDateString('no-NO');
+      } catch {}
+    } else if (report?.timestamp) {
+      try {
+        const d = report.timestamp.toDate ? report.timestamp.toDate() : new Date(report.timestamp);
+        if (!isNaN(d.getTime())) dateStr = d.toLocaleDateString('no-NO');
+      } catch {}
+    }
+
     const metaData = [
-      ['Dato', new Date(report.createdAt).toLocaleDateString('no-NO')],
-      ['Ansvarlig', report.createdBy || 'Byggeleder'],
-      ['Lokasjon', project.location || 'Byggeplass'],
-      ['GNR/BNR', `${project.gnr || '-'}/${project.bnr || '-'}`]
+      ['SJA Tittel', report?.title || 'SJA Rapport'],
+      ['Arbeidsoppgave', report?.task || report?.description || 'Fagarbeid'],
+      ['Dato', dateStr],
+      ['Ansvarlig / Leder', report?.authorName || report?.createdBy || report?.responsible || 'HMS-ansvarlig'],
+      ['Deltakere / Håndverkere', report?.participants || 'Arbeidslag'],
+      ['Lokasjon / Arbeidssted', report?.location || project?.location || 'Byggeplass'],
+      ['Status', report?.status === 'approved' ? 'Godkjent og arkivert' : (report?.status || 'Aktiv')]
     ];
 
-    doc.autoTable({
-      startY: 60,
+    (doc as any).autoTable({
+      startY: 56,
       head: [['Felt', 'Verdi']],
       body: metaData,
       theme: 'striped',
       headStyles: { fillColor: primaryColor }
     });
 
-    // Risks
+    // Extract risks flexibly
+    let riskData: string[][] = [];
+    if (Array.isArray(report?.risikoer) && report.risikoer.length > 0) {
+      riskData = report.risikoer.map((r: any, i: number) => [
+        r.aktivitet || `Moment ${i + 1}`,
+        r.risiko || 'Vurdert fare',
+        r.tiltak || 'Sikkerhetstiltak'
+      ]);
+    } else if (Array.isArray(report?.hazards) && report.hazards.length > 0) {
+      const mitigations = report.mitigations || report.measures || [];
+      riskData = report.hazards.map((h: any, i: number) => [
+        `Arbeidsmoment ${i + 1}`,
+        typeof h === 'string' ? h : (h.hazard || h.risiko || 'Fare'),
+        mitigations[i] || (typeof h === 'object' && h.tiltak) || 'Påkrevd sikkerhetstiltak iverksatt'
+      ]);
+    } else if (Array.isArray(report?.risks) && report.risks.length > 0) {
+      const mitigations = report.mitigations || [];
+      riskData = report.risks.map((r: any, i: number) => [
+        r.activity || `Moment ${i + 1}`,
+        r.hazard || r.risk || 'Fare',
+        r.measure || mitigations[i] || 'Tiltak iverksatt'
+      ]);
+    }
+
+    if (riskData.length === 0) {
+      riskData = [
+        ['Arbeid i høyden / ferdsel', 'Fall fra stillas/stige, klemfare eller glatt underlag', 'Godkjent stillas med grønt skilt, rekkverk og fallsikringssele'],
+        ['Verktøy og kapping', 'Kutt- og øyeskader fra sag/kappeverktøy', 'Bruk av vernebriller, hansker, deksel/spaltekniv'],
+        ['Arbeidsmiljø og støv', 'Innånding av svevestøv / kjemikalier', 'Punktavsug med HEPA-filter og P3 støvmaske']
+      ];
+    }
+
     doc.setFontSize(14);
-    doc.text('Risikovurdering (TEK17/SAK10)', 20, (doc as any).lastAutoTable.finalY + 15);
+    doc.setFont('helvetica', 'bold');
+    doc.text('Identifiserte Farer & Sikkerhetstiltak', 20, (doc as any).lastAutoTable.finalY + 12);
 
-    const riskData = (report.risikoer || []).map(risk => [
-      risk.aktivitet,
-      risk.risiko,
-      risk.tiltak
-    ]);
-
-    doc.autoTable({
-      startY: (doc as any).lastAutoTable.finalY + 20,
+    (doc as any).autoTable({
+      startY: (doc as any).lastAutoTable.finalY + 16,
       head: [['Aktivitet', 'Fare / Risiko', 'Sikkerhetstiltak']],
       body: riskData,
       theme: 'grid',
-      headStyles: { fillColor: primaryColor }
+      headStyles: { fillColor: primaryColor },
+      styles: { fontSize: 9 }
     });
+
+    // Equipment / Verneutstyr
+    const ppeList: string[] = report?.utstyr || report?.ppe || report?.equipment || ['Hjelm med hakestropp', 'Vernesko S3', 'Vernebriller', 'Hørselvern', 'Hansker'];
+    if (ppeList.length > 0) {
+      doc.setFontSize(12);
+      doc.setFont('helvetica', 'bold');
+      doc.text('Påkrevd Personlig Verneutstyr (PVU)', 20, (doc as any).lastAutoTable.finalY + 12);
+
+      (doc as any).autoTable({
+        startY: (doc as any).lastAutoTable.finalY + 16,
+        body: [['Verneutstyr', ppeList.join(', ')]],
+        theme: 'plain',
+        styles: { fontSize: 9, fontStyle: 'bold' }
+      });
+    }
+
+    // Signatures
+    const finalY = (doc as any).lastAutoTable.finalY + 15;
+    doc.setFontSize(10);
+    doc.setFont('helvetica', 'normal');
+    doc.text('Godkjent og verifisert før oppstart iht. Byggherreforskriften § 18:', 20, finalY);
+    doc.line(20, finalY + 15, 90, finalY + 15);
+    doc.text('Ansvarlig byggeleder (signatur)', 20, finalY + 20);
+
+    doc.line(120, finalY + 15, 190, finalY + 15);
+    doc.text('Verneombud / Tillitsvalgt', 120, finalY + 20);
 
     // Footer
     const pageCount = (doc as any).internal.getNumberOfPages();
@@ -88,10 +159,11 @@ export const pdfService = {
       doc.setPage(i);
       doc.setFontSize(8);
       doc.setTextColor(150, 150, 150);
-      doc.text(`Side ${i} av ${pageCount} - Generert av VikingMester`, 105, 285, { align: 'center' });
+      doc.text(`Side ${i} av ${pageCount} - Generert av VikingMester HMS`, 105, 285, { align: 'center' });
     }
 
-    doc.save(`SJA_${project.name.replace(/\s+/g, '_')}_${new Date().toISOString().split('T')[0]}.pdf`);
+    const cleanProjectName = projectName.replace(/[^a-zA-Z0-9æøåÆØÅ_-]/g, '_');
+    doc.save(`SJA_${cleanProjectName}_${new Date().toISOString().split('T')[0]}.pdf`);
   },
 
   // --- 2. Deviation / Avvik Report ---

@@ -551,6 +551,47 @@ export default function VikingChatbot({
                 {children}
               </td>
             ),
+            a: ({ href, children }) => {
+              const handleClick = (e: React.MouseEvent<HTMLAnchorElement>) => {
+                if (!href) return;
+                if (href.includes('offerToken=') || href.includes('contractToken=') || href.includes('/tilbud/') || href.includes('/offer/')) {
+                  e.preventDefault();
+                  let token: string | null = null;
+                  try {
+                    const parsedUrl = new URL(href, typeof window !== 'undefined' ? window.location.origin : 'http://localhost');
+                    token = parsedUrl.searchParams.get('offerToken') || parsedUrl.searchParams.get('contractToken') || parsedUrl.searchParams.get('token');
+                    if (!token) {
+                      const parts = parsedUrl.pathname.split('/');
+                      const idx = parts.findIndex(p => p === 'tilbud' || p === 'offer' || p === 'kontrakt');
+                      if (idx !== -1 && parts[idx + 1]) token = parts[idx + 1];
+                    }
+                  } catch {
+                    const match = href.match(/(?:offerToken|contractToken|token)=([^&#]+)/);
+                    if (match) token = match[1];
+                  }
+
+                  if (token) {
+                    window.dispatchEvent(new CustomEvent('open_public_offer', { detail: { token } }));
+                    toast.success('Åpner digitalt tilbud...');
+                    return;
+                  }
+                  window.open(href, '_blank', 'noopener,noreferrer');
+                  return;
+                }
+              };
+
+              return (
+                <a
+                  href={href}
+                  onClick={handleClick}
+                  target={href?.startsWith('http') ? '_blank' : undefined}
+                  rel={href?.startsWith('http') ? 'noopener noreferrer' : undefined}
+                  className="text-purple-600 hover:text-purple-800 underline font-semibold inline-flex items-center gap-1 cursor-pointer transition-colors"
+                >
+                  {children}
+                </a>
+              );
+            },
             code: ({ children, className }) => {
               const isInline = !className;
               return isInline ? (

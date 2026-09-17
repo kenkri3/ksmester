@@ -539,14 +539,26 @@ INSTRUKSJON FOR SVAR:
         projectName: resolvedProjectName,
         title: `SJA: ${userText.slice(0, 50)}`,
         task: userText,
+        description: userText,
         hazards: ['Fall fra høyde / stillas', 'Klem- og kuttskader', 'Støv og partikler'],
         measures: ['Bruk av personlig verneutstyr (hjelm, fallsikring)', 'Inspeksjon av stillas før bruk', 'Bruk av støvmaske og vernebriller'],
+        risikoer: [
+          { aktivitet: 'Arbeid i høyden / stillas', risiko: 'Fall fra høyde (> 2m)', tiltak: 'Godkjent stillas med rekkverk, fallsikringssele ved montasje' },
+          { aktivitet: 'Kapping og verktøybruk', risiko: 'Kutt- og klemskader, flygende splinter', tiltak: 'Bruk av vernebriller, hørselvern og vernehansker kl. 2' },
+          { aktivitet: 'Støvende og støyende arbeid', risiko: 'Innånding av svevestøv, hørselsskade', tiltak: 'P3 støvmaske og godkjent hørselvern' }
+        ],
+        utstyr: ['Vernehjelm m/hakestropp', 'Vernetøy kl. 2', 'Vernesko S3', 'Vernebriller', 'Hørselvern'],
+        tek17Reference: 'Byggherreforskriften § 18 / TEK17 § 12-16',
+        authorName: userDisplayName,
         responsible: userDisplayName,
         status: 'approved',
         createdAt: new Date().toISOString()
       };
 
-      await saveCollectionItem('sja_reports', sjaRecord);
+      await Promise.all([
+        saveCollectionItem('sja_reports', sjaRecord),
+        saveCollectionItem('sja_documents', sjaRecord)
+      ]);
 
       await saveCollectionItem('agent_activities', {
         type: 'sja',

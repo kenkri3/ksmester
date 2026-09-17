@@ -59,7 +59,7 @@ import {
   Hash
 } from 'lucide-react';
 import { cn } from '@/src/lib/utils';
-import { Project, Deviation, UserProfile } from '../types';
+import { Project, Deviation, UserProfile, Trade } from '../types';
 import { db, collection, onSnapshot, query, orderBy, where, getDocs, deleteDoc, OperationType, handleFirestoreError } from '../services/firebase';
 import { useTranslation } from 'react-i18next';
 import { toast } from 'sonner';
@@ -69,6 +69,7 @@ import ActivityLogModal from './ActivityLogModal';
 import DailyLogModal from './DailyLogModal';
 import CreateProjectModal from './CreateProjectModal';
 import CreateDeviationModal from './CreateDeviationModal';
+import DeviationDetailModal from './DeviationDetailModal';
 import ChecklistModal from './ChecklistModal';
 import AIVisionModal from './AIVisionModal';
 import OfferModal from './OfferModal';
@@ -114,11 +115,11 @@ export default function Dashboard({
   const { projects, deviations, stats, loading: dataLoading, dataUnavailable } = useDashboardData();
 
   // Primary active tab
-  const [activeTab, setActiveTab] = useState<'cockpit' | 'prosjekter' | 'endringsordrer' | 'kvalitet' | 'agent'>(
+  const [activeTab, setActiveTab] = useState<'cockpit' | 'prosjekter' | 'endringsordrer' | 'kvalitet' | 'agent' | 'chat'>(
     'cockpit'
   );
 
-  const handleTabSelect = (tab: 'cockpit' | 'prosjekter' | 'endringsordrer' | 'kvalitet' | 'agent') => {
+  const handleTabSelect = (tab: 'cockpit' | 'prosjekter' | 'endringsordrer' | 'kvalitet' | 'agent' | 'chat') => {
     setActiveTab(tab);
     onTabChange?.(tab);
   };
@@ -140,6 +141,9 @@ export default function Dashboard({
   const [isDeviationModalOpen, setIsDeviationModalOpen] = useState(false);
   const [isChecklistModalOpen, setIsChecklistModalOpen] = useState(false);
   const [checklistProjectId, setChecklistProjectId] = useState<string | undefined>();
+  const [checklistTrade, setChecklistTrade] = useState<Trade | undefined>();
+  const [selectedDeviation, setSelectedDeviation] = useState<Deviation | null>(null);
+  const [isDeviationDetailOpen, setIsDeviationDetailOpen] = useState(false);
   const [isAIVisionModalOpen, setIsAIVisionModalOpen] = useState(false);
   const [isOfferModalOpen, setIsOfferModalOpen] = useState(false);
   const [isContractModalOpen, setIsContractModalOpen] = useState(false);
@@ -433,7 +437,7 @@ export default function Dashboard({
       case 'nav_project':
       case 'project':
         if (id) {
-          const found = projects.find(p => p.id === id || p.projectCode === id);
+          const found = projects.find(p => p.id === id || p.projectCode === id) || extra?.project;
           if (found) {
             setSelectedProject(found);
             return;
@@ -441,11 +445,25 @@ export default function Dashboard({
         }
         setSelectedProject(null);
         setActiveTab('prosjekter');
+        onTabChange?.('prosjekter');
+        window.dispatchEvent(new CustomEvent('switch_mester_tab', { detail: { tab: 'projects' } }));
         break;
 
       case 'prosjekter':
+      case 'projects':
         setSelectedProject(null);
         setActiveTab('prosjekter');
+        onTabChange?.('prosjekter');
+        window.dispatchEvent(new CustomEvent('switch_mester_tab', { detail: { tab: 'projects' } }));
+        break;
+
+      case 'ask_ai':
+        if (extra?.prompt) {
+          setChatInitialPrompt(extra.prompt);
+          setSelectedProject(null);
+          setActiveTab('cockpit');
+          window.dispatchEvent(new CustomEvent('switch_mester_tab', { detail: { tab: 'chat' } }));
+        }
         break;
 
       case 'create_project':
@@ -459,6 +477,23 @@ export default function Dashboard({
         break;
 
       case 'deviation':
+        if (extra?.deviation) {
+          setSelectedDeviation(extra.deviation);
+          setIsDeviationDetailOpen(true);
+          return;
+        }
+        if (id) {
+          const foundDev = deviations.find(d => d.id === id);
+          if (foundDev) {
+            setSelectedDeviation(foundDev);
+            setIsDeviationDetailOpen(true);
+            return;
+          }
+        }
+        setSelectedProject(null);
+        setActiveTab('kvalitet');
+        break;
+
       case 'deviations':
         setSelectedProject(null);
         setActiveTab('kvalitet');
@@ -469,12 +504,22 @@ export default function Dashboard({
       case 'checklists':
         if (id) setChecklistProjectId(id);
         else if (projects.length > 0) setChecklistProjectId(projects[0].id);
+        if (extra?.trade) setChecklistTrade(extra.trade);
+        else setChecklistTrade(undefined);
         setIsChecklistModalOpen(true);
         break;
 
       case 'daily_log':
       case 'byggedagbok':
+        if (id) {
+          const found = projects.find(p => p.id === id);
+          if (found) setSelectedProject(found);
+        }
+        setIsDailyLogModalOpen(true);
+        break;
+
       case 'activity_log':
+      case 'aktivitetslogg':
         setIsActivityLogModalOpen(true);
         break;
 
@@ -494,6 +539,8 @@ export default function Dashboard({
       case 'endringsordrer':
         setSelectedProject(null);
         setActiveTab('endringsordrer');
+        onTabChange?.('finans');
+        window.dispatchEvent(new CustomEvent('switch_mester_tab', { detail: { tab: 'admin' } }));
         break;
 
       case 'offer':
@@ -527,6 +574,8 @@ export default function Dashboard({
       case 'yr':
         setSelectedProject(null);
         setActiveTab('prosjekter');
+        onTabChange?.('prosjekter');
+        window.dispatchEvent(new CustomEvent('switch_mester_tab', { detail: { tab: 'projects' } }));
         toast.info('Viser værdata fra Yr.no på prosjektene');
         break;
 
@@ -559,8 +608,7 @@ export default function Dashboard({
       case 'pre_close':
       case 'lukkesperre':
         setSelectedProject(null);
-        setActiveTab('kvalitet');
-        setSelectedLukkesperreZone(lukkesperreZones[0]);
+        setSelectedLukkesperreZone(lukkesperreZones[0] || null);
         setIsPreCloseModalOpen(true);
         break;
 
@@ -606,10 +654,23 @@ export default function Dashboard({
         break;
 
       case 'cockpit':
-      case 'kvalitet':
-      case 'agent':
+      case 'control_center':
+      case 'oversikt':
         setSelectedProject(null);
-        setActiveTab(actionType as any);
+        setActiveTab('cockpit');
+        onTabChange?.('oversikt');
+        window.dispatchEvent(new CustomEvent('switch_mester_tab', { detail: { tab: 'control_center' } }));
+        break;
+
+      case 'chat':
+      case 'samtale':
+        setSelectedProject(null);
+        window.dispatchEvent(new CustomEvent('switch_mester_tab', { detail: { tab: 'chat' } }));
+        break;
+
+      case 'team':
+        setSelectedProject(null);
+        window.dispatchEvent(new CustomEvent('switch_mester_tab', { detail: { tab: 'team' } }));
         break;
 
       case 'route':
@@ -961,8 +1022,12 @@ export default function Dashboard({
       />
       <ChecklistModal 
         isOpen={isChecklistModalOpen} 
-        onClose={() => setIsChecklistModalOpen(false)} 
+        onClose={() => {
+          setIsChecklistModalOpen(false);
+          setChecklistTrade(undefined);
+        }} 
         projectId={checklistProjectId || projects[0]?.id}
+        initialTrade={checklistTrade}
       />
       <AIVisionModal 
         isOpen={isAIVisionModalOpen} 
@@ -1010,14 +1075,47 @@ export default function Dashboard({
       <VehicleModal isOpen={isVehicleModalOpen} onClose={() => setIsVehicleModalOpen(false)} projects={projects} />
       <HMSModal isOpen={isHMSModalOpen} onClose={() => setIsHMSModalOpen(false)} projects={projects} />
       <ActivityLogModal isOpen={isActivityLogModalOpen} onClose={() => setIsActivityLogModalOpen(false)} projectId={projects[0]?.id} />
-      {projects[0] && (
-        <DailyLogModal
-          isOpen={isDailyLogModalOpen}
-          onClose={() => setIsDailyLogModalOpen(false)}
-          project={selectedProject || projects[0]}
-          currentUserName={user?.displayName || 'Byggeleder'}
-        />
-      )}
+      <DailyLogModal
+        isOpen={isDailyLogModalOpen}
+        onClose={() => setIsDailyLogModalOpen(false)}
+        project={selectedProject || projects[0] || ({
+          id: 'proj-default',
+          name: 'Hovedprosjekt',
+          projectCode: 'P-01',
+          description: 'Hovedprosjekt',
+          location: 'Byggeplass',
+          progress: 0,
+          status: 'active',
+          stage: 'active',
+          documentationLevel: 0,
+          clientName: 'Oppdragsgiver',
+          clientEmail: '',
+          clientPhone: '',
+          company: user?.company || 'Bedrift',
+          companyId: user?.companyId || 'comp',
+          companyName: user?.company || 'Bedrift',
+          projectManager: user?.displayName || 'Byggeleder',
+          startDate: new Date().toISOString(),
+          lastUpdate: new Date().toISOString(),
+          createdAt: new Date().toISOString(),
+          updatedAt: new Date().toISOString()
+        } as unknown as Project)}
+        currentUserName={user?.displayName || 'Byggeleder'}
+      />
+      <DeviationDetailModal
+        isOpen={isDeviationDetailOpen}
+        onClose={() => {
+          setIsDeviationDetailOpen(false);
+          setSelectedDeviation(null);
+        }}
+        deviation={selectedDeviation}
+        project={selectedDeviation ? (projects.find(p => p.id === selectedDeviation.projectId) || { id: selectedDeviation.projectId || 'p-1', name: 'Prosjekt' }) : undefined}
+        onUpdated={() => {
+          setIsDeviationDetailOpen(false);
+          setSelectedDeviation(null);
+          fetchAgentState();
+        }}
+      />
       <ChangeOrderModal
         isOpen={isChangeOrderModalOpen}
         onClose={() => {
@@ -1060,7 +1158,18 @@ export default function Dashboard({
       <PreCloseInspectorModal
         isOpen={isPreCloseModalOpen}
         onClose={() => setIsPreCloseModalOpen(false)}
-        zone={selectedLukkesperreZone}
+        zone={selectedLukkesperreZone || lukkesperreZones[0] || ({
+          id: 'zone-1',
+          name: 'Bad 2. etasje (Hovedbad)',
+          room: 'Bad 2. etasje',
+          status: 'pending',
+          trades: [
+            { name: 'Rørlegger', status: 'approved', items: ['Trykktest rør-i-rør fullført og godkjent (10 bar)', 'Slukmansjett montert og kontrollert'] },
+            { name: 'Elektriker', status: 'approved', items: ['Varmekabler megging OK', 'Rørføring til belysning og stikkontakter ferdig'] },
+            { name: 'Ventilasjon', status: 'pending', items: ['Avtrekkskanal montert med kondensisolasjon'] },
+            { name: 'Tømrer', status: 'pending', items: ['Dampsperre klemt og tapet mot tilstøtende konstruksjon'] }
+          ]
+        } as any)}
         onUpdateZone={handleUpdateZone}
         onOpenAIVision={(_roomName) => {
           setIsPreCloseModalOpen(false);
@@ -1132,7 +1241,8 @@ export default function Dashboard({
           <MesterAIChat 
             isEmbedded={true}
             isOpen={true}
-            initialTab={initialTab || (activeTab === 'cockpit' ? 'control_center' : (activeTab === 'prosjekter' ? 'projects' : (activeTab === 'endringsordrer' ? 'admin' : (activeTab === 'kvalitet' ? 'control_center' : 'chat'))))}
+            initialTab={initialTab}
+            currentTab={activeTab === 'prosjekter' ? 'projects' : (activeTab === 'endringsordrer' ? 'admin' : (activeTab === 'agent' ? 'chat' : 'control_center'))}
             selectedProject={selectedProject}
             projects={projects}
             tasks={dashboardTasks}
