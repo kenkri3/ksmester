@@ -48,6 +48,7 @@ import {
   Square,
   Sliders,
   Shield,
+  Lightbulb,
   Smartphone,
   Home,
   ChevronLeft,
@@ -123,6 +124,295 @@ interface MesterAIChatProps {
   onOpenAIVision?: () => void;
   onPromptHandled?: () => void;
   onNavigate?: (tab: string) => void;
+}
+
+export interface WelcomeTheme {
+  id: string;
+  badge: string;
+  icon: string;
+  title: string;
+  headline: string;
+  bullets: Array<{ label: string; text: string; icon?: string }>;
+  callToAction: string;
+  suggestedActions?: Array<{
+    id: string;
+    type: string;
+    label: string;
+    data?: any;
+  }>;
+  followUpPrompts: string[];
+}
+
+export const MANAGER_WELCOME_THEMES: WelcomeTheme[] = [
+  {
+    id: 'kalkyle',
+    badge: 'Kalkyle & Tilbud',
+    icon: '📝',
+    title: 'Lynraske tilbud med juridiske forbehold',
+    headline: 'Her i arbeidsstasjonen beregner MesterAI timer, materialer og påslag for deg',
+    bullets: [
+      { icon: '⚡', label: 'Lynrask kalkyle', text: 'Beskriv jobben i chatten, så beregner jeg materialbehov, timeforbruk og påslag.' },
+      { icon: '⚖️', label: 'NS 8406 / NS 8405', text: 'Setter automatisk inn nødvendige standardforbehold så du er juridisk sikret.' },
+      { icon: '📲', label: 'Digital signering', text: 'Kunden mottar tilbudet på SMS/e-post og godkjenner direkte på mobilen.' }
+    ],
+    callToAction: 'Vil du teste en kalkyle eller opprette et nytt tilbud nå?',
+    suggestedActions: [
+      { id: 'open_offer', type: 'open_offer_modal', label: '📝 Opprett nytt tilbud' }
+    ],
+    followUpPrompts: [
+      'Kalkuler materialer og timer for 12 kvm bad',
+      'Lag et tilbud på tilbygg med NS 8406-forbehold',
+      'Hvilke forbehold bør jeg ha med i et fastpristilbud?',
+      'Hva bør påslaget være for 25% dekningsgrad?'
+    ]
+  },
+  {
+    id: 'endringsordrer',
+    badge: 'Endringsordrer & Varsler',
+    icon: '📄',
+    title: 'Sikre deg mot tapte tilleggskrav',
+    headline: 'Når kunden ber om endringer eller uforutsette forhold oppstår, må det varsles skriftlig uten ugrunnet opphold (NS 8406 § 25)',
+    bullets: [
+      { icon: '⏱️', label: 'Unngå preklusjon', text: 'Varsle i tide så du ikke mister retten til tilleggsvederlag eller fristforlengelse.' },
+      { icon: '🎙️', label: 'Dikter i felt', text: 'Snakk inn endringen mens du står på byggeplassen – AI formulerer kravet formelt.' },
+      { icon: '✍️', label: 'Mobilgodkjenning', text: 'Send godkjenningslenke rett til kunden som signerer digitalt på sekunder.' }
+    ],
+    callToAction: 'Har det oppstått uforutsette forhold eller endringsønsker på byggeplassen?',
+    suggestedActions: [
+      { id: 'open_co', type: 'open_change_order_modal', label: '📄 Før ny endringsordre' }
+    ],
+    followUpPrompts: [
+      'Hvordan varsler jeg en endringsordre iht. NS 8406?',
+      'Varsle endringsordre for skjult råteskade bak kledning',
+      'Krev 3 dagers fristforlengelse pga. sen materialleveranse',
+      'Hva regnes som "uten ugrunnet opphold" i NS 8406?'
+    ]
+  },
+  {
+    id: 'tek17',
+    badge: 'TEK17 & Lukkesperre',
+    icon: '📸',
+    title: 'Unngå reklamasjoner med AI-bildekontroll',
+    headline: 'Bruk mobilkameraet til å verifisere utførelsen mot forskriftene før du lukker vegger eller støper',
+    bullets: [
+      { icon: '🚿', label: 'Fall til sluk', text: 'Sjekk 1:50-fall i dusjsonen og fall mot sluk i resten av rommet (TEK17 § 13-15).' },
+      { icon: '🛡️', label: 'Lukkesperre', text: 'Få visuell bekreftelse på membranmansjetter, klemring og rør før lukking.' },
+      { icon: '📁', label: 'Automatisk KS-arkiv', text: 'Bildene og kontrollpunktene arkiveres rett i prosjektets kvalitetssikringsperm.' }
+    ],
+    callToAction: 'Har du et bilde eller en TEK17-forskrift du vil undersøke nå?',
+    suggestedActions: [
+      { id: 'open_deviation', type: 'open_deviation_modal', label: '📷 Kontroller bilde / avvik' }
+    ],
+    followUpPrompts: [
+      'Hva er kravene til fall mot sluk i TEK17?',
+      'Sjekkliste før lukking av våtromsvegg',
+      'Hva er kravet til radonsperre i TEK17 § 13-5?',
+      'Hvilke krav gjelder for dampsperre mot kaldt loft?'
+    ]
+  },
+  {
+    id: 'sja',
+    badge: 'SJA & Sikkerhet',
+    icon: '🦺',
+    title: 'SJA på under ett minutt før risikofylt arbeid',
+    headline: 'Før arbeid i høyden, varme arbeider eller riving skal det gjennomføres Sikker Jobb Analyse (SJA)',
+    bullets: [
+      { icon: '⚡', label: 'Lynrask analyse', text: 'Beskriv jobben, så setter AI opp farer, risikomatrise og pålagte vernetiltak.' },
+      { icon: '🏗️', label: 'Høyde, varme & riving', text: 'Ferdige rutiner for stillas, fallsikring, varme arbeider og sanering.' },
+      { icon: '📱', label: 'Signer på telefonen', text: 'Hele arbeidslaget bekrefter gjennomgang direkte på telefonen.' }
+    ],
+    callToAction: 'Vil du opprette en Sikker Jobb Analyse for dagens oppdrag?',
+    suggestedActions: [
+      { id: 'open_sja', type: 'open_sja_modal', label: '🦺 Opprett SJA' }
+    ],
+    followUpPrompts: [
+      'Lag en SJA for takarbeid og stillasmontering',
+      'Hvilke vernetiltak kreves for varme arbeider?',
+      'SJA for riving av bærevegg med understøtting',
+      'Hva må kontrolleres på rullestillas før bruk?'
+    ]
+  },
+  {
+    id: 'drift',
+    badge: 'Autonom Drift & Ledelse',
+    icon: '🎯',
+    title: 'Deleger oppgaver og følg fremdriften i sanntid',
+    headline: 'Få full oversikt over teamet, oppgavene og fremdriften på alle byggeplasser',
+    bullets: [
+      { icon: '📋', label: 'Tildel oppgaver', text: 'Send oppgaver til håndverkere og lærlinger via tale eller skjema.' },
+      { icon: '☀️', label: 'Sanntids morgenbrifing', text: 'Værvarsel fra Yr.no, dagens oppgaver og lukkesperrer samlet på ett sted.' },
+      { icon: '📊', label: '100% Autonom fremdrift', text: 'Fremdriften oppdateres automatisk etter hvert som sjekkpunkter fullføres.' }
+    ],
+    callToAction: 'Hvilken oppgave vil du delegere eller følge opp nå?',
+    suggestedActions: [
+      { id: 'assign_task', type: 'open_task_modal', label: '🎯 Tildel ny oppgave' }
+    ],
+    followUpPrompts: [
+      'Gi meg dagens morgenbrifing og vær for byggeplassen',
+      'Tildel ny oppgave til en håndverker',
+      'Hvilke oppgaver har forfall denne uken?',
+      'Oppsummer gårsdagens byggedagbøker'
+    ]
+  },
+  {
+    id: 'nobb',
+    badge: 'NOBB & FDV-Dokumentasjon',
+    icon: '📦',
+    title: 'Finn NOBB-varer og FDV-data på sekunder',
+    headline: 'Søk opp byggevarer, tekniske datablad og miljødeklarasjoner direkte i samtalen',
+    bullets: [
+      { icon: '🔍', label: 'NOBB-oppslag', text: 'Søk blant tusenvis av byggevarer etter NOBB-nr, dimensjoner og priser.' },
+      { icon: '📄', label: 'FDV til overlevering', text: 'Hent godkjent FDV-dokumentasjon og EPD-miljødeklarasjoner.' },
+      { icon: '♻️', label: 'Miljøkrav & Avfall', text: 'Få konkrete krav til kildesortering og avfallsplan på byggeplass.' }
+    ],
+    callToAction: 'Hvilket byggevareprodukt eller FDV-dokument leter du etter?',
+    suggestedActions: [
+      { id: 'open_offer', type: 'open_offer_modal', label: '🔍 NOBB-vareoppslag' }
+    ],
+    followUpPrompts: [
+      'Finn FDV-dokumentasjon for Litex membranplater',
+      'Søk opp NOBB-vare og sjekk tekniske data',
+      'Hva kreves i en FDV-perm ved ferdigattest?',
+      'Hvilke krav gjelder for kildesortering på byggeplass?'
+    ]
+  }
+];
+
+export const WORKER_WELCOME_THEMES: WelcomeTheme[] = [
+  {
+    id: 'oppgaver_timer',
+    badge: 'Mine Oppgaver & Timer',
+    icon: '📋',
+    title: 'Få unna dagens oppgaver og før timer enkelt',
+    headline: 'Her har du alt du trenger ute på byggeplassen i dag',
+    bullets: [
+      { icon: '📋', label: 'Mine oppgaver', text: 'Se hva du skal gjøre i dag og marker fullført med ett trykk.' },
+      { icon: '⏱️', label: 'Timeføring', text: 'Før timer direkte med tale eller hurtigknapper.' }
+    ],
+    callToAction: 'Hva har du jobbet med i dag?',
+    suggestedActions: [
+      { id: 'open_time', type: 'open_time_modal', label: '⏱️ Før timer' }
+    ],
+    followUpPrompts: [
+      'Hva er oppgavene mine i dag?',
+      'Før 7.5 timer ordinært arbeid',
+      'Hvilke oppgaver har forfall i dag?'
+    ]
+  },
+  {
+    id: 'tek17_felt',
+    badge: 'TEK17 i felt',
+    icon: '📐',
+    title: 'Faglige svar og monteringsanvisninger',
+    headline: 'Spør MesterAI om mål, forskrifter og monteringsdetaljer rett fra lomma',
+    bullets: [
+      { icon: '🚿', label: 'Fall til sluk', text: 'Sjekk fallkrav, slukmansjett og klemring på sekunder.' },
+      { icon: '🧱', label: 'Byggdetaljer', text: 'Spør om dampsperre, stenderavstand, spikerslag eller isolasjon.' }
+    ],
+    callToAction: 'Hva lurer du på vedrørende TEK17 eller monteringskrav?',
+    suggestedActions: [
+      { id: 'open_deviation', type: 'open_deviation_modal', label: '📐 Sjekk forskrift' }
+    ],
+    followUpPrompts: [
+      'Hva er kravene til fall mot sluk i TEK17?',
+      'Hvor tett skal klemring skrus på sluk?',
+      'Hva er kravet til dampsperre mot kaldt loft?'
+    ]
+  },
+  {
+    id: 'sja_felt',
+    badge: 'SJA & Sikkerhet',
+    icon: '🦺',
+    title: 'Trygt arbeid og personlig verneutstyr',
+    headline: 'Gjennomgå vernetiltak og risikovurdering før risikofylt arbeid starter',
+    bullets: [
+      { icon: '🛡️', label: 'SJA på byggeplassen', text: 'Gjennomgå vernetiltak før stillas, tak eller varme arbeider.' },
+      { icon: '⚠️', label: 'Meld avvik / RUH', text: 'Meld inn farlige forhold før det skjer en ulykke.' }
+    ],
+    callToAction: 'Skal dere i gang med risikofylt arbeid i dag?',
+    suggestedActions: [
+      { id: 'open_sja', type: 'open_sja_modal', label: '🦺 Se SJA' }
+    ],
+    followUpPrompts: [
+      'Hva må kontrolleres på rullestillas før bruk?',
+      'Hvilke vernetiltak kreves for varme arbeider?',
+      'Meld inn et HMS-avvik med bilde'
+    ]
+  },
+  {
+    id: 'bilde_felt',
+    badge: 'Bildebevis & Lukkesperre',
+    icon: '📸',
+    title: 'Dokumenter med bilde før du lukker',
+    headline: 'Ta bilde av membran, sluk eller rør for å låse opp lukkesperren',
+    bullets: [
+      { icon: '📷', label: 'Bildebevis', text: 'Ta bilde av utførelsen så det blir arkivert i kvalitetssikringen.' },
+      { icon: '📁', label: 'KS-arkiv', text: 'Bildet knyttes automatisk til prosjektet for sluttkontroll.' }
+    ],
+    callToAction: 'Har du tatt bilde før du kler igjen veggen eller støper?',
+    suggestedActions: [
+      { id: 'open_deviation', type: 'open_deviation_modal', label: '📷 Registrer bildebevis' }
+    ],
+    followUpPrompts: [
+      'Sjekkliste før lukking av våtromsvegg',
+      'Dokumenter slukmansjett før flislegging',
+      'Meld inn uforutsett skade på byggeplassen'
+    ]
+  }
+];
+
+export function getTimeGreeting(): string {
+  const hour = new Date().getHours();
+  if (hour >= 5 && hour < 10) return 'God morgen';
+  if (hour >= 10 && hour < 12) return 'God formiddag';
+  if (hour >= 12 && hour < 18) return 'God dag';
+  return 'God kveld';
+}
+
+export function getValidProjectName(projects?: any[]): string | null {
+  if (!projects || projects.length === 0) return null;
+  const first = projects[0];
+  if (!first || !first.name) return null;
+  const name = String(first.name).trim();
+  if (name.toLowerCase().includes('kongeveien') && projects.length <= 1) {
+    return null;
+  }
+  return name;
+}
+
+export function buildWelcomeMessage(
+  themeIndex: number,
+  isWorker: boolean,
+  userDisplayName?: string | null,
+  realProjectName?: string | null
+): ChatMessage {
+  const themes = isWorker ? WORKER_WELCOME_THEMES : MANAGER_WELCOME_THEMES;
+  const safeIdx = Math.abs(themeIndex) % themes.length;
+  const theme = themes[safeIdx];
+  const greeting = getTimeGreeting();
+  const name = userDisplayName ? userDisplayName.split(' ')[0] : (isWorker ? 'håndverker' : 'mester');
+
+  const bullets = theme.bullets
+    .map(b => `- ${b.icon ? `${b.icon} ` : ''}**${b.label}:** ${b.text}`)
+    .join('\n');
+
+  const content = `${greeting}, **${name}**! ${theme.icon} **Dagens tips: ${theme.title}**\n\n${theme.headline}:\n${bullets}\n\n${theme.callToAction}`;
+
+  const prompts = theme.followUpPrompts.map(p => {
+    if (realProjectName && p.includes('for byggeplassen')) {
+      return `Dagens status for ${realProjectName}`;
+    }
+    return p;
+  });
+
+  return {
+    id: 'welcome',
+    role: 'assistant',
+    content,
+    timestamp: new Date().toLocaleTimeString('no-NO', { hour: '2-digit', minute: '2-digit' }),
+    suggestedActions: theme.suggestedActions,
+    followUpPrompts: prompts
+  };
 }
 
 export default function MesterAIChat({
@@ -222,28 +512,33 @@ export default function MesterAIChat({
     window.dispatchEvent(new CustomEvent('navigate_view', { detail: { view: targetView } }));
   };
 
-  const getInitialMessages = (): ChatMessage[] => [
-    {
-      id: 'welcome',
-      role: 'assistant',
-      content: isWorker
-        ? `Hei ${user?.displayName || 'håndverker'}! 🔨 Jeg er **MesterAI Feltassistent**.\n\nHer har du alt du trenger ute på byggeplassen:\n- 📋 **Mine Oppgaver:** Se hva du skal gjøre i dag og marker fullført.\n- ⏱️ **Timeføring:** Før timer med tale eller ett trykk.\n- 🛡️ **SJA & Sikkerhet:** Sjekk vernetiltak og risikovurdering før risikofylt arbeid.\n- 📐 **TEK17 & Forskrifter:** Still spørsmål om fall til sluk, dampsperre, u-verdier etc.\n\nHva vil du fikse nå?`
-        : `Hei! Jeg er **MesterAI**, din autonome lederassistent og faglige samtalepartner.\n\nHer i arbeidsstasjonen har du **full kontroll over hele driften**:\n- 🎯 **Dagens Status:** Sanntids morgenbrifing, vær (Yr.no) og lukkesperrer.\n- 📋 **Tildel Oppgaver:** Deleger oppgaver direkte via tale eller skjema.\n- 📝 **Tilbud & Kalkyle:** Beregne arbeidstimer, materialer, påslag og forbehold (NS 8406 / NS 8405).\n- 📄 **Endringsordrer & Varsler:** Føre og godkjenne krav om tilleggsvederlag uten formfeil.\n- 👥 **Team & Invitasjoner:** Inviter håndverkere og tildel tilgangsnivåer.\n\nHva vil du fikse eller få oversikt over nå?`,
-      timestamp: new Date().toLocaleTimeString('no-NO', { hour: '2-digit', minute: '2-digit' }),
-      followUpPrompts: isWorker
-        ? [
-            'Hva er oppgavene mine i dag?',
-            projects?.[0]?.name ? `Før 7.5 timer på ${projects[0].name}` : 'Før dagens arbeidstimer',
-            'Hva er kravene til fall mot sluk i TEK17?',
-            'Lag en SJA for sikkert arbeid'
-          ]
-        : [
-            projects?.[0]?.name ? `Dagens status for ${projects[0].name}` : 'Gi meg dagens status for byggeplassene',
-            'Tildel ny oppgave til en håndverker',
-            'Hjelp meg å skrive et nytt tilbud',
-            'Hvordan varsler jeg en endringsordre iht. NS 8406?'
-          ]
+  const [welcomeThemeIndex, setWelcomeThemeIndex] = useState<number>(() => {
+    if (typeof window !== 'undefined') {
+      try {
+        const saved = localStorage.getItem('mester_ai_welcome_theme_idx');
+        const total = isWorker ? WORKER_WELCOME_THEMES.length : MANAGER_WELCOME_THEMES.length;
+        if (saved !== null) {
+          const parsed = parseInt(saved, 10);
+          if (!isNaN(parsed)) {
+            const next = (parsed + 1) % total;
+            localStorage.setItem('mester_ai_welcome_theme_idx', String(next));
+            return next;
+          }
+        }
+        localStorage.setItem('mester_ai_welcome_theme_idx', '0');
+        return 0;
+      } catch {}
     }
+    return 0;
+  });
+
+  const getInitialMessages = (overrideIdx?: number): ChatMessage[] => [
+    buildWelcomeMessage(
+      overrideIdx !== undefined ? overrideIdx : welcomeThemeIndex,
+      isWorker,
+      user?.displayName,
+      getValidProjectName(projects)
+    )
   ];
 
   const [messages, setMessages] = useState<ChatMessage[]>(() => {
@@ -252,12 +547,60 @@ export default function MesterAIChat({
         const saved = sessionStorage.getItem('mester_ai_chat_history');
         if (saved) {
           const parsed = JSON.parse(saved);
-          if (Array.isArray(parsed) && parsed.length > 0) return parsed;
+          if (Array.isArray(parsed) && parsed.length > 0) {
+            // If the chat only contains the initial welcome message, refresh it with the dynamic theme
+            if (parsed.length === 1 && parsed[0].id === 'welcome') {
+              return [
+                buildWelcomeMessage(
+                  welcomeThemeIndex,
+                  isWorker,
+                  user?.displayName,
+                  getValidProjectName(projects)
+                )
+              ];
+            }
+            return parsed;
+          }
         }
       } catch {}
     }
     return getInitialMessages();
   });
+
+  const handleCycleWelcomeTip = (e?: React.MouseEvent) => {
+    if (e) e.stopPropagation();
+    const themes = isWorker ? WORKER_WELCOME_THEMES : MANAGER_WELCOME_THEMES;
+    const nextIdx = (welcomeThemeIndex + 1) % themes.length;
+    setWelcomeThemeIndex(nextIdx);
+    if (typeof window !== 'undefined') {
+      try {
+        localStorage.setItem('mester_ai_welcome_theme_idx', String(nextIdx));
+      } catch {}
+    }
+
+    const newWelcomeMsg = buildWelcomeMessage(
+      nextIdx,
+      isWorker,
+      user?.displayName,
+      getValidProjectName(projects)
+    );
+
+    setMessages((prev) => {
+      if (prev.length > 0 && prev[0].id === 'welcome') {
+        const updated = [newWelcomeMsg, ...prev.slice(1)];
+        if (typeof window !== 'undefined') {
+          try {
+            sessionStorage.setItem('mester_ai_chat_history', JSON.stringify(updated));
+          } catch {}
+        }
+        return updated;
+      }
+      return [newWelcomeMsg, ...prev];
+    });
+
+    const activeTheme = themes[nextIdx];
+    toast.info(`Fokus: ${activeTheme.badge}`);
+  };
 
   const [inputVal, setInputVal] = useState('');
   const [isLoading, setIsLoading] = useState(false);
@@ -864,12 +1207,18 @@ export default function MesterAIChat({
 
   const handleClearHistory = () => {
     if (window.confirm('Vil du nullstille samtalen og starte med et rent chat-vindu?')) {
-      const resetMsg = getInitialMessages();
+      const themes = isWorker ? WORKER_WELCOME_THEMES : MANAGER_WELCOME_THEMES;
+      const nextIdx = (welcomeThemeIndex + 1) % themes.length;
+      setWelcomeThemeIndex(nextIdx);
+      if (typeof window !== 'undefined') {
+        try {
+          localStorage.setItem('mester_ai_welcome_theme_idx', String(nextIdx));
+          sessionStorage.removeItem('mester_ai_chat_history');
+        } catch {}
+      }
+      const resetMsg = getInitialMessages(nextIdx);
       setMessages(resetMsg);
       setInputVal('');
-      if (typeof window !== 'undefined') {
-        sessionStorage.removeItem('mester_ai_chat_history');
-      }
       toast.success('Chatten er nullstilt og klar for nye oppgaver');
     }
   };
@@ -2055,12 +2404,29 @@ export default function MesterAIChat({
                         : "bg-white text-navy-900 border border-slate-200/90 rounded-bl-xs"
                     )}>
                       {msg.role === 'assistant' && (
-                        <div className="flex items-center justify-between gap-3 mb-2 pb-1.5 border-b border-slate-100">
+                        <div className="flex items-center justify-between gap-2 mb-2 pb-1.5 border-b border-slate-100 flex-wrap">
                           <div className="flex items-center gap-1.5 text-xs font-black text-electric-700">
                             <Brain size={14} />
                             <span>MesterAI Rådgiver</span>
+                            {msg.id === 'welcome' && (
+                              <span className="inline-flex items-center gap-1 ml-1 px-2 py-0.5 rounded-full text-[10px] font-bold bg-purple-50 text-purple-700 border border-purple-200">
+                                <Sparkles size={10} />
+                                <span>Tips {welcomeThemeIndex + 1}/{isWorker ? WORKER_WELCOME_THEMES.length : MANAGER_WELCOME_THEMES.length}</span>
+                              </span>
+                            )}
                           </div>
-                          <div className="flex items-center gap-2">
+                          <div className="flex items-center gap-1.5">
+                            {msg.id === 'welcome' && (
+                              <button
+                                type="button"
+                                onClick={handleCycleWelcomeTip}
+                                className="inline-flex items-center gap-1 px-2 py-0.5 rounded-lg text-[11px] font-bold text-electric-700 hover:text-electric-900 bg-electric-50 hover:bg-electric-100 border border-electric-200 transition-all cursor-pointer active:scale-95 shadow-2xs"
+                                title="Klikk for å se neste funksjon og fagtips"
+                              >
+                                <RefreshCw size={11} className="transition-transform duration-300 hover:rotate-180 text-electric-600" />
+                                <span>Bytt tips</span>
+                              </button>
+                            )}
                             <span className="text-[10px] text-slate-400">{msg.timestamp}</span>
                             <button
                               type="button"
@@ -2628,7 +2994,7 @@ export default function MesterAIChat({
 
                     <div className="grid grid-cols-1 md:grid-cols-2 gap-3">
                       {(projects || []).filter(Boolean).map((proj) => {
-                        const projName = proj.name || (proj.id?.toLowerCase().includes('kongeveien') ? 'Totalrenovering Kongeveien 93A' : 'Byggeplass');
+                        const projName = proj.name || 'Byggeplass';
                         const projLocation = proj.location || 'Norge';
                         const projClient = proj.clientName || 'Privatkunde';
                         const projTasks = tasksList.filter(t => t.projectId === proj.id);
