@@ -2504,7 +2504,7 @@ export default function MesterAIChat({
               </div>
 
               {/* Chat Input Field & Toolbox Launcher */}
-              <div className="p-3 sm:p-4 bg-white border-t border-slate-200 shrink-0 mb-16 md:mb-0">
+              <div className="p-2.5 sm:p-4 bg-white border-t border-slate-200 shrink-0 mb-[calc(5rem+env(safe-area-inset-bottom,0px))] md:mb-0 z-20 relative shadow-xs">
                 <form 
                   onSubmit={(e) => {
                     e.preventDefault();
@@ -2599,7 +2599,7 @@ export default function MesterAIChat({
           {/* Right Column / Full Body: Active Form OR Overview Views */}
           <div className={cn(
             "flex-1 overflow-y-auto flex flex-col bg-slate-50/70 transition-all custom-scrollbar",
-            activeFormView ? "p-0 sm:p-6 pb-0 sm:pb-6" : "p-4 sm:p-6 pb-28 md:pb-6",
+            activeFormView ? "p-0 sm:p-6 pb-0 sm:pb-6" : "p-4 sm:p-6 pb-[calc(7rem+env(safe-area-inset-bottom,0px))] md:pb-6",
             activeTab === 'chat' && !activeFormView ? "hidden md:flex md:w-[56%] lg:w-[60%] xl:w-[62%]" : "w-full",
             isSplitView && activeTab !== 'chat' ? "md:w-[56%] lg:w-[60%] xl:w-[62%]" : ""
           )}>
@@ -3811,7 +3811,7 @@ export default function MesterAIChat({
 
         {/* NATIVE MOBILE BOTTOM APP DOCK (md:hidden) - Skjules når skjemavisning er aktiv så knapper aldri dekkes */}
         {!activeFormView && (
-          <div className="fixed bottom-0 left-0 right-0 z-40 bg-navy-950/95 backdrop-blur-xl border-t border-white/10 md:hidden px-2 py-1.5 flex items-center justify-around shadow-2xl safe-bottom">
+          <div className="fixed bottom-0 left-0 right-0 z-40 bg-navy-950/95 backdrop-blur-xl border-t border-white/10 md:hidden px-2 py-1.5 flex items-center justify-around shadow-2xl pb-[env(safe-area-inset-bottom,0px)]">
             {/* 1. Kontroll */}
             <button
               type="button"
@@ -3843,21 +3843,21 @@ export default function MesterAIChat({
             </button>
 
             {/* 3. CENTER ELEVATED PUSH-TO-TALK BUTTON */}
-            <div className="relative -top-5 flex flex-col items-center">
+            <div className="relative -top-3.5 flex flex-col items-center">
               <button
                 type="button"
                 onClick={handleVoiceCommand}
                 className={cn(
-                  "w-13 h-13 rounded-full flex items-center justify-center shadow-lg transition-transform active:scale-95 cursor-pointer border-3 border-navy-900",
+                  "w-12 h-12 rounded-full flex items-center justify-center shadow-lg transition-transform active:scale-95 cursor-pointer border-3 border-navy-900",
                   isListeningMic 
                     ? "bg-rose-500 text-white animate-pulse shadow-rose-500/50 scale-110" 
                     : "bg-gradient-to-tr from-electric-600 via-blue-500 to-cyan-400 text-white shadow-electric-500/40 hover:scale-105"
                 )}
                 title="Snakk med MesterAI"
               >
-                {isListeningMic ? <MicOff size={24} /> : <Mic size={24} />}
+                {isListeningMic ? <MicOff size={22} /> : <Mic size={22} />}
               </button>
-              <span className="text-[9px] font-black text-slate-300 mt-1 uppercase tracking-wider">
+              <span className="text-[9px] font-black text-slate-300 mt-0.5 uppercase tracking-wider">
                 {isListeningMic ? 'Lytter...' : 'Snakk'}
               </span>
             </div>
