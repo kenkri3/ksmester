@@ -181,11 +181,11 @@ export default function ProjectMaterials({ project }: ProjectMaterialsProps) {
   };
 
   return (
-    <div className="space-y-6">
+    <div className="space-y-6 text-neutral-900">
       {/* Search Section */}
-      <div className="bg-white rounded-[2.5rem] border border-neutral-200 p-8 shadow-sm">
+      <div className="bg-white text-neutral-900 rounded-[2.5rem] border border-neutral-200 p-8 shadow-sm">
         <div className="flex items-center justify-between mb-6">
-          <h3 className="text-xl font-bold tracking-tight flex items-center gap-2">
+          <h3 className="text-xl font-bold tracking-tight flex items-center gap-2 text-neutral-900">
             <Package size={24} className="text-emerald-600" />
             Prosjektmateriell
           </h3>
@@ -195,7 +195,7 @@ export default function ProjectMaterials({ project }: ProjectMaterialsProps) {
                 onClick={() => setActiveTab('search')}
                 className={cn(
                   "px-4 py-1.5 rounded-lg text-[10px] font-black uppercase tracking-widest transition-all",
-                  activeTab === 'search' ? "bg-white text-emerald-600 shadow-sm" : "text-neutral-400 hover:text-neutral-600"
+                  activeTab === 'search' ? "bg-white text-emerald-700 shadow-sm" : "text-neutral-600 hover:text-neutral-900 font-bold"
                 )}
               >
                 Byggevare Søk
@@ -204,7 +204,7 @@ export default function ProjectMaterials({ project }: ProjectMaterialsProps) {
                 onClick={() => setActiveTab('url')}
                 className={cn(
                   "px-4 py-1.5 rounded-lg text-[10px] font-black uppercase tracking-widest transition-all",
-                  activeTab === 'url' ? "bg-white text-blue-600 shadow-sm" : "text-neutral-400 hover:text-neutral-600"
+                  activeTab === 'url' ? "bg-white text-blue-700 shadow-sm" : "text-neutral-600 hover:text-neutral-900 font-bold"
                 )}
               >
                 Hent fra URL
@@ -212,13 +212,13 @@ export default function ProjectMaterials({ project }: ProjectMaterialsProps) {
             </div>
             <div className={cn(
               "flex items-center gap-2 px-4 py-2 rounded-xl text-xs font-bold",
-              configStatus.firecrawl ? "bg-emerald-50 text-emerald-600" : "bg-amber-50 text-amber-600"
+              configStatus.firecrawl ? "bg-emerald-50 text-emerald-700" : "bg-amber-50 text-amber-700"
             )}>
               <ShieldCheck size={16} /> 
               {configStatus.firecrawl || true ? 'Smart Skraper Aktiv' : 'Skraper'}
             </div>
             {configStatus.nobb && (
-              <div className="flex items-center gap-2 px-4 py-2 bg-blue-50 text-blue-600 rounded-xl text-xs font-bold">
+              <div className="flex items-center gap-2 px-4 py-2 bg-blue-50 text-blue-700 rounded-xl text-xs font-bold">
                 <ShieldCheck size={16} /> NOBB Aktiv
               </div>
             )}
@@ -232,7 +232,7 @@ export default function ProjectMaterials({ project }: ProjectMaterialsProps) {
               placeholder="Søk etter byggevarer eller FDV (navn eller varenummer)..."
               value={searchQuery}
               onChange={(e) => setSearchQuery(e.target.value)}
-              className="w-full pl-12 pr-4 py-4 bg-neutral-50 border border-neutral-200 rounded-2xl focus:ring-2 focus:ring-emerald-500 focus:border-emerald-500 outline-none transition-all"
+              className="w-full pl-12 pr-4 py-4 bg-neutral-50 border border-neutral-200 rounded-2xl focus:ring-2 focus:ring-emerald-500 focus:border-emerald-500 outline-none transition-all text-neutral-900 placeholder:text-neutral-500 font-medium"
             />
             <Search className="absolute left-4 top-1/2 -translate-y-1/2 text-neutral-400" size={20} />
             <button
@@ -247,12 +247,12 @@ export default function ProjectMaterials({ project }: ProjectMaterialsProps) {
           <form onSubmit={handleScrape} className="relative mb-6">
             <input
               type="url"
-              placeholder="Lim inn URL til produkt (f.eks. fra leverandør eller NOBB)..."
+              placeholder="Lim inn URL til produkt (f.eks. fra leverandør eller nettbutikk)..."
               value={scrapeUrl}
               onChange={(e) => setScrapeUrl(e.target.value)}
-              className="w-full pl-12 pr-4 py-4 bg-blue-50/30 border border-blue-100 rounded-2xl focus:ring-2 focus:ring-blue-500 focus:border-blue-500 outline-none transition-all"
+              className="w-full pl-12 pr-4 py-4 bg-blue-50/30 border border-blue-200 rounded-2xl focus:ring-2 focus:ring-blue-500 focus:border-blue-500 outline-none transition-all text-neutral-900 placeholder:text-neutral-500 font-medium"
             />
-            <Link className="absolute left-4 top-1/2 -translate-y-1/2 text-blue-400" size={20} />
+            <Link className="absolute left-4 top-1/2 -translate-y-1/2 text-blue-500" size={20} />
             <button
               type="submit"
               disabled={isScraping}
@@ -267,21 +267,21 @@ export default function ProjectMaterials({ project }: ProjectMaterialsProps) {
         {searchResults.length > 0 && (
           <div className="space-y-3 mb-6 max-h-[300px] overflow-y-auto p-2">
             {searchResults.map((product) => (
-              <div key={product.nobbNumber} className="flex items-center justify-between p-4 bg-white border border-neutral-100 rounded-2xl hover:border-emerald-200 transition-all shadow-sm">
+              <div key={product.nobbNumber} className="flex items-center justify-between p-4 bg-white border border-neutral-200 rounded-2xl hover:border-emerald-300 transition-all shadow-sm text-neutral-900">
                 <div className="flex items-center gap-4">
-                  <div className="w-12 h-12 bg-neutral-50 rounded-xl flex items-center justify-center text-neutral-400">
+                  <div className="w-12 h-12 bg-neutral-100 rounded-xl flex items-center justify-center text-neutral-500">
                     <Package size={24} />
                   </div>
                   <div>
-                    <div className="text-sm font-bold">{product.name}</div>
-                    <div className="text-[10px] text-neutral-400 font-black uppercase tracking-widest">
+                    <div className="text-sm font-bold text-neutral-900">{product.name}</div>
+                    <div className="text-[10px] text-neutral-500 font-black uppercase tracking-widest">
                       NOBB: {product.nobbNumber} • {product.supplier}
                     </div>
                   </div>
                 </div>
                 <button
                   onClick={() => addMaterial(product)}
-                  className="p-2 bg-emerald-50 text-emerald-600 rounded-xl hover:bg-emerald-100 transition-colors"
+                  className="p-2 bg-emerald-50 text-emerald-700 rounded-xl hover:bg-emerald-100 transition-colors"
                 >
                   <Plus size={20} />
                 </button>
@@ -293,7 +293,7 @@ export default function ProjectMaterials({ project }: ProjectMaterialsProps) {
         {/* Materials List */}
         <div className="space-y-4">
           <div className="flex items-center justify-between">
-            <h4 className="text-xs font-black uppercase tracking-widest text-neutral-400">Lagt til i prosjektet</h4>
+            <h4 className="text-xs font-black uppercase tracking-widest text-neutral-700">Lagt til i prosjektet</h4>
             <button
               onClick={generateFdvPackage}
               disabled={isGeneratingFdv || materials.length === 0}
@@ -311,42 +311,42 @@ export default function ProjectMaterials({ project }: ProjectMaterialsProps) {
           ) : materials.length > 0 ? (
             <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
               {materials.map((material) => (
-                <div key={material.id} className="p-5 bg-neutral-50 border border-neutral-100 rounded-3xl space-y-4 group hover:border-emerald-200 transition-all">
+                <div key={material.id} className="p-5 bg-neutral-50 border border-neutral-200 rounded-3xl space-y-4 group hover:border-emerald-300 transition-all text-neutral-900">
                   <div className="flex items-start justify-between">
                     <div className="flex items-center gap-3">
-                      <div className="w-10 h-10 bg-white rounded-xl border border-neutral-200 flex items-center justify-center text-emerald-600">
+                      <div className="w-10 h-10 bg-white rounded-xl border border-neutral-200 flex items-center justify-center text-emerald-600 shadow-xs">
                         <Package size={20} />
                       </div>
                       <div>
-                        <div className="text-sm font-bold">{material.name}</div>
-                        <div className="text-[10px] text-neutral-400 font-black uppercase tracking-widest">NOBB: {material.nobbNumber}</div>
+                        <div className="text-sm font-bold text-neutral-900">{material.name}</div>
+                        <div className="text-[10px] text-neutral-500 font-black uppercase tracking-widest">NOBB: {material.nobbNumber}</div>
                       </div>
                     </div>
                       <div className="flex items-center gap-2">
                         <button
                           onClick={() => handleAddToInventory(material)}
-                          className="p-2 text-neutral-300 hover:text-blue-600 transition-colors"
+                          className="p-2 text-neutral-400 hover:text-blue-600 transition-colors"
                           title="Legg til i lager"
                         >
                           <Archive size={16} />
                         </button>
                         <button
                           onClick={() => removeMaterial(material.id)}
-                          className="p-2 text-neutral-300 hover:text-red-500 transition-colors"
+                          className="p-2 text-neutral-400 hover:text-red-500 transition-colors"
                         >
                           <Trash2 size={16} />
                         </button>
                       </div>
                   </div>
 
-                  <div className="flex items-center justify-between pt-2 border-t border-neutral-200/50">
+                  <div className="flex items-center justify-between pt-2 border-t border-neutral-200/80">
                     <div className="flex items-center gap-2">
                       {material.fdvUrl ? (
-                        <div className="flex items-center gap-1 text-[10px] font-bold text-emerald-600 bg-emerald-50 px-2 py-1 rounded-lg">
+                        <div className="flex items-center gap-1 text-[10px] font-bold text-emerald-700 bg-emerald-50 px-2 py-1 rounded-lg">
                           <CheckCircle2 size={12} /> FDV Klar
                         </div>
                       ) : (
-                        <div className="flex items-center gap-1 text-[10px] font-bold text-amber-600 bg-amber-50 px-2 py-1 rounded-lg">
+                        <div className="flex items-center gap-1 text-[10px] font-bold text-amber-700 bg-amber-50 px-2 py-1 rounded-lg">
                           <AlertTriangle size={12} /> Mangler FDV
                         </div>
                       )}
@@ -356,7 +356,7 @@ export default function ProjectMaterials({ project }: ProjectMaterialsProps) {
                         href={material.fdvUrl}
                         target="_blank"
                         rel="noopener noreferrer"
-                        className="flex items-center gap-1 text-[10px] font-bold text-blue-600 hover:underline"
+                        className="flex items-center gap-1 text-[10px] font-bold text-blue-700 hover:underline"
                       >
                         <FileText size={12} /> Se dokument <ExternalLink size={10} />
                       </a>
@@ -366,10 +366,10 @@ export default function ProjectMaterials({ project }: ProjectMaterialsProps) {
               ))}
             </div>
           ) : (
-            <div className="text-center py-12 bg-neutral-50 rounded-3xl border border-dashed border-neutral-200">
-              <Package className="mx-auto text-neutral-300 mb-3" size={48} />
-              <p className="text-sm text-neutral-500">Ingen materiell er lagt til ennå.</p>
-              <p className="text-xs text-neutral-400 mt-1">Søk etter byggevarer eller lim inn produkt-URL over for å hente FDV automatisk.</p>
+            <div className="text-center py-12 bg-neutral-50 rounded-3xl border border-dashed border-neutral-300">
+              <Package className="mx-auto text-neutral-400 mb-3" size={48} />
+              <p className="text-sm font-semibold text-neutral-700">Ingen materiell er lagt til ennå.</p>
+              <p className="text-xs font-medium text-neutral-500 mt-1">Søk etter byggevarer eller lim inn produkt-URL over for å hente FDV automatisk.</p>
             </div>
           )}
         </div>
