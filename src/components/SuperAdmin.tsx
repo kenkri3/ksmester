@@ -130,6 +130,31 @@ export default function SuperAdmin({ onBackToDashboard }: { onBackToDashboard?: 
   const [isUserModalOpen, setIsUserModalOpen] = useState(false);
   const [isOfferModalOpen, setIsOfferModalOpen] = useState(false);
   const [isResponseModalOpen, setIsResponseModalOpen] = useState(false);
+  const [isConvertModalOpen, setIsConvertModalOpen] = useState(false);
+  const [leadToConvert, setLeadToConvert] = useState<any | null>(null);
+
+  const handleOpenConvertModal = (lead: any) => {
+    setLeadToConvert(lead);
+    setIsConvertModalOpen(true);
+  };
+
+  const handleJumpToCompany = (companyId?: string) => {
+    if (!companyId) {
+      setActiveTab('companies');
+      return;
+    }
+    const target = companies.find(c => c.id === companyId);
+    if (target) {
+      setSelectedCompany(target);
+    }
+    setActiveTab('companies');
+  };
+
+  const handleLeadConverted = (companyId: string, companyName: string) => {
+    setIsConvertModalOpen(false);
+    setLeadToConvert(null);
+    toast.success(`Kunde "${companyName}" er nå opprettet fra henvendelsen!`);
+  };
   const [replyMessage, setReplyMessage] = useState('');
   const [isSendingReply, setIsSendingReply] = useState(false);
   const [isAnalyzingLead, setIsAnalyzingLead] = useState<string | null>(null);
@@ -2079,6 +2104,16 @@ Svar KUN med gyldig rå JSON (uten markdown \`\`\`json klammer):
                           Tlf: <a href={`tel:${lead.phone}`} className="hover:underline text-neutral-600 font-medium">{lead.phone}</a>
                         </div>
                       )}
+                      {lead.convertedCompanyName && (
+                        <div 
+                          onClick={() => handleJumpToCompany(lead.convertedCompanyId)}
+                          className="inline-flex items-center gap-1 mt-1.5 px-2 py-0.5 rounded-md bg-emerald-50 border border-emerald-200/60 text-emerald-800 text-[10px] font-bold cursor-pointer hover:bg-emerald-100 transition-colors"
+                          title="Klikk for å gå til bedriften"
+                        >
+                          <CheckCircle2 size={10} className="text-emerald-600 shrink-0" />
+                          <span className="truncate">Kunde: {lead.convertedCompanyName}</span>
+                        </div>
+                      )}
                     </td>
                     <td className="px-8 py-6 max-w-sm">
                       {lead.message ? (
@@ -2135,6 +2170,7 @@ Svar KUN med gyldig rå JSON (uten markdown \`\`\`json klammer):
                         onChange={(e) => handleUpdateLeadStatus(lead.id, e.target.value)}
                         className={cn(
                           "text-[10px] font-black uppercase tracking-widest px-3 py-1 rounded-full outline-none border-none cursor-pointer",
+                          lead.status === 'converted' ? "bg-emerald-100 text-emerald-800" :
                           lead.status === 'new' ? "bg-red-100 text-red-700" :
                           lead.status === 'contacted' ? "bg-blue-100 text-blue-700" :
                           lead.status === 'qualified' ? "bg-emerald-100 text-emerald-700" :
@@ -2144,14 +2180,43 @@ Svar KUN med gyldig rå JSON (uten markdown \`\`\`json klammer):
                         <option value="new">Ny</option>
                         <option value="contacted">Kontaktet</option>
                         <option value="qualified">Kvalifisert</option>
+                        <option value="converted">Kunde opprettet</option>
                         <option value="lost">Tapt</option>
                       </select>
+                      {lead.convertedCompanyName && (
+                        <button
+                          type="button"
+                          onClick={() => handleJumpToCompany(lead.convertedCompanyId)}
+                          className="flex items-center gap-1 mt-1.5 text-[10px] font-bold text-emerald-700 hover:text-emerald-900 cursor-pointer hover:underline text-left"
+                          title="Klikk for å gå til opprettet kunde"
+                        >
+                          <Building2 size={10} className="shrink-0" />
+                          <span className="truncate max-w-[120px]">{lead.convertedCompanyName}</span>
+                        </button>
+                      )}
                     </td>
                     <td className="px-8 py-6 text-xs text-neutral-500">
                       {formatDate(lead.createdAt)}
                     </td>
                     <td className="px-8 py-6">
                       <div className="flex items-center gap-2">
+                        {/* 🌟 GJØR OM TIL KUNDE KNAPP */}
+                        <button 
+                          onClick={() => handleOpenConvertModal(lead)}
+                          className={cn(
+                            "p-2 rounded-xl transition-all cursor-pointer flex items-center justify-center shrink-0",
+                            lead.status === 'converted' || lead.convertedCompanyId
+                              ? "text-emerald-700 bg-emerald-100 hover:bg-emerald-200"
+                              : "text-white bg-emerald-600 hover:bg-emerald-700 shadow-sm shadow-emerald-600/25"
+                          )}
+                          title={lead.status === 'converted' || lead.convertedCompanyId ? `Kunde opprettet: ${lead.convertedCompanyName || 'Se detaljer'}` : "Gjør om til kunde nå"}
+                        >
+                          {lead.status === 'converted' || lead.convertedCompanyId ? (
+                            <CheckCircle2 size={18} />
+                          ) : (
+                            <UserPlus size={18} />
+                          )}
+                        </button>
                         <button 
                           onClick={() => handleAnalyzeLead(lead)}
                           disabled={isAnalyzingLead === lead.id}
@@ -2562,6 +2627,24 @@ Svar KUN med gyldig rå JSON (uten markdown \`\`\`json klammer):
         />
       )}
 
+      {/* Convert Lead to Customer Modal */}
+      {isConvertModalOpen && leadToConvert && (
+        <ConvertLeadModal
+          lead={leadToConvert}
+          onClose={() => {
+            setIsConvertModalOpen(false);
+            setLeadToConvert(null);
+          }}
+          onSuccess={(companyId, companyName) => {
+            setIsConvertModalOpen(false);
+            setLeadToConvert(null);
+            toast.success(`Kunde "${companyName}" er nå opprettet fra henvendelsen!`);
+          }}
+          startImpersonation={startImpersonation}
+          onNavigateToCompany={handleJumpToCompany}
+        />
+      )}
+
       {/* Edit Company Info Modal */}
       {isEditInfoModalOpen && selectedCompany && (
         <EditCompanyInfoModal 
@@ -2662,13 +2745,25 @@ Svar KUN med gyldig rå JSON (uten markdown \`\`\`json klammer):
                   />
                 </div>
 
-                <div className="flex gap-3 pt-2">
+                <div className="flex flex-wrap sm:flex-nowrap gap-3 pt-2">
                   <button
                     type="button"
                     onClick={() => setIsResponseModalOpen(false)}
-                    className="px-6 py-3.5 bg-neutral-100 text-neutral-700 rounded-2xl font-bold hover:bg-neutral-200 transition-all text-sm cursor-pointer"
+                    className="px-5 py-3.5 bg-neutral-100 text-neutral-700 rounded-2xl font-bold hover:bg-neutral-200 transition-all text-sm cursor-pointer"
                   >
                     Avbryt
+                  </button>
+                  <button
+                    type="button"
+                    onClick={() => {
+                      setIsResponseModalOpen(false);
+                      handleOpenConvertModal(selectedLead);
+                    }}
+                    className="px-5 py-3.5 bg-emerald-600 hover:bg-emerald-700 text-white rounded-2xl font-bold flex items-center justify-center gap-2 text-sm shadow-md shadow-emerald-600/20 cursor-pointer transition-all"
+                    title="Gjør om dette leadet direkte til en bedriftskunde"
+                  >
+                    <UserPlus size={16} />
+                    <span>Gjør om til kunde</span>
                   </button>
                   <button
                     type="button"
@@ -3103,3 +3198,563 @@ function CreateCompanyModal({ onClose, onSuccess }: { onClose: () => void, onSuc
     </div>
   );
 }
+
+function ConvertLeadModal({
+  lead,
+  onClose,
+  onSuccess,
+  startImpersonation,
+  onNavigateToCompany
+}: {
+  lead: any;
+  onClose: () => void;
+  onSuccess: (companyId: string, companyName: string) => void;
+  startImpersonation: (companyId: string, role: string) => void;
+  onNavigateToCompany: (companyId: string) => void;
+}) {
+  const [companyName, setCompanyName] = useState(lead.company || lead.name || '');
+  const [orgNumber, setOrgNumber] = useState(lead.orgnr || '');
+  const [contactName, setContactName] = useState(lead.name || '');
+  const [email, setEmail] = useState(lead.email || '');
+  const [phone, setPhone] = useState(lead.phone || '');
+  const [trade, setTrade] = useState(lead.trade || 'Byggmester / Tømrer');
+
+  const rawPlan = (lead.plan || '').toLowerCase();
+  const initialPlan: 'solo' | 'team' | 'entreprenor' = 
+    rawPlan.includes('solo') || Number(lead.workers) === 1 ? 'solo' :
+    rawPlan.includes('entrepren') || Number(lead.workers) > 5 ? 'entreprenor' : 'team';
+  const [plan, setPlan] = useState<'solo' | 'team' | 'entreprenor'>(initialPlan);
+  const [status, setStatus] = useState<'trial' | 'active'>('trial');
+  const [trialDays, setTrialDays] = useState(14);
+
+  const [createAdminUser, setCreateAdminUser] = useState(true);
+  const [tempPassword, setTempPassword] = useState('VikingMester2026!');
+  const [sendWelcomeEmail, setSendWelcomeEmail] = useState(Boolean(lead.email));
+  const [customMessage, setCustomMessage] = useState(
+    `Hei ${lead.name || ''}!\n\nDin konto hos VikingMester for ${lead.company || 'ditt foretak'} er nå opprettet.\n\nDu kan nå logge inn og ta i bruk systemet med en gang!`
+  );
+
+  const [loading, setLoading] = useState(false);
+  const [isSearchingBrreg, setIsSearchingBrreg] = useState(false);
+  const [brregStatus, setBrregStatus] = useState<string | null>(null);
+  const [resultData, setResultData] = useState<{
+    company: any;
+    user: any;
+    tempPassword: string | null;
+    inviteLink: string;
+    emailSent: boolean;
+  } | null>(null);
+
+  const generateNewPassword = () => {
+    const chars = 'ABCDEFGHJKLMNPQRSTUVWXYZabcdefghijkmnopqrstuvwxyz23456789!@#$';
+    let pwd = 'VM-';
+    for (let i = 0; i < 8; i++) {
+      pwd += chars.charAt(Math.floor(Math.random() * chars.length));
+    }
+    pwd += '!';
+    setTempPassword(pwd);
+  };
+
+  const handleBrregSearch = async () => {
+    const query = orgNumber.trim() || companyName.trim();
+    if (!query) {
+      toast.error('Oppgi firmanavn eller org.nr for å søke i Brønnøysund.');
+      return;
+    }
+    setIsSearchingBrreg(true);
+    setBrregStatus(null);
+    try {
+      const res = await fetch(`/api/company/search?q=${encodeURIComponent(query)}`);
+      if (res.ok) {
+        const data = await res.json();
+        if (data && data.length > 0) {
+          const unit = data[0];
+          setCompanyName(unit.name);
+          if (unit.orgnr) setOrgNumber(unit.orgnr);
+          if (unit.industry) setTrade(unit.industry);
+          setBrregStatus(`Verifisert i Brønnøysund: ${unit.name} (${unit.orgnr})`);
+          toast.success(`Hentet info for ${unit.name}`);
+        } else {
+          setBrregStatus('Ingen treff i Brønnøysund');
+        }
+      }
+    } catch {
+      setBrregStatus('Kunne ikke koble til Brønnøysund');
+    } finally {
+      setIsSearchingBrreg(false);
+    }
+  };
+
+  const handleSubmit = async (e: React.FormEvent) => {
+    e.preventDefault();
+    if (!companyName.trim()) {
+      toast.error('Firmanavn må fylles ut.');
+      return;
+    }
+    setLoading(true);
+
+    try {
+      const authToken = typeof window !== 'undefined' ? localStorage.getItem('token') : null;
+      const res = await fetch('/api/company/convert-lead', {
+        method: 'POST',
+        headers: {
+          'Content-Type': 'application/json',
+          ...(authToken ? { 'Authorization': 'Bearer ' + authToken } : {})
+        },
+        body: JSON.stringify({
+          leadId: lead.id,
+          companyName: companyName.trim(),
+          orgNumber: orgNumber.trim(),
+          contactName: contactName.trim(),
+          email: email.trim(),
+          phone: phone.trim(),
+          trade,
+          plan,
+          status,
+          trialDays,
+          createAdminUser,
+          adminPassword: tempPassword,
+          sendWelcomeEmail,
+          emailMessage: customMessage
+        })
+      });
+
+      const data = await res.json();
+      if (!res.ok) {
+        throw new Error(data.error || 'Kunne ikke konvertere lead til kunde');
+      }
+
+      setResultData(data);
+      onSuccess(data.company.id, companyName.trim());
+    } catch (err: any) {
+      toast.error('Feil: ' + err.message);
+    } finally {
+      setLoading(false);
+    }
+  };
+
+  // Suksess-skjerm
+  if (resultData) {
+    return (
+      <div className="fixed inset-0 z-[100] flex items-center justify-center p-4 bg-neutral-900/60 backdrop-blur-sm">
+        <motion.div
+          initial={{ opacity: 0, scale: 0.95 }}
+          animate={{ opacity: 1, scale: 1 }}
+          className="bg-white rounded-[2.5rem] shadow-2xl w-full max-w-lg overflow-hidden"
+        >
+          <div className="p-8 text-center bg-gradient-to-b from-emerald-50/80 to-white border-b border-emerald-100">
+            <div className="w-16 h-16 bg-emerald-100 text-emerald-600 rounded-3xl flex items-center justify-center mx-auto mb-4 shadow-sm">
+              <CheckCircle2 size={36} />
+            </div>
+            <h2 className="text-2xl font-black text-neutral-900">Kunde opprettet!</h2>
+            <p className="text-sm text-neutral-600 mt-1">
+              <strong>{companyName}</strong> er nå lagret som <strong>{plan.toUpperCase()}</strong>-kunde ({status === 'trial' ? `${trialDays} dagers prøveperiode` : 'Aktiv'}).
+            </p>
+          </div>
+
+          <div className="p-8 space-y-4 text-left">
+            <div className="p-4 bg-neutral-50 rounded-2xl border border-neutral-200/80 space-y-2.5 text-xs">
+              <div className="flex justify-between items-center">
+                <span className="font-bold text-neutral-500 uppercase text-[10px]">Brukernavn / E-post:</span>
+                <span className="font-mono font-bold text-neutral-800">{email || 'Ikke oppgitt'}</span>
+              </div>
+              {resultData.tempPassword && (
+                <div className="flex justify-between items-center">
+                  <span className="font-bold text-neutral-500 uppercase text-[10px]">Midlertidig passord:</span>
+                  <div className="flex items-center gap-2">
+                    <span className="font-mono font-black text-purple-700 bg-purple-50 px-2 py-0.5 rounded">{resultData.tempPassword}</span>
+                    <button
+                      type="button"
+                      onClick={() => {
+                        navigator.clipboard.writeText(resultData.tempPassword || '');
+                        toast.success('Passord kopiert til utklippstavle!');
+                      }}
+                      className="p-1 hover:bg-neutral-200 rounded text-neutral-500 cursor-pointer"
+                      title="Kopier passord"
+                    >
+                      <Copy size={12} />
+                    </button>
+                  </div>
+                </div>
+              )}
+              {resultData.inviteLink && (
+                <div className="pt-2 border-t border-neutral-200/60">
+                  <div className="flex justify-between items-center mb-1">
+                    <span className="font-bold text-neutral-500 uppercase text-[10px]">Direkte aktiveringslenke:</span>
+                    <button
+                      type="button"
+                      onClick={() => {
+                        navigator.clipboard.writeText(resultData.inviteLink);
+                        toast.success('Aktiveringslenke kopiert til utklippstavle!');
+                      }}
+                      className="text-xs font-bold text-purple-600 hover:text-purple-700 flex items-center gap-1 cursor-pointer"
+                    >
+                      <Copy size={12} /> Kopier lenke
+                    </button>
+                  </div>
+                  <div className="font-mono text-[11px] text-neutral-600 truncate bg-white p-2 rounded-lg border border-neutral-200">
+                    {resultData.inviteLink}
+                  </div>
+                </div>
+              )}
+              <div className="flex justify-between items-center pt-1 text-[11px]">
+                <span className="text-neutral-500">Velkomst-e-post:</span>
+                <span className={cn("font-bold", resultData.emailSent ? "text-emerald-600" : "text-neutral-400")}>
+                  {resultData.emailSent ? 'Sendt via Resend' : sendWelcomeEmail ? 'Klar for utsendelse' : 'Ikke sendt'}
+                </span>
+              </div>
+            </div>
+
+            <div className="flex flex-col gap-2 pt-2">
+              <button
+                type="button"
+                onClick={() => {
+                  startImpersonation(resultData.company.id, 'admin');
+                  toast.success(`Logget inn som administrator hos ${companyName}!`);
+                  onClose();
+                  window.dispatchEvent(new CustomEvent('navigate_view', { detail: { view: 'dashboard' } }));
+                }}
+                className="w-full py-3.5 bg-emerald-600 hover:bg-emerald-700 text-white rounded-2xl font-black text-sm flex items-center justify-center gap-2 shadow-md shadow-emerald-600/20 cursor-pointer transition-all"
+              >
+                <ExternalLink size={16} />
+                <span>Logg inn som denne kunden nå</span>
+              </button>
+
+              <button
+                type="button"
+                onClick={() => {
+                  onNavigateToCompany(resultData.company.id);
+                  onClose();
+                }}
+                className="w-full py-3 bg-neutral-900 hover:bg-neutral-800 text-white rounded-2xl font-bold text-xs flex items-center justify-center gap-1.5 cursor-pointer transition-all"
+              >
+                <Building2 size={14} />
+                <span>Se kunden i bedriftsoversikten</span>
+              </button>
+
+              <button
+                type="button"
+                onClick={onClose}
+                className="w-full py-2.5 bg-neutral-100 hover:bg-neutral-200 text-neutral-600 rounded-2xl font-bold text-xs cursor-pointer transition-all"
+              >
+                Lukk vindu
+              </button>
+            </div>
+          </div>
+        </motion.div>
+      </div>
+    );
+  }
+
+  // Redigerings- og opprettelsesskjema
+  return (
+    <div className="fixed inset-0 z-[100] flex items-center justify-center p-4 bg-neutral-900/60 backdrop-blur-sm overflow-y-auto">
+      <motion.div
+        initial={{ opacity: 0, scale: 0.95 }}
+        animate={{ opacity: 1, scale: 1 }}
+        className="bg-white rounded-[2.5rem] shadow-2xl w-full max-w-2xl overflow-hidden my-8 max-h-[90vh] flex flex-col"
+      >
+        <div className="p-6 sm:p-8 border-b border-neutral-100 flex justify-between items-center shrink-0 bg-neutral-50/50">
+          <div className="flex items-center gap-3">
+            <div className="w-12 h-12 rounded-2xl bg-emerald-100 text-emerald-700 flex items-center justify-center shrink-0">
+              <UserPlus size={24} />
+            </div>
+            <div>
+              <h2 className="text-xl sm:text-2xl font-black text-neutral-900">Gjør om henvendelse til kunde</h2>
+              <p className="text-xs text-neutral-500">
+                Oppretter bedrift, administratorkonto og sender velkomst-e-post for {lead.name || lead.company}
+              </p>
+            </div>
+          </div>
+          <button onClick={onClose} className="p-2 hover:bg-neutral-200 rounded-full transition-colors cursor-pointer">
+            <X size={20} className="text-neutral-400" />
+          </button>
+        </div>
+
+        <form onSubmit={handleSubmit} className="p-6 sm:p-8 space-y-6 overflow-y-auto">
+          {/* Seksjon 1: Bedriftsinformasjon */}
+          <div className="space-y-3">
+            <div className="flex items-center justify-between">
+              <h3 className="text-xs font-black uppercase tracking-wider text-neutral-400 flex items-center gap-1.5">
+                <Building2 size={14} /> 1. Bedriftsinformasjon
+              </h3>
+              <button
+                type="button"
+                onClick={handleBrregSearch}
+                disabled={isSearchingBrreg}
+                className="text-[11px] font-bold text-blue-600 hover:text-blue-700 flex items-center gap-1 cursor-pointer"
+              >
+                <Search size={12} />
+                {isSearchingBrreg ? 'Søker Brønnøysund...' : 'Søk i Brønnøysund'}
+              </button>
+            </div>
+
+            {brregStatus && (
+              <div className="p-2.5 rounded-xl bg-blue-50 border border-blue-200/60 text-xs text-blue-800 font-medium">
+                {brregStatus}
+              </div>
+            )}
+
+            <div className="grid grid-cols-1 sm:grid-cols-2 gap-3">
+              <div className="space-y-1">
+                <label className="text-[10px] font-bold uppercase text-neutral-500 ml-1">Firmanavn / Kundenavn *</label>
+                <input
+                  required
+                  type="text"
+                  value={companyName}
+                  onChange={(e) => setCompanyName(e.target.value)}
+                  className="w-full px-4 py-2.5 bg-neutral-50 border border-neutral-200 rounded-xl text-sm font-semibold focus:ring-2 focus:ring-emerald-500 outline-none"
+                  placeholder="F.eks. Mester Bygg AS"
+                />
+              </div>
+
+              <div className="space-y-1">
+                <label className="text-[10px] font-bold uppercase text-neutral-500 ml-1">Org.nummer (9 siffer)</label>
+                <div className="flex gap-2">
+                  <input
+                    type="text"
+                    value={orgNumber}
+                    onChange={(e) => setOrgNumber(e.target.value)}
+                    className="w-full px-4 py-2.5 bg-neutral-50 border border-neutral-200 rounded-xl text-sm focus:ring-2 focus:ring-emerald-500 outline-none"
+                    placeholder="9 siffer"
+                  />
+                  <button
+                    type="button"
+                    onClick={handleBrregSearch}
+                    disabled={isSearchingBrreg}
+                    className="px-3 py-2 bg-neutral-100 hover:bg-neutral-200 text-neutral-700 text-xs font-bold rounded-xl shrink-0 cursor-pointer"
+                    title="Slå opp i Brønnøysundregistrene"
+                  >
+                    Slå opp
+                  </button>
+                </div>
+              </div>
+            </div>
+
+            <div className="space-y-1">
+              <label className="text-[10px] font-bold uppercase text-neutral-500 ml-1">Fagområde</label>
+              <select
+                value={trade}
+                onChange={(e) => setTrade(e.target.value)}
+                className="w-full px-4 py-2.5 bg-neutral-50 border border-neutral-200 rounded-xl text-sm font-medium focus:ring-2 focus:ring-emerald-500 outline-none"
+              >
+                <option value="Byggmester / Tømrer">Byggmester / Tømrer</option>
+                <option value="Rørlegger">Rørlegger</option>
+                <option value="Elektriker">Elektriker</option>
+                <option value="Maler / Byggtapetserer">Maler / Byggtapetserer</option>
+                <option value="Murer / Flislegger">Murer / Flislegger</option>
+                <option value="Totalentreprenør">Totalentreprenør</option>
+                <option value="Ventilasjon / Blikk">Ventilasjon / Blikk</option>
+                <option value="Annet fag">Annet fag</option>
+              </select>
+            </div>
+          </div>
+
+          {/* Seksjon 2: Kontaktperson og Innlogging */}
+          <div className="space-y-3 pt-2 border-t border-neutral-100">
+            <h3 className="text-xs font-black uppercase tracking-wider text-neutral-400 flex items-center gap-1.5">
+              <Users size={14} /> 2. Kontaktperson & Innlogging
+            </h3>
+
+            <div className="grid grid-cols-1 sm:grid-cols-3 gap-3">
+              <div className="space-y-1">
+                <label className="text-[10px] font-bold uppercase text-neutral-500 ml-1">Kontaktperson</label>
+                <input
+                  type="text"
+                  value={contactName}
+                  onChange={(e) => setContactName(e.target.value)}
+                  className="w-full px-4 py-2.5 bg-neutral-50 border border-neutral-200 rounded-xl text-sm focus:ring-2 focus:ring-emerald-500 outline-none"
+                  placeholder="Navn"
+                />
+              </div>
+
+              <div className="space-y-1">
+                <label className="text-[10px] font-bold uppercase text-neutral-500 ml-1">E-postadresse *</label>
+                <input
+                  required
+                  type="email"
+                  value={email}
+                  onChange={(e) => setEmail(e.target.value)}
+                  className="w-full px-4 py-2.5 bg-neutral-50 border border-neutral-200 rounded-xl text-sm font-semibold focus:ring-2 focus:ring-emerald-500 outline-none"
+                  placeholder="post@bedrift.no"
+                />
+              </div>
+
+              <div className="space-y-1">
+                <label className="text-[10px] font-bold uppercase text-neutral-500 ml-1">Telefon</label>
+                <input
+                  type="tel"
+                  value={phone}
+                  onChange={(e) => setPhone(e.target.value)}
+                  className="w-full px-4 py-2.5 bg-neutral-50 border border-neutral-200 rounded-xl text-sm focus:ring-2 focus:ring-emerald-500 outline-none"
+                  placeholder="+47..."
+                />
+              </div>
+            </div>
+
+            <div className="p-4 bg-purple-50/70 border border-purple-100 rounded-2xl space-y-2">
+              <label className="flex items-center gap-2 cursor-pointer">
+                <input
+                  type="checkbox"
+                  checked={createAdminUser}
+                  onChange={(e) => setCreateAdminUser(e.target.checked)}
+                  className="w-4 h-4 rounded text-purple-600 focus:ring-purple-500 cursor-pointer"
+                />
+                <span className="text-xs font-bold text-neutral-800">
+                  Opprett administratorkonto for kunden umiddelbart
+                </span>
+              </label>
+
+              {createAdminUser && (
+                <div className="pt-2 flex items-center gap-2">
+                  <div className="flex-1 space-y-1">
+                    <label className="text-[10px] font-bold uppercase text-neutral-500 ml-1">Midlertidig passord</label>
+                    <input
+                      type="text"
+                      value={tempPassword}
+                      onChange={(e) => setTempPassword(e.target.value)}
+                      className="w-full px-3 py-2 bg-white border border-purple-200 rounded-xl text-xs font-mono font-bold text-purple-900 outline-none"
+                    />
+                  </div>
+                  <button
+                    type="button"
+                    onClick={generateNewPassword}
+                    className="px-3 py-2 mt-5 bg-white border border-purple-200 hover:bg-purple-100 text-purple-700 text-xs font-bold rounded-xl shrink-0 cursor-pointer transition-colors"
+                  >
+                    Nytt passord
+                  </button>
+                </div>
+              )}
+            </div>
+          </div>
+
+          {/* Seksjon 3: Abonnement og Prøveperiode */}
+          <div className="space-y-3 pt-2 border-t border-neutral-100">
+            <h3 className="text-xs font-black uppercase tracking-wider text-neutral-400 flex items-center gap-1.5">
+              <Tag size={14} /> 3. Abonnement & Status
+            </h3>
+
+            <div className="grid grid-cols-3 gap-2">
+              {[
+                { id: 'solo', name: 'Solo', price: '1 490 kr/mnd', desc: '1 bruker · 2.5M tokens' },
+                { id: 'team', name: 'Team', price: '3 490 kr/mnd', desc: 'Inntil 10 brukere · 10M' },
+                { id: 'entreprenor', name: 'Totalentreprenør', price: '6 900 kr/mnd', desc: 'Ubegrenset · 30M' }
+              ].map(p => (
+                <button
+                  key={p.id}
+                  type="button"
+                  onClick={() => setPlan(p.id as any)}
+                  className={cn(
+                    "p-3 rounded-2xl border text-left transition-all cursor-pointer",
+                    plan === p.id 
+                      ? "bg-purple-50 border-purple-400 text-purple-900 shadow-sm" 
+                      : "bg-white border-neutral-200 text-neutral-600 hover:bg-neutral-50"
+                  )}
+                >
+                  <div className="font-bold text-xs">{p.name}</div>
+                  <div className="text-[10px] font-black text-purple-700">{p.price}</div>
+                  <div className="text-[9px] text-neutral-400 mt-0.5">{p.desc}</div>
+                </button>
+              ))}
+            </div>
+
+            <div className="grid grid-cols-2 gap-3 pt-1">
+              <div className="space-y-1">
+                <label className="text-[10px] font-bold uppercase text-neutral-500 ml-1">Status</label>
+                <div className="grid grid-cols-2 gap-2">
+                  <button
+                    type="button"
+                    onClick={() => setStatus('trial')}
+                    className={cn(
+                      "py-2.5 rounded-xl font-bold text-xs transition-all cursor-pointer",
+                      status === 'trial' ? "bg-amber-100 text-amber-800 border-2 border-amber-300" : "bg-neutral-50 text-neutral-500"
+                    )}
+                  >
+                    Prøveperiode
+                  </button>
+                  <button
+                    type="button"
+                    onClick={() => setStatus('active')}
+                    className={cn(
+                      "py-2.5 rounded-xl font-bold text-xs transition-all cursor-pointer",
+                      status === 'active' ? "bg-emerald-100 text-emerald-800 border-2 border-emerald-300" : "bg-neutral-50 text-neutral-500"
+                    )}
+                  >
+                    Aktiv kunde
+                  </button>
+                </div>
+              </div>
+
+              {status === 'trial' && (
+                <div className="space-y-1">
+                  <label className="text-[10px] font-bold uppercase text-neutral-500 ml-1">Prøvetid (dager)</label>
+                  <input
+                    type="number"
+                    value={trialDays}
+                    onChange={(e) => setTrialDays(Number(e.target.value))}
+                    className="w-full px-4 py-2 bg-neutral-50 border border-neutral-200 rounded-xl text-sm font-bold focus:ring-2 focus:ring-emerald-500 outline-none"
+                  />
+                </div>
+              )}
+            </div>
+          </div>
+
+          {/* Seksjon 4: Velkomst-e-post */}
+          <div className="space-y-3 pt-2 border-t border-neutral-100">
+            <label className="flex items-center gap-2 cursor-pointer">
+              <input
+                type="checkbox"
+                checked={sendWelcomeEmail}
+                onChange={(e) => setSendWelcomeEmail(e.target.checked)}
+                className="w-4 h-4 rounded text-emerald-600 focus:ring-emerald-500 cursor-pointer"
+              />
+              <span className="text-xs font-bold text-neutral-800">
+                Send automatisk velkomst-e-post med innlogging til kunden
+              </span>
+            </label>
+
+            {sendWelcomeEmail && (
+              <div className="space-y-1">
+                <label className="text-[10px] font-bold uppercase text-neutral-400 ml-1">Personlig velkomsthilsen</label>
+                <textarea
+                  rows={3}
+                  value={customMessage}
+                  onChange={(e) => setCustomMessage(e.target.value)}
+                  className="w-full p-3 bg-neutral-50 border border-neutral-200 rounded-xl text-xs text-neutral-700 outline-none focus:ring-2 focus:ring-emerald-500 resize-none"
+                />
+              </div>
+            )}
+          </div>
+
+          <div className="flex gap-3 pt-4 border-t border-neutral-100">
+            <button
+              type="button"
+              onClick={onClose}
+              className="px-6 py-3.5 bg-neutral-100 text-neutral-700 rounded-2xl font-bold hover:bg-neutral-200 transition-all text-xs cursor-pointer"
+            >
+              Avbryt
+            </button>
+            <button
+              type="submit"
+              disabled={loading}
+              className="flex-1 py-3.5 bg-gradient-to-r from-emerald-600 to-emerald-500 text-white rounded-2xl font-black text-sm hover:opacity-95 transition-all shadow-lg shadow-emerald-600/25 flex items-center justify-center gap-2 cursor-pointer disabled:opacity-50"
+            >
+              {loading ? (
+                <>
+                  <div className="w-4 h-4 border-2 border-white border-t-transparent rounded-full animate-spin" />
+                  <span>Oppretter kunde...</span>
+                </>
+              ) : (
+                <>
+                  <UserPlus size={16} />
+                  <span>Fullfør og opprett kunde nå</span>
+                </>
+              )}
+            </button>
+          </div>
+        </form>
+      </motion.div>
+    </div>
+  );
+}
+
