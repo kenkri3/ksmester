@@ -1,15 +1,27 @@
 export type Trade = 'carpenter' | 'plumber' | 'electrician' | 'mason' | 'painter' | 'general';
-export type SubscriptionPlan = 'solo' | 'team' | 'entreprenor';
+export type SubscriptionPlan = 'solo' | 'team' | 'entreprenor' | 'partner';
 
 export interface Company {
   id: string;
   name: string;
-  industry: Trade | 'multi';
+  industry?: Trade | 'multi' | string;
   modules: string[]; // e.g., ['hms', 'ks', 'inventory', 'apprentice']
   logoUrl?: string;
   plan?: SubscriptionPlan;
-  subscriptionStatus?: 'trial' | 'active' | 'cancelled';
+  subscriptionStatus?: 'trial' | 'active' | 'cancelled' | 'expired';
   userCount?: number;
+  isPartner?: boolean;
+  isInternal?: boolean;
+  monthlyPrice?: number;
+  orgNumber?: string;
+  orgnr?: string;
+  contactName?: string;
+  email?: string;
+  phone?: string;
+  createdAt?: any;
+  updatedAt?: any;
+  trialStartDate?: string;
+  trialDaysLeft?: number | null;
 }
 
 export interface Invitation {

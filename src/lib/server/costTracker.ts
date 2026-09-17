@@ -58,6 +58,11 @@ export const PLAN_LIMITS: Record<string, { tokens: number; images: number; month
     tokens: 30_000_000, // 30 mill tokens/mnd (Vår tokenkostnad: ca. 120-180 kr)
     images: 3000,
     monthlyPrice: 6900  // 6 900 kr/mnd -> 97.5% bruttomargin
+  },
+  partner: {
+    tokens: 15_000_000, // 15 mill tokens/mnd (Samarbeidspartnere & Interne kollegaer)
+    images: 1500,
+    monthlyPrice: 0     // 0 kr/mnd -> Alltid ekskludert fra SaaS-omsetning
   }
 };
 
@@ -297,16 +302,20 @@ export async function getPartnershipAccountingSummary(periodMonth?: string) {
   const customerBreakdown: any[] = [];
 
   for (const lead of periodLeads) {
-    const monthlyPrice = lead.monthlyPrice || (
-      lead.plan?.toLowerCase().includes('solo') ? 1490 :
-      lead.plan?.toLowerCase().includes('team') ? 3490 :
-      lead.plan?.toLowerCase().includes('entreprenor') ? 6900 : 3490
+    const plan = (lead.plan || '').toLowerCase();
+    const isFreeTier = plan.includes('partner') || plan.includes('intern') || Boolean(lead.isPartner) || Boolean(lead.isInternal) || lead.monthlyPrice === 0;
+    const monthlyPrice = isFreeTier ? 0 : (
+      lead.monthlyPrice !== undefined ? Number(lead.monthlyPrice) : (
+        plan.includes('solo') ? 1490 :
+        plan.includes('team') ? 3490 :
+        plan.includes('entreprenor') ? 6900 : 3490
+      )
     );
     totalSubscriptionRevenueNok += monthlyPrice;
     customerBreakdown.push({
       company: lead.company,
       orgnr: lead.orgnr,
-      plan: lead.plan,
+      plan: isFreeTier ? 'partner' : lead.plan,
       monthlyPriceNok: monthlyPrice,
       date: lead.createdAt
     });

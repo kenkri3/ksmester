@@ -48,7 +48,11 @@ import {
   Server,
   Cpu,
   ArrowUpRight,
-  CheckCheck
+  CheckCheck,
+  UserCheck,
+  Key,
+  Eye,
+  EyeOff
 } from 'lucide-react';
 import { generateAiContent } from '../services/aiClient';
 import { db, collection, onSnapshot, query, where, doc, updateDoc, deleteDoc, addDoc, serverTimestamp, handleFirestoreError, OperationType, orderBy } from '../services/firebase';
@@ -62,12 +66,19 @@ interface Company {
   name: string;
   orgNumber?: string;
   subscriptionStatus: 'trial' | 'active' | 'expired' | 'cancelled';
-  plan?: 'solo' | 'team' | 'entreprenor';
+  plan?: 'solo' | 'team' | 'entreprenor' | 'partner';
+  isPartner?: boolean;
+  isInternal?: boolean;
+  monthlyPrice?: number;
   modules: string[];
   createdAt: any;
   updatedAt?: any;
   userCount?: number;
   trialStartDate?: string;
+  contactName?: string;
+  email?: string;
+  phone?: string;
+  industry?: string;
 }
 
 export default function SuperAdmin({ onBackToDashboard }: { onBackToDashboard?: () => void } = {}) {
@@ -100,7 +111,7 @@ export default function SuperAdmin({ onBackToDashboard }: { onBackToDashboard?: 
   const [searchTerm, setSearchTerm] = useState('');
   const [activeTab, setActiveTab] = useState<'companies' | 'leads' | 'agent' | 'offers' | 'templates' | 'support'>('companies');
   const [supportSubTab, setSupportSubTab] = useState<'projects' | 'deviations' | 'logs'>('projects');
-  const [companyStatusFilter, setCompanyStatusFilter] = useState<'all' | 'active' | 'trial' | 'cancelled'>('all');
+  const [companyStatusFilter, setCompanyStatusFilter] = useState<'all' | 'active' | 'trial' | 'partner' | 'cancelled'>('all');
   const [tokenCosts, setTokenCosts] = useState<any[]>([]);
   const [accountingData, setAccountingData] = useState<any>(null);
   const [isAddingTopup, setIsAddingTopup] = useState<string | null>(null);
@@ -127,7 +138,14 @@ export default function SuperAdmin({ onBackToDashboard }: { onBackToDashboard?: 
   const [isEditModalOpen, setIsEditModalOpen] = useState(false);
   const [isEditInfoModalOpen, setIsEditInfoModalOpen] = useState(false);
   const [isCreateModalOpen, setIsCreateModalOpen] = useState(false);
+  const [isPartnerModalOpen, setIsPartnerModalOpen] = useState(false);
   const [isUserModalOpen, setIsUserModalOpen] = useState(false);
+  const [isAddingUser, setIsAddingUser] = useState(false);
+  const [newUserName, setNewUserName] = useState('');
+  const [newUserEmail, setNewUserEmail] = useState('');
+  const [newUserPassword, setNewUserPassword] = useState('VM-Passord2026!');
+  const [newUserRole, setNewUserRole] = useState<'admin' | 'manager' | 'worker'>('worker');
+  const [isCreatingUser, setIsCreatingUser] = useState(false);
   const [isOfferModalOpen, setIsOfferModalOpen] = useState(false);
   const [isResponseModalOpen, setIsResponseModalOpen] = useState(false);
   const [isConvertModalOpen, setIsConvertModalOpen] = useState(false);
@@ -652,14 +670,25 @@ Svar KUN med gyldig rå JSON (uten markdown \`\`\`json klammer):
     }
   };
 
-  const handleUpdateCompanyInfo = async (companyId: string, name: string, orgNumber: string, plan?: 'solo' | 'team' | 'entreprenor') => {
+  const handleUpdateCompanyInfo = async (companyId: string, name: string, orgNumber: string, plan?: 'solo' | 'team' | 'entreprenor' | 'partner') => {
     try {
+      const isPartner = plan === 'partner';
       const updateData: any = {
         name,
         orgNumber,
         updatedAt: serverTimestamp()
       };
-      if (plan) updateData.plan = plan;
+      if (plan) {
+        updateData.plan = plan;
+        if (isPartner) {
+          updateData.isPartner = true;
+          updateData.monthlyPrice = 0;
+          updateData.subscriptionStatus = 'active';
+        } else {
+          updateData.isPartner = false;
+          updateData.monthlyPrice = plan === 'solo' ? 1490 : plan === 'entreprenor' ? 6900 : 3490;
+        }
+      }
       await updateDoc(doc(db, 'companies', companyId), updateData);
       setCompanies(prev => prev.map(c => c.id === companyId ? { ...c, ...updateData } : c));
       toast.success('Kundeinfo ble oppdatert!');
@@ -668,14 +697,27 @@ Svar KUN med gyldig rå JSON (uten markdown \`\`\`json klammer):
     }
   };
 
-  const handleUpdateCompanyPlan = async (companyId: string, newPlan: 'solo' | 'team' | 'entreprenor') => {
+  const handleUpdateCompanyPlan = async (companyId: string, newPlan: 'solo' | 'team' | 'entreprenor' | 'partner') => {
     try {
-      await updateDoc(doc(db, 'companies', companyId), {
+      const isPartnerPlan = newPlan === 'partner';
+      const updateData: any = {
         plan: newPlan,
         updatedAt: serverTimestamp()
-      });
-      setCompanies(prev => prev.map(c => c.id === companyId ? { ...c, plan: newPlan } : c));
-      toast.success(`Abonnementsplan oppdatert til ${newPlan.toUpperCase()}!`);
+      };
+      if (isPartnerPlan) {
+        updateData.monthlyPrice = 0;
+        updateData.isPartner = true;
+        updateData.subscriptionStatus = 'active';
+      } else {
+        updateData.isPartner = false;
+        updateData.monthlyPrice = newPlan === 'solo' ? 1490 : newPlan === 'entreprenor' ? 6900 : 3490;
+      }
+      await updateDoc(doc(db, 'companies', companyId), updateData);
+      setCompanies(prev => prev.map(c => c.id === companyId ? { ...c, ...updateData } : c));
+      toast.success(isPartnerPlan 
+        ? 'Oppdatert til Samarbeidspartner / Kollega (0 kr/mnd)!' 
+        : `Abonnementsplan oppdatert til ${newPlan.toUpperCase()}!`
+      );
     } catch (error) {
       console.error('Feil ved endring av plan:', error);
       toast.error('Kunne ikke oppdatere plan');
@@ -790,25 +832,34 @@ Svar KUN med gyldig rå JSON (uten markdown \`\`\`json klammer):
     }
   };
 
+  // 🤝 Hjelper for å identifisere samarbeidspartnere, kollegaer eller friplasser (0 kr/mnd)
+  const isCompanyFreeTier = (c: Company) => {
+    const plan = (c.plan || '').toLowerCase();
+    return plan === 'partner' || plan === 'intern' || plan === 'internal' || Boolean(c.isPartner) || Boolean(c.isInternal) || c.monthlyPrice === 0;
+  };
+
   // 💰 Reelle SaaS-nøkkeltall for SuperAdmin (ærlige og nøyaktige)
   const activeCompanies = useMemo(() => companies.filter(c => c.subscriptionStatus === 'active'), [companies]);
   const trialCompanies = useMemo(() => companies.filter(c => c.subscriptionStatus === 'trial'), [companies]);
   const expiredCompanies = useMemo(() => companies.filter(c => c.subscriptionStatus === 'expired' || c.subscriptionStatus === 'cancelled'), [companies]);
+  const partnerCompanies = useMemo(() => companies.filter(c => isCompanyFreeTier(c)), [companies]);
+  const payingActiveCompanies = useMemo(() => activeCompanies.filter(c => !isCompanyFreeTier(c)), [activeCompanies]);
   const newLeads = useMemo(() => leads.filter(l => l.status === 'new' || !l.status), [leads]);
 
   // Reell MRR basert på aktive betalende abonnementer (0 kr hvis ingen betalende ennå):
+  // Samarbeidspartnere og kollegaer (0 kr) regnes ALDRI inn i inntekten!
   const activeMrr = useMemo(() => {
-    return activeCompanies.reduce((sum, c) => {
+    return payingActiveCompanies.reduce((sum, c) => {
       const plan = (c.plan || 'solo').toLowerCase();
       if (plan.includes('entrepren')) return sum + 6900;
       if (plan.includes('team')) return sum + 3490;
       return sum + 1490;
     }, 0);
-  }, [activeCompanies]);
+  }, [payingActiveCompanies]);
 
-  // Potensiell MRR i salgspipeline (fra aktive prøveperioder):
+  // Potensiell MRR i salgspipeline (fra aktive prøveperioder, ekskluderer gratis/partner):
   const pipelineMrr = useMemo(() => {
-    return trialCompanies.reduce((sum, c) => {
+    return trialCompanies.filter(c => !isCompanyFreeTier(c)).reduce((sum, c) => {
       const plan = (c.plan || 'team').toLowerCase();
       if (plan.includes('entrepren')) return sum + 6900;
       if (plan.includes('team')) return sum + 3490;
@@ -834,7 +885,7 @@ Svar KUN med gyldig rå JSON (uten markdown \`\`\`json klammer):
 
   // Hjelper for å beregne dager igjen av 14-dagers prøveperiode
   const getTrialInfo = (company: Company) => {
-    if (company.subscriptionStatus !== 'trial') return null;
+    if (company.subscriptionStatus !== 'trial' || isCompanyFreeTier(company)) return null;
     const start = company.trialStartDate 
       ? new Date(company.trialStartDate) 
       : (company.createdAt?.toDate ? company.createdAt.toDate() : new Date(company.createdAt || Date.now()));
@@ -848,8 +899,10 @@ Svar KUN med gyldig rå JSON (uten markdown \`\`\`json klammer):
 
   // Hjelper for å beregne tokenforbruk og kvote per bedrift
   const getCompanyTokenStats = (companyId: string, planKey: string = 'solo') => {
-    const norm = planKey?.toLowerCase().includes('entrepren') ? 'entreprenor' : planKey?.toLowerCase().includes('team') ? 'team' : 'solo';
-    const limit = norm === 'entreprenor' ? 30_000_000 : norm === 'team' ? 10_000_000 : 2_500_000;
+    const raw = (planKey || '').toLowerCase();
+    const isPartner = raw.includes('partner') || raw.includes('intern');
+    const norm = isPartner ? 'partner' : raw.includes('entrepren') ? 'entreprenor' : raw.includes('team') ? 'team' : 'solo';
+    const limit = norm === 'partner' ? 15_000_000 : norm === 'entreprenor' ? 30_000_000 : norm === 'team' ? 10_000_000 : 2_500_000;
     const used = tokenCosts
       .filter(c => (c.companyId === companyId || c.companyName === companyId) && (c.timestamp || '').startsWith(currentMonthPrefix))
       .reduce((sum, c) => sum + (Number(c.totalTokens) || 0), 0);
@@ -857,15 +910,60 @@ Svar KUN med gyldig rå JSON (uten markdown \`\`\`json klammer):
     return { used, limit, percent, plan: norm };
   };
 
+  // Opprett bruker direkte på valgt bedrift (for kollegaer og partnere)
+  const handleCreateUserForCompany = async (e: React.FormEvent) => {
+    e.preventDefault();
+    if (!selectedCompany || !newUserEmail || !newUserPassword) return;
+    setIsCreatingUser(true);
+    try {
+      const token = typeof window !== 'undefined' ? localStorage.getItem('token') : null;
+      const res = await fetch('/api/admin/create-user', {
+        method: 'POST',
+        headers: {
+          'Content-Type': 'application/json',
+          ...(token ? { 'Authorization': 'Bearer ' + token } : {})
+        },
+        body: JSON.stringify({
+          accountType: isCompanyFreeTier(selectedCompany) ? 'partner' : 'customer',
+          companyMode: 'existing',
+          companyId: selectedCompany.id,
+          companyName: selectedCompany.name,
+          name: newUserName.trim() || newUserEmail.split('@')[0],
+          email: newUserEmail.trim(),
+          password: newUserPassword.trim(),
+          role: newUserRole,
+          trade: selectedCompany.industry || 'Byggmester'
+        })
+      });
+      const data = await res.json();
+      if (res.ok) {
+        toast.success(`Bruker ${data.user?.displayName || newUserEmail} ble opprettet! 🎉`);
+        setCompanyUsers(prev => [data.user, ...prev]);
+        setCompanies(prev => prev.map(c => c.id === selectedCompany.id ? { ...c, userCount: (c.userCount || 0) + 1 } : c));
+        setIsAddingUser(false);
+        setNewUserName('');
+        setNewUserEmail('');
+      } else {
+        toast.error(data.error || 'Kunne ikke opprette bruker');
+      }
+    } catch (err: any) {
+      toast.error('Nettverksfeil ved opprettelse av bruker: ' + err.message);
+    } finally {
+      setIsCreatingUser(false);
+    }
+  };
+
   // ⚡ Bolt: Memoize filtered lists to prevent expensive O(N) recalculations on every render
   const filteredCompanies = useMemo(() => {
     return companies.filter(c => {
       const matchesSearch = 
         c.name.toLowerCase().includes(searchTerm.toLowerCase()) ||
-        c.orgNumber?.includes(searchTerm);
+        c.orgNumber?.includes(searchTerm) ||
+        (c.email && c.email.toLowerCase().includes(searchTerm.toLowerCase()));
       if (!matchesSearch) return false;
-      if (companyStatusFilter === 'active') return c.subscriptionStatus === 'active';
-      if (companyStatusFilter === 'trial') return c.subscriptionStatus === 'trial';
+      if (companyStatusFilter === 'partner') return isCompanyFreeTier(c);
+      if (companyStatusFilter === 'active') return c.subscriptionStatus === 'active' && !isCompanyFreeTier(c);
+      if (companyStatusFilter === 'trial') return c.subscriptionStatus === 'trial' && !isCompanyFreeTier(c);
       if (companyStatusFilter === 'cancelled') return c.subscriptionStatus === 'cancelled' || c.subscriptionStatus === 'expired';
       return true;
     });
@@ -1061,24 +1159,32 @@ Svar KUN med gyldig rå JSON (uten markdown \`\`\`json klammer):
             Full kontroll over bedriftskunder, abonnementsplaner, Gemini AI-marginkontroll og salg.
           </p>
         </div>
-        <div className="grid grid-cols-3 gap-2 w-full sm:flex sm:w-auto sm:gap-3">
+        <div className="flex flex-wrap items-center gap-2 sm:gap-3 w-full sm:w-auto">
           <button 
             onClick={() => setIsTemplateModalOpen(true)}
-            className="flex items-center justify-center gap-1.5 px-2.5 py-2.5 sm:px-4 sm:py-3 bg-neutral-100 text-neutral-700 rounded-xl sm:rounded-2xl font-bold hover:bg-neutral-200 transition-all text-xs sm:text-sm shadow-xs cursor-pointer"
+            className="flex items-center justify-center gap-1.5 px-3 py-2.5 bg-neutral-100 text-neutral-700 rounded-xl font-bold hover:bg-neutral-200 transition-all text-xs sm:text-sm shadow-xs cursor-pointer"
           >
             <FileText size={16} className="shrink-0" />
             <span className="truncate">E-postmal</span>
           </button>
           <button 
             onClick={() => setIsOfferModalOpen(true)}
-            className="flex items-center justify-center gap-1.5 px-2.5 py-2.5 sm:px-4 sm:py-3 bg-blue-600 text-white rounded-xl sm:rounded-2xl font-bold hover:bg-blue-500 transition-all shadow-md shadow-blue-100 text-xs sm:text-sm cursor-pointer"
+            className="flex items-center justify-center gap-1.5 px-3 py-2.5 bg-blue-600 text-white rounded-xl font-bold hover:bg-blue-500 transition-all shadow-md shadow-blue-100 text-xs sm:text-sm cursor-pointer"
           >
             <Send size={16} className="shrink-0" />
             <span className="truncate">Send tilbud</span>
           </button>
           <button 
+            onClick={() => setIsPartnerModalOpen(true)}
+            className="flex items-center justify-center gap-1.5 px-3.5 py-2.5 bg-purple-100 hover:bg-purple-200 text-purple-900 border border-purple-300 rounded-xl font-bold transition-all text-xs sm:text-sm cursor-pointer shadow-xs"
+            title="Opprett samarbeidspartner eller kollega som ikke regnes inn i omsetning (0 kr/mnd)"
+          >
+            <UserCheck size={16} className="shrink-0 text-purple-700" />
+            <span className="truncate">+ Ny Partner / Kollega</span>
+          </button>
+          <button 
             onClick={() => setIsCreateModalOpen(true)}
-            className="flex items-center justify-center gap-1.5 px-2.5 py-2.5 sm:px-5 sm:py-3 bg-gradient-to-r from-electric-500 to-electric-400 text-white rounded-xl sm:rounded-2xl font-black hover:opacity-95 transition-all shadow-purple-cta text-xs sm:text-sm cursor-pointer"
+            className="flex items-center justify-center gap-1.5 px-4 py-2.5 bg-gradient-to-r from-electric-500 to-electric-400 text-white rounded-xl font-black hover:opacity-95 transition-all shadow-purple-cta text-xs sm:text-sm cursor-pointer"
           >
             <Plus size={16} className="shrink-0" />
             <span className="truncate">+ Ny bedriftskunde</span>
@@ -1114,7 +1220,7 @@ Svar KUN med gyldig rå JSON (uten markdown \`\`\`json klammer):
       </div>
 
       {/* Navigation Tabs */}
-      <div className="flex items-center gap-2 mb-6 sm:mb-8 pb-2 overflow-x-auto no-scrollbar -mx-3.5 px-3.5 sm:mx-0 sm:px-0 scroll-smooth">
+      <div className="flex flex-wrap items-center gap-2 sm:gap-2.5 mb-6 sm:mb-8">
         {[
           { id: 'companies', label: 'Bedrifter & Kunder', icon: <Building2 size={16} />, count: companies.length },
           { id: 'leads', label: 'Henvendelser & Salgs-leads', icon: <MessageSquare size={16} />, count: newLeads.length, countColor: 'bg-red-500 text-white' },
@@ -1127,7 +1233,7 @@ Svar KUN med gyldig rå JSON (uten markdown \`\`\`json klammer):
             key={tab.id}
             onClick={() => setActiveTab(tab.id as any)}
             className={cn(
-              "flex items-center gap-2 px-3.5 py-2.5 sm:px-5 sm:py-3 rounded-xl sm:rounded-2xl font-bold transition-all whitespace-nowrap text-xs sm:text-sm shrink-0 cursor-pointer",
+              "flex items-center gap-2 px-3 py-2 sm:px-4 sm:py-2.5 lg:px-5 lg:py-3 rounded-xl sm:rounded-2xl font-bold transition-all whitespace-nowrap text-xs sm:text-sm cursor-pointer",
               activeTab === tab.id 
                 ? "bg-neutral-900 text-white shadow-lg shadow-neutral-900/20" 
                 : "bg-white text-neutral-600 hover:bg-neutral-50 border border-neutral-200"
@@ -1171,7 +1277,9 @@ Svar KUN med gyldig rå JSON (uten markdown \`\`\`json klammer):
           </div>
           <div className="text-xs font-bold text-neutral-600 uppercase tracking-wider mt-1">Månedlig SaaS-omsetning</div>
           <p className="text-[11px] text-neutral-500 mt-1">
-            {activeCompanies.length === 0 ? '0 betalende abonnenter (klar for lansering)' : `${activeCompanies.length} aktive betalende kunder`}
+            {payingActiveCompanies.length === 0 
+              ? `0 betalende abonnenter · ${partnerCompanies.length} partner/kollega (0 kr)` 
+              : `${payingActiveCompanies.length} betalende kunder · ${partnerCompanies.length} partner/kollega (0 kr)`}
           </p>
         </div>
 
@@ -1192,9 +1300,9 @@ Svar KUN med gyldig rå JSON (uten markdown \`\`\`json klammer):
           <div className="text-2xl sm:text-3xl font-black text-neutral-900">
             {companies.length}
           </div>
-          <div className="text-xs font-bold text-neutral-600 uppercase tracking-wider mt-1">Bedriftskunder</div>
+          <div className="text-xs font-bold text-neutral-600 uppercase tracking-wider mt-1">Bedriftskunder & Partnere</div>
           <p className="text-[11px] text-neutral-500 mt-1">
-            {trialCompanies.length} i prøveperiode · {activeCompanies.length} aktive
+            {payingActiveCompanies.length} betalende · {partnerCompanies.length} partnere/kollegaer · {trialCompanies.length} prøvetid
           </p>
         </div>
 
@@ -1266,8 +1374,9 @@ Svar KUN med gyldig rå JSON (uten markdown \`\`\`json klammer):
               <div className="flex items-center gap-1.5 overflow-x-auto w-full md:w-auto pb-1">
                 {[
                   { id: 'all', label: 'Alle', count: companies.length },
-                  { id: 'active', label: 'Aktive', count: activeCompanies.length },
+                  { id: 'active', label: 'Betalende Aktive', count: payingActiveCompanies.length },
                   { id: 'trial', label: 'Prøveperiode', count: trialCompanies.length },
+                  { id: 'partner', label: '🤝 Partnere & Kollegaer (0 kr)', count: partnerCompanies.length },
                   { id: 'cancelled', label: 'Utløpt/Oppsagt', count: expiredCompanies.length },
                 ].map(f => (
                   <button
@@ -1333,10 +1442,11 @@ Svar KUN med gyldig rå JSON (uten markdown \`\`\`json klammer):
                           {/* Plan Dropdown */}
                           <td className="px-6 sm:px-8 py-5">
                             <select
-                              value={currentPlan}
+                              value={isCompanyFreeTier(company) ? 'partner' : currentPlan}
                               onChange={(e) => handleUpdateCompanyPlan(company.id, e.target.value as any)}
                               className={cn(
                                 "text-xs font-bold rounded-xl px-3 py-1.5 outline-none border transition-all cursor-pointer",
+                                (currentPlan === 'partner' || isCompanyFreeTier(company)) ? "bg-purple-100 text-purple-900 border-purple-300 focus:ring-2 focus:ring-purple-400" :
                                 currentPlan === 'entreprenor' ? "bg-purple-50 text-purple-800 border-purple-200 focus:ring-2 focus:ring-purple-400" :
                                 currentPlan === 'team' ? "bg-blue-50 text-blue-800 border-blue-200 focus:ring-2 focus:ring-blue-400" :
                                 "bg-neutral-50 text-neutral-800 border-neutral-200 focus:ring-2 focus:ring-neutral-400"
@@ -1346,6 +1456,7 @@ Svar KUN med gyldig rå JSON (uten markdown \`\`\`json klammer):
                               <option value="solo">Solo (1 490 kr/mnd · 2.5M tokens)</option>
                               <option value="team">Team (3 490 kr/mnd · 10M tokens)</option>
                               <option value="entreprenor">Totalentreprenør (6 900 kr/mnd · 30M tokens)</option>
+                              <option value="partner">🤝 Samarbeidspartner / Kollega (0 kr · 15M tokens)</option>
                             </select>
                           </td>
 
@@ -1354,12 +1465,14 @@ Svar KUN med gyldig rå JSON (uten markdown \`\`\`json klammer):
                             <div className="flex flex-col gap-1.5 items-start">
                               <span className={cn(
                                 "px-3 py-1 rounded-full text-[10px] font-black uppercase tracking-widest border shadow-2xs inline-flex items-center gap-1.5",
+                                isCompanyFreeTier(company) ? "bg-purple-100 text-purple-900 border-purple-300" :
                                 company.subscriptionStatus === 'active' ? "bg-emerald-100 text-emerald-800 border-emerald-300" :
                                 company.subscriptionStatus === 'trial' ? "bg-amber-100 text-amber-900 border-amber-300" :
                                 "bg-rose-100 text-rose-800 border-rose-300"
                               )}>
-                                {company.subscriptionStatus === 'active' && '🟢 Aktiv Betalende'}
-                                {company.subscriptionStatus === 'trial' && (
+                                {isCompanyFreeTier(company) && '🤝 Samarbeidspartner (0 kr)'}
+                                {!isCompanyFreeTier(company) && company.subscriptionStatus === 'active' && '🟢 Aktiv Betalende'}
+                                {!isCompanyFreeTier(company) && company.subscriptionStatus === 'trial' && (
                                   <>
                                     <span>🟠 Prøveperiode</span>
                                     {trialInfo && (
@@ -1367,7 +1480,7 @@ Svar KUN med gyldig rå JSON (uten markdown \`\`\`json klammer):
                                     )}
                                   </>
                                 )}
-                                {company.subscriptionStatus !== 'active' && company.subscriptionStatus !== 'trial' && '🔴 Deaktivert / Utløpt'}
+                                {!isCompanyFreeTier(company) && company.subscriptionStatus !== 'active' && company.subscriptionStatus !== 'trial' && '🔴 Deaktivert / Utløpt'}
                               </span>
 
                               {/* Quick Action Buttons for Status */}
@@ -2118,7 +2231,7 @@ Svar KUN med gyldig rå JSON (uten markdown \`\`\`json klammer):
                     <td className="px-8 py-6 max-w-sm">
                       {lead.message ? (
                         <div>
-                          <p className="text-sm text-neutral-700 leading-snug line-clamp-2">{lead.message}</p>
+                          <p className="text-sm text-neutral-700 leading-relaxed whitespace-pre-wrap">{lead.message}</p>
                           {(lead.plan || lead.trade) && (
                             <div className="flex flex-wrap gap-1 mt-1.5">
                               {lead.plan && (
@@ -2198,7 +2311,7 @@ Svar KUN med gyldig rå JSON (uten markdown \`\`\`json klammer):
                     <td className="px-8 py-6 text-xs text-neutral-500">
                       {formatDate(lead.createdAt)}
                     </td>
-                    <td className="px-8 py-6">
+                    <td className="px-8 py-6 min-w-[320px] max-w-lg">
                       <div className="flex items-center gap-2">
                         {/* 🌟 GJØR OM TIL KUNDE KNAPP */}
                         <button 
@@ -2273,12 +2386,36 @@ Svar KUN med gyldig rå JSON (uten markdown \`\`\`json klammer):
                         </button>
                       </div>
                       {lead.aiScore && (
-                        <div className="mt-2 p-3 bg-emerald-50 rounded-xl border border-emerald-100">
-                          <div className="flex items-center justify-between mb-1">
-                            <span className="text-[10px] font-black uppercase text-emerald-700">AI Score</span>
-                            <span className="text-xs font-bold text-emerald-900">{lead.aiScore}/100</span>
+                        <div className="mt-2.5 p-3.5 bg-emerald-50/90 rounded-2xl border border-emerald-200/80 text-left shadow-xs space-y-1.5">
+                          <div className="flex items-center justify-between pb-1 border-b border-emerald-200/50">
+                            <span className="text-[10px] font-black uppercase text-emerald-800 flex items-center gap-1">
+                              <Sparkles size={11} className="text-emerald-600" />
+                              AI Vurdering & Profil
+                            </span>
+                            <span className="text-xs font-black text-emerald-900 bg-white px-2 py-0.5 rounded-md border border-emerald-200">
+                              {lead.aiScore}/100
+                            </span>
                           </div>
-                          <p className="text-[10px] text-emerald-600 line-clamp-2">{lead.aiSummary}</p>
+                          <p className="text-xs text-emerald-950 leading-relaxed font-medium whitespace-pre-wrap">
+                            {lead.aiSummary}
+                          </p>
+                          {(lead.suggestedResponse || leadAnalysis[lead.id]?.suggestedResponse) && (
+                            <div className="pt-1.5 border-t border-emerald-200/40">
+                              <button
+                                type="button"
+                                onClick={() => {
+                                  setSelectedLead(lead);
+                                  setReplyMessage(lead.suggestedResponse || leadAnalysis[lead.id]?.suggestedResponse);
+                                  setIsResponseModalOpen(true);
+                                }}
+                                className="text-[10px] font-bold text-emerald-800 hover:text-emerald-950 bg-white hover:bg-emerald-100 border border-emerald-200 px-2 py-1 rounded-lg transition-all flex items-center gap-1 cursor-pointer"
+                                title="Åpne svarmodal med AI-generert svarutkast"
+                              >
+                                <Mail size={10} />
+                                <span>Bruk AI-svarutkast</span>
+                              </button>
+                            </div>
+                          )}
                         </div>
                       )}
                     </td>
@@ -2552,68 +2689,177 @@ Svar KUN med gyldig rå JSON (uten markdown \`\`\`json klammer):
           >
             <div className="p-8 border-b border-neutral-100 flex justify-between items-center">
               <div>
-                <h2 className="text-2xl font-bold text-neutral-900">Brukeradministrasjon</h2>
-                <p className="text-sm text-neutral-500">Administrer brukere og rettigheter for {selectedCompany.name}</p>
+                <h2 className="text-2xl font-bold text-neutral-900 flex items-center gap-2">
+                  <span>Brukeradministrasjon</span>
+                  {isCompanyFreeTier(selectedCompany) && (
+                    <span className="px-2.5 py-0.5 rounded-full bg-purple-100 text-purple-800 text-[10px] font-black uppercase">
+                      Samarbeidspartner / Kollega (0 kr)
+                    </span>
+                  )}
+                </h2>
+                <p className="text-sm text-neutral-500">Administrer brukere og tilganger for {selectedCompany.name}</p>
               </div>
-              <button onClick={() => setIsUserModalOpen(false)} className="p-2 hover:bg-neutral-100 rounded-full transition-colors">
-                <XCircle size={24} className="text-neutral-400" />
-              </button>
+              <div className="flex items-center gap-2">
+                <button 
+                  onClick={() => setIsAddingUser(!isAddingUser)}
+                  className="flex items-center gap-1.5 px-3.5 py-2 bg-purple-100 hover:bg-purple-200 text-purple-900 border border-purple-200 rounded-xl text-xs font-bold transition-all cursor-pointer shadow-2xs"
+                >
+                  <UserPlus size={15} className="text-purple-700" />
+                  <span>{isAddingUser ? 'Lukk skjema' : '+ Legg til bruker'}</span>
+                </button>
+                <button onClick={() => { setIsUserModalOpen(false); setIsAddingUser(false); }} className="p-2 hover:bg-neutral-100 rounded-full transition-colors cursor-pointer">
+                  <XCircle size={24} className="text-neutral-400" />
+                </button>
+              </div>
             </div>
+
+            {/* Hurtigopprettelse av ny bruker for denne bedriften */}
+            {isAddingUser && (
+              <form onSubmit={handleCreateUserForCompany} className="p-6 bg-purple-50/60 border-b border-purple-100 space-y-4">
+                <div className="flex items-center justify-between">
+                  <h3 className="text-xs font-black uppercase tracking-wider text-purple-900 flex items-center gap-1.5">
+                    <UserPlus size={14} /> Opprett ny bruker for {selectedCompany.name}
+                  </h3>
+                  <span className="text-[11px] text-neutral-500">
+                    Brukeren opprettes i systemet og kan logge inn umiddelbart.
+                  </span>
+                </div>
+                <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-3">
+                  <div className="space-y-1">
+                    <label className="text-[10px] font-bold uppercase text-neutral-600">Fullt navn *</label>
+                    <input 
+                      required
+                      type="text"
+                      value={newUserName}
+                      onChange={(e) => setNewUserName(e.target.value)}
+                      placeholder="F.eks. Ola Kollega"
+                      className="w-full px-3 py-2 bg-white border border-neutral-200 rounded-xl text-xs font-semibold outline-none focus:ring-2 focus:ring-purple-500"
+                    />
+                  </div>
+                  <div className="space-y-1">
+                    <label className="text-[10px] font-bold uppercase text-neutral-600">E-postadresse (innlogging) *</label>
+                    <input 
+                      required
+                      type="email"
+                      value={newUserEmail}
+                      onChange={(e) => setNewUserEmail(e.target.value)}
+                      placeholder="ola@firma.no"
+                      className="w-full px-3 py-2 bg-white border border-neutral-200 rounded-xl text-xs font-semibold outline-none focus:ring-2 focus:ring-purple-500"
+                    />
+                  </div>
+                  <div className="space-y-1">
+                    <div className="flex justify-between items-center">
+                      <label className="text-[10px] font-bold uppercase text-neutral-600">Passord *</label>
+                      <button 
+                        type="button" 
+                        onClick={() => setNewUserPassword('VM-' + Math.random().toString(36).substring(2, 7) + '26!')}
+                        className="text-[10px] text-purple-700 hover:underline font-bold cursor-pointer"
+                      >
+                        Generer nytt
+                      </button>
+                    </div>
+                    <input 
+                      required
+                      type="text"
+                      value={newUserPassword}
+                      onChange={(e) => setNewUserPassword(e.target.value)}
+                      className="w-full px-3 py-2 bg-white border border-neutral-200 rounded-xl text-xs font-mono font-bold outline-none focus:ring-2 focus:ring-purple-500"
+                    />
+                  </div>
+                  <div className="space-y-1">
+                    <label className="text-[10px] font-bold uppercase text-neutral-600">Rolle</label>
+                    <select
+                      value={newUserRole}
+                      onChange={(e) => setNewUserRole(e.target.value as any)}
+                      className="w-full px-3 py-2 bg-white border border-neutral-200 rounded-xl text-xs font-bold outline-none focus:ring-2 focus:ring-purple-500"
+                    >
+                      <option value="admin">Administrator (Full tilgang)</option>
+                      <option value="manager">Prosjektleder</option>
+                      <option value="worker">Håndverker</option>
+                    </select>
+                  </div>
+                </div>
+                <div className="flex justify-end gap-2 pt-2">
+                  <button 
+                    type="button"
+                    onClick={() => setIsAddingUser(false)}
+                    className="px-4 py-2 bg-neutral-200 text-neutral-700 rounded-xl text-xs font-bold hover:bg-neutral-300 transition-all cursor-pointer"
+                  >
+                    Avbryt
+                  </button>
+                  <button 
+                    type="submit"
+                    disabled={isCreatingUser}
+                    className="px-5 py-2 bg-purple-700 hover:bg-purple-800 text-white rounded-xl text-xs font-bold transition-all shadow-sm cursor-pointer disabled:opacity-50"
+                  >
+                    {isCreatingUser ? 'Oppretter...' : 'Opprett bruker nå'}
+                  </button>
+                </div>
+              </form>
+            )}
             
             <div className="p-8 max-h-[60vh] overflow-y-auto">
-              <table className="w-full text-left">
-                <thead>
-                  <tr className="border-b border-neutral-100">
-                    <th className="pb-4 text-xs font-black uppercase tracking-widest text-neutral-400">Navn</th>
-                    <th className="pb-4 text-xs font-black uppercase tracking-widest text-neutral-400">Rolle</th>
-                    <th className="pb-4 text-xs font-black uppercase tracking-widest text-neutral-400">Handlinger</th>
-                  </tr>
-                </thead>
-                <tbody className="divide-y divide-neutral-50">
-                  {companyUsers.map(u => (
-                    <tr key={u.id}>
-                      <td className="py-4">
-                        <div className="font-bold">{u.displayName}</div>
-                        <div className="text-xs text-neutral-400">{u.email}</div>
-                      </td>
-                      <td className="py-4">
-                        <select 
-                          value={u.role}
-                          onChange={(e) => handleUpdateUserRole(u.id, e.target.value)}
-                          className="text-xs font-bold bg-neutral-50 border border-neutral-200 rounded-lg px-2 py-1 outline-none"
-                        >
-                          <option value="admin">Admin</option>
-                          <option value="manager">Prosjektleder</option>
-                          <option value="worker">Håndverker</option>
-                          <option value="client">Kunde</option>
-                        </select>
-                      </td>
-                      <td className="py-4">
-                        <div className="flex items-center gap-2">
-                          <button 
-                            onClick={() => {
-                              startImpersonation(selectedCompany.id, u.role);
-                              toast.success(`Logget inn som ${u.name || u.email || 'bruker'} (${u.role}) hos ${selectedCompany.name}.`);
-                              setIsUserModalOpen(false);
-                              window.dispatchEvent(new CustomEvent('navigate_view', { detail: { view: 'dashboard' } }));
-                            }}
-                            className="flex items-center gap-1 text-[10px] font-black uppercase tracking-widest text-blue-600 hover:text-blue-700 hover:underline cursor-pointer"
-                          >
-                            <ExternalLink size={12} />
-                            Logg inn som
-                          </button>
-                          <button 
-                            onClick={() => handleDeleteUser(u.id)}
-                            className="p-2 text-neutral-400 hover:text-red-600 hover:bg-red-50 rounded-lg transition-all"
-                          >
-                            <Trash2 size={12} />
-                          </button>
-                        </div>
-                      </td>
+              {companyUsers.length === 0 ? (
+                <div className="text-center py-8 text-neutral-400">
+                  <Users size={32} className="mx-auto mb-2 opacity-50" />
+                  <p className="text-sm font-semibold">Ingen brukere registrert for denne bedriften ennå.</p>
+                  <p className="text-xs mt-1">Klikk på "+ Legg til bruker" ovenfor for å opprette en bruker.</p>
+                </div>
+              ) : (
+                <table className="w-full text-left">
+                  <thead>
+                    <tr className="border-b border-neutral-100">
+                      <th className="pb-4 text-xs font-black uppercase tracking-widest text-neutral-400">Navn</th>
+                      <th className="pb-4 text-xs font-black uppercase tracking-widest text-neutral-400">Rolle</th>
+                      <th className="pb-4 text-xs font-black uppercase tracking-widest text-neutral-400">Handlinger</th>
                     </tr>
-                  ))}
-                </tbody>
-              </table>
+                  </thead>
+                  <tbody className="divide-y divide-neutral-50">
+                    {companyUsers.map(u => (
+                      <tr key={u.id}>
+                        <td className="py-4">
+                          <div className="font-bold">{u.displayName}</div>
+                          <div className="text-xs text-neutral-400">{u.email}</div>
+                        </td>
+                        <td className="py-4">
+                          <select 
+                            value={u.role}
+                            onChange={(e) => handleUpdateUserRole(u.id, e.target.value)}
+                            className="text-xs font-bold bg-neutral-50 border border-neutral-200 rounded-lg px-2 py-1 outline-none"
+                          >
+                            <option value="admin">Admin</option>
+                            <option value="manager">Prosjektleder</option>
+                            <option value="worker">Håndverker</option>
+                            <option value="client">Kunde</option>
+                          </select>
+                        </td>
+                        <td className="py-4">
+                          <div className="flex items-center gap-2">
+                            <button 
+                              onClick={() => {
+                                startImpersonation(selectedCompany.id, u.role);
+                                toast.success(`Logget inn som ${u.name || u.email || 'bruker'} (${u.role}) hos ${selectedCompany.name}.`);
+                                setIsUserModalOpen(false);
+                                window.dispatchEvent(new CustomEvent('navigate_view', { detail: { view: 'dashboard' } }));
+                              }}
+                              className="flex items-center gap-1 text-[10px] font-black uppercase tracking-widest text-blue-600 hover:text-blue-700 hover:underline cursor-pointer"
+                            >
+                              <ExternalLink size={12} />
+                              Logg inn som
+                            </button>
+                            <button 
+                              onClick={() => handleDeleteUser(u.id)}
+                              className="p-2 text-neutral-400 hover:text-red-600 hover:bg-red-50 rounded-lg transition-all"
+                            >
+                              <Trash2 size={12} />
+                            </button>
+                          </div>
+                        </td>
+                      </tr>
+                    ))}
+                  </tbody>
+                </table>
+              )}
             </div>
           </motion.div>
         </div>
@@ -2624,6 +2870,15 @@ Svar KUN med gyldig rå JSON (uten markdown \`\`\`json klammer):
         <CreateCompanyModal 
           onClose={() => setIsCreateModalOpen(false)} 
           onSuccess={() => setIsCreateModalOpen(false)}
+        />
+      )}
+
+      {/* Create Partner / Colleague Modal */}
+      {isPartnerModalOpen && (
+        <CreatePartnerModal 
+          companies={companies}
+          onClose={() => setIsPartnerModalOpen(false)} 
+          onSuccess={() => setIsPartnerModalOpen(false)}
         />
       )}
 
@@ -2999,10 +3254,443 @@ Svar KUN med gyldig rå JSON (uten markdown \`\`\`json klammer):
   );
 }
 
-function EditCompanyInfoModal({ company, onClose, onSuccess }: { company: Company, onClose: () => void, onSuccess: (data: { name: string, orgNumber: string, plan: 'solo' | 'team' | 'entreprenor' }) => void }) {
+function CreatePartnerModal({
+  companies,
+  onClose,
+  onSuccess
+}: {
+  companies: Company[];
+  onClose: () => void;
+  onSuccess: () => void;
+}) {
+  const [partnerType, setPartnerType] = useState<'partner' | 'internal'>('partner');
+  const [companyMode, setCompanyMode] = useState<'new' | 'existing'>('new');
+  const [selectedCompanyId, setSelectedCompanyId] = useState('');
+  const [companyName, setCompanyName] = useState('');
+  const [orgNumber, setOrgNumber] = useState('');
+  const [name, setName] = useState('');
+  const [email, setEmail] = useState('');
+  const [role, setRole] = useState<'admin' | 'manager' | 'worker'>('admin');
+  const [trade, setTrade] = useState('Byggmester / Tømrer');
+  const [password, setPassword] = useState('');
+  const [showPassword, setShowPassword] = useState(false);
+  const [sendWelcomeEmail, setSendWelcomeEmail] = useState(true);
+  const [loading, setLoading] = useState(false);
+  const [copied, setCopied] = useState(false);
+  const [createdData, setCreatedData] = useState<{
+    user: any;
+    company: any;
+    password: string;
+    loginUrl: string;
+    emailSent: boolean;
+  } | null>(null);
+
+  const generatePassword = () => {
+    const chars = 'ABCDEFGHJKLMNPQRSTUVWXYZabcdefghijkmnopqrstuvwxyz23456789!@#$';
+    let pwd = 'VM-';
+    for (let i = 0; i < 6; i++) {
+      pwd += chars.charAt(Math.floor(Math.random() * chars.length));
+    }
+    pwd += '26!';
+    setPassword(pwd);
+  };
+
+  useEffect(() => {
+    generatePassword();
+  }, []);
+
+  const handleSubmit = async (e: React.FormEvent) => {
+    e.preventDefault();
+    if (!email || !password) {
+      toast.error('Både e-post og passord må fylles ut.');
+      return;
+    }
+    if (companyMode === 'new' && !companyName) {
+      toast.error('Oppgi firmanavn eller organisasjon.');
+      return;
+    }
+    if (companyMode === 'existing' && !selectedCompanyId) {
+      toast.error('Velg en eksisterende bedrift fra listen.');
+      return;
+    }
+
+    setLoading(true);
+    try {
+      const token = typeof window !== 'undefined' ? localStorage.getItem('token') : null;
+      const res = await fetch('/api/admin/create-user', {
+        method: 'POST',
+        headers: {
+          'Content-Type': 'application/json',
+          ...(token ? { 'Authorization': 'Bearer ' + token } : {})
+        },
+        body: JSON.stringify({
+          accountType: partnerType,
+          companyMode,
+          companyId: companyMode === 'existing' ? selectedCompanyId : undefined,
+          companyName: companyMode === 'new' ? companyName : undefined,
+          orgNumber: companyMode === 'new' ? orgNumber : undefined,
+          name: name.trim() || email.split('@')[0],
+          email: email.trim(),
+          password: password.trim(),
+          role,
+          trade,
+          sendWelcomeEmail
+        })
+      });
+
+      const data = await res.json();
+      if (!res.ok) {
+        throw new Error(data.error || 'Kunne ikke opprette partnerkonto');
+      }
+
+      toast.success(`${partnerType === 'internal' ? 'Kollega' : 'Samarbeidspartner'} ble opprettet! 🎉`);
+      setCreatedData({
+        user: data.user,
+        company: data.company,
+        password: password.trim(),
+        loginUrl: 'https://vikingmester.no',
+        emailSent: Boolean(data.emailSent)
+      });
+    } catch (err: any) {
+      console.error('Partner creation error:', err);
+      toast.error(err.message || 'Feil ved opprettelse av partner/kollega');
+    } finally {
+      setLoading(false);
+    }
+  };
+
+  const copyCredentials = () => {
+    if (!createdData) return;
+    const text = `Hei! Her er dine innloggingsopplysninger til VikingMester:
+Nettadresse: ${createdData.loginUrl}
+Brukernavn (E-post): ${createdData.user.email}
+Passord: ${createdData.password}
+Firma: ${createdData.company?.name || 'VikingMester'}
+Rolle: ${createdData.user.role === 'admin' ? 'Administrator' : createdData.user.role === 'manager' ? 'Prosjektleder' : 'Håndverker'}`;
+
+    navigator.clipboard.writeText(text);
+    setCopied(true);
+    toast.success('Innloggingsdetaljer kopiert til utklippstavle!');
+    setTimeout(() => setCopied(false), 3000);
+  };
+
+  if (createdData) {
+    return (
+      <div className="fixed inset-0 z-[100] flex items-center justify-center p-4 bg-neutral-900/60 backdrop-blur-sm">
+        <motion.div 
+          initial={{ opacity: 0, scale: 0.95 }}
+          animate={{ opacity: 1, scale: 1 }}
+          className="bg-white rounded-[2.5rem] shadow-2xl w-full max-w-lg overflow-hidden"
+        >
+          <div className="p-8 text-center space-y-4">
+            <div className="w-16 h-16 bg-purple-100 text-purple-700 rounded-full flex items-center justify-center mx-auto">
+              <CheckCircle2 size={36} />
+            </div>
+            <div>
+              <h2 className="text-2xl font-black text-neutral-900">
+                {partnerType === 'internal' ? 'Kollega-konto opprettet!' : 'Samarbeidspartner opprettet!'}
+              </h2>
+              <p className="text-xs text-neutral-500 mt-1">
+                Kontoen er aktiv, koster <strong>0 kr/mnd</strong> og telles <strong>ikke</strong> med i SaaS-omsetningen din (MRR).
+              </p>
+            </div>
+
+            <div className="bg-purple-50/80 border border-purple-200 rounded-2xl p-5 text-left space-y-2.5 font-mono text-xs text-neutral-800">
+              <div className="flex justify-between items-center pb-2 border-b border-purple-200/60">
+                <span className="font-sans font-bold text-[10px] uppercase text-purple-700">Innloggingsopplysninger</span>
+                <span className="font-sans text-[10px] bg-purple-200/70 text-purple-900 px-2 py-0.5 rounded-full font-bold">
+                  {createdData.emailSent ? 'E-post sendt ✓' : 'Klar for overlevering'}
+                </span>
+              </div>
+              <div><strong className="font-sans text-neutral-500 text-[11px]">Nettadresse:</strong> https://vikingmester.no</div>
+              <div><strong className="font-sans text-neutral-500 text-[11px]">Brukernavn:</strong> {createdData.user.email}</div>
+              <div className="flex items-center justify-between">
+                <div><strong className="font-sans text-neutral-500 text-[11px]">Passord:</strong> <span className="bg-white px-2 py-0.5 rounded border border-purple-200 font-bold">{createdData.password}</span></div>
+              </div>
+              <div><strong className="font-sans text-neutral-500 text-[11px]">Firma:</strong> {createdData.company?.name}</div>
+              <div><strong className="font-sans text-neutral-500 text-[11px]">Rolle:</strong> {createdData.user.role}</div>
+            </div>
+
+            <div className="space-y-2 pt-2">
+              <button
+                type="button"
+                onClick={copyCredentials}
+                className="w-full py-3.5 bg-purple-700 hover:bg-purple-800 text-white rounded-2xl font-bold text-sm flex items-center justify-center gap-2 shadow-md shadow-purple-200 cursor-pointer transition-all"
+              >
+                {copied ? <Check size={18} /> : <Copy size={18} />}
+                <span>{copied ? 'Kopiert til utklippstavle!' : 'Kopier innloggingsdetaljer'}</span>
+              </button>
+
+              <button
+                type="button"
+                onClick={() => {
+                  onSuccess();
+                  onClose();
+                }}
+                className="w-full py-3 bg-neutral-100 hover:bg-neutral-200 text-neutral-700 rounded-2xl font-bold text-xs cursor-pointer transition-all"
+              >
+                Lukk og gå til oversikten
+              </button>
+            </div>
+          </div>
+        </motion.div>
+      </div>
+    );
+  }
+
+  return (
+    <div className="fixed inset-0 z-[100] flex items-center justify-center p-4 bg-neutral-900/60 backdrop-blur-sm overflow-y-auto">
+      <motion.div 
+        initial={{ opacity: 0, scale: 0.95 }}
+        animate={{ opacity: 1, scale: 1 }}
+        className="bg-white rounded-[2.5rem] shadow-2xl w-full max-w-xl overflow-hidden my-8"
+      >
+        <div className="p-6 sm:p-8 border-b border-neutral-100 flex justify-between items-center bg-purple-50/40">
+          <div className="flex items-center gap-3">
+            <div className="w-12 h-12 rounded-2xl bg-purple-100 text-purple-700 flex items-center justify-center shrink-0 shadow-2xs">
+              <UserCheck size={24} />
+            </div>
+            <div>
+              <h2 className="text-xl sm:text-2xl font-black text-neutral-900">Ny Samarbeidspartner / Kollega</h2>
+              <p className="text-xs text-purple-800 font-medium">
+                0 kr/mnd · Friplass · Blir IKKE regnet med i inntekt (MRR)
+              </p>
+            </div>
+          </div>
+          <button onClick={onClose} className="p-2 hover:bg-neutral-100 rounded-full transition-colors cursor-pointer">
+            <XCircle size={24} className="text-neutral-400" />
+          </button>
+        </div>
+
+        <form onSubmit={handleSubmit} className="p-6 sm:p-8 space-y-5">
+          {/* Kontotype velger */}
+          <div className="space-y-1.5">
+            <label className="text-xs font-black uppercase tracking-wider text-neutral-400 ml-1">Type konto</label>
+            <div className="grid grid-cols-2 gap-2">
+              <button
+                type="button"
+                onClick={() => setPartnerType('partner')}
+                className={cn(
+                  "py-3 px-4 rounded-2xl font-bold text-xs flex items-center justify-center gap-2 transition-all cursor-pointer border-2",
+                  partnerType === 'partner'
+                    ? "bg-purple-100 text-purple-900 border-purple-300 shadow-2xs"
+                    : "bg-neutral-50 text-neutral-500 border-transparent hover:bg-neutral-100"
+                )}
+              >
+                <span>🤝 Samarbeidspartner</span>
+              </button>
+              <button
+                type="button"
+                onClick={() => setPartnerType('internal')}
+                className={cn(
+                  "py-3 px-4 rounded-2xl font-bold text-xs flex items-center justify-center gap-2 transition-all cursor-pointer border-2",
+                  partnerType === 'internal'
+                    ? "bg-purple-100 text-purple-900 border-purple-300 shadow-2xs"
+                    : "bg-neutral-50 text-neutral-500 border-transparent hover:bg-neutral-100"
+                )}
+              >
+                <span>💼 Kollega / Internt</span>
+              </button>
+            </div>
+          </div>
+
+          {/* Selskapstilknytning */}
+          <div className="space-y-2 p-4 bg-neutral-50 rounded-2xl border border-neutral-200/70">
+            <div className="flex items-center justify-between">
+              <label className="text-xs font-black uppercase tracking-wider text-neutral-500">Bedrift / Organisasjon</label>
+              <div className="flex gap-1 bg-white p-0.5 rounded-lg border border-neutral-200 text-[11px] font-bold">
+                <button
+                  type="button"
+                  onClick={() => setCompanyMode('new')}
+                  className={cn("px-2.5 py-1 rounded-md transition-all cursor-pointer", companyMode === 'new' ? "bg-purple-600 text-white" : "text-neutral-500")}
+                >
+                  Ny bedrift
+                </button>
+                <button
+                  type="button"
+                  onClick={() => setCompanyMode('existing')}
+                  className={cn("px-2.5 py-1 rounded-md transition-all cursor-pointer", companyMode === 'existing' ? "bg-purple-600 text-white" : "text-neutral-500")}
+                >
+                  Eksisterende
+                </button>
+              </div>
+            </div>
+
+            {companyMode === 'new' ? (
+              <div className="grid grid-cols-1 sm:grid-cols-2 gap-2.5 pt-1">
+                <div className="space-y-1">
+                  <label className="text-[10px] font-bold uppercase text-neutral-500">Firmanavn / Organisasjon *</label>
+                  <input
+                    required
+                    type="text"
+                    value={companyName}
+                    onChange={(e) => setCompanyName(e.target.value)}
+                    placeholder={partnerType === 'internal' ? 'VikingMester Internt' : 'F.eks. Rørleggermester Hansen'}
+                    className="w-full px-3.5 py-2.5 bg-white border border-neutral-200 rounded-xl text-xs font-semibold outline-none focus:ring-2 focus:ring-purple-500"
+                  />
+                </div>
+                <div className="space-y-1">
+                  <label className="text-[10px] font-bold uppercase text-neutral-500">Org.nummer (valgfritt)</label>
+                  <input
+                    type="text"
+                    value={orgNumber}
+                    onChange={(e) => setOrgNumber(e.target.value)}
+                    placeholder="9 siffer"
+                    className="w-full px-3.5 py-2.5 bg-white border border-neutral-200 rounded-xl text-xs outline-none focus:ring-2 focus:ring-purple-500"
+                  />
+                </div>
+              </div>
+            ) : (
+              <div className="pt-1">
+                <label className="text-[10px] font-bold uppercase text-neutral-500 block mb-1">Velg bedrift</label>
+                <select
+                  required
+                  value={selectedCompanyId}
+                  onChange={(e) => setSelectedCompanyId(e.target.value)}
+                  className="w-full px-3.5 py-2.5 bg-white border border-neutral-200 rounded-xl text-xs font-semibold outline-none focus:ring-2 focus:ring-purple-500"
+                >
+                  <option value="">-- Velg eksisterende bedrift --</option>
+                  {companies.map(c => (
+                    <option key={c.id} value={c.id}>
+                      {c.name} {c.isPartner ? '(Partner 0 kr)' : `(${c.plan || 'solo'})`}
+                    </option>
+                  ))}
+                </select>
+              </div>
+            )}
+          </div>
+
+          {/* Brukerdetaljer */}
+          <div className="grid grid-cols-1 sm:grid-cols-2 gap-3">
+            <div className="space-y-1">
+              <label className="text-xs font-bold uppercase text-neutral-500 ml-1">Fullt navn *</label>
+              <input
+                required
+                type="text"
+                value={name}
+                onChange={(e) => setName(e.target.value)}
+                placeholder="F.eks. Petter Partner"
+                className="w-full px-3.5 py-2.5 bg-neutral-50 border border-neutral-200 rounded-xl text-xs font-semibold outline-none focus:ring-2 focus:ring-purple-500"
+              />
+            </div>
+
+            <div className="space-y-1">
+              <label className="text-xs font-bold uppercase text-neutral-500 ml-1">E-postadresse (innlogging) *</label>
+              <input
+                required
+                type="email"
+                value={email}
+                onChange={(e) => setEmail(e.target.value)}
+                placeholder="petter@partner.no"
+                className="w-full px-3.5 py-2.5 bg-neutral-50 border border-neutral-200 rounded-xl text-xs font-semibold outline-none focus:ring-2 focus:ring-purple-500"
+              />
+            </div>
+          </div>
+
+          <div className="grid grid-cols-1 sm:grid-cols-2 gap-3">
+            <div className="space-y-1">
+              <div className="flex justify-between items-center">
+                <label className="text-xs font-bold uppercase text-neutral-500 ml-1">Passord *</label>
+                <button
+                  type="button"
+                  onClick={generatePassword}
+                  className="text-[10px] text-purple-700 hover:underline font-bold cursor-pointer"
+                >
+                  Generer nytt
+                </button>
+              </div>
+              <div className="relative">
+                <input
+                  required
+                  type={showPassword ? 'text' : 'password'}
+                  value={password}
+                  onChange={(e) => setPassword(e.target.value)}
+                  className="w-full px-3.5 py-2.5 bg-neutral-50 border border-neutral-200 rounded-xl text-xs font-mono font-bold outline-none focus:ring-2 focus:ring-purple-500 pr-10"
+                />
+                <button
+                  type="button"
+                  onClick={() => setShowPassword(!showPassword)}
+                  className="absolute right-3 top-1/2 -translate-y-1/2 text-neutral-400 hover:text-neutral-600 cursor-pointer"
+                >
+                  {showPassword ? <EyeOff size={15} /> : <Eye size={15} />}
+                </button>
+              </div>
+            </div>
+
+            <div className="space-y-1">
+              <label className="text-xs font-bold uppercase text-neutral-500 ml-1">Rolle</label>
+              <select
+                value={role}
+                onChange={(e) => setRole(e.target.value as any)}
+                className="w-full px-3.5 py-2.5 bg-neutral-50 border border-neutral-200 rounded-xl text-xs font-bold outline-none focus:ring-2 focus:ring-purple-500"
+              >
+                <option value="admin">Administrator (Full tilgang)</option>
+                <option value="manager">Prosjektleder</option>
+                <option value="worker">Håndverker</option>
+              </select>
+            </div>
+          </div>
+
+          {/* Infoboks om 0 kr inntekt */}
+          <div className="p-3.5 bg-purple-50 border border-purple-200 rounded-2xl text-xs text-purple-900 flex items-start gap-2.5">
+            <Shield size={18} className="text-purple-700 shrink-0 mt-0.5" />
+            <div>
+              <p className="font-bold">Ekskludert fra inntekt & regnskap</p>
+              <p className="text-[11px] text-purple-800/90 mt-0.5 leading-relaxed">
+                Kontoen tildeles 15M AI-tokens/mnd og ubegrenset driftstid, men belastes 0 kr/mnd. Den blir aldri regnet med i månedlig SaaS-omsetning (MRR).
+              </p>
+            </div>
+          </div>
+
+          {/* E-post checkbox */}
+          <label className="flex items-center gap-2 cursor-pointer pt-1">
+            <input
+              type="checkbox"
+              checked={sendWelcomeEmail}
+              onChange={(e) => setSendWelcomeEmail(e.target.checked)}
+              className="w-4 h-4 rounded text-purple-600 focus:ring-purple-500 cursor-pointer"
+            />
+            <span className="text-xs font-bold text-neutral-700">
+              Send automatisk velkomst-e-post med innloggingsopplysninger
+            </span>
+          </label>
+
+          <div className="flex gap-3 pt-2">
+            <button
+              type="button"
+              onClick={onClose}
+              className="px-5 py-3.5 bg-neutral-100 hover:bg-neutral-200 text-neutral-700 rounded-2xl font-bold text-xs cursor-pointer transition-all"
+            >
+              Avbryt
+            </button>
+            <button
+              type="submit"
+              disabled={loading}
+              className="flex-1 py-3.5 bg-purple-700 hover:bg-purple-800 text-white rounded-2xl font-black text-sm flex items-center justify-center gap-2 shadow-md shadow-purple-200 cursor-pointer transition-all disabled:opacity-50"
+            >
+              {loading ? (
+                <>
+                  <div className="w-4 h-4 border-2 border-white border-t-transparent rounded-full animate-spin" />
+                  <span>Oppretter partnerkonto...</span>
+                </>
+              ) : (
+                <>
+                  <UserCheck size={16} />
+                  <span>Opprett {partnerType === 'internal' ? 'Kollega' : 'Partner'} (0 kr)</span>
+                </>
+              )}
+            </button>
+          </div>
+        </form>
+      </motion.div>
+    </div>
+  );
+}
+
+function EditCompanyInfoModal({ company, onClose, onSuccess }: { company: Company, onClose: () => void, onSuccess: (data: { name: string, orgNumber: string, plan: 'solo' | 'team' | 'entreprenor' | 'partner' }) => void }) {
   const [name, setName] = useState(company.name);
   const [orgNumber, setOrgNumber] = useState(company.orgNumber || '');
-  const [plan, setPlan] = useState<'solo' | 'team' | 'entreprenor'>(company.plan || 'team');
+  const [plan, setPlan] = useState<'solo' | 'team' | 'entreprenor' | 'partner'>(company.plan || 'team');
   const [loading, setLoading] = useState(false);
 
   const handleSubmit = (e: React.FormEvent) => {
@@ -3056,6 +3744,7 @@ function EditCompanyInfoModal({ company, onClose, onSuccess }: { company: Compan
               <option value="solo">Solo (1 490 kr/mnd · 2.5M tokens)</option>
               <option value="team">Team (3 490 kr/mnd · 10M tokens)</option>
               <option value="entreprenor">Totalentreprenør (6 900 kr/mnd · 30M tokens)</option>
+              <option value="partner">🤝 Samarbeidspartner / Kollega (0 kr · 15M tokens)</option>
             </select>
           </div>
 
@@ -3085,18 +3774,21 @@ function CreateCompanyModal({ onClose, onSuccess }: { onClose: () => void, onSuc
   const [name, setName] = useState('');
   const [orgNumber, setOrgNumber] = useState('');
   const [status, setStatus] = useState<'trial' | 'active'>('trial');
-  const [plan, setPlan] = useState<'solo' | 'team' | 'entreprenor'>('team');
+  const [plan, setPlan] = useState<'solo' | 'team' | 'entreprenor' | 'partner'>('team');
   const [loading, setLoading] = useState(false);
 
   const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault();
     setLoading(true);
     try {
+      const isPartner = plan === 'partner';
       await addDoc(collection(db, 'companies'), {
         name,
         orgNumber,
-        subscriptionStatus: status,
+        subscriptionStatus: isPartner ? 'active' : status,
         plan,
+        isPartner,
+        monthlyPrice: isPartner ? 0 : (plan === 'solo' ? 1490 : plan === 'entreprenor' ? 6900 : 3490),
         modules: ['projects', 'checklists', 'deviations', 'ai', 'economy', 'fdv', 'inventory', 'vehicle', 'time', 'apprentice', 'building_app'], // All default modules enabled
         createdAt: serverTimestamp(),
         updatedAt: serverTimestamp(),
@@ -3158,6 +3850,7 @@ function CreateCompanyModal({ onClose, onSuccess }: { onClose: () => void, onSuc
               <option value="solo">Solo (2.5M tokens/mnd - kr 1 490,-)</option>
               <option value="team">Team (10M tokens/mnd - kr 3 490,-)</option>
               <option value="entreprenor">Totalentreprenør (30M tokens/mnd - fra kr 6 900,-)</option>
+              <option value="partner">🤝 Samarbeidspartner / Kollega (15M tokens - 0 kr/mnd)</option>
             </select>
           </div>
 
