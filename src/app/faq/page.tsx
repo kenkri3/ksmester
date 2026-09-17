@@ -81,6 +81,14 @@ const faqSections = [
         answer: 'Ja. VikingMester er bygget som en Progressive Web App (PWA) med lokal caching. Du kan opprette avvik, ta bilder, fylle ut sjekklister og lese stoffkartotek helt uten dekning. Så snart mobilen får nettforbindelse igjen, synkroniseres dataene automatisk i bakgrunnen.',
       },
       {
+        question: 'Hvordan fungerer omnichannel-varsling (Discord, Slack, MS Teams)?',
+        answer: 'Gutta på byggeplassen slipper å sjekke enda en app for oppdateringer! VikingMester kan koble seg direkte til bedriftens eksisterende kanaler i Discord, Slack eller Microsoft Teams via webhooks. Kritiske HMS-avvik, oppgaver og godkjenninger varsles direkte dit håndverkerne allerede chatter. Dette er 100 % inkludert i samtlige abonnement (Solo, Team og Totalentreprenør).',
+      },
+      {
+        question: 'Kan vi koble til NOBB og hente produktdokumentasjon og FDV automatisk?',
+        answer: 'Ja! VikingMester har direkte integrasjon med NOBB (Norsk Byggevarebase) og Byggtjeneste med oppslag mot over 1 million byggevarer. Bedriften kan i tillegg legge inn sin egen NOBB API-nøkkel (BYOK) under Innstillinger > Integrasjoner for å hente ut egne grossistpriser, tekniske godkjenninger, FDV og EPD rett inn i sjekklister og sluttrapporter.',
+      },
+      {
         question: 'Må håndverkerne laste ned noe fra App Store eller Google Play?',
         answer: 'Nei, ingen tunge nedlastinger er påkrevd. Du besøker bare vikingmester.no på mobilen og trykker "Legg til på Hjem-skjerm". Da har du full appopplevelse med fullskjermvisning og lynrask respons.',
       },

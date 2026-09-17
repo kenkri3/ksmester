@@ -42,6 +42,10 @@ const faqs = [
     question: 'Kan jeg tildele avvik direkte til underentreprenører?',
     answer: 'Ja, du kan tildele avviket direkte til rørlegger, elektriker eller maler med en frist for utbedring. De mottar et varsel og kan laste opp bilde av utført retting for umiddelbar godkjenning.',
   },
+  {
+    question: 'Hvordan blir håndverkerne eller underentreprenørene varslet om nye avvik?',
+    answer: 'Gjennom Omnichannel feltvarsling! I tillegg til varsler i appen kan avvik pushes rett til bedriftens eller prosjektets Discord-, Slack- eller Microsoft Teams-kanaler. Fagarbeiderne ser bildet og utbedringsfristen der de allerede kommuniserer, uten forsinkelser. Inkludert i alle pakker.',
+  },
 ];
 
 export default function AvvikshandteringPage() {

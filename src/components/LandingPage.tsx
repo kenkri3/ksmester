@@ -999,6 +999,10 @@ function TacticalHomeView({ onStartDemo, onGoToPricing, onViewChange }: { onStar
                   </p>
                   <p className="flex items-center gap-2 font-semibold text-electric-600">
                     <span className="text-emerald-600 font-bold">✓</span>
+                    <span>Omnichannel (Discord, Slack & Teams i felt)</span>
+                  </p>
+                  <p className="flex items-center gap-2 font-semibold text-electric-600">
+                    <span className="text-emerald-600 font-bold">✓</span>
                     <span>Zero-Entry AI (Snakk eller ta bilde)</span>
                   </p>
                   <p className="flex items-center gap-2">
@@ -1012,6 +1016,10 @@ function TacticalHomeView({ onStartDemo, onGoToPricing, onViewChange }: { onStar
                   <p className="flex items-center gap-2">
                     <span className="text-emerald-600 font-bold">✓</span>
                     <span>Lovpålagt SJA (Sikker Jobb Analyse)</span>
+                  </p>
+                  <p className="flex items-center gap-2">
+                    <span className="text-emerald-600 font-bold">✓</span>
+                    <span>NOBB Varebase integrasjon (Egen API-nøkkel)</span>
                   </p>
                   <p className="flex items-center gap-2">
                     <span className="text-emerald-600 font-bold">✓</span>
@@ -1052,6 +1060,10 @@ function TacticalHomeView({ onStartDemo, onGoToPricing, onViewChange }: { onStar
                   </p>
                   <p className="flex items-center gap-2 font-bold text-electric-600">
                     <span className="text-emerald-600 font-bold">✓</span>
+                    <span>Omnichannel feltvarsling (Discord, Slack, Teams)</span>
+                  </p>
+                  <p className="flex items-center gap-2 font-bold text-electric-600">
+                    <span className="text-emerald-600 font-bold">✓</span>
                     <span>Tale-til-endringsordre (NS 8406 autopilot)</span>
                   </p>
                   <p className="flex items-center gap-2 font-semibold">
@@ -1061,6 +1073,10 @@ function TacticalHomeView({ onStartDemo, onGoToPricing, onViewChange }: { onStar
                   <p className="flex items-center gap-2">
                     <span className="text-emerald-600 font-bold">✓</span>
                     <span>TEK17 AI Vision (sluk, membran, fall)</span>
+                  </p>
+                  <p className="flex items-center gap-2">
+                    <span className="text-emerald-600 font-bold">✓</span>
+                    <span>NOBB API-støtte (FDV, EPD & grossistpriser)</span>
                   </p>
                   <p className="flex items-center gap-2">
                     <span className="text-emerald-600 font-bold">✓</span>
@@ -1108,9 +1124,13 @@ function TacticalHomeView({ onStartDemo, onGoToPricing, onViewChange }: { onStar
                     <span className="text-emerald-600 font-bold">✓</span>
                     <span>Tverrfaglig Lukkesperre med tidslås og soner</span>
                   </p>
+                  <p className="flex items-center gap-2 font-semibold text-emerald-600">
+                    <span className="text-emerald-600 font-bold">✓</span>
+                    <span>Avansert Omnichannel (Discord, Slack, Teams, E-post, SMS & Webhooks)</span>
+                  </p>
                   <p className="flex items-center gap-2">
                     <span className="text-emerald-600 font-bold">✓</span>
-                    <span>Omnichannel (Discord, Slack, Teams, E-post, SMS)</span>
+                    <span>NOBB Enterprise API, Boligmappa & ERP-synk</span>
                   </p>
                   <p className="flex items-center gap-2">
                     <span className="text-emerald-600 font-bold">✓</span>
@@ -1396,19 +1416,30 @@ function TacticalFdvView({ onStartDemo, onBack }: { onStartDemo: () => void, onB
       </button>
       <div className="border border-slate-200 rounded-3xl p-8 sm:p-12 bg-white shadow-card-hover">
         <span className="text-xs font-bold text-electric-600 uppercase tracking-widest bg-electric-50 px-3 py-1 rounded-full border border-electric-300/40 inline-block mb-3">
-          DOKUMENTASJON
+          DOKUMENTASJON & VAREBASE
         </span>
         <h2 className="text-2xl sm:text-4xl font-black text-navy-900 mt-2 mb-4 leading-tight">
-          FDV & BOLIGMAPPA PÅ 1 KLIKK
+          FDV, NOBB & BOLIGMAPPA PÅ 1 KLIKK
         </h2>
-        <p className="text-sm sm:text-base text-slate-600 leading-relaxed font-sans mb-8">
-          Alle produktark, bilder av skjulte installasjoner og samsvarserklæringer pakkes automatisk inn i en godkjent digital perm klar for overlevering til byggherre og Boligmappa.
+        <p className="text-sm sm:text-base text-slate-600 leading-relaxed font-sans mb-6">
+          Koble til bedriftens egen NOBB API-nøkkel (BYOK) eller bruk vår integrerte varebase for direkte tilgang til over 1 million byggevarer. Alle FDV-dokumenter, sikkerhetsdatablader, EPD og bilder pakkes automatisk inn i en godkjent digital perm klar for overlevering til byggherre og Boligmappa.
         </p>
+        <div className="flex flex-wrap gap-2 mb-8">
+          <span className="px-3 py-1 bg-amber-50 text-amber-900 border border-amber-200 rounded-full text-xs font-bold">
+            NOBB API-støtte (1M+ varer)
+          </span>
+          <span className="px-3 py-1 bg-emerald-50 text-emerald-800 border border-emerald-200 rounded-full text-xs font-bold">
+            1-Klikks Boligmappa Eksport
+          </span>
+          <span className="px-3 py-1 bg-blue-50 text-blue-800 border border-blue-200 rounded-full text-xs font-bold">
+            Automatisk Sikkerhetsdatablad (SDS)
+          </span>
+        </div>
         <button 
           onClick={onStartDemo} 
           className="bg-gradient-to-r from-electric-500 to-electric-400 hover:from-electric-400 hover:to-electric-300 text-white px-7 py-3.5 rounded-xl text-xs font-bold uppercase tracking-wider shadow-purple-cta hover:shadow-purple-hover transition-all cursor-pointer"
         >
-          Prøv Boligmappa-eksport →
+          Prøv Boligmappa & NOBB-eksport →
         </button>
       </div>
     </div>
@@ -1426,11 +1457,22 @@ function TacticalPricingView({ onStartDemo, onBack }: { onStartDemo: () => void,
           PRISER & RAMMER
         </span>
         <h2 className="text-2xl sm:text-4xl font-black text-navy-900 mt-2 mb-4 leading-tight">
-          FASTE MÅNEDSPRISER • INGEN BINDINGSTID
+          FASTE MÅNEDSPRISER • OMNICHANNEL INKLUDERT I ALLE PAKKER
         </h2>
-        <p className="text-sm sm:text-base text-slate-600 leading-relaxed font-sans mb-8">
-          Solo: 1 490 kr/mnd • Team: 3 490 kr/mnd • Totalentreprenør: fra 6 900 kr/mnd. Faktura sendes på EHF hver måned. Inkluderer 14 dagers gratis prøveperiode.
+        <p className="text-sm sm:text-base text-slate-600 leading-relaxed font-sans mb-6">
+          Solo: 1 490 kr/mnd • Team: 3 490 kr/mnd • Totalentreprenør: fra 6 900 kr/mnd. Alle pakker inkluderer 100% autonom MesterAI, Omnichannel (Discord, Slack, Teams) for feltarbeidere, og mulighet for egen NOBB API-nøkkel. Faktura sendes på EHF hver måned. 14 dagers gratis prøveperiode.
         </p>
+        <div className="flex flex-wrap gap-2 mb-8">
+          <span className="px-3 py-1 bg-indigo-50 text-indigo-800 border border-indigo-200 rounded-full text-xs font-bold">
+            Omnichannel (Discord / Slack / Teams)
+          </span>
+          <span className="px-3 py-1 bg-amber-50 text-amber-900 border border-amber-200 rounded-full text-xs font-bold">
+            Egen NOBB API-nøkkel (BYOK)
+          </span>
+          <span className="px-3 py-1 bg-emerald-50 text-emerald-800 border border-emerald-200 rounded-full text-xs font-bold">
+            0 kr Etablering • Ingen binding
+          </span>
+        </div>
         <a 
           href="#bestill" 
           className="inline-block bg-gradient-to-r from-electric-500 to-electric-400 hover:from-electric-400 hover:to-electric-300 text-white px-7 py-3.5 rounded-xl text-xs font-bold uppercase tracking-wider shadow-purple-cta hover:shadow-purple-hover transition-all cursor-pointer"

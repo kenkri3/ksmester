@@ -48,6 +48,10 @@ const faqs = [
     question: 'Trenger alle ansatte egen innlogging for HMS?',
     answer: 'I VikingMester har alle fagarbeidere enkel tilgang via app eller lenke, slik at de kan registrere uønskede hendelser (RUH), sjekke stoffkartoteket og lese SJA før farlig arbeid påbegynnes.',
   },
+  {
+    question: 'Hvordan varsles kritiske HMS-hendelser og RUH ute på byggeplassen?',
+    answer: 'VikingMester støtter Omnichannel feltvarsling (Discord, Slack, MS Teams) i samtlige abonnement (Solo, Team, Totalentreprenør). Når en alvorlig RUH eller et kritisk HMS-avvik registreres, sendes det lynraskt ut i teamets valgte chat-kanal med bilde og lokasjon.',
+  },
 ];
 
 export default function HmsPage() {

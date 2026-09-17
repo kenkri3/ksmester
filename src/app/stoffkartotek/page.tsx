@@ -11,7 +11,8 @@ import {
   WifiOff, 
   Search, 
   ArrowRight,
-  Download
+  Download,
+  Package
 } from 'lucide-react';
 
 const baseUrl = process.env.NEXT_PUBLIC_APP_URL || 'https://vikingmester.no';
@@ -90,7 +91,7 @@ export default function StoffkartotekPage() {
 
       {/* Features */}
       <section className="py-20 px-4 sm:px-6 lg:px-8 max-w-5xl mx-auto">
-        <div className="grid grid-cols-1 md:grid-cols-3 gap-8">
+        <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
           <div className="p-8 rounded-3xl bg-slate-50 border border-slate-200 space-y-4">
             <div className="w-12 h-12 rounded-2xl bg-blue-100 text-blue-600 flex items-center justify-center">
               <Search size={24} />
@@ -116,6 +117,15 @@ export default function StoffkartotekPage() {
             <h3 className="text-xl font-bold text-navy-900">Førstehjelp & Farepiktogrammer</h3>
             <p className="text-slate-600 text-sm">
               Tydelige faremerker, påkrevd åndedrettsvern/hansker og nøyaktig førstehjelpsveiledning ved hudkontakt eller øyeskader.
+            </p>
+          </div>
+          <div className="p-8 rounded-3xl bg-slate-50 border border-slate-200 space-y-4">
+            <div className="w-12 h-12 rounded-2xl bg-purple-100 text-purple-700 flex items-center justify-center">
+              <Package size={24} />
+            </div>
+            <h3 className="text-xl font-bold text-navy-900">NOBB Varebase & SDS</h3>
+            <p className="text-slate-600 text-sm">
+              Koble til bedriftens egen NOBB API-nøkkel (BYOK) for automatisk innhenting av offisielle sikkerhetsdatablader direkte fra Norsk Byggevarebase.
             </p>
           </div>
         </div>

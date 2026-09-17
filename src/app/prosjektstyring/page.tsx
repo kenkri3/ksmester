@@ -12,7 +12,9 @@ import {
   Coins, 
   Clock, 
   ArrowRight,
-  ShieldCheck
+  ShieldCheck,
+  Radio,
+  Package
 } from 'lucide-react';
 
 const baseUrl = process.env.NEXT_PUBLIC_APP_URL || 'https://vikingmester.no';
@@ -42,6 +44,14 @@ const faqs = [
   {
     question: 'Hvordan fungerer timeføringen og byggedagboken?',
     answer: 'Hver fagarbeider snakker inn dagens innsats på 20 sekunder. Systemet knytter timene til prosjektet, henter værdata fra Yr.no, og gir daglig leder full kontroll over påløpte kostnader versus tilbud.',
+  },
+  {
+    question: 'Kan håndverkerne få oppgaver og varsler rett i Slack, Discord eller Teams?',
+    answer: 'Ja! Med VikingMesters innebygde Omnichannel-støtte kan du koble til Discord, Slack eller Microsoft Teams uansett pakke. Håndverkere ute i felt slipper å logge inn på PC – de mottar oppgaver, SJA og avviksbeskjeder rett i sin vanlige mobilapp.',
+  },
+  {
+    question: 'Støtter prosjektstyringen NOBB for materialer og priser?',
+    answer: 'Ja, bedriften kan legge inn sin egen NOBB API-nøkkel (BYOK) under Innstillinger -> Integrasjoner. Da kan dere søke i over 1 million byggevarer, hente FDV-dokumenter og hente ut veiledende priser rett inn i prosjektkalkylen.',
   },
 ];
 
@@ -91,7 +101,7 @@ export default function ProsjektstyringPage() {
 
       {/* Features */}
       <section className="py-20 px-4 sm:px-6 lg:px-8 max-w-5xl mx-auto">
-        <div className="grid grid-cols-1 md:grid-cols-3 gap-8">
+        <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-6">
           <div className="p-8 rounded-3xl bg-slate-50 border border-slate-200 space-y-4">
             <div className="w-12 h-12 rounded-2xl bg-purple-100 text-purple-600 flex items-center justify-center">
               <Mic size={24} />
@@ -108,6 +118,24 @@ export default function ProsjektstyringPage() {
             <h3 className="text-xl font-bold text-navy-900">Autonom Byggedagbok</h3>
             <p className="text-slate-600 text-sm">
               Ferdig byggedagbok med værdata fra Yr.no, fremdriftsprosent og bemanning lagret og søkbart for all framtid.
+            </p>
+          </div>
+          <div className="p-8 rounded-3xl bg-slate-50 border border-slate-200 space-y-4">
+            <div className="w-12 h-12 rounded-2xl bg-indigo-100 text-indigo-700 flex items-center justify-center">
+              <Radio size={24} />
+            </div>
+            <h3 className="text-xl font-bold text-navy-900">Omnichannel Feltvarsling</h3>
+            <p className="text-slate-600 text-sm">
+              Koble opp Discord, Slack eller MS Teams. Tildel oppgaver som plinger rett i lomma på gutta ute i felt. Inkludert i alle pakker.
+            </p>
+          </div>
+          <div className="p-8 rounded-3xl bg-slate-50 border border-slate-200 space-y-4">
+            <div className="w-12 h-12 rounded-2xl bg-amber-100 text-amber-900 flex items-center justify-center">
+              <Package size={24} />
+            </div>
+            <h3 className="text-xl font-bold text-navy-900">NOBB Varebase & FDV</h3>
+            <p className="text-slate-600 text-sm">
+              Legg inn bedriftens egen NOBB-nøkkel (BYOK). Søk blant 1 million byggevarer, kalkuler med grossistpriser og få FDV automatisk.
             </p>
           </div>
           <div className="p-8 rounded-3xl bg-slate-50 border border-slate-200 space-y-4">

@@ -16,7 +16,9 @@ import {
   FileCheck,
   Check,
   Building2,
-  Users
+  Users,
+  Radio,
+  Package
 } from 'lucide-react';
 
 const baseUrl = process.env.NEXT_PUBLIC_APP_URL || 'https://vikingmester.no';
@@ -50,6 +52,14 @@ const faqs = [
   {
     question: 'Kan jeg eksportere ferdige KS-rapporter til byggherre og Boligmappa?',
     answer: 'Ja, med ett klikk genererer VikingMester en komplett, revisjonsgodkjent PDF-rapport med bilder, sjekklister, avvik og byggedagbok som kan sendes direkte til byggherre, takstmann eller lastes opp i Boligmappa.',
+  },
+  {
+    question: 'Kan vi koble til NOBB for automatisk FDV-dokumentasjon?',
+    answer: 'Ja! VikingMester støtter direkte kobling mot Norsk Byggevarebase (NOBB). Bedriften kan legge inn sin egen API-nøkkel (BYOK) for å hente godkjente FDV-dokumenter, sikkerhetsdatablader og EPD-miljødata rett inn i prosjektets kvalitetssikringsperm.',
+  },
+  {
+    question: 'Hvordan varsles fagarbeidere om avvik og nye oppgaver?',
+    answer: 'I tillegg til varsler i appen har VikingMester full Omnichannel-støtte for Discord, Slack og MS Teams i alle pakker. Avvik og oppgaver plinger direkte inn i teamets eksisterende kommunikasjonskanaler ute i felt.',
   },
 ];
 
@@ -108,7 +118,7 @@ export default function KsSystemPage() {
           </p>
         </div>
 
-        <div className="grid grid-cols-1 md:grid-cols-3 gap-8">
+        <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-6">
           <div className="p-8 rounded-3xl bg-slate-50 border border-slate-200/80 hover:shadow-lg transition-all space-y-4">
             <div className="w-12 h-12 rounded-2xl bg-electric-100 text-electric-600 flex items-center justify-center">
               <Mic size={24} />
@@ -126,6 +136,26 @@ export default function KsSystemPage() {
             <h3 className="text-xl font-bold text-navy-900">TEK17 Bildevisjon</h3>
             <p className="text-slate-600 text-sm leading-relaxed">
               Knips slukmansjett, klemring, dampsperre eller armering. Vår AI-bildekontroll sjekker utførelsen mot TEK17 og Våtromsnormen før du lukker veggen eller støper gulvet.
+            </p>
+          </div>
+
+          <div className="p-8 rounded-3xl bg-slate-50 border border-slate-200/80 hover:shadow-lg transition-all space-y-4">
+            <div className="w-12 h-12 rounded-2xl bg-indigo-100 text-indigo-700 flex items-center justify-center">
+              <Radio size={24} />
+            </div>
+            <h3 className="text-xl font-bold text-navy-900">Omnichannel Feltvarsling</h3>
+            <p className="text-slate-600 text-sm leading-relaxed">
+              Koble opp Discord, Slack eller MS Teams. Varsler om avvik, kontroller og nye oppgaver sendes rett til håndverkernes eksisterende mobilapper.
+            </p>
+          </div>
+
+          <div className="p-8 rounded-3xl bg-slate-50 border border-slate-200/80 hover:shadow-lg transition-all space-y-4">
+            <div className="w-12 h-12 rounded-2xl bg-amber-100 text-amber-900 flex items-center justify-center">
+              <Package size={24} />
+            </div>
+            <h3 className="text-xl font-bold text-navy-900">NOBB Varebase & FDV</h3>
+            <p className="text-slate-600 text-sm leading-relaxed">
+              Koble til bedriftens egen NOBB API-nøkkel (BYOK). Søk blant over 1 million byggevarer og importer godkjente FDV-dokumenter direkte.
             </p>
           </div>
 
