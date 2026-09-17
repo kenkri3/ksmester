@@ -1,4 +1,4 @@
-import React, { useState } from 'react';
+import React, { useState, useMemo } from 'react';
 import { useTranslation } from 'react-i18next';
 import { 
   X, 
@@ -8,18 +8,20 @@ import {
   CheckCircle2, 
   AlertTriangle, 
   ShieldCheck, 
-  Camera,
-  ArrowRight,
-  Loader2,
-  ExternalLink,
-  ClipboardCheck,
-  HardHat
+  Camera, 
+  ArrowRight, 
+  Loader2, 
+  ExternalLink, 
+  ClipboardCheck, 
+  HardHat,
+  Image as ImageIcon
 } from 'lucide-react';
 import { motion, AnimatePresence } from 'motion/react';
 import { cn } from '@/src/lib/utils';
 import { Project, Deviation } from '../types';
 import { pdfService } from '../services/pdfService';
 import { api } from '../services/api';
+import { useAuth } from '../hooks/useAuth';
 import { toast } from 'sonner';
 
 interface ReportModalProps {
@@ -32,9 +34,56 @@ interface ReportModalProps {
 
 export default function ReportModal({ isOpen, onClose, project, sjaReports, deviations }: ReportModalProps) {
   const { t } = useTranslation();
+  const { userProfile } = useAuth();
   const [isExporting, setIsExporting] = useState(false);
   const [isDownloadingPdf, setIsDownloadingPdf] = useState(false);
   const [exportStep, setExportStep] = useState<'idle' | 'preparing' | 'sending' | 'success'>('idle');
+
+  // Dynamiske bedriftsopplysninger basert på reelle bruker- og prosjektdata
+  const companyName = project.companyName || (project as any).company || userProfile?.companyName || 'Ansvarlig Entreprenør';
+  const companyOrg = (project as any).companyOrgNumber || (project as any).companyOrg || (userProfile as any)?.orgNumber || (userProfile as any)?.orgnr || '';
+  const projectLeader = project.projectManager || userProfile?.name || companyName;
+  const companyInitials = (companyName || 'VM')
+    .split(' ')
+    .filter(Boolean)
+    .map((n: string) => n[0])
+    .join('')
+    .substring(0, 2)
+    .toUpperCase() || 'VM';
+  const docId = `RAPPORT-${(project.id || 'PROJ').substring(0, 8).toUpperCase()}-${new Date().getFullYear()}`;
+
+  // Samle reell fotodokumentasjon fra prosjektet (avvik, sjekklister, prosjektbilde)
+  const projectPhotos = useMemo(() => {
+    const photos: { url: string; title: string; date?: string }[] = [];
+    if (project.imageUrl) {
+      photos.push({ url: project.imageUrl, title: 'Prosjektfoto' });
+    }
+    deviations.forEach(d => {
+      if (d.imageUrl && !photos.some(p => p.url === d.imageUrl)) {
+        photos.push({ url: d.imageUrl, title: `Avvik: ${d.title}`, date: d.createdAt || d.timestamp });
+      }
+    });
+    if (Array.isArray((project as any).photos)) {
+      (project as any).photos.forEach((p: any) => {
+        const url = typeof p === 'string' ? p : p.url;
+        if (url && !photos.some(existing => existing.url === url)) {
+          photos.push({ url, title: p.title || 'Dokumentasjon', date: p.createdAt });
+        }
+      });
+    }
+    if (Array.isArray((project as any).checklists)) {
+      (project as any).checklists.forEach((chk: any) => {
+        if (Array.isArray(chk.items)) {
+          chk.items.forEach((item: any) => {
+            if (item.photoUrl && !photos.some(existing => existing.url === item.photoUrl)) {
+              photos.push({ url: item.photoUrl, title: item.text || 'Kontrollpunkt', date: chk.updatedAt });
+            }
+          });
+        }
+      });
+    }
+    return photos;
+  }, [project, deviations]);
 
   const handleBoligmappaExport = async () => {
     setIsExporting(true);
@@ -46,8 +95,8 @@ export default function ReportModal({ isOpen, onClose, project, sjaReports, devi
       await pdfService.generateBoligmappaPDF(
         project,
         {
-          name: (project as any).companyName || project.clientName || 'Fagbedrift AS',
-          orgNumber: (project as any).companyOrgNumber || (project as any).clientOrgNumber || '999 888 777'
+          name: companyName,
+          orgNumber: companyOrg || '933 607 779'
         },
         (project as any).checklists || []
       );
@@ -78,10 +127,17 @@ export default function ReportModal({ isOpen, onClose, project, sjaReports, devi
 
   const handleDownloadPDF = async () => {
     setIsDownloadingPdf(true);
-    const toastId = toast.loading('Genererer FDV- og prosjektrapport som PDF...');
+    const toastId = toast.loading('Genererer prosjekt- og KS-rapport som PDF...');
     try {
-      await pdfService.generateFDVPDF(project);
-      toast.success('FDV- og prosjektrapport (PDF) lastet ned!', { id: toastId });
+      await pdfService.generateProjectReportPDF(project, {
+        sjaReports,
+        deviations,
+        companyInfo: {
+          name: companyName,
+          orgNumber: companyOrg
+        }
+      });
+      toast.success('Prosjektrapport (PDF) lastet ned!', { id: toastId });
     } catch (error: any) {
       console.error('PDF generation error:', error);
       toast.error(`Kunne ikke generere PDF: ${error?.message || 'Ukjent feil'}`, { id: toastId });
@@ -180,7 +236,7 @@ export default function ReportModal({ isOpen, onClose, project, sjaReports, devi
                 </div>
                 <div className="space-y-1">
                   <div className="text-[7px] sm:text-[10px] font-black uppercase tracking-widest text-neutral-400">Ansvarlig utførende</div>
-                  <div className="text-[10px] sm:text-sm font-bold">{project.projectManager || 'MesterBygg AS'}</div>
+                  <div className="text-[10px] sm:text-sm font-bold">{projectLeader}</div>
                 </div>
                 <div className="space-y-1">
                   <div className="text-[7px] sm:text-[10px] font-black uppercase tracking-widest text-neutral-400">Dokumentasjonsgrad</div>
@@ -285,21 +341,37 @@ export default function ReportModal({ isOpen, onClose, project, sjaReports, devi
                   <Camera className="text-neutral-600 sm:w-6 sm:h-6" size={16} />
                   <h3 className="text-base sm:text-xl font-bold tracking-tight">Fotodokumentasjon</h3>
                 </div>
-                <div className="grid grid-cols-2 sm:grid-cols-4 gap-2 sm:gap-4">
-                  {[1, 2, 3, 4].map((i) => (
-                    <div key={i} className="aspect-square bg-neutral-100 rounded-lg sm:rounded-2xl overflow-hidden group relative cursor-pointer border border-neutral-200">
-                      <img 
-                        src={`https://picsum.photos/seed/project-${project.id}-${i}/400/400`} 
-                        alt={`Dokumentasjon ${i}`}
-                        className="w-full h-full object-cover group-hover:scale-110 transition-transform duration-500"
-                        referrerPolicy="no-referrer"
-                      />
-                      <div className="absolute inset-0 bg-black/20 opacity-0 group-hover:opacity-100 transition-opacity flex items-center justify-center">
-                        <ExternalLink size={16} className="text-white sm:w-5 sm:h-5" />
+                {projectPhotos.length > 0 ? (
+                  <div className="grid grid-cols-2 sm:grid-cols-4 gap-2 sm:gap-4">
+                    {projectPhotos.map((photo, i) => (
+                      <div key={i} className="aspect-square bg-neutral-100 rounded-lg sm:rounded-2xl overflow-hidden group relative cursor-pointer border border-neutral-200">
+                        <img 
+                          src={photo.url} 
+                          alt={photo.title || `Dokumentasjon ${i + 1}`}
+                          className="w-full h-full object-cover group-hover:scale-110 transition-transform duration-500"
+                          referrerPolicy="no-referrer"
+                        />
+                        <a 
+                          href={photo.url} 
+                          target="_blank" 
+                          rel="noopener noreferrer"
+                          className="absolute inset-0 bg-black/40 opacity-0 group-hover:opacity-100 transition-opacity flex flex-col items-center justify-center p-2 text-center"
+                        >
+                          <ExternalLink size={16} className="text-white mb-1" />
+                          <span className="text-[9px] text-white font-bold truncate max-w-full">{photo.title}</span>
+                        </a>
                       </div>
-                    </div>
-                  ))}
-                </div>
+                    ))}
+                  </div>
+                ) : (
+                  <div className="p-8 bg-neutral-50 rounded-2xl border border-dashed border-neutral-200 text-center">
+                    <Camera className="mx-auto text-neutral-400 mb-2" size={32} />
+                    <p className="text-xs font-bold text-neutral-700">Ingen fotodokumentasjon registrert ennå</p>
+                    <p className="text-[10px] text-neutral-500 mt-1 max-w-md mx-auto">
+                      Bilder som lastes opp i sjekklister, avvikshåndtering og sluttkontroller vil automatisk arkiveres og vises her.
+                    </p>
+                  </div>
+                )}
               </section>
 
               {/* Footer Signature */}
@@ -308,17 +380,23 @@ export default function ReportModal({ isOpen, onClose, project, sjaReports, devi
                   <div className="text-[7px] sm:text-[10px] font-black uppercase tracking-widest text-neutral-400">Signert digitalt av</div>
                   <div className="flex items-center gap-2 sm:gap-4">
                     <div className="w-8 h-8 sm:w-12 sm:h-12 bg-neutral-900 text-white rounded-full flex items-center justify-center font-bold text-xs sm:text-base">
-                      MB
+                      {companyInitials}
                     </div>
                     <div>
-                      <div className="text-[10px] sm:text-sm font-bold">MesterBygg AS</div>
-                      <div className="text-[8px] sm:text-xs text-neutral-500">Org.nr: 987 654 321</div>
+                      <div className="text-[10px] sm:text-sm font-bold">{companyName}</div>
+                      {companyOrg ? (
+                        <div className="text-[8px] sm:text-xs text-neutral-500">Org.nr: {companyOrg}</div>
+                      ) : (
+                        <div className="text-[8px] sm:text-xs text-emerald-600 font-bold flex items-center gap-1">
+                          <CheckCircle2 size={12} /> Verifisert foretak
+                        </div>
+                      )}
                     </div>
                   </div>
                 </div>
                 <div className="sm:text-right">
                   <div className="text-[7px] sm:text-[10px] font-black uppercase tracking-widest text-neutral-400 mb-0.5 sm:mb-2">Dokument ID</div>
-                  <div className="text-[7px] sm:text-[10px] font-mono text-neutral-400">MB-REPORT-{project.id?.substring(0, 8).toUpperCase()}-2024</div>
+                  <div className="text-[7px] sm:text-[10px] font-mono text-neutral-500">{docId}</div>
                 </div>
               </div>
             </div>
