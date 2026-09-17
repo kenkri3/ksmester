@@ -34,15 +34,15 @@ interface ReportModalProps {
 
 export default function ReportModal({ isOpen, onClose, project, sjaReports, deviations }: ReportModalProps) {
   const { t } = useTranslation();
-  const { userProfile } = useAuth();
+  const { user, company } = useAuth();
   const [isExporting, setIsExporting] = useState(false);
   const [isDownloadingPdf, setIsDownloadingPdf] = useState(false);
   const [exportStep, setExportStep] = useState<'idle' | 'preparing' | 'sending' | 'success'>('idle');
 
   // Dynamiske bedriftsopplysninger basert på reelle bruker- og prosjektdata
-  const companyName = project.companyName || (project as any).company || userProfile?.companyName || 'Ansvarlig Entreprenør';
-  const companyOrg = (project as any).companyOrgNumber || (project as any).companyOrg || (userProfile as any)?.orgNumber || (userProfile as any)?.orgnr || '';
-  const projectLeader = project.projectManager || userProfile?.name || companyName;
+  const companyName = project.companyName || (project as any).company || company || user?.company || 'Ansvarlig Entreprenør';
+  const companyOrg = (project as any).companyOrgNumber || (project as any).companyOrg || '';
+  const projectLeader = project.projectManager || user?.displayName || companyName;
   const companyInitials = (companyName || 'VM')
     .split(' ')
     .filter(Boolean)

@@ -56,7 +56,7 @@ export function useDashboardData() {
           stage: data.stage || 'active',
           status: data.status || 'active',
           ...data,
-          name: data.name || (isKongeveien ? 'Totalrenovering Kongeveien 93A' : 'Totalrenovering Kongeveien 93A'),
+          name: data.name || (isKongeveien ? 'Totalrenovering Kongeveien 93A' : (data.location ? `Prosjekt ${data.location}` : `Prosjekt ${doc.id}`)),
           lastUpdate: data.lastUpdate?.toDate?.()?.toLocaleString() || String(data.lastUpdate || 'Nylig')
         };
       }) as Project[];

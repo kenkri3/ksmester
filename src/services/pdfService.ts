@@ -458,16 +458,14 @@ export const pdfService = {
     doc.setFont('helvetica', 'bold');
     doc.text('Material- & Produktregister (NOBB)', 20, (doc as any).lastAutoTable.finalY + 15);
 
-    const matData = (materials.length > 0 ? materials : [
-      { name: 'Rockwool Flexi A-plate', category: 'Isolasjon', nobbNumber: '21516234', quantity: 45, unit: 'pk' },
-      { name: 'Norgips Standard Gips 13mm', category: 'Plater', nobbNumber: '11425678', quantity: 120, unit: 'stk' },
-      { name: 'Moelven K-virke C24 48x148', category: 'Trelast', nobbNumber: '40192834', quantity: 350, unit: 'lm' }
-    ]).map((m: any) => [
+    const matData = materials.length > 0 ? materials.map((m: any) => [
       m.category || 'Materiell',
       m.name,
       m.nobbNumber || '-',
       `${m.quantity || 1} ${m.unit || 'stk'}`
-    ]);
+    ]) : [
+      ['Materiell', 'Ingen spesifiserte materialer registrert for prosjektet', '-', '-']
+    ];
 
     doc.autoTable({
       startY: (doc as any).lastAutoTable.finalY + 20,
@@ -1475,6 +1473,160 @@ export const pdfService = {
     doc.text(doc.splitTextToSize(notice, 170), 20, finalY + 5);
 
     doc.save(`Krav_Fristforlengelse_${claim.claimNumber}_${project.name.replace(/\s+/g, '_')}.pdf`);
+  },
+
+  // --- 19. Full Prosjektrapport & Kvalitetsdokumentasjon ---
+  async generateProjectReportPDF(
+    project: Project,
+    options: {
+      sjaReports?: any[];
+      deviations?: Deviation[];
+      companyInfo?: { name?: string; orgNumber?: string };
+    } = {}
+  ) {
+    const doc = createPdf();
+    const primaryColor = [5, 150, 105]; // emerald-600
+    const company = options.companyInfo?.name || project.companyName || (project as any).company || 'Ansvarlig Entreprenør';
+    const orgNr = options.companyInfo?.orgNumber || (project as any).companyOrgNumber || '';
+
+    // Header banner
+    doc.setFillColor(primaryColor[0], primaryColor[1], primaryColor[2]);
+    doc.rect(0, 0, 210, 42, 'F');
+
+    doc.setTextColor(255, 255, 255);
+    doc.setFontSize(22);
+    doc.setFont('helvetica', 'bold');
+    doc.text('PROSJEKTRAPPORT', 20, 24);
+
+    doc.setFontSize(10);
+    doc.setFont('helvetica', 'normal');
+    doc.text(`Sluttrapport & Kvalitetsdokumentasjon | ${company}`, 20, 34);
+
+    // Metadata
+    doc.setTextColor(0, 0, 0);
+    doc.setFontSize(12);
+    doc.setFont('helvetica', 'bold');
+    doc.text('Prosjektinformasjon', 20, 54);
+
+    const meta = [
+      ['Prosjektnavn', project.name],
+      ['Adresse / Lokasjon', project.location || '-'],
+      ['Kunde / Byggherre', project.clientName || 'Privatkunde'],
+      ['Ansvarlig utførende', company + (orgNr ? ` (Org.nr: ${orgNr})` : '')],
+      ['Prosjektleder', project.projectManager || 'Fagansvarlig'],
+      ['Prosjektperiode', `${project.startDate || 'Start'} - ${project.endDate || 'Pågående'}`],
+      ['Dokumentasjonsgrad', `${project.documentationLevel || project.progress || 100}%`],
+      ['Dato generert', new Date().toLocaleDateString('no-NO')]
+    ];
+
+    doc.autoTable({
+      startY: 58,
+      body: meta,
+      theme: 'plain',
+      styles: { cellPadding: 3.5, fontSize: 9.5 },
+      columnStyles: { 0: { fontStyle: 'bold', width: 55 } }
+    });
+
+    let currentY = ((doc as any).lastAutoTable?.finalY || 100) + 12;
+
+    // KS status
+    doc.setFontSize(12);
+    doc.setFont('helvetica', 'bold');
+    doc.text('Kvalitetssikring & Samsvar', 20, currentY);
+
+    const ksRows = [
+      ['Egenkontroll (KS)', 'Gjennomført og dokumentert iht. faglige normer', 'Godkjent'],
+      ['Samsvarserklæring', 'Arbeidet er utført i henhold til PBL og TEK17', 'Samsvarer']
+    ];
+
+    doc.autoTable({
+      startY: currentY + 4,
+      head: [['Kontrollområde', 'Beskrivelse', 'Status']],
+      body: ksRows,
+      theme: 'striped',
+      headStyles: { fillColor: primaryColor },
+      styles: { fontSize: 9, cellPadding: 3 }
+    });
+
+    currentY = ((doc as any).lastAutoTable?.finalY || currentY + 30) + 12;
+
+    // SJA Section
+    const sjas = options.sjaReports || [];
+    doc.setFontSize(12);
+    doc.setFont('helvetica', 'bold');
+    doc.text(`HMS & Sikker Jobb Analyse (${sjas.length} registrert)`, 20, currentY);
+
+    const sjaData = sjas.length > 0 
+      ? sjas.slice(0, 8).map(s => [
+          s.title || 'SJA Analyse',
+          typeof s.timestamp === 'string' ? s.timestamp.substring(0, 10) : new Date().toLocaleDateString('no-NO'),
+          s.status === 'approved' ? 'Godkjent' : (s.status || 'Aktiv')
+        ])
+      : [['Ingen SJA-rapporter logget for prosjektet', '-', '-']];
+
+    doc.autoTable({
+      startY: currentY + 4,
+      head: [['SJA Tittel', 'Dato', 'Status']],
+      body: sjaData,
+      theme: 'striped',
+      headStyles: { fillColor: [2, 132, 199] }, // sky-600
+      styles: { fontSize: 9, cellPadding: 3 }
+    });
+
+    currentY = ((doc as any).lastAutoTable?.finalY || currentY + 30) + 12;
+    if (currentY > 230) {
+      doc.addPage();
+      currentY = 25;
+    }
+
+    // Deviations Section
+    const devs = options.deviations || [];
+    const openDevs = devs.filter(d => d.status === 'open' || d.status === 'in-progress');
+    const closedDevs = devs.filter(d => d.status === 'closed');
+
+    doc.setFontSize(12);
+    doc.setFont('helvetica', 'bold');
+    doc.text(`Avvikshåndtering (${devs.length} totalt, ${closedDevs.length} lukket, ${openDevs.length} åpne)`, 20, currentY);
+
+    const devData = devs.length > 0
+      ? devs.slice(0, 10).map(d => [
+          d.title,
+          d.status === 'closed' ? 'Lukket og utbedret' : 'Åpen / Under behandling',
+          d.severity || 'Normal',
+          d.description?.substring(0, 60) || '-'
+        ])
+      : [['Ingen avvik registrert', 'OK', 'Ingen', '-']];
+
+    doc.autoTable({
+      startY: currentY + 4,
+      head: [['Avvik', 'Status', 'Alvorlighet', 'Beskrivelse']],
+      body: devData,
+      theme: 'striped',
+      headStyles: { fillColor: [217, 119, 6] }, // amber-600
+      styles: { fontSize: 8.5, cellPadding: 3 }
+    });
+
+    currentY = ((doc as any).lastAutoTable?.finalY || currentY + 30) + 20;
+    if (currentY > 240) {
+      doc.addPage();
+      currentY = 25;
+    }
+
+    // Signatures
+    doc.setDrawColor(200, 200, 200);
+    doc.line(20, currentY, 190, currentY);
+    currentY += 8;
+
+    doc.setFontSize(9);
+    doc.setFont('helvetica', 'bold');
+    doc.text(`Digitalt attestert av: ${company}`, 20, currentY);
+    if (orgNr) doc.text(`Organisasjonsnummer: ${orgNr}`, 20, currentY + 5);
+    doc.setFont('helvetica', 'normal');
+    doc.text(`Dokument-ID: RAPPORT-${(project.id || 'PROJ').substring(0, 8).toUpperCase()}-${new Date().getFullYear()}`, 120, currentY);
+    doc.text(`Signert og arkivert i VikingMester`, 120, currentY + 5);
+
+    doc.save(`Prosjektrapport_${project.name.replace(/[^a-zA-Z0-9æøåÆØÅ_-]/g, '_')}_${new Date().toISOString().split('T')[0]}.pdf`);
+    return true;
   }
 };
 

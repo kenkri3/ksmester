@@ -162,13 +162,9 @@ export default function ArchitecturePhase2() {
               </div>
             </div>
           </div>
-          <div className="relative aspect-square bg-neutral-100 rounded-[2.5rem] overflow-hidden flex items-center justify-center border border-neutral-200">
-            <img 
-              src="https://picsum.photos/seed/bim-model/800/800" 
-              alt="BIM Model Sync" 
-              className="w-full h-full object-cover opacity-40"
-              referrerPolicy="no-referrer"
-            />
+          <div className="relative aspect-square bg-neutral-900 rounded-[2.5rem] overflow-hidden flex items-center justify-center border border-neutral-800">
+            <div className="absolute inset-0 bg-[radial-gradient(#a855f7_1px,transparent_1px)] [background-size:24px_24px] opacity-25" />
+            <div className="absolute inset-0 bg-gradient-to-tr from-purple-950/40 via-transparent to-purple-900/20" />
             <div className="absolute inset-0 flex items-center justify-center">
               <div className="w-64 h-64 border-2 border-purple-500/50 rounded-3xl relative">
                 <div className="absolute top-0 left-0 w-4 h-4 border-t-2 border-l-2 border-purple-500 -translate-x-1 -translate-y-1"></div>

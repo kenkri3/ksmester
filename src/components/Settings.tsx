@@ -463,14 +463,18 @@ export default function Settings() {
                           <tr key={member.id} className="hover:bg-neutral-50 transition-colors">
                             <td className="px-6 py-4">
                               <div className="flex items-center gap-3">
-                                <div className="w-8 h-8 rounded-full bg-neutral-100 overflow-hidden">
-                                  <img 
-                                    src={member.imageUrl || `https://picsum.photos/seed/${member.id}/40/40`} 
-                                    alt="" 
-                                    className="w-full h-full object-cover"
-                                    referrerPolicy="no-referrer"
-                                  />
-                                </div>
+                                 <div className="w-8 h-8 rounded-full bg-emerald-100 text-emerald-800 font-bold text-xs flex items-center justify-center overflow-hidden shrink-0 border border-emerald-200">
+                                   {member.imageUrl ? (
+                                     <img 
+                                       src={member.imageUrl} 
+                                       alt="" 
+                                       className="w-full h-full object-cover"
+                                       referrerPolicy="no-referrer"
+                                     />
+                                   ) : (
+                                     (member.name || 'B').substring(0, 2).toUpperCase()
+                                   )}
+                                 </div>
                                 <div>
                                   <div className="text-sm font-bold">{member.name}</div>
                                   <div className="text-[10px] text-neutral-500">{member.email}</div>
@@ -518,13 +522,17 @@ export default function Settings() {
               >
                 <div className="flex items-center gap-6">
                   <div className="relative group">
-                    <div className="w-24 h-24 rounded-full bg-neutral-100 border-4 border-white shadow-md overflow-hidden">
-                      <img 
-                        src={profile.photoURL || user?.photoURL || `https://picsum.photos/seed/${user?.uid}/100/100`} 
-                        alt="Profile" 
-                        className="w-full h-full object-cover"
-                        referrerPolicy="no-referrer"
-                      />
+                    <div className="w-24 h-24 rounded-full bg-emerald-700 text-white font-black text-2xl flex items-center justify-center border-4 border-white shadow-md overflow-hidden shrink-0">
+                      {profile.photoURL || user?.photoURL ? (
+                        <img 
+                          src={profile.photoURL || user?.photoURL} 
+                          alt="Profile" 
+                          className="w-full h-full object-cover"
+                          referrerPolicy="no-referrer"
+                        />
+                      ) : (
+                        (profile.displayName || user?.displayName || user?.email || 'M').substring(0, 2).toUpperCase()
+                      )}
                     </div>
                     <input 
                       type="file" 

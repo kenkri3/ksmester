@@ -53,12 +53,14 @@ import {
 import CrossTradeCoordinator from './CrossTradeCoordinator';
 import { motion, AnimatePresence } from 'motion/react';
 import { cn } from '@/src/lib/utils';
-import { Project, Deviation, CrewMember, Offer, Contract, ChangeOrder } from '../types';
+import { Project, Deviation, CrewMember, Offer, Contract, ChangeOrder, DailyLog, TimeEntry } from '../types';
 import { db, auth, collection, query, where, orderBy, onSnapshot, addDoc, Timestamp, OperationType, handleFirestoreError } from '../services/firebase';
 import UniversalTranslator from './UniversalTranslator';
 import { sjaService } from '../services/sjaService';
 import { visionService, VisionAnalysisResult } from '../services/visionService';
 import { changeOrderService } from '../services/changeOrderService';
+import { dailyLogService } from '../services/dailyLogService';
+import { api } from '../services/api';
 import { useAuth } from '../hooks/useAuth';
 import ReportModal from './ReportModal';
 import InviteModal from './InviteModal';
@@ -298,6 +300,60 @@ export default function ProjectDetails({ project, onBack, onShare, onStartCheckl
     }
   };
 
+  // Byggedagbok og Timeføringer for prosjektet (Byggherreforskriften § 15 & NS 8406)
+  const [projectDailyLogs, setProjectDailyLogs] = useState<DailyLog[]>([]);
+  const [projectTimeEntries, setProjectTimeEntries] = useState<TimeEntry[]>([]);
+  const [isLoadingDailyLogs, setIsLoadingDailyLogs] = useState(false);
+  const [isCompilingDailyLog, setIsCompilingDailyLog] = useState(false);
+
+  const fetchDailyLogsAndTimes = async () => {
+    if (!project?.id) return;
+    setIsLoadingDailyLogs(true);
+    try {
+      const [logs, times] = await Promise.all([
+        dailyLogService.getProjectDailyLogs(project.id),
+        api.getDocs<TimeEntry>('time_entries')
+          .then(all => (all || []).filter(t => t.projectId === project.id).sort((a, b) => (b.date || '').localeCompare(a.date || '')))
+          .catch(() => [] as TimeEntry[])
+      ]);
+      setProjectDailyLogs(logs);
+      setProjectTimeEntries(times);
+    } catch (e) {
+      console.warn('Could not fetch daily logs / times:', e);
+    } finally {
+      setIsLoadingDailyLogs(false);
+    }
+  };
+
+  useEffect(() => {
+    if (project?.id) {
+      fetchDailyLogsAndTimes();
+    }
+  }, [project?.id, activeTab]);
+
+  const handleCompileTodayLog = async () => {
+    setIsCompilingDailyLog(true);
+    try {
+      await dailyLogService.compileTodayLog(project, user?.displayName || 'Byggeleder');
+      toast.success('Dagens byggedagbok er oppdatert med Yr-værdata og timer!');
+      await fetchDailyLogsAndTimes();
+    } catch (e) {
+      toast.error('Kunne ikke oppdatere dagens byggedagbok.');
+    } finally {
+      setIsCompilingDailyLog(false);
+    }
+  };
+
+  const handleDownloadDailyLogPdf = async (log: DailyLog) => {
+    const toastId = toast.loading(`Genererer PDF for dagsrapport ${formatDate(log.date)}...`);
+    try {
+      await pdfService.generateDailyLogPDF(project, log);
+      toast.success('Dagsrapport (PDF) lastet ned!', { id: toastId });
+    } catch (err: any) {
+      toast.error('Kunne ikke generere PDF: ' + (err?.message || 'Ukjent feil'), { id: toastId });
+    }
+  };
+
   // MesterAI Agent Reply state (vises i ryddig svarkort under søkefeltet)
   const [agentReply, setAgentReply] = useState<{
     reply: string;
@@ -351,6 +407,9 @@ export default function ProjectDetails({ project, onBack, onShare, onStartCheckl
           suggestedActions: data.suggestedActions,
           timestamp: new Date().toLocaleTimeString('no-NO', { hour: '2-digit', minute: '2-digit' })
         });
+
+        // Oppdater byggedagbok og timeføring umiddelbart
+        fetchDailyLogsAndTimes();
       } else {
         toast.info('Instruks registrert');
       }

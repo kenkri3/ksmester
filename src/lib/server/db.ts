@@ -405,7 +405,7 @@ export async function getCollectionItems(collectionName: string): Promise<any[]>
             const isKongeveien = r.id.toLowerCase().includes('kongeveien') || 
                                  String(d.location || '').toLowerCase().includes('kongeveien') ||
                                  String(d.id || '').toLowerCase().includes('kongeveien');
-            const healedName = d.name || (isKongeveien ? 'Totalrenovering Kongeveien 93A' : 'Totalrenovering Kongeveien 93A');
+            const healedName = d.name || (isKongeveien ? 'Totalrenovering Kongeveien 93A' : (d.location ? `Prosjekt ${d.location}` : `Prosjekt ${r.id}`));
             const healedLocation = d.location || (isKongeveien ? 'Kongeveien 93A, Horten' : 'Norge');
             const healedClient = d.clientName || 'Privatkunde';
             const healedProgress = typeof d.progress === 'number' ? d.progress : 15;
@@ -604,8 +604,8 @@ export async function updateCollectionItem(collectionName: string, id: string, d
   // If this is a project and name was somehow missing, ensure it has a valid title
   if (collectionName === 'projects' && !updatedItem.name) {
     const isKongeveien = id.toLowerCase().includes('kongeveien') || String(updatedItem.location || '').toLowerCase().includes('kongeveien');
-    updatedItem.name = isKongeveien ? 'Totalrenovering Kongeveien 93A' : 'Totalrenovering Kongeveien 93A';
-    updatedItem.location = updatedItem.location || 'Kongeveien 93A, Horten';
+    updatedItem.name = isKongeveien ? 'Totalrenovering Kongeveien 93A' : (updatedItem.location ? `Prosjekt ${updatedItem.location}` : `Prosjekt ${id}`);
+    updatedItem.location = updatedItem.location || (isKongeveien ? 'Kongeveien 93A, Horten' : 'Norge');
     updatedItem.clientName = updatedItem.clientName || 'Privatkunde';
   }
 
