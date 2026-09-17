@@ -14,6 +14,14 @@ const IntegrationModal: React.FC<IntegrationModalProps> = ({ isOpen, onClose }) 
 
   const integrations = [
     { 
+      id: 'nobb', 
+      name: 'NOBB / Norsk Byggevarebase', 
+      desc: '1M+ byggevarer, automatisk FDV, EPD og grossistpriser (BYOK)',
+      lastSync: 'Klar for oppsett', 
+      type: 'Varebase & FDV',
+      status: 'Aktiv'
+    },
+    { 
       id: 'tripletex', 
       name: 'Tripletex', 
       desc: 'Automatisk overføring av fakturagrunnlag og timer',
@@ -36,6 +44,30 @@ const IntegrationModal: React.FC<IntegrationModalProps> = ({ isOpen, onClose }) 
       lastSync: 'Sanntidssynk aktiv', 
       type: 'Dokumentarkiv',
       status: 'Tilkoblet'
+    },
+    { 
+      id: 'discord', 
+      name: 'Discord Omnichannel', 
+      desc: 'Oppgavevarsling og avvik direkte til håndverkernes mobil-app',
+      lastSync: 'Feltvarsling', 
+      type: 'Feltvarsling',
+      status: 'Aktiv'
+    },
+    { 
+      id: 'slack', 
+      name: 'Slack Omnichannel', 
+      desc: 'Sanntidsvarsler for oppgaver, SJA og avvik til håndverkere i Slack',
+      lastSync: 'Feltvarsling', 
+      type: 'Feltvarsling',
+      status: 'Aktiv'
+    },
+    { 
+      id: 'teams', 
+      name: 'Microsoft Teams Omnichannel', 
+      desc: 'Varsler og oppgaver til prosjektkanaler i Teams',
+      lastSync: 'Feltvarsling', 
+      type: 'Feltvarsling',
+      status: 'Aktiv'
     },
     { 
       id: 'brreg', 

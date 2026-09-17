@@ -570,31 +570,49 @@ Returner KUN et gyldig JSON-objekt:
 
       if (formType === 'task') {
         const lowerPrompt = promptText.toLowerCase();
-        let assignedTo = 'Ola Tømrer';
+        const allUsers = await getCollectionItems('users').catch(() => []);
+        const allCrew = await getCollectionItems('crew').catch(() => []);
+
+        // Finn om en faktisk registrert person er nevnt eller matcher faget
+        let matchedPerson = allUsers.find((u: any) => {
+          const name = (u.displayName || u.name || '').toLowerCase();
+          const trade = (u.trade || '').toLowerCase();
+          return (name && name.length > 2 && lowerPrompt.includes(name)) || (trade && trade.length > 2 && lowerPrompt.includes(trade));
+        }) || allCrew.find((c: any) => {
+          const name = (c.name || '').toLowerCase();
+          const role = (c.role || c.trade || '').toLowerCase();
+          return (name && name.length > 2 && lowerPrompt.includes(name)) || (role && role.length > 2 && lowerPrompt.includes(role));
+        });
+
+        let assignedTo = matchedPerson ? (matchedPerson.displayName || matchedPerson.name) : '';
         let priority: 'low' | 'medium' | 'high' | 'urgent' = 'medium';
         let title = promptText || 'Trekke rørkurs og montere fordelerskap';
         let description = 'Husk å sjekke TEK17 føringsveier og merke kurser i fordelerskap.';
 
         if (lowerPrompt.includes('rør') || lowerPrompt.includes('sluk') || lowerPrompt.includes('lekkasje') || lowerPrompt.includes('trykk') || lowerPrompt.includes('klemring')) {
-          assignedTo = 'Rørlegger Hansen';
+          if (!assignedTo) assignedTo = 'Rørlegger';
           priority = 'high';
           title = promptText || 'Montere dampsperre og klemring på sluk i bad';
           description = 'Sjekk klemring og mansjett nøye iht. BVN og produsentanvisning før videre arbeid.';
         } else if (lowerPrompt.includes('el') || lowerPrompt.includes('sikring') || lowerPrompt.includes('kurs') || lowerPrompt.includes('stikk')) {
-          assignedTo = 'Elektriker Erik';
+          if (!assignedTo) assignedTo = 'Elektriker';
           priority = 'high';
           title = promptText || 'Trekke rørkurs til kjøkken og montere stikk';
           description = 'Koordiner med tømrer før isolering og platetetting. Dokumenter kabelstrekk.';
         } else if (lowerPrompt.includes('fukt') || lowerPrompt.includes('kontroll') || lowerPrompt.includes('lukke')) {
-          assignedTo = 'Bas';
+          if (!assignedTo) assignedTo = 'Bas';
           priority = 'urgent';
           title = promptText || 'Fuktmåling og tverrfaglig kontroll før lukking';
           description = 'Gjennomfør fuktmåling av treverk (<12% fuktighet). Sjekk lukkesperrer og ta bilder før tildekking.';
         } else if (lowerPrompt.includes('stillas') || lowerPrompt.includes('hms') || lowerPrompt.includes('sikkerhet')) {
-          assignedTo = 'Bas';
+          if (!assignedTo) assignedTo = 'Bas';
           priority = 'urgent';
           title = promptText || 'Kontroll og godkjenning av stillas for takarbeid';
           description = 'Gjennomfør SJA, sjekk forankring, fotlist og godkjenningsskilt.';
+        }
+
+        if (!assignedTo) {
+          assignedTo = authorName || 'Ansvarlig håndverker';
         }
 
         const deadlineDate = new Date(Date.now() + 86400000 * 2).toISOString().split('T')[0];
@@ -2586,13 +2604,41 @@ Returner KUN et gyldig JSON-objekt:
         lower.includes('arbeidsordre');
 
       if (isAssignTaskIntent) {
-        let assignedTo = body.assignedTo || 'Ola Tømrer';
-        if (lower.includes('erik') || lower.includes('elektriker')) assignedTo = 'Elektriker Erik';
-        else if (lower.includes('hansen') || lower.includes('rørlegger')) assignedTo = 'Rørlegger Hansen';
-        else if (lower.includes('maler')) assignedTo = 'Maler';
-        else if (lower.includes('lærling')) assignedTo = 'Lærling';
-        else if (lower.includes('bas')) assignedTo = 'Bas';
-        else if (lower.includes('ola') || lower.includes('snekker') || lower.includes('tømrer')) assignedTo = 'Ola Tømrer';
+        const allUsers = await getCollectionItems('users').catch(() => []);
+        const allCrew = await getCollectionItems('crew').catch(() => []);
+
+        let assignedTo = body.assignedTo;
+        if (!assignedTo) {
+          // Finn registrert person nevnt i meldingen
+          const matched = allUsers.find((u: any) => {
+            const name = (u.displayName || u.name || '').toLowerCase();
+            return name && name.length > 2 && lower.includes(name);
+          }) || allCrew.find((c: any) => {
+            const name = (c.name || '').toLowerCase();
+            return name && name.length > 2 && lower.includes(name);
+          });
+
+          if (matched) {
+            assignedTo = matched.displayName || matched.name;
+          } else if (lower.includes('elektriker') || lower.includes('el')) {
+            const elPerson = allUsers.find((u: any) => (u.trade || '').toLowerCase().includes('el')) || allCrew.find((c: any) => (c.trade || c.role || '').toLowerCase().includes('el'));
+            assignedTo = elPerson ? (elPerson.displayName || elPerson.name) : 'Elektriker';
+          } else if (lower.includes('rørlegger') || lower.includes('vvs')) {
+            const vvsPerson = allUsers.find((u: any) => (u.trade || '').toLowerCase().includes('rør') || (u.trade || '').toLowerCase().includes('vvs')) || allCrew.find((c: any) => (c.trade || c.role || '').toLowerCase().includes('rør'));
+            assignedTo = vvsPerson ? (vvsPerson.displayName || vvsPerson.name) : 'Rørlegger';
+          } else if (lower.includes('tømrer') || lower.includes('snekker')) {
+            const carpPerson = allUsers.find((u: any) => (u.trade || '').toLowerCase().includes('tømrer') || (u.trade || '').toLowerCase().includes('snekker')) || allCrew.find((c: any) => (c.trade || c.role || '').toLowerCase().includes('tømrer'));
+            assignedTo = carpPerson ? (carpPerson.displayName || carpPerson.name) : 'Tømrer';
+          } else if (lower.includes('maler')) {
+            assignedTo = 'Maler';
+          } else if (lower.includes('lærling')) {
+            assignedTo = 'Lærling';
+          } else if (lower.includes('bas')) {
+            assignedTo = 'Bas';
+          } else {
+            assignedTo = authorName || 'Ansvarlig håndverker';
+          }
+        }
 
         const taskTitle = body.title || text.replace(/^(tildel|gi oppgave|opprett oppgave|tildel oppgave til|gi)\s+/i, '').trim();
 
@@ -2823,7 +2869,12 @@ DINE KJERNEOMRÅDER & EKSPERTISE:
    - Du kjenner NOBB (Norsk Byggtjeneste) inngående: over 1 million byggevarer, NOBB-varenumre, GTIN, EPD og FDV-dokumentasjon.
    - Forståelse av priser i byggebransjen: NOBB opererer med veiledende listepriser (NOBB-pris eks. mva). Håndverkerens reelle innkjøpspriser (nettopriser) forhandles direkte med byggevarehusene (Optimera/Montér, Byggmakker, Maxbo, XL-Bygg, Ahlsell m.fl.) og ligger normalt 30–60 % under veiledende listepris avhengig av varegruppe og volum.
    - I VikingMester har vi innebygd NOBB-søk under fanen «Materialer & NOBB» på hvert prosjekt, der håndverkeren kan søke opp varer for automatisk FDV- og HMS-innhenting.
+   - Bedriften kan også legge inn sin egen NOBB API-nøkkel (Subscription Key fra Norsk Byggetjeneste) under Innstillinger -> Integrasjoner for direkte oppslag med bedriftens egen lisens og grossistkoblinger.
    - Gi alltid konkrete veiledende markedspriser for 2026 på vanlige materialer (f.eks. C24 konstruksjonsvirke 48x98 ca. 38–52 kr/m, standard gips 12,5mm ca. 120–160 kr/plate, Glava Proff 34 100mm ca. 70–90 kr/m2, OSB-plater ca. 190–250 kr/plate eks. mva) når brukeren spør om priser.
+8. Varsling & Omnichannel (Discord, Slack, MS Teams) for feltarbeidere:
+   - Alle pakker (Solo, Team og Totalentreprenør) har full tilgang til Omnichannel.
+   - Håndverkere i felt kan få tildelte oppgaver, SJA og avviksmeldinger rett i sin vanlige mobilapp (Discord, Slack eller Teams).
+   - Brukeren kan konfigurere webhook-kanalene sine direkte under Innstillinger -> Integrasjoner eller ved å trykke «Konfigurer kanaler» i oppgavedialogen.
 
 RETNINGSLINJER FOR SVARENE:
 - Vær en naturlig, flytende, engasjert og profesjonell samtalepartner på stødig norsk (akkurat som å prate med ChatGPT Plus, Claude 3.5 Sonnet eller Gemini Advanced).

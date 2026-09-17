@@ -1,5 +1,6 @@
 import { NextRequest, NextResponse } from 'next/server';
 import { getUserFromRequest } from '@/src/lib/server/auth';
+import { getCollectionItems } from '@/src/lib/server/db';
 
 export async function GET(req: NextRequest) {
   // 🛡️ SECURITY FIX: Enforce authentication to prevent unauthorized API credit usage
@@ -10,10 +11,29 @@ export async function GET(req: NextRequest) {
 
   const { searchParams } = new URL(req.url);
   const q = searchParams.get('q') || '';
-  const apiKey = process.env.NOBB_API_KEY;
+
+  // 1. Sjekk om bedriften har lagt inn egen NOBB API-nøkkel i innstillinger (BYOK)
+  let apiKey = process.env.NOBB_API_KEY;
+  try {
+    const integrations = await getCollectionItems('integrations');
+    const companyNobb = integrations.find((i: any) => 
+      (i.service?.toUpperCase() === 'NOBB') && 
+      (user.role === 'admin' || i.companyId === user.companyId) && 
+      i.status === 'active' &&
+      i.secretToken?.trim()
+    );
+    if (companyNobb?.secretToken?.trim()) {
+      apiKey = companyNobb.secretToken.trim();
+    }
+  } catch (dbErr) {
+    console.warn('[NOBB Search] Feil ved oppslag av bedriftsintegrasjon:', dbErr);
+  }
 
   if (!apiKey) {
-    return NextResponse.json({ error: 'NOBB API-nøkkel ikke konfigurert' }, { status: 403 });
+    return NextResponse.json({ 
+      error: 'NOBB API-nøkkel ikke konfigurert',
+      hint: 'Bedriften kan legge inn sin egen NOBB API-nøkkel under Innstillinger -> Integrasjoner'
+    }, { status: 403 });
   }
 
   try {

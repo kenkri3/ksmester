@@ -30,7 +30,8 @@ import {
   Lock,
   AlertCircle,
   AlertTriangle,
-  Cookie
+  Cookie,
+  Radio
 } from 'lucide-react';
 import { useAuth } from '../hooks/useAuth';
 import { useTranslation } from 'react-i18next';
@@ -38,6 +39,7 @@ import { getStandardLang } from '../i18n';
 import { cn } from '@/src/lib/utils';
 import { db, doc, getDoc, setDoc, handleFirestoreError, OperationType, collection, query, where, getDocs, deleteDoc } from '../services/firebase';
 import InviteModal from './InviteModal';
+import OmnichannelModal from './OmnichannelModal';
 import { UserProfile as TeamMember } from '../types';
 
 interface SettingsProfile {
@@ -89,6 +91,7 @@ export default function Settings() {
   const [activeIntegrationModal, setActiveIntegrationModal] = useState<string | null>(null);
   const [integrationSecret, setIntegrationSecret] = useState('');
   const [connectedServices, setConnectedServices] = useState<Record<string, boolean>>({});
+  const [isOmniModalOpen, setIsOmniModalOpen] = useState(false);
   const profilePhotoInputRef = useRef<HTMLInputElement>(null);
   
   const [aiQuota, setAiQuota] = useState<{
@@ -186,6 +189,29 @@ export default function Settings() {
     }
     fetchTeam();
   }, [user, activeTab, profile.companyId]);
+
+  useEffect(() => {
+    async function loadIntegrations() {
+      try {
+        const res = await fetch('/api/settings/integrations');
+        if (res.ok) {
+          const list = await res.json();
+          if (Array.isArray(list)) {
+            const map: Record<string, boolean> = {};
+            list.forEach((item: any) => {
+              if (item.service) {
+                map[item.service] = item.status === 'active' || item.status === 'connected' || true;
+              }
+            });
+            setConnectedServices(map);
+          }
+        }
+      } catch (e) {
+        console.warn('Could not load integrations', e);
+      }
+    }
+    loadIntegrations();
+  }, []);
 
   const fetchAiQuota = async () => {
     try {
@@ -661,20 +687,48 @@ export default function Settings() {
                   </div>
                   <p className="text-xs text-blue-700 mb-4">{t('integrations_desc', 'Koble til dine fagsystemer for automatisk dokumentoverføring.')}</p>
                   <div className="space-y-3">
-                    {['Boligmappa', 'Tripletex', 'PowerOffice Go'].map((service) => {
+                    {['NOBB', 'Boligmappa', 'Tripletex', 'PowerOffice Go'].map((service) => {
                       const isConnected = !!connectedServices[service];
                       return (
                         <div key={service} className="flex items-center justify-between p-3.5 bg-white rounded-xl border border-blue-200">
                           <div>
-                            <span className="text-sm font-bold block text-slate-900">{service}</span>
+                            <div className="flex items-center gap-2">
+                              <span className="text-sm font-bold block text-slate-900">{service}</span>
+                              {service === 'NOBB' && (
+                                <span className="text-[9px] font-black uppercase tracking-wider bg-amber-100 text-amber-900 px-1.5 py-0.5 rounded">
+                                  Varebase & FDV
+                                </span>
+                              )}
+                            </div>
                             <span className="text-[11px] text-slate-500">
-                              {service === 'Boligmappa' ? 'Automatisk FDV- og samsvarserklæring' : 'Sanntidssynk av timer, tillegg og fakturagrunnlag'}
+                              {service === 'NOBB' ? 'Direkte tilgang til Norsk Byggevarebase (1M+ varer, FDV, EPD og grossistpriser)' :
+                               service === 'Boligmappa' ? 'Automatisk FDV- og samsvarserklæring' : 
+                               'Sanntidssynk av timer, tillegg og fakturagrunnlag'}
                             </span>
                           </div>
                           {isConnected ? (
-                            <span className="inline-flex items-center gap-1.5 px-3 py-1 rounded-full text-xs font-bold bg-emerald-50 text-emerald-700 border border-emerald-200">
-                              <CheckCircle2 size={13} /> Tilkoblet
-                            </span>
+                            <div className="flex items-center gap-2">
+                              <span className="inline-flex items-center gap-1.5 px-3 py-1 rounded-full text-xs font-bold bg-emerald-50 text-emerald-700 border border-emerald-200">
+                                <CheckCircle2 size={13} /> Tilkoblet
+                              </span>
+                              <button 
+                                type="button"
+                                onClick={async () => {
+                                  if (confirm(`Vil du koble fra ${service}?`)) {
+                                    try {
+                                      await fetch(`/api/settings/integrations?service=${encodeURIComponent(service)}`, { method: 'DELETE' });
+                                      setConnectedServices(prev => ({ ...prev, [service]: false }));
+                                      toast.info(`${service} er koblet fra.`);
+                                    } catch (err) {
+                                      toast.error(`Kunne ikke koble fra ${service}`);
+                                    }
+                                  }
+                                }}
+                                className="text-xs text-slate-400 hover:text-rose-600 underline cursor-pointer"
+                              >
+                                Koble fra
+                              </button>
+                            </div>
                           ) : (
                             <button 
                               type="button"
@@ -690,6 +744,31 @@ export default function Settings() {
                         </div>
                       );
                     })}
+                  </div>
+
+                  {/* Omnichannel Section for feltarbeidere */}
+                  <div className="mt-4 pt-4 border-t border-blue-200/70">
+                    <div className="p-4 bg-white rounded-xl border border-indigo-100 flex flex-col sm:flex-row sm:items-center justify-between gap-3 shadow-xs">
+                      <div>
+                        <div className="flex items-center gap-2">
+                          <Radio size={16} className="text-indigo-600" />
+                          <span className="text-sm font-bold text-slate-900">Varsling & Omnichannel (Håndverkere i felt)</span>
+                          <span className="text-[10px] font-black uppercase tracking-wider bg-emerald-100 text-emerald-800 px-2 py-0.5 rounded-md border border-emerald-200">
+                            Inkludert i alle pakker
+                          </span>
+                        </div>
+                        <p className="text-[11px] text-slate-500 mt-1">
+                          Koble til Discord, Slack eller MS Teams. Håndverkere mottar tildelte oppgaver, SJA og avviksbeskjeder direkte i sine eksisterende mobilapper.
+                        </p>
+                      </div>
+                      <button 
+                        type="button"
+                        onClick={() => setIsOmniModalOpen(true)}
+                        className="px-4 py-2 rounded-xl bg-indigo-600 hover:bg-indigo-700 text-white text-xs font-bold transition-all cursor-pointer shadow-xs shrink-0 self-start sm:self-center"
+                      >
+                        Konfigurer kanaler
+                      </button>
+                    </div>
                   </div>
                 </div>
               </motion.div>
@@ -1229,6 +1308,7 @@ export default function Settings() {
             </div>
 
             <p className="text-xs text-slate-600 mb-4 leading-relaxed">
+              {activeIntegrationModal === 'NOBB' && 'Lim inn din API Subscription Key fra Norsk Byggetjeneste (NOBB). VikingMester henter automatisk produktdata, FDV-dokumentasjon, EPD og grossistpriser direkte til prosjektene dine.'}
               {activeIntegrationModal === 'Tripletex' && 'Lim inn din API-ansatt- eller sesjonstoken fra Tripletex. VikingMester synkroniserer automatisk godkjente tilleggsordrer og timelister direkte inn i prosjektet.'}
               {activeIntegrationModal === 'Boligmappa' && 'Lim inn bedriftens API-nøkkel fra Boligmappa. Samsvarserklæringer, TEK17-bilder og ferdigattester lastes automatisk opp til eiendommens gårds- og bruksnummer.'}
               {activeIntegrationModal === 'PowerOffice Go' && 'Lim inn Client Key eller Application Key fra PowerOffice Go for helautomatisk regnskapssynkronisering.'}
@@ -1242,7 +1322,7 @@ export default function Settings() {
                 type="password"
                 value={integrationSecret}
                 onChange={(e) => setIntegrationSecret(e.target.value)}
-                placeholder="f.eks. eyJhbGciOiJIUzI1NiIsInR5cCI6..."
+                placeholder={activeIntegrationModal === 'NOBB' ? 'f.eks. d3b07384d113edec49eaa6238ad5ff00 (Subscription Key)' : 'f.eks. eyJhbGciOiJIUzI1NiIsInR5cCI6...'}
                 className="w-full px-3.5 py-2.5 rounded-xl border border-slate-300 text-sm font-mono focus:border-electric-500 focus:ring-2 focus:ring-electric-500/20 outline-none"
               />
               <span className="text-[10px] text-slate-400 mt-1 block">
@@ -1295,6 +1375,10 @@ export default function Settings() {
       <InviteModal 
         isOpen={isInviteModalOpen} 
         onClose={() => setIsInviteModalOpen(false)} 
+      />
+      <OmnichannelModal 
+        isOpen={isOmniModalOpen} 
+        onClose={() => setIsOmniModalOpen(false)} 
       />
     </div>
   );

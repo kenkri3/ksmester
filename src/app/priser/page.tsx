@@ -108,6 +108,10 @@ export default function PriserPage() {
                 </li>
                 <li className="flex items-center gap-2 font-semibold text-electric-600">
                   <Check size={16} className="text-emerald-500 shrink-0" />
+                  <span>Omnichannel (Feltvarsler til Discord, Slack & Teams)</span>
+                </li>
+                <li className="flex items-center gap-2 font-semibold text-electric-600">
+                  <Check size={16} className="text-emerald-500 shrink-0" />
                   <span>Zero-Entry AI (Snakk eller ta bilde)</span>
                 </li>
                 <li className="flex items-center gap-2">
@@ -121,6 +125,10 @@ export default function PriserPage() {
                 <li className="flex items-center gap-2">
                   <Check size={16} className="text-emerald-500 shrink-0" />
                   <span>Sikker Jobb Analyse (SJA) & risikovurdering</span>
+                </li>
+                <li className="flex items-center gap-2">
+                  <Check size={16} className="text-emerald-500 shrink-0" />
+                  <span>NOBB / Varebase integrasjon (Egen API-nøkkel)</span>
                 </li>
                 <li className="flex items-center gap-2">
                   <Check size={16} className="text-emerald-500 shrink-0" />
@@ -169,6 +177,10 @@ export default function PriserPage() {
                 </li>
                 <li className="flex items-center gap-2 font-semibold text-electric-600">
                   <Check size={16} className="text-electric-500 shrink-0" />
+                  <span>Omnichannel feltvarsling (Discord, Slack, Teams for hele teamet)</span>
+                </li>
+                <li className="flex items-center gap-2 font-semibold text-electric-600">
+                  <Check size={16} className="text-electric-500 shrink-0" />
                   <span>Tale-til-Endringsordre & fristvarsel (NS 8406)</span>
                 </li>
                 <li className="flex items-center gap-2">
@@ -182,6 +194,10 @@ export default function PriserPage() {
                 <li className="flex items-center gap-2">
                   <Check size={16} className="text-electric-500 shrink-0" />
                   <span>TEK17 AI Vision & avviksfotografering</span>
+                </li>
+                <li className="flex items-center gap-2">
+                  <Check size={16} className="text-electric-500 shrink-0" />
+                  <span>NOBB API-støtte (FDV, EPD & grossistpriser til prosjekter)</span>
                 </li>
                 <li className="flex items-center gap-2">
                   <Check size={16} className="text-electric-500 shrink-0" />
@@ -237,9 +253,13 @@ export default function PriserPage() {
                   <Check size={16} className="text-emerald-500 shrink-0" />
                   <span>Tverrfaglig Lukkesperre med tidslås og soner</span>
                 </li>
+                <li className="flex items-center gap-2 font-semibold text-emerald-600">
+                  <Check size={16} className="text-emerald-500 shrink-0" />
+                  <span>Avansert Omnichannel (Discord, Slack, Teams, E-post, SMS & Webhooks)</span>
+                </li>
                 <li className="flex items-center gap-2">
                   <Check size={16} className="text-emerald-500 shrink-0" />
-                  <span>Omnichannel (Discord, Slack, Teams, E-post, SMS)</span>
+                  <span>NOBB Enterprise API, Boligmappa & ERP-synk</span>
                 </li>
                 <li className="flex items-center gap-2">
                   <Check size={16} className="text-emerald-500 shrink-0" />

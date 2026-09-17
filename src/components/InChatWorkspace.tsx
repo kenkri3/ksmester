@@ -19,7 +19,10 @@ import {
   ExternalLink,
   ChevronRight,
   CheckCircle2,
-  ListTodo
+  ListTodo,
+  Star,
+  User,
+  Users
 } from 'lucide-react';
 import { Project, OfferItem, ProjectTask } from '../types';
 import { db, collection, addDoc, serverTimestamp, getDocs } from '../services/firebase';
@@ -1647,12 +1650,28 @@ function InChatTaskForm({
   const [projectId, setProjectId] = useState(initialData?.projectId || selectedProject?.id || (projects[0]?.id || ''));
   const [title, setTitle] = useState(() => sanitizePlainText(initialData?.title || ''));
   const [description, setDescription] = useState(() => sanitizePlainText(initialData?.description || ''));
-  const [assignedTo, setAssignedTo] = useState(initialData?.assignedTo || 'Ola Tømrer');
+  const [assignedTo, setAssignedTo] = useState(initialData?.assignedTo || '');
+  const [isCustomPerson, setIsCustomPerson] = useState(false);
+  const [registeredUsers, setRegisteredUsers] = useState<Array<{ id: string; name: string; role?: string; trade?: string }>>([]);
   const [priority, setPriority] = useState<'low' | 'medium' | 'high' | 'urgent'>(initialData?.priority || 'medium');
   const [deadline, setDeadline] = useState(initialData?.deadline || new Date(Date.now() + 86400000 * 2).toISOString().split('T')[0]);
 
   // Omnichannel integration settings
   const [omniSettings, setOmniSettings] = useState<OmnichannelSettings>(getStoredOmnichannelSettings);
+
+  // Favoritter lagres i localStorage
+  const [favorites, setFavorites] = useState<string[]>(() => {
+    if (typeof window !== 'undefined') {
+      try {
+        const stored = localStorage.getItem('ks_task_favorite_assignees');
+        if (stored) {
+          const parsed = JSON.parse(stored);
+          if (Array.isArray(parsed) && parsed.length > 0) return parsed;
+        }
+      } catch {}
+    }
+    return [];
+  });
 
   useEffect(() => {
     const handleSettingsUpdate = () => {
@@ -1678,10 +1697,141 @@ function InChatTaskForm({
 
   const activeProj = projects.find(p => p.id === projectId) || selectedProject || { name: 'Byggeprosjekt' };
 
+  // Last inn faktisk registrerte personer fra bedrift, prosjekt, brukere og mannskap
+  useEffect(() => {
+    let isMounted = true;
+    async function loadPersonnel() {
+      try {
+        const [usersSnap, crewSnap] = await Promise.all([
+          getDocs(collection(db, 'users')).catch(() => ({ docs: [] })),
+          getDocs(collection(db, 'crew')).catch(() => ({ docs: [] }))
+        ]);
+
+        const map = new Map<string, { id: string; name: string; role?: string; trade?: string }>();
+
+        // 1. Innlogget bruker
+        const currentName = user?.displayName || user?.name || (user?.email ? user.email.split('@')[0] : '');
+        if (currentName) {
+          map.set(currentName.toLowerCase(), {
+            id: user?.id || user?.uid || 'current_user',
+            name: currentName,
+            role: user?.role === 'admin' ? 'Leder / Byggmester' : user?.role === 'manager' ? 'Byggeplassleder' : 'Meg selv',
+            trade: user?.trade
+          });
+        }
+
+        // 2. Prosjektleder & teammedlemmer på aktivt prosjekt
+        if (activeProj?.projectManager) {
+          const pm = String(activeProj.projectManager).trim();
+          if (pm && !map.has(pm.toLowerCase())) {
+            map.set(pm.toLowerCase(), {
+              id: 'pm-' + pm,
+              name: pm,
+              role: 'Prosjektleder'
+            });
+          }
+        }
+        if (Array.isArray(activeProj?.teamMembers)) {
+          activeProj.teamMembers.forEach((m: any) => {
+            const mStr = typeof m === 'string' ? m.trim() : (m?.name || '').trim();
+            if (mStr && !map.has(mStr.toLowerCase())) {
+              map.set(mStr.toLowerCase(), {
+                id: 'member-' + mStr,
+                name: mStr,
+                role: 'Prosjektteam'
+              });
+            }
+          });
+        }
+
+        // 3. Registrerte brukere fra `users`
+        usersSnap.docs.forEach((doc: any) => {
+          const d = doc.data();
+          const name = (d.displayName || d.name || (d.email ? d.email.split('@')[0] : '')).trim();
+          if (name && !map.has(name.toLowerCase())) {
+            map.set(name.toLowerCase(), {
+              id: doc.id,
+              name,
+              role: d.role === 'admin' ? 'Leder / Admin' : d.role === 'manager' ? 'Byggeplassleder' : (d.trade || 'Håndverker'),
+              trade: d.trade
+            });
+          }
+        });
+
+        // 4. Mannskap fra `crew`
+        crewSnap.docs.forEach((doc: any) => {
+          const d = doc.data();
+          const name = (d.name || '').trim();
+          if (name && !map.has(name.toLowerCase())) {
+            map.set(name.toLowerCase(), {
+              id: doc.id,
+              name,
+              role: d.role || d.trade || 'Mannskap',
+              trade: d.trade
+            });
+          }
+        });
+
+        if (isMounted) {
+          const list = Array.from(map.values());
+          setRegisteredUsers(list);
+
+          // Forhåndsvelg første person (f.eks. innlogget bruker) hvis feltet er tomt
+          setAssignedTo(prev => {
+            if (prev) return prev;
+            return list[0]?.name || '';
+          });
+
+          // Initialiser standardfavoritter hvis brukeren ikke har valgt noen ennå
+          setFavorites(prevFavs => {
+            if (prevFavs.length === 0 && list.length > 0) {
+              const seedFavs = list.slice(0, 4).map(p => p.name);
+              try {
+                localStorage.setItem('ks_task_favorite_assignees', JSON.stringify(seedFavs));
+              } catch {}
+              return seedFavs;
+            }
+            return prevFavs;
+          });
+        }
+      } catch (err) {
+        console.warn('Kunne ikke hente registrerte personer:', err);
+      }
+    }
+
+    loadPersonnel();
+    return () => { isMounted = false; };
+  }, [user, activeProj]);
+
+  const handleToggleFavorite = () => {
+    const targetName = assignedTo.trim();
+    if (!targetName) return;
+
+    setFavorites(prev => {
+      let next: string[];
+      if (prev.includes(targetName)) {
+        next = prev.filter(f => f !== targetName);
+        toast.info(`«${targetName}» fjernet fra hurtigfavoritter.`);
+      } else {
+        next = [...prev, targetName];
+        toast.success(`«${targetName}» lagret som hurtigfavoritt! ⭐`);
+      }
+      try {
+        localStorage.setItem('ks_task_favorite_assignees', JSON.stringify(next));
+      } catch {}
+      return next;
+    });
+  };
+
+  const isCurrentFavorite = Boolean(assignedTo.trim() && favorites.includes(assignedTo.trim()));
+
   const handleApplyAutofill = (data: any) => {
     if (data.title) setTitle(sanitizePlainText(data.title));
     if (data.description) setDescription(sanitizePlainText(data.description));
-    if (data.assignedTo) setAssignedTo(data.assignedTo);
+    if (data.assignedTo) {
+      setAssignedTo(data.assignedTo);
+      setIsCustomPerson(false);
+    }
     if (data.priority) setPriority(data.priority);
     if (data.deadline) setDeadline(data.deadline);
     if (data.projectId && projects.some(p => p.id === data.projectId)) {
@@ -1704,15 +1854,22 @@ function InChatTaskForm({
       toast.error('Vennligst oppgi oppgavetittel');
       return;
     }
+    if (!assignedTo.trim()) {
+      toast.error('Vennligst velg eller oppgi hvem oppgaven skal tildeles til');
+      return;
+    }
 
     try {
       setIsSubmitting(true);
+      const matchedUser = registeredUsers.find(u => u.name.toLowerCase() === assignedTo.trim().toLowerCase());
+
       const newTask: Partial<ProjectTask> = {
         projectId,
         projectName: activeProj.name,
         title: title.trim(),
         description: description.trim(),
-        assignedTo,
+        assignedTo: assignedTo.trim(),
+        assignedToId: matchedUser?.id,
         priority,
         status: 'pending',
         deadline,
@@ -1829,31 +1986,101 @@ function InChatTaskForm({
         </div>
 
         <div>
-          <label className="block text-[11px] font-bold text-slate-700 mb-1">Tildel til person / fag *</label>
-          <input
-            type="text"
-            value={assignedTo}
-            onChange={(e) => setAssignedTo(e.target.value)}
-            placeholder="Navn eller rolle..."
-            className="w-full px-3 py-2 bg-slate-50 border border-slate-200 rounded-xl text-xs font-bold text-slate-900 outline-none focus:bg-white mb-1.5"
-          />
-          <div className="flex flex-wrap gap-1.5">
-            {['Ola Tømrer', 'Rørlegger Hansen', 'Elektriker Erik', 'Maler', 'Bas', 'Lærling'].map(quick => (
+          <div className="flex items-center justify-between mb-1.5">
+            <label className="block text-[11px] font-bold text-slate-700">Tildel til person / fag *</label>
+            {assignedTo.trim() && (
               <button
-                key={quick}
                 type="button"
-                onClick={() => setAssignedTo(quick)}
+                onClick={handleToggleFavorite}
                 className={cn(
-                  "px-2.5 py-1 rounded-lg text-[10px] font-bold transition-all border cursor-pointer",
-                  assignedTo === quick 
-                    ? "bg-indigo-50 text-indigo-700 border-indigo-300" 
-                    : "bg-slate-50 text-slate-600 border-slate-200 hover:bg-slate-100"
+                  "text-[10px] font-bold flex items-center gap-1 transition-all px-2 py-0.5 rounded-lg border cursor-pointer",
+                  isCurrentFavorite 
+                    ? "bg-amber-50 text-amber-800 border-amber-200 hover:bg-amber-100" 
+                    : "bg-slate-50 text-slate-500 border-slate-200 hover:bg-slate-100"
                 )}
+                title={isCurrentFavorite ? "Fjern fra hurtigfavoritter" : "Lagre som hurtigfavoritt"}
               >
-                {quick}
+                <Star size={11} className={isCurrentFavorite ? "fill-amber-400 text-amber-500" : "text-slate-400"} />
+                <span>{isCurrentFavorite ? 'I favoritter' : 'Gjør til favoritt'}</span>
               </button>
-            ))}
+            )}
           </div>
+
+          {/* 1. Nedtrekksmeny med faktisk registrerte personer */}
+          <div className="space-y-1.5 mb-2">
+            <select
+              value={registeredUsers.some(u => u.name.toLowerCase() === assignedTo.trim().toLowerCase()) ? assignedTo : (isCustomPerson ? '__custom__' : (assignedTo || ''))}
+              onChange={(e) => {
+                const val = e.target.value;
+                if (val === '__custom__') {
+                  setIsCustomPerson(true);
+                  setAssignedTo('');
+                } else {
+                  setIsCustomPerson(false);
+                  setAssignedTo(val);
+                }
+              }}
+              className="w-full px-3 py-2.5 bg-slate-50 border border-slate-200 rounded-xl text-xs font-bold text-slate-900 outline-none focus:bg-white focus:border-indigo-400 transition-all cursor-pointer"
+            >
+              {registeredUsers.length === 0 ? (
+                <option value="" disabled>Laster registrerte personer...</option>
+              ) : (
+                <>
+                  <option value="" disabled>-- Velg registrert person / team --</option>
+                  {registeredUsers.map(person => (
+                    <option key={person.id} value={person.name}>
+                      👤 {person.name} {person.role ? `· ${person.role}` : ''}
+                    </option>
+                  ))}
+                  <option value="__custom__">✏️ Annen person / Ekstern håndverker (Fritekst)...</option>
+                </>
+              )}
+            </select>
+
+            {/* Fritekstfelt for ekstern eller manuell inntasting */}
+            {(isCustomPerson || (!registeredUsers.some(u => u.name.toLowerCase() === assignedTo.trim().toLowerCase()) && assignedTo)) && (
+              <div className="relative animate-in fade-in slide-in-from-top-1 duration-150">
+                <input
+                  type="text"
+                  value={assignedTo}
+                  onChange={(e) => setAssignedTo(e.target.value)}
+                  placeholder="Skriv inn navn på håndverker eller ekstern UE..."
+                  className="w-full px-3 py-2 bg-white border border-indigo-200 rounded-xl text-xs font-bold text-slate-900 outline-none focus:ring-2 focus:ring-indigo-100"
+                  autoFocus={isCustomPerson}
+                />
+              </div>
+            )}
+          </div>
+
+          {/* 2. Hurtigalternativer: Faktiske favoritter */}
+          {favorites.length > 0 && (
+            <div className="space-y-1.5 pt-0.5">
+              <span className="text-[10px] font-bold text-slate-400 uppercase tracking-wider flex items-center gap-1">
+                <Star size={10} className="fill-amber-400 text-amber-500" />
+                Hurtigfavoritter
+              </span>
+              <div className="flex flex-wrap gap-1.5">
+                {favorites.map(quick => (
+                  <button
+                    key={quick}
+                    type="button"
+                    onClick={() => {
+                      setAssignedTo(quick);
+                      setIsCustomPerson(false);
+                    }}
+                    className={cn(
+                      "px-2.5 py-1 rounded-lg text-[10px] font-bold transition-all border cursor-pointer flex items-center gap-1",
+                      assignedTo === quick 
+                        ? "bg-indigo-50 text-indigo-700 border-indigo-300 shadow-xs" 
+                        : "bg-slate-50 text-slate-600 border-slate-200 hover:bg-slate-100"
+                    )}
+                  >
+                    <span>{quick}</span>
+                  </button>
+                ))}
+              </div>
+            </div>
+          )}
         </div>
 
         <div className="grid grid-cols-1 sm:grid-cols-2 gap-3">
