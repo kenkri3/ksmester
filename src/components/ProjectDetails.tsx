@@ -1158,26 +1158,340 @@ export default function ProjectDetails({ project, onBack, onShare, onStartCheckl
       )}
 
       {/* 6. ANDRE FANER */}
-      {activeTab === 'daily_log' && (
-        <div className="bg-white p-6 sm:p-8 rounded-3xl border border-slate-200 shadow-xs space-y-6">
-          <div className="flex flex-col sm:flex-row justify-between items-start sm:items-center gap-4">
-            <div>
-              <span className="text-xs font-black uppercase tracking-wider text-electric-600">Byggherreforskriften § 15 & NS 8406</span>
-              <h3 className="text-xl font-black text-navy-900 mt-1">Automatisk Byggedagbok</h3>
-              <p className="text-xs text-slate-500">Sanntids værdata fra Yr.no, mannskapslister og daglige notater.</p>
+      {activeTab === 'daily_log' && (() => {
+        const todayStr = new Date().toISOString().split('T')[0];
+        const todayLog = projectDailyLogs.find(l => l.date === todayStr);
+        const olderLogs = projectDailyLogs.filter(l => l.date !== todayStr);
+        const totalLoggedHours = projectTimeEntries.reduce((sum, t) => sum + (Number(t.hours) || 0), 0) || 
+          projectDailyLogs.reduce((sum, l) => sum + (Number(l.totalHoursWorked) || 0), 0);
+        const todayTimeEntries = projectTimeEntries.filter(t => t.date === todayStr || t.date?.startsWith(todayStr));
+        const todayHours = todayTimeEntries.reduce((sum, t) => sum + (Number(t.hours) || 0), 0) || (todayLog ? Number(todayLog.totalHoursWorked) || 0 : 0);
+
+        return (
+          <div className="space-y-6">
+            {/* Hovedkort & Toppfelt */}
+            <div className="bg-white p-6 sm:p-8 rounded-3xl border border-slate-200/90 shadow-sm space-y-6">
+              <div className="flex flex-col sm:flex-row justify-between items-start sm:items-center gap-4">
+                <div>
+                  <div className="flex items-center gap-2 mb-1">
+                    <span className="inline-flex items-center gap-1.5 px-2.5 py-0.5 rounded-full bg-electric-50 border border-electric-200/80 text-electric-700 text-[10px] font-black uppercase tracking-wider">
+                      <ShieldCheck size={12} className="text-electric-600" />
+                      Byggherreforskriften § 15 & NS 8406
+                    </span>
+                    <span className="inline-flex items-center gap-1 px-2 py-0.5 rounded-full bg-emerald-50 border border-emerald-200/70 text-emerald-700 text-[10px] font-bold">
+                      <span className="w-1.5 h-1.5 rounded-full bg-emerald-500 animate-pulse" />
+                      Yr.no værsynk aktiv
+                    </span>
+                  </div>
+                  <h3 className="text-xl sm:text-2xl font-black text-navy-900 tracking-tight">
+                    Automatisk Byggedagbok & Timeliste
+                  </h3>
+                  <p className="text-xs text-slate-500 mt-0.5">
+                    Sanntids værdata fra Yr.no, timeføring og hendelseslogg for {project.name}.
+                  </p>
+                </div>
+                <div className="flex items-center gap-2.5 flex-wrap">
+                  <button
+                    onClick={handleCompileTodayLog}
+                    disabled={isCompilingDailyLog}
+                    className="px-4 py-2.5 bg-slate-100 hover:bg-slate-200/80 text-slate-700 rounded-xl text-xs font-bold transition-all flex items-center gap-2 cursor-pointer disabled:opacity-50"
+                    title="Synkroniser Yr-vær og dagens timer"
+                  >
+                    <RefreshCw size={14} className={isCompilingDailyLog ? "animate-spin text-electric-600" : ""} />
+                    <span>{isCompilingDailyLog ? 'Synkroniserer...' : 'Synk Yr-vær & dagbok'}</span>
+                  </button>
+                  <button
+                    onClick={() => setIsDailyLogOpen(true)}
+                    className="px-5 py-2.5 bg-gradient-to-r from-electric-500 to-electric-400 text-white rounded-xl text-xs font-black shadow-purple-cta flex items-center gap-2 hover:opacity-95 transition-all cursor-pointer"
+                  >
+                    <Plus size={15} />
+                    <span>+ Åpne full dagbok / Dikter</span>
+                  </button>
+                </div>
+              </div>
+
+              {/* Nøkkeltall / Metrikker */}
+              <div className="grid grid-cols-2 sm:grid-cols-4 gap-3 pt-1">
+                <div className="p-4 bg-slate-50 rounded-2xl border border-slate-200/80">
+                  <span className="text-[10px] font-black uppercase tracking-wider text-slate-400 block">Totalt førte timer</span>
+                  <div className="text-2xl font-black text-navy-900 mt-1 flex items-baseline gap-1">
+                    {totalLoggedHours} <span className="text-xs font-bold text-slate-500">timer</span>
+                  </div>
+                </div>
+                <div className="p-4 bg-slate-50 rounded-2xl border border-slate-200/80">
+                  <span className="text-[10px] font-black uppercase tracking-wider text-slate-400 block">Dagsrapporter</span>
+                  <div className="text-2xl font-black text-navy-900 mt-1 flex items-baseline gap-1">
+                    {projectDailyLogs.length} <span className="text-xs font-bold text-slate-500">dager</span>
+                  </div>
+                </div>
+                <div className="p-4 bg-sky-50/70 rounded-2xl border border-sky-200/80">
+                  <span className="text-[10px] font-black uppercase tracking-wider text-sky-700 block">Timer i dag</span>
+                  <div className="text-2xl font-black text-sky-950 mt-1 flex items-baseline gap-1">
+                    {todayHours} <span className="text-xs font-bold text-sky-600">t ({todayTimeEntries.length} føringer)</span>
+                  </div>
+                </div>
+                <div className="p-4 bg-emerald-50/70 rounded-2xl border border-emerald-200/80">
+                  <span className="text-[10px] font-black uppercase tracking-wider text-emerald-700 block">Lovpålagt status</span>
+                  <div className="text-xs font-bold text-emerald-900 mt-2 flex items-center gap-1.5">
+                    <CheckCircle2 size={15} className="text-emerald-600 shrink-0" />
+                    <span>§ 15 & NS 8406 aktiv</span>
+                  </div>
+                </div>
+              </div>
             </div>
-            <button
-              onClick={() => setIsDailyLogOpen(true)}
-              className="px-5 py-2.5 bg-gradient-to-r from-electric-500 to-electric-400 text-white rounded-xl text-xs font-black shadow-purple-cta"
-            >
-              + Åpne dagbok / Dikter
-            </button>
+
+            {/* Dagens Byggedagbok (Fremhevet Sanntidskort) */}
+            <div className="bg-white p-6 sm:p-8 rounded-3xl border border-slate-200/90 shadow-sm space-y-4">
+              <div className="flex flex-col sm:flex-row justify-between items-start sm:items-center gap-3 pb-3 border-b border-slate-100">
+                <div className="flex items-center gap-3">
+                  <div className="w-10 h-10 rounded-2xl bg-sky-50 border border-sky-100 flex items-center justify-center text-sky-600">
+                    <CloudSun size={20} />
+                  </div>
+                  <div>
+                    <div className="flex items-center gap-2">
+                      <h4 className="text-base font-black text-navy-950">Dagens Byggedagbok</h4>
+                      <span className="px-2 py-0.5 bg-slate-100 text-slate-700 rounded-md text-[11px] font-bold">
+                        {formatDate(todayStr)}
+                      </span>
+                    </div>
+                    <p className="text-xs text-slate-500">
+                      Oppdateres automatisk ved tale, timeføring og Yr.no værsynk
+                    </p>
+                  </div>
+                </div>
+
+                {todayLog && (
+                  <div className="flex items-center gap-2">
+                    <button
+                      onClick={() => handleDownloadDailyLogPdf(todayLog)}
+                      className="inline-flex items-center gap-1.5 px-3 py-1.5 bg-slate-100 hover:bg-slate-200 text-slate-700 rounded-xl text-xs font-bold transition-all cursor-pointer"
+                    >
+                      <FileDown size={13} />
+                      <span>Last ned PDF</span>
+                    </button>
+                    <button
+                      onClick={() => setIsDailyLogOpen(true)}
+                      className="inline-flex items-center gap-1.5 px-3 py-1.5 bg-electric-50 hover:bg-electric-100 text-electric-700 rounded-xl text-xs font-bold transition-all cursor-pointer"
+                    >
+                      <ExternalLink size={13} />
+                      <span>Åpne editor</span>
+                    </button>
+                  </div>
+                )}
+              </div>
+
+              {todayLog || todayTimeEntries.length > 0 ? (
+                <div className="space-y-4 pt-1">
+                  {/* Vær & Bemanningsbrikke */}
+                  <div className="grid grid-cols-1 md:grid-cols-3 gap-3">
+                    <div className="p-3.5 rounded-2xl bg-slate-50 border border-slate-200/70 space-y-1">
+                      <span className="text-[10px] font-black uppercase tracking-wider text-slate-400 block flex items-center gap-1">
+                        <CloudSun size={12} className="text-amber-500" /> Værforhold (Yr.no)
+                      </span>
+                      <p className="text-xs font-bold text-navy-900">
+                        {todayLog?.weatherCondition || 'Opphold / Varierende skydekke'}
+                      </p>
+                      <p className="text-[11px] text-slate-500">
+                        {todayLog?.temperatureMin !== undefined ? `${todayLog.temperatureMin}°C til ${todayLog.temperatureMax}°C` : 'Temperatursynk aktiv'} • {todayLog?.windSpeedMax || 3} m/s vind
+                      </p>
+                    </div>
+
+                    <div className="p-3.5 rounded-2xl bg-slate-50 border border-slate-200/70 space-y-1">
+                      <span className="text-[10px] font-black uppercase tracking-wider text-slate-400 block flex items-center gap-1">
+                        <Users size={12} className="text-electric-500" /> Bemanning & Håndverkere
+                      </span>
+                      <div className="flex flex-wrap gap-1 mt-1">
+                        {todayLog?.crewMembers && todayLog.crewMembers.length > 0 ? (
+                          todayLog.crewMembers.map((member, mIdx) => (
+                            <span key={mIdx} className="px-2 py-0.5 bg-white border border-slate-200 rounded-md text-[11px] font-bold text-slate-700">
+                              {member}
+                            </span>
+                          ))
+                        ) : todayTimeEntries.length > 0 ? (
+                          Array.from(new Set(todayTimeEntries.map(t => t.userName))).map((name, nIdx) => (
+                            <span key={nIdx} className="px-2 py-0.5 bg-white border border-slate-200 rounded-md text-[11px] font-bold text-slate-700">
+                              {name}
+                            </span>
+                          ))
+                        ) : (
+                          <span className="text-xs text-slate-500 italic">Ingen registrert ennå</span>
+                        )}
+                      </div>
+                    </div>
+
+                    <div className="p-3.5 rounded-2xl bg-slate-50 border border-slate-200/70 space-y-1">
+                      <span className="text-[10px] font-black uppercase tracking-wider text-slate-400 block flex items-center gap-1">
+                        <Clock size={12} className="text-emerald-500" /> Førte timer i dag
+                      </span>
+                      <p className="text-xs font-bold text-emerald-800">
+                        {todayHours} timer bokført
+                      </p>
+                      <p className="text-[11px] text-slate-500">
+                        Oppdatert i prosjektregnskapet
+                      </p>
+                    </div>
+                  </div>
+
+                  {/* Dagens Loggnotater */}
+                  <div className="p-4 rounded-2xl bg-slate-50/70 border border-slate-200/80 space-y-2">
+                    <span className="text-[10px] font-black uppercase tracking-wider text-slate-400 block">
+                      Daglige notater og arbeidsutførelse:
+                    </span>
+                    <div className="text-xs text-slate-700 font-medium leading-relaxed whitespace-pre-line">
+                      {todayLog?.generalNotes || (todayLog as any)?.note || (todayTimeEntries.length > 0 ? todayTimeEntries.map(t => `• ${t.userName}: ${t.hours}t – ${t.description}`).join('\n') : 'Ingen notater ført ennå.')}
+                    </div>
+                  </div>
+                </div>
+              ) : (
+                <div className="p-8 rounded-2xl bg-slate-50 border border-dashed border-slate-200 text-center space-y-3">
+                  <div className="w-12 h-12 rounded-2xl bg-white border border-slate-200 mx-auto flex items-center justify-center text-slate-400 shadow-xs">
+                    <CloudSun size={24} className="text-electric-500" />
+                  </div>
+                  <div>
+                    <h5 className="text-sm font-bold text-navy-900">Ingen byggedagbok opprettet for i dag ennå</h5>
+                    <p className="text-xs text-slate-500 max-w-md mx-auto mt-1">
+                      Før timer med MesterAI (f.eks: &laquo;Før 7.5t tømrerarbeid&raquo; over), eller trykk under for å hente værdata og forhåndsutfylle dagens rapport.
+                    </p>
+                  </div>
+                  <button
+                    onClick={handleCompileTodayLog}
+                    disabled={isCompilingDailyLog}
+                    className="inline-flex items-center gap-2 px-4 py-2 bg-gradient-to-r from-electric-500 to-electric-400 text-white rounded-xl text-xs font-bold shadow-purple-cta hover:opacity-95 transition-all cursor-pointer disabled:opacity-50"
+                  >
+                    <Plus size={14} />
+                    <span>{isCompilingDailyLog ? 'Oppretter...' : 'Opprett dagens byggedagbok nå'}</span>
+                  </button>
+                </div>
+              )}
+            </div>
+
+            {/* Spesifiserte Timeføringer (Timegrunnlag) */}
+            <div className="bg-white p-6 sm:p-8 rounded-3xl border border-slate-200/90 shadow-sm space-y-4">
+              <div className="flex items-center justify-between pb-3 border-b border-slate-100">
+                <div className="flex items-center gap-2.5">
+                  <div className="w-9 h-9 rounded-xl bg-emerald-50 border border-emerald-100 flex items-center justify-center text-emerald-600">
+                    <Clock size={18} />
+                  </div>
+                  <div>
+                    <h4 className="text-base font-black text-navy-950">Spesifisert Timeføringslogg</h4>
+                    <p className="text-xs text-slate-500">Oversikt over alle bokførte timer på prosjektet</p>
+                  </div>
+                </div>
+                <span className="text-xs font-bold text-slate-500">
+                  {projectTimeEntries.length} registreringer
+                </span>
+              </div>
+
+              {projectTimeEntries.length > 0 ? (
+                <div className="divide-y divide-slate-100 overflow-x-auto">
+                  {projectTimeEntries.map((entry, idx) => (
+                    <div key={entry.id || idx} className="py-3 flex items-center justify-between gap-4 text-xs">
+                      <div className="flex items-center gap-3 min-w-0">
+                        <div className="w-8 h-8 rounded-xl bg-slate-100 flex items-center justify-center text-slate-600 font-bold shrink-0">
+                          {entry.userName?.charAt(0) || 'H'}
+                        </div>
+                        <div className="min-w-0">
+                          <div className="flex items-center gap-2">
+                            <span className="font-bold text-navy-900 truncate">{entry.userName || 'Håndverker'}</span>
+                            <span className="px-1.5 py-0.5 bg-slate-100 text-slate-600 rounded text-[10px] font-semibold">
+                              {entry.category || 'arbeid'}
+                            </span>
+                            <span className="text-[11px] text-slate-400">{formatDate(entry.date)}</span>
+                          </div>
+                          <p className="text-[11px] text-slate-600 truncate mt-0.5">
+                            {entry.description || 'Ordinært arbeid'}
+                          </p>
+                        </div>
+                      </div>
+                      <div className="text-right shrink-0">
+                        <span className="font-black text-sm text-navy-950 block">{entry.hours} timer</span>
+                        <span className="text-[10px] text-emerald-600 font-bold flex items-center justify-end gap-1">
+                          <CheckCircle2 size={10} /> Bokført
+                        </span>
+                      </div>
+                    </div>
+                  ))}
+                </div>
+              ) : (
+                <div className="p-6 text-center text-xs text-slate-400 italic">
+                  Ingen spesifiserte timeføringer registrert på dette prosjektet ennå.
+                </div>
+              )}
+            </div>
+
+            {/* Historiske Dagsrapporter (Arkiv) */}
+            {olderLogs.length > 0 && (
+              <div className="bg-white p-6 sm:p-8 rounded-3xl border border-slate-200/90 shadow-sm space-y-4">
+                <div className="flex items-center justify-between pb-3 border-b border-slate-100">
+                  <div className="flex items-center gap-2.5">
+                    <div className="w-9 h-9 rounded-xl bg-purple-50 border border-purple-100 flex items-center justify-center text-electric-600">
+                      <Calendar size={18} />
+                    </div>
+                    <div>
+                      <h4 className="text-base font-black text-navy-950">Historiske Byggedagbøker</h4>
+                      <p className="text-xs text-slate-500">Tidligere dagsrapporter arkivert iht. Byggherreforskriften</p>
+                    </div>
+                  </div>
+                  <span className="text-xs font-bold text-slate-500">{olderLogs.length} dagsrapporter</span>
+                </div>
+
+                <div className="space-y-3">
+                  {olderLogs.map((log) => (
+                    <div key={log.id} className="p-4 rounded-2xl bg-slate-50 border border-slate-200/80 flex flex-col sm:flex-row justify-between items-start sm:items-center gap-3">
+                      <div className="space-y-1 min-w-0">
+                        <div className="flex items-center gap-2 flex-wrap">
+                          <span className="text-xs font-bold text-navy-900">{formatDate(log.date)}</span>
+                          <span className="px-2 py-0.5 bg-white border border-slate-200 rounded-md text-[10px] font-bold text-slate-600">
+                            {log.weatherCondition || 'Opphold'}
+                          </span>
+                          <span className="text-[11px] font-bold text-electric-700">
+                            {log.totalHoursWorked || 0} timer
+                          </span>
+                          <span className="text-[11px] text-slate-500">
+                            ({log.crewMembers?.join(', ') || '1 mann'})
+                          </span>
+                        </div>
+                        {log.generalNotes && (
+                          <p className="text-xs text-slate-600 line-clamp-2">
+                            {log.generalNotes}
+                          </p>
+                        )}
+                      </div>
+                      <div className="flex items-center gap-2 shrink-0">
+                        <button
+                          onClick={() => handleDownloadDailyLogPdf(log)}
+                          className="inline-flex items-center gap-1.5 px-3 py-1.5 bg-white hover:bg-slate-100 text-slate-700 border border-slate-200 rounded-xl text-xs font-bold transition-all cursor-pointer"
+                        >
+                          <FileDown size={13} />
+                          <span>PDF</span>
+                        </button>
+                        <button
+                          onClick={() => setIsDailyLogOpen(true)}
+                          className="inline-flex items-center gap-1.5 px-3 py-1.5 bg-white hover:bg-slate-100 text-electric-700 border border-slate-200 rounded-xl text-xs font-bold transition-all cursor-pointer"
+                        >
+                          <ExternalLink size={13} />
+                          <span>Åpne</span>
+                        </button>
+                      </div>
+                    </div>
+                  ))}
+                </div>
+              </div>
+            )}
+
+            {/* Juridisk beskyttelse info-banner */}
+            <div className="p-4 sm:p-5 bg-electric-50/60 border border-electric-200 rounded-2xl text-xs text-navy-900 leading-relaxed space-y-1">
+              <div className="flex items-center gap-2 font-bold text-electric-800">
+                <ShieldCheck size={16} />
+                <span>Juridisk forankring: Byggherreforskriften § 15 & NS 8406</span>
+              </div>
+              <p className="text-slate-600 text-[11px]">
+                Værforhold og bemanning dokumenteres automatisk for å beskytte bedriften mot urimelige dagbøter ved uforutsett vær eller forsinkelser. Alle dagsrapporter arkiveres i henhold til lovkrav.
+              </p>
+            </div>
           </div>
-          <div className="p-4 bg-electric-50/60 border border-electric-200 rounded-2xl text-xs text-navy-900 leading-relaxed">
-            <strong>Juridisk beskyttelse:</strong> Værforhold og bemanning dokumenteres automatisk for å beskytte bedriften mot urimelige dagbøter ved uforutsett vær eller forsinkelser.
-          </div>
-        </div>
-      )}
+        );
+      })()}
 
       {activeTab === 'change_orders' && (
         <div className="space-y-6">
