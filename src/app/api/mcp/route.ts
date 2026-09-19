@@ -1,5 +1,5 @@
 import { NextRequest, NextResponse } from 'next/server';
-import { getCollectionItems, saveCollectionItem } from '@/src/lib/server/db';
+import { getCollectionItems, saveCollectionItem, updateCollectionItem, deleteCollectionItem } from '@/src/lib/server/db';
 
 /**
  * 🛠️ VikingMester Remote MCP Server (Model Context Protocol)
@@ -220,12 +220,115 @@ const MCP_TOOLS = [
       },
       required: ['prosjektId']
     }
+  },
+  {
+    name: 'hent_byggedagbok',
+    description: 'Henter historikk og notater fra elektronisk byggedagbok for et prosjekt.',
+    inputSchema: {
+      type: 'object',
+      properties: {
+        prosjektId: { type: 'string', description: 'ID eller navn på prosjektet' },
+        antall: { type: 'number', description: 'Maks antall dager som skal returneres (standard 7)' }
+      },
+      required: ['prosjektId']
+    }
+  },
+  {
+    name: 'hent_avvik',
+    description: 'Henter registrerte avvik og RUH for et prosjekt, med filter på åpne eller lukkede.',
+    inputSchema: {
+      type: 'object',
+      properties: {
+        prosjektId: { type: 'string', description: 'Valgfritt prosjekt-ID eller navn' },
+        status: { type: 'string', enum: ['open', 'closed', 'all'], description: 'Statusfilter (standard open)' }
+      }
+    }
+  },
+  {
+    name: 'hent_sja_analyser',
+    description: 'Henter liste over gjennomførte Sikker Jobb Analyser (SJA) på et prosjekt.',
+    inputSchema: {
+      type: 'object',
+      properties: {
+        prosjektId: { type: 'string', description: 'Valgfritt prosjekt-ID eller navn' },
+        antall: { type: 'number', description: 'Maks antall SJA-er som skal returneres (standard 5)' }
+      }
+    }
+  },
+  {
+    name: 'hent_endringsordrer',
+    description: 'Henter alle endringsordrer og tilleggskrav (NS 8406) for et prosjekt med beløp og godkjenningsstatus.',
+    inputSchema: {
+      type: 'object',
+      properties: {
+        prosjektId: { type: 'string', description: 'ID eller navn på prosjektet' }
+      },
+      required: ['prosjektId']
+    }
+  },
+  {
+    name: 'oppdater_oppgave',
+    description: 'Oppdaterer status på en oppgave (f.eks. fullført, pågår) eller endrer tildeling og frist.',
+    inputSchema: {
+      type: 'object',
+      properties: {
+        oppgaveId: { type: 'string', description: 'ID på oppgaven' },
+        status: { type: 'string', enum: ['pending', 'in_progress', 'completed'], description: 'Ny status' },
+        tildeltTil: { type: 'string', description: 'Ny håndverker oppgaven skal tildeles til' },
+        frist: { type: 'string', description: 'Ny frist (YYYY-MM-DD)' }
+      },
+      required: ['oppgaveId']
+    }
+  },
+  {
+    name: 'godkjenn_endringsordre',
+    description: 'Godkjenner eller avviser en endringsordre / tilleggsarbeid i systemet.',
+    inputSchema: {
+      type: 'object',
+      properties: {
+        endringsordreId: { type: 'string', description: 'ID på endringsordren' },
+        handling: { type: 'string', enum: ['godkjenn', 'avvis'], description: 'Om endringsordren godkjennes eller avvises' },
+        kommentar: { type: 'string', description: 'Begrunnelse eller kommentar til beslutningen' }
+      },
+      required: ['endringsordreId', 'handling']
+    }
+  },
+  {
+    name: 'lukk_avvik',
+    description: 'Lukker og kvitterer ut et registrert avvik/RUH når tiltaket er gjennomført.',
+    inputSchema: {
+      type: 'object',
+      properties: {
+        avvikId: { type: 'string', description: 'ID på avviket som skal lukkes' },
+        tiltakUtfort: { type: 'string', description: 'Beskrivelse av hva som ble gjort for å rette avviket' }
+      },
+      required: ['avvikId', 'tiltakUtfort']
+    }
+  },
+  {
+    name: 'slett_oppforing',
+    description: 'Sletter en feilregistrert oppføring fra systemets database (f.eks. timeføring, oppgave, notat).',
+    inputSchema: {
+      type: 'object',
+      properties: {
+        samling: { 
+          type: 'string', 
+          enum: ['tasks', 'time_entries', 'deviations', 'change_orders', 'sja_reports', 'daily_logs'], 
+          description: 'Hvilken modul/samling oppføringen tilhører' 
+        },
+        id: { type: 'string', description: 'ID på oppføringen som skal slettes' }
+      },
+      required: ['samling', 'id']
+    }
   }
 ];
 
 // ⚙️ Hjelpefunksjon for å finne prosjekt basert på ID eller navn
-async function resolveProject(projectIdOrName: string) {
+async function resolveProject(projectIdOrName?: string) {
   const projects = await getCollectionItems('projects');
+  if (!projectIdOrName || !projectIdOrName.trim()) {
+    return projects[0] || { id: 'p-default', name: 'Hovedprosjekt' };
+  }
   const cleanQuery = projectIdOrName.toLowerCase().trim();
   const match = projects.find((p: any) => 
     p.id === projectIdOrName || 
@@ -603,6 +706,120 @@ async function executeToolCall(toolName: string, args: any) {
         estimertTimeverdi: loggedLaborValue,
         fakturerbartTilNaa: baseContract + approvedChangesSum
       }, null, 2);
+    }
+
+    case 'hent_byggedagbok': {
+      const proj = await resolveProject(args.prosjektId);
+      const allLogs = await getCollectionItems('daily_logs');
+      const limit = Number(args.antall) || 7;
+      const logs = allLogs
+        .filter((l: any) => l.projectId === proj.id || l.projectName === proj.name)
+        .slice(0, limit);
+
+      if (logs.length === 0) return `Ingen byggedagboknotater funnet for «${proj.name}».`;
+      return JSON.stringify(logs.map((l: any) => ({
+        id: l.id,
+        dato: l.date,
+        vaer: l.weatherCondition,
+        bemanning: l.crewMembers || [],
+        timer: l.totalHoursWorked || 0,
+        notat: l.generalNotes
+      })), null, 2);
+    }
+
+    case 'hent_avvik': {
+      let deviations = await getCollectionItems('deviations');
+      if (args.prosjektId) {
+        const proj = await resolveProject(args.prosjektId);
+        deviations = deviations.filter((d: any) => d.projectId === proj.id || d.projectName === proj.name);
+      }
+      const statusFilter = args.status || 'open';
+      if (statusFilter !== 'all') {
+        deviations = deviations.filter((d: any) => (statusFilter === 'closed' ? d.status === 'closed' : d.status !== 'closed'));
+      }
+      if (deviations.length === 0) return 'Ingen avvik funnet som matcher kriteriene.';
+      return JSON.stringify(deviations.slice(0, 15).map((d: any) => ({
+        id: d.id,
+        prosjekt: d.projectName,
+        tittel: d.title,
+        alvorlighetsgrad: d.severity,
+        status: d.status || 'open',
+        dato: d.createdAt,
+        strakstiltak: d.immediateAction
+      })), null, 2);
+    }
+
+    case 'hent_sja_analyser': {
+      let sjas = await getCollectionItems('sja_reports');
+      if (args.prosjektId) {
+        const proj = await resolveProject(args.prosjektId);
+        sjas = sjas.filter((s: any) => s.projectId === proj.id || s.projectName === proj.name);
+      }
+      const limit = Number(args.antall) || 5;
+      if (sjas.length === 0) return 'Ingen SJA-analyser funnet.';
+      return JSON.stringify(sjas.slice(0, limit).map((s: any) => ({
+        id: s.id,
+        prosjekt: s.projectName,
+        tittel: s.title,
+        oppgave: s.task || s.description,
+        farer: s.risikoer || [],
+        tiltak: s.tiltak || [],
+        dato: s.createdAt
+      })), null, 2);
+    }
+
+    case 'hent_endringsordrer': {
+      const proj = await resolveProject(args.prosjektId);
+      const allOrders = await getCollectionItems('change_orders');
+      const orders = allOrders.filter((c: any) => c.projectId === proj.id || c.projectName === proj.name);
+      if (orders.length === 0) return `Ingen endringsordrer registrert for «${proj.name}».`;
+      return JSON.stringify(orders.map((c: any) => ({
+        id: c.id,
+        nummer: c.orderNumber || c.id,
+        tittel: c.title,
+        belopEksMva: Number(c.amount) || Number(c.belopEksMva) || 0,
+        status: c.status || 'pending',
+        fristforlengelseDager: c.delayDays || c.fristforlengelseDager || 0,
+        dato: c.createdAt
+      })), null, 2);
+    }
+
+    case 'oppdater_oppgave': {
+      const updates: any = {};
+      if (args.status) updates.status = args.status;
+      if (args.tildeltTil) updates.assignedTo = args.tildeltTil;
+      if (args.frist) updates.dueDate = args.frist;
+      if (args.prioritet) updates.priority = args.prioritet;
+      const updated = await updateCollectionItem('tasks', args.oppgaveId, updates);
+      return `✅ Oppgave «${updated.title || args.oppgaveId}» er oppdatert! Status: ${updated.status || 'oppdatert'}.`;
+    }
+
+    case 'godkjenn_endringsordre': {
+      const status = args.handling === 'avvis' ? 'rejected' : 'approved';
+      const updated = await updateCollectionItem('change_orders', args.endringsordreId, {
+        status,
+        decisionNote: args.kommentar || '',
+        decidedAt: new Date().toISOString()
+      });
+      return `📋 Endringsordre «${updated.title || args.endringsordreId}» er ${status === 'approved' ? 'godkjent ✅' : 'avvist ❌'}.`;
+    }
+
+    case 'lukk_avvik': {
+      const updated = await updateCollectionItem('deviations', args.avvikId, {
+        status: 'closed',
+        closedAt: new Date().toISOString(),
+        resolutionNote: args.tiltakUtfort
+      });
+      return `✅ Avvik «${updated.title || args.avvikId}» er nå kvittert ut og lukket! Utført tiltak: ${args.tiltakUtfort}.`;
+    }
+
+    case 'slett_oppforing': {
+      const allowed = ['tasks', 'time_entries', 'deviations', 'change_orders', 'sja_reports', 'daily_logs', 'offers'];
+      if (!allowed.includes(args.samling)) {
+        throw new Error(`Ugyldig samling for sletting. Tillatte moduler: ${allowed.join(', ')}`);
+      }
+      await deleteCollectionItem(args.samling, args.id);
+      return `🗑️ Oppføring med ID ${args.id} er permanent slettet fra ${args.samling}.`;
     }
 
     default:
