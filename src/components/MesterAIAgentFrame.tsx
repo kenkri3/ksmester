@@ -129,7 +129,6 @@ export default function MesterAIAgentFrame({
           src={AGENT_LANDING_URL}
           onLoad={() => setIsLoading(false)}
           allow="microphone; camera; clipboard-write; autoplay; fullscreen"
-          sandbox="allow-scripts allow-same-origin allow-forms allow-popups allow-modals"
           title="MesterAI Prosjektpilot"
           className="w-full h-full border-0 block"
           style={{ minHeight: '100%', height: '100%' }}
