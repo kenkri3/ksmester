@@ -854,10 +854,10 @@ export default function MesterAIChat({
       const recognition = new SpeechRecognition();
       recognition.lang = 'nb-NO';
       recognition.continuous = false;
-      recognition.interimResults = true;
+      recognition.interimResults = false;
       recognitionRef.current = recognition;
 
-      let capturedText = '';
+      let capturedSpeech = '';
 
       recognition.onstart = () => {
         setIsListeningMic(true);
@@ -865,18 +865,11 @@ export default function MesterAIChat({
       };
 
       recognition.onresult = (event: any) => {
-        let currentInterim = '';
-        for (let i = event.resultIndex; i < event.results.length; ++i) {
-          const trans = event.results[i][0]?.transcript || '';
-          if (event.results[i].isFinal) {
-            capturedText += trans;
-          } else {
-            currentInterim += trans;
-          }
+        let currentText = '';
+        for (let i = 0; i < event.results.length; ++i) {
+          currentText += event.results[i][0]?.transcript || '';
         }
-        if (!capturedText && currentInterim) {
-          capturedText = currentInterim;
-        }
+        capturedSpeech = currentText.trim();
       };
 
       recognition.onerror = (event: any) => {
@@ -892,7 +885,7 @@ export default function MesterAIChat({
       recognition.onend = () => {
         setIsListeningMic(false);
         recognitionRef.current = null;
-        const finalCmd = capturedText.trim();
+        const finalCmd = capturedSpeech.trim();
         if (finalCmd) {
           toast.success(`Oppfattet: "${finalCmd}"`);
           if (typeof window !== 'undefined') {

@@ -92,6 +92,28 @@ export default function MesterAIAgentFrame({
 
   const messagesEndRef = useRef<HTMLDivElement>(null);
   const recognitionRef = useRef<any>(null);
+  const textareaRef = useRef<HTMLTextAreaElement>(null);
+
+  // 📐 Juster høyden på chattefeltet automatisk etter innholdet (fra 1 linje opp til ca. 5 linjer)
+  useEffect(() => {
+    if (textareaRef.current) {
+      textareaRef.current.style.height = 'auto';
+      const scrollH = textareaRef.current.scrollHeight;
+      const targetH = Math.min(Math.max(scrollH, 42), 135);
+      textareaRef.current.style.height = `${targetH}px`;
+    }
+  }, [inputVal]);
+
+  const handleKeyDown = (e: React.KeyboardEvent<HTMLTextAreaElement>) => {
+    // På desktop: Enter sender meldingen, Shift+Enter gir ny linje.
+    // På mobil: Enter gir ny linje slik at man kan liste punkter, og Send-knappen sender.
+    if (e.key === 'Enter' && !e.shiftKey) {
+      if (typeof window !== 'undefined' && window.innerWidth >= 768) {
+        e.preventDefault();
+        handleSendMessage(inputVal);
+      }
+    }
+  };
 
   useEffect(() => {
     try {
@@ -115,6 +137,10 @@ export default function MesterAIAgentFrame({
       }
     ];
     setMessages(fresh);
+    setInputVal('');
+    if (textareaRef.current) {
+      textareaRef.current.style.height = '42px';
+    }
     toast.success('Samtalesession nullstilt');
   };
 
@@ -130,6 +156,9 @@ export default function MesterAIAgentFrame({
 
     setMessages(prev => [...prev, userMsg]);
     setInputVal('');
+    if (textareaRef.current) {
+      textareaRef.current.style.height = '42px';
+    }
     setIsLoading(true);
 
     try {
@@ -222,15 +251,21 @@ export default function MesterAIAgentFrame({
       recognition.interimResults = false;
       recognition.maxAlternatives = 1;
 
+      const baseText = inputVal.trim();
+
       recognition.onstart = () => {
         setIsListeningMic(true);
         toast.info('🎙️ Lytter... Snakk inn instruksen');
       };
 
       recognition.onresult = (event: any) => {
-        const transcript = event.results[0][0].transcript;
-        if (transcript) {
-          setInputVal(prev => prev ? `${prev} ${transcript}` : transcript);
+        let currentText = '';
+        for (let i = 0; i < event.results.length; ++i) {
+          currentText += event.results[i][0]?.transcript || '';
+        }
+        const capturedSpeech = currentText.trim();
+        if (capturedSpeech) {
+          setInputVal(baseText ? `${baseText} ${capturedSpeech}` : capturedSpeech);
         }
       };
 
@@ -258,12 +293,12 @@ export default function MesterAIAgentFrame({
       .replace(/\n[ \t]*[•●][ \t]*/g, '\n- ');
 
     return (
-      <div className="text-slate-800 leading-relaxed font-sans text-xs sm:text-sm">
+      <div className="text-slate-800 leading-relaxed font-sans text-[13.5px] sm:text-sm">
         <ReactMarkdown
           remarkPlugins={[remarkGfm]}
           components={{
             p: ({ children }) => (
-              <p className="text-xs sm:text-sm text-slate-800 leading-relaxed my-1.5 first:mt-0 last:mb-0">
+              <p className="text-[13.5px] sm:text-sm text-slate-800 leading-relaxed my-1.5 first:mt-0 last:mb-0">
                 {children}
               </p>
             ),
@@ -278,37 +313,37 @@ export default function MesterAIAgentFrame({
               </em>
             ),
             ul: ({ children }) => (
-              <ul className="space-y-1 my-1.5 pl-4 list-disc text-xs sm:text-sm text-slate-800">
+              <ul className="space-y-1.5 my-2 pl-4 list-disc text-[13.5px] sm:text-sm text-slate-800">
                 {children}
               </ul>
             ),
             ol: ({ children }) => (
-              <ol className="list-decimal space-y-1 my-1.5 pl-5 text-xs sm:text-sm text-slate-800 font-medium">
+              <ol className="list-decimal space-y-1.5 my-2 pl-5 text-[13.5px] sm:text-sm text-slate-800 font-medium">
                 {children}
               </ol>
             ),
             li: ({ children }) => (
-              <li className="text-xs sm:text-sm text-slate-800 leading-relaxed">
+              <li className="text-[13.5px] sm:text-sm text-slate-800 leading-relaxed">
                 {children}
               </li>
             ),
             h1: ({ children }) => (
-              <h3 className="text-sm sm:text-base font-black text-navy-950 mt-2 mb-1 pb-1 border-b border-slate-100">
+              <h3 className="text-sm sm:text-base font-black text-navy-950 mt-2.5 mb-1 pb-1 border-b border-slate-100">
                 {children}
               </h3>
             ),
             h2: ({ children }) => (
-              <h4 className="text-xs sm:text-sm font-black text-electric-800 mt-2 mb-1">
+              <h4 className="text-[13.5px] sm:text-sm font-black text-electric-800 mt-2 mb-1">
                 {children}
               </h4>
             ),
             h3: ({ children }) => (
-              <h5 className="text-xs sm:text-sm font-bold text-navy-950 mt-1.5 mb-0.5">
+              <h5 className="text-[13px] sm:text-sm font-bold text-navy-950 mt-1.5 mb-0.5">
                 {children}
               </h5>
             ),
             blockquote: ({ children }) => (
-              <blockquote className="border-l-4 border-electric-500 bg-electric-50/70 pl-3 py-1.5 my-1.5 rounded-r-xl text-xs text-navy-950 font-medium">
+              <blockquote className="border-l-4 border-electric-500 bg-electric-50/70 pl-3 py-1.5 my-1.5 rounded-r-xl text-xs sm:text-[13px] text-navy-950 font-medium">
                 {children}
               </blockquote>
             )
@@ -467,23 +502,28 @@ export default function MesterAIAgentFrame({
             e.preventDefault();
             handleSendMessage(inputVal);
           }}
-          className="flex items-center gap-2 max-w-4xl mx-auto w-full"
+          className="flex items-end gap-2 max-w-4xl mx-auto w-full"
         >
-          <div className="relative flex-1">
-            <input 
-              type="text"
+          {/* Flerlinjers tekstfelt som vokser automatisk opp til ca 5 linjer */}
+          <div className="relative flex-1 bg-slate-50 border border-slate-200 focus-within:bg-white focus-within:border-electric-500 focus-within:ring-2 focus-within:ring-electric-500/20 rounded-2xl transition-all shadow-xs flex items-end">
+            <textarea
+              ref={textareaRef}
+              rows={1}
               value={inputVal}
               onChange={(e) => setInputVal(e.target.value)}
-              placeholder="Skriv instruks (f.eks. før timer, sjekk TEK17, meld avvik)..."
+              onKeyDown={handleKeyDown}
+              placeholder="Skriv instruks eller svar til agenten..."
               disabled={isLoading}
-              className="w-full pl-3.5 pr-10 py-2 sm:py-2.5 bg-slate-50 border border-slate-200 rounded-xl text-xs sm:text-sm font-medium text-slate-900 placeholder:text-slate-400 focus:bg-white focus:border-electric-500 focus:ring-2 focus:ring-electric-500/20 transition-all shadow-xs"
+              className="w-full pl-3.5 pr-10 py-2.5 bg-transparent text-[13.5px] sm:text-sm font-medium text-slate-900 placeholder:text-slate-400 focus:outline-none resize-none max-h-34 min-h-[42px] leading-relaxed custom-scrollbar"
             />
             <button
               type="button"
               onClick={toggleMic}
               className={cn(
-                "absolute right-2.5 top-1/2 -translate-y-1/2 p-1.5 rounded-lg transition-all cursor-pointer",
-                isListeningMic ? "bg-rose-500 text-white animate-pulse" : "text-slate-400 hover:text-electric-600 active:scale-90"
+                "absolute right-2 bottom-2 p-1.5 rounded-xl transition-all cursor-pointer",
+                isListeningMic 
+                  ? "bg-rose-500 text-white animate-pulse shadow-xs" 
+                  : "text-slate-400 hover:text-electric-600 active:scale-90"
               )}
               title="Tale-til-tekst"
             >
@@ -491,12 +531,19 @@ export default function MesterAIAgentFrame({
             </button>
           </div>
 
+          {/* Send-knapp som lyser opp i lilla når det er tekst */}
           <button
             type="submit"
             disabled={isLoading || !inputVal.trim()}
-            className="flex items-center justify-center gap-1.5 px-3.5 sm:px-4 py-2 sm:py-2.5 bg-navy-950 hover:bg-navy-900 text-white rounded-xl text-xs sm:text-sm font-black disabled:opacity-40 transition-all shrink-0 shadow-sm cursor-pointer active:scale-95"
+            className={cn(
+              "flex items-center justify-center gap-1.5 h-[42px] px-3.5 sm:px-4 rounded-2xl text-xs sm:text-sm font-black transition-all shrink-0 cursor-pointer active:scale-95",
+              inputVal.trim()
+                ? "bg-gradient-to-r from-electric-600 to-electric-500 hover:from-electric-700 hover:to-electric-600 text-white shadow-md shadow-electric-600/25"
+                : "bg-slate-100 text-slate-400 border border-slate-200 cursor-not-allowed opacity-60"
+            )}
+            title="Send instruks"
           >
-            <Send size={15} />
+            <Send size={15} className={cn("transition-transform", inputVal.trim() && "translate-x-0.5 -translate-y-0.5")} />
             <span className="hidden sm:inline">Send</span>
           </button>
         </form>
