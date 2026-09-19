@@ -140,6 +140,86 @@ const MCP_TOOLS = [
       },
       required: ['emne']
     }
+  },
+  {
+    name: 'opprett_oppgave',
+    description: 'Tildeler en ny arbeidsoppgave til en håndverker på et prosjekt med frist og prioritet.',
+    inputSchema: {
+      type: 'object',
+      properties: {
+        prosjektId: { type: 'string', description: 'ID eller navn på prosjektet' },
+        tittel: { type: 'string', description: 'Kort tittel på oppgaven (f.eks. "Montere gipsplater i 2. etg")' },
+        beskrivelse: { type: 'string', description: 'Beskrivelse av hva som skal gjøres' },
+        tildeltTil: { type: 'string', description: 'Navn på håndverker som tildeles oppgaven' },
+        frist: { type: 'string', description: 'Frist i format YYYY-MM-DD' },
+        prioritet: { type: 'string', enum: ['low', 'medium', 'high', 'urgent'], description: 'Prioritet på oppgaven' }
+      },
+      required: ['prosjektId', 'tittel']
+    }
+  },
+  {
+    name: 'hent_oppgaver',
+    description: 'Henter listen over oppgaver og fremdrift, med mulighet for filtrering på prosjekt eller håndverker.',
+    inputSchema: {
+      type: 'object',
+      properties: {
+        prosjektId: { type: 'string', description: 'Valgfritt prosjekt-ID eller navn' },
+        tildeltTil: { type: 'string', description: 'Valgfritt navn på håndverker' },
+        status: { type: 'string', enum: ['pending', 'in_progress', 'completed', 'all'], description: 'Statusfilter' }
+      }
+    }
+  },
+  {
+    name: 'opprett_prosjekt',
+    description: 'Oppretter et nytt byggeprosjekt i VikingMester med prosjektkode, adresse, kunde og byggeleder.',
+    inputSchema: {
+      type: 'object',
+      properties: {
+        navn: { type: 'string', description: 'Navn på prosjektet (f.eks. "Rehabilitering Bad Storgata 12")' },
+        adresse: { type: 'string', description: 'Gateadresse og poststed for byggeplassen' },
+        byggeleder: { type: 'string', description: 'Navn på prosjekt- eller byggeleder' },
+        kundeNavn: { type: 'string', description: 'Navn på kunden eller tiltakshaver' },
+        kundeEpost: { type: 'string', description: 'E-postadresse til kunden' },
+        kundeTelefon: { type: 'string', description: 'Telefonnummer til kunden' }
+      },
+      required: ['navn', 'adresse']
+    }
+  },
+  {
+    name: 'opprett_tilbud',
+    description: 'Genererer et formelt tilbudsutkast eller priskalkyle for en kunde eller prosjekt.',
+    inputSchema: {
+      type: 'object',
+      properties: {
+        prosjektId: { type: 'string', description: 'ID eller navn på prosjektet (hvis knyttet til prosjekt)' },
+        kundeNavn: { type: 'string', description: 'Kundenavn' },
+        tittel: { type: 'string', description: 'Tittel på tilbudet (f.eks. "Tilbud snekkerarbeid tilbygg")' },
+        beskrivelse: { type: 'string', description: 'Beskrivelse av leveransen og forbehold' },
+        belopEksMva: { type: 'number', description: 'Totalbeløp eks mva i NOK' }
+      },
+      required: ['tittel', 'belopEksMva']
+    }
+  },
+  {
+    name: 'hent_leads',
+    description: 'Henter listen over nye ubehandlede kundehenvendelser og leads.',
+    inputSchema: {
+      type: 'object',
+      properties: {
+        antall: { type: 'number', description: 'Maks antall henvendelser som skal returneres (standard 10)' }
+      }
+    }
+  },
+  {
+    name: 'hent_okonomi_status',
+    description: 'Gir en komplett finansiell oversikt over et prosjekt: godkjente endringsordrer, førte timer, og fakturerbart beløp.',
+    inputSchema: {
+      type: 'object',
+      properties: {
+        prosjektId: { type: 'string', description: 'ID eller navn på prosjektet' }
+      },
+      required: ['prosjektId']
+    }
   }
 ];
 
@@ -374,6 +454,155 @@ async function executeToolCall(toolName: string, args: any) {
       }
       return `📐 Byggteknisk forskrift (TEK17):\n` +
         `Krav for ${args.emne}: Arbeidet må utføres i henhold til Byggforskserien og preaksepterte ytelser for å dokumentere oppfyllelse av TEK17 funksjonskrav.`;
+    }
+
+    case 'opprett_oppgave': {
+      const proj = await resolveProject(args.prosjektId);
+      const newTask = {
+        title: args.tittel,
+        description: args.beskrivelse || '',
+        projectId: proj.id,
+        projectName: proj.name,
+        assignedTo: args.tildeltTil || 'Ikke tildelt',
+        dueDate: args.frist || new Date(Date.now() + 7 * 24 * 60 * 60 * 1000).toISOString().split('T')[0],
+        priority: args.prioritet || 'medium',
+        status: 'pending',
+        createdAt: new Date().toISOString()
+      };
+      await saveCollectionItem('tasks', newTask);
+      return `✅ Ny oppgave opprettet og tildelt!\n` +
+        `• Tittel: ${newTask.title}\n` +
+        `• Prosjekt: ${proj.name}\n` +
+        `• Tildelt: ${newTask.assignedTo}\n` +
+        `• Frist: ${newTask.dueDate}\n` +
+        `• Prioritet: ${newTask.priority}`;
+    }
+
+    case 'hent_oppgaver': {
+      let tasks = await getCollectionItems('tasks');
+      if (args.prosjektId) {
+        const proj = await resolveProject(args.prosjektId);
+        tasks = tasks.filter((t: any) => t.projectId === proj.id || t.projectName === proj.name);
+      }
+      if (args.tildeltTil) {
+        const query = args.tildeltTil.toLowerCase();
+        tasks = tasks.filter((t: any) => t.assignedTo && t.assignedTo.toLowerCase().includes(query));
+      }
+      if (args.status && args.status !== 'all') {
+        tasks = tasks.filter((t: any) => t.status === args.status);
+      }
+
+      if (tasks.length === 0) {
+        return 'Ingen oppgaver funnet med de angitte kriteriene.';
+      }
+
+      return JSON.stringify(tasks.slice(0, 15).map((t: any) => ({
+        id: t.id,
+        tittel: t.title,
+        prosjekt: t.projectName,
+        tildelt: t.assignedTo,
+        frist: t.dueDate,
+        status: t.status,
+        prioritet: t.priority
+      })), null, 2);
+    }
+
+    case 'opprett_prosjekt': {
+      const newProj = {
+        name: args.navn,
+        location: args.adresse,
+        projectManager: args.byggeleder || 'Byggeleder',
+        clientName: args.kundeNavn || 'Privat / Bedrift',
+        clientEmail: args.kundeEpost || '',
+        clientPhone: args.kundeTelefon || '',
+        status: 'active',
+        stage: 'Aktiv',
+        projectCode: `P-${Date.now().toString().slice(-4)}`,
+        createdAt: new Date().toISOString()
+      };
+      await saveCollectionItem('projects', newProj);
+      return `🏗️ Nytt prosjekt registrert i VikingMester!\n` +
+        `• Prosjektnavn: ${newProj.name}\n` +
+        `• Prosjektkode: ${newProj.projectCode}\n` +
+        `• Byggeleder: ${newProj.projectManager}\n` +
+        `• Adresse: ${newProj.location}\n` +
+        `• Status: Aktiv`;
+    }
+
+    case 'opprett_tilbud': {
+      const proj = args.prosjektId ? await resolveProject(args.prosjektId) : null;
+      const newOffer = {
+        title: args.tittel,
+        description: args.beskrivelse || '',
+        projectId: proj ? proj.id : null,
+        projectName: proj ? proj.name : (args.kundeNavn || 'Forespørsel'),
+        clientName: args.kundeNavn || (proj ? proj.clientName : 'Kunde'),
+        totalAmount: Number(args.belopEksMva) || 0,
+        amount: Number(args.belopEksMva) || 0,
+        status: 'draft',
+        createdAt: new Date().toISOString()
+      };
+      await saveCollectionItem('offers', newOffer);
+      return `📄 Tilbudsutkast opprettet!\n` +
+        `• Tittel: ${newOffer.title}\n` +
+        `• Kunde/Prosjekt: ${newOffer.projectName}\n` +
+        `• Sum eks mva: kr ${newOffer.totalAmount.toLocaleString('no-NO')},-\n` +
+        `• Status: Utkast (Klar til gjennomgang og utsendelse)`;
+    }
+
+    case 'hent_leads': {
+      const allLeads = await getCollectionItems('leads');
+      const limit = Number(args.antall) || 10;
+      const recent = allLeads.slice(0, limit);
+      if (recent.length === 0) {
+        return 'Ingen henvendelser funnet i databasen.';
+      }
+      return JSON.stringify(recent.map((l: any) => ({
+        id: l.id,
+        navn: l.name || l.contactPerson || 'Ukjent',
+        bedrift: l.company || 'Privat',
+        epost: l.email || 'Ingen',
+        telefon: l.phone || 'Ingen',
+        behov: l.needs || l.message || 'Henvendelse fra nettside',
+        dato: l.createdAt || l.date || 'Nylig'
+      })), null, 2);
+    }
+
+    case 'hent_okonomi_status': {
+      const proj = await resolveProject(args.prosjektId);
+      const allTimes = await getCollectionItems('time_entries');
+      const allChanges = await getCollectionItems('change_orders');
+      const allOffers = await getCollectionItems('offers');
+
+      const projectTimes = allTimes.filter((t: any) => t.projectId === proj.id || t.projectName === proj.name);
+      const projectChanges = allChanges.filter((c: any) => c.projectId === proj.id || c.projectName === proj.name);
+      const projectOffers = allOffers.filter((o: any) => o.projectId === proj.id || o.projectName === proj.name);
+
+      const totalHours = projectTimes.reduce((sum: number, t: any) => sum + (Number(t.hours) || 0), 0);
+      const standardHourlyRate = 980;
+      const loggedLaborValue = totalHours * standardHourlyRate;
+
+      const approvedChanges = projectChanges.filter((c: any) => c.status === 'approved');
+      const approvedChangesSum = approvedChanges.reduce((sum: number, c: any) => sum + (Number(c.amount) || Number(c.belopEksMva) || 0), 0);
+
+      const pendingChanges = projectChanges.filter((c: any) => c.status === 'pending');
+      const pendingChangesSum = pendingChanges.reduce((sum: number, c: any) => sum + (Number(c.amount) || Number(c.belopEksMva) || 0), 0);
+
+      const baseContract = projectOffers[0] ? (Number(projectOffers[0].totalAmount) || Number(projectOffers[0].amount) || 0) : 0;
+
+      return JSON.stringify({
+        prosjektNavn: proj.name,
+        prosjektLeder: proj.projectManager || 'Byggeleder',
+        status: proj.stage || 'Aktiv',
+        grunnkontraktEksMva: baseContract,
+        godkjenteEndringsordrerSum: approvedChangesSum,
+        antallGodkjenteEndringsordrer: approvedChanges.length,
+        ventendeEndringsordrerSum: pendingChangesSum,
+        antallVentendeEndringsordrer: pendingChanges.length,
+        totaleTimerArbeidet: totalHours,
+        estimertTimeverdi: loggedLaborValue,
+        fakturerbartTilNaa: baseContract + approvedChangesSum
+      }, null, 2);
     }
 
     default:
