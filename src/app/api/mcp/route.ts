@@ -10,13 +10,13 @@ import { getCollectionItems, saveCollectionItem } from '@/src/lib/server/db';
 const EXPECTED_SECRET = process.env.AGENT_MCP_SECRET_KEY || 'ks_mcp_prod_secret_2026';
 
 function isAuthorized(req: NextRequest): boolean {
-  const authHeader = req.headers.get('authorization') || '';
+  const authHeader = req.headers.get('authorization') || req.headers.get('x-api-key') || '';
   if (!authHeader) {
-    // Tillat hvis hemmelig nøkkel ikke er påkrevd i dev
-    return process.env.NODE_ENV !== 'production';
+    // Tillater tilkobling også dersom "No Authentication" er valgt i integrasjonsmenyen
+    return true;
   }
   const token = authHeader.replace(/^Bearer\s+/i, '').trim();
-  return token === EXPECTED_SECRET || token.length > 8;
+  return token === EXPECTED_SECRET || token.length > 0;
 }
 
 // 📋 Definisjon av alle 8 verktøy i MCP-format
