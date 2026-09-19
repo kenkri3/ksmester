@@ -82,6 +82,7 @@ export default function MesterAIAgentFrame({
 
   const [inputVal, setInputVal] = useState('');
   const [isLoading, setIsLoading] = useState(false);
+  const [loadingStatus, setLoadingStatus] = useState<string>('MesterAI tenker og analyserer...');
   const [isListeningMic, setIsListeningMic] = useState(false);
   const [isFullscreen, setIsFullscreen] = useState(false);
   const [copiedId, setCopiedId] = useState<string | null>(null);
@@ -101,6 +102,98 @@ export default function MesterAIAgentFrame({
   const messagesEndRef = useRef<HTMLDivElement>(null);
   const recognitionRef = useRef<any>(null);
   const textareaRef = useRef<HTMLTextAreaElement>(null);
+  const loadingTimerRef = useRef<any>(null);
+
+  // 🧠 Dynamiske statusfaser tilpasset brukerens faktiske spørsmål
+  const getLoadingStages = (prompt: string): string[] => {
+    const lower = prompt.toLowerCase();
+
+    if (lower.includes('nobb') || lower.includes('pris') || lower.includes('vare') || lower.includes('kostnad') || lower.includes('materiell') || lower.includes('grossist') || lower.includes('rabatt')) {
+      return [
+        'Søker opp vareinformasjon og NOBB-priser...',
+        'Henter materialdata og kalkylegrunnlag...',
+        'Sammenstiller priser og leverandørdetaljer...'
+      ];
+    }
+
+    if (lower.includes('søk') || lower.includes('google') || lower.includes('nett') || lower.includes('tavily') || lower.includes('brave') || lower.includes('finn ut') || lower.includes('research') || lower.includes('hvem er') || lower.includes('hva er') || lower.includes('guide') || lower.includes('tønsberg') || lower.includes('reise')) {
+      return [
+        'Gjør research og undersøker på nettet...',
+        'Gjennomgår eksterne kilder og nettsider...',
+        'Sammenfatter relevant informasjon...'
+      ];
+    }
+
+    if (lower.includes('tek17') || lower.includes('forskrift') || lower.includes('standard') || lower.includes('ns 8406') || lower.includes('ns 3420') || lower.includes('våtrom') || lower.includes('membran') || lower.includes('sluk') || lower.includes('fall')) {
+      return [
+        'Slår opp i TEK17 og byggfaglige standarder...',
+        'Kontrollerer tekniske krav og toleranser...',
+        'Formulerer byggfaglig vurdering...'
+      ];
+    }
+
+    if (lower.includes('vær') || lower.includes('yr') || lower.includes('vind') || lower.includes('regn') || lower.includes('temperatur') || lower.includes('meldes')) {
+      return [
+        'Henter sanntids værdata og prognoser fra Yr...',
+        'Vurderer værforhold for byggeplassen...',
+        'Ferdigstiller væroppdatering...'
+      ];
+    }
+
+    if (lower.includes('sja') || lower.includes('sikker') || lower.includes('risiko') || lower.includes('vernetiltak') || lower.includes('hms') || lower.includes('vern') || lower.includes('farlig')) {
+      return [
+        'Vurderer faremomenter og vernetiltak...',
+        'Strukturerer sikker jobb-analysen...',
+        'Oppretter SJA i VikingMester...'
+      ];
+    }
+
+    if (lower.includes('avvik') || lower.includes('ruh') || lower.includes('skade') || lower.includes('feil') || lower.includes('mangel')) {
+      return [
+        'Behandler avvik og konsekvenser...',
+        'Klargjør korrigerende tiltak...',
+        'Logger avviket i KS-systemet...'
+      ];
+    }
+
+    if (lower.includes('time') || lower.includes('timer') || lower.includes('jobbet') || lower.includes('lønn') || lower.includes('timeliste')) {
+      return [
+        'Beregner timeforbruk og aktivitet...',
+        'Kobler mot aktivt prosjekt...',
+        'Registrerer timene i systemet...'
+      ];
+    }
+
+    if (lower.includes('dagbok') || lower.includes('byggedagbok') || lower.includes('dagsrapport') || lower.includes('logg')) {
+      return [
+        'Samler dagens aktiviteter og mannskap...',
+        'Formulerer byggedagboken iht. Byggherreforskriften...',
+        'Arkiverer dagens notat i prosjektet...'
+      ];
+    }
+
+    if (lower.includes('endring') || lower.includes('varsel') || lower.includes('tillegg') || lower.includes('ekstra') || lower.includes('krav')) {
+      return [
+        'Vurderer endringskrav og frister iht. NS 8406...',
+        'Beregner konsekvenser for tid og kost...',
+        'Utformer formell endringsordre...'
+      ];
+    }
+
+    if (lower.includes('prosjekt') || lower.includes('status') || lower.includes('fremdrift') || lower.includes('oversikt') || lower.includes('økonomi')) {
+      return [
+        'Henter prosjektstatus og sanntidsdata...',
+        'Beregner fremdrift og åpne oppgaver...',
+        'Forbereder prosjektoppsummering...'
+      ];
+    }
+
+    return [
+      'MesterAI tenker og analyserer...',
+      'Behandler oppgaven og sjekker verktøy...',
+      'Ferdigstiller svaret til deg...'
+    ];
+  };
 
   // 📐 Juster høyden på chattefeltet automatisk etter innholdet (fra 1 linje opp til ca. 5 linjer)
   useEffect(() => {
@@ -172,6 +265,23 @@ export default function MesterAIAgentFrame({
     }
     setIsLoading(true);
 
+    // 🚀 Start dynamisk statusprosess tilpasset spørsmålet
+    const stages = getLoadingStages(textToSend);
+    setLoadingStatus(stages[0]);
+
+    if (loadingTimerRef.current) {
+      clearInterval(loadingTimerRef.current);
+    }
+    let stageIdx = 0;
+    loadingTimerRef.current = setInterval(() => {
+      stageIdx++;
+      if (stageIdx < stages.length) {
+        setLoadingStatus(stages[stageIdx]);
+      } else {
+        clearInterval(loadingTimerRef.current);
+      }
+    }, 2800);
+
     try {
       const res = await fetch('/api/agent/chat', {
         method: 'POST',
@@ -210,6 +320,10 @@ export default function MesterAIAgentFrame({
       };
       setMessages(prev => [...prev, errMsg]);
     } finally {
+      if (loadingTimerRef.current) {
+        clearInterval(loadingTimerRef.current);
+        loadingTimerRef.current = null;
+      }
       setIsLoading(false);
     }
   };
@@ -524,14 +638,19 @@ export default function MesterAIAgentFrame({
         ))}
 
         {isLoading && (
-          <div className="mr-auto items-start max-w-[85%]">
-            <div className="bg-white p-3.5 rounded-2xl border border-slate-200/90 shadow-2xs flex items-center gap-3">
-              <div className="w-6 h-6 rounded-lg bg-electric-600 text-white flex items-center justify-center">
+          <div className="mr-auto items-start max-w-[88%]">
+            <div className="bg-white p-3 sm:p-3.5 rounded-2xl border border-slate-200/90 shadow-2xs flex items-center gap-3 animate-in fade-in duration-200">
+              <div className="w-7 h-7 rounded-xl bg-gradient-to-tr from-electric-600 via-indigo-600 to-purple-500 text-white flex items-center justify-center shrink-0 shadow-xs">
                 <RefreshCw size={13} className="animate-spin" />
               </div>
-              <span className="text-xs text-slate-600 font-medium animate-pulse">
-                MesterAI analyserer kalkylen, TEK17 og prosjektdata...
-              </span>
+              <div className="flex flex-col min-w-0 pr-1">
+                <span className="text-xs text-slate-800 font-semibold leading-tight animate-pulse transition-all">
+                  {loadingStatus}
+                </span>
+                <span className="text-[10px] text-slate-400 font-medium mt-0.5">
+                  MesterAI Autonom Agent
+                </span>
+              </div>
             </div>
           </div>
         )}
