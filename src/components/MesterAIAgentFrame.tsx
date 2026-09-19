@@ -245,28 +245,43 @@ export default function MesterAIAgentFrame({
 
   const toggleMic = () => {
     if (isListeningMic) {
-      recognitionRef.current?.stop();
+      if (recognitionRef.current) {
+        try {
+          recognitionRef.current.stop();
+        } catch {}
+      }
       setIsListeningMic(false);
       return;
     }
 
+    if (typeof window === 'undefined') return;
     const SpeechRecognition = (window as any).SpeechRecognition || (window as any).webkitSpeechRecognition;
     if (!SpeechRecognition) {
-      toast.error('Nettleseren støtter ikke direkte tale-til-tekst');
+      toast.error('Nettleseren støtter ikke direkte tale-til-tekst. Bruk tastatur eller diktat.');
       return;
+    }
+
+    if (recognitionRef.current) {
+      try {
+        recognitionRef.current.abort();
+      } catch {}
+      recognitionRef.current = null;
     }
 
     try {
       const recognition = new SpeechRecognition();
-      recognition.lang = 'no-NO';
+      // 'nb-NO' er den offisielle BCP-47 koden for norsk bokmål som støttes av Android Chrome og Safari
+      recognition.lang = 'nb-NO';
+      recognition.continuous = false;
       recognition.interimResults = false;
       recognition.maxAlternatives = 1;
+      recognitionRef.current = recognition;
 
-      const baseText = inputVal.trim();
+      let capturedSpeech = '';
 
       recognition.onstart = () => {
         setIsListeningMic(true);
-        toast.info('🎙️ Lytter... Snakk inn instruksen');
+        toast.info('🎙️ Lytter... Snakk inn instruksen nå');
       };
 
       recognition.onresult = (event: any) => {
@@ -274,22 +289,39 @@ export default function MesterAIAgentFrame({
         for (let i = 0; i < event.results.length; ++i) {
           currentText += event.results[i][0]?.transcript || '';
         }
-        const capturedSpeech = currentText.trim();
-        if (capturedSpeech) {
-          setInputVal(baseText ? `${baseText} ${capturedSpeech}` : capturedSpeech);
+        const speech = currentText.trim();
+        if (speech) {
+          capturedSpeech = speech;
+          setInputVal(prev => {
+            const trimmedPrev = prev.trim();
+            return trimmedPrev ? `${trimmedPrev} ${speech}` : speech;
+          });
         }
       };
 
       recognition.onerror = (event: any) => {
-        console.warn('Speech error:', event.error);
+        console.warn('Speech error in MesterAIAgentFrame:', event?.error);
+        if (event?.error === 'not-allowed') {
+          toast.error('Mikrofontilgang ble avvist. Vennligst tillat mikrofon i nettleseren.');
+        } else if (event?.error === 'no-speech') {
+          toast.info('Ingen tale registrert. Trykk på mikrofonen og snakk tydelig.');
+        } else if (event?.error === 'language-not-supported') {
+          toast.error('Norsk talegjenkjenning ikke støttet på denne enheten.');
+        }
         setIsListeningMic(false);
       };
 
       recognition.onend = () => {
         setIsListeningMic(false);
+        recognitionRef.current = null;
+        if (capturedSpeech) {
+          toast.success(`Oppfattet: "${capturedSpeech}"`);
+          if (textareaRef.current) {
+            textareaRef.current.focus();
+          }
+        }
       };
 
-      recognitionRef.current = recognition;
       recognition.start();
     } catch (err) {
       console.error('Mic error:', err);
@@ -530,14 +562,14 @@ export default function MesterAIAgentFrame({
               type="button"
               onClick={toggleMic}
               className={cn(
-                "absolute right-2 bottom-2 p-1.5 rounded-xl transition-all cursor-pointer",
+                "absolute right-2 bottom-1.5 z-10 p-2 rounded-xl transition-all cursor-pointer flex items-center justify-center",
                 isListeningMic 
-                  ? "bg-rose-500 text-white animate-pulse shadow-xs" 
-                  : "text-slate-400 hover:text-electric-600 active:scale-90"
+                  ? "bg-rose-500 text-white animate-pulse shadow-md scale-105" 
+                  : "text-slate-400 hover:text-electric-600 hover:bg-slate-100 active:scale-90"
               )}
-              title="Tale-til-tekst"
+              title={isListeningMic ? "Lytter... Trykk for å stoppe" : "Trykk for å snakke inn instruks"}
             >
-              {isListeningMic ? <MicOff size={16} /> : <Mic size={16} />}
+              {isListeningMic ? <MicOff size={17} /> : <Mic size={17} />}
             </button>
           </div>
 
