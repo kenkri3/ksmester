@@ -14,7 +14,9 @@ import {
   Check, 
   Building2,
   Bot,
-  User as UserIcon
+  User as UserIcon,
+  Camera,
+  X
 } from 'lucide-react';
 import { cn } from '@/src/lib/utils';
 import { toast } from 'sonner';
@@ -27,12 +29,16 @@ interface Message {
   content: string;
   timestamp: string;
   quickReplies?: Array<{ title: string; payload: string }>;
+  imageUrl?: string;
 }
 
 interface MesterAIAgentFrameProps {
   className?: string;
   selectedProjectName?: string;
   userName?: string;
+  userTrade?: string;
+  companyName?: string;
+  userId?: string;
   initialHeight?: string;
   initialPrompt?: string;
   onPromptHandled?: () => void;
@@ -42,6 +48,9 @@ export default function MesterAIAgentFrame({
   className,
   selectedProjectName,
   userName = 'Byggmester',
+  userTrade = 'carpenter',
+  companyName = 'VikingMester',
+  userId,
   initialHeight = 'h-full',
   initialPrompt,
   onPromptHandled
@@ -88,6 +97,12 @@ export default function MesterAIAgentFrame({
   const [copiedId, setCopiedId] = useState<string | null>(null);
   const [sessionId, setSessionId] = useState<string>(() => {
     if (typeof window !== 'undefined') {
+      if (userId && typeof userId === 'string') {
+        const cleanUid = userId.replace(/[^a-zA-Z0-9]/g, '');
+        const stableId = `vm${cleanUid}`.padEnd(13, '0').slice(0, 13);
+        localStorage.setItem('mester_agent_session_id', stableId);
+        return stableId;
+      }
       const saved = localStorage.getItem('mester_agent_session_id');
       if (saved && saved.length === 13) return saved;
       const chars = 'ABCDEFGHIJKLMNOPQRSTUVWXYZabcdefghijklmnopqrstuvwxyz0123456789';
@@ -99,10 +114,61 @@ export default function MesterAIAgentFrame({
     return 'vikingAgent13';
   });
 
+  const [attachedImage, setAttachedImage] = useState<{ url: string; preview: string; name?: string } | null>(null);
+  const [isUploadingImage, setIsUploadingImage] = useState(false);
+  const fileInputRef = useRef<HTMLInputElement>(null);
+
   const messagesEndRef = useRef<HTMLDivElement>(null);
   const recognitionRef = useRef<any>(null);
   const textareaRef = useRef<HTMLTextAreaElement>(null);
   const loadingTimerRef = useRef<any>(null);
+
+  // 📷 Bildeopplasting direkte i MesterAI-chatten
+  const handleImageSelect = async (e: React.ChangeEvent<HTMLInputElement>) => {
+    const file = e.target.files?.[0];
+    if (!file) return;
+
+    if (!file.type.startsWith('image/')) {
+      toast.error('Vennligst velg en gyldig bildefil');
+      return;
+    }
+
+    setIsUploadingImage(true);
+    toast.info('Laster opp foto for MesterAI...');
+
+    try {
+      const formData = new FormData();
+      formData.append('file', file);
+
+      const res = await fetch('/api/upload', {
+        method: 'POST',
+        body: formData
+      });
+
+      if (!res.ok) {
+        throw new Error('Kunne ikke laste opp bildet');
+      }
+
+      const data = await res.json();
+      const imageUrl = data.url;
+      const objectUrl = URL.createObjectURL(file);
+
+      setAttachedImage({
+        url: imageUrl,
+        preview: objectUrl,
+        name: file.name
+      });
+      toast.success('Bilde klart! Still et spørsmål eller send direkte til agenten.');
+    } catch (err: any) {
+      console.error('Image upload failed:', err);
+      toast.error('Feil ved bildeopplasting: ' + (err.message || 'Prøv igjen'));
+    } finally {
+      setIsUploadingImage(false);
+      if (fileInputRef.current) {
+        fileInputRef.current.value = '';
+      }
+    }
+  };
 
   // 🧠 Dynamiske statusfaser tilpasset brukerens faktiske spørsmål
   const getLoadingStages = (prompt: string): string[] => {
@@ -248,14 +314,22 @@ export default function MesterAIAgentFrame({
     toast.success('Samtalesession nullstilt');
   };
 
-  const handleSendMessage = async (textToSend: string) => {
-    if (!textToSend.trim() || isLoading) return;
+  const handleSendMessage = async (textToSend: string, imageOverride?: string) => {
+    const activeImage = imageOverride || attachedImage?.url;
+    const currentPreview = attachedImage?.preview;
+
+    if ((!textToSend.trim() && !activeImage) || isLoading) return;
+
+    setAttachedImage(null);
+
+    const userMsgText = textToSend.trim() || (activeImage ? 'Vennligst analyser dette bildet for fagmessig utførelse og TEK17.' : '');
 
     const userMsg: Message = {
       id: `u-${Date.now()}`,
       role: 'user',
-      content: textToSend.trim(),
-      timestamp: new Date().toLocaleTimeString('no-NO', { hour: '2-digit', minute: '2-digit' })
+      content: userMsgText,
+      timestamp: new Date().toLocaleTimeString('no-NO', { hour: '2-digit', minute: '2-digit' }),
+      imageUrl: currentPreview || activeImage
     };
 
     setMessages(prev => [...prev, userMsg]);
@@ -266,7 +340,13 @@ export default function MesterAIAgentFrame({
     setIsLoading(true);
 
     // 🚀 Start dynamisk statusprosess tilpasset spørsmålet
-    const stages = getLoadingStages(textToSend);
+    const stages = activeImage 
+      ? [
+          'Analyserer bildet med AI-syn og TEK17...',
+          'Sjekker detaljer, overganger og fagmessig utførelse...',
+          'Klargjør rapport og faglige observasjoner...'
+        ]
+      : getLoadingStages(userMsgText);
     setLoadingStatus(stages[0]);
 
     if (loadingTimerRef.current) {
@@ -287,10 +367,14 @@ export default function MesterAIAgentFrame({
         method: 'POST',
         headers: { 'Content-Type': 'application/json' },
         body: JSON.stringify({
-          message: textToSend.trim(),
+          message: userMsgText,
           sessionId,
           projectName: selectedProjectName,
-          userName
+          userName,
+          userTrade,
+          companyName,
+          userId,
+          imageUrl: activeImage
         })
       });
 
@@ -610,8 +694,19 @@ export default function MesterAIAgentFrame({
               )}
 
               {msg.role === 'user' ? (
-                <div className="text-xs sm:text-sm leading-relaxed whitespace-pre-wrap text-white font-medium">
-                  {msg.content}
+                <div>
+                  {msg.imageUrl && (
+                    <div className="mb-2 rounded-xl overflow-hidden border border-white/20 shadow-xs max-w-[240px]">
+                      <img 
+                        src={msg.imageUrl} 
+                        alt="Vedlagt foto" 
+                        className="w-full h-auto max-h-48 object-cover rounded-lg"
+                      />
+                    </div>
+                  )}
+                  <div className="text-xs sm:text-sm leading-relaxed whitespace-pre-wrap text-white font-medium">
+                    {msg.content}
+                  </div>
                 </div>
               ) : (
                 renderFormattedContent(msg.content)
@@ -665,6 +760,27 @@ export default function MesterAIAgentFrame({
           ? "pb-[calc(0.75rem+env(safe-area-inset-bottom,0px))] md:pb-3.5" 
           : "pb-[calc(3.85rem+env(safe-area-inset-bottom,0px))] md:pb-3.5"
       )}>
+        {/* 📷 Forhåndsvisning av vedlagt bilde */}
+        {attachedImage && (
+          <div className="flex items-center gap-2.5 p-2 bg-slate-50 rounded-xl mb-2 border border-slate-200 shadow-2xs max-w-4xl mx-auto w-full">
+            <div className="w-10 h-10 rounded-lg overflow-hidden shrink-0 border border-slate-300">
+              <img src={attachedImage.preview} alt="Forhåndsvisning" className="w-full h-full object-cover" />
+            </div>
+            <div className="flex-1 min-w-0">
+              <p className="text-xs font-bold text-slate-800 truncate">{attachedImage.name || 'Vedlagt bilde'}</p>
+              <p className="text-[10px] text-slate-500">MesterAI analyserer bildet ved sending</p>
+            </div>
+            <button
+              type="button"
+              onClick={() => setAttachedImage(null)}
+              className="p-1.5 text-slate-400 hover:text-rose-600 rounded-lg cursor-pointer"
+              title="Fjern bilde"
+            >
+              <X size={16} />
+            </button>
+          </div>
+        )}
+
         <form 
           onSubmit={(e) => {
             e.preventDefault();
@@ -672,6 +788,15 @@ export default function MesterAIAgentFrame({
           }}
           className="flex items-end gap-2 max-w-4xl mx-auto w-full"
         >
+          {/* Skjult filvelger for bilde / kamera */}
+          <input
+            type="file"
+            ref={fileInputRef}
+            onChange={handleImageSelect}
+            accept="image/*"
+            className="hidden"
+          />
+
           {/* Flerlinjers tekstfelt som vokser automatisk opp til ca 5 linjer */}
           <div className="relative flex-1 bg-slate-50 border border-slate-200 focus-within:bg-white focus-within:border-electric-500 focus-within:ring-2 focus-within:ring-electric-500/20 rounded-2xl transition-all shadow-xs flex items-end">
             <textarea
@@ -682,36 +807,53 @@ export default function MesterAIAgentFrame({
               onKeyDown={handleKeyDown}
               placeholder="Skriv instruks eller svar til agenten..."
               disabled={isLoading}
-              className="w-full pl-3.5 pr-10 py-2.5 bg-transparent text-[13.5px] sm:text-sm font-medium text-slate-900 placeholder:text-slate-400 focus:outline-none resize-none max-h-34 min-h-[42px] leading-relaxed custom-scrollbar"
+              className="w-full pl-3.5 pr-20 py-2.5 bg-transparent text-[13.5px] sm:text-sm font-medium text-slate-900 placeholder:text-slate-400 focus:outline-none resize-none max-h-34 min-h-[42px] leading-relaxed custom-scrollbar"
             />
-            <button
-              type="button"
-              onClick={toggleMic}
-              className={cn(
-                "absolute right-2 bottom-1.5 z-10 p-2 rounded-xl transition-all cursor-pointer flex items-center justify-center",
-                isListeningMic 
-                  ? "bg-rose-500 text-white animate-pulse shadow-md scale-105" 
-                  : "text-slate-400 hover:text-electric-600 hover:bg-slate-100 active:scale-90"
-              )}
-              title={isListeningMic ? "Lytter... Trykk for å stoppe" : "Trykk for å snakke inn instruks"}
-            >
-              {isListeningMic ? <MicOff size={17} /> : <Mic size={17} />}
-            </button>
+
+            {/* Knapper for kamera og mikrofon inne i feltet */}
+            <div className="absolute right-1.5 bottom-1.5 z-10 flex items-center gap-0.5">
+              <button
+                type="button"
+                onClick={() => fileInputRef.current?.click()}
+                disabled={isUploadingImage || isLoading}
+                className={cn(
+                  "p-1.5 rounded-xl transition-all cursor-pointer flex items-center justify-center text-slate-400 hover:text-electric-600 hover:bg-slate-100 active:scale-90",
+                  attachedImage && "text-electric-600 bg-electric-50 border border-electric-200",
+                  isUploadingImage && "animate-spin text-electric-600"
+                )}
+                title="Knips bilde eller legg ved foto"
+              >
+                {isUploadingImage ? <RefreshCw size={16} className="animate-spin" /> : <Camera size={16} />}
+              </button>
+              <button
+                type="button"
+                onClick={toggleMic}
+                className={cn(
+                  "p-1.5 rounded-xl transition-all cursor-pointer flex items-center justify-center",
+                  isListeningMic 
+                    ? "bg-rose-500 text-white animate-pulse shadow-md scale-105" 
+                    : "text-slate-400 hover:text-electric-600 hover:bg-slate-100 active:scale-90"
+                )}
+                title={isListeningMic ? "Lytter... Trykk for å stoppe" : "Trykk for å snakke inn instruks"}
+              >
+                {isListeningMic ? <MicOff size={16} /> : <Mic size={16} />}
+              </button>
+            </div>
           </div>
 
-          {/* Send-knapp som lyser opp i lilla når det er tekst */}
+          {/* Send-knapp som lyser opp i lilla når det er tekst eller bilde */}
           <button
             type="submit"
-            disabled={isLoading || !inputVal.trim()}
+            disabled={isLoading || (!inputVal.trim() && !attachedImage)}
             className={cn(
               "flex items-center justify-center gap-1.5 h-[42px] px-3.5 sm:px-4 rounded-2xl text-xs sm:text-sm font-black transition-all shrink-0 cursor-pointer active:scale-95",
-              inputVal.trim()
+              (inputVal.trim() || attachedImage)
                 ? "bg-gradient-to-r from-electric-600 to-electric-500 hover:from-electric-700 hover:to-electric-600 text-white shadow-md shadow-electric-600/25"
                 : "bg-slate-100 text-slate-400 border border-slate-200 cursor-not-allowed opacity-60"
             )}
             title="Send instruks"
           >
-            <Send size={15} className={cn("transition-transform", inputVal.trim() && "translate-x-0.5 -translate-y-0.5")} />
+            <Send size={15} className={cn("transition-transform", (inputVal.trim() || attachedImage) && "translate-x-0.5 -translate-y-0.5")} />
             <span className="hidden sm:inline">Send</span>
           </button>
         </form>

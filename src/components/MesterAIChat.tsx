@@ -449,7 +449,7 @@ export default function MesterAIChat({
   onPromptHandled,
   onNavigate
 }: MesterAIChatProps) {
-  const { user, isSuperAdmin, logout } = useAuth();
+  const { user, isSuperAdmin, logout, trade, company } = useAuth();
   const { t, i18n } = useTranslation();
   const isWorker = user?.role === 'worker' || user?.role === 'external_worker';
   const isAdminOrManager = isSuperAdmin || user?.role === 'admin' || user?.role === 'manager' || !user?.role;
@@ -2396,6 +2396,10 @@ export default function MesterAIChat({
                 selectedProjectName={selectedProject?.name}
                 initialPrompt={initialPrompt}
                 onPromptHandled={onPromptHandled}
+                userName={user?.displayName || user?.email || 'Byggmester'}
+                userTrade={trade || user?.trade || 'carpenter'}
+                companyName={company || user?.company || 'VikingMester'}
+                userId={user?.uid || user?.id}
                 className="h-full border-0 rounded-none shadow-none"
               />
             </div>

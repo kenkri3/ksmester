@@ -23,21 +23,48 @@ function generateSessionId(input?: string): string {
   return result;
 }
 
+const TRADE_NAMES: Record<string, string> = {
+  carpenter: 'Tømrer / Byggmester',
+  plumber: 'Rørlegger (VVS)',
+  electrician: 'Elektriker (El-installatør)',
+  mason: 'Murer / Flislegger',
+  painter: 'Malerbedrift',
+  ventilation: 'Ventilasjonstekniker',
+  earthwork: 'Maskinentreprenør / Grunnarbeid',
+  general: 'Byggmester / Totalentreprenør'
+};
+
 export async function POST(req: NextRequest) {
   try {
     const body = await req.json();
-    const { message, sessionId, projectName, userName } = body;
+    const { message, sessionId, projectName, userName, userTrade, companyName, userId, imageUrl } = body;
 
     if (!message || typeof message !== 'string') {
       return NextResponse.json({ error: 'Mangler melding' }, { status: 400 });
     }
 
-    const fbId = sessionId || generateSessionId();
+    // Stabil 13-tegns bruker-ID basert på userId dersom tilgjengelig, ellers sessionId
+    let fbId = sessionId;
+    if (userId && typeof userId === 'string') {
+      const cleanUid = userId.replace(/[^a-zA-Z0-9]/g, '');
+      fbId = `vm${cleanUid}`.padEnd(13, '0').slice(0, 13);
+    } else if (!fbId) {
+      fbId = generateSessionId();
+    }
 
-    // Berik meldingen med prosjektkontekst dersom aktivt prosjekt er valgt
-    let enrichedMessage = message;
-    if (projectName && !message.toLowerCase().includes(projectName.toLowerCase())) {
-      enrichedMessage = `[Aktivt prosjekt i VikingMester: ${projectName}]\n${message}`;
+    const tradeTitle = (userTrade && TRADE_NAMES[userTrade.toLowerCase()]) || userTrade || 'Byggmester';
+    const effectiveCompany = companyName || 'VikingMester';
+    
+    // Berik meldingen med full fagkontekst slik at agenten opererer ut fra brukerens yrkeskrav
+    let contextHeader = `[Fagkontekst: ${userName || 'Håndverker'} (${tradeTitle}) hos ${effectiveCompany}`;
+    if (projectName) {
+      contextHeader += ` | Aktivt prosjekt: ${projectName}`;
+    }
+    contextHeader += `]`;
+
+    let enrichedMessage = `${contextHeader}\n${message}`;
+    if (imageUrl) {
+      enrichedMessage += `\n[Vedlagt foto for analyse/dokumentasjon: ${imageUrl}]`;
     }
 
     const payload = {
