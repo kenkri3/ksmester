@@ -1,79 +1,254 @@
 'use client';
 
-import React, { useState, useRef } from 'react';
+import React, { useState, useRef, useEffect } from 'react';
 import { 
   Sparkles, 
   RefreshCw, 
-  ExternalLink, 
   Maximize2, 
   Minimize2, 
-  Loader2,
-  ShieldCheck,
-  Zap,
-  Building2
+  Send, 
+  Mic, 
+  MicOff, 
+  RotateCcw, 
+  Copy, 
+  Check, 
+  Building2,
+  Bot,
+  User as UserIcon
 } from 'lucide-react';
 import { cn } from '@/src/lib/utils';
+import { toast } from 'sonner';
+
+interface Message {
+  id: string;
+  role: 'user' | 'assistant';
+  content: string;
+  timestamp: string;
+  quickReplies?: Array<{ title: string; payload: string }>;
+}
 
 interface MesterAIAgentFrameProps {
   className?: string;
   selectedProjectName?: string;
+  userName?: string;
   initialHeight?: string;
 }
-
-const AGENT_LANDING_URL = 'https://agentic.botsify.com/web-bot/landing/UDuz6jJYyXeVli7LuNyWqNUJHORWZQBDZYeF3sKs';
 
 export default function MesterAIAgentFrame({
   className,
   selectedProjectName,
+  userName = 'Byggmester',
   initialHeight = 'h-full'
 }: MesterAIAgentFrameProps) {
-  const [isLoading, setIsLoading] = useState(true);
+  const [messages, setMessages] = useState<Message[]>(() => {
+    if (typeof window !== 'undefined') {
+      try {
+        const saved = sessionStorage.getItem('mester_ai_agent_history');
+        if (saved) {
+          const parsed = JSON.parse(saved);
+          if (Array.isArray(parsed) && parsed.length > 0) return parsed;
+        }
+      } catch {}
+    }
+    return [
+      {
+        id: 'welcome',
+        role: 'assistant',
+        content: `Hei! 👋 Jeg er **MesterAI Prosjektpilot**, din autonome prosjektassistent.\n\nJeg kan hjelpe deg med **timeføring, byggedagbok, SJA, avvik (RUH), endringsordrer (NS 8406)** og oppslag i **TEK17 / Byggforsk**.\n\nHva vil du at jeg skal utføre for deg i dag?`,
+        timestamp: new Date().toLocaleTimeString('no-NO', { hour: '2-digit', minute: '2-digit' }),
+        quickReplies: [
+          { title: '⏰ Før timer på prosjekt', payload: 'Jeg vil føre timer på prosjektet' },
+          { title: '🚨 Meld avvik (RUH)', payload: 'Jeg vil melde inn et nytt avvik' },
+          { title: '📝 Ny SJA-analyse', payload: 'Opprett en ny Sikker Jobb Analyse (SJA)' },
+          { title: '📐 Sjekk TEK17-krav', payload: 'Hva er kravene til fall mot sluk i TEK17 våtrom?' }
+        ]
+      }
+    ];
+  });
+
+  const [inputVal, setInputVal] = useState('');
+  const [isLoading, setIsLoading] = useState(false);
+  const [isListeningMic, setIsListeningMic] = useState(false);
   const [isFullscreen, setIsFullscreen] = useState(false);
-  const [iframeKey, setIframeKey] = useState(0);
-  const containerRef = useRef<HTMLDivElement>(null);
+  const [copiedId, setCopiedId] = useState<string | null>(null);
+  const [sessionId, setSessionId] = useState<string>(() => {
+    if (typeof window !== 'undefined') {
+      const saved = localStorage.getItem('mester_agent_session_id');
+      if (saved && saved.length === 13) return saved;
+      const chars = 'ABCDEFGHIJKLMNOPQRSTUVWXYZabcdefghijklmnopqrstuvwxyz0123456789';
+      let s = '';
+      for (let i = 0; i < 13; i++) s += chars.charAt(Math.floor(Math.random() * chars.length));
+      localStorage.setItem('mester_agent_session_id', s);
+      return s;
+    }
+    return 'vikingAgent13';
+  });
 
-  const handleRefresh = () => {
+  const messagesEndRef = useRef<HTMLDivElement>(null);
+  const recognitionRef = useRef<any>(null);
+
+  useEffect(() => {
+    try {
+      sessionStorage.setItem('mester_ai_agent_history', JSON.stringify(messages));
+    } catch {}
+    messagesEndRef.current?.scrollIntoView({ behavior: 'smooth' });
+  }, [messages]);
+
+  const handleClearHistory = () => {
+    const fresh: Message[] = [
+      {
+        id: `w-${Date.now()}`,
+        role: 'assistant',
+        content: `Samtalen er nullstilt. Hva kan jeg hjelpe deg med i prosjektet nå?`,
+        timestamp: new Date().toLocaleTimeString('no-NO', { hour: '2-digit', minute: '2-digit' }),
+        quickReplies: [
+          { title: '⏰ Før timer på prosjekt', payload: 'Jeg vil føre timer' },
+          { title: '🚨 Meld avvik (RUH)', payload: 'Meld avvik' },
+          { title: '📐 Sjekk TEK17-krav', payload: 'Krav til fall mot sluk' }
+        ]
+      }
+    ];
+    setMessages(fresh);
+    toast.success('Samtalesession nullstilt');
+  };
+
+  const handleSendMessage = async (textToSend: string) => {
+    if (!textToSend.trim() || isLoading) return;
+
+    const userMsg: Message = {
+      id: `u-${Date.now()}`,
+      role: 'user',
+      content: textToSend.trim(),
+      timestamp: new Date().toLocaleTimeString('no-NO', { hour: '2-digit', minute: '2-digit' })
+    };
+
+    setMessages(prev => [...prev, userMsg]);
+    setInputVal('');
     setIsLoading(true);
-    setIframeKey(prev => prev + 1);
+
+    try {
+      const res = await fetch('/api/agent/chat', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({
+          message: textToSend.trim(),
+          sessionId,
+          projectName: selectedProjectName,
+          userName
+        })
+      });
+
+      if (!res.ok) {
+        throw new Error(`Feilkode ${res.status}`);
+      }
+
+      const data = await res.json();
+
+      const assistantMsg: Message = {
+        id: `a-${Date.now()}`,
+        role: 'assistant',
+        content: data.reply || 'Forespørselen er behandlet.',
+        timestamp: new Date().toLocaleTimeString('no-NO', { hour: '2-digit', minute: '2-digit' }),
+        quickReplies: data.quickReplies && data.quickReplies.length > 0 ? data.quickReplies : undefined
+      };
+
+      setMessages(prev => [...prev, assistantMsg]);
+    } catch (err: any) {
+      console.error('Agent chat error:', err);
+      toast.error('Kunne ikke nå agenten: ' + err.message);
+      const errMsg: Message = {
+        id: `err-${Date.now()}`,
+        role: 'assistant',
+        content: `Beklager, det oppstod en midlertidig feil ved kontakt med agenten. Vennligst prøv igjen.`,
+        timestamp: new Date().toLocaleTimeString('no-NO', { hour: '2-digit', minute: '2-digit' })
+      };
+      setMessages(prev => [...prev, errMsg]);
+    } finally {
+      setIsLoading(false);
+    }
   };
 
-  const handleOpenExternal = () => {
-    window.open(AGENT_LANDING_URL, '_blank', 'noopener,noreferrer');
+  const handleCopy = (id: string, text: string) => {
+    navigator.clipboard.writeText(text);
+    setCopiedId(id);
+    toast.success('Kopiert til utklippstavlen');
+    setTimeout(() => setCopiedId(null), 2000);
   };
 
-  const toggleFullscreen = () => {
-    setIsFullscreen(!isFullscreen);
+  const toggleMic = () => {
+    if (isListeningMic) {
+      recognitionRef.current?.stop();
+      setIsListeningMic(false);
+      return;
+    }
+
+    const SpeechRecognition = (window as any).SpeechRecognition || (window as any).webkitSpeechRecognition;
+    if (!SpeechRecognition) {
+      toast.error('Nettleseren støtter ikke direkte tale-til-tekst');
+      return;
+    }
+
+    try {
+      const recognition = new SpeechRecognition();
+      recognition.lang = 'no-NO';
+      recognition.interimResults = false;
+      recognition.maxAlternatives = 1;
+
+      recognition.onstart = () => {
+        setIsListeningMic(true);
+        toast.info('🎙️ Lytter... Snakk inn instruksen');
+      };
+
+      recognition.onresult = (event: any) => {
+        const transcript = event.results[0][0].transcript;
+        if (transcript) {
+          setInputVal(prev => prev ? `${prev} ${transcript}` : transcript);
+        }
+      };
+
+      recognition.onerror = (event: any) => {
+        console.warn('Speech error:', event.error);
+        setIsListeningMic(false);
+      };
+
+      recognition.onend = () => {
+        setIsListeningMic(false);
+      };
+
+      recognitionRef.current = recognition;
+      recognition.start();
+    } catch (err) {
+      console.error('Mic error:', err);
+      setIsListeningMic(false);
+    }
   };
 
   return (
-    <div 
-      ref={containerRef}
-      className={cn(
-        "flex flex-col bg-white overflow-hidden transition-all duration-300",
-        isFullscreen 
-          ? "fixed inset-0 z-50 rounded-none shadow-2xl" 
-          : "rounded-2xl border border-slate-200/90 shadow-sm",
-        initialHeight,
-        className
-      )}
-    >
+    <div className={cn(
+      "flex flex-col bg-white overflow-hidden transition-all duration-300",
+      isFullscreen 
+        ? "fixed inset-0 z-50 rounded-none shadow-2xl" 
+        : "rounded-2xl border border-slate-200/90 shadow-sm",
+      initialHeight,
+      className
+    )}>
       {/* 🌟 MesterAI White-label Header */}
-      <div className="px-4 py-2.5 bg-gradient-to-r from-slate-50 via-white to-electric-50/20 border-b border-slate-200/80 flex items-center justify-between gap-3 shrink-0">
+      <div className="px-4 py-2.5 bg-gradient-to-r from-slate-900 via-navy-950 to-slate-900 border-b border-white/10 flex items-center justify-between gap-3 shrink-0 text-white">
         <div className="flex items-center gap-2.5 min-w-0">
           <div className="w-8 h-8 rounded-xl bg-gradient-to-tr from-electric-600 to-electric-500 text-white flex items-center justify-center shadow-xs shrink-0">
             <Sparkles size={16} />
           </div>
           <div className="min-w-0">
             <div className="flex items-center gap-2">
-              <span className="text-xs sm:text-sm font-black text-navy-950 truncate">
+              <span className="text-xs sm:text-sm font-black text-white truncate">
                 MesterAI Prosjektpilot
               </span>
-              <span className="inline-flex items-center gap-1 px-2 py-0.5 rounded-full bg-emerald-50 border border-emerald-200/70 text-emerald-700 text-[10px] font-bold shrink-0">
-                <span className="w-1.5 h-1.5 rounded-full bg-emerald-500 animate-pulse" />
+              <span className="inline-flex items-center gap-1 px-2 py-0.5 rounded-full bg-emerald-500/20 border border-emerald-500/40 text-emerald-300 text-[10px] font-bold shrink-0">
+                <span className="w-1.5 h-1.5 rounded-full bg-emerald-400 animate-pulse" />
                 Sanntid aktiv
               </span>
             </div>
-            <p className="text-[11px] text-slate-500 truncate hidden sm:block">
+            <p className="text-[11px] text-slate-300 truncate hidden sm:block">
               {selectedProjectName 
                 ? `Aktiv på prosjekt: ${selectedProjectName}` 
                 : 'Autonom byggmesteragent for timeføring, byggedagbok og TEK17'}
@@ -85,54 +260,143 @@ export default function MesterAIAgentFrame({
         <div className="flex items-center gap-1 shrink-0">
           <button
             type="button"
-            onClick={handleRefresh}
-            className="p-1.5 rounded-lg text-slate-500 hover:text-navy-900 hover:bg-slate-100 transition-colors cursor-pointer"
-            title="Last inn agenten på nytt"
+            onClick={handleClearHistory}
+            className="p-1.5 rounded-lg text-slate-300 hover:text-white hover:bg-white/10 transition-colors cursor-pointer"
+            title="Nullstill samtale"
           >
-            <RefreshCw size={14} className={isLoading ? "animate-spin text-electric-600" : ""} />
+            <RotateCcw size={14} />
           </button>
           <button
             type="button"
-            onClick={toggleFullscreen}
-            className="p-1.5 rounded-lg text-slate-500 hover:text-navy-900 hover:bg-slate-100 transition-colors cursor-pointer hidden sm:block"
-            title={isFullscreen ? "Avslutt fullskjerm" : "Åpne i fullskjerm"}
+            onClick={() => setIsFullscreen(!isFullscreen)}
+            className="p-1.5 rounded-lg text-slate-300 hover:text-white hover:bg-white/10 transition-colors cursor-pointer hidden sm:block"
+            title={isFullscreen ? "Avslutt fullskjerm" : "Fullskjerm"}
           >
             {isFullscreen ? <Minimize2 size={14} /> : <Maximize2 size={14} />}
-          </button>
-          <button
-            type="button"
-            onClick={handleOpenExternal}
-            className="p-1.5 rounded-lg text-slate-500 hover:text-electric-600 hover:bg-slate-100 transition-colors cursor-pointer"
-            title="Åpne i eget vindu"
-          >
-            <ExternalLink size={14} />
           </button>
         </div>
       </div>
 
-      {/* 🚀 Agent iFrame Container */}
-      <div className="relative flex-1 w-full bg-slate-50 overflow-hidden min-h-[500px]">
-        {isLoading && (
-          <div className="absolute inset-0 z-10 flex flex-col items-center justify-center gap-3 bg-white/90 backdrop-blur-xs">
-            <div className="w-10 h-10 rounded-2xl bg-electric-50 border border-electric-100 flex items-center justify-center text-electric-600 shadow-xs animate-bounce">
-              <Sparkles size={20} />
+      {/* 💬 Meldinger-container */}
+      <div className="flex-1 overflow-y-auto p-4 sm:p-5 space-y-4 bg-slate-50/50 custom-scrollbar">
+        {messages.map((msg) => (
+          <div 
+            key={msg.id}
+            className={cn(
+              "flex flex-col gap-1.5 max-w-[92%] sm:max-w-[85%]",
+              msg.role === 'user' ? "ml-auto items-end" : "mr-auto items-start"
+            )}
+          >
+            <div className={cn(
+              "p-3.5 sm:p-4 rounded-2xl shadow-xs transition-all",
+              msg.role === 'user' 
+                ? "bg-gradient-to-r from-electric-600 to-electric-500 text-white rounded-br-xs shadow-md shadow-electric-600/15" 
+                : "bg-white text-navy-950 border border-slate-200/90 rounded-bl-xs"
+            )}>
+              {msg.role === 'assistant' && (
+                <div className="flex items-center justify-between gap-2 mb-2 pb-1.5 border-b border-slate-100 flex-wrap">
+                  <div className="flex items-center gap-1.5 text-xs font-black text-electric-700">
+                    <Bot size={14} />
+                    <span>MesterAI Pilot</span>
+                  </div>
+                  <div className="flex items-center gap-2">
+                    <span className="text-[10px] text-slate-400">{msg.timestamp}</span>
+                    <button
+                      type="button"
+                      onClick={() => handleCopy(msg.id, msg.content)}
+                      className="text-slate-400 hover:text-navy-900 transition-colors cursor-pointer"
+                      title="Kopier"
+                    >
+                      {copiedId === msg.id ? <Check size={12} className="text-emerald-600" /> : <Copy size={12} />}
+                    </button>
+                  </div>
+                </div>
+              )}
+
+              <div className={cn(
+                "text-xs sm:text-sm leading-relaxed whitespace-pre-wrap",
+                msg.role === 'user' ? "text-white font-medium" : "text-slate-800"
+              )}>
+                {msg.content}
+              </div>
+
+              {/* Hurtigvalg (Quick Replies) */}
+              {msg.quickReplies && msg.quickReplies.length > 0 && (
+                <div className="mt-3 pt-2 border-t border-slate-100 flex flex-wrap gap-1.5">
+                  {msg.quickReplies.map((qr, i) => (
+                    <button
+                      key={i}
+                      type="button"
+                      disabled={isLoading}
+                      onClick={() => handleSendMessage(qr.payload || qr.title)}
+                      className="inline-flex items-center gap-1 px-2.5 py-1 rounded-xl bg-electric-50 hover:bg-electric-100 text-electric-800 text-[11px] font-bold border border-electric-200 transition-all cursor-pointer shadow-2xs active:scale-95"
+                    >
+                      <Sparkles size={11} className="text-electric-600" />
+                      <span>{qr.title}</span>
+                    </button>
+                  ))}
+                </div>
+              )}
             </div>
-            <div className="text-center">
-              <p className="text-xs font-bold text-navy-950">Kobler til MesterAI...</p>
-              <p className="text-[11px] text-slate-400 mt-0.5">Laster inn autonom prosjektpilot</p>
+          </div>
+        ))}
+
+        {isLoading && (
+          <div className="mr-auto items-start max-w-[85%]">
+            <div className="bg-white p-3.5 rounded-2xl border border-slate-200/90 shadow-2xs flex items-center gap-3">
+              <div className="w-6 h-6 rounded-lg bg-electric-600 text-white flex items-center justify-center">
+                <RefreshCw size={13} className="animate-spin" />
+              </div>
+              <span className="text-xs text-slate-600 font-medium animate-pulse">
+                MesterAI analyserer kalkylen, TEK17 og prosjektdata...
+              </span>
             </div>
           </div>
         )}
 
-        <iframe
-          key={iframeKey}
-          src={AGENT_LANDING_URL}
-          onLoad={() => setIsLoading(false)}
-          allow="microphone; camera; clipboard-write; autoplay; fullscreen"
-          title="MesterAI Prosjektpilot"
-          className="w-full h-full border-0 block"
-          style={{ minHeight: '100%', height: '100%' }}
-        />
+        <div ref={messagesEndRef} />
+      </div>
+
+      {/* 📝 Inputfelt og mikrofon */}
+      <div className="p-3 sm:p-4 bg-white border-t border-slate-200 shrink-0">
+        <form 
+          onSubmit={(e) => {
+            e.preventDefault();
+            handleSendMessage(inputVal);
+          }}
+          className="flex items-center gap-2"
+        >
+          <div className="relative flex-1">
+            <input 
+              type="text"
+              value={inputVal}
+              onChange={(e) => setInputVal(e.target.value)}
+              placeholder="Skriv instruks til agenten (f.eks. før timer, sjekk TEK17, meld avvik)..."
+              disabled={isLoading}
+              className="w-full pl-3.5 pr-10 py-2.5 bg-slate-50 border border-slate-200 rounded-xl text-xs sm:text-sm font-medium text-slate-900 placeholder:text-slate-400 focus:bg-white focus:border-electric-500 focus:ring-2 focus:ring-electric-500/20 transition-all"
+            />
+            <button
+              type="button"
+              onClick={toggleMic}
+              className={cn(
+                "absolute right-2.5 top-1/2 -translate-y-1/2 p-1 rounded-lg transition-all cursor-pointer",
+                isListeningMic ? "bg-rose-500 text-white animate-pulse" : "text-slate-400 hover:text-electric-600"
+              )}
+              title="Tale-til-tekst"
+            >
+              {isListeningMic ? <MicOff size={15} /> : <Mic size={15} />}
+            </button>
+          </div>
+
+          <button
+            type="submit"
+            disabled={isLoading || !inputVal.trim()}
+            className="flex items-center justify-center gap-1.5 px-4 py-2.5 bg-navy-950 hover:bg-navy-900 text-white rounded-xl text-xs font-black disabled:opacity-40 transition-all shrink-0 shadow-sm cursor-pointer active:scale-95"
+          >
+            <Send size={14} />
+            <span className="hidden sm:inline">Send</span>
+          </button>
+        </form>
       </div>
     </div>
   );
