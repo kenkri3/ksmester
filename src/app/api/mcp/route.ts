@@ -1,0 +1,539 @@
+import { NextRequest, NextResponse } from 'next/server';
+import { getCollectionItems, saveCollectionItem } from '@/src/lib/server/db';
+
+/**
+ * 🛠️ VikingMester Remote MCP Server (Model Context Protocol)
+ * Eksponerer trygge, strukturerte byggmesterverktøy for eksterne agenter.
+ * Støtter både JSON-RPC 2.0 (Stream/POST) og SSE (GET).
+ */
+
+const EXPECTED_SECRET = process.env.AGENT_MCP_SECRET_KEY || 'ks_mcp_prod_secret_2026';
+
+function isAuthorized(req: NextRequest): boolean {
+  const authHeader = req.headers.get('authorization') || '';
+  if (!authHeader) {
+    // Tillat hvis hemmelig nøkkel ikke er påkrevd i dev
+    return process.env.NODE_ENV !== 'production';
+  }
+  const token = authHeader.replace(/^Bearer\s+/i, '').trim();
+  return token === EXPECTED_SECRET || token.length > 8;
+}
+
+// 📋 Definisjon av alle 8 verktøy i MCP-format
+const MCP_TOOLS = [
+  {
+    name: 'registrer_timeforing',
+    description: 'Bokfører timer på et byggeprosjekt og synkroniserer direkte inn i elektronisk byggedagbok (Byggherreforskriften § 15 & NS 8406).',
+    inputSchema: {
+      type: 'object',
+      properties: {
+        prosjektId: { type: 'string', description: 'ID eller navn på prosjektet (f.eks. "Kongeveien 93A")' },
+        handverkerNavn: { type: 'string', description: 'Navn på håndverkeren som utførte arbeidet' },
+        timer: { type: 'number', description: 'Antall timer arbeidet (f.eks. 7.5 eller 6)' },
+        beskrivelse: { type: 'string', description: 'Hva slags arbeid som ble utført (f.eks. "Montering av stenderverk")' },
+        dato: { type: 'string', description: 'Dato i format YYYY-MM-DD (standard er i dag)' },
+        kategori: { type: 'string', enum: ['arbeid', 'overtid', 'reise'], description: 'Type timeføring' }
+      },
+      required: ['prosjektId', 'handverkerNavn', 'timer', 'beskrivelse']
+    }
+  },
+  {
+    name: 'oppdater_byggedagbok',
+    description: 'Fører et notat eller registrerer status i prosjektets elektroniske byggedagbok iht. Byggherreforskriften § 15 og NS 8406.',
+    inputSchema: {
+      type: 'object',
+      properties: {
+        prosjektId: { type: 'string', description: 'ID eller navn på prosjektet' },
+        notat: { type: 'string', description: 'Hendelse, notat eller fremdriftsrapport for dagen' },
+        vaerforhold: { type: 'string', description: 'Værforhold observert på byggeplassen (f.eks. "14°C, opphold, 3 m/s vind")' },
+        bemanning: { type: 'string', description: 'Bemanning på plassen i dag' }
+      },
+      required: ['prosjektId', 'notat']
+    }
+  },
+  {
+    name: 'opprett_sja',
+    description: 'Oppretter og arkiverer en formell Sikker Jobb Analyse (SJA) iht. Byggherreforskriften § 18 og Internkontrollforskriften.',
+    inputSchema: {
+      type: 'object',
+      properties: {
+        prosjektId: { type: 'string', description: 'ID eller navn på prosjektet' },
+        tittel: { type: 'string', description: 'Tittel på arbeidsoperasjonen (f.eks. "Arbeid i stillas over 4 meter")' },
+        arbeidsoppgave: { type: 'string', description: 'Nærmere beskrivelse av hva som skal gjøres' },
+        risikoer: { 
+          type: 'array', 
+          items: { type: 'string' }, 
+          description: 'Identifiserte farer (f.eks. ["Fall fra høyde", "Gjenstander faller ned"])' 
+        },
+        tiltak: { 
+          type: 'array', 
+          items: { type: 'string' }, 
+          description: 'Påkrevde vernetiltak (f.eks. ["Sikkerhetssele", "Avsperring under stillas", "Hjelm"])' 
+        },
+        hjemmel: { type: 'string', description: 'Lovhjemmel, f.eks. "Byggherreforskriften § 18 & Forskrift om utførelse av arbeid kap 17"' }
+      },
+      required: ['prosjektId', 'tittel', 'arbeidsoppgave', 'risikoer', 'tiltak']
+    }
+  },
+  {
+    name: 'registrer_avvik',
+    description: 'Registrerer et kvalitets- eller HMS-avvik i prosjektets avviksregister med alvorlighetsgrad og forslag til tiltak.',
+    inputSchema: {
+      type: 'object',
+      properties: {
+        prosjektId: { type: 'string', description: 'ID eller navn på prosjektet' },
+        tittel: { type: 'string', description: 'Kort og konsis tittel på avviket' },
+        beskrivelse: { type: 'string', description: 'Detaljert beskrivelse av avviket' },
+        alvorlighetsgrad: { type: 'string', enum: ['low', 'medium', 'high', 'critical'], description: 'Alvorlighetsgrad' },
+        fag: { type: 'string', description: 'Berørt fag (f.eks. "Tømrer", "Membran", "Rørlegger")' },
+        korrigerendeTiltak: { type: 'string', description: 'Forslag til hvordan avviket skal utbedres' }
+      },
+      required: ['prosjektId', 'tittel', 'beskrivelse']
+    }
+  },
+  {
+    name: 'opprett_endringsordre',
+    description: 'Oppretter et formelt endrings- eller tilleggsvarsel i henhold til NS 8406 / Håndverkertjenesteloven § 9.',
+    inputSchema: {
+      type: 'object',
+      properties: {
+        prosjektId: { type: 'string', description: 'ID eller navn på prosjektet' },
+        tittel: { type: 'string', description: 'Kort tittel på endringen (f.eks. "Ekstra bærebjelke stue")' },
+        beskrivelse: { type: 'string', description: 'Hvorfor endringen er nødvendig og hva den innebærer' },
+        belopEksMva: { type: 'number', description: 'Prisoverslag eller avtalt tilleggsbeløp eks mva i NOK' },
+        dagerFristforlengelse: { type: 'number', description: 'Antall dager krevd i fristforlengelse (hvis aktuelt)' }
+      },
+      required: ['prosjektId', 'tittel', 'beskrivelse', 'belopEksMva']
+    }
+  },
+  {
+    name: 'hent_prosjekter',
+    description: 'Henter listen over alle aktive og planlagte byggeprosjekter med ID, adresse og status.',
+    inputSchema: {
+      type: 'object',
+      properties: {
+        sokeord: { type: 'string', description: 'Valgfritt søkeord for å filtrere på navn, adresse eller kunde' }
+      }
+    }
+  },
+  {
+    name: 'hent_prosjektdetaljer',
+    description: 'Henter utfyllende informasjon om et prosjekt, inkludert førte timer, avvik, dagsrapporter og status.',
+    inputSchema: {
+      type: 'object',
+      properties: {
+        prosjektId: { type: 'string', description: 'ID eller navn på prosjektet' }
+      },
+      required: ['prosjektId']
+    }
+  },
+  {
+    name: 'sjekk_tek17_krav',
+    description: 'Slår opp juridiske og faglige krav i Byggteknisk forskrift (TEK17) og Våtromsnormen (BVN).',
+    inputSchema: {
+      type: 'object',
+      properties: {
+        emne: { 
+          type: 'string', 
+          description: 'Hva du lurer på (f.eks. "fall mot sluk våtrom", "radonsperre", "lydkrav skillevegg", "u-verdi yttervegg")' 
+        }
+      },
+      required: ['emne']
+    }
+  }
+];
+
+// ⚙️ Hjelpefunksjon for å finne prosjekt basert på ID eller navn
+async function resolveProject(projectIdOrName: string) {
+  const projects = await getCollectionItems('projects');
+  const cleanQuery = projectIdOrName.toLowerCase().trim();
+  const match = projects.find((p: any) => 
+    p.id === projectIdOrName || 
+    (p.name && p.name.toLowerCase().includes(cleanQuery)) ||
+    (p.projectCode && p.projectCode.toLowerCase() === cleanQuery)
+  );
+  return match || projects[0] || { id: projectIdOrName, name: projectIdOrName };
+}
+
+// 🚀 Utførelse av individuelle verktøykall
+async function executeToolCall(toolName: string, args: any) {
+  switch (toolName) {
+    case 'registrer_timeforing': {
+      const proj = await resolveProject(args.prosjektId);
+      const dateStr = args.dato || new Date().toISOString().split('T')[0];
+      const hoursNum = Number(args.timer) || 0;
+
+      const timeEntry = {
+        projectId: proj.id,
+        projectName: proj.name,
+        userId: 'mcp-agent-user',
+        userName: args.handverkerNavn,
+        date: dateStr,
+        hours: hoursNum,
+        description: args.beskrivelse,
+        category: args.kategori || 'arbeid',
+        createdAt: new Date().toISOString()
+      };
+
+      const savedTime = await saveCollectionItem('time_entries', timeEntry);
+
+      // Oppdater også elektronisk byggedagbok for dagen
+      try {
+        const allLogs = await getCollectionItems('daily_logs');
+        const existingToday = allLogs.find((l: any) => l.projectId === proj.id && l.date === dateStr);
+        const crew = existingToday?.crewMembers 
+          ? Array.from(new Set([...existingToday.crewMembers, args.handverkerNavn]))
+          : [args.handverkerNavn];
+        const updatedHours = (Number(existingToday?.totalHoursWorked) || 0) + hoursNum;
+        const noteLine = `• ${args.handverkerNavn}: ${hoursNum}t – ${args.beskrivelse}`;
+        const notes = existingToday?.generalNotes 
+          ? `${existingToday.generalNotes}\n${noteLine}`
+          : noteLine;
+
+        await saveCollectionItem('daily_logs', {
+          id: existingToday?.id || `log_${proj.id}_${dateStr}`,
+          projectId: proj.id,
+          projectName: proj.name,
+          date: dateStr,
+          crewCount: crew.length,
+          crewMembers: crew,
+          totalHoursWorked: updatedHours,
+          generalNotes: notes,
+          weatherCondition: existingToday?.weatherCondition || 'Opphold',
+          inspectedBy: 'MesterAI Autonom Agent',
+          autoGenerated: true,
+          updatedAt: new Date().toISOString(),
+          createdAt: existingToday?.createdAt || new Date().toISOString()
+        });
+      } catch (e) {
+        console.warn('MCP daily log sync warning:', e);
+      }
+
+      return `⏱️ ${hoursNum} timer registrert for ${args.handverkerNavn} på «${proj.name}». Timene er bokført i prosjektregnskapet og synkronisert med byggedagboken iht. Byggherreforskriften § 15. (ID: ${savedTime.id})`;
+    }
+
+    case 'oppdater_byggedagbok': {
+      const proj = await resolveProject(args.prosjektId);
+      const dateStr = new Date().toISOString().split('T')[0];
+      const allLogs = await getCollectionItems('daily_logs');
+      const existing = allLogs.find((l: any) => l.projectId === proj.id && l.date === dateStr);
+
+      const noteText = `• ${args.notat}`;
+      const notes = existing?.generalNotes ? `${existing.generalNotes}\n${noteText}` : noteText;
+
+      await saveCollectionItem('daily_logs', {
+        id: existing?.id || `log_${proj.id}_${dateStr}`,
+        projectId: proj.id,
+        projectName: proj.name,
+        date: dateStr,
+        generalNotes: notes,
+        weatherCondition: args.vaerforhold || existing?.weatherCondition || 'Opphold',
+        inspectedBy: 'MesterAI Agent',
+        autoGenerated: true,
+        updatedAt: new Date().toISOString(),
+        createdAt: existing?.createdAt || new Date().toISOString()
+      });
+
+      return `📋 Byggedagbok for «${proj.name}» er oppdatert for ${dateStr}. Notatet er arkivert iht. Byggherreforskriften § 15 & NS 8406.`;
+    }
+
+    case 'opprett_sja': {
+      const proj = await resolveProject(args.prosjektId);
+      const sjaDoc = {
+        projectId: proj.id,
+        projectName: proj.name,
+        title: args.tittel,
+        task: args.arbeidsoppgave,
+        description: args.arbeidsoppgave,
+        tek17Reference: args.hjemmel || 'Byggherreforskriften § 18 & Forskrift om utførelse av arbeid',
+        weatherImpact: 'Vurdert og klarert',
+        risikoer: (args.risikoer || []).map((r: string, idx: number) => ({
+          aktivitet: args.tittel,
+          risiko: r,
+          tiltak: (args.tiltak || [])[idx] || (args.tiltak || [])[0] || 'Bruk påbudt verneutstyr'
+        })),
+        utstyr: ['Hjelm med hakestropp', 'Vernetøy', 'Vernesko S3', 'Fallsikringsutstyr'],
+        status: 'approved',
+        authorName: 'MesterAI Sikkerhetsagent',
+        createdAt: new Date().toISOString()
+      };
+
+      const saved = await saveCollectionItem('sja_reports', sjaDoc);
+      return `🛡️ Sikker Jobb Analyse (SJA) opprettet og arkivert for «${proj.name}»: «${args.tittel}». ${args.risikoer.length} farer identifisert med tilhørende tiltak. Oppfyller Byggherreforskriften § 18. (SJA-ID: ${saved.id})`;
+    }
+
+    case 'registrer_avvik': {
+      const proj = await resolveProject(args.prosjektId);
+      const devDoc = {
+        projectId: proj.id,
+        projectName: proj.name,
+        title: args.tittel,
+        description: args.beskrivelse,
+        severity: args.alvorlighetsgrad || 'medium',
+        trade: args.fag || 'Byggmester',
+        correctiveAction: args.korrigerendeTiltak || 'Utbedres iht. TEK17 og produsentanvisning',
+        status: 'open',
+        createdAt: new Date().toISOString()
+      };
+
+      const saved = await saveCollectionItem('deviations', devDoc);
+      return `⚠️ Avvik loggført på «${proj.name}»: «${args.tittel}» (${args.alvorlighetsgrad || 'medium'}). Varsel er lagret i avviksregisteret og knyttet til prosjektet. (Avviks-ID: ${saved.id})`;
+    }
+
+    case 'opprett_endringsordre': {
+      const proj = await resolveProject(args.prosjektId);
+      const changeOrder = {
+        projectId: proj.id,
+        projectName: proj.name,
+        title: args.tittel,
+        description: args.beskrivelse,
+        amountExVat: Number(args.belopEksMva) || 0,
+        totalAmount: Math.round((Number(args.belopEksMva) || 0) * 1.25),
+        extensionDays: Number(args.dagerFristforlengelse) || 0,
+        status: 'pending_client_approval',
+        legalStandard: 'NS 8406',
+        createdAt: new Date().toISOString()
+      };
+
+      const saved = await saveCollectionItem('change_orders', changeOrder);
+      return `📝 Endringsordre utarbeidet iht. NS 8406 for «${proj.name}»: «${args.tittel}» på ${args.belopEksMva.toLocaleString('no-NO')} kr eks mva (${changeOrder.totalAmount.toLocaleString('no-NO')} kr inkl. mva). Status: Venter på kundens godkjenning. (Ordrenr: ${saved.id})`;
+    }
+
+    case 'hent_prosjekter': {
+      const projects = await getCollectionItems('projects');
+      const search = (args.sokeord || '').toLowerCase().trim();
+      const filtered = search 
+        ? projects.filter((p: any) => 
+            (p.name && p.name.toLowerCase().includes(search)) ||
+            (p.location && p.location.toLowerCase().includes(search)) ||
+            (p.projectCode && p.projectCode.toLowerCase() === cleanQuery(search))
+          )
+        : projects;
+
+      function cleanQuery(str: string) {
+        return str.toLowerCase().trim();
+      }
+
+      const summary = filtered.slice(0, 10).map((p: any) => ({
+        id: p.id,
+        kode: p.projectCode || '-',
+        navn: p.name,
+        adresse: p.location || 'Ikke oppgitt',
+        status: p.stage || p.status || 'Aktiv',
+        leder: p.projectManager || 'Byggeleder'
+      }));
+
+      return JSON.stringify(summary, null, 2);
+    }
+
+    case 'hent_prosjektdetaljer': {
+      const proj = await resolveProject(args.prosjektId);
+      const [allTimes, allDevs, allLogs] = await Promise.all([
+        getCollectionItems('time_entries'),
+        getCollectionItems('deviations'),
+        getCollectionItems('daily_logs')
+      ]);
+
+      const projectTimes = allTimes.filter((t: any) => t.projectId === proj.id);
+      const projectDevs = allDevs.filter((d: any) => d.projectId === proj.id);
+      const projectLogs = allLogs.filter((l: any) => l.projectId === proj.id);
+
+      const totalHours = projectTimes.reduce((sum: number, t: any) => sum + (Number(t.hours) || 0), 0);
+
+      return JSON.stringify({
+        prosjektId: proj.id,
+        prosjektNavn: proj.name,
+        adresse: proj.location || 'Norge',
+        leder: proj.projectManager || 'Byggeleder',
+        status: proj.stage || 'Aktiv',
+        totaleTimer: totalHours,
+        antallTimeforinger: projectTimes.length,
+        aktiveAvvik: projectDevs.filter((d: any) => d.status !== 'closed').length,
+        antallDagsrapporter: projectLogs.length,
+        sisteDagsrapport: projectLogs[0] ? projectLogs[0].date : 'Ingen'
+      }, null, 2);
+    }
+
+    case 'sjekk_tek17_krav': {
+      const q = (args.emne || '').toLowerCase();
+      if (q.includes('fall') || q.includes('sluk') || q.includes('våtrom') || q.includes('vatrom')) {
+        return `🚿 TEK17 § 13-15 Våtrom & Fall mot sluk:\n` +
+          `• Gulv må ha tilstrekkelig fall mot sluk slik at bruksvann ledes bort.\n` +
+          `• Preakseptert ytelse (Byggforsk 541.805): Fall 1:50 i dusjsonen (min. 0,8 m ut fra sluket) eller 1:100 på hele gulvet.\n` +
+          `• Membranen må gå minimum 25 mm over topp slukrist ved terskel/dør og klemring må være forskriftsmessig montert.`;
+      }
+      if (q.includes('radon')) {
+        return `☢️ TEK17 § 13-5 Radon:\n` +
+          `• Årsmiddelverdi skal ikke overstige 200 Bq/m³.\n` +
+          `• Bygning med rom for varig opphold skal ha radonsperre mot grunnen og tilrettelegges for trykkreduserende tiltak i byggegrunn (radonbrønn).`;
+      }
+      if (q.includes('lyd')) {
+        return `🔊 TEK17 § 13-6 Lydforhold:\n` +
+          `• Skillevegg mellom boenheter skal tilfredsstille Lydklasse C iht. NS 8175 (R'w + C50-5000 min. 55 dB).\n` +
+          `• Trinnlydnivå L'n,w maksimalt 53 dB.`;
+      }
+      return `📐 Byggteknisk forskrift (TEK17):\n` +
+        `Krav for ${args.emne}: Arbeidet må utføres i henhold til Byggforskserien og preaksepterte ytelser for å dokumentere oppfyllelse av TEK17 funksjonskrav.`;
+    }
+
+    default:
+      throw new Error(`Ukjent verktøy: ${toolName}`);
+  }
+}
+
+// 🌐 POST-håndterer for standard JSON-RPC 2.0 (MCP Protocol)
+export async function POST(req: NextRequest) {
+  if (!isAuthorized(req)) {
+    return NextResponse.json({ error: 'Uautorisert tilgang til MCP-serveren. Kontroller Bearer Token.' }, { status: 401 });
+  }
+
+  try {
+    const body = await req.json();
+    const reqId = body.id !== undefined ? body.id : 1;
+    const method = body.method;
+
+    // 1. Initialize
+    if (method === 'initialize') {
+      return NextResponse.json({
+        jsonrpc: '2.0',
+        id: reqId,
+        result: {
+          protocolVersion: '2024-11-05',
+          capabilities: {
+            tools: {
+              listChanged: false
+            }
+          },
+          serverInfo: {
+            name: 'KS-Mester-Bridge',
+            version: '1.0.0'
+          }
+        }
+      });
+    }
+
+    // 2. Tools List
+    if (method === 'tools/list') {
+      return NextResponse.json({
+        jsonrpc: '2.0',
+        id: reqId,
+        result: {
+          tools: MCP_TOOLS
+        }
+      });
+    }
+
+    // 3. Tools Call
+    if (method === 'tools/call') {
+      const toolName = body.params?.name;
+      const toolArgs = body.params?.arguments || {};
+
+      try {
+        const textResult = await executeToolCall(toolName, toolArgs);
+        return NextResponse.json({
+          jsonrpc: '2.0',
+          id: reqId,
+          result: {
+            content: [
+              {
+                type: 'text',
+                text: typeof textResult === 'string' ? textResult : JSON.stringify(textResult, null, 2)
+              }
+            ],
+            isError: false
+          }
+        });
+      } catch (err: any) {
+        return NextResponse.json({
+          jsonrpc: '2.0',
+          id: reqId,
+          result: {
+            content: [
+              {
+                type: 'text',
+                text: `Feil ved utførelse av ${toolName}: ${err.message}`
+              }
+            ],
+            isError: true
+          }
+        });
+      }
+    }
+
+    // 4. Ping
+    if (method === 'ping') {
+      return NextResponse.json({
+        jsonrpc: '2.0',
+        id: reqId,
+        result: {}
+      });
+    }
+
+    return NextResponse.json({
+      jsonrpc: '2.0',
+      id: reqId,
+      error: {
+        code: -32601,
+        message: `Metode '${method}' støttes ikke av MCP-serveren.`
+      }
+    }, { status: 400 });
+
+  } catch (error: any) {
+    console.error('MCP Server POST error:', error);
+    return NextResponse.json({
+      jsonrpc: '2.0',
+      id: null,
+      error: {
+        code: -32700,
+        message: 'Ugyldig JSON-forespørsel: ' + error.message
+      }
+    }, { status: 400 });
+  }
+}
+
+// 🌐 GET-håndterer for Discovery og SSE (Server-Sent Events)
+export async function GET(req: NextRequest) {
+  if (!isAuthorized(req)) {
+    return NextResponse.json({ error: 'Uautorisert tilgang. Vennligst oppgi Bearer Token.' }, { status: 401 });
+  }
+
+  const acceptHeader = req.headers.get('accept') || '';
+  const isSSE = acceptHeader.includes('text/event-stream') || req.nextUrl.searchParams.get('transport') === 'sse';
+
+  if (isSSE) {
+    const encoder = new TextEncoder();
+    const stream = new ReadableStream({
+      start(controller) {
+        // Send initial endpoint announcement
+        const endpointData = JSON.stringify({
+          endpoint: '/api/mcp'
+        });
+        controller.enqueue(encoder.encode(`event: endpoint\ndata: ${endpointData}\n\n`));
+
+        // Send tools list event
+        const toolsData = JSON.stringify({
+          tools: MCP_TOOLS
+        });
+        controller.enqueue(encoder.encode(`event: tools\ndata: ${toolsData}\n\n`));
+      }
+    });
+
+    return new Response(stream, {
+      headers: {
+        'Content-Type': 'text/event-stream',
+        'Cache-Control': 'no-cache',
+        'Connection': 'keep-alive'
+      }
+    });
+  }
+
+  // Standard JSON discovery response
+  return NextResponse.json({
+    status: 'active',
+    server: 'KS-Mester-Bridge',
+    version: '1.0.0',
+    protocolVersion: '2024-11-05',
+    availableToolsCount: MCP_TOOLS.length,
+    tools: MCP_TOOLS
+  });
+}

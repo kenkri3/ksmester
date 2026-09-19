@@ -62,7 +62,7 @@ import {
   Menu
 } from 'lucide-react';
 import InChatWorkspace, { InChatFormType } from './InChatWorkspace';
-import AutonomousControlPost from './AutonomousControlPost';
+import MesterAIAgentFrame from './MesterAIAgentFrame';
 import { optimizeImageForVision } from '@/src/lib/imageOptimizer';
 import { visionService } from '../services/visionService';
 import { cn } from '../lib/utils';
@@ -2380,251 +2380,22 @@ export default function MesterAIChat({
 
         {/* WORKSPACE BODY */}
         <div className="flex-1 overflow-hidden flex flex-col md:flex-row bg-slate-100/50">
-          {/* Left Column: Conversational AI Partner (Always visible in split view or when activeTab === 'chat') */}
+          {/* Left Column: MesterAI Prosjektpilot (Always visible in split view or when activeTab === 'chat') */}
           {(activeTab === 'chat' || (isSplitView && !activeFormView)) && (
             <div className={cn(
               "flex flex-col bg-white border-r border-slate-200 overflow-hidden transition-all",
               activeFormView 
                 ? "hidden md:flex md:w-[44%] lg:w-[40%] xl:w-[38%]" 
-                : (isSplitView && activeTab !== 'chat' ? "hidden md:flex md:w-[44%] lg:w-[40%] xl:w-[38%]" : "w-full flex-1")
+                : (isSplitView && activeTab !== 'chat' 
+                    ? "hidden md:flex md:w-[44%] lg:w-[40%] xl:w-[38%]" 
+                    : (isSplitView && activeTab === 'chat' 
+                        ? "w-full md:w-[44%] lg:w-[40%] xl:w-[38%]" 
+                        : "w-full flex-1"))
             )}>
-              {/* Chat Subheader with Active Project & Nullstill Chat Action */}
-              <div className="px-3.5 sm:px-4 py-2 bg-slate-50 border-b border-slate-200 flex items-center justify-between text-xs text-slate-600 shrink-0">
-                <div className="flex items-center gap-2 truncate">
-                  <div className="w-2 h-2 rounded-full bg-emerald-500 animate-pulse shrink-0" />
-                  <span className="font-bold text-navy-950 truncate">MesterAI Samtale</span>
-                  {selectedProject ? (
-                    <span className="flex items-center gap-1 text-[11px] text-emerald-800 bg-emerald-50 border border-emerald-200 px-2 py-0.5 rounded-full font-semibold truncate max-w-[130px] sm:max-w-[180px]">
-                      <Building2 size={11} className="shrink-0 text-emerald-600" />
-                      <span className="truncate">{selectedProject.name}</span>
-                    </span>
-                  ) : (
-                    <span className="text-[11px] text-slate-400 hidden sm:inline">• Aktiv rådgiver</span>
-                  )}
-                </div>
-
-                <div className="flex items-center gap-1 shrink-0">
-                  <button
-                    type="button"
-                    onClick={handleClearHistory}
-                    className="flex items-center gap-1.5 px-2.5 py-1 rounded-lg text-xs font-bold text-slate-600 hover:text-navy-950 hover:bg-slate-200/80 bg-white border border-slate-200/90 shadow-2xs transition-all cursor-pointer active:scale-95"
-                    title="Nullstill chatten for å få et helt rent vindu"
-                  >
-                    <RotateCcw size={12} className="text-slate-500" />
-                    <span>Nullstill chat</span>
-                  </button>
-                </div>
-              </div>
-
-              {/* Messages Container */}
-              <div 
-                ref={messagesContainerRef}
-                className="flex-1 overflow-y-auto p-4 sm:p-5 space-y-4 bg-slate-50/40 custom-scrollbar"
-              >
-                {messages.map((msg) => (
-                  <div 
-                    key={msg.id}
-                    className={cn(
-                      "flex flex-col gap-1.5 max-w-[94%] sm:max-w-[88%]",
-                      msg.role === 'user' ? "ml-auto items-end" : "mr-auto items-start"
-                    )}
-                  >
-                    <div className={cn(
-                      "p-4 rounded-2xl shadow-xs transition-all",
-                      msg.role === 'user' 
-                        ? "bg-gradient-to-r from-electric-600 to-electric-500 text-white rounded-br-xs shadow-md shadow-electric-600/20" 
-                        : "bg-white text-navy-900 border border-slate-200/90 rounded-bl-xs"
-                    )}>
-                      {msg.role === 'assistant' && (
-                        <div className="flex items-center justify-between gap-2 mb-2 pb-1.5 border-b border-slate-100 flex-wrap">
-                          <div className="flex items-center gap-1.5 text-xs font-black text-electric-700">
-                            <Brain size={14} />
-                            <span>MesterAI Rådgiver</span>
-                            {msg.id === 'welcome' && (
-                              <span className="inline-flex items-center gap-1 ml-1 px-2 py-0.5 rounded-full text-[10px] font-bold bg-purple-50 text-purple-700 border border-purple-200">
-                                <Sparkles size={10} />
-                                <span>Tips {welcomeThemeIndex + 1}/{isWorker ? WORKER_WELCOME_THEMES.length : MANAGER_WELCOME_THEMES.length}</span>
-                              </span>
-                            )}
-                          </div>
-                          <div className="flex items-center gap-1.5">
-                            {msg.id === 'welcome' && (
-                              <button
-                                type="button"
-                                onClick={handleCycleWelcomeTip}
-                                className="inline-flex items-center gap-1 px-2 py-0.5 rounded-lg text-[11px] font-bold text-electric-700 hover:text-electric-900 bg-electric-50 hover:bg-electric-100 border border-electric-200 transition-all cursor-pointer active:scale-95 shadow-2xs"
-                                title="Klikk for å se neste funksjon og fagtips"
-                              >
-                                <RefreshCw size={11} className="transition-transform duration-300 hover:rotate-180 text-electric-600" />
-                                <span>Bytt tips</span>
-                              </button>
-                            )}
-                            <span className="text-[10px] text-slate-400">{msg.timestamp}</span>
-                            <button
-                              type="button"
-                              onClick={() => handleCopyText(msg.id, msg.content)}
-                              className="text-slate-400 hover:text-navy-900 transition-colors p-1 cursor-pointer"
-                              title="Kopier svar"
-                            >
-                              {copiedId === msg.id ? <Check size={13} className="text-emerald-600" /> : <Copy size={13} />}
-                            </button>
-                          </div>
-                        </div>
-                      )}
-
-                      {msg.role === 'user' ? (
-                        <div className="text-white text-xs sm:text-sm font-semibold leading-relaxed whitespace-pre-wrap">
-                          {msg.content}
-                        </div>
-                      ) : (
-                        renderFormattedContent(msg.content)
-                      )}
-
-                      {/* Suggested In-Chat Form Actions */}
-                      {msg.suggestedActions && msg.suggestedActions.length > 0 && (
-                        <div className="mt-3 pt-2.5 border-t border-slate-100 flex flex-wrap gap-1.5">
-                          {msg.suggestedActions.map((act) => (
-                            <button
-                              key={act.id}
-                              type="button"
-                              onClick={() => handleActionClick(act)}
-                              className="inline-flex items-center gap-1.5 px-3 py-1.5 rounded-xl bg-gradient-to-r from-electric-50 to-purple-50 hover:from-electric-100 hover:to-purple-100 text-electric-800 text-xs font-bold border border-electric-200 transition-all shadow-2xs hover:scale-[1.02] active:scale-98 cursor-pointer"
-                            >
-                              <Sparkles size={12} className="text-electric-600" />
-                              <span>{act.label}</span>
-                              <ChevronRight size={12} className="text-electric-400" />
-                            </button>
-                          ))}
-                        </div>
-                      )}
-                    </div>
-
-                    {/* Follow-up Prompts */}
-                    {msg.followUpPrompts && msg.followUpPrompts.length > 0 && (
-                      <div className="flex flex-wrap gap-1.5 mt-1 pl-1">
-                        {msg.followUpPrompts.map((p, idx) => (
-                          <button
-                            key={idx}
-                            type="button"
-                            disabled={isLoading}
-                            onClick={() => handleSendMessage(p)}
-                            className="text-[11px] font-medium px-2.5 py-1 rounded-xl bg-white hover:bg-electric-50 hover:text-electric-700 hover:border-electric-300 text-slate-600 border border-slate-200 transition-all shadow-2xs cursor-pointer text-left"
-                          >
-                            💬 {p}
-                          </button>
-                        ))}
-                      </div>
-                    )}
-                  </div>
-                ))}
-
-                {isLoading && (
-                  <div className="mr-auto items-start max-w-[85%]">
-                    <div className="bg-white p-3.5 rounded-2xl border border-slate-200/90 shadow-2xs flex items-center gap-3">
-                      <div className="w-6 h-6 rounded-lg bg-electric-500 text-white flex items-center justify-center">
-                        <RefreshCw size={13} className="animate-spin" />
-                      </div>
-                      <span className="text-xs text-slate-600 font-medium animate-pulse">
-                        MesterAI analyserer kalkylen, TEK17 og prosjektdata...
-                      </span>
-                    </div>
-                  </div>
-                )}
-
-                {/* Auto-scroll anchor */}
-                <div ref={messagesEndRef} />
-              </div>
-
-              {/* Chat Input Field & Toolbox Launcher */}
-              <div className="p-2.5 sm:p-4 bg-white border-t border-slate-200 shrink-0 mb-[calc(5rem+env(safe-area-inset-bottom,0px))] md:mb-0 z-20 relative shadow-xs">
-                <form 
-                  onSubmit={(e) => {
-                    e.preventDefault();
-                    handleSendMessage(inputVal);
-                  }}
-                  className="flex items-center gap-2"
-                >
-                  <input 
-                    type="file" 
-                    ref={chatFileInputRef} 
-                    accept="image/*" 
-                    className="hidden" 
-                    onChange={handleChatPhotoUpload} 
-                  />
-
-                  <button
-                    type="button"
-                    onClick={() => setActiveFormView({ type: 'toolbox' })}
-                    className="p-2.5 bg-slate-100 hover:bg-electric-50 hover:text-electric-700 text-slate-600 rounded-xl transition-all cursor-pointer shrink-0"
-                    title="Åpne skjemaer & verktøy"
-                  >
-                    <Layers size={17} />
-                  </button>
-
-                  <button
-                    type="button"
-                    disabled={isAnalyzingImage}
-                    onClick={() => chatFileInputRef.current?.click()}
-                    className={cn(
-                      "p-2.5 rounded-xl transition-all cursor-pointer shrink-0 border",
-                      isAnalyzingImage 
-                        ? "bg-electric-100 border-electric-300 text-electric-700 animate-pulse" 
-                        : "bg-slate-100 hover:bg-electric-50 hover:text-electric-700 text-slate-600 border-slate-200/80"
-                    )}
-                    title="Ta bilde eller last opp for direkte TEK17/BVN analyse"
-                  >
-                    <Camera size={17} />
-                  </button>
-
-                  <button
-                    type="button"
-                    onClick={() => {
-                      setIsWebSearchEnabled(prev => !prev);
-                      toast.info(!isWebSearchEnabled ? '🌐 Websøk aktivert for neste spørsmål' : '🌐 Websøk deaktivert');
-                    }}
-                    className={cn(
-                      "p-2.5 rounded-xl transition-all cursor-pointer shrink-0 border flex items-center gap-1",
-                      isWebSearchEnabled 
-                        ? "bg-emerald-50 border-emerald-400 text-emerald-700 shadow-xs ring-2 ring-emerald-400/30" 
-                        : "bg-slate-100 hover:bg-emerald-50 hover:text-emerald-700 text-slate-600 border-slate-200/80"
-                    )}
-                    title={isWebSearchEnabled ? "Websøk er PÅ (søker på nettet via 1min.AI/Google)" : "Aktiver websøk (1min.AI / Google Search for eksterne priser og forskrifter)"}
-                  >
-                    <Globe size={17} className={isWebSearchEnabled ? "text-emerald-600" : ""} />
-                    {isWebSearchEnabled && <span className="text-[10px] font-black text-emerald-700 hidden sm:inline">SØK</span>}
-                  </button>
-
-                  <div className="relative flex-1">
-                    <input 
-                      type="text"
-                      value={inputVal}
-                      onChange={(e) => setInputVal(e.target.value)}
-                      placeholder="Skriv instruks (tilbud, endringsordre, SJA, TEK17)..."
-                      className="w-full pl-3.5 pr-10 py-2.5 bg-slate-50 border border-slate-200 rounded-xl text-xs sm:text-sm font-medium text-slate-900 placeholder:text-slate-400 focus:bg-white focus:border-electric-500 focus:ring-2 focus:ring-electric-500/20 transition-all"
-                    />
-                    <button
-                      type="button"
-                      onClick={toggleMic}
-                      className={cn(
-                        "absolute right-2.5 top-1/2 -translate-y-1/2 p-1 rounded-lg transition-all",
-                        isListeningMic ? "bg-rose-500 text-white animate-pulse" : "text-slate-400 hover:text-electric-600"
-                      )}
-                      title="Snakk inn spørsmål"
-                    >
-                      {isListeningMic ? <MicOff size={15} /> : <Mic size={15} />}
-                    </button>
-                  </div>
-
-                  <button
-                    type="submit"
-                    disabled={isLoading || !inputVal.trim()}
-                    className="flex items-center justify-center gap-1.5 px-4 py-2.5 bg-navy-900 hover:bg-navy-800 text-white rounded-xl text-xs font-black disabled:opacity-40 transition-all shrink-0 shadow-sm cursor-pointer hover:scale-[1.02] active:scale-98"
-                  >
-                    <Send size={14} />
-                    <span className="hidden sm:inline">Send</span>
-                  </button>
-                </form>
-              </div>
+              <MesterAIAgentFrame 
+                selectedProjectName={selectedProject?.name}
+                className="h-full border-0 rounded-none shadow-none"
+              />
             </div>
           )}
 
@@ -2632,7 +2403,7 @@ export default function MesterAIChat({
           <div className={cn(
             "flex-1 overflow-y-auto flex flex-col bg-slate-50/70 transition-all custom-scrollbar",
             activeFormView ? "p-0 sm:p-6 pb-0 sm:pb-6" : "p-4 sm:p-6 pb-[calc(7rem+env(safe-area-inset-bottom,0px))] md:pb-6",
-            activeTab === 'chat' && !activeFormView ? "hidden md:flex md:w-[56%] lg:w-[60%] xl:w-[62%]" : "w-full",
+            activeTab === 'chat' && !activeFormView ? (isSplitView ? "hidden md:flex md:w-[56%] lg:w-[60%] xl:w-[62%]" : "hidden") : "w-full",
             isSplitView && activeTab !== 'chat' ? "md:w-[56%] lg:w-[60%] xl:w-[62%]" : ""
           )}>
             {/* 1. IN-CHAT WORKSPACE FORM VIEW */}
@@ -2796,19 +2567,6 @@ export default function MesterAIChat({
                     )}
                   </div>
                 </div>
-
-                {/* 🌟 MESTERENS AUTONOME KONTROLLPOST (100% Autonom drift med 100% Kontroll) */}
-                {isAdminOrManager && (
-                  <AutonomousControlPost 
-                    onOpenProject={(id) => {
-                      const p = projects.find(pr => pr.id === id);
-                      if (p) onSelectProject?.(p);
-                    }}
-                    onOpenChangeOrder={(data) => {
-                      onOpenChangeOrderModal?.(data);
-                    }}
-                  />
-                )}
 
                 {/* 2. OPERATIONAL KPI SUMMARY STRIP */}
                 <div className="grid grid-cols-2 sm:grid-cols-4 gap-2.5 sm:gap-3">
