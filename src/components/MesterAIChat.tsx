@@ -895,6 +895,9 @@ export default function MesterAIChat({
         const finalCmd = capturedText.trim();
         if (finalCmd) {
           toast.success(`Oppfattet: "${finalCmd}"`);
+          if (typeof window !== 'undefined') {
+            window.dispatchEvent(new CustomEvent('mesterai:send-message', { detail: { text: finalCmd } }));
+          }
           handleSendMessage(finalCmd);
           setActiveTab('chat');
         }
@@ -2394,6 +2397,8 @@ export default function MesterAIChat({
             )}>
               <MesterAIAgentFrame 
                 selectedProjectName={selectedProject?.name}
+                initialPrompt={initialPrompt}
+                onPromptHandled={onPromptHandled}
                 className="h-full border-0 rounded-none shadow-none"
               />
             </div>

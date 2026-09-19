@@ -34,13 +34,17 @@ interface MesterAIAgentFrameProps {
   selectedProjectName?: string;
   userName?: string;
   initialHeight?: string;
+  initialPrompt?: string;
+  onPromptHandled?: () => void;
 }
 
 export default function MesterAIAgentFrame({
   className,
   selectedProjectName,
   userName = 'Byggmester',
-  initialHeight = 'h-full'
+  initialHeight = 'h-full',
+  initialPrompt,
+  onPromptHandled
 }: MesterAIAgentFrameProps) {
   const [messages, setMessages] = useState<Message[]>(() => {
     if (typeof window !== 'undefined') {
@@ -169,6 +173,28 @@ export default function MesterAIAgentFrame({
       setIsLoading(false);
     }
   };
+
+  // 🎙️ Lytt på eksterne talekommandoer (f.eks. fra den opphøyde Snakk-knappen i mobil-bunnlinjen)
+  useEffect(() => {
+    const handleVoiceOrExternalMsg = (e: any) => {
+      const text = e?.detail?.text;
+      if (text && typeof text === 'string' && text.trim()) {
+        handleSendMessage(text.trim());
+      }
+    };
+    window.addEventListener('mesterai:send-message', handleVoiceOrExternalMsg);
+    return () => {
+      window.removeEventListener('mesterai:send-message', handleVoiceOrExternalMsg);
+    };
+  }, [sessionId, isLoading, selectedProjectName, userName]);
+
+  // Håndter eventuell initialPrompt sendt inn fra prosjektoversikt / avvik
+  useEffect(() => {
+    if (initialPrompt && initialPrompt.trim()) {
+      handleSendMessage(initialPrompt.trim());
+      onPromptHandled?.();
+    }
+  }, [initialPrompt]);
 
   const handleCopy = (id: string, text: string) => {
     navigator.clipboard.writeText(text);
@@ -430,42 +456,47 @@ export default function MesterAIAgentFrame({
       </div>
 
       {/* 📝 Inputfelt og mikrofon */}
-      <div className="p-3 sm:p-4 bg-white border-t border-slate-200 shrink-0">
+      <div className={cn(
+        "p-3 sm:p-4 bg-white border-t border-slate-200 shrink-0 transition-all",
+        isFullscreen 
+          ? "pb-[calc(0.75rem+env(safe-area-inset-bottom,0px))] md:pb-3.5" 
+          : "pb-[calc(5.75rem+env(safe-area-inset-bottom,0px))] md:pb-3.5"
+      )}>
         <form 
           onSubmit={(e) => {
             e.preventDefault();
             handleSendMessage(inputVal);
           }}
-          className="flex items-center gap-2"
+          className="flex items-center gap-2 max-w-4xl mx-auto w-full"
         >
           <div className="relative flex-1">
             <input 
               type="text"
               value={inputVal}
               onChange={(e) => setInputVal(e.target.value)}
-              placeholder="Skriv instruks til agenten (f.eks. før timer, sjekk TEK17, meld avvik)..."
+              placeholder="Skriv instruks (f.eks. før timer, sjekk TEK17, meld avvik)..."
               disabled={isLoading}
-              className="w-full pl-3.5 pr-10 py-2.5 bg-slate-50 border border-slate-200 rounded-xl text-xs sm:text-sm font-medium text-slate-900 placeholder:text-slate-400 focus:bg-white focus:border-electric-500 focus:ring-2 focus:ring-electric-500/20 transition-all"
+              className="w-full pl-3.5 pr-10 py-2.5 sm:py-3 bg-slate-50 border border-slate-200 rounded-xl text-xs sm:text-sm font-medium text-slate-900 placeholder:text-slate-400 focus:bg-white focus:border-electric-500 focus:ring-2 focus:ring-electric-500/20 transition-all shadow-xs"
             />
             <button
               type="button"
               onClick={toggleMic}
               className={cn(
-                "absolute right-2.5 top-1/2 -translate-y-1/2 p-1 rounded-lg transition-all cursor-pointer",
-                isListeningMic ? "bg-rose-500 text-white animate-pulse" : "text-slate-400 hover:text-electric-600"
+                "absolute right-2.5 top-1/2 -translate-y-1/2 p-1.5 rounded-lg transition-all cursor-pointer",
+                isListeningMic ? "bg-rose-500 text-white animate-pulse" : "text-slate-400 hover:text-electric-600 active:scale-90"
               )}
               title="Tale-til-tekst"
             >
-              {isListeningMic ? <MicOff size={15} /> : <Mic size={15} />}
+              {isListeningMic ? <MicOff size={16} /> : <Mic size={16} />}
             </button>
           </div>
 
           <button
             type="submit"
             disabled={isLoading || !inputVal.trim()}
-            className="flex items-center justify-center gap-1.5 px-4 py-2.5 bg-navy-950 hover:bg-navy-900 text-white rounded-xl text-xs font-black disabled:opacity-40 transition-all shrink-0 shadow-sm cursor-pointer active:scale-95"
+            className="flex items-center justify-center gap-1.5 px-4 py-2.5 sm:py-3 bg-navy-950 hover:bg-navy-900 text-white rounded-xl text-xs sm:text-sm font-black disabled:opacity-40 transition-all shrink-0 shadow-sm cursor-pointer active:scale-95"
           >
-            <Send size={14} />
+            <Send size={15} />
             <span className="hidden sm:inline">Send</span>
           </button>
         </form>
