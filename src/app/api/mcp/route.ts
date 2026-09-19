@@ -381,102 +381,227 @@ async function executeToolCall(toolName: string, args: any) {
   }
 }
 
+const CORS_HEADERS = {
+  'Access-Control-Allow-Origin': '*',
+  'Access-Control-Allow-Methods': 'GET, POST, OPTIONS',
+  'Access-Control-Allow-Headers': 'Content-Type, Authorization, Accept, X-Requested-With',
+};
+
+// 🌐 OPTIONS-håndterer for CORS preflight
+export async function OPTIONS() {
+  return new NextResponse(null, {
+    status: 204,
+    headers: CORS_HEADERS
+  });
+}
+
+// ⚙️ Behandler en enkelt JSON-RPC melding iht. MCP-spesifikasjonen
+async function processRpcMessage(body: any): Promise<any> {
+  const reqId = body.id !== undefined ? body.id : 1;
+  const method = body.method;
+
+  // 1. Initialize
+  if (method === 'initialize') {
+    return {
+      jsonrpc: '2.0',
+      id: reqId,
+      result: {
+        protocolVersion: '2024-11-05',
+        capabilities: {
+          tools: {
+            listChanged: false
+          },
+          resources: {
+            subscribe: false,
+            listChanged: false
+          },
+          prompts: {
+            listChanged: false
+          },
+          logging: {}
+        },
+        serverInfo: {
+          name: 'VikingMester_MCP_Bridge',
+          version: '1.0.0'
+        }
+      }
+    };
+  }
+
+  // 2. Notifikasjoner (notifications/initialized, initialized, cancelled, progress etc.)
+  // I henhold til MCP-spesifikasjonen skal disse alltid kvitteres ut som suksess
+  if (
+    method === 'notifications/initialized' ||
+    method === 'initialized' ||
+    method === 'notifications/cancelled' ||
+    method === 'notifications/progress' ||
+    method === 'notifications/message' ||
+    (typeof method === 'string' && method.startsWith('notifications/'))
+  ) {
+    return {
+      jsonrpc: '2.0',
+      id: reqId,
+      result: {}
+    };
+  }
+
+  // 3. Tools List
+  if (method === 'tools/list') {
+    return {
+      jsonrpc: '2.0',
+      id: reqId,
+      result: {
+        tools: MCP_TOOLS
+      }
+    };
+  }
+
+  // 4. Tools Call
+  if (method === 'tools/call') {
+    const toolName = body.params?.name;
+    const toolArgs = body.params?.arguments || {};
+
+    try {
+      const textResult = await executeToolCall(toolName, toolArgs);
+      return {
+        jsonrpc: '2.0',
+        id: reqId,
+        result: {
+          content: [
+            {
+              type: 'text',
+              text: typeof textResult === 'string' ? textResult : JSON.stringify(textResult, null, 2)
+            }
+          ],
+          isError: false
+        }
+      };
+    } catch (err: any) {
+      return {
+        jsonrpc: '2.0',
+        id: reqId,
+        result: {
+          content: [
+            {
+              type: 'text',
+              text: `Feil ved utførelse av ${toolName}: ${err.message}`
+            }
+          ],
+          isError: true
+        }
+      };
+    }
+  }
+
+  // 5. Ping
+  if (method === 'ping') {
+    return {
+      jsonrpc: '2.0',
+      id: reqId,
+      result: {}
+    };
+  }
+
+  // 6. Resources discovery
+  if (method === 'resources/list') {
+    return {
+      jsonrpc: '2.0',
+      id: reqId,
+      result: {
+        resources: []
+      }
+    };
+  }
+
+  if (method === 'resources/templates/list') {
+    return {
+      jsonrpc: '2.0',
+      id: reqId,
+      result: {
+        resourceTemplates: []
+      }
+    };
+  }
+
+  // 7. Prompts discovery
+  if (method === 'prompts/list') {
+    return {
+      jsonrpc: '2.0',
+      id: reqId,
+      result: {
+        prompts: []
+      }
+    };
+  }
+
+  // 8. Logging
+  if (method === 'logging/setLevel') {
+    return {
+      jsonrpc: '2.0',
+      id: reqId,
+      result: {}
+    };
+  }
+
+  // 9. Roots
+  if (method === 'roots/list') {
+    return {
+      jsonrpc: '2.0',
+      id: reqId,
+      result: {
+        roots: []
+      }
+    };
+  }
+
+  // Dersom det er en notifikasjon uten ID, skal det aldri kastes feil iht. JSON-RPC 2.0
+  if (body.id === undefined) {
+    return null;
+  }
+
+  return {
+    jsonrpc: '2.0',
+    id: reqId,
+    error: {
+      code: -32601,
+      message: `Metode '${method}' støttes ikke av MCP-serveren.`
+    }
+  };
+}
+
 // 🌐 POST-håndterer for standard JSON-RPC 2.0 (MCP Protocol)
 export async function POST(req: NextRequest) {
   if (!isAuthorized(req)) {
-    return NextResponse.json({ error: 'Uautorisert tilgang til MCP-serveren. Kontroller Bearer Token.' }, { status: 401 });
+    return NextResponse.json(
+      { error: 'Uautorisert tilgang til MCP-serveren. Kontroller Bearer Token.' }, 
+      { status: 401, headers: CORS_HEADERS }
+    );
   }
 
   try {
     const body = await req.json();
-    const reqId = body.id !== undefined ? body.id : 1;
-    const method = body.method;
 
-    // 1. Initialize
-    if (method === 'initialize') {
-      return NextResponse.json({
-        jsonrpc: '2.0',
-        id: reqId,
-        result: {
-          protocolVersion: '2024-11-05',
-          capabilities: {
-            tools: {
-              listChanged: false
-            }
-          },
-          serverInfo: {
-            name: 'KS-Mester-Bridge',
-            version: '1.0.0'
-          }
+    // Håndter batch-forespørsler (array)
+    if (Array.isArray(body)) {
+      const responses = [];
+      for (const item of body) {
+        const res = await processRpcMessage(item);
+        if (res !== null) {
+          responses.push(res);
         }
-      });
-    }
-
-    // 2. Tools List
-    if (method === 'tools/list') {
-      return NextResponse.json({
-        jsonrpc: '2.0',
-        id: reqId,
-        result: {
-          tools: MCP_TOOLS
-        }
-      });
-    }
-
-    // 3. Tools Call
-    if (method === 'tools/call') {
-      const toolName = body.params?.name;
-      const toolArgs = body.params?.arguments || {};
-
-      try {
-        const textResult = await executeToolCall(toolName, toolArgs);
-        return NextResponse.json({
-          jsonrpc: '2.0',
-          id: reqId,
-          result: {
-            content: [
-              {
-                type: 'text',
-                text: typeof textResult === 'string' ? textResult : JSON.stringify(textResult, null, 2)
-              }
-            ],
-            isError: false
-          }
-        });
-      } catch (err: any) {
-        return NextResponse.json({
-          jsonrpc: '2.0',
-          id: reqId,
-          result: {
-            content: [
-              {
-                type: 'text',
-                text: `Feil ved utførelse av ${toolName}: ${err.message}`
-              }
-            ],
-            isError: true
-          }
-        });
       }
+      return NextResponse.json(responses, { headers: CORS_HEADERS });
     }
 
-    // 4. Ping
-    if (method === 'ping') {
-      return NextResponse.json({
-        jsonrpc: '2.0',
-        id: reqId,
-        result: {}
-      });
+    const response = await processRpcMessage(body);
+
+    if (response === null) {
+      // JSON-RPC notifikasjon uten ID
+      return new NextResponse(null, { status: 204, headers: CORS_HEADERS });
     }
 
-    return NextResponse.json({
-      jsonrpc: '2.0',
-      id: reqId,
-      error: {
-        code: -32601,
-        message: `Metode '${method}' støttes ikke av MCP-serveren.`
-      }
-    }, { status: 400 });
+    const status = response.error ? 400 : 200;
+    return NextResponse.json(response, { status, headers: CORS_HEADERS });
 
   } catch (error: any) {
     console.error('MCP Server POST error:', error);
@@ -487,14 +612,17 @@ export async function POST(req: NextRequest) {
         code: -32700,
         message: 'Ugyldig JSON-forespørsel: ' + error.message
       }
-    }, { status: 400 });
+    }, { status: 400, headers: CORS_HEADERS });
   }
 }
 
 // 🌐 GET-håndterer for Discovery og SSE (Server-Sent Events)
 export async function GET(req: NextRequest) {
   if (!isAuthorized(req)) {
-    return NextResponse.json({ error: 'Uautorisert tilgang. Vennligst oppgi Bearer Token.' }, { status: 401 });
+    return NextResponse.json(
+      { error: 'Uautorisert tilgang. Vennligst oppgi Bearer Token.' }, 
+      { status: 401, headers: CORS_HEADERS }
+    );
   }
 
   const acceptHeader = req.headers.get('accept') || '';
@@ -522,7 +650,8 @@ export async function GET(req: NextRequest) {
       headers: {
         'Content-Type': 'text/event-stream',
         'Cache-Control': 'no-cache',
-        'Connection': 'keep-alive'
+        'Connection': 'keep-alive',
+        ...CORS_HEADERS
       }
     });
   }
@@ -530,10 +659,10 @@ export async function GET(req: NextRequest) {
   // Standard JSON discovery response
   return NextResponse.json({
     status: 'active',
-    server: 'KS-Mester-Bridge',
+    server: 'VikingMester_MCP_Bridge',
     version: '1.0.0',
     protocolVersion: '2024-11-05',
     availableToolsCount: MCP_TOOLS.length,
     tools: MCP_TOOLS
-  });
+  }, { headers: CORS_HEADERS });
 }
