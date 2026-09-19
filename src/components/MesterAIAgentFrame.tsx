@@ -214,12 +214,20 @@ export default function MesterAIAgentFrame({
     }
   };
 
+  const lastHandledMsgRef = useRef<{ text: string; time: number }>({ text: '', time: 0 });
+
   // 🎙️ Lytt på eksterne talekommandoer (f.eks. fra den opphøyde Snakk-knappen i mobil-bunnlinjen)
   useEffect(() => {
     const handleVoiceOrExternalMsg = (e: any) => {
       const text = e?.detail?.text;
       if (text && typeof text === 'string' && text.trim()) {
-        handleSendMessage(text.trim());
+        const clean = text.trim();
+        const now = Date.now();
+        if (lastHandledMsgRef.current.text === clean && now - lastHandledMsgRef.current.time < 800) {
+          return;
+        }
+        lastHandledMsgRef.current = { text: clean, time: now };
+        handleSendMessage(clean);
       }
     };
     window.addEventListener('mesterai:send-message', handleVoiceOrExternalMsg);
@@ -315,10 +323,9 @@ export default function MesterAIAgentFrame({
         setIsListeningMic(false);
         recognitionRef.current = null;
         if (capturedSpeech) {
-          toast.success(`Oppfattet: "${capturedSpeech}"`);
-          if (textareaRef.current) {
-            textareaRef.current.focus();
-          }
+          const finalMessage = capturedSpeech.trim();
+          toast.success(`Oppfattet: "${finalMessage}"`);
+          handleSendMessage(finalMessage);
         }
       };
 

@@ -888,11 +888,15 @@ export default function MesterAIChat({
         const finalCmd = capturedSpeech.trim();
         if (finalCmd) {
           toast.success(`Oppfattet: "${finalCmd}"`);
+          setActiveTab('chat');
+          setActiveFormView(null);
           if (typeof window !== 'undefined') {
             window.dispatchEvent(new CustomEvent('mesterai:send-message', { detail: { text: finalCmd } }));
+            // Forsikre at meldingen når MesterAIAgentFrame dersom komponenten akkurat montertes
+            setTimeout(() => {
+              window.dispatchEvent(new CustomEvent('mesterai:send-message', { detail: { text: finalCmd } }));
+            }, 120);
           }
-          handleSendMessage(finalCmd);
-          setActiveTab('chat');
         }
       };
 
