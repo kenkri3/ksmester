@@ -47,29 +47,37 @@ export default function MesterAIAgentFrame({
   onPromptHandled
 }: MesterAIAgentFrameProps) {
   const [messages, setMessages] = useState<Message[]>(() => {
+    const welcomeMsg: Message = {
+      id: 'welcome',
+      role: 'assistant',
+      content: selectedProjectName 
+        ? `Hei! 👋 Jeg er **MesterAI**.\n\nKlar på **${selectedProjectName}** til å føre timer, lage SJA, melde avvik eller sjekke prosjektstatus.\n\nHva vil du ha utført?`
+        : `Hei! 👋 Jeg er **MesterAI**, din prosjektpilot.\n\nKlar til å føre timer, lage SJA, melde avvik eller sjekke prosjektøkonomi og TEK17.\n\nHva vil du ha utført i dag?`,
+      timestamp: new Date().toLocaleTimeString('no-NO', { hour: '2-digit', minute: '2-digit' }),
+      quickReplies: [
+        { title: '⏱️ Før timer', payload: 'Jeg vil føre timer på prosjektet' },
+        { title: '🛡️ Opprett SJA', payload: 'Opprett en ny Sikker Jobb Analyse (SJA)' },
+        { title: '🚨 Meld avvik', payload: 'Jeg vil melde inn et nytt avvik (RUH)' },
+        { title: '📊 Prosjektstatus', payload: 'Vis økonomisk status og timer for prosjektet' }
+      ]
+    };
+
     if (typeof window !== 'undefined') {
       try {
         const saved = sessionStorage.getItem('mester_ai_agent_history');
         if (saved) {
           const parsed = JSON.parse(saved);
-          if (Array.isArray(parsed) && parsed.length > 0) return parsed;
+          if (Array.isArray(parsed) && parsed.length > 0) {
+            // Hvis brukeren kun har den gamle velkomstmeldingen, oppgrader til den nye
+            if (parsed.length === 1 && parsed[0].id === 'welcome') {
+              return [welcomeMsg];
+            }
+            return parsed;
+          }
         }
       } catch {}
     }
-    return [
-      {
-        id: 'welcome',
-        role: 'assistant',
-        content: `Hei! 👋 Jeg er **MesterAI Prosjektpilot**, din autonome prosjektassistent.\n\nJeg kan hjelpe deg med **timeføring, byggedagbok, SJA, avvik (RUH), endringsordrer (NS 8406)** og oppslag i **TEK17 / Byggforsk**.\n\nHva vil du at jeg skal utføre for deg i dag?`,
-        timestamp: new Date().toLocaleTimeString('no-NO', { hour: '2-digit', minute: '2-digit' }),
-        quickReplies: [
-          { title: '⏰ Før timer på prosjekt', payload: 'Jeg vil føre timer på prosjektet' },
-          { title: '🚨 Meld avvik (RUH)', payload: 'Jeg vil melde inn et nytt avvik' },
-          { title: '📝 Ny SJA-analyse', payload: 'Opprett en ny Sikker Jobb Analyse (SJA)' },
-          { title: '📐 Sjekk TEK17-krav', payload: 'Hva er kravene til fall mot sluk i TEK17 våtrom?' }
-        ]
-      }
-    ];
+    return [welcomeMsg];
   });
 
   const [inputVal, setInputVal] = useState('');
@@ -127,12 +135,15 @@ export default function MesterAIAgentFrame({
       {
         id: `w-${Date.now()}`,
         role: 'assistant',
-        content: `Samtalen er nullstilt. Hva kan jeg hjelpe deg med i prosjektet nå?`,
+        content: selectedProjectName 
+          ? `Samtalen er nullstilt. Klar på **${selectedProjectName}** – hva vil du utføre nå?`
+          : `Samtalen er nullstilt. Hva vil du utføre i prosjektet nå?`,
         timestamp: new Date().toLocaleTimeString('no-NO', { hour: '2-digit', minute: '2-digit' }),
         quickReplies: [
-          { title: '⏰ Før timer på prosjekt', payload: 'Jeg vil føre timer' },
-          { title: '🚨 Meld avvik (RUH)', payload: 'Meld avvik' },
-          { title: '📐 Sjekk TEK17-krav', payload: 'Krav til fall mot sluk' }
+          { title: '⏱️ Før timer', payload: 'Jeg vil føre timer på prosjektet' },
+          { title: '🛡️ Opprett SJA', payload: 'Opprett en ny Sikker Jobb Analyse (SJA)' },
+          { title: '🚨 Meld avvik', payload: 'Jeg vil melde inn et nytt avvik (RUH)' },
+          { title: '📊 Prosjektstatus', payload: 'Vis økonomisk status og timer for prosjektet' }
         ]
       }
     ];
@@ -455,17 +466,16 @@ export default function MesterAIAgentFrame({
 
               {/* Hurtigvalg (Quick Replies) */}
               {msg.quickReplies && msg.quickReplies.length > 0 && (
-                <div className="mt-3 pt-2 border-t border-slate-100 flex flex-wrap gap-1.5">
+                <div className="mt-3 pt-2.5 border-t border-slate-100 grid grid-cols-2 gap-2">
                   {msg.quickReplies.map((qr, i) => (
                     <button
                       key={i}
                       type="button"
                       disabled={isLoading}
                       onClick={() => handleSendMessage(qr.payload || qr.title)}
-                      className="inline-flex items-center gap-1 px-2.5 py-1 rounded-xl bg-electric-50 hover:bg-electric-100 text-electric-800 text-[11px] font-bold border border-electric-200 transition-all cursor-pointer shadow-2xs active:scale-95"
+                      className="flex items-center justify-center text-center px-2.5 py-2 rounded-xl bg-slate-50 hover:bg-electric-50 text-slate-800 hover:text-electric-900 text-xs font-bold border border-slate-200 hover:border-electric-300 transition-all cursor-pointer shadow-2xs active:scale-95 leading-tight"
                     >
-                      <Sparkles size={11} className="text-electric-600" />
-                      <span>{qr.title}</span>
+                      <span className="truncate">{qr.title}</span>
                     </button>
                   ))}
                 </div>
