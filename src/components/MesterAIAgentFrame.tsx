@@ -457,10 +457,10 @@ export default function MesterAIAgentFrame({
 
       {/* 📝 Inputfelt og mikrofon */}
       <div className={cn(
-        "p-3 sm:p-4 bg-white border-t border-slate-200 shrink-0 transition-all",
+        "px-3 pt-2.5 sm:p-4 bg-white border-t border-slate-200 shrink-0 transition-all",
         isFullscreen 
           ? "pb-[calc(0.75rem+env(safe-area-inset-bottom,0px))] md:pb-3.5" 
-          : "pb-[calc(5.75rem+env(safe-area-inset-bottom,0px))] md:pb-3.5"
+          : "pb-[calc(3.85rem+env(safe-area-inset-bottom,0px))] md:pb-3.5"
       )}>
         <form 
           onSubmit={(e) => {
@@ -476,7 +476,7 @@ export default function MesterAIAgentFrame({
               onChange={(e) => setInputVal(e.target.value)}
               placeholder="Skriv instruks (f.eks. før timer, sjekk TEK17, meld avvik)..."
               disabled={isLoading}
-              className="w-full pl-3.5 pr-10 py-2.5 sm:py-3 bg-slate-50 border border-slate-200 rounded-xl text-xs sm:text-sm font-medium text-slate-900 placeholder:text-slate-400 focus:bg-white focus:border-electric-500 focus:ring-2 focus:ring-electric-500/20 transition-all shadow-xs"
+              className="w-full pl-3.5 pr-10 py-2 sm:py-2.5 bg-slate-50 border border-slate-200 rounded-xl text-xs sm:text-sm font-medium text-slate-900 placeholder:text-slate-400 focus:bg-white focus:border-electric-500 focus:ring-2 focus:ring-electric-500/20 transition-all shadow-xs"
             />
             <button
               type="button"
@@ -494,7 +494,7 @@ export default function MesterAIAgentFrame({
           <button
             type="submit"
             disabled={isLoading || !inputVal.trim()}
-            className="flex items-center justify-center gap-1.5 px-4 py-2.5 sm:py-3 bg-navy-950 hover:bg-navy-900 text-white rounded-xl text-xs sm:text-sm font-black disabled:opacity-40 transition-all shrink-0 shadow-sm cursor-pointer active:scale-95"
+            className="flex items-center justify-center gap-1.5 px-3.5 sm:px-4 py-2 sm:py-2.5 bg-navy-950 hover:bg-navy-900 text-white rounded-xl text-xs sm:text-sm font-black disabled:opacity-40 transition-all shrink-0 shadow-sm cursor-pointer active:scale-95"
           >
             <Send size={15} />
             <span className="hidden sm:inline">Send</span>
