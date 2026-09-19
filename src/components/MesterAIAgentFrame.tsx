@@ -18,6 +18,8 @@ import {
 } from 'lucide-react';
 import { cn } from '@/src/lib/utils';
 import { toast } from 'sonner';
+import ReactMarkdown from 'react-markdown';
+import remarkGfm from 'remark-gfm';
 
 interface Message {
   id: string;
@@ -223,6 +225,75 @@ export default function MesterAIAgentFrame({
     }
   };
 
+  const renderFormattedContent = (content: string) => {
+    // Normaliser punktlister: gjør om unike kulepunkter (• og ●) til markdown standard `- `
+    const normalizedContent = (content || '')
+      .replace(/^[ \t]*[•●][ \t]*/gm, '- ')
+      .replace(/\n[ \t]*[•●][ \t]*/g, '\n- ');
+
+    return (
+      <div className="text-slate-800 leading-relaxed font-sans text-xs sm:text-sm">
+        <ReactMarkdown
+          remarkPlugins={[remarkGfm]}
+          components={{
+            p: ({ children }) => (
+              <p className="text-xs sm:text-sm text-slate-800 leading-relaxed my-1.5 first:mt-0 last:mb-0">
+                {children}
+              </p>
+            ),
+            strong: ({ children }) => (
+              <strong className="font-extrabold text-navy-950">
+                {children}
+              </strong>
+            ),
+            em: ({ children }) => (
+              <em className="italic text-slate-700">
+                {children}
+              </em>
+            ),
+            ul: ({ children }) => (
+              <ul className="space-y-1 my-1.5 pl-4 list-disc text-xs sm:text-sm text-slate-800">
+                {children}
+              </ul>
+            ),
+            ol: ({ children }) => (
+              <ol className="list-decimal space-y-1 my-1.5 pl-5 text-xs sm:text-sm text-slate-800 font-medium">
+                {children}
+              </ol>
+            ),
+            li: ({ children }) => (
+              <li className="text-xs sm:text-sm text-slate-800 leading-relaxed">
+                {children}
+              </li>
+            ),
+            h1: ({ children }) => (
+              <h3 className="text-sm sm:text-base font-black text-navy-950 mt-2 mb-1 pb-1 border-b border-slate-100">
+                {children}
+              </h3>
+            ),
+            h2: ({ children }) => (
+              <h4 className="text-xs sm:text-sm font-black text-electric-800 mt-2 mb-1">
+                {children}
+              </h4>
+            ),
+            h3: ({ children }) => (
+              <h5 className="text-xs sm:text-sm font-bold text-navy-950 mt-1.5 mb-0.5">
+                {children}
+              </h5>
+            ),
+            blockquote: ({ children }) => (
+              <blockquote className="border-l-4 border-electric-500 bg-electric-50/70 pl-3 py-1.5 my-1.5 rounded-r-xl text-xs text-navy-950 font-medium">
+                {children}
+              </blockquote>
+            )
+          }}
+        >
+          {normalizedContent}
+        </ReactMarkdown>
+      </div>
+    );
+  };
+
   return (
     <div className={cn(
       "flex flex-col bg-white overflow-hidden transition-all duration-300",
@@ -313,12 +384,13 @@ export default function MesterAIAgentFrame({
                 </div>
               )}
 
-              <div className={cn(
-                "text-xs sm:text-sm leading-relaxed whitespace-pre-wrap",
-                msg.role === 'user' ? "text-white font-medium" : "text-slate-800"
-              )}>
-                {msg.content}
-              </div>
+              {msg.role === 'user' ? (
+                <div className="text-xs sm:text-sm leading-relaxed whitespace-pre-wrap text-white font-medium">
+                  {msg.content}
+                </div>
+              ) : (
+                renderFormattedContent(msg.content)
+              )}
 
               {/* Hurtigvalg (Quick Replies) */}
               {msg.quickReplies && msg.quickReplies.length > 0 && (
