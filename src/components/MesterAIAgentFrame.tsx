@@ -92,27 +92,63 @@ export default function MesterAIAgentFrame({
   userId,
   initialHeight = 'h-full',
   initialPrompt,
-  onPromptHandled
+  onPromptHandled,
+  storageKey,
+  hasBottomNav = true
 }: MesterAIAgentFrameProps) {
+  const effectiveStorageKey = storageKey || 'mester_ai_agent_history';
+
   const [messages, setMessages] = useState<Message[]>(() => {
+    // Tilpass velkomsthilsen og hurtigvalg basert på brukerens fag og prosjekt
+    const isPlumber = userTrade === 'plumber' || (userName && userName.toLowerCase().includes('rørlegger'));
+    const isCarpenter = userTrade === 'carpenter' || (userName && userName.toLowerCase().includes('tømrer'));
+
+    let welcomeText = '';
+    let quickReplies: Array<{ title: string; payload: string }> = [];
+
+    if (isPlumber) {
+      welcomeText = selectedProjectName
+        ? `Hei ${userName}! 👋 Jeg er **MesterAI** for VVS på **${selectedProjectName}**.\n\nKlar til å kvittere ut trykktest for lukkesperre, sjekke fall mot sluk (TEK17) eller loggføre avvik.\n\nHva skal kontrolleres i dag?`
+        : `Hei ${userName}! 👋 Jeg er **MesterAI**, din VVS-pilot.\n\nKlar til å sjekke trykktester, rør-i-rør dokumentasjon og TEK17 våtromskrav.\n\nHva trenger du hjelp med?`;
+      quickReplies = [
+        { title: '🚰 Kvitter ut trykktest', payload: 'Trykktest av rør-i-rør fordelerskap fullført med 10 bar, alt tett' },
+        { title: '📐 Sjekk fall mot sluk', payload: 'Hva er kravene til fall mot sluk i TEK17 på bad?' },
+        { title: '📋 VVS-sjekkliste', payload: 'Vis sjekkliste for rør-i-rør og membran før lukking' },
+        { title: '🚨 Meld VVS-avvik', payload: 'Jeg må melde inn et avvik på skadet rør' }
+      ];
+    } else if (isCarpenter) {
+      welcomeText = selectedProjectName
+        ? `Hei ${userName}! 👋 Jeg er **MesterAI** for **${selectedProjectName}**.\n\nKlar til å føre timer via tale, sjekke TEK17 på vindsperre og kledning, eller lage SJA før stillasarbeid.\n\nHva er status på byggeplassen?`
+        : `Hei ${userName}! 👋 Jeg er **MesterAI**, din tømrer-pilot.\n\nKlar til å føre timer, lage SJA og sjekke konstruksjonskrav.\n\nHva vil du føre i dag?`;
+      quickReplies = [
+        { title: '⏱️ Før 7,5 timer i dagbok', payload: 'Før 7,5 timer lekting og vindsperre i byggedagboken' },
+        { title: '🦺 Opprett SJA for stillas', payload: 'Opprett en ny Sikker Jobb Analyse (SJA) for arbeid i stillas i 3. etasje' },
+        { title: '📸 Sjekk TEK17 vindsperre', payload: 'Hva er kravene til klemming av vindsperre og lufting av kledning i TEK17?' },
+        { title: '🚨 Meld inn avvik', payload: 'Jeg vil melde inn et avvik på fuktig trevirke' }
+      ];
+    } else {
+      welcomeText = selectedProjectName
+        ? `Hei ${userName}! 👋 Jeg er **MesterAI**, din prosjektpilot på **${selectedProjectName}**.\n\nKlar til å varsle endringsordrer (NS 8406), sjekke prosjekthelse, kalkulere eller føre timeverk.\n\nHva vil du ha utført i dag?`
+        : `Hei ${userName}! 👋 Jeg er **MesterAI**, din prosjektpilot.\n\nKlar til å føre timer, lage SJA, melde avvik eller sjekke prosjektøkonomi og TEK17.\n\nHva vil du ha utført i dag?`;
+      quickReplies = [
+        { title: '⚡ Varsle endringsordre', payload: 'Varsle endringsordre iht. NS 8406 på 28 500 kr for ekstra bærebjelke' },
+        { title: '📊 Prosjekthelse & Krav', payload: 'Hva er prosjekthelse og ubehandlede krav på prosjektet?' },
+        { title: '📝 Kalkyle etterisolering', payload: 'Lag et tilbud på etterisolering og ny kledning med 15% påslag' },
+        { title: '⏱️ Før timer i dagbok', payload: 'Jeg vil føre timer på prosjektet' }
+      ];
+    }
+
     const welcomeMsg: Message = {
       id: 'welcome',
       role: 'assistant',
-      content: selectedProjectName 
-        ? `Hei! 👋 Jeg er **MesterAI**.\n\nKlar på **${selectedProjectName}** til å føre timer, lage SJA, melde avvik eller sjekke prosjektstatus.\n\nHva vil du ha utført?`
-        : `Hei! 👋 Jeg er **MesterAI**, din prosjektpilot.\n\nKlar til å føre timer, lage SJA, melde avvik eller sjekke prosjektøkonomi og TEK17.\n\nHva vil du ha utført i dag?`,
+      content: welcomeText,
       timestamp: new Date().toLocaleTimeString('no-NO', { hour: '2-digit', minute: '2-digit' }),
-      quickReplies: [
-        { title: '⏱️ Før timer', payload: 'Jeg vil føre timer på prosjektet' },
-        { title: '🛡️ Opprett SJA', payload: 'Opprett en ny Sikker Jobb Analyse (SJA)' },
-        { title: '🚨 Meld avvik', payload: 'Jeg vil melde inn et nytt avvik (RUH)' },
-        { title: '📊 Prosjektstatus', payload: 'Vis økonomisk status og timer for prosjektet' }
-      ]
+      quickReplies
     };
 
     if (typeof window !== 'undefined') {
       try {
-        const saved = sessionStorage.getItem('mester_ai_agent_history');
+        const saved = sessionStorage.getItem(effectiveStorageKey);
         if (saved) {
           const parsed = JSON.parse(saved);
           if (Array.isArray(parsed) && parsed.length > 0) {
@@ -323,12 +359,17 @@ export default function MesterAIAgentFrame({
 
   useEffect(() => {
     try {
-      sessionStorage.setItem('mester_ai_agent_history', JSON.stringify(messages));
+      sessionStorage.setItem(effectiveStorageKey, JSON.stringify(messages));
     } catch {}
     messagesEndRef.current?.scrollIntoView({ behavior: 'smooth' });
-  }, [messages]);
+  }, [messages, effectiveStorageKey]);
 
   const handleClearHistory = () => {
+    if (typeof window !== 'undefined') {
+      try {
+        sessionStorage.removeItem(effectiveStorageKey);
+      } catch {}
+    }
     const fresh: Message[] = [
       {
         id: `w-${Date.now()}`,
@@ -800,7 +841,7 @@ export default function MesterAIAgentFrame({
       {/* 📝 Inputfelt og mikrofon */}
       <div className={cn(
         "px-3 pt-2.5 sm:p-4 bg-white border-t border-slate-200 shrink-0 transition-all",
-        isFullscreen 
+        isFullscreen || !hasBottomNav
           ? "pb-[calc(0.75rem+env(safe-area-inset-bottom,0px))] md:pb-3.5" 
           : "pb-[calc(3.85rem+env(safe-area-inset-bottom,0px))] md:pb-3.5"
       )}>

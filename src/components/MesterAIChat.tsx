@@ -4,6 +4,7 @@ import ReactMarkdown from 'react-markdown';
 import remarkGfm from 'remark-gfm';
 import { 
   Brain, 
+  Bot,
   Send, 
   Mic, 
   MicOff, 
@@ -610,8 +611,30 @@ export default function MesterAIChat({
   const [isMinimized, setIsMinimized] = useState(false);
   const [isFullscreen, setIsFullscreen] = useState(false);
   const [isSplitView, setIsSplitView] = useState(() => {
-    return typeof window !== 'undefined' ? window.innerWidth >= 1024 : true;
+    if (typeof window !== 'undefined') {
+      try {
+        const saved = localStorage.getItem('mester_ai_split_view');
+        if (saved !== null) return saved === 'true';
+        // On standard screens (or with Chrome sidebar open), default to full-width (false).
+        // Only default to split on ultra-wide screens (>= 1500px).
+        return window.innerWidth >= 1500;
+      } catch {}
+    }
+    return false;
   });
+
+  const toggleSplitView = () => {
+    setIsSplitView(prev => {
+      const next = !prev;
+      if (typeof window !== 'undefined') {
+        try {
+          localStorage.setItem('mester_ai_split_view', String(next));
+        } catch {}
+      }
+      toast.info(next ? 'Delt visning aktivert (Samtale + Oversikt)' : 'Enkeltvisning aktivert (Full skjermbredde)');
+      return next;
+    });
+  };
   const [activeTab, setActiveTab] = useState<'control_center' | 'chat' | 'projects' | 'admin' | 'team' | 'toolbox' | 'channels'>('control_center');
   const [activeFormView, setActiveFormView] = useState<{ type: InChatFormType; data?: any } | null>(null);
   const [projectFilter, setProjectFilter] = useState('');
@@ -2040,9 +2063,10 @@ export default function MesterAIChat({
           )}
         </AnimatePresence>
 
-        {/* 💻 2. DESKTOP & TABLET HEADER & NAVIGATION BAR (Visible md and up) */}
-        <div className="hidden md:flex px-4 sm:px-6 py-2.5 bg-gradient-to-r from-navy-950 via-slate-900 to-navy-950 text-white items-center justify-between gap-3 border-b border-white/10 shrink-0">
-          <div className="flex items-center gap-3 shrink-0">
+        {/* 💻 2. DESKTOP & TABLET HEADER & NAVIGATION BAR (Fluid & Responsive to any PC width) */}
+        <div className="hidden md:flex px-3 sm:px-4 lg:px-5 py-2 bg-gradient-to-r from-navy-950 via-slate-900 to-navy-950 text-white items-center justify-between gap-2 border-b border-white/10 shrink-0 w-full max-w-full overflow-hidden">
+          {/* Left: Brand & Autonomy */}
+          <div className="flex items-center gap-2.5 shrink-0">
             <div className="w-8 h-8 rounded-xl bg-gradient-to-tr from-electric-600 to-purple-500 flex items-center justify-center text-white shadow-md shadow-electric-500/20 shrink-0">
               <Brain size={18} />
             </div>
@@ -2050,12 +2074,12 @@ export default function MesterAIChat({
               <h3 className="text-sm font-black tracking-tight text-white whitespace-nowrap">
                 MesterAI
               </h3>
-              <span className="inline-flex items-center gap-1 px-2 py-0.5 rounded-full text-[10px] font-bold bg-emerald-500/20 text-emerald-300 border border-emerald-500/30 whitespace-nowrap">
+              <span className="hidden 2xl:inline-flex items-center gap-1 px-2 py-0.5 rounded-full text-[10px] font-bold bg-emerald-500/20 text-emerald-300 border border-emerald-500/30 whitespace-nowrap">
                 <span className="w-1.5 h-1.5 rounded-full bg-emerald-400 animate-pulse" />
                 100% Autonom
               </span>
               {selectedProject && (
-                <span className="inline-flex items-center gap-1 px-2 py-0.5 rounded-full text-[10px] font-bold bg-white/10 text-slate-200 border border-white/10 truncate max-w-[130px]">
+                <span className="hidden 2xl:inline-flex items-center gap-1 px-2 py-0.5 rounded-full text-[10px] font-bold bg-white/10 text-slate-200 border border-white/10 truncate max-w-[130px]">
                   <Building2 size={11} className="text-electric-400 shrink-0" />
                   <span className="truncate">{selectedProject.name}</span>
                 </span>
@@ -2063,14 +2087,14 @@ export default function MesterAIChat({
             </div>
           </div>
 
-          {/* Central Workspace View Mode Selector with RBAC (Streamlined 4 Core Views) */}
-          <div className="flex items-center gap-1 bg-white/10 p-1 rounded-2xl backdrop-blur-md overflow-x-auto shrink-0">
+          {/* Central Workspace View Mode Selector with RBAC */}
+          <div className="flex items-center gap-1 bg-white/10 p-1 rounded-2xl backdrop-blur-md overflow-x-auto no-scrollbar shrink min-w-0">
             {/* 1. Oversikt / Kontrollsenter */}
             <button
               type="button"
               onClick={() => { setActiveTab('control_center'); setActiveFormView(null); }}
               className={cn(
-                "flex items-center gap-1.5 px-3 py-1.5 rounded-xl text-xs font-bold transition-all shrink-0 cursor-pointer",
+                "flex items-center gap-1.5 px-2.5 lg:px-3 py-1.5 rounded-xl text-xs font-bold transition-all shrink-0 cursor-pointer",
                 activeTab === 'control_center' && !activeFormView
                   ? "bg-white text-navy-950 shadow-sm font-black"
                   : "text-slate-200 hover:text-white hover:bg-white/10"
@@ -2085,7 +2109,7 @@ export default function MesterAIChat({
               type="button"
               onClick={() => { setActiveTab('projects'); setActiveFormView(null); }}
               className={cn(
-                "flex items-center gap-1.5 px-3 py-1.5 rounded-xl text-xs font-bold transition-all shrink-0 cursor-pointer",
+                "flex items-center gap-1.5 px-2.5 lg:px-3 py-1.5 rounded-xl text-xs font-bold transition-all shrink-0 cursor-pointer",
                 activeTab === 'projects'
                   ? "bg-white text-navy-950 shadow-sm font-black"
                   : "text-slate-200 hover:text-white hover:bg-white/10"
@@ -2101,14 +2125,16 @@ export default function MesterAIChat({
                 type="button"
                 onClick={() => { setActiveTab('admin'); setActiveFormView(null); }}
                 className={cn(
-                  "flex items-center gap-1.5 px-3 py-1.5 rounded-xl text-xs font-bold transition-all shrink-0 cursor-pointer",
+                  "flex items-center gap-1.5 px-2.5 lg:px-3 py-1.5 rounded-xl text-xs font-bold transition-all shrink-0 cursor-pointer",
                   activeTab === 'admin'
                     ? "bg-white text-navy-950 shadow-sm font-black"
                     : "text-slate-200 hover:text-white hover:bg-white/10"
                 )}
               >
                 <FileSignature size={14} className={activeTab === 'admin' ? "text-amber-600" : "text-slate-300"} />
-                <span>Tilbud & Endring ({offers.length + changeOrders.length})</span>
+                <span className="hidden xl:inline">Tilbud & Endring</span>
+                <span className="xl:hidden">Tilbud</span>
+                <span>({offers.length + changeOrders.length})</span>
               </button>
             )}
 
@@ -2118,7 +2144,7 @@ export default function MesterAIChat({
                 type="button"
                 onClick={() => { setActiveTab('team'); setActiveFormView(null); }}
                 className={cn(
-                  "flex items-center gap-1.5 px-3 py-1.5 rounded-xl text-xs font-bold transition-all shrink-0 cursor-pointer",
+                  "flex items-center gap-1.5 px-2.5 lg:px-3 py-1.5 rounded-xl text-xs font-bold transition-all shrink-0 cursor-pointer",
                   activeTab === 'team'
                     ? "bg-white text-navy-950 shadow-sm font-black"
                     : "text-slate-200 hover:text-white hover:bg-white/10"
@@ -2128,18 +2154,33 @@ export default function MesterAIChat({
                 <span>Team</span>
               </button>
             )}
+
+            {/* 5. MesterAI Pilot / Samtale Tab */}
+            <button
+              type="button"
+              onClick={() => { setActiveTab('chat'); setActiveFormView(null); }}
+              className={cn(
+                "flex items-center gap-1.5 px-2.5 lg:px-3 py-1.5 rounded-xl text-xs font-bold transition-all shrink-0 cursor-pointer",
+                activeTab === 'chat' && !activeFormView
+                  ? "bg-white text-navy-950 shadow-sm font-black"
+                  : "text-slate-200 hover:text-white hover:bg-white/10"
+              )}
+            >
+              <Bot size={14} className={activeTab === 'chat' && !activeFormView ? "text-purple-600" : "text-purple-300"} />
+              <span>Pilot</span>
+            </button>
           </div>
 
           {/* Right Header Actions */}
-          <div className="flex items-center gap-2 shrink-0">
+          <div className="flex items-center gap-1.5 sm:gap-2 shrink-0">
             {onOpenOmnichannelModal && (
               <button
                 type="button"
                 onClick={onOpenOmnichannelModal}
-                className="p-2 text-slate-300 hover:text-white hover:bg-white/10 rounded-xl transition-all cursor-pointer"
+                className="p-1.5 lg:p-2 text-slate-300 hover:text-white hover:bg-white/10 rounded-xl transition-all cursor-pointer"
                 title="Omnichannel Lytter (Discord, Slack, Teams, E-post)"
               >
-                <Radio size={15} className="text-emerald-400" />
+                <Radio size={14} className="text-emerald-400" />
               </button>
             )}
 
@@ -2147,11 +2188,12 @@ export default function MesterAIChat({
               <button
                 type="button"
                 onClick={onOpenSmartSearch}
-                className="flex items-center gap-1.5 px-3 py-1.5 rounded-xl text-xs font-bold text-slate-300 hover:text-white hover:bg-white/10 transition-all cursor-pointer"
+                className="flex items-center gap-1.5 px-2.5 py-1.5 rounded-xl text-xs font-bold text-slate-300 hover:text-white hover:bg-white/10 transition-all cursor-pointer"
+                title="Søk i prosjekter, avvik og verktøy (⌘K)"
               >
                 <Search size={14} />
-                <span>Søk</span>
-                <kbd className="px-1.5 py-0.5 bg-white/10 border border-white/20 rounded text-[10px] text-slate-300">⌘K</kbd>
+                <span className="hidden xl:inline">Søk</span>
+                <kbd className="hidden 2xl:inline px-1 py-0.5 bg-white/10 border border-white/20 rounded text-[10px] text-slate-300">⌘K</kbd>
               </button>
             )}
 
@@ -2159,11 +2201,11 @@ export default function MesterAIChat({
               <button
                 type="button"
                 onClick={onOpenAllModules}
-                className="flex items-center gap-1.5 px-3 py-1.5 rounded-xl text-xs font-bold text-slate-300 hover:text-white hover:bg-white/10 transition-all cursor-pointer"
+                className="flex items-center gap-1.5 px-2.5 py-1.5 rounded-xl text-xs font-bold text-slate-300 hover:text-white hover:bg-white/10 transition-all cursor-pointer"
                 title="Se alle 20 moduler"
               >
                 <Layers size={14} />
-                <span>Moduler</span>
+                <span className="hidden xl:inline">Moduler</span>
               </button>
             )}
 
@@ -2171,42 +2213,42 @@ export default function MesterAIChat({
               <button
                 type="button"
                 onClick={() => window.dispatchEvent(new CustomEvent("navigate_view", { detail: { view: "super-admin" } }))}
-                className="flex items-center gap-1.5 px-3 py-1.5 rounded-xl text-xs font-black transition-all bg-gradient-to-r from-rose-600 to-pink-600 hover:from-rose-500 hover:to-pink-500 text-white shadow-sm cursor-pointer"
-                title="SuperAdmin"
+                className="flex items-center gap-1.5 px-2.5 py-1.5 rounded-xl text-xs font-black transition-all bg-gradient-to-r from-rose-600 to-pink-600 hover:from-rose-500 hover:to-pink-500 text-white shadow-sm cursor-pointer"
+                title="SuperAdmin Kontrollpanel"
               >
                 <Shield size={13} />
-                <span>SuperAdmin</span>
+                <span className="hidden xl:inline">SuperAdmin</span>
               </button>
             )}
 
             <button
               type="button"
-              onClick={() => setIsSplitView(!isSplitView)}
+              onClick={toggleSplitView}
               className={cn(
-                "p-2 rounded-xl transition-all text-xs font-bold flex items-center gap-1.5 cursor-pointer",
+                "px-2.5 py-1.5 rounded-xl transition-all text-xs font-bold flex items-center gap-1.5 cursor-pointer",
                 isSplitView ? "bg-white/20 text-white" : "text-slate-300 hover:text-white hover:bg-white/10"
               )}
-              title={isSplitView ? "Enkeltvisning (full bredde)" : "Delt visning (Samtale + Oversikt)"}
+              title={isSplitView ? "Bytt til enkeltvisning (full skjermbredde)" : "Bytt til delt visning (samtale + oversikt)"}
             >
-              <Columns size={15} />
-              <span className="text-[11px]">{isSplitView ? 'Delt' : 'Full'}</span>
+              <Columns size={14} />
+              <span className="hidden lg:inline text-[11px]">{isSplitView ? 'Delt' : 'Full'}</span>
             </button>
 
             <button
               type="button"
               onClick={handleClearHistory}
-              className="p-2 text-slate-300 hover:text-white hover:bg-white/10 rounded-xl transition-all text-xs font-bold flex items-center gap-1.5 cursor-pointer"
+              className="p-1.5 lg:p-2 text-slate-300 hover:text-white hover:bg-white/10 rounded-xl transition-all text-xs font-bold flex items-center gap-1.5 cursor-pointer"
               title="Nullstill samtale og få et rent chat-vindu"
             >
-              <RotateCcw size={15} />
-              <span className="hidden xl:inline text-[11px]">Nullstill</span>
+              <RotateCcw size={14} />
+              <span className="hidden 2xl:inline text-[11px]">Nullstill</span>
             </button>
 
             {/* Divider */}
-            <div className="h-5 w-px bg-white/15 mx-1" />
+            <div className="h-4 w-px bg-white/15 mx-0.5" />
 
             {/* Language Selector */}
-            <div className="flex items-center gap-1 px-2.5 py-1.5 bg-white/10 hover:bg-white/15 rounded-xl border border-white/15 transition-all">
+            <div className="flex items-center gap-1 px-2 py-1 bg-white/10 hover:bg-white/15 rounded-xl border border-white/15 transition-all">
               <Globe size={13} className="text-slate-300 shrink-0" />
               <select 
                 onChange={(e) => changeLanguage(e.target.value)}
@@ -2229,8 +2271,8 @@ export default function MesterAIChat({
               <button
                 type="button"
                 onClick={() => setIsProfileMenuOpen(!isProfileMenuOpen)}
-                className="flex items-center gap-2 px-2.5 py-1.5 rounded-xl bg-white/10 hover:bg-white/15 border border-white/15 text-white transition-all cursor-pointer select-none"
-                title="Brukerprofil og systemmeny"
+                className="flex items-center gap-1.5 px-2 py-1 rounded-xl bg-white/10 hover:bg-white/15 border border-white/15 text-white transition-all cursor-pointer select-none"
+                title={`${user?.displayName || 'Bruker'} (${isAdminOrManager ? 'Admin / Leder' : isWorker ? 'Håndverker' : 'Bruker'})`}
               >
                 {user?.photoURL ? (
                   <img 
@@ -2244,7 +2286,7 @@ export default function MesterAIChat({
                     {user?.displayName ? user.displayName.charAt(0).toUpperCase() : <UserIcon size={12} />}
                   </div>
                 )}
-                <div className="text-left leading-tight hidden xl:block">
+                <div className="text-left leading-tight hidden 2xl:block">
                   <p className="text-xs font-bold text-white truncate max-w-[120px]">
                     {user?.displayName || 'Bruker'}
                   </p>
@@ -2383,7 +2425,7 @@ export default function MesterAIChat({
           {/* Left Column: MesterAI Prosjektpilot (Always visible in split view or when activeTab === 'chat') */}
           {(activeTab === 'chat' || (isSplitView && !activeFormView)) && (
             <div className={cn(
-              "flex flex-col bg-white border-r border-slate-200 overflow-hidden transition-all",
+              "flex flex-col bg-white border-r border-slate-200 overflow-hidden transition-all min-w-0",
               activeFormView 
                 ? "hidden md:flex md:w-[44%] lg:w-[40%] xl:w-[38%]" 
                 : (isSplitView && activeTab !== 'chat' 
@@ -2407,7 +2449,7 @@ export default function MesterAIChat({
 
           {/* Right Column / Full Body: Active Form OR Overview Views */}
           <div className={cn(
-            "flex-1 overflow-y-auto flex flex-col bg-slate-50/70 transition-all custom-scrollbar",
+            "flex-1 overflow-y-auto flex flex-col bg-slate-50/70 transition-all custom-scrollbar min-w-0",
             activeFormView ? "p-0 sm:p-6 pb-0 sm:pb-6" : "p-4 sm:p-6 pb-[calc(7rem+env(safe-area-inset-bottom,0px))] md:pb-6",
             activeTab === 'chat' && !activeFormView ? (isSplitView ? "hidden md:flex md:w-[56%] lg:w-[60%] xl:w-[62%]" : "hidden") : "w-full",
             isSplitView && activeTab !== 'chat' ? "md:w-[56%] lg:w-[60%] xl:w-[62%]" : ""
@@ -2575,7 +2617,7 @@ export default function MesterAIChat({
                 </div>
 
                 {/* 2. OPERATIONAL KPI SUMMARY STRIP */}
-                <div className="grid grid-cols-2 sm:grid-cols-4 gap-2.5 sm:gap-3">
+                <div className={cn("grid gap-2.5 sm:gap-3", isSplitView ? "grid-cols-2 2xl:grid-cols-4" : "grid-cols-2 sm:grid-cols-2 lg:grid-cols-4")}>
                   <div className="p-3.5 bg-white rounded-2xl border border-slate-200 shadow-2xs">
                     <div className="text-[10px] font-black uppercase tracking-wider text-slate-400 mb-1 flex items-center justify-between">
                       <span>{isWorker ? 'Mine Oppgaver' : 'Aktive Prosjekter'}</span>
@@ -2806,7 +2848,7 @@ export default function MesterAIChat({
                       </div>
                     </div>
 
-                    <div className="grid grid-cols-1 md:grid-cols-2 gap-3">
+                    <div className={cn("grid gap-3", isSplitView ? "grid-cols-1 xl:grid-cols-2" : "grid-cols-1 md:grid-cols-2")}>
                       {(projects || []).filter(Boolean).map((proj) => {
                         const projName = proj.name || 'Byggeplass';
                         const projLocation = proj.location || 'Norge';
@@ -3493,7 +3535,7 @@ export default function MesterAIChat({
                 </div>
 
                 {/* Role Separation Cards */}
-                <div className="grid grid-cols-1 md:grid-cols-3 gap-3">
+                <div className={cn("grid gap-3", isSplitView ? "grid-cols-1 xl:grid-cols-3" : "grid-cols-1 md:grid-cols-3")}>
                   <div className="p-4 bg-white rounded-2xl border border-slate-200 shadow-2xs space-y-2">
                     <div className="flex items-center justify-between">
                       <span className="px-2 py-0.5 rounded-full text-[9px] font-black uppercase bg-purple-100 text-purple-800">
