@@ -2064,7 +2064,7 @@ export default function MesterAIChat({
         </AnimatePresence>
 
         {/* 💻 2. DESKTOP & TABLET HEADER & NAVIGATION BAR (Fluid & Responsive to any PC width) */}
-        <div className="hidden md:flex px-3 sm:px-4 lg:px-5 py-2 bg-gradient-to-r from-navy-950 via-slate-900 to-navy-950 text-white items-center justify-between gap-2 border-b border-white/10 shrink-0 w-full max-w-full overflow-hidden">
+        <div className="hidden md:flex px-3 sm:px-4 lg:px-5 py-2 bg-gradient-to-r from-navy-950 via-slate-900 to-navy-950 text-white items-center justify-between gap-2 border-b border-white/10 shrink-0 w-full relative z-30">
           {/* Left: Brand & Autonomy */}
           <div className="flex items-center gap-2.5 shrink-0">
             <div className="w-8 h-8 rounded-xl bg-gradient-to-tr from-electric-600 to-purple-500 flex items-center justify-center text-white shadow-md shadow-electric-500/20 shrink-0">
@@ -2132,8 +2132,8 @@ export default function MesterAIChat({
                 )}
               >
                 <FileSignature size={14} className={activeTab === 'admin' ? "text-amber-600" : "text-slate-300"} />
-                <span className="hidden xl:inline">Tilbud & Endring</span>
-                <span className="xl:hidden">Tilbud</span>
+                <span className="hidden 2xl:inline">Tilbud & Endring</span>
+                <span className="2xl:hidden">Tilbud</span>
                 <span>({offers.length + changeOrders.length})</span>
               </button>
             )}
@@ -2177,7 +2177,7 @@ export default function MesterAIChat({
               <button
                 type="button"
                 onClick={onOpenOmnichannelModal}
-                className="p-1.5 lg:p-2 text-slate-300 hover:text-white hover:bg-white/10 rounded-xl transition-all cursor-pointer"
+                className="p-1.5 lg:p-2 text-slate-300 hover:text-white hover:bg-white/10 rounded-xl transition-all cursor-pointer shrink-0"
                 title="Omnichannel Lytter (Discord, Slack, Teams, E-post)"
               >
                 <Radio size={14} className="text-emerald-400" />
@@ -2188,11 +2188,11 @@ export default function MesterAIChat({
               <button
                 type="button"
                 onClick={onOpenSmartSearch}
-                className="flex items-center gap-1.5 px-2.5 py-1.5 rounded-xl text-xs font-bold text-slate-300 hover:text-white hover:bg-white/10 transition-all cursor-pointer"
+                className="flex items-center gap-1.5 px-2.5 py-1.5 rounded-xl text-xs font-bold text-slate-300 hover:text-white hover:bg-white/10 transition-all cursor-pointer shrink-0"
                 title="Søk i prosjekter, avvik og verktøy (⌘K)"
               >
                 <Search size={14} />
-                <span className="hidden xl:inline">Søk</span>
+                <span className="hidden 2xl:inline">Søk</span>
                 <kbd className="hidden 2xl:inline px-1 py-0.5 bg-white/10 border border-white/20 rounded text-[10px] text-slate-300">⌘K</kbd>
               </button>
             )}
@@ -2201,11 +2201,11 @@ export default function MesterAIChat({
               <button
                 type="button"
                 onClick={onOpenAllModules}
-                className="flex items-center gap-1.5 px-2.5 py-1.5 rounded-xl text-xs font-bold text-slate-300 hover:text-white hover:bg-white/10 transition-all cursor-pointer"
+                className="flex items-center gap-1.5 px-2.5 py-1.5 rounded-xl text-xs font-bold text-slate-300 hover:text-white hover:bg-white/10 transition-all cursor-pointer shrink-0"
                 title="Se alle 20 moduler"
               >
                 <Layers size={14} />
-                <span className="hidden xl:inline">Moduler</span>
+                <span className="hidden 2xl:inline">Moduler</span>
               </button>
             )}
 
@@ -2213,11 +2213,11 @@ export default function MesterAIChat({
               <button
                 type="button"
                 onClick={() => window.dispatchEvent(new CustomEvent("navigate_view", { detail: { view: "super-admin" } }))}
-                className="flex items-center gap-1.5 px-2.5 py-1.5 rounded-xl text-xs font-black transition-all bg-gradient-to-r from-rose-600 to-pink-600 hover:from-rose-500 hover:to-pink-500 text-white shadow-sm cursor-pointer"
+                className="flex items-center gap-1.5 px-2.5 py-1.5 rounded-xl text-xs font-black transition-all bg-gradient-to-r from-rose-600 to-pink-600 hover:from-rose-500 hover:to-pink-500 text-white shadow-sm cursor-pointer shrink-0"
                 title="SuperAdmin Kontrollpanel"
               >
                 <Shield size={13} />
-                <span className="hidden xl:inline">SuperAdmin</span>
+                <span className="hidden 2xl:inline">SuperAdmin</span>
               </button>
             )}
 
@@ -2225,7 +2225,7 @@ export default function MesterAIChat({
               type="button"
               onClick={toggleSplitView}
               className={cn(
-                "px-2.5 py-1.5 rounded-xl transition-all text-xs font-bold flex items-center gap-1.5 cursor-pointer",
+                "px-2.5 py-1.5 rounded-xl transition-all text-xs font-bold flex items-center gap-1.5 cursor-pointer shrink-0",
                 isSplitView ? "bg-white/20 text-white" : "text-slate-300 hover:text-white hover:bg-white/10"
               )}
               title={isSplitView ? "Bytt til enkeltvisning (full skjermbredde)" : "Bytt til delt visning (samtale + oversikt)"}
@@ -2237,7 +2237,7 @@ export default function MesterAIChat({
             <button
               type="button"
               onClick={handleClearHistory}
-              className="p-1.5 lg:p-2 text-slate-300 hover:text-white hover:bg-white/10 rounded-xl transition-all text-xs font-bold flex items-center gap-1.5 cursor-pointer"
+              className="p-1.5 lg:p-2 text-slate-300 hover:text-white hover:bg-white/10 rounded-xl transition-all text-xs font-bold flex items-center gap-1.5 cursor-pointer shrink-0"
               title="Nullstill samtale og få et rent chat-vindu"
             >
               <RotateCcw size={14} />
@@ -2245,10 +2245,10 @@ export default function MesterAIChat({
             </button>
 
             {/* Divider */}
-            <div className="h-4 w-px bg-white/15 mx-0.5" />
+            <div className="h-4 w-px bg-white/15 mx-0.5 shrink-0" />
 
             {/* Language Selector */}
-            <div className="flex items-center gap-1 px-2 py-1 bg-white/10 hover:bg-white/15 rounded-xl border border-white/15 transition-all">
+            <div className="flex items-center gap-1 px-2 py-1 bg-white/10 hover:bg-white/15 rounded-xl border border-white/15 transition-all shrink-0">
               <Globe size={13} className="text-slate-300 shrink-0" />
               <select 
                 onChange={(e) => changeLanguage(e.target.value)}
@@ -2267,11 +2267,11 @@ export default function MesterAIChat({
             <NotificationBell darkMode={true} />
 
             {/* User Profile & Operational Dropdown Menu */}
-            <div className="relative" ref={profileMenuRef}>
+            <div className="relative shrink-0" ref={profileMenuRef}>
               <button
                 type="button"
                 onClick={() => setIsProfileMenuOpen(!isProfileMenuOpen)}
-                className="flex items-center gap-1.5 px-2 py-1 rounded-xl bg-white/10 hover:bg-white/15 border border-white/15 text-white transition-all cursor-pointer select-none"
+                className="flex items-center gap-1.5 px-2 py-1 rounded-xl bg-white/10 hover:bg-white/15 border border-white/15 text-white transition-all cursor-pointer select-none shrink-0"
                 title={`${user?.displayName || 'Bruker'} (${isAdminOrManager ? 'Admin / Leder' : isWorker ? 'Håndverker' : 'Bruker'})`}
               >
                 {user?.photoURL ? (
@@ -2294,19 +2294,24 @@ export default function MesterAIChat({
                     {isAdminOrManager ? 'Admin / Leder' : isWorker ? 'Håndverker' : 'Bruker'}
                   </p>
                 </div>
-                <ChevronDown size={14} className={cn("text-slate-300 transition-transform duration-200", isProfileMenuOpen && "rotate-180")} />
+                <ChevronDown size={14} className={cn("text-slate-300 transition-transform duration-200 shrink-0", isProfileMenuOpen && "rotate-180")} />
               </button>
 
               {/* Desktop Profile Dropdown Menu */}
               <AnimatePresence>
                 {isProfileMenuOpen && (
-                  <motion.div
-                    initial={{ opacity: 0, y: 8, scale: 0.96 }}
-                    animate={{ opacity: 1, y: 0, scale: 1 }}
-                    exit={{ opacity: 0, y: 8, scale: 0.96 }}
-                    transition={{ duration: 0.15 }}
-                    className="absolute right-0 top-full mt-2 w-64 bg-slate-900 border border-white/15 rounded-2xl shadow-2xl p-2 z-50 text-slate-200 backdrop-blur-xl"
-                  >
+                  <>
+                    <div 
+                      className="fixed inset-0 z-40" 
+                      onClick={() => setIsProfileMenuOpen(false)} 
+                    />
+                    <motion.div
+                      initial={{ opacity: 0, y: 8, scale: 0.96 }}
+                      animate={{ opacity: 1, y: 0, scale: 1 }}
+                      exit={{ opacity: 0, y: 8, scale: 0.96 }}
+                      transition={{ duration: 0.15 }}
+                      className="absolute right-0 top-full mt-2 w-64 bg-slate-900 border border-white/15 rounded-2xl shadow-2xl p-2 z-50 text-slate-200 backdrop-blur-xl"
+                    >
                     {/* User Info Header */}
                     <div className="px-3 py-2.5 border-b border-white/10 mb-1">
                       <p className="text-xs font-bold text-white truncate">
@@ -2391,8 +2396,9 @@ export default function MesterAIChat({
                       </button>
                     </div>
                   </motion.div>
-                )}
-              </AnimatePresence>
+                </>
+              )}
+            </AnimatePresence>
             </div>
 
             {!isEmbedded && (
