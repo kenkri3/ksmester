@@ -44,6 +44,45 @@ interface MesterAIAgentFrameProps {
   onPromptHandled?: () => void;
 }
 
+/**
+ * Konverterer tekniske maskin-payloads (som eo_material, eo_scope osv.)
+ * til ryddig og profesjonelt norsk språk i brukerens chatboble.
+ */
+export function formatUserMessage(content: string): string {
+  if (!content) return '';
+  const trimmed = content.trim();
+
+  const PAYLOAD_LABELS: Record<string, string> = {
+    eo_material: 'Materialoppgradering',
+    eo_scope: 'Ekstra flate / arbeid',
+    eo_flate: 'Ekstra flate / arbeid',
+    eo_stillas: 'Stillas / rigging',
+    eo_rigging: 'Stillas / rigging',
+    eo_other: 'Annet',
+    eo_annet: 'Annet',
+    eo_time: 'Ekstra timeverk',
+    eo_timer: 'Ekstra timeverk',
+    eo_hms: 'HMS / Sikkerhetstiltak',
+    eo_preclose: 'Lukkesperre / Forsegling',
+    eo_transport: 'Transport og kranbil',
+    eo_avfall: 'Avfall og container'
+  };
+
+  if (PAYLOAD_LABELS[trimmed.toLowerCase()]) {
+    return PAYLOAD_LABELS[trimmed.toLowerCase()];
+  }
+
+  // Generell opprydding hvis en string starter med teknisk prefiks som "eo_", "btn_", etc.
+  if (/^(eo|btn|action|opt|cmd)_[a-z0-9_]+$/i.test(trimmed)) {
+    const cleaned = trimmed
+      .replace(/^(eo|btn|action|opt|cmd)_/i, '')
+      .replace(/_/g, ' ');
+    return cleaned.charAt(0).toUpperCase() + cleaned.slice(1);
+  }
+
+  return content;
+}
+
 export default function MesterAIAgentFrame({
   className,
   selectedProjectName,
@@ -314,7 +353,7 @@ export default function MesterAIAgentFrame({
     toast.success('Samtalesession nullstilt');
   };
 
-  const handleSendMessage = async (textToSend: string, imageOverride?: string) => {
+  const handleSendMessage = async (textToSend: string, imageOverride?: string, displayText?: string) => {
     const activeImage = imageOverride || attachedImage?.url;
     const currentPreview = attachedImage?.preview;
 
@@ -322,7 +361,9 @@ export default function MesterAIAgentFrame({
 
     setAttachedImage(null);
 
-    const userMsgText = textToSend.trim() || (activeImage ? 'Vennligst analyser dette bildet for fagmessig utførelse og TEK17.' : '');
+    // Menneskelig tekst som skal vises i brukerens taleboble (f.eks. "Materialoppgradering" i stedet for "eo_material")
+    const rawDisplay = displayText || textToSend.trim();
+    const userMsgText = formatUserMessage(rawDisplay) || (activeImage ? 'Vennligst analyser dette bildet for fagmessig utførelse og TEK17.' : '');
 
     const userMsg: Message = {
       id: `u-${Date.now()}`,
@@ -338,6 +379,9 @@ export default function MesterAIAgentFrame({
       textareaRef.current.style.height = '42px';
     }
     setIsLoading(true);
+
+    // Teksten som sendes til backend-agenten (payload sendes til agenten for å trigge riktig flyt)
+    const apiPayload = textToSend.trim() || userMsgText;
 
     // 🚀 Start dynamisk statusprosess tilpasset spørsmålet
     const stages = activeImage 
@@ -367,7 +411,7 @@ export default function MesterAIAgentFrame({
         method: 'POST',
         headers: { 'Content-Type': 'application/json' },
         body: JSON.stringify({
-          message: userMsgText,
+          message: apiPayload,
           sessionId,
           projectName: selectedProjectName,
           userName,
@@ -705,7 +749,7 @@ export default function MesterAIAgentFrame({
                     </div>
                   )}
                   <div className="text-xs sm:text-sm leading-relaxed whitespace-pre-wrap text-white font-medium">
-                    {msg.content}
+                    {formatUserMessage(msg.content)}
                   </div>
                 </div>
               ) : (
@@ -720,10 +764,10 @@ export default function MesterAIAgentFrame({
                       key={i}
                       type="button"
                       disabled={isLoading}
-                      onClick={() => handleSendMessage(qr.payload || qr.title)}
-                      className="flex items-center justify-center text-center px-2.5 py-2 rounded-xl bg-slate-50 hover:bg-electric-50 text-slate-800 hover:text-electric-900 text-xs font-bold border border-slate-200 hover:border-electric-300 transition-all cursor-pointer shadow-2xs active:scale-95 leading-tight"
+                      onClick={() => handleSendMessage(qr.payload || qr.title, undefined, qr.title)}
+                      className="flex items-center justify-center text-center px-2.5 py-2.5 rounded-xl bg-slate-50 hover:bg-electric-50 text-slate-800 hover:text-electric-900 text-xs font-bold border border-slate-200 hover:border-electric-300 transition-all cursor-pointer shadow-2xs active:scale-95 leading-snug"
                     >
-                      <span className="truncate">{qr.title}</span>
+                      <span className="line-clamp-2 break-words">{qr.title}</span>
                     </button>
                   ))}
                 </div>

@@ -58,6 +58,7 @@ import {
 } from 'lucide-react';
 import { cn } from '@/src/lib/utils';
 import InstallGuide from './InstallGuide';
+import MesterAIDemoSimulator from './MesterAIDemoSimulator';
 import { toast } from 'sonner';
 import { promptPWAInstall, isPWAInstalled, triggerAppDownloadOrInstall } from '../lib/pwa';
 
@@ -361,11 +362,19 @@ function TacticalHomeView({ onStartDemo, onGoToPricing, onViewChange }: { onStar
             </a>
 
             <button 
-              onClick={onStartDemo}
-              className="w-full sm:w-auto px-7 py-4 rounded-xl bg-white hover:bg-slate-50 text-navy-900 border border-slate-200 text-sm font-bold shadow-card-soft transition-all flex items-center justify-center gap-2 cursor-pointer"
+              onClick={() => {
+                const el = document.getElementById('live-demo');
+                if (el) {
+                  el.scrollIntoView({ behavior: 'smooth' });
+                } else {
+                  onStartDemo();
+                }
+              }}
+              className="w-full sm:w-auto px-7 py-4 rounded-xl bg-white hover:bg-slate-50 text-navy-900 border border-slate-200 text-sm font-bold shadow-card-soft transition-all flex items-center justify-center gap-2 cursor-pointer group"
             >
-              <span className="w-2 h-2 rounded-full bg-emerald-500" />
-              <span>Start Interaktiv Demo</span>
+              <span className="w-2.5 h-2.5 rounded-full bg-emerald-500 animate-pulse" />
+              <span>Prøvekjør Agenten Live</span>
+              <Sparkles size={15} className="text-amber-500 group-hover:scale-110 transition-transform" />
             </button>
           </div>
 
@@ -511,6 +520,16 @@ function TacticalHomeView({ onStartDemo, onGoToPricing, onViewChange }: { onStar
           </div>
         </div>
       </section>
+
+      {/* 🚀 Interaktiv MesterAI Simulator (Rollebasert Byggmester, Tømrer & Rørlegger) */}
+      <MesterAIDemoSimulator 
+        id="live-demo"
+        onStartFreeTrial={() => {
+          const el = document.getElementById('bestill');
+          if (el) el.scrollIntoView({ behavior: 'smooth' });
+          else onGoToPricing();
+        }}
+      />
 
       {/* Direct Comparison: Old Apps vs VikingMester */}
       <section className="py-20 bg-slate-50 border-b border-slate-200">

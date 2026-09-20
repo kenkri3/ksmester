@@ -274,8 +274,14 @@ function AppContent() {
     if (user) {
       setView('dashboard');
     } else {
-      setView('login');
-      toast.info('Vennligst logg inn eller opprett bedriftskonto for å få tilgang.');
+      setView('landing');
+      setLandingTab('home');
+      setTimeout(() => {
+        const el = document.getElementById('live-demo');
+        if (el) {
+          el.scrollIntoView({ behavior: 'smooth' });
+        }
+      }, 120);
     }
   };
 
