@@ -544,8 +544,8 @@ function AppContent() {
         </div>
       )}
 
-      {/* Navigation: Skjult i backend kommandosentralen slik at brukeren kun har Kommandosentralens egen toppmeny */}
-      {(!user || view !== 'dashboard') && (
+      {/* Navigation: Skjult i backend kommandosentralen og dedikerte kunde/tilbudsportaler */}
+      {(!user || view !== 'dashboard') && !['customer-portal', 'offer', 'invite', 'public-offer', 'public-change-order'].includes(view) && (
         <nav className={cn(
           "fixed left-0 right-0 z-50 bg-white/90 backdrop-blur-md border-b border-slate-200/80 transition-all shadow-card-soft",
           (user && subscriptionStatus === 'trial') || impersonatedCompanyId ? "top-6" : "top-0"
@@ -1414,9 +1414,9 @@ function AppContent() {
 
       {/* Main Content */}
       <main className={cn(
-        view !== 'dashboard' ? "pt-16" : "",
-        ((user && subscriptionStatus === 'trial') || impersonatedCompanyId) && (view === 'dashboard' ? "pt-6" : "pt-22"),
-        user && view !== 'dashboard' ? "pb-24 md:pb-8" : ""
+        (view !== 'dashboard' && !['customer-portal', 'offer', 'invite', 'public-offer', 'public-change-order'].includes(view)) ? "pt-16" : "",
+        ((user && subscriptionStatus === 'trial') || impersonatedCompanyId) && (view === 'dashboard' || ['customer-portal', 'offer', 'invite', 'public-offer', 'public-change-order'].includes(view) ? "pt-0" : "pt-22"),
+        user && !['customer-portal', 'offer', 'invite', 'public-offer', 'public-change-order'].includes(view) && view !== 'dashboard' ? "pb-24 md:pb-8" : ""
       )}>
         <AnimatePresence mode="wait">
           <motion.div
@@ -1424,13 +1424,12 @@ function AppContent() {
             initial={{ opacity: 0, y: 10 }}
             animate={{ opacity: 1, y: 0 }}
             exit={{ opacity: 0, y: -10 }}
-            transition={{ duration: 0.2 }}
             onAnimationComplete={() => scrollToTop()}
           >
             <Suspense fallback={<ModuleLoader />}>
               {view === 'landing' && (
                 <LandingPage 
-                  onStartDemo={handleStartDemo} 
+                  onStartDemo={handleStartDemo}
                   onOpenPortal={handleOpenPortal}
                   onViewChange={setView}
                   currentTab={landingTab}
@@ -1495,6 +1494,7 @@ function AppContent() {
                 <CustomerPortal 
                   project={portalProject} 
                   onClose={() => setView(user ? 'dashboard' : 'login')} 
+                  isContractorPreview={!!user}
                 />
               )}
               {view === 'pricing' && <PricingPage />}
@@ -1614,8 +1614,8 @@ function AppContent() {
         <IntegrationModal isOpen={isIntegrationModalOpen} onClose={() => setIsIntegrationModalOpen(false)} />
       </Suspense>
 
-      {/* 🛡️ Universal VikingMester AI Chatbot (Ragnar for visitors, hidden on dashboard where MesterAI is the full interface) */}
-      {view !== 'dashboard' && (
+      {/* 🛡️ Universal VikingMester AI Chatbot (Ragnar for visitors, hidden on dashboard where MesterAI is the full interface, and hidden in customer/public portals) */}
+      {!['dashboard', 'customer-portal', 'offer', 'invite', 'public-offer', 'public-change-order'].includes(view) && (
         <VikingChatbot
           user={user}
           currentView={view}

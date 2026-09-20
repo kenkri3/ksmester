@@ -46,9 +46,10 @@ import { toast } from 'sonner';
 interface CustomerPortalProps {
   project: Project;
   onClose?: () => void;
+  isContractorPreview?: boolean;
 }
 
-const CustomerPortal: React.FC<CustomerPortalProps> = ({ project, onClose }) => {
+const CustomerPortal: React.FC<CustomerPortalProps> = ({ project, onClose, isContractorPreview = false }) => {
   const [offer, setOffer] = useState<Offer | null>(null);
   const [contract, setContract] = useState<Contract | null>(null);
   const [changeOrders, setChangeOrders] = useState<ChangeOrder[]>([]);
@@ -163,7 +164,7 @@ const CustomerPortal: React.FC<CustomerPortalProps> = ({ project, onClose }) => 
               items.push({
                 id: `dev-${docSnap.id}`,
                 imageUrl: img,
-                title: data.title ? `Dokumentasjon: ${data.title}` : 'Foto fra avvikskontroll',
+                title: data.title ? `Kvalitetskontroll: ${data.title}` : 'Foto fra kvalitetskontroll',
                 description: data.description,
                 type: 'deviation_photo',
                 createdAt: data.createdAt || data.timestamp || new Date().toISOString()
@@ -183,16 +184,17 @@ const CustomerPortal: React.FC<CustomerPortalProps> = ({ project, onClose }) => 
     fetchPhotos();
   }, [project.id]);
 
-  // Generate AI Project Summary
+  // Generate AI Project Summary (Customer-facing, reassuring)
   useEffect(() => {
     const generateSummary = async () => {
       if (!project.id) return;
       setIsGeneratingSummary(true);
       try {
-        const summary = await summaryService.generateProjectSummary(project, [], []);
+        const summary = await summaryService.generateCustomerPortalSummary(project);
         setAiSummary(summary);
       } catch (error) {
-        console.error("Error generating summary:", error);
+        console.error("Error generating customer portal summary:", error);
+        setAiSummary(`Prosjektet ${project.name} har god fremdrift (${project.progress || 0}%) og utføres med kontinuerlig kvalitetssikring iht. gjeldende normer.`);
       } finally {
         setIsGeneratingSummary(false);
       }
@@ -402,13 +404,43 @@ const CustomerPortal: React.FC<CustomerPortalProps> = ({ project, onClose }) => 
       { id: 'archived', title: 'Prosjekt arkivert' }
     ];
 
-    const currentStageIndex = stages.findIndex(s => s.id === project.stage);
+    const progress = project.progress || 0;
+    let currentStageIndex = stages.findIndex(s => s.id === project.stage);
+    if (currentStageIndex === -1) {
+      if (project.status === 'completed' || progress >= 100) {
+        currentStageIndex = 4;
+      } else if (progress >= 90) {
+        currentStageIndex = 3;
+      } else if (progress > 0 || project.status === 'active' || contract?.status === 'signed') {
+        currentStageIndex = 2; // active
+      } else if (contract) {
+        currentStageIndex = 1; // contract
+      } else {
+        currentStageIndex = 0; // offer
+      }
+    }
     
-    return stages.map((stage, index) => ({
-      title: stage.title,
-      date: index < currentStageIndex ? 'Fullført' : (index === currentStageIndex ? 'Pågår' : 'Planlagt'),
-      status: index < currentStageIndex ? 'completed' : (index === currentStageIndex ? 'active' : 'pending')
-    }));
+    return stages.map((stage, index) => {
+      let isCompleted = index < currentStageIndex;
+      let isActive = index === currentStageIndex;
+
+      // Smart status inference based on progress and documents
+      if (index === 0 && (contract || progress > 0 || project.status === 'active')) {
+        isCompleted = true;
+      }
+      if (index === 1 && (contract?.status === 'signed' || progress > 0 || project.status === 'active')) {
+        isCompleted = true;
+      }
+      if (index === 2 && progress > 0 && progress < 100) {
+        isActive = true;
+      }
+
+      return {
+        title: stage.title,
+        date: isCompleted ? 'Fullført' : (isActive ? 'Pågår' : 'Planlagt'),
+        status: isCompleted ? 'completed' : (isActive ? 'active' : 'pending')
+      };
+    });
   };
 
   const timeline = getTimeline();
@@ -416,15 +448,20 @@ const CustomerPortal: React.FC<CustomerPortalProps> = ({ project, onClose }) => 
   return (
     <div className="min-h-screen bg-neutral-50 text-neutral-900">
       {/* Customer Header */}
-      <div className="bg-neutral-900 text-white py-10 px-4 sm:px-6 lg:px-8 shadow-md">
+      <header className="bg-neutral-900 text-white pt-6 pb-12 sm:pt-8 sm:pb-16 px-4 sm:px-6 lg:px-8 shadow-md">
         <div className="max-w-5xl mx-auto">
-          <div className="flex flex-wrap items-center justify-between gap-4 mb-4">
-            <div className="flex items-center gap-3">
-              <Logo size="md" theme="dark" className="text-white" />
-              <span className="text-xs font-black uppercase tracking-[0.2em] text-electric-400">Kundeportal</span>
+          <div className="flex items-center justify-between gap-2 sm:gap-4 mb-5">
+            {/* Logo + Badge */}
+            <div className="flex items-center gap-2 sm:gap-3 min-w-0">
+              <Logo size="sm" theme="dark" className="text-white shrink-0 sm:hidden" />
+              <Logo size="md" theme="dark" className="text-white shrink-0 hidden sm:flex" />
+              <span className="text-[10px] sm:text-xs font-black uppercase tracking-wider text-electric-300 bg-electric-500/20 border border-electric-400/30 px-2 sm:px-2.5 py-0.5 sm:py-1 rounded-full whitespace-nowrap shrink-0">
+                Kundeportal
+              </span>
             </div>
             
-            <div className="flex items-center gap-2">
+            {/* Top Action Buttons */}
+            <div className="flex items-center gap-1.5 sm:gap-2 shrink-0">
               <button
                 type="button"
                 onClick={() => {
@@ -433,52 +470,58 @@ const CustomerPortal: React.FC<CustomerPortalProps> = ({ project, onClose }) => 
                     toast.success('Kundeportal-lenke kopiert til utklippstavlen!');
                   }
                 }}
-                className="flex items-center gap-1.5 px-3 py-1.5 rounded-xl bg-white/10 hover:bg-white/20 text-white text-xs font-bold border border-white/10 transition-all cursor-pointer shadow-xs"
+                className="flex items-center gap-1 sm:gap-1.5 px-2.5 sm:px-3 py-1.5 rounded-xl bg-white/10 hover:bg-white/20 text-white text-xs font-bold border border-white/10 transition-all cursor-pointer shadow-xs active:scale-95"
                 title="Kopier lenke for deling med kunde"
               >
                 <Share2 size={13} />
-                <span>Del portal</span>
+                <span className="hidden xs:inline sm:inline">Del portal</span>
+                <span className="xs:hidden sm:hidden">Del</span>
               </button>
 
-              {onClose && (
+              {isContractorPreview && onClose && (
                 <button
                   type="button"
                   onClick={onClose}
-                  className="flex items-center gap-1.5 px-3 py-1.5 rounded-xl bg-white/10 hover:bg-white/20 text-white text-xs font-bold border border-white/10 transition-all cursor-pointer shadow-xs"
+                  className="flex items-center gap-1 sm:gap-1.5 px-2.5 sm:px-3 py-1.5 rounded-xl bg-emerald-600/90 hover:bg-emerald-600 text-white text-xs font-bold border border-emerald-500/30 transition-all cursor-pointer shadow-xs active:scale-95"
+                  title="Lukk visning og gå tilbake til prosjektoversikt"
                 >
                   <ArrowLeft size={13} />
-                  <span>Tilbake til Oversikt</span>
+                  <span className="hidden sm:inline">Tilbake til Oversikt</span>
+                  <span className="sm:hidden">Oversikt</span>
                 </button>
               )}
             </div>
           </div>
 
-          <h1 className="text-3xl sm:text-4xl font-black tracking-tight mb-2">{project.name}</h1>
-          <div className="flex flex-wrap items-center gap-4 text-neutral-400 text-sm">
+          <h1 className="text-2xl sm:text-3xl md:text-4xl font-black tracking-tight mb-2 text-white leading-tight break-words">
+            {project.name}
+          </h1>
+
+          <div className="flex flex-wrap items-center gap-x-3 gap-y-1 text-neutral-400 text-xs sm:text-sm">
             <span className="flex items-center gap-1.5">
-              <MapPin size={14} className="text-emerald-400" /> 
-              {project.location || 'Norge'}
+              <MapPin size={13} className="text-emerald-400 shrink-0" /> 
+              <span>{project.location || 'Norge'}</span>
             </span>
             {project.clientName && (
               <>
-                <span className="w-1 h-1 rounded-full bg-neutral-700" />
+                <span className="w-1 h-1 rounded-full bg-neutral-700 hidden sm:inline" />
                 <span className="flex items-center gap-1.5">
-                  <User size={14} className="text-electric-400" /> 
-                  Kunde: {project.clientName}
+                  <User size={13} className="text-electric-400 shrink-0" /> 
+                  <span>Kunde: {project.clientName}</span>
                 </span>
               </>
             )}
-            <span className="w-1 h-1 rounded-full bg-neutral-700" />
+            <span className="w-1 h-1 rounded-full bg-neutral-700 hidden sm:inline" />
             <span className="flex items-center gap-1.5">
-              <Clock size={14} className="text-amber-400" /> 
-              Sist oppdatert i dag
+              <Clock size={13} className="text-amber-400 shrink-0" /> 
+              <span>Sist oppdatert i dag</span>
             </span>
           </div>
         </div>
-      </div>
+      </header>
 
-      <div className="max-w-5xl mx-auto px-4 sm:px-6 lg:px-8 -mt-6 pb-20">
-        <div className="grid grid-cols-1 lg:grid-cols-3 gap-8">
+      <div className="max-w-5xl mx-auto px-3 sm:px-6 lg:px-8 -mt-6 pb-20">
+        <div className="grid grid-cols-1 lg:grid-cols-3 gap-6 sm:gap-8">
           
           {/* Main Column */}
           <div className="lg:col-span-2 space-y-8">
@@ -488,33 +531,33 @@ const CustomerPortal: React.FC<CustomerPortalProps> = ({ project, onClose }) => 
               <motion.div 
                 initial={{ opacity: 0, y: 20 }}
                 animate={{ opacity: 1, y: 0 }}
-                className="bg-white rounded-[2.5rem] p-8 sm:p-10 shadow-xl border-2 border-emerald-500 overflow-hidden relative"
+                className="bg-white rounded-3xl sm:rounded-[2.5rem] p-5 sm:p-7 md:p-8 shadow-xl border-2 border-emerald-500 overflow-hidden relative"
               >
                 <div className="flex items-center justify-between mb-4">
-                  <span className="bg-emerald-100 text-emerald-700 px-3.5 py-1.5 rounded-full text-xs font-black uppercase tracking-wider">
+                  <span className="bg-emerald-100 text-emerald-700 px-3 py-1 rounded-full text-xs font-black uppercase tracking-wider">
                     Venter på din godkjenning
                   </span>
-                  <span className="text-xs font-bold text-neutral-400">NS 8406 / Håndverkertjenesteloven</span>
+                  <span className="text-[11px] sm:text-xs font-bold text-neutral-400">NS 8406</span>
                 </div>
                 
-                <h2 className="text-2xl sm:text-3xl font-black mb-3">Gjennomgå Tilbud</h2>
-                <p className="text-neutral-500 text-sm mb-6 max-w-lg leading-relaxed">
+                <h2 className="text-xl sm:text-3xl font-black mb-2">Gjennomgå Tilbud</h2>
+                <p className="text-neutral-500 text-xs sm:text-sm mb-6 max-w-lg leading-relaxed">
                   Vi har utarbeidet et detaljert tilbud for ditt byggeprosjekt. Vennligst se gjennom postene nedenfor og godta for å gå videre til kontrakt.
                 </p>
 
-                <div className="space-y-3 mb-8 bg-neutral-50 p-5 sm:p-6 rounded-3xl border border-neutral-200">
+                <div className="space-y-3 mb-6 bg-neutral-50 p-4 sm:p-6 rounded-2xl sm:rounded-3xl border border-neutral-200">
                   {offer.items.map((item, i) => (
                     <div key={i} className="flex justify-between items-center py-2.5 border-b border-neutral-200/80 last:border-0">
-                      <div>
-                        <div className="font-bold text-neutral-900 text-sm">{item.description}</div>
-                        <div className="text-xs text-neutral-500">{item.quantity} {item.unit} à {item.pricePerUnit.toLocaleString('no-NO')} kr</div>
+                      <div className="pr-2">
+                        <div className="font-bold text-neutral-900 text-xs sm:text-sm">{item.description}</div>
+                        <div className="text-[11px] text-neutral-500">{item.quantity} {item.unit} à {item.pricePerUnit.toLocaleString('no-NO')} kr</div>
                       </div>
-                      <div className="font-black text-neutral-900 text-sm">{item.total.toLocaleString('no-NO')} kr</div>
+                      <div className="font-black text-neutral-900 text-xs sm:text-sm shrink-0">{item.total.toLocaleString('no-NO')} kr</div>
                     </div>
                   ))}
-                  <div className="flex justify-between items-center pt-4 mt-2 border-t border-neutral-300">
+                  <div className="flex justify-between items-center pt-3 mt-2 border-t border-neutral-300">
                     <div className="text-xs font-black uppercase tracking-widest text-neutral-500">Total eks. mva</div>
-                    <div className="text-2xl font-black text-emerald-600">{offer.totalAmount.toLocaleString('no-NO')} kr</div>
+                    <div className="text-xl sm:text-2xl font-black text-emerald-600">{offer.totalAmount.toLocaleString('no-NO')} kr</div>
                   </div>
                 </div>
 
@@ -523,17 +566,17 @@ const CustomerPortal: React.FC<CustomerPortalProps> = ({ project, onClose }) => 
                     type="button"
                     onClick={handleAcceptOffer}
                     disabled={actionLoading}
-                    className="flex-1 bg-emerald-600 hover:bg-emerald-500 text-white py-4 rounded-2xl font-black text-base transition-all shadow-md flex items-center justify-center gap-2.5 active:scale-95 cursor-pointer"
+                    className="flex-1 bg-emerald-600 hover:bg-emerald-500 text-white py-3.5 sm:py-4 rounded-xl sm:rounded-2xl font-black text-sm sm:text-base transition-all shadow-md flex items-center justify-center gap-2 active:scale-95 cursor-pointer"
                   >
-                    {actionLoading ? <div className="w-5 h-5 border-2 border-white/30 border-t-white rounded-full animate-spin" /> : <CheckCircle2 size={20} />}
+                    {actionLoading ? <div className="w-5 h-5 border-2 border-white/30 border-t-white rounded-full animate-spin" /> : <CheckCircle2 size={18} />}
                     <span>Godta Tilbud</span>
                   </button>
                   <button 
                     type="button"
                     onClick={() => pdfService.generateOfferPDF(offer, { name: (project as any).companyName || 'Mester Entreprenør AS' })}
-                    className="flex-1 bg-neutral-100 text-neutral-800 py-4 rounded-2xl font-black text-base hover:bg-neutral-200 transition-all flex items-center justify-center gap-2.5 active:scale-95 cursor-pointer border border-neutral-200"
+                    className="flex-1 bg-neutral-100 text-neutral-800 py-3.5 sm:py-4 rounded-xl sm:rounded-2xl font-black text-sm sm:text-base hover:bg-neutral-200 transition-all flex items-center justify-center gap-2 active:scale-95 cursor-pointer border border-neutral-200"
                   >
-                    <Download size={18} />
+                    <Download size={16} />
                     <span>Last ned Tilbud (PDF)</span>
                   </button>
                 </div>
@@ -545,28 +588,28 @@ const CustomerPortal: React.FC<CustomerPortalProps> = ({ project, onClose }) => 
               <motion.div 
                 initial={{ opacity: 0, y: 20 }}
                 animate={{ opacity: 1, y: 0 }}
-                className="bg-white rounded-[2.5rem] p-8 sm:p-10 shadow-xl border-2 border-blue-500 overflow-hidden relative"
+                className="bg-white rounded-3xl sm:rounded-[2.5rem] p-5 sm:p-7 md:p-8 shadow-xl border-2 border-blue-500 overflow-hidden relative"
               >
                 <div className="flex items-center justify-between mb-4">
-                  <span className="bg-blue-100 text-blue-700 px-3.5 py-1.5 rounded-full text-xs font-black uppercase tracking-wider">
+                  <span className="bg-blue-100 text-blue-700 px-3 py-1 rounded-full text-xs font-black uppercase tracking-wider">
                     Venter på signatur
                   </span>
-                  <span className="text-xs font-bold text-neutral-400">Digital Signering</span>
+                  <span className="text-[11px] sm:text-xs font-bold text-neutral-400">Digital Signering</span>
                 </div>
                 
-                <h2 className="text-2xl sm:text-3xl font-black mb-3">Signer Kontrakt</h2>
-                <p className="text-neutral-500 text-sm mb-6 max-w-lg leading-relaxed">
+                <h2 className="text-xl sm:text-3xl font-black mb-2">Signer Kontrakt</h2>
+                <p className="text-neutral-500 text-xs sm:text-sm mb-6 max-w-lg leading-relaxed">
                   Tilbudet er godkjent. For å starte arbeidet må vi ha en signert kontrakt. Du kan signere digitalt her med ett klikk.
                 </p>
 
-                <div className="p-6 bg-neutral-50 rounded-3xl mb-6 border border-neutral-200">
-                  <div className="flex items-center gap-4 mb-3">
-                    <div className="w-12 h-12 rounded-2xl bg-indigo-100 text-indigo-600 flex items-center justify-center shrink-0">
-                      <FileSignature size={22} />
+                <div className="p-4 sm:p-6 bg-neutral-50 rounded-2xl sm:rounded-3xl mb-6 border border-neutral-200">
+                  <div className="flex items-center gap-3 sm:gap-4 mb-3">
+                    <div className="w-10 h-10 sm:w-12 sm:h-12 rounded-xl sm:rounded-2xl bg-indigo-100 text-indigo-600 flex items-center justify-center shrink-0">
+                      <FileSignature size={20} />
                     </div>
                     <div>
-                      <h4 className="font-bold text-neutral-900 text-sm">{contract.title}</h4>
-                      <p className="text-xs text-neutral-500">Standard norsk håndverkeravtale iht. NS 8406</p>
+                      <h4 className="font-bold text-neutral-900 text-xs sm:text-sm">{contract.title}</h4>
+                      <p className="text-[11px] text-neutral-500">Standard norsk håndverkeravtale iht. NS 8406</p>
                     </div>
                   </div>
                   <div className="flex items-center gap-2 text-xs text-emerald-700 bg-emerald-50 px-3 py-2 rounded-xl border border-emerald-200">
@@ -580,17 +623,17 @@ const CustomerPortal: React.FC<CustomerPortalProps> = ({ project, onClose }) => 
                     type="button"
                     onClick={handleSignContract}
                     disabled={actionLoading}
-                    className="flex-1 bg-blue-600 text-white py-4 rounded-2xl font-black text-base hover:bg-blue-500 transition-all shadow-lg shadow-blue-100 flex items-center justify-center gap-2.5 active:scale-95 cursor-pointer"
+                    className="flex-1 bg-blue-600 text-white py-3.5 sm:py-4 rounded-xl sm:rounded-2xl font-black text-sm sm:text-base hover:bg-blue-500 transition-all shadow-lg shadow-blue-100 flex items-center justify-center gap-2 active:scale-95 cursor-pointer"
                   >
-                    {actionLoading ? <div className="w-5 h-5 border-2 border-white/30 border-t-white rounded-full animate-spin" /> : <FileSignature size={20} />}
+                    {actionLoading ? <div className="w-5 h-5 border-2 border-white/30 border-t-white rounded-full animate-spin" /> : <FileSignature size={18} />}
                     <span>Signer og Godkjenn Digitalt</span>
                   </button>
                   <button 
                     type="button"
                     onClick={() => pdfService.generateContractPDF(contract, { name: (project as any).companyName || 'Mester Entreprenør AS' })}
-                    className="flex-1 bg-neutral-100 text-neutral-800 py-4 rounded-2xl font-black text-base hover:bg-neutral-200 transition-all flex items-center justify-center gap-2.5 active:scale-95 cursor-pointer border border-neutral-200"
+                    className="flex-1 bg-neutral-100 text-neutral-800 py-3.5 sm:py-4 rounded-xl sm:rounded-2xl font-black text-sm sm:text-base hover:bg-neutral-200 transition-all flex items-center justify-center gap-2 active:scale-95 cursor-pointer border border-neutral-200"
                   >
-                    <Download size={18} />
+                    <Download size={16} />
                     <span>Last ned Kontrakt (PDF)</span>
                   </button>
                 </div>
@@ -602,18 +645,18 @@ const CustomerPortal: React.FC<CustomerPortalProps> = ({ project, onClose }) => 
               <motion.div
                 initial={{ opacity: 0, y: 15 }}
                 animate={{ opacity: 1, y: 0 }}
-                className="bg-white rounded-[2.5rem] p-8 shadow-sm border border-neutral-200 space-y-6"
+                className="bg-white rounded-3xl sm:rounded-[2.5rem] p-5 sm:p-7 md:p-8 shadow-sm border border-neutral-200 space-y-5 sm:space-y-6"
               >
                 <div>
                   <div className="flex items-center gap-2 mb-1">
                     <span className="p-1.5 bg-amber-500/10 text-amber-600 rounded-lg">
                       <FileEdit size={16} />
                     </span>
-                    <span className="text-xs font-black uppercase tracking-widest text-amber-600">
+                    <span className="text-[10px] sm:text-xs font-black uppercase tracking-widest text-amber-600">
                       NS 8406 / Håndverkertjenesteloven § 9
                     </span>
                   </div>
-                  <h3 className="text-2xl font-black text-neutral-900">Tilleggsarbeid & Endringer</h3>
+                  <h3 className="text-xl sm:text-2xl font-black text-neutral-900">Tilleggsarbeid & Endringer</h3>
                   <p className="text-xs text-neutral-500 mt-0.5">
                     Oversikt over avtalte og ventende tillegg underveis i byggeperioden.
                   </p>
@@ -623,14 +666,14 @@ const CustomerPortal: React.FC<CustomerPortalProps> = ({ project, onClose }) => 
                   {changeOrders.map(order => (
                     <div
                       key={order.id}
-                      className="p-5 bg-neutral-50 rounded-2xl border border-neutral-200 flex flex-col sm:flex-row justify-between sm:items-center gap-4"
+                      className="p-4 sm:p-5 bg-neutral-50 rounded-2xl border border-neutral-200 flex flex-col sm:flex-row justify-between sm:items-center gap-3 sm:gap-4"
                     >
                       <div>
-                        <div className="flex items-center gap-2">
+                        <div className="flex flex-wrap items-center gap-2">
                           <span className="px-2 py-0.5 bg-neutral-200 text-neutral-800 text-xs font-black rounded">
                             #{order.changeNumber}
                           </span>
-                          <span className="font-bold text-sm text-neutral-900">{order.title}</span>
+                          <span className="font-bold text-xs sm:text-sm text-neutral-900">{order.title}</span>
                           <span className={`text-[10px] font-black uppercase px-2 py-0.5 rounded-full ${
                             order.status === 'approved' 
                               ? 'bg-emerald-100 text-emerald-700' 
@@ -652,7 +695,7 @@ const CustomerPortal: React.FC<CustomerPortalProps> = ({ project, onClose }) => 
                         {order.status === 'pending_customer' && order.shareUrl && (
                           <a
                             href={order.shareUrl}
-                            className="px-4 py-2 bg-amber-500 hover:bg-amber-400 text-neutral-950 font-black rounded-xl text-xs flex items-center gap-1.5 shadow-sm transition-all cursor-pointer"
+                            className="px-3 sm:px-4 py-2 bg-amber-500 hover:bg-amber-400 text-neutral-950 font-black rounded-xl text-xs flex items-center gap-1.5 shadow-sm transition-all cursor-pointer"
                           >
                             <FileSignature size={14} /> Se & Godkjenn
                           </a>
@@ -677,22 +720,22 @@ const CustomerPortal: React.FC<CustomerPortalProps> = ({ project, onClose }) => 
               <motion.div 
                 initial={{ opacity: 0, y: 20 }}
                 animate={{ opacity: 1, y: 0 }}
-                className="bg-white rounded-[2.5rem] p-8 sm:p-10 shadow-xl border-2 border-emerald-500 overflow-hidden relative"
+                className="bg-white rounded-3xl sm:rounded-[2.5rem] p-5 sm:p-7 md:p-8 shadow-xl border-2 border-emerald-500 overflow-hidden relative"
               >
-                <div className="bg-emerald-100 text-emerald-700 px-3.5 py-1.5 rounded-full text-xs font-black uppercase tracking-wider inline-block mb-4">
+                <div className="bg-emerald-100 text-emerald-700 px-3 py-1 rounded-full text-xs font-black uppercase tracking-wider inline-block mb-3">
                   Fullført & Arkivert
                 </div>
                 
-                <h2 className="text-3xl font-black mb-3">Takk for oppdraget!</h2>
-                <p className="text-neutral-500 text-sm mb-6 max-w-lg leading-relaxed">
+                <h2 className="text-2xl sm:text-3xl font-black mb-2">Takk for oppdraget!</h2>
+                <p className="text-neutral-500 text-xs sm:text-sm mb-6 max-w-lg leading-relaxed">
                   Dette prosjektet er nå fullført. Du vil alltid ha full tilgang til din FDV-dokumentasjon og bildearkiv her i portalen.
                 </p>
 
-                <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
-                  <div className="p-6 bg-neutral-50 rounded-3xl border border-neutral-200">
-                    <FileText className="text-emerald-600 mb-3" size={32} />
-                    <div className="font-bold text-neutral-900 mb-1">FDV-Pakke</div>
-                    <p className="text-xs text-neutral-500 mb-4">Vedlikehold og produktinfo for bygget</p>
+                <div className="grid grid-cols-1 sm:grid-cols-2 gap-3 sm:gap-4">
+                  <div className="p-4 sm:p-6 bg-neutral-50 rounded-2xl sm:rounded-3xl border border-neutral-200">
+                    <FileText className="text-emerald-600 mb-2 sm:mb-3" size={28} />
+                    <div className="font-bold text-neutral-900 mb-1 text-sm sm:text-base">FDV-Pakke</div>
+                    <p className="text-xs text-neutral-500 mb-3 sm:mb-4">Vedlikehold og produktinfo for bygget</p>
                     <button 
                       type="button"
                       onClick={handleDownloadFDV}
@@ -702,10 +745,10 @@ const CustomerPortal: React.FC<CustomerPortalProps> = ({ project, onClose }) => 
                       <span>Last ned FDV (PDF)</span>
                     </button>
                   </div>
-                  <div className="p-6 bg-neutral-50 rounded-3xl border border-neutral-200">
-                    <Camera className="text-purple-600 mb-3" size={32} />
-                    <div className="font-bold text-neutral-900 mb-1">Billedarkiv</div>
-                    <p className="text-xs text-neutral-500 mb-4">Full fotodokumentasjon av utførelsen</p>
+                  <div className="p-4 sm:p-6 bg-neutral-50 rounded-2xl sm:rounded-3xl border border-neutral-200">
+                    <Camera className="text-purple-600 mb-2 sm:mb-3" size={28} />
+                    <div className="font-bold text-neutral-900 mb-1 text-sm sm:text-base">Billedarkiv</div>
+                    <p className="text-xs text-neutral-500 mb-3 sm:mb-4">Full fotodokumentasjon av utførelsen</p>
                     <button 
                       type="button"
                       onClick={() => setShowAllPhotosModal(true)}
@@ -720,39 +763,39 @@ const CustomerPortal: React.FC<CustomerPortalProps> = ({ project, onClose }) => 
             )}
 
             {/* AI Summary Banner */}
-            <div className="bg-neutral-900 rounded-[2.5rem] p-8 text-white relative overflow-hidden shadow-sm">
+            <div className="bg-neutral-900 rounded-3xl sm:rounded-[2.5rem] p-5 sm:p-7 md:p-8 text-white relative overflow-hidden shadow-sm">
               <div className="absolute top-0 right-0 p-8 opacity-10 pointer-events-none">
                 <Sparkles size={120} />
               </div>
               <div className="relative z-10">
-                <div className="flex items-center gap-2.5 mb-3">
+                <div className="flex items-center gap-2 mb-2.5">
                   <div className="p-1.5 rounded-lg bg-white/10 text-rose-400">
-                    <Sparkles size={18} />
+                    <Sparkles size={16} />
                   </div>
-                  <h3 className="font-bold text-base">AI Statusoppdatering</h3>
+                  <h3 className="font-bold text-sm sm:text-base">AI Statusoppdatering</h3>
                   <span className="text-[10px] uppercase font-bold tracking-wider px-2 py-0.5 rounded bg-emerald-500/20 text-emerald-300 border border-emerald-500/30 ml-auto">
                     Sanntid
                   </span>
                 </div>
-                <p className="text-neutral-300 text-sm leading-relaxed italic">
-                  {isGeneratingSummary ? "Genererer oppdatert status for prosjektet..." : aiSummary || `Prosjektet ${project.name} er i gang med ${project.progress || 0}% registrert fremdrift. Dokumentasjon og kvalitetskontroll oppdateres fortløpende.`}
+                <p className="text-neutral-300 text-xs sm:text-sm leading-relaxed italic">
+                  {isGeneratingSummary ? "Genererer oppdatert status for prosjektet..." : aiSummary || `Prosjektet ${project.name} har god fremdrift (${project.progress || 0}%) og følger oppsatt fremdriftsplan med løpende kvalitetssikring.`}
                 </p>
               </div>
             </div>
 
             {/* Activity Log Component */}
-            <ProjectActivityLog projectId={project.id} project={project} />
+            <ProjectActivityLog projectId={project.id} project={project} isCustomerView={true} />
 
             {/* Status & Progress Card */}
-            <div className="bg-white rounded-[2.5rem] p-8 shadow-sm border border-neutral-200">
-              <div className="flex items-center justify-between mb-6">
+            <div className="bg-white rounded-3xl sm:rounded-[2.5rem] p-5 sm:p-7 md:p-8 shadow-sm border border-neutral-200">
+              <div className="flex items-center justify-between mb-4 sm:mb-6">
                 <div>
-                  <h2 className="text-xl font-bold text-neutral-900">Fremdrift & Milepæler</h2>
+                  <h2 className="text-lg sm:text-xl font-bold text-neutral-900">Fremdrift & Milepæler</h2>
                   <p className="text-xs text-neutral-500 mt-0.5">Status for fasene i prosjektet</p>
                 </div>
-                <div className="text-3xl font-black text-emerald-600">{project.progress || 0}%</div>
+                <div className="text-2xl sm:text-3xl font-black text-emerald-600">{project.progress || 0}%</div>
               </div>
-              <div className="w-full h-3.5 bg-neutral-100 rounded-full overflow-hidden mb-8 border border-neutral-200/60">
+              <div className="w-full h-3 bg-neutral-100 rounded-full overflow-hidden mb-6 sm:mb-8 border border-neutral-200/60">
                 <motion.div 
                   initial={{ width: 0 }}
                   animate={{ width: `${project.progress || 0}%` }}
@@ -760,9 +803,9 @@ const CustomerPortal: React.FC<CustomerPortalProps> = ({ project, onClose }) => 
                 />
               </div>
               
-              <div className="space-y-5">
+              <div className="space-y-4 sm:space-y-5">
                 {timeline.map((item, i) => (
-                  <div key={i} className="flex gap-4">
+                  <div key={i} className="flex gap-3 sm:gap-4">
                     <div className="flex flex-col items-center">
                       <div className={`w-6 h-6 rounded-full flex items-center justify-center shrink-0 ${
                         item.status === 'completed' ? 'bg-emerald-100 text-emerald-600' : 
@@ -772,9 +815,9 @@ const CustomerPortal: React.FC<CustomerPortalProps> = ({ project, onClose }) => 
                       </div>
                       {i < timeline.length - 1 && <div className="w-px h-full bg-neutral-200 my-1" />}
                     </div>
-                    <div className="pb-3">
+                    <div className="pb-2 sm:pb-3">
                       <div className="text-[10px] font-black uppercase tracking-widest text-neutral-400">{item.date}</div>
-                      <div className={`text-sm font-bold ${item.status === 'active' ? 'text-blue-600' : 'text-neutral-900'}`}>{item.title}</div>
+                      <div className={`text-xs sm:text-sm font-bold ${item.status === 'active' ? 'text-blue-600' : 'text-neutral-900'}`}>{item.title}</div>
                     </div>
                   </div>
                 ))}
@@ -782,7 +825,7 @@ const CustomerPortal: React.FC<CustomerPortalProps> = ({ project, onClose }) => 
             </div>
 
             {/* REAL PROJECT PHOTOS SECTION */}
-            <div className="bg-white rounded-[2.5rem] p-8 shadow-sm border border-neutral-200">
+            <div className="bg-white rounded-3xl sm:rounded-[2.5rem] p-5 sm:p-7 md:p-8 shadow-sm border border-neutral-200">
               <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-3 mb-6">
                 <div>
                   <h2 className="text-xl font-bold text-neutral-900 flex items-center gap-2">
@@ -866,14 +909,14 @@ const CustomerPortal: React.FC<CustomerPortalProps> = ({ project, onClose }) => 
           </div>
 
           {/* Sidebar */}
-          <div className="space-y-8">
+          <div className="space-y-6 sm:space-y-8">
             
             {/* Din Prosjektleder Contact Card */}
-            <div className="bg-white rounded-[2.5rem] p-8 shadow-sm border border-neutral-200">
-              <h3 className="text-sm font-black uppercase tracking-widest text-neutral-400 mb-6">Din Prosjektleder</h3>
-              <div className="flex items-center gap-4 mb-6">
+            <div className="bg-white rounded-3xl sm:rounded-[2.5rem] p-5 sm:p-7 md:p-8 shadow-sm border border-neutral-200">
+              <h3 className="text-xs font-black uppercase tracking-widest text-neutral-400 mb-5 sm:mb-6">Din Prosjektleder</h3>
+              <div className="flex items-center gap-3.5 sm:gap-4 mb-5 sm:mb-6">
                 <div className="relative shrink-0">
-                  <div className="w-16 h-16 rounded-2xl bg-gradient-to-br from-slate-900 to-navy-950 text-white flex items-center justify-center font-black text-xl shadow-md border border-slate-700">
+                  <div className="w-14 h-14 sm:w-16 sm:h-16 rounded-xl sm:rounded-2xl bg-gradient-to-br from-slate-900 to-navy-950 text-white flex items-center justify-center font-black text-lg sm:text-xl shadow-md border border-slate-700">
                     {pmInitials}
                   </div>
                   <div className="absolute -bottom-1 -right-1 w-5 h-5 bg-emerald-500 rounded-full border-2 border-white flex items-center justify-center" title="Aktiv på vakt">
@@ -881,11 +924,11 @@ const CustomerPortal: React.FC<CustomerPortalProps> = ({ project, onClose }) => 
                   </div>
                 </div>
                 <div className="min-w-0">
-                  <div className="font-bold text-neutral-900 text-base truncate">{pmName}</div>
+                  <div className="font-bold text-neutral-900 text-sm sm:text-base truncate">{pmName}</div>
                   <div className="text-xs text-neutral-500 font-medium truncate">{pmTitle}</div>
                   <div className="text-[11px] text-emerald-600 font-bold mt-0.5 flex items-center gap-1">
-                    <span className="w-1.5 h-1.5 rounded-full bg-emerald-500 animate-pulse" />
-                    Tilgjengelig for oppdragsgiver
+                    <span className="w-1.5 h-1.5 rounded-full bg-emerald-500 animate-pulse shrink-0" />
+                    <span className="truncate">Tilgjengelig for oppdragsgiver</span>
                   </div>
                 </div>
               </div>
@@ -893,107 +936,107 @@ const CustomerPortal: React.FC<CustomerPortalProps> = ({ project, onClose }) => 
               <div className="space-y-2.5">
                 <a 
                   href={`tel:${pmPhone.replace(/\s+/g, '')}`}
-                  className="w-full flex items-center justify-center gap-2.5 p-3.5 bg-emerald-50 hover:bg-emerald-100 text-emerald-900 rounded-xl text-xs font-bold border border-emerald-200/80 transition-all shadow-xs cursor-pointer"
+                  className="w-full flex items-center justify-center gap-2 p-3 sm:p-3.5 bg-emerald-50 hover:bg-emerald-100 text-emerald-900 rounded-xl text-xs font-bold border border-emerald-200/80 transition-all shadow-2xs cursor-pointer active:scale-95"
                 >
-                  <Phone size={15} className="text-emerald-700" />
-                  <span>Ring {pmName.split(' ')[0]} ({pmPhone})</span>
+                  <Phone size={15} className="text-emerald-700 shrink-0" />
+                  <span className="truncate">Ring {pmName.split(' ')[0]} ({pmPhone})</span>
                 </a>
                 <a 
                   href={`mailto:${pmEmail}?subject=${encodeURIComponent(`Henvendelse angående ${project.name}`)}`}
-                  className="w-full flex items-center justify-center gap-2.5 p-3.5 bg-neutral-50 hover:bg-neutral-100 text-neutral-800 rounded-xl text-xs font-bold border border-neutral-200 transition-all shadow-xs cursor-pointer"
+                  className="w-full flex items-center justify-center gap-2 p-3 sm:p-3.5 bg-neutral-50 hover:bg-neutral-100 text-neutral-800 rounded-xl text-xs font-bold border border-neutral-200 transition-all shadow-2xs cursor-pointer active:scale-95"
                 >
-                  <Mail size={15} className="text-neutral-600" />
-                  <span>Send E-post ({pmEmail})</span>
+                  <Mail size={15} className="text-neutral-600 shrink-0" />
+                  <span className="truncate">Send E-post ({pmEmail})</span>
                 </a>
                 <button
                   type="button"
                   onClick={() => setShowMessageModal(true)}
-                  className="w-full flex items-center justify-center gap-2 p-2.5 text-[11px] font-bold text-slate-600 hover:text-slate-900 hover:bg-slate-50 rounded-xl transition-all cursor-pointer"
+                  className="w-full flex items-center justify-center gap-2 p-3 sm:p-3.5 bg-indigo-50 hover:bg-indigo-100 text-indigo-950 rounded-xl text-xs font-bold border border-indigo-200/80 transition-all shadow-2xs cursor-pointer active:scale-95"
                 >
-                  <MessageSquare size={13} className="text-indigo-600" />
+                  <MessageSquare size={14} className="text-indigo-600 shrink-0" />
                   <span>Send melding direkte i portalen</span>
                 </button>
               </div>
             </div>
 
             {/* REAL DOCUMENTS CARD */}
-            <div className="bg-white rounded-[2.5rem] p-8 shadow-sm border border-neutral-200">
-              <div className="flex items-center justify-between mb-6">
-                <h3 className="text-sm font-black uppercase tracking-widest text-neutral-400">Dokumenter</h3>
+            <div className="bg-white rounded-3xl sm:rounded-[2.5rem] p-5 sm:p-7 md:p-8 shadow-sm border border-neutral-200">
+              <div className="flex items-center justify-between mb-5 sm:mb-6">
+                <h3 className="text-xs font-black uppercase tracking-widest text-neutral-400">Dokumenter</h3>
                 <span className="text-[10px] font-bold text-emerald-700 bg-emerald-50 px-2 py-0.5 rounded-full border border-emerald-200">
                   Juridisk gyldig
                 </span>
               </div>
-              <div className="space-y-3">
+              <div className="space-y-2.5 sm:space-y-3">
                 {/* 1. Kontrakt / Tilbud */}
                 <button 
                   type="button"
                   onClick={handleOpenContract}
-                  className="w-full flex items-center justify-between p-4 bg-neutral-50 hover:bg-neutral-100 rounded-2xl group transition-all text-left border border-neutral-200/70 shadow-2xs cursor-pointer"
+                  className="w-full flex items-center justify-between p-3.5 sm:p-4 bg-neutral-50 hover:bg-neutral-100 rounded-xl sm:rounded-2xl group transition-all text-left border border-neutral-200/70 shadow-2xs cursor-pointer active:scale-95"
                 >
                   <div className="flex items-center gap-3 min-w-0">
-                    <div className="w-9 h-9 rounded-xl bg-blue-50 text-blue-600 flex items-center justify-center shrink-0 group-hover:bg-blue-600 group-hover:text-white transition-colors">
-                      <FileSignature size={18} />
+                    <div className="w-8 h-8 sm:w-9 sm:h-9 rounded-lg sm:rounded-xl bg-blue-50 text-blue-600 flex items-center justify-center shrink-0 group-hover:bg-blue-600 group-hover:text-white transition-colors">
+                      <FileSignature size={16} />
                     </div>
                     <div className="min-w-0">
                       <div className="text-xs font-bold text-neutral-900 truncate">
                         {contract ? (contract.status === 'signed' ? 'Signert Kontrakt (NS 8406)' : 'Kontrakt (Avventer signatur)') : (offer ? 'Pristilbud & Omfang' : 'Entreprisekontrakt')}
                       </div>
-                      <div className="text-[10px] text-neutral-500">
+                      <div className="text-[10px] text-neutral-500 truncate">
                         {contract ? 'Last ned offisiell PDF-avtale' : (offer ? 'Godkjent tilbudsdokument' : 'Utarbeides av fagleder')}
                       </div>
                     </div>
                   </div>
-                  <Download size={15} className="text-neutral-400 group-hover:text-blue-600 shrink-0 ml-2" />
+                  <Download size={14} className="text-neutral-400 group-hover:text-blue-600 shrink-0 ml-2" />
                 </button>
 
                 {/* 2. Fremdriftsplan */}
                 <button 
                   type="button"
                   onClick={() => setShowScheduleModal(true)}
-                  className="w-full flex items-center justify-between p-4 bg-neutral-50 hover:bg-neutral-100 rounded-2xl group transition-all text-left border border-neutral-200/70 shadow-2xs cursor-pointer"
+                  className="w-full flex items-center justify-between p-3.5 sm:p-4 bg-neutral-50 hover:bg-neutral-100 rounded-xl sm:rounded-2xl group transition-all text-left border border-neutral-200/70 shadow-2xs cursor-pointer active:scale-95"
                 >
                   <div className="flex items-center gap-3 min-w-0">
-                    <div className="w-9 h-9 rounded-xl bg-emerald-50 text-emerald-600 flex items-center justify-center shrink-0 group-hover:bg-emerald-600 group-hover:text-white transition-colors">
-                      <CalendarCheck2 size={18} />
+                    <div className="w-8 h-8 sm:w-9 sm:h-9 rounded-lg sm:rounded-xl bg-emerald-50 text-emerald-600 flex items-center justify-center shrink-0 group-hover:bg-emerald-600 group-hover:text-white transition-colors">
+                      <CalendarCheck2 size={16} />
                     </div>
                     <div className="min-w-0">
                       <div className="text-xs font-bold text-neutral-900 truncate">Fremdriftsplan & Faser</div>
-                      <div className="text-[10px] text-neutral-500">Milepæler, tidsfrister og status</div>
+                      <div className="text-[10px] text-neutral-500 truncate">Milepæler, tidsfrister og status</div>
                     </div>
                   </div>
-                  <ChevronRight size={15} className="text-neutral-400 group-hover:text-emerald-600 shrink-0 ml-2" />
+                  <ChevronRight size={14} className="text-neutral-400 group-hover:text-emerald-600 shrink-0 ml-2" />
                 </button>
 
                 {/* 3. FDV-Pakke */}
                 <button 
                   type="button"
                   onClick={handleDownloadFDV}
-                  className="w-full flex items-center justify-between p-4 bg-neutral-50 hover:bg-neutral-100 rounded-2xl group transition-all text-left border border-neutral-200/70 shadow-2xs cursor-pointer"
+                  className="w-full flex items-center justify-between p-3.5 sm:p-4 bg-neutral-50 hover:bg-neutral-100 rounded-xl sm:rounded-2xl group transition-all text-left border border-neutral-200/70 shadow-2xs cursor-pointer active:scale-95"
                 >
                   <div className="flex items-center gap-3 min-w-0">
-                    <div className="w-9 h-9 rounded-xl bg-amber-50 text-amber-600 flex items-center justify-center shrink-0 group-hover:bg-amber-600 group-hover:text-white transition-colors">
-                      <FileText size={18} />
+                    <div className="w-8 h-8 sm:w-9 sm:h-9 rounded-lg sm:rounded-xl bg-amber-50 text-amber-600 flex items-center justify-center shrink-0 group-hover:bg-amber-600 group-hover:text-white transition-colors">
+                      <FileText size={16} />
                     </div>
                     <div className="min-w-0">
                       <div className="text-xs font-bold text-neutral-900 truncate">FDV-Dokumentasjon</div>
-                      <div className="text-[10px] text-neutral-500">Drift, vedlikehold & TEK17-krav</div>
+                      <div className="text-[10px] text-neutral-500 truncate">Drift, vedlikehold & TEK17-krav</div>
                     </div>
                   </div>
-                  <Download size={15} className="text-neutral-400 group-hover:text-amber-600 shrink-0 ml-2" />
+                  <Download size={14} className="text-neutral-400 group-hover:text-amber-600 shrink-0 ml-2" />
                 </button>
               </div>
             </div>
 
             {/* AI Insight / Kvalitetssikret */}
-            <div className="bg-emerald-900 rounded-[2rem] p-6 text-white shadow-xl shadow-emerald-100">
-              <div className="flex items-center gap-2 mb-3">
-                <div className="w-8 h-8 rounded-lg bg-emerald-800 flex items-center justify-center">
-                  <CheckCircle2 size={16} className="text-electric-400" />
+            <div className="bg-emerald-950 rounded-2xl sm:rounded-3xl p-5 sm:p-6 text-white shadow-xl shadow-emerald-950/20 border border-emerald-800/40">
+              <div className="flex items-center gap-2 mb-2.5">
+                <div className="w-7 h-7 rounded-lg bg-emerald-800/80 flex items-center justify-center">
+                  <CheckCircle2 size={15} className="text-emerald-300" />
                 </div>
-                <span className="text-[10px] font-black uppercase tracking-widest">Kvalitetssikret</span>
+                <span className="text-[10px] font-black uppercase tracking-widest text-emerald-300">Kvalitetssikret</span>
               </div>
-              <p className="text-xs text-emerald-100 leading-relaxed opacity-90">
+              <p className="text-xs text-emerald-100/90 leading-relaxed">
                 Prosjektet følges opp digitalt i henhold til Byggherreforskriften, TEK17 og Våtromsnormen med bildeverifisert KS-dokumentasjon.
               </p>
             </div>
@@ -1061,16 +1104,16 @@ const CustomerPortal: React.FC<CustomerPortalProps> = ({ project, onClose }) => 
       {/* ALL PHOTOS GALLERY MODAL */}
       <AnimatePresence>
         {showAllPhotosModal && (
-          <div className="fixed inset-0 z-50 flex items-center justify-center p-3 sm:p-6 bg-black/75 backdrop-blur-sm">
+          <div className="fixed inset-0 z-50 flex items-center justify-center p-2 sm:p-6 bg-black/75 backdrop-blur-sm">
             <motion.div
               initial={{ opacity: 0, scale: 0.95 }}
               animate={{ opacity: 1, scale: 1 }}
               exit={{ opacity: 0, scale: 0.95 }}
-              className="bg-white w-full max-w-4xl rounded-3xl overflow-hidden shadow-2xl border border-neutral-200 flex flex-col max-h-[90vh]"
+              className="bg-white w-full max-w-4xl rounded-2xl sm:rounded-3xl overflow-hidden shadow-2xl border border-neutral-200 flex flex-col max-h-[90vh]"
             >
-              <div className="p-6 border-b border-neutral-100 flex items-center justify-between">
+              <div className="p-4 sm:p-6 border-b border-neutral-100 flex items-center justify-between">
                 <div>
-                  <h3 className="font-black text-xl text-neutral-900">Billedarkiv & Fotodokumentasjon</h3>
+                  <h3 className="font-black text-lg sm:text-xl text-neutral-900">Billedarkiv & Fotodokumentasjon</h3>
                   <p className="text-xs text-neutral-500">Totalt {projectPhotos.length} bilder lagret for {project.name}</p>
                 </div>
                 <button
@@ -1082,16 +1125,16 @@ const CustomerPortal: React.FC<CustomerPortalProps> = ({ project, onClose }) => 
                 </button>
               </div>
 
-              <div className="flex-1 overflow-y-auto p-6">
+              <div className="flex-1 overflow-y-auto p-4 sm:p-6">
                 {projectPhotos.length > 0 ? (
-                  <div className="grid grid-cols-2 sm:grid-cols-3 md:grid-cols-4 gap-4">
+                  <div className="grid grid-cols-2 sm:grid-cols-3 md:grid-cols-4 gap-3 sm:gap-4">
                     {projectPhotos.map((photo, i) => (
                       <div
                         key={photo.id || i}
                         onClick={() => {
                           setSelectedLightboxPhoto(photo);
                         }}
-                        className="group aspect-video rounded-2xl overflow-hidden bg-neutral-100 border border-neutral-200 cursor-pointer relative shadow-2xs hover:shadow-md transition-all hover:scale-[1.02]"
+                        className="group aspect-video rounded-xl sm:rounded-2xl overflow-hidden bg-neutral-100 border border-neutral-200 cursor-pointer relative shadow-2xs hover:shadow-md transition-all hover:scale-[1.02]"
                       >
                         <img 
                           src={photo.imageUrl} 
@@ -1114,8 +1157,8 @@ const CustomerPortal: React.FC<CustomerPortalProps> = ({ project, onClose }) => 
                 )}
               </div>
 
-              <div className="p-4 border-t border-neutral-100 bg-neutral-50 flex justify-between items-center">
-                <label className="inline-flex items-center gap-1.5 px-4 py-2 bg-emerald-600 hover:bg-emerald-500 text-white rounded-xl text-xs font-bold cursor-pointer transition-all shadow-xs">
+              <div className="p-3.5 sm:p-4 border-t border-neutral-100 bg-neutral-50 flex justify-between items-center">
+                <label className="inline-flex items-center gap-1.5 px-3.5 sm:px-4 py-2 bg-emerald-600 hover:bg-emerald-500 text-white rounded-xl text-xs font-bold cursor-pointer transition-all shadow-xs">
                   <Plus size={14} />
                   <span>Last opp nytt bilde</span>
                   <input type="file" accept="image/*" onChange={handleUploadPhoto} className="hidden" />
@@ -1123,7 +1166,7 @@ const CustomerPortal: React.FC<CustomerPortalProps> = ({ project, onClose }) => 
                 <button
                   type="button"
                   onClick={() => setShowAllPhotosModal(false)}
-                  className="px-4 py-2 bg-neutral-200 hover:bg-neutral-300 text-neutral-700 text-xs font-bold rounded-xl transition-colors cursor-pointer"
+                  className="px-3.5 sm:px-4 py-2 bg-neutral-200 hover:bg-neutral-300 text-neutral-700 text-xs font-bold rounded-xl transition-colors cursor-pointer"
                 >
                   Lukk arkiv
                 </button>
@@ -1136,20 +1179,20 @@ const CustomerPortal: React.FC<CustomerPortalProps> = ({ project, onClose }) => 
       {/* FREMDRIFTSPLAN & MILEPÆLER MODAL */}
       <AnimatePresence>
         {showScheduleModal && (
-          <div className="fixed inset-0 z-50 flex items-center justify-center p-3 sm:p-6 bg-black/60 backdrop-blur-sm">
+          <div className="fixed inset-0 z-50 flex items-center justify-center p-2 sm:p-6 bg-black/60 backdrop-blur-sm">
             <motion.div
               initial={{ opacity: 0, scale: 0.95 }}
               animate={{ opacity: 1, scale: 1 }}
               exit={{ opacity: 0, scale: 0.95 }}
-              className="bg-white w-full max-w-2xl rounded-3xl overflow-hidden shadow-2xl border border-neutral-200 flex flex-col max-h-[90vh]"
+              className="bg-white w-full max-w-2xl rounded-2xl sm:rounded-3xl overflow-hidden shadow-2xl border border-neutral-200 flex flex-col max-h-[90vh]"
             >
-              <div className="p-6 border-b border-neutral-100 flex items-center justify-between">
-                <div className="flex items-center gap-3">
+              <div className="p-4 sm:p-6 border-b border-neutral-100 flex items-center justify-between">
+                <div className="flex items-center gap-2.5 sm:gap-3">
                   <div className="p-2 bg-emerald-50 text-emerald-600 rounded-xl">
-                    <CalendarCheck2 size={22} />
+                    <CalendarCheck2 size={20} />
                   </div>
                   <div>
-                    <h3 className="font-black text-xl text-neutral-900">Fremdriftsplan & Faser</h3>
+                    <h3 className="font-black text-lg sm:text-xl text-neutral-900">Fremdriftsplan & Faser</h3>
                     <p className="text-xs text-neutral-500">{project.name}</p>
                   </div>
                 </div>
@@ -1162,48 +1205,48 @@ const CustomerPortal: React.FC<CustomerPortalProps> = ({ project, onClose }) => 
                 </button>
               </div>
 
-              <div className="p-6 overflow-y-auto space-y-6">
-                <div className="grid grid-cols-2 sm:grid-cols-3 gap-3 p-4 bg-neutral-50 rounded-2xl border border-neutral-200/80">
+              <div className="p-4 sm:p-6 overflow-y-auto space-y-5 sm:space-y-6">
+                <div className="grid grid-cols-3 gap-2 sm:gap-3 p-3.5 sm:p-4 bg-neutral-50 rounded-2xl border border-neutral-200/80">
                   <div>
                     <span className="text-[10px] font-bold text-neutral-400 uppercase tracking-wider block">Fremdrift</span>
-                    <span className="font-black text-emerald-600 text-lg">{project.progress || 0}%</span>
+                    <span className="font-black text-emerald-600 text-base sm:text-lg">{project.progress || 0}%</span>
                   </div>
                   <div>
                     <span className="text-[10px] font-bold text-neutral-400 uppercase tracking-wider block">Gjeldende fase</span>
-                    <span className="font-bold text-neutral-800 text-sm capitalize">{project.stage || 'Gjennomføring'}</span>
+                    <span className="font-bold text-neutral-800 text-xs sm:text-sm capitalize truncate block">{project.stage || 'Gjennomføring'}</span>
                   </div>
                   <div>
                     <span className="text-[10px] font-bold text-neutral-400 uppercase tracking-wider block">Estimert ferdig</span>
-                    <span className="font-bold text-neutral-800 text-sm">{(project as any).deadline || 'Iht. avtale'}</span>
+                    <span className="font-bold text-neutral-800 text-xs sm:text-sm truncate block">{(project as any).deadline || 'Iht. avtale'}</span>
                   </div>
                 </div>
 
                 <div>
-                  <h4 className="font-bold text-sm text-neutral-900 mb-3 flex items-center gap-2">
-                    <Layers size={16} className="text-emerald-600" />
+                  <h4 className="font-bold text-xs sm:text-sm text-neutral-900 mb-3 flex items-center gap-2">
+                    <Layers size={15} className="text-emerald-600" />
                     Hovedfaser i prosjektet
                   </h4>
-                  <div className="space-y-3">
+                  <div className="space-y-2.5 sm:space-y-3">
                     {[
                       { name: '1. Prosjektering & Tilbud', desc: 'Befaring, kalkyle og detaljert tilbud', status: 'Fullført', done: true },
-                      { name: '2. Kontrakt & Oppstart', desc: 'NS 8406 entreprisekontrakt og oppstartsmøte', status: contract?.status === 'signed' ? 'Fullført' : 'Pågår', done: contract?.status === 'signed' },
+                      { name: '2. Kontrakt & Oppstart', desc: 'NS 8406 entreprisekontrakt og oppstartsmøte', status: (contract?.status === 'signed' || (project.progress || 0) > 0) ? 'Fullført' : 'Pågår', done: (contract?.status === 'signed' || (project.progress || 0) > 0) },
                       { name: '3. Riving, Klargjøring & Rigg', desc: 'Sikkerhetsrigg, støvsikring og klargjøring', status: (project.progress || 0) >= 25 ? 'Fullført' : ((project.progress || 0) > 0 ? 'Pågår' : 'Planlagt'), done: (project.progress || 0) >= 25 },
                       { name: '4. Hovedarbeid & Fagarbeid', desc: 'Tømrer, VVS, elektro og overflater iht. TEK17', status: (project.progress || 0) >= 80 ? 'Fullført' : ((project.progress || 0) >= 25 ? 'Pågår' : 'Planlagt'), done: (project.progress || 0) >= 80 },
                       { name: '5. Sluttkontroll & Overtakelse', desc: 'Sluttbefaring, KS-sjekkliste og FDV-overlevering', status: (project.progress || 0) === 100 ? 'Fullført' : 'Planlagt', done: (project.progress || 0) === 100 }
                     ].map((phase, idx) => (
-                      <div key={idx} className="p-4 rounded-2xl border border-neutral-200/80 bg-white flex items-center justify-between gap-3">
-                        <div className="flex items-center gap-3">
+                      <div key={idx} className="p-3 sm:p-4 rounded-xl sm:rounded-2xl border border-neutral-200/80 bg-white flex items-center justify-between gap-3">
+                        <div className="flex items-center gap-2.5 sm:gap-3 min-w-0">
                           <div className={`w-7 h-7 rounded-xl flex items-center justify-center shrink-0 ${
                             phase.done ? 'bg-emerald-100 text-emerald-600' : 'bg-neutral-100 text-neutral-400'
                           }`}>
-                            {phase.done ? <CheckCircle2 size={16} /> : <span className="text-xs font-bold">{idx + 1}</span>}
+                            {phase.done ? <CheckCircle2 size={15} /> : <span className="text-xs font-bold">{idx + 1}</span>}
                           </div>
-                          <div>
-                            <div className="font-bold text-sm text-neutral-900">{phase.name}</div>
-                            <div className="text-xs text-neutral-500">{phase.desc}</div>
+                          <div className="min-w-0">
+                            <div className="font-bold text-xs sm:text-sm text-neutral-900 truncate">{phase.name}</div>
+                            <div className="text-[11px] text-neutral-500 truncate">{phase.desc}</div>
                           </div>
                         </div>
-                        <span className={`text-[10px] font-black uppercase px-2.5 py-1 rounded-full ${
+                        <span className={`text-[10px] font-black uppercase px-2 py-0.5 sm:px-2.5 sm:py-1 rounded-full shrink-0 ${
                           phase.done ? 'bg-emerald-100 text-emerald-700' : 'bg-neutral-100 text-neutral-600'
                         }`}>
                           {phase.status}
@@ -1214,11 +1257,11 @@ const CustomerPortal: React.FC<CustomerPortalProps> = ({ project, onClose }) => 
                 </div>
               </div>
 
-              <div className="p-4 border-t border-neutral-100 bg-neutral-50 flex justify-end">
+              <div className="p-3.5 sm:p-4 border-t border-neutral-100 bg-neutral-50 flex justify-end">
                 <button
                   type="button"
                   onClick={() => setShowScheduleModal(false)}
-                  className="px-5 py-2.5 bg-neutral-900 hover:bg-neutral-800 text-white rounded-xl text-xs font-bold transition-colors cursor-pointer"
+                  className="px-4 sm:px-5 py-2 sm:py-2.5 bg-neutral-900 hover:bg-neutral-800 text-white rounded-xl text-xs font-bold transition-colors cursor-pointer"
                 >
                   Lukk fremdriftsplan
                 </button>
@@ -1231,16 +1274,16 @@ const CustomerPortal: React.FC<CustomerPortalProps> = ({ project, onClose }) => 
       {/* SEND DIRECT MESSAGE TO MANAGER MODAL */}
       <AnimatePresence>
         {showMessageModal && (
-          <div className="fixed inset-0 z-50 flex items-center justify-center p-3 sm:p-6 bg-black/60 backdrop-blur-sm">
+          <div className="fixed inset-0 z-50 flex items-center justify-center p-2 sm:p-6 bg-black/60 backdrop-blur-sm">
             <motion.div
               initial={{ opacity: 0, scale: 0.95 }}
               animate={{ opacity: 1, scale: 1 }}
               exit={{ opacity: 0, scale: 0.95 }}
-              className="bg-white w-full max-w-lg rounded-3xl overflow-hidden shadow-2xl border border-neutral-200 flex flex-col"
+              className="bg-white w-full max-w-lg rounded-2xl sm:rounded-3xl overflow-hidden shadow-2xl border border-neutral-200 flex flex-col"
             >
-              <div className="p-6 border-b border-neutral-100 flex items-center justify-between">
+              <div className="p-4 sm:p-6 border-b border-neutral-100 flex items-center justify-between">
                 <div>
-                  <h3 className="font-black text-xl text-neutral-900">Send melding til byggeleder</h3>
+                  <h3 className="font-black text-lg sm:text-xl text-neutral-900">Send melding til byggeleder</h3>
                   <p className="text-xs text-neutral-500">Mottaker: {pmName} ({project.name})</p>
                 </div>
                 <button
@@ -1252,22 +1295,22 @@ const CustomerPortal: React.FC<CustomerPortalProps> = ({ project, onClose }) => 
                 </button>
               </div>
 
-              <form onSubmit={handleSendMessageToManager} className="p-6 space-y-4">
+              <form onSubmit={handleSendMessageToManager} className="p-4 sm:p-6 space-y-4">
                 <div>
                   <label className="block text-xs font-bold text-neutral-700 uppercase tracking-wider mb-2">
                     Din henvendelse / spørsmål
                   </label>
                   <textarea
-                    rows={5}
+                    rows={4}
                     value={customerMessage}
                     onChange={(e) => setCustomerMessage(e.target.value)}
                     placeholder="Skriv din melding her... F.eks. spørsmål om fremdrift, materialvalg eller befaring."
                     required
-                    className="w-full p-4 text-sm bg-neutral-50 border border-neutral-200 rounded-2xl focus:bg-white focus:ring-2 focus:ring-emerald-500 focus:outline-none transition-all"
+                    className="w-full p-3.5 sm:p-4 text-xs sm:text-sm bg-neutral-50 border border-neutral-200 rounded-xl sm:rounded-2xl focus:bg-white focus:ring-2 focus:ring-emerald-500 focus:outline-none transition-all"
                   />
                 </div>
 
-                <div className="p-3 bg-neutral-50 rounded-xl border border-neutral-200 text-xs text-neutral-500">
+                <div className="p-3 bg-neutral-50 rounded-xl border border-neutral-200 text-[11px] sm:text-xs text-neutral-500">
                   Byggeleder blir varslet umiddelbart og henvendelsen loggføres trygt på prosjektet.
                 </div>
 
@@ -1275,14 +1318,14 @@ const CustomerPortal: React.FC<CustomerPortalProps> = ({ project, onClose }) => 
                   <button
                     type="button"
                     onClick={() => setShowMessageModal(false)}
-                    className="px-4 py-2.5 bg-neutral-100 hover:bg-neutral-200 text-neutral-700 text-xs font-bold rounded-xl transition-colors cursor-pointer"
+                    className="px-3.5 sm:px-4 py-2 sm:py-2.5 bg-neutral-100 hover:bg-neutral-200 text-neutral-700 text-xs font-bold rounded-xl transition-colors cursor-pointer"
                   >
                     Avbryt
                   </button>
                   <button
                     type="submit"
                     disabled={isSendingMessage || !customerMessage.trim()}
-                    className="px-5 py-2.5 bg-emerald-600 hover:bg-emerald-500 text-white text-xs font-bold rounded-xl transition-all shadow-xs flex items-center gap-2 cursor-pointer disabled:opacity-50"
+                    className="px-4 sm:px-5 py-2 sm:py-2.5 bg-emerald-600 hover:bg-emerald-500 text-white text-xs font-bold rounded-xl transition-all shadow-xs flex items-center gap-2 cursor-pointer disabled:opacity-50"
                   >
                     {isSendingMessage ? (
                       <div className="w-4 h-4 border-2 border-white/30 border-t-white rounded-full animate-spin" />

@@ -877,26 +877,26 @@ export default function ProjectDetails({ project, onBack, onShare, onStartCheckl
       </div>
 
       {/* 3. PROSJEKTFORLØP (MINIMALISTISK & RENT) */}
-      <div className="bg-white p-5 rounded-3xl border border-slate-200/80 shadow-xs">
-        <div className="flex items-center justify-between mb-4">
-          <span className="text-xs font-black uppercase tracking-wider text-slate-400">Prosjektforløp</span>
-          <span className="text-[11px] font-bold text-electric-600">Neste milepæl: Sluttbefaring</span>
+      <div className="bg-white p-4 sm:p-5 rounded-2xl sm:rounded-3xl border border-slate-200/80 shadow-xs">
+        <div className="flex flex-col xs:flex-row xs:items-center justify-between gap-1 mb-3 sm:mb-4">
+          <span className="text-[11px] sm:text-xs font-black uppercase tracking-wider text-slate-400">Prosjektforløp</span>
+          <span className="text-[10px] sm:text-[11px] font-bold text-electric-700">Neste milepæl: Sluttbefaring</span>
         </div>
-        <div className="grid grid-cols-4 gap-2 text-center">
+        <div className="grid grid-cols-4 gap-1.5 sm:gap-3 text-center">
           {[
             { label: 'Tilbud', done: true },
             { label: 'Kontrakt', done: true },
             { label: 'Gjennomføring', current: true },
             { label: 'Overlevering', done: false },
           ].map((step, idx) => (
-            <div key={idx} className="space-y-2">
+            <div key={idx} className="space-y-1.5 min-w-0">
               <div className={cn(
-                "h-2 rounded-full",
+                "h-1.5 sm:h-2 rounded-full transition-all",
                 step.done ? "bg-emerald-500" :
                 step.current ? "bg-electric-500" : "bg-slate-200"
               )} />
               <span className={cn(
-                "text-xs font-bold block",
+                "text-[9px] xs:text-[10px] sm:text-xs font-bold block leading-tight tracking-tight break-words",
                 step.done ? "text-emerald-700" :
                 step.current ? "text-electric-700 font-black" : "text-slate-400"
               )}>

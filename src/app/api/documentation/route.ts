@@ -114,12 +114,16 @@ export async function POST(request: NextRequest) {
         html: emailHtml
       });
 
+      const isSent = sendRes.success && sendRes.status === 'sent';
       return NextResponse.json({
-        success: sendRes.success,
+        success: isSent,
         id: sendRes.id,
+        resendId: sendRes.resendId,
         status: sendRes.status,
-        message: `FDV-dokumentasjon oversendt til ${recipientEmail}`
-      });
+        message: isSent
+          ? `FDV-dokumentasjon oversendt til ${recipientEmail} via Resend`
+          : `Kunne ikke levere via Resend: ${sendRes.message}`
+      }, { status: isSent ? 200 : 502 });
     }
 
     return NextResponse.json({ error: `Ukjent action '${action}'` }, { status: 400 });

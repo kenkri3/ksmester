@@ -5,7 +5,7 @@ import { createAutonomousChangeOrder } from '@/src/lib/server/changeOrderAgent';
 import { saveCollectionItem, getCollectionItems, updateCollectionItem, getCollectionItemById, deleteCollectionItem } from '@/src/lib/server/db';
 import { generateWithAiEngine, cleanAiJson } from '@/src/lib/server/aiEngine';
 import { getUserFromRequest, verifyCronOrInternalSecret, verifyAuthToken } from '@/src/lib/server/auth';
-import { sendOfferByEmail, sendChangeOrderByEmail, sendSystemEmail } from '@/src/lib/server/emailSender';
+import { sendOfferByEmail, sendChangeOrderByEmail, sendSystemEmail, getResendApiKey, testResendConnection } from '@/src/lib/server/emailSender';
 import { 
   getApprenticeProfiles, 
   approveApprenticeGoal, 
@@ -1952,18 +1952,22 @@ Returner KUN et gyldig JSON-objekt:
         let isSent = false;
         if (wantsAutoSend && effectiveClientEmail) {
           try {
-            await sendOfferByEmail({
+            const mailRes = await sendOfferByEmail({
               offer: offerDoc,
               clientEmail: effectiveClientEmail,
               clientName: effectiveClientName,
               companyName: (user as any)?.company || 'Mester Entreprenør AS',
               authorName: authorName || (user as any)?.displayName || 'Byggmester'
             });
-            isSent = true;
-            await updateCollectionItem('offers', offerId, { status: 'sent' });
-            offerDoc.status = 'sent';
+            if (mailRes.success && mailRes.status === 'sent') {
+              isSent = true;
+              await updateCollectionItem('offers', offerId, { status: 'sent' });
+              offerDoc.status = 'sent';
+            } else {
+              console.warn('[AutoSend] Automatisk tilbuds-e-post ble ikke levert:', mailRes.message || mailRes.error);
+            }
           } catch (mailErr) {
-            console.warn('Auto send offer email failed:', mailErr);
+            console.warn('[AutoSend] Feil ved automatisk tilbudssending:', mailErr);
           }
         }
 
@@ -2072,9 +2076,40 @@ Returner KUN et gyldig JSON-objekt:
         });
       }
 
-      // E0-A. AUTONOM E-POSTSENDING (Tilbud, Endringsordrer, Kundekommunikasjon)
+      // E0-A. AUTONOM E-POSTSENDING (Tilbud, Endringsordrer, Kundekommunikasjon, Resend-status)
       const emailMatch = text.match(/[a-zA-Z0-9._%+-]+@[a-zA-Z0-9.-]+\.[a-zA-Z]{2,}/);
       const clientEmailFromText = emailMatch ? emailMatch[0] : null;
+
+      // 0. Sjekk om brukeren spør om tilgang til RESEND_API_KEY eller status på Resend
+      const isResendQuery = 
+        lower.includes('resend') && 
+        (lower.includes('tilgang') || lower.includes('nøkkel') || lower.includes('nokkel') || lower.includes('status') || lower.includes('sjekk') || lower.includes('test') || lower.includes('funger') || lower.includes('har du') || lower.includes('mulighet'));
+
+      if (isResendQuery) {
+        const resendStatus = await testResendConnection();
+        if (resendStatus.status === 'connected') {
+          return NextResponse.json({
+            success: true,
+            action: 'resend_status',
+            reply: `✅ **Ja! Jeg har full tilgang til å sende ekte e-poster via RESEND_API_KEY.**\n\n- **Status:** Aktiv & autentisert mot Resend API\n- **API-nøkkel:** \`${resendStatus.apiKeyPreview}\`\n- **Avsender:** \`${resendStatus.fromEmail}\` (med automatisk fallback til \`onboarding@resend.dev\` dersom eget domene ikke er verifisert)\n\nJeg kan sende offisielle tilbud med 1-klikks digital godkjenning, endringsvarsler iht. NS 8406, og komplette FDV-dokumentasjonspakker direkte til dine kunder på e-post. Bare be meg sende til en e-postadresse!`,
+            resendStatus
+          });
+        } else if (resendStatus.status === 'missing_key') {
+          return NextResponse.json({
+            success: false,
+            action: 'resend_status',
+            reply: `⚠️ **RESEND_API_KEY er ikke konfigurert i miljøvariablene i Railway.**\n\nFor at jeg skal kunne levere e-poster til kundene dine, må du legge inn nøkkelen:\n\n1. Åpne prosjektet ditt i **[Railway Dashboard](https://railway.com)**\n2. Gå til fanen **Variables**\n3. Legg til variabelen:\n   - **Navn:** \`RESEND_API_KEY\`\n   - **Verdi:** \`re_...\` (hentes fra [resend.com/api-keys](https://resend.com/api-keys))\n4. Trykk **Deploy** for å laste miljøvariabelen.\n\nSå snart dette er lagt inn, kan jeg sende e-poster automatisk med ekte levering!`,
+            resendStatus
+          });
+        } else {
+          return NextResponse.json({
+            success: false,
+            action: 'resend_status',
+            reply: `⚠️ **RESEND_API_KEY er lagt inn, men Resend ga en feilmelding ved tilkobling:**\n\n- **Nøkkel:** \`${resendStatus.apiKeyPreview}\`\n- **Tilbakemelding fra Resend:** ${resendStatus.message}\n\nKontroller at API-nøkkelen har 'Sending access' i Resend Dashboard.`,
+            resendStatus
+          });
+        }
+      }
 
       const isEmailIntent = 
         action === 'send_email' ||
@@ -2110,7 +2145,7 @@ Returner KUN et gyldig JSON-objekt:
             return NextResponse.json({
               success: true,
               action: 'need_email_address',
-              reply: `Hvilken e-postadresse skal tilbudet sendes til? Oppgi e-posten (f.eks: «Send tilbudet til ola@kunde.no»), så sender jeg det umiddelbart med digital signeringslenke.`,
+              reply: `Hvilken e-postadresse skal tilbudet sendes til? Oppgi e-posten (f.eks: «Send tilbudet til ola@kunde.no»), så sender jeg det umiddelbart med digital signeringslenke via Resend.`,
               suggestedActions: [
                 {
                   id: 'open_offer_modal',
@@ -2168,12 +2203,23 @@ Returner KUN et gyldig JSON-objekt:
           });
 
           const emailOfferLink = `${baseUrl}/?offerToken=${targetOffer.token}`;
-          return NextResponse.json({
-            success: true,
-            action: 'offer_email_sent',
-            reply: `✅ **Tilbudet er nå sendt på e-post!**\n\n- **Mottaker:** **${recipientEmail}**\n- **Tilbud:** «${targetOffer.title}»\n- **Totalbeløp:** kr ${(Number(targetOffer.totalAmount || targetOffer.total || 0)).toLocaleString('no-NO')} inkl. mva\n- **Digital godkjenningslenke:** [Åpne tilbud](${emailOfferLink})\n\nKunden har mottatt en formell e-post med komplett oversikt over poster, forbehold og en direkte knapp for å godkjenne tilbudet på skjermen. Hendelsen er protokollført i aktivitetsloggen.`,
-            emailResult: emailRes
-          });
+
+          if (emailRes.success && emailRes.status === 'sent') {
+            return NextResponse.json({
+              success: true,
+              action: 'offer_email_sent',
+              reply: `✅ **Tilbudet er nå sendt på e-post via Resend!**\n\n- **Mottaker:** **${recipientEmail}**\n- **Tilbud:** «${targetOffer.title}»\n- **Totalbeløp:** kr ${(Number(targetOffer.totalAmount || targetOffer.total || 0)).toLocaleString('no-NO')} inkl. mva\n- **Digital godkjenningslenke:** [Åpne tilbud](${emailOfferLink})\n${emailRes.resendId ? `- **Resend Meldings-ID:** \`${emailRes.resendId}\`\n` : ''}${emailRes.fromUsed ? `- **Avsenderadresse:** \`${emailRes.fromUsed}\`\n` : ''}\nKunden har mottatt formell e-post med komplett spesifikasjon over poster, forbehold og direkte knapp for å godkjenne tilbudet digitalt. Hendelsen er protokollført i aktivitetsloggen.`,
+              emailResult: emailRes
+            });
+          } else {
+            const isMissingKey = emailRes.status === 'missing_api_key';
+            return NextResponse.json({
+              success: false,
+              action: 'email_send_failed',
+              reply: `⚠️ **Kunne ikke levere tilbudet via Resend**\n\n- **Mottaker:** **${recipientEmail}**\n- **Årsak:** ${emailRes.message || emailRes.error || 'Utsendelse feilet'}\n\n${isMissingKey ? '👉 **Løsning:** Legg til `RESEND_API_KEY` under **Variables** i Railway for å aktivere e-postutsending.' : '👉 **Tips:** Kontroller i Resend Dashboard (resend.com/domains) at avsenderdomenet eller din test-adresse er godkjent.'}\n\nLenken til tilbudet er likevel lagret og klar til manuell deling: [Åpne tilbud](${emailOfferLink})`,
+              emailResult: emailRes
+            });
+          }
         }
 
         // 2. Sjekk om det gjelder en endringsordre
@@ -2193,7 +2239,7 @@ Returner KUN et gyldig JSON-objekt:
             return NextResponse.json({
               success: true,
               action: 'need_email_address',
-              reply: `Hvilken e-postadresse skal endringsmeldingen sendes til? Oppgi e-posten (f.eks: «Send endringen til ola@kunde.no»), så sender jeg den formelle meldingen iht. NS 8406 umiddelbart.`,
+              reply: `Hvilken e-postadresse skal endringsmeldingen sendes til? Oppgi e-posten (f.eks: «Send endringen til ola@kunde.no»), så sender jeg den formelle meldingen iht. NS 8406 umiddelbart via Resend.`,
               suggestedActions: [
                 {
                   id: 'open_co_modal',
@@ -2214,12 +2260,22 @@ Returner KUN et gyldig JSON-objekt:
               authorName: authorName || 'Byggmester'
             });
 
-            return NextResponse.json({
-              success: true,
-              action: 'change_order_email_sent',
-              reply: `✅ **Endringsmelding er nå sendt på e-post!**\n\n- **Mottaker:** **${recipientEmail}**\n- **Endring:** «${targetCO.title}»\n- **Krav:** kr ${(Number(targetCO.totalAmount || targetCO.amountExVat || 0)).toLocaleString('no-NO')} inkl. mva (${targetCO.impactDays || 0} dager fristforlengelse)\n- **Hjemmel:** ${targetCO.legalHjemmel || 'NS 8406 pkt. 19.2'}\n\nKunden har mottatt formell e-post med varsel og direkte godkjenningslenke.`,
-              emailResult: emailRes
-            });
+            if (emailRes.success && emailRes.status === 'sent') {
+              return NextResponse.json({
+                success: true,
+                action: 'change_order_email_sent',
+                reply: `✅ **Endringsmelding er nå sendt på e-post via Resend!**\n\n- **Mottaker:** **${recipientEmail}**\n- **Endring:** «${targetCO.title}»\n- **Krav:** kr ${(Number(targetCO.totalAmount || targetCO.amountExVat || 0)).toLocaleString('no-NO')} inkl. mva (${targetCO.impactDays || 0} dager fristforlengelse)\n- **Hjemmel:** ${targetCO.legalHjemmel || 'NS 8406 pkt. 19.2'}\n${emailRes.resendId ? `- **Resend Meldings-ID:** \`${emailRes.resendId}\`\n` : ''}${emailRes.fromUsed ? `- **Avsenderadresse:** \`${emailRes.fromUsed}\`\n` : ''}\nKunden har mottatt formelt varsel med direkte godkjenningslenke.`,
+                emailResult: emailRes
+              });
+            } else {
+              const isMissingKey = emailRes.status === 'missing_api_key';
+              return NextResponse.json({
+                success: false,
+                action: 'email_send_failed',
+                reply: `⚠️ **Kunne ikke levere endringsmelding via Resend**\n\n- **Mottaker:** **${recipientEmail}**\n- **Årsak:** ${emailRes.message || emailRes.error || 'Feil ved sending'}\n\n${isMissingKey ? '👉 **Løsning:** Legg inn `RESEND_API_KEY` under **Variables** i Railway.' : '👉 **Tips:** Kontroller avsender og domene-verifisering i Resend Dashboard.'}`,
+                emailResult: emailRes
+              });
+            }
           }
         }
 
@@ -2229,7 +2285,7 @@ Returner KUN et gyldig JSON-objekt:
           return NextResponse.json({
             success: true,
             action: 'need_email_address',
-            reply: `Hvem skal e-posten sendes til? Oppgi e-postadresse og hva du vil overbringe (f.eks: «Send epost til ola@kunde.no om at vi starter på mandag»), så formulerer og sender jeg den for deg.`
+            reply: `Hvem skal e-posten sendes til? Oppgi e-postadresse og hva du vil overbringe (f.eks: «Send epost til ola@kunde.no om at vi starter på mandag»), så formulerer og sender jeg den for deg via Resend.`
           });
         }
 
@@ -2243,12 +2299,22 @@ Returner KUN et gyldig JSON-objekt:
           companyName: (user as any)?.company || 'Mester Entreprenør AS'
         });
 
-        return NextResponse.json({
-          success: true,
-          action: 'general_email_sent',
-          reply: `✅ **E-post er sendt til ${recipientEmail}!**\n\n- **Emne:** «${subject}»\n- **Prosjekt:** ${resolvedProjectName}\n\nMeldingen er protokollført i aktivitetsloggen.`,
-          emailResult: emailRes
-        });
+        if (emailRes.success && emailRes.status === 'sent') {
+          return NextResponse.json({
+            success: true,
+            action: 'general_email_sent',
+            reply: `✅ **E-post er levert til ${recipientEmail} via Resend!**\n\n- **Emne:** «${subject}»\n- **Prosjekt:** ${resolvedProjectName}\n${emailRes.resendId ? `- **Resend Meldings-ID:** \`${emailRes.resendId}\`\n` : ''}${emailRes.fromUsed ? `- **Avsenderadresse:** \`${emailRes.fromUsed}\`\n` : ''}\nMeldingen er registrert i aktivitetsloggen.`,
+            emailResult: emailRes
+          });
+        } else {
+          const isMissingKey = emailRes.status === 'missing_api_key';
+          return NextResponse.json({
+            success: false,
+            action: 'email_send_failed',
+            reply: `⚠️ **Kunne ikke levere e-post til ${recipientEmail}**\n\n- **Emne:** «${subject}»\n- **Årsak:** ${emailRes.message || emailRes.error || 'Resend API feilet'}\n\n${isMissingKey ? '👉 **Løsning:** Legg til `RESEND_API_KEY` under **Variables** i Railway for å aktivere e-postlevering.' : '👉 **Tips:** Sjekk Resend Dashboard for å bekrefte at API-nøkkelen er gyldig og at avsenderen er godkjent.'}`,
+            emailResult: emailRes
+          });
+        }
       }
 
       // E0-B. AUTONOM LÆRLINGOPPFØLGING & ADMIN-KONTROLL
@@ -2476,20 +2542,37 @@ Returner KUN et gyldig JSON-objekt:
             companyName: (user as any)?.company || 'Mesterbedrift AS'
           });
 
-          return NextResponse.json({
-            success: true,
-            action: 'documentation_email_sent',
-            reply: `✅ **Komplett FDV-perm er nå oversendt på e-post!**\n\n- **Mottaker:** **${recipientEmail}** (${clientName})\n- **Prosjekt:** **${projName}**\n- **Antall dokumenter i permen:** ${docResult.documents.length} stk (FDV-blader, tekniske godkjenninger, TEK17-samsvar og overtakelsesprotokoll).\n\nByggherren har mottatt en formell e-post med all nødvendig FDV- og sluttdokumentasjon.`,
-            emailResult: sendEmailRes,
-            suggestedActions: [
-              {
-                id: 'open_documentation_archive',
-                type: 'open_documentation_archive',
-                label: '📄 Åpne FDV-Arkiv for prosjektet',
-                data: { projectId: projId }
-              }
-            ]
-          });
+          if (sendEmailRes.success && sendEmailRes.status === 'sent') {
+            return NextResponse.json({
+              success: true,
+              action: 'documentation_email_sent',
+              reply: `✅ **Komplett FDV-perm er nå oversendt på e-post via Resend!**\n\n- **Mottaker:** **${recipientEmail}** (${clientName})\n- **Prosjekt:** **${projName}**\n- **Antall dokumenter i permen:** ${docResult.documents.length} stk (FDV-blader, tekniske godkjenninger, TEK17-samsvar og overtakelsesprotokoll).\n${sendEmailRes.resendId ? `- **Resend Meldings-ID:** \`${sendEmailRes.resendId}\`\n` : ''}${sendEmailRes.fromUsed ? `- **Avsenderadresse:** \`${sendEmailRes.fromUsed}\`\n` : ''}\nByggherren har mottatt en formell e-post med all nødvendig FDV- og sluttdokumentasjon.`,
+              emailResult: sendEmailRes,
+              suggestedActions: [
+                {
+                  id: 'open_documentation_archive',
+                  type: 'open_documentation_archive',
+                  label: '📄 Åpne FDV-Arkiv for prosjektet',
+                  data: { projectId: projId }
+                }
+              ]
+            });
+          } else {
+            return NextResponse.json({
+              success: false,
+              action: 'email_send_failed',
+              reply: `⚠️ **Kunne ikke overlevere FDV-perm på e-post via Resend**\n\n- **Mottaker:** **${recipientEmail}**\n- **Årsak:** ${sendEmailRes.message || sendEmailRes.error || 'Resend feilet'}\n\nDokumentene er likevel trygt lagret og tilgjengelige i prosjektarkivet.`,
+              emailResult: sendEmailRes,
+              suggestedActions: [
+                {
+                  id: 'open_documentation_archive',
+                  type: 'open_documentation_archive',
+                  label: '📄 Åpne FDV-Arkiv for prosjektet',
+                  data: { projectId: projId }
+                }
+              ]
+            });
+          }
         }
 
         // 2. Vis sammendrag og handlinger for dokumentasjon
@@ -2585,12 +2668,30 @@ Returner KUN et gyldig JSON-objekt:
             createdAt: new Date().toISOString()
           }).catch(() => {});
 
+          let inviteEmailSent = false;
+          if (getResendApiKey()) {
+            const sendInviteRes = await sendSystemEmail({
+              to: inviteEmail,
+              subject: `Invitasjon til VikingMester – ${(user as any)?.company || 'Mester Entreprenør AS'}`,
+              text: `Hei!\n\nDu har blitt invitert til VikingMester av ${authorName || 'din byggeleder'}.\n\nKlikk her for å aktivere din bruker: ${inviteUrl}\n\nRolle: ${assignedRole === 'worker' ? 'Håndverker' : assignedRole === 'manager' ? 'Leder' : 'Ekstern'}\n\nMed vennlig hilsen,\n${authorName || 'Byggeleder'}\n${(user as any)?.company || 'Mester Entreprenør AS'}`,
+              html: `<div style="font-family:sans-serif;line-height:1.6;color:#1e293b;padding:24px;border:1px solid #e2e8f0;border-radius:12px;max-width:550px;margin:0 auto;"><h2 style="color:#0f172a;margin-top:0;">Velkommen til ${(user as any)?.company || 'VikingMester'}</h2><p>Du har blitt invitert av <strong>${authorName || 'din byggeleder'}</strong> med tilgang som <strong>${assignedRole === 'worker' ? 'Håndverker' : assignedRole === 'manager' ? 'Leder' : 'Ekstern'}</strong>.</p><div style="text-align:center;margin:28px 0;"><a href="${inviteUrl}" style="background:#059669;color:white;text-decoration:none;padding:14px 28px;border-radius:8px;font-weight:bold;display:inline-block;">👉 Aktiver din tilgang</a></div><p style="font-size:12px;color:#64748b;">Lenken er gyldig i 14 dager.</p></div>`,
+              type: 'general',
+              authorName,
+              companyName: (user as any)?.company || 'Mester Entreprenør AS'
+            }).catch(() => null);
+
+            if (sendInviteRes?.success && sendInviteRes?.status === 'sent') {
+              inviteEmailSent = true;
+            }
+          }
+
           return NextResponse.json({
             success: true,
             action: 'invite_user',
-            reply: `✅ **Invitasjon opprettet for ${inviteEmail}!**\n\n- **Tilgangsnivå:** ${assignedRole === 'worker' ? '🔨 Håndverker (kun oppgaver, timeføring, SJA & avvik – ingen sensitive kalkyler/priser)' : assignedRole === 'manager' ? '👷‍♂️ Leder / Prosjektleder (full drift & oppgavestyring)' : '🤝 Ekstern underentreprenør'}\n- **Invitasjonslenke:** [${inviteUrl}](${inviteUrl})\n\nBrukeren kan nå registrere seg og gå rett inn i sin tilpassede feltvisning.`,
+            reply: `✅ **Invitasjon opprettet for ${inviteEmail}!**\n\n- **Tilgangsnivå:** ${assignedRole === 'worker' ? '🔨 Håndverker (kun oppgaver, timeføring, SJA & avvik – ingen sensitive kalkyler/priser)' : assignedRole === 'manager' ? '👷‍♂️ Leder / Prosjektleder (full drift & oppgavestyring)' : '🤝 Ekstern underentreprenør'}\n- **Invitasjonslenke:** [${inviteUrl}](${inviteUrl})\n${inviteEmailSent ? `- **E-post:** ✉️ Formell invitasjon er sendt direkte til **${inviteEmail}** via Resend.\n` : ''}\nBrukeren kan nå registrere seg og gå rett inn i sin tilpassede feltvisning.`,
             inviteUrl,
-            inviteData
+            inviteData,
+            inviteEmailSent
           });
         } else {
           return NextResponse.json({

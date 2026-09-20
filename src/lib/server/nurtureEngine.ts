@@ -276,14 +276,15 @@ async function sendEmailViaResend({
   subject: string;
   html: string;
 }) {
-  const res = await fetch('https://api.resend.com/emails', {
+  let activeFrom = from;
+  let res = await fetch('https://api.resend.com/emails', {
     method: 'POST',
     headers: {
       'Authorization': `Bearer ${resendKey}`,
       'Content-Type': 'application/json'
     },
     body: JSON.stringify({
-      from,
+      from: activeFrom,
       reply_to: 'hei@vikingmester.no',
       to: [to],
       subject,
@@ -294,6 +295,38 @@ async function sendEmailViaResend({
 
   if (!res.ok) {
     const errText = await res.text();
+    const lowerErr = errText.toLowerCase();
+    const isDomainError = 
+      res.status === 403 || 
+      res.status === 422 || 
+      lowerErr.includes('not verified') || 
+      lowerErr.includes('domain') || 
+      lowerErr.includes('onboarding@resend.dev');
+
+    if (isDomainError && !activeFrom.includes('onboarding@resend.dev')) {
+      activeFrom = 'VikingMester <onboarding@resend.dev>';
+      res = await fetch('https://api.resend.com/emails', {
+        method: 'POST',
+        headers: {
+          'Authorization': `Bearer ${resendKey}`,
+          'Content-Type': 'application/json'
+        },
+        body: JSON.stringify({
+          from: activeFrom,
+          reply_to: 'hei@vikingmester.no',
+          to: [to],
+          subject,
+          html
+        }),
+        signal: AbortSignal.timeout(6000)
+      });
+      if (!res.ok) {
+        const retryErr = await res.text();
+        throw new Error(`Resend API error (${res.status}): ${retryErr}`);
+      }
+      return;
+    }
+
     throw new Error(`Resend API error (${res.status}): ${errText}`);
   }
 }

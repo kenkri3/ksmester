@@ -47,9 +47,10 @@ interface ActivityItem {
 interface ProjectActivityLogProps {
   projectId: string;
   project?: Project | any;
+  isCustomerView?: boolean;
 }
 
-export default function ProjectActivityLog({ projectId, project }: ProjectActivityLogProps) {
+export default function ProjectActivityLog({ projectId, project, isCustomerView = false }: ProjectActivityLogProps) {
   const [activities, setActivities] = useState<ActivityItem[]>([]);
   const [loading, setLoading] = useState(true);
   const [projectData, setProjectData] = useState<any>(project || null);
@@ -88,11 +89,11 @@ export default function ProjectActivityLog({ projectId, project }: ProjectActivi
   useEffect(() => {
     if (!projectId) return;
 
-    // Aggregate from multiple collections for a unified feed
+    // Aggregate from multiple collections for a unified feed. Exclude deviations in customer view.
     const collections = [
       { name: 'sja_reports', type: 'sja' as const },
       { name: 'sja_documents', type: 'sja' as const },
-      { name: 'deviations', type: 'deviation' as const },
+      ...(!isCustomerView ? [{ name: 'deviations', type: 'deviation' as const }] : []),
       { name: 'project_checklists', type: 'checklist' as const },
       { name: 'project_photos', type: 'photo' as const },
       { name: 'project_documents', type: 'document' as const }
@@ -270,7 +271,7 @@ export default function ProjectActivityLog({ projectId, project }: ProjectActivi
           {[
             { id: 'all', label: 'Alle' },
             { id: 'checklist', label: 'Sjekklister' },
-            { id: 'deviation', label: 'Avvik' },
+            ...(!isCustomerView ? [{ id: 'deviation', label: 'Avvik' }] : []),
             { id: 'sja', label: 'SJA' },
             { id: 'photo', label: 'Foto' },
             { id: 'document', label: 'Dokumenter' }

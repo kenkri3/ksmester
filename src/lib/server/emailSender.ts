@@ -12,17 +12,94 @@ export interface SendEmailParams {
   authorName?: string;
 }
 
-/**
- * Robust kjernefunksjon for å sende e-post fra VikingMester
- * Koblet mot Resend hvis RESEND_API_KEY er satt, med full fallback og revisjonslogg.
- */
-export async function sendSystemEmail(params: SendEmailParams): Promise<{
+export interface SendEmailResult {
   success: boolean;
   id: string;
-  status: string;
+  resendId?: string;
+  status: 'sent' | 'failed' | 'missing_api_key' | 'logged_only' | 'logged_simulated';
   message: string;
+  error?: string;
+  fromUsed?: string;
   previewUrl?: string;
+}
+
+/**
+ * Henter gyldig Resend API-nøkkel fra miljøvariabler (inkluderer trim for å fjerne evt. utilsiktede linjeskift)
+ */
+export function getResendApiKey(): string | undefined {
+  const key = process.env.RESEND_API_KEY || 
+              process.env.RESEND_KEY || 
+              process.env.RESEND_API || 
+              process.env.RESEND_TOKEN;
+  return key ? key.trim() : undefined;
+}
+
+/**
+ * Rask helsesjekk av Resend API-tilkobling
+ */
+export async function testResendConnection(): Promise<{
+  configured: boolean;
+  apiKeyPreview?: string;
+  fromEmail: string;
+  status: 'connected' | 'missing_key' | 'error';
+  message: string;
 }> {
+  const key = getResendApiKey();
+  const fromEmail = (process.env.EMAIL_FROM || process.env.RESEND_FROM || 'VikingMester <hei@vikingmester.no>').trim();
+  
+  if (!key) {
+    return {
+      configured: false,
+      fromEmail,
+      status: 'missing_key',
+      message: 'RESEND_API_KEY er ikke konfigurert i miljøvariablene.'
+    };
+  }
+
+  const maskedKey = key.length > 8 ? `${key.substring(0, 5)}...${key.substring(key.length - 4)}` : '***';
+
+  try {
+    const testRes = await fetch('https://api.resend.com/api-keys', {
+      method: 'GET',
+      headers: {
+        'Authorization': `Bearer ${key}`
+      }
+    });
+
+    if (testRes.ok) {
+      return {
+        configured: true,
+        apiKeyPreview: maskedKey,
+        fromEmail,
+        status: 'connected',
+        message: 'Tilkobling til Resend API er aktiv og gyldig.'
+      };
+    } else {
+      const errText = await testRes.text();
+      return {
+        configured: true,
+        apiKeyPreview: maskedKey,
+        fromEmail,
+        status: 'error',
+        message: `Resend svarte med status ${testRes.status}: ${errText}`
+      };
+    }
+  } catch (err: any) {
+    return {
+      configured: true,
+      apiKeyPreview: maskedKey,
+      fromEmail,
+      status: 'error',
+      message: `Kunne ikke kontakte Resend: ${err.message}`
+    };
+  }
+}
+
+/**
+ * Robust kjernefunksjon for å sende e-post fra VikingMester
+ * Koblet mot Resend via RESEND_API_KEY med intelligent domene-fallback og revisjonslogg.
+ */
+export async function sendSystemEmail(params: SendEmailParams): Promise<SendEmailResult> {
   const { to, subject, html, text, type = 'general', metadata = {}, companyName = 'VikingMester', authorName } = params;
 
   const toList = Array.isArray(to) ? to : [to];
@@ -40,22 +117,26 @@ export async function sendSystemEmail(params: SendEmailParams): Promise<{
   const emailId = 'email-' + Date.now() + '-' + Math.random().toString(36).substring(2, 7);
   const now = new Date().toISOString();
 
-  let deliveryStatus = 'queued';
+  let deliveryStatus: 'sent' | 'failed' | 'missing_api_key' | 'logged_only' | 'logged_simulated' = 'logged_simulated';
   let resendId: string | undefined = undefined;
+  let sendError: string | undefined = undefined;
 
-  const resendKey = process.env.RESEND_API_KEY || process.env.RESEND_API || process.env.RESEND_KEY;
+  const resendKey = getResendApiKey();
+  const preferredFrom = (process.env.EMAIL_FROM || process.env.RESEND_FROM || 'VikingMester <hei@vikingmester.no>').trim();
+  const replyTo = (process.env.EMAIL_REPLY_TO || 'hei@vikingmester.no').trim();
+  let activeFrom = preferredFrom;
+
   if (resendKey) {
     try {
-      const fromEmail = process.env.EMAIL_FROM || process.env.RESEND_FROM || 'VikingMester <hei@vikingmester.no>';
-      const resendRes = await fetch('https://api.resend.com/emails', {
+      let resendRes = await fetch('https://api.resend.com/emails', {
         method: 'POST',
         headers: {
           'Content-Type': 'application/json',
           'Authorization': `Bearer ${resendKey}`
         },
         body: JSON.stringify({
-          from: fromEmail,
-          reply_to: 'hei@vikingmester.no',
+          from: activeFrom,
+          reply_to: replyTo,
           to: sanitizedTo,
           subject: sanitizedSubject,
           html: bodyHtml,
@@ -63,29 +144,73 @@ export async function sendSystemEmail(params: SendEmailParams): Promise<{
         })
       });
 
+      let errText = '';
+      if (!resendRes.ok) {
+        errText = await resendRes.text();
+        const lowerErr = errText.toLowerCase();
+        const isDomainError = 
+          resendRes.status === 403 || 
+          resendRes.status === 422 || 
+          lowerErr.includes('not verified') || 
+          lowerErr.includes('domain') ||
+          lowerErr.includes('onboarding@resend.dev');
+
+        // Dersom primæravsender ble avvist pga. manglende domene-verifisering i Resend,
+        // forsøk automatisk fallback til Resends universelle testsender 'onboarding@resend.dev'
+        if (isDomainError && !activeFrom.includes('onboarding@resend.dev')) {
+          console.warn(`[EmailSender] Avsender «${activeFrom}» avvist av Resend (${errText}). Forsøker automatisk fallback med onboarding@resend.dev...`);
+          activeFrom = 'VikingMester <onboarding@resend.dev>';
+          resendRes = await fetch('https://api.resend.com/emails', {
+            method: 'POST',
+            headers: {
+              'Content-Type': 'application/json',
+              'Authorization': `Bearer ${resendKey}`
+            },
+            body: JSON.stringify({
+              from: activeFrom,
+              reply_to: replyTo,
+              to: sanitizedTo,
+              subject: sanitizedSubject,
+              html: bodyHtml,
+              text: bodyText
+            })
+          });
+
+          if (!resendRes.ok) {
+            errText = await resendRes.text();
+          }
+        }
+      }
+
       if (resendRes.ok) {
         const resendData = await resendRes.json();
         resendId = resendData.id;
         deliveryStatus = 'sent';
       } else {
-        const errText = await resendRes.text();
-        console.warn('[EmailSender] Resend feilet, logger til database:', errText);
-        deliveryStatus = 'logged_only';
+        let parsedJson: any = null;
+        try { parsedJson = JSON.parse(errText); } catch {}
+        const cleanMsg = parsedJson?.message || errText || `HTTP ${resendRes.status}`;
+        console.error('[EmailSender] Resend feilet:', resendRes.status, cleanMsg);
+        deliveryStatus = 'failed';
+        sendError = cleanMsg;
       }
     } catch (e: any) {
-      console.warn('[EmailSender] Nettverksfeil mot Resend:', e.message);
-      deliveryStatus = 'logged_only';
+      console.error('[EmailSender] Nettverksfeil mot Resend:', e.message);
+      deliveryStatus = 'failed';
+      sendError = e.message || 'Nettverksfeil mot Resend API';
     }
   } else {
-    // Simulert / lokalt utviklingsmiljø
-    deliveryStatus = 'logged_simulated';
+    // Ingen Resend API-nøkkel funnet
+    console.warn('[EmailSender] Ingen RESEND_API_KEY konfigurert i miljøet.');
+    deliveryStatus = 'missing_api_key';
+    sendError = 'RESEND_API_KEY er ikke konfigurert i miljøvariablene.';
   }
 
-  // Persister til database
+  // Persister til database og minnestore
   await dbQuery(`
-    INSERT INTO email_logs (id, recipient, subject, body, type, status, created_at)
-    VALUES ($1, $2, $3, $4, $5, $6, $7)
-  `, [emailId, sanitizedTo.join(', '), sanitizedSubject, bodyText, type, deliveryStatus, now]).catch(() => {
+    INSERT INTO email_logs (recipient, status, error, created_at)
+    VALUES ($1, $2, $3, $4)
+  `, [sanitizedTo.join(', '), deliveryStatus, sendError || null, now]).catch(() => {
     if (!inMemoryStore.email_logs) inMemoryStore.email_logs = [];
     inMemoryStore.email_logs.push({
       id: emailId,
@@ -94,29 +219,93 @@ export async function sendSystemEmail(params: SendEmailParams): Promise<{
       text: bodyText,
       type,
       status: deliveryStatus,
+      resendId,
+      error: sendError,
+      fromUsed: activeFrom,
       createdAt: now,
       metadata
     });
   });
 
-  // Lagre aktivitet for oversikt i kommandosentralen
-  await saveCollectionItem('agent_activities', {
-    type: 'email_sent',
-    title: `E-post sendt: ${sanitizedSubject}`,
-    description: `Sendt til ${sanitizedTo.join(', ')} fra ${authorName || companyName}. Status: ${deliveryStatus}.`,
-    badge: 'SENDT PÅ E-POST',
-    status: 'completed',
+  // Lagre også som strukturert samlingsobjekt for full sporbarhet
+  await saveCollectionItem('email_logs', {
+    id: emailId,
+    recipient: sanitizedTo.join(', '),
+    subject: sanitizedSubject,
+    body: bodyText,
+    type,
+    status: deliveryStatus,
+    resendId: resendId || null,
+    error: sendError || null,
+    fromUsed: activeFrom,
     createdAt: now,
-    trade: 'Administrasjon',
-    tradeName: authorName || 'MesterAI'
+    metadata
   }).catch(() => {});
 
-  return {
-    success: true,
-    id: emailId,
-    status: deliveryStatus,
-    message: `E-post er sendt til ${sanitizedTo.join(', ')}.`
-  };
+  // Protokollfør i agent_activities
+  if (deliveryStatus === 'sent') {
+    await saveCollectionItem('agent_activities', {
+      type: 'email_sent',
+      title: `E-post sendt: ${sanitizedSubject}`,
+      description: `Sendt til ${sanitizedTo.join(', ')} via Resend (ID: ${resendId}). Avsender: ${activeFrom}.`,
+      badge: 'SENDT PÅ E-POST',
+      status: 'completed',
+      createdAt: now,
+      trade: 'Administrasjon',
+      tradeName: authorName || 'MesterAI'
+    }).catch(() => {});
+  } else if (deliveryStatus === 'missing_api_key') {
+    await saveCollectionItem('agent_activities', {
+      type: 'email_not_sent',
+      title: `E-post ikke sendt: ${sanitizedSubject}`,
+      description: `Utsendelse til ${sanitizedTo.join(', ')} ble avbrutt: RESEND_API_KEY mangler i Railway.`,
+      badge: 'MANGLER API-NØKKEL',
+      status: 'warning',
+      createdAt: now,
+      trade: 'Administrasjon',
+      tradeName: authorName || companyName
+    }).catch(() => {});
+  } else {
+    await saveCollectionItem('agent_activities', {
+      type: 'email_failed',
+      title: `E-post feilet: ${sanitizedSubject}`,
+      description: `Forsøk på å sende til ${sanitizedTo.join(', ')} feilet via Resend: ${sendError}`,
+      badge: 'SENDING FEILET',
+      status: 'error',
+      createdAt: now,
+      trade: 'Administrasjon',
+      tradeName: authorName || 'MesterAI'
+    }).catch(() => {});
+  }
+
+  if (deliveryStatus === 'sent') {
+    return {
+      success: true,
+      id: emailId,
+      resendId,
+      status: 'sent',
+      fromUsed: activeFrom,
+      message: `E-post er levert via Resend til ${sanitizedTo.join(', ')} (Meldings-ID: ${resendId}).`
+    };
+  } else if (deliveryStatus === 'missing_api_key') {
+    return {
+      success: false,
+      id: emailId,
+      status: 'missing_api_key',
+      fromUsed: activeFrom,
+      message: 'RESEND_API_KEY er ikke konfigurert i miljøvariablene (f.eks. Railway). E-posten ble ikke levert.',
+      error: sendError
+    };
+  } else {
+    return {
+      success: false,
+      id: emailId,
+      status: 'failed',
+      fromUsed: activeFrom,
+      message: `Kunne ikke levere e-post via Resend: ${sendError}`,
+      error: sendError
+    };
+  }
 }
 
 /**
@@ -130,7 +319,7 @@ export async function sendOfferByEmail(params: {
   authorName?: string;
   customMessage?: string;
   baseUrl?: string;
-}): Promise<{ success: boolean; message: string; id: string }> {
+}): Promise<SendEmailResult> {
   const { offer, clientEmail, clientName, companyName = 'Mester Entreprenør AS', authorName = 'Byggmester', customMessage, baseUrl = 'https://vikingmester.no' } = params;
 
   const token = offer.token || offer.id;
@@ -277,7 +466,7 @@ export async function sendChangeOrderByEmail(params: {
   companyName?: string;
   authorName?: string;
   baseUrl?: string;
-}): Promise<{ success: boolean; message: string; id: string }> {
+}): Promise<SendEmailResult> {
   const { changeOrder, clientEmail, clientName, companyName = 'Mester Entreprenør AS', authorName = 'Byggmester', baseUrl = 'https://vikingmester.no' } = params;
 
   const token = changeOrder.token || changeOrder.id;
@@ -376,7 +565,7 @@ export async function sendContractByEmail(params: {
   companyName?: string;
   authorName?: string;
   baseUrl?: string;
-}): Promise<{ success: boolean; message: string; id: string }> {
+}): Promise<SendEmailResult> {
   const {
     contract,
     clientEmail,
@@ -509,7 +698,7 @@ export async function sendProjectStartedEmail(params: {
   companyName?: string;
   authorName?: string;
   baseUrl?: string;
-}): Promise<{ success: boolean; message: string; id: string }> {
+}): Promise<SendEmailResult> {
   const {
     project,
     clientEmail,
@@ -584,7 +773,7 @@ export async function sendHandoverDocumentationEmail(params: {
   companyName?: string;
   authorName?: string;
   baseUrl?: string;
-}): Promise<{ success: boolean; message: string; id: string }> {
+}): Promise<SendEmailResult> {
   const {
     project,
     clientEmail,
