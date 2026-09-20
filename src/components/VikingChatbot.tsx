@@ -623,8 +623,8 @@ export default function VikingChatbot({
             exit={{ scale: 0, opacity: 0, y: 20 }}
             className={cn(
               "fixed z-40 transition-all duration-300",
-              // Plassert litt opp på mobil for å aldri overlappe MobileBottomNav
-              "bottom-20 right-4 sm:bottom-6 sm:right-6"
+              // Plassert nederst til høyre når ikke innlogget, eller over MobileBottomNav når innlogget
+              isAuthenticated ? "bottom-20 right-3 sm:bottom-6 sm:right-6" : "bottom-4 right-3 sm:bottom-6 sm:right-6"
             )}
           >
             <div className="relative group">
@@ -644,7 +644,7 @@ export default function VikingChatbot({
                   setHasUnread(false);
                 }}
                 className={cn(
-                  "relative flex items-center justify-center p-3.5 sm:p-4 rounded-full shadow-2xl transition-all duration-300 transform active:scale-95 cursor-pointer",
+                  "relative flex items-center justify-center p-2.5 sm:p-4 rounded-full shadow-2xl transition-all duration-300 transform active:scale-95 cursor-pointer",
                   isAuthenticated 
                     ? "bg-gradient-to-br from-neutral-900 via-neutral-800 to-neutral-900 text-white border-2 border-purple-500/40 hover:border-purple-400" 
                     : "bg-gradient-to-br from-purple-700 via-indigo-700 to-neutral-900 text-white border-2 border-white/20 hover:border-white/40"
@@ -653,18 +653,18 @@ export default function VikingChatbot({
               >
                 {isAuthenticated ? (
                   <div className="relative flex items-center justify-center">
-                    <Bot size={26} className="text-purple-300 group-hover:rotate-12 transition-transform duration-300" />
-                    <span className="absolute -top-1 -right-1 flex h-3 w-3">
+                    <Bot size={20} className="sm:w-[26px] sm:h-[26px] text-purple-300 group-hover:rotate-12 transition-transform duration-300" />
+                    <span className="absolute -top-1 -right-1 flex h-2.5 w-2.5 sm:h-3 sm:w-3">
                       <span className="animate-ping absolute inline-flex h-full w-full rounded-full bg-emerald-400 opacity-75" />
-                      <span className="relative inline-flex rounded-full h-3 w-3 bg-emerald-500" />
+                      <span className="relative inline-flex rounded-full h-2.5 w-2.5 sm:h-3 sm:w-3 bg-emerald-500" />
                     </span>
                   </div>
                 ) : (
                   <div className="relative flex items-center justify-center">
-                    <Sparkles size={26} className="text-amber-300 group-hover:scale-110 transition-transform duration-300" />
-                    <span className="absolute -top-1 -right-1 flex h-3 w-3">
+                    <Sparkles size={20} className="sm:w-[26px] sm:h-[26px] text-amber-300 group-hover:scale-110 transition-transform duration-300" />
+                    <span className="absolute -top-1 -right-1 flex h-2.5 w-2.5 sm:h-3 sm:w-3">
                       <span className="animate-ping absolute inline-flex h-full w-full rounded-full bg-amber-400 opacity-75" />
-                      <span className="relative inline-flex rounded-full h-3 w-3 bg-amber-500" />
+                      <span className="relative inline-flex rounded-full h-2.5 w-2.5 sm:h-3 sm:w-3 bg-amber-500" />
                     </span>
                   </div>
                 )}

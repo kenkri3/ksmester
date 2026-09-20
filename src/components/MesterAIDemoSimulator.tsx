@@ -444,30 +444,30 @@ export default function MesterAIDemoSimulator({
   const roleScenarios = DEMO_SCENARIOS.filter(s => s.role === selectedRole);
 
   return (
-    <section id={id} className="py-16 sm:py-24 bg-gradient-to-b from-white via-slate-50 to-white border-b border-slate-200">
-      <div className="max-w-6xl mx-auto px-4 sm:px-6 lg:px-8">
+    <section id={id} className="py-12 sm:py-24 bg-gradient-to-b from-white via-slate-50 to-white border-b border-slate-200 overflow-hidden">
+      <div className="max-w-6xl mx-auto px-3 sm:px-6 lg:px-8 w-full">
         
         {/* Section Header */}
-        <div className="text-center max-w-3xl mx-auto mb-10">
-          <div className="inline-flex items-center gap-2 px-3.5 py-1 rounded-full bg-electric-50 border border-electric-300/40 text-electric-600 text-xs font-bold tracking-wide uppercase shadow-xs mb-3">
-            <Sparkles size={14} className="text-electric-500 animate-pulse" />
+        <div className="text-center max-w-3xl mx-auto mb-8 sm:mb-10">
+          <div className="inline-flex items-center gap-2 px-3 py-1 rounded-full bg-electric-50 border border-electric-300/40 text-electric-600 text-[11px] sm:text-xs font-bold tracking-wide uppercase shadow-xs mb-3">
+            <Sparkles size={13} className="text-electric-500 animate-pulse" />
             <span>INTERAKTIV SANDKASSE • PRØVEKJØR MESTERAI LIVE</span>
           </div>
-          <h2 className="text-2xl sm:text-4xl lg:text-5xl font-black tracking-tight text-navy-900 leading-tight">
+          <h2 className="text-xl sm:text-4xl lg:text-5xl font-black tracking-tight text-navy-900 leading-tight">
             Se hvordan agenten tilpasser seg <span className="text-gradient-purple">hver enkelt rolle</span>.
           </h2>
-          <p className="mt-4 text-sm sm:text-base text-slate-600 leading-relaxed font-sans">
+          <p className="mt-3 sm:mt-4 text-xs sm:text-base text-slate-600 leading-relaxed font-sans">
             Byggmesteren får full økonomisk kontroll, mens tømreren og rørleggeren har en lynrask assistent på byggeplassen – helt uten tilgang til sensitive bedriftstall.
           </p>
         </div>
 
         {/* Demo Disclaimer / Sandkasse-varsel */}
-        <div className="mb-6 p-4 rounded-2xl bg-amber-500/10 border border-amber-400/30 flex items-start sm:items-center gap-3.5 text-amber-950">
-          <div className="p-2 rounded-xl bg-amber-500/20 text-amber-800 shrink-0 mt-0.5 sm:mt-0">
-            <AlertTriangle size={18} />
+        <div className="mb-4 sm:mb-6 p-3 sm:p-4 rounded-2xl bg-amber-500/10 border border-amber-400/30 flex items-start sm:items-center gap-2.5 sm:gap-3.5 text-amber-950">
+          <div className="p-1.5 sm:p-2 rounded-xl bg-amber-500/20 text-amber-800 shrink-0 mt-0.5 sm:mt-0">
+            <AlertTriangle size={16} className="sm:w-[18px] sm:h-[18px]" />
           </div>
-          <div className="text-xs sm:text-sm leading-relaxed">
-            <strong className="font-bold text-amber-900 uppercase tracking-wide text-[11px] block sm:inline mr-2">
+          <div className="text-[11px] sm:text-sm leading-relaxed">
+            <strong className="font-bold text-amber-900 uppercase tracking-wide text-[10px] sm:text-[11px] block sm:inline mr-2">
               ⚠️ Simulert forhåndsvisning (Ikke ekte agent):
             </strong>
             Dette er en lukket interaktiv demo basert på fiktive eksempeldata fra referanseprosjektet <strong>Geitekleiva</strong>. Ingen tilgang gis til eksterne systemer eller bedriftens reelle data for full trygghet.
@@ -475,30 +475,30 @@ export default function MesterAIDemoSimulator({
         </div>
 
         {/* Interactive Simulator Shell */}
-        <div className="bg-white rounded-3xl border border-slate-200/90 shadow-card-hover overflow-hidden">
+        <div className="bg-white rounded-2xl sm:rounded-3xl border border-slate-200/90 shadow-card-hover overflow-hidden w-full">
           
           {/* Top Role Selector Tabs */}
-          <div className="p-3 sm:p-4 bg-slate-900 border-b border-slate-800 flex flex-col sm:flex-row sm:items-center justify-between gap-3">
-            <div className="flex items-center gap-2">
-              <span className="w-2.5 h-2.5 rounded-full bg-emerald-400 animate-pulse" />
-              <span className="text-xs font-mono font-bold text-slate-300 uppercase tracking-wider">
+          <div className="p-2.5 sm:p-4 bg-slate-900 border-b border-slate-800 flex flex-col sm:flex-row sm:items-center justify-between gap-2.5 sm:gap-3">
+            <div className="flex items-center gap-1.5 sm:gap-2">
+              <span className="w-2 h-2 sm:w-2.5 sm:h-2.5 rounded-full bg-emerald-400 animate-pulse shrink-0" />
+              <span className="text-[11px] sm:text-xs font-mono font-bold text-slate-300 uppercase tracking-wider truncate">
                 Aktivt Sandkasse-prosjekt: <strong className="text-white">Geitekleiva</strong>
               </span>
             </div>
 
             {/* 3 Role Buttons */}
-            <div className="flex items-center gap-1.5 bg-slate-800/90 p-1 rounded-2xl border border-slate-700/60 overflow-x-auto">
+            <div className="flex items-center gap-1 bg-slate-800/90 p-1 rounded-xl sm:rounded-2xl border border-slate-700/60 overflow-x-auto max-w-full">
               <button
                 type="button"
                 onClick={() => handleRoleChange('byggmester')}
                 className={cn(
-                  "px-3.5 py-2 rounded-xl text-xs font-bold transition-all flex items-center gap-2 whitespace-nowrap cursor-pointer",
+                  "px-2.5 sm:px-3.5 py-1.5 sm:py-2 rounded-lg sm:rounded-xl text-[11px] sm:text-xs font-bold transition-all flex items-center gap-1.5 whitespace-nowrap cursor-pointer",
                   selectedRole === 'byggmester'
                     ? "bg-electric-600 text-white shadow-md shadow-electric-600/30"
                     : "text-slate-400 hover:text-white hover:bg-slate-700/50"
                 )}
               >
-                <Building2 size={14} />
+                <Building2 size={13} className="sm:w-3.5 sm:h-3.5" />
                 <span>1. Byggmester / Leder</span>
               </button>
 
@@ -506,13 +506,13 @@ export default function MesterAIDemoSimulator({
                 type="button"
                 onClick={() => handleRoleChange('tomrer')}
                 className={cn(
-                  "px-3.5 py-2 rounded-xl text-xs font-bold transition-all flex items-center gap-2 whitespace-nowrap cursor-pointer",
+                  "px-2.5 sm:px-3.5 py-1.5 sm:py-2 rounded-lg sm:rounded-xl text-[11px] sm:text-xs font-bold transition-all flex items-center gap-1.5 whitespace-nowrap cursor-pointer",
                   selectedRole === 'tomrer'
                     ? "bg-amber-600 text-white shadow-md shadow-amber-600/30"
                     : "text-slate-400 hover:text-white hover:bg-slate-700/50"
                 )}
               >
-                <HardHat size={14} />
+                <HardHat size={13} className="sm:w-3.5 sm:h-3.5" />
                 <span>2. Tømrer (I stillas)</span>
               </button>
 
@@ -520,13 +520,13 @@ export default function MesterAIDemoSimulator({
                 type="button"
                 onClick={() => handleRoleChange('rorlegger')}
                 className={cn(
-                  "px-3.5 py-2 rounded-xl text-xs font-bold transition-all flex items-center gap-2 whitespace-nowrap cursor-pointer",
+                  "px-2.5 sm:px-3.5 py-1.5 sm:py-2 rounded-lg sm:rounded-xl text-[11px] sm:text-xs font-bold transition-all flex items-center gap-1.5 whitespace-nowrap cursor-pointer",
                   selectedRole === 'rorlegger'
                     ? "bg-blue-600 text-white shadow-md shadow-blue-600/30"
                     : "text-slate-400 hover:text-white hover:bg-slate-700/50"
                 )}
               >
-                <Wrench size={14} />
+                <Wrench size={13} className="sm:w-3.5 sm:h-3.5" />
                 <span>3. Rørlegger (Lukkesperre)</span>
               </button>
             </div>
@@ -534,17 +534,17 @@ export default function MesterAIDemoSimulator({
 
           {/* Role Status Banner */}
           <div className={cn(
-            "px-5 py-3 text-xs font-medium flex items-center justify-between border-b transition-colors",
+            "px-3 sm:px-5 py-2 sm:py-3 text-[11px] sm:text-xs font-medium flex flex-col sm:flex-row sm:items-center justify-between gap-1.5 sm:gap-2 border-b transition-colors",
             selectedRole === 'byggmester' && "bg-purple-50 text-purple-900 border-purple-100",
             selectedRole === 'tomrer' && "bg-amber-50 text-amber-900 border-amber-100",
             selectedRole === 'rorlegger' && "bg-blue-50 text-blue-900 border-blue-100"
           )}>
-            <div className="flex items-center gap-2 flex-wrap">
-              <span className="font-bold uppercase tracking-wider text-[10px] px-2 py-0.5 rounded-full bg-white/80 border shadow-xs">
+            <div className="flex items-center gap-1.5 sm:gap-2 flex-wrap">
+              <span className="font-bold uppercase tracking-wider text-[9px] sm:text-[10px] px-2 py-0.5 rounded-full bg-white/80 border shadow-xs">
                 {selectedRole === 'byggmester' ? 'Full Administrator • Alle Prosjekter & Økonomi' : selectedRole === 'tomrer' ? 'Prosjektbundet • Kun Geitekleiva' : 'Underentreprenør • Faglig Lukkesperre'}
               </span>
               <span className="hidden sm:inline-block">•</span>
-              <span className="text-[11px]">
+              <span className="text-[10px] sm:text-[11px]">
                 {selectedRole === 'byggmester' 
                   ? 'Kan utstede NS 8406 krav, godkjenne fakturering og se dekningsgrad.'
                   : selectedRole === 'tomrer'
@@ -552,18 +552,18 @@ export default function MesterAIDemoSimulator({
                     : 'Kan kvittere trykktest for å oppheve lukkesperre og melde tverrfaglige avvik.'}
               </span>
             </div>
-            <span className="text-[10px] font-mono font-bold uppercase shrink-0 text-slate-500">
+            <span className="text-[9px] sm:text-[10px] font-mono font-bold uppercase shrink-0 text-slate-500 self-end sm:self-auto">
               MesterAI 2.0 Live
             </span>
           </div>
 
           {/* Preset Scenario Buttons (Click-to-test) */}
-          <div className="p-4 sm:p-5 bg-slate-50 border-b border-slate-200">
-            <p className="text-[11px] font-black uppercase tracking-wider text-slate-500 mb-2.5 flex items-center gap-1.5">
-              <Zap size={13} className="text-electric-600" />
-              <span>Prøv en ferdig kommando for denne rollen (eller skriv din egen under):</span>
+          <div className="p-3 sm:p-5 bg-slate-50 border-b border-slate-200">
+            <p className="text-[10px] sm:text-[11px] font-black uppercase tracking-wider text-slate-500 mb-2 sm:mb-2.5 flex items-center gap-1.5">
+              <Zap size={13} className="text-electric-600 shrink-0" />
+              <span>Prøv en ferdig kommando for denne rollen:</span>
             </p>
-            <div className="flex flex-wrap gap-2">
+            <div className="flex flex-wrap gap-1.5 sm:gap-2">
               {roleScenarios.map((sc) => {
                 const isActive = activeScenario.id === sc.id;
                 return (
@@ -572,14 +572,14 @@ export default function MesterAIDemoSimulator({
                     type="button"
                     onClick={() => triggerScenario(sc)}
                     className={cn(
-                      "px-3 py-2 rounded-xl text-xs font-bold transition-all text-left flex items-center gap-1.5 cursor-pointer shadow-xs",
+                      "px-2.5 sm:px-3 py-1.5 sm:py-2 rounded-lg sm:rounded-xl text-[11px] sm:text-xs font-bold transition-all text-left flex items-center gap-1.5 cursor-pointer shadow-xs",
                       isActive
                         ? "bg-navy-950 text-white ring-2 ring-electric-500"
                         : "bg-white text-navy-900 border border-slate-200/80 hover:border-slate-300 hover:bg-slate-100/80"
                     )}
                   >
                     <span>{sc.label}</span>
-                    <ChevronRight size={13} className={cn("transition-transform", isActive && "translate-x-0.5 text-electric-400")} />
+                    <ChevronRight size={12} className={cn("transition-transform shrink-0", isActive && "translate-x-0.5 text-electric-400")} />
                   </button>
                 );
               })}
@@ -587,34 +587,34 @@ export default function MesterAIDemoSimulator({
           </div>
 
           {/* Simulator Conversation Area */}
-          <div className="p-5 sm:p-7 space-y-5 bg-white min-h-[380px] max-h-[580px] overflow-y-auto">
+          <div className="p-3 sm:p-6 space-y-3.5 sm:space-y-5 bg-white min-h-[340px] max-h-[580px] overflow-y-auto overflow-x-hidden w-full">
             
             {/* User Speech / Prompt Bubble */}
-            <div className="flex items-start justify-end gap-3">
-              <div className="max-w-xl bg-navy-950 text-white rounded-2xl rounded-tr-xs p-4 shadow-sm">
-                <div className="flex items-center gap-2 mb-1 text-[11px] font-mono text-slate-400">
+            <div className="flex items-start justify-end gap-2 sm:gap-3 w-full">
+              <div className="max-w-[85%] sm:max-w-xl bg-navy-950 text-white rounded-2xl rounded-tr-xs p-3 sm:p-4 shadow-sm min-w-0">
+                <div className="flex items-center gap-1.5 sm:gap-2 mb-1 text-[10px] sm:text-[11px] font-mono text-slate-400 flex-wrap">
                   <span>Du ({selectedRole === 'byggmester' ? 'Byggmester Ken' : selectedRole === 'tomrer' ? 'Tømrer Magne' : 'Rørlegger VVS Teknikk'})</span>
                   <span>•</span>
                   <span>Akkurat nå</span>
                 </div>
-                <p className="text-xs sm:text-sm font-semibold leading-relaxed">
+                <p className="text-xs sm:text-sm font-semibold leading-relaxed break-words">
                   "{activeScenario.prompt}"
                 </p>
               </div>
-              <div className="w-9 h-9 rounded-xl bg-slate-100 border border-slate-200 flex items-center justify-center text-navy-900 shrink-0 font-black text-xs">
+              <div className="w-8 h-8 sm:w-9 sm:h-9 rounded-xl bg-slate-100 border border-slate-200 flex items-center justify-center text-navy-900 shrink-0 font-black text-xs">
                 {selectedRole === 'byggmester' ? '👔' : selectedRole === 'tomrer' ? '🔨' : '🚰'}
               </div>
             </div>
 
             {/* Agent Live Processing State */}
             {isTyping && (
-              <div className="flex items-center gap-3">
-                <div className="w-9 h-9 rounded-xl bg-purple-600 text-white flex items-center justify-center shrink-0">
-                  <Bot size={18} className="animate-spin" />
+              <div className="flex items-center gap-2 sm:gap-3 w-full min-w-0">
+                <div className="w-8 h-8 sm:w-9 sm:h-9 rounded-xl bg-purple-600 text-white flex items-center justify-center shrink-0">
+                  <Bot size={16} className="animate-spin" />
                 </div>
-                <div className="px-4 py-3 bg-slate-50 border border-slate-200 rounded-2xl rounded-tl-xs text-xs font-mono text-slate-500 flex items-center gap-2">
-                  <span className="w-2 h-2 rounded-full bg-electric-500 animate-ping" />
-                  <span>MesterAI tolker tale og sjekker TEK17 / NS 8406 regler...</span>
+                <div className="px-3 py-2.5 sm:px-4 sm:py-3 bg-slate-50 border border-slate-200 rounded-2xl rounded-tl-xs text-xs font-mono text-slate-500 flex items-center gap-2 min-w-0 truncate">
+                  <span className="w-2 h-2 rounded-full bg-electric-500 animate-ping shrink-0" />
+                  <span className="truncate">MesterAI tolker tale og sjekker TEK17 / NS 8406 regler...</span>
                 </div>
               </div>
             )}
@@ -625,30 +625,31 @@ export default function MesterAIDemoSimulator({
                 initial={{ opacity: 0, y: 10 }}
                 animate={{ opacity: 1, y: 0 }}
                 transition={{ duration: 0.25 }}
-                className="flex items-start gap-3"
+                className="flex items-start gap-2 sm:gap-3 w-full min-w-0"
               >
-                <div className="w-9 h-9 rounded-xl bg-gradient-to-br from-purple-700 to-indigo-800 text-white flex items-center justify-center shrink-0 shadow-md">
-                  <Sparkles size={18} />
+                <div className="w-8 h-8 sm:w-9 sm:h-9 rounded-xl bg-gradient-to-br from-purple-700 to-indigo-800 text-white flex items-center justify-center shrink-0 shadow-md">
+                  <Sparkles size={16} className="sm:w-[18px] sm:h-[18px]" />
                 </div>
 
-                <div className="max-w-2xl space-y-4">
+                <div className="flex-1 min-w-0 max-w-2xl space-y-3 sm:space-y-4">
                   {/* Speech response */}
-                  <div className="bg-slate-50 border border-slate-200 rounded-2xl rounded-tl-xs p-4 text-xs sm:text-sm text-navy-950 font-sans shadow-xs">
+                  <div className="bg-slate-50 border border-slate-200 rounded-2xl rounded-tl-xs p-3 sm:p-4 text-xs sm:text-sm text-navy-950 font-sans shadow-xs break-words">
                     {renderFormattedMessage(activeScenario.agentReply)}
                   </div>
 
                   {/* Dynamic Visual Document Cards */}
                   {activeScenario.cardType === 'change_order' && activeScenario.cardData && (
-                    <div className="p-4 sm:p-5 rounded-2xl bg-white border-2 border-electric-500/80 shadow-md">
-                      <div className="flex items-center justify-between pb-3 border-b border-slate-100 mb-3">
-                        <div className="flex items-center gap-2">
-                          <FileText size={16} className="text-electric-600" />
-                          <span className="text-xs font-black text-navy-900 tracking-wider">
-                            ENDRINGSORDRE {activeScenario.cardData.orderNumber} (NS 8406)
+                    <div className="p-3.5 sm:p-5 rounded-2xl bg-white border-2 border-electric-500/80 shadow-md min-w-0 w-full">
+                      <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-1.5 sm:gap-2 pb-2.5 sm:pb-3 border-b border-slate-100 mb-3">
+                        <div className="flex items-center gap-1.5 sm:gap-2 min-w-0">
+                          <FileText size={15} className="text-electric-600 shrink-0" />
+                          <span className="text-xs font-black text-navy-900 tracking-wider truncate">
+                            ENDRINGSORDRE {activeScenario.cardData.orderNumber}
                           </span>
+                          <span className="text-[10px] font-bold text-slate-500 shrink-0">(NS 8406)</span>
                         </div>
                         <span className={cn(
-                          "text-[10px] font-black uppercase px-2 py-0.5 rounded-full",
+                          "text-[9px] sm:text-[10px] font-black uppercase px-2 py-0.5 rounded-full shrink-0 self-start sm:self-auto",
                           isSimulatedApproved 
                             ? "bg-emerald-100 text-emerald-800 border border-emerald-300"
                             : "bg-amber-100 text-amber-800 border border-amber-300"
@@ -657,11 +658,11 @@ export default function MesterAIDemoSimulator({
                         </span>
                       </div>
 
-                      <div className="space-y-1.5 text-xs text-slate-700 mb-4">
+                      <div className="space-y-1 sm:space-y-1.5 text-xs text-slate-700 mb-3 sm:mb-4 break-words">
                         <p><strong>Beskrivelse:</strong> {activeScenario.cardData.title}</p>
                         <p><strong>Prosjekt:</strong> {activeScenario.cardData.project}</p>
                         <p><strong>Fristforlengelse:</strong> +{activeScenario.cardData.daysExtension || 2} virkedager</p>
-                        <p className="text-sm font-black text-navy-900 mt-2">
+                        <p className="text-xs sm:text-sm font-black text-navy-900 mt-2">
                           Kompensasjonskrav: kr {activeScenario.cardData.amount?.toLocaleString('no-NO')},- eks. mva
                         </p>
                       </div>
@@ -673,38 +674,38 @@ export default function MesterAIDemoSimulator({
                             setIsSimulatedApproved(true);
                             toast.success('Byggherre godkjente endringsordren via SMS-link!');
                           }}
-                          className="w-full py-2.5 px-4 bg-emerald-600 hover:bg-emerald-700 text-white rounded-xl text-xs font-bold transition-all flex items-center justify-center gap-1.5 shadow-sm cursor-pointer"
+                          className="w-full py-2.5 px-3 bg-emerald-600 hover:bg-emerald-700 text-white rounded-xl text-xs font-bold transition-all flex items-center justify-center gap-1.5 shadow-sm cursor-pointer text-center leading-tight"
                         >
-                          <Check size={14} />
+                          <Check size={14} className="shrink-0" />
                           <span>Simuler at Byggherre godkjenner på mobil</span>
                         </button>
                       ) : (
-                        <div className="p-3 bg-emerald-50 border border-emerald-200 rounded-xl text-xs text-emerald-800 font-bold flex items-center gap-2">
-                          <CheckCircle2 size={16} className="text-emerald-600" />
-                          <span>Kravet er låst og klart for direkte fakturering (hindrer tap av penger).</span>
+                        <div className="p-2.5 sm:p-3 bg-emerald-50 border border-emerald-200 rounded-xl text-xs text-emerald-800 font-bold flex items-center gap-2">
+                          <CheckCircle2 size={15} className="text-emerald-600 shrink-0" />
+                          <span className="leading-tight">Kravet er låst og klart for direkte fakturering (hindrer tap av penger).</span>
                         </div>
                       )}
                     </div>
                   )}
 
                   {activeScenario.cardType === 'daily_log' && activeScenario.cardData && (
-                    <div className="p-4 sm:p-5 rounded-2xl bg-white border border-slate-200 shadow-md">
-                      <div className="flex items-center justify-between pb-3 border-b border-slate-100 mb-3">
-                        <div className="flex items-center gap-2">
-                          <Clock size={16} className="text-amber-600" />
-                          <span className="text-xs font-black text-navy-900 tracking-wider">
+                    <div className="p-3.5 sm:p-5 rounded-2xl bg-white border border-slate-200 shadow-md min-w-0 w-full">
+                      <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-1.5 pb-2.5 sm:pb-3 border-b border-slate-100 mb-3">
+                        <div className="flex items-center gap-1.5 sm:gap-2 min-w-0">
+                          <Clock size={15} className="text-amber-600 shrink-0" />
+                          <span className="text-xs font-black text-navy-900 tracking-wider truncate">
                             BYGGEDAGBOK • {activeScenario.cardData.project}
                           </span>
                         </div>
-                        <span className="text-[10px] font-black uppercase px-2 py-0.5 rounded-full bg-emerald-100 text-emerald-800">
+                        <span className="text-[9px] sm:text-[10px] font-black uppercase px-2 py-0.5 rounded-full bg-emerald-100 text-emerald-800 shrink-0 self-start sm:self-auto">
                           {activeScenario.cardData.status}
                         </span>
                       </div>
 
-                      <div className="space-y-2 text-xs text-slate-700">
-                        <div className="p-2.5 bg-slate-50 rounded-xl flex items-center gap-2 text-blue-700">
-                          <CloudSun size={15} />
-                          <span className="font-semibold">{activeScenario.cardData.weather}</span>
+                      <div className="space-y-2 text-xs text-slate-700 break-words">
+                        <div className="p-2 sm:p-2.5 bg-slate-50 rounded-xl flex items-center gap-2 text-blue-700">
+                          <CloudSun size={15} className="shrink-0" />
+                          <span className="font-semibold text-[11px] sm:text-xs">{activeScenario.cardData.weather}</span>
                         </div>
                         <p><strong>Ført av:</strong> {activeScenario.cardData.craftsman} ({activeScenario.cardData.hours} timer)</p>
                         <p><strong>Arbeid:</strong> {activeScenario.cardData.workPerformed}</p>
@@ -713,25 +714,25 @@ export default function MesterAIDemoSimulator({
                   )}
 
                   {activeScenario.cardType === 'sja' && activeScenario.cardData && (
-                    <div className="p-4 sm:p-5 rounded-2xl bg-white border border-amber-200 shadow-md">
-                      <div className="flex items-center justify-between pb-3 border-b border-slate-100 mb-3">
-                        <div className="flex items-center gap-2 text-amber-700 font-black text-xs">
-                          <AlertTriangle size={16} />
-                          <span>SIKKER JOBB ANALYSE (SJA)</span>
+                    <div className="p-3.5 sm:p-5 rounded-2xl bg-white border border-amber-200 shadow-md min-w-0 w-full">
+                      <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-1.5 pb-2.5 sm:pb-3 border-b border-slate-100 mb-3">
+                        <div className="flex items-center gap-1.5 sm:gap-2 text-amber-700 font-black text-xs min-w-0">
+                          <AlertTriangle size={15} className="shrink-0" />
+                          <span className="truncate">SIKKER JOBB ANALYSE (SJA)</span>
                         </div>
-                        <span className="text-[10px] font-black uppercase px-2 py-0.5 rounded-full bg-amber-100 text-amber-900">
+                        <span className="text-[9px] sm:text-[10px] font-black uppercase px-2 py-0.5 rounded-full bg-amber-100 text-amber-900 shrink-0 self-start sm:self-auto">
                           TEK17 & ARBEIDSTILSYNET
                         </span>
                       </div>
 
-                      <div className="space-y-2.5 text-xs text-slate-700">
+                      <div className="space-y-2 text-xs text-slate-700 break-words">
                         <p><strong>Oppgave:</strong> {activeScenario.cardData.task || activeScenario.cardData.title}</p>
                         {activeScenario.cardData.hazards && (
                           <div>
                             <span className="font-bold text-rose-700">Identifiserte Farer:</span>
-                            <ul className="list-disc list-inside mt-0.5 space-y-0.5 text-slate-600">
+                            <ul className="list-disc list-inside mt-0.5 space-y-0.5 text-slate-600 pl-1">
                               {activeScenario.cardData.hazards.map((h: string, idx: number) => (
-                                <li key={idx}>{h}</li>
+                                <li key={idx} className="leading-snug">{h}</li>
                               ))}
                             </ul>
                           </div>
@@ -739,9 +740,9 @@ export default function MesterAIDemoSimulator({
                         {activeScenario.cardData.safetyMeasures && (
                           <div>
                             <span className="font-bold text-emerald-700">Iverksatte Sikkerhetstiltak:</span>
-                            <ul className="list-disc list-inside mt-0.5 space-y-0.5 text-slate-600">
+                            <ul className="list-disc list-inside mt-0.5 space-y-0.5 text-slate-600 pl-1">
                               {activeScenario.cardData.safetyMeasures.map((m: string, idx: number) => (
-                                <li key={idx}>{m}</li>
+                                <li key={idx} className="leading-snug">{m}</li>
                               ))}
                             </ul>
                           </div>
@@ -751,51 +752,51 @@ export default function MesterAIDemoSimulator({
                   )}
 
                   {activeScenario.cardType === 'pre_close' && (
-                    <div className="p-4 sm:p-5 rounded-2xl bg-white border-2 border-emerald-500 shadow-md">
-                      <div className="flex items-center justify-between pb-3 border-b border-slate-100 mb-3">
-                        <div className="flex items-center gap-2">
-                          <ShieldCheck size={16} className="text-emerald-600" />
-                          <span className="text-xs font-black text-navy-900 tracking-wider">
-                            TVERRFAGLIG LUKKESPERRE (TEK17 § 13-15)
+                    <div className="p-3.5 sm:p-5 rounded-2xl bg-white border-2 border-emerald-500 shadow-md min-w-0 w-full">
+                      <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-1.5 pb-2.5 sm:pb-3 border-b border-slate-100 mb-3">
+                        <div className="flex items-center gap-1.5 sm:gap-2 min-w-0">
+                          <ShieldCheck size={16} className="text-emerald-600 shrink-0" />
+                          <span className="text-xs font-black text-navy-900 tracking-wider truncate">
+                            TVERRFAGLIG LUKKESPERRE
                           </span>
                         </div>
-                        <span className="text-[10px] font-black uppercase px-2 py-0.5 rounded-full bg-emerald-100 text-emerald-950 flex items-center gap-1">
-                          <Unlock size={12} />
+                        <span className="text-[9px] sm:text-[10px] font-black uppercase px-2 py-0.5 rounded-full bg-emerald-100 text-emerald-950 flex items-center gap-1 shrink-0 self-start sm:self-auto">
+                          <Unlock size={11} />
                           GRØNT LYS – LUKKING TILLATT
                         </span>
                       </div>
 
-                      <div className="grid grid-cols-2 gap-2 text-xs mb-3">
-                        <div className="p-2 bg-emerald-50 rounded-xl border border-emerald-200 flex items-center gap-1.5 text-emerald-900 font-bold">
-                          <Check size={14} className="text-emerald-600 shrink-0" />
-                          <span>Rørlegger: Trykktest 10 bar</span>
+                      <div className="grid grid-cols-1 sm:grid-cols-2 gap-1.5 sm:gap-2 text-xs mb-3">
+                        <div className="p-2 bg-emerald-50 rounded-xl border border-emerald-200 flex items-center gap-1.5 text-emerald-900 font-bold text-[11px] sm:text-xs">
+                          <Check size={13} className="text-emerald-600 shrink-0" />
+                          <span className="truncate">Rørlegger: Trykktest 10 bar</span>
                         </div>
-                        <div className="p-2 bg-emerald-50 rounded-xl border border-emerald-200 flex items-center gap-1.5 text-emerald-900 font-bold">
-                          <Check size={14} className="text-emerald-600 shrink-0" />
-                          <span>Elektriker: K-rør fotografert</span>
+                        <div className="p-2 bg-emerald-50 rounded-xl border border-emerald-200 flex items-center gap-1.5 text-emerald-900 font-bold text-[11px] sm:text-xs">
+                          <Check size={13} className="text-emerald-600 shrink-0" />
+                          <span className="truncate">Elektriker: K-rør fotografert</span>
                         </div>
-                        <div className="p-2 bg-emerald-50 rounded-xl border border-emerald-200 flex items-center gap-1.5 text-emerald-900 font-bold">
-                          <Check size={14} className="text-emerald-600 shrink-0" />
-                          <span>Dampsperre: Klemte skjøter</span>
+                        <div className="p-2 bg-emerald-50 rounded-xl border border-emerald-200 flex items-center gap-1.5 text-emerald-900 font-bold text-[11px] sm:text-xs">
+                          <Check size={13} className="text-emerald-600 shrink-0" />
+                          <span className="truncate">Dampsperre: Klemte skjøter</span>
                         </div>
-                        <div className="p-2 bg-emerald-50 rounded-xl border border-emerald-200 flex items-center gap-1.5 text-emerald-900 font-bold">
-                          <Check size={14} className="text-emerald-600 shrink-0" />
-                          <span>Isolasjon: Uten kuldebro</span>
+                        <div className="p-2 bg-emerald-50 rounded-xl border border-emerald-200 flex items-center gap-1.5 text-emerald-900 font-bold text-[11px] sm:text-xs">
+                          <Check size={13} className="text-emerald-600 shrink-0" />
+                          <span className="truncate">Isolasjon: Uten kuldebro</span>
                         </div>
                       </div>
-                      <p className="text-[11px] text-slate-500 italic">
+                      <p className="text-[10px] sm:text-[11px] text-slate-500 italic leading-snug">
                         Byggeleder og tømrer varslet automatisk: Vegg på Bad 2. etasje kan nå kles med gipsplater.
                       </p>
                     </div>
                   )}
 
                   {activeScenario.cardType === 'access_restricted' && (
-                    <div className="p-4 rounded-2xl bg-rose-50 border-2 border-rose-200 text-xs">
+                    <div className="p-3 sm:p-4 rounded-2xl bg-rose-50 border-2 border-rose-200 text-xs min-w-0 w-full break-words">
                       <div className="flex items-center gap-2 text-rose-900 font-bold mb-1">
-                        <Lock size={15} className="text-rose-600" />
+                        <Lock size={15} className="text-rose-600 shrink-0" />
                         <span>Sikkerhetsbarriere aktiv</span>
                       </div>
-                      <p className="text-rose-700">
+                      <p className="text-rose-700 leading-relaxed break-words">
                         VikingMester skiller strengt mellom administrative bedriftsdata og byggeplassens fagarbeidere. Dine håndverkere ser kun det de trenger for å bygge feilfritt.
                       </p>
                     </div>
@@ -808,19 +809,19 @@ export default function MesterAIDemoSimulator({
           </div>
 
           {/* Interactive Input Bar */}
-          <form onSubmit={handleCustomSubmit} className="p-3 sm:p-4 bg-slate-50 border-t border-slate-200 flex items-center gap-2">
+          <form onSubmit={handleCustomSubmit} className="p-2 sm:p-4 bg-slate-50 border-t border-slate-200 flex items-center gap-1.5 sm:gap-2">
             <button
               type="button"
               onClick={handleSimulateVoice}
               className={cn(
-                "w-11 h-11 rounded-2xl flex items-center justify-center transition-all shrink-0 cursor-pointer",
+                "w-9 h-9 sm:w-11 sm:h-11 rounded-xl sm:rounded-2xl flex items-center justify-center transition-all shrink-0 cursor-pointer",
                 isListening 
                   ? "bg-rose-600 text-white animate-pulse" 
                   : "bg-white hover:bg-slate-100 text-slate-700 border border-slate-300"
               )}
               title="Snakk inn på byggeplass"
             >
-              {isListening ? <MicOff size={18} /> : <Mic size={18} />}
+              {isListening ? <MicOff size={16} /> : <Mic size={16} />}
             </button>
 
             <input
@@ -829,42 +830,42 @@ export default function MesterAIDemoSimulator({
               onChange={(e) => setCustomPrompt(e.target.value)}
               placeholder={
                 selectedRole === 'byggmester' 
-                  ? "Skriv inn tilbud, NS 8406 endring eller spørsmål..." 
+                  ? "Skriv inn tilbud eller NS 8406 endring..." 
                   : selectedRole === 'tomrer'
-                    ? "Før timer, skriv byggedagbok eller be om TEK17 råd..."
-                    : "Skriv trykktest, avvik eller lukkesperre..."
+                    ? "Før timer eller be om TEK17 råd..."
+                    : "Skriv trykktest eller avvik..."
               }
-              className="flex-1 px-4 py-3 bg-white border border-slate-300 rounded-2xl text-xs sm:text-sm text-navy-900 placeholder:text-slate-400 focus:outline-hidden focus:ring-2 focus:ring-electric-500 transition-all"
+              className="min-w-0 flex-1 px-2.5 sm:px-4 py-2 sm:py-3 bg-white border border-slate-300 rounded-xl sm:rounded-2xl text-xs sm:text-sm text-navy-900 placeholder:text-slate-400 focus:outline-hidden focus:ring-2 focus:ring-electric-500 transition-all"
             />
 
             <button
               type="submit"
               disabled={!customPrompt.trim()}
-              className="px-4 py-3 bg-electric-600 hover:bg-electric-700 disabled:opacity-40 text-white rounded-2xl font-bold text-xs transition-all flex items-center gap-1.5 shrink-0 shadow-sm cursor-pointer"
+              className="px-3 sm:px-4 py-2 sm:py-3 bg-electric-600 hover:bg-electric-700 disabled:opacity-40 text-white rounded-xl sm:rounded-2xl font-bold text-xs transition-all flex items-center gap-1 shrink-0 shadow-sm cursor-pointer"
             >
               <span>Test</span>
-              <Send size={14} />
+              <Send size={13} />
             </button>
           </form>
 
           {/* Bottom Conversion CTA Strip */}
-          <div className="p-4 sm:p-6 bg-gradient-to-r from-navy-950 via-slate-900 to-navy-950 text-white flex flex-col sm:flex-row sm:items-center justify-between gap-4">
+          <div className="p-3.5 sm:p-6 bg-gradient-to-r from-navy-950 via-slate-900 to-navy-950 text-white flex flex-col sm:flex-row sm:items-center justify-between gap-3 sm:gap-4">
             <div>
               <div className="flex items-center gap-2">
-                <span className="text-xs font-black uppercase tracking-wider text-emerald-400">
+                <span className="text-[11px] sm:text-xs font-black uppercase tracking-wider text-emerald-400">
                   KLAR FOR DETTE I DIN EGEN BEDRIFT?
                 </span>
               </div>
-              <p className="text-xs sm:text-sm text-slate-300 mt-0.5">
+              <p className="text-[11px] sm:text-sm text-slate-300 mt-0.5 leading-relaxed">
                 Start 14 dagers gratis prøveperiode. Ingen bindingstid – kom i gang på 30 sekunder.
               </p>
             </div>
 
-            <div className="flex items-center gap-3 shrink-0">
+            <div className="flex items-center gap-3 shrink-0 w-full sm:w-auto">
               <a
                 href="#bestill"
                 onClick={onStartFreeTrial}
-                className="px-6 py-3 rounded-xl bg-gradient-to-r from-electric-500 to-electric-400 hover:from-electric-400 hover:to-electric-300 text-white font-bold text-xs shadow-purple-cta transition-all flex items-center gap-2 cursor-pointer whitespace-nowrap"
+                className="w-full sm:w-auto px-5 py-2.5 sm:px-6 sm:py-3 rounded-xl bg-gradient-to-r from-electric-500 to-electric-400 hover:from-electric-400 hover:to-electric-300 text-white font-bold text-xs shadow-purple-cta transition-all flex items-center justify-center gap-2 cursor-pointer whitespace-nowrap"
               >
                 <span>Start Gratis Prøveperiode</span>
                 <ArrowRight size={14} />
