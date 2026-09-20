@@ -25,7 +25,9 @@ import {
   GraduationCap,
   Sparkles,
   ArrowRight,
-  Shield
+  Shield,
+  LayoutGrid,
+  List
 } from 'lucide-react';
 import { cn } from '../lib/utils';
 
@@ -57,6 +59,7 @@ export default function AllModulesDrawer({
 }: AllModulesDrawerProps) {
   const [search, setSearch] = useState('');
   const [selectedCategory, setSelectedCategory] = useState<string>('all');
+  const [viewMode, setViewMode] = useState<'grid' | 'list'>('grid');
 
   const modules: ModuleItem[] = [
     // 🏗️ Kategori 1: Prosjekt & Bygg
@@ -295,11 +298,11 @@ export default function AllModulesDrawer({
   ];
 
   const categories = [
-    { id: 'all', label: 'Alle verktøy', count: modules.length },
-    { id: 'prosjekt', label: '🏗️ Prosjekt & Bygg', count: modules.filter(m => m.category === 'prosjekt').length },
-    { id: 'ks_hms', label: '🛡️ Kvalitet & HMS', count: modules.filter(m => m.category === 'ks_hms').length },
-    { id: 'okonomi', label: '💰 Økonomi & Kontrakt', count: modules.filter(m => m.category === 'okonomi').length },
-    { id: 'ressurser', label: '🚗 Ressurser & Felt', count: modules.filter(m => m.category === 'ressurser').length }
+    { id: 'all', label: 'Alle', fullLabel: 'Alle verktøy', count: modules.length },
+    { id: 'prosjekt', label: '🏗️ Prosjekt', fullLabel: '🏗️ Prosjekt & Bygg', count: modules.filter(m => m.category === 'prosjekt').length },
+    { id: 'ks_hms', label: '🛡️ KS & HMS', fullLabel: '🛡️ Kvalitet & HMS', count: modules.filter(m => m.category === 'ks_hms').length },
+    { id: 'okonomi', label: '💰 Økonomi', fullLabel: '💰 Økonomi & Kontrakt', count: modules.filter(m => m.category === 'okonomi').length },
+    { id: 'ressurser', label: '🚗 Ressurser', fullLabel: '🚗 Ressurser & Felt', count: modules.filter(m => m.category === 'ressurser').length }
   ];
 
   const filtered = modules.filter(m => {
@@ -313,76 +316,118 @@ export default function AllModulesDrawer({
   if (!isOpen) return null;
 
   return (
-    <div className="fixed inset-0 z-[120] flex items-center justify-center p-3 sm:p-6 bg-navy-950/70 backdrop-blur-md animate-fadeIn">
+    <div className="fixed inset-0 z-[120] flex items-end sm:items-center justify-center p-0 sm:p-6 bg-navy-950/70 backdrop-blur-md animate-fadeIn">
       <motion.div
-        initial={{ opacity: 0, scale: 0.95, y: 15 }}
-        animate={{ opacity: 1, scale: 1, y: 0 }}
-        exit={{ opacity: 0, scale: 0.95, y: 15 }}
-        className="bg-white w-full max-w-5xl rounded-[2.5rem] shadow-2xl overflow-hidden border border-slate-200 flex flex-col max-h-[92vh]"
+        initial={{ opacity: 0, y: 20 }}
+        animate={{ opacity: 1, y: 0 }}
+        exit={{ opacity: 0, y: 20 }}
+        transition={{ duration: 0.2 }}
+        className="bg-white w-full h-[100dvh] sm:h-auto sm:max-h-[90vh] sm:max-w-5xl rounded-none sm:rounded-[2.5rem] shadow-2xl overflow-hidden border-0 sm:border sm:border-slate-200 flex flex-col"
       >
         {/* Header */}
-        <div className="p-6 sm:p-8 bg-gradient-to-r from-navy-950 via-slate-900 to-navy-900 text-white flex flex-col sm:flex-row sm:items-center justify-between gap-4 border-b border-slate-800">
-          <div>
-            <div className="flex items-center gap-2 mb-1">
-              <span className="inline-flex items-center gap-1.5 px-3 py-1 rounded-full text-[11px] font-black uppercase tracking-wider bg-electric-500/20 text-electric-300 border border-electric-500/30">
-                <Sparkles size={12} />
-                <span>Verktøykasse</span>
-              </span>
-              <span className="text-xs text-slate-400 font-bold">{modules.length} moduler tilgjengelig</span>
+        <div className="px-4 py-3 sm:p-8 bg-gradient-to-r from-navy-950 via-slate-900 to-navy-900 text-white flex items-center justify-between border-b border-slate-800 shrink-0">
+          <div className="flex items-center gap-2.5 sm:gap-4 min-w-0">
+            <div className="w-8 h-8 sm:w-12 sm:h-12 rounded-lg sm:rounded-2xl bg-electric-500/20 text-electric-300 border border-electric-500/30 flex items-center justify-center shrink-0">
+              <Sparkles size={16} className="sm:w-6 sm:h-6" />
             </div>
-            <h2 className="text-2xl sm:text-3xl font-black tracking-tight text-white">
-              Alle Moduler & Verktøy i VikingMester
-            </h2>
-            <p className="text-xs sm:text-sm text-slate-300 mt-1">
-              Alt du trenger samlet på ett sted — klikk på et verktøy for å åpne det umiddelbart.
-            </p>
+            <div className="min-w-0">
+              <div className="flex items-center gap-2">
+                <h2 className="text-base sm:text-2xl font-black tracking-tight text-white truncate">
+                  Moduler & Verktøy
+                </h2>
+                <span className="text-[11px] font-bold px-2 py-0.5 rounded-full bg-white/10 text-slate-300 border border-white/10 shrink-0">
+                  {modules.length} moduler
+                </span>
+              </div>
+              <p className="hidden sm:block text-xs sm:text-sm text-slate-300 mt-0.5">
+                Alt du trenger samlet på ett sted — klikk på et verktøy for å åpne det umiddelbart.
+              </p>
+            </div>
           </div>
 
           <button
             onClick={onClose}
-            className="self-end sm:self-center p-3 bg-white/10 hover:bg-white/20 text-white rounded-2xl transition-all cursor-pointer"
+            className="p-2 sm:p-3 bg-white/10 hover:bg-white/20 text-white rounded-xl sm:rounded-2xl transition-all cursor-pointer shrink-0 ml-2"
             title="Lukk"
           >
-            <X size={20} />
+            <X size={18} className="sm:w-5 sm:h-5" />
           </button>
         </div>
 
         {/* Search & Category Filter Bar */}
-        <div className="p-4 sm:p-6 bg-slate-50 border-b border-slate-200 flex flex-col sm:flex-row gap-3 items-center justify-between">
-          <div className="relative w-full sm:w-80">
-            <Search className="absolute left-3.5 top-1/2 -translate-y-1/2 text-slate-400" size={18} />
-            <input
-              type="text"
-              placeholder="Søk i verktøy (f.eks. bil, kontrakt, sjekkliste)..."
-              value={search}
-              onChange={(e) => setSearch(e.target.value)}
-              className="w-full pl-10 pr-4 py-2.5 bg-white border border-slate-200 rounded-xl text-xs sm:text-sm font-medium outline-none focus:ring-2 focus:ring-purple-500 transition-all shadow-inner"
-            />
+        <div className="px-3 py-2 sm:px-6 sm:py-4 bg-slate-50 border-b border-slate-200 flex flex-col sm:flex-row gap-2 sm:gap-3 items-stretch sm:items-center justify-between shrink-0">
+          <div className="flex items-center gap-2 w-full sm:w-auto">
+            <div className="relative flex-1 sm:w-80">
+              <Search className="absolute left-3 top-1/2 -translate-y-1/2 text-slate-400" size={16} />
+              <input
+                type="text"
+                placeholder="Søk i verktøy (f.eks. bil, kontrakt)..."
+                value={search}
+                onChange={(e) => setSearch(e.target.value)}
+                className="w-full pl-9 pr-8 py-2 bg-white border border-slate-200 rounded-xl text-xs sm:text-sm font-medium outline-none focus:ring-2 focus:ring-purple-500 transition-all shadow-inner"
+              />
+              {search && (
+                <button
+                  type="button"
+                  onClick={() => setSearch('')}
+                  className="absolute right-2.5 top-1/2 -translate-y-1/2 text-slate-400 hover:text-slate-600 p-0.5 rounded-full"
+                >
+                  <X size={14} />
+                </button>
+              )}
+            </div>
+
+            {/* View Mode Toggle (Grid / List) */}
+            <div className="flex items-center bg-slate-200/80 p-0.5 rounded-xl shrink-0 border border-slate-300/40">
+              <button
+                type="button"
+                onClick={() => setViewMode('grid')}
+                className={cn(
+                  "p-1.5 rounded-lg transition-all",
+                  viewMode === 'grid' ? "bg-white text-navy-900 shadow-2xs font-bold" : "text-slate-500 hover:text-slate-800"
+                )}
+                title="Rutenett"
+              >
+                <LayoutGrid size={15} />
+              </button>
+              <button
+                type="button"
+                onClick={() => setViewMode('list')}
+                className={cn(
+                  "p-1.5 rounded-lg transition-all",
+                  viewMode === 'list' ? "bg-white text-navy-900 shadow-2xs font-bold" : "text-slate-500 hover:text-slate-800"
+                )}
+                title="Kompakt liste"
+              >
+                <List size={15} />
+              </button>
+            </div>
           </div>
 
           {/* Category Filter Pills */}
-          <div className="flex items-center gap-1.5 overflow-x-auto w-full sm:w-auto pb-1 sm:pb-0">
+          <div className="flex items-center gap-1.5 overflow-x-auto w-full sm:w-auto pb-0.5 sm:pb-0 no-scrollbar">
             {categories.map((cat) => (
               <button
                 key={cat.id}
                 onClick={() => setSelectedCategory(cat.id)}
                 className={cn(
-                  "px-3 py-1.5 rounded-xl text-xs font-bold transition-all whitespace-nowrap cursor-pointer",
+                  "px-2.5 sm:px-3 py-1 sm:py-1.5 rounded-xl text-[11px] sm:text-xs font-bold transition-all whitespace-nowrap cursor-pointer shrink-0",
                   selectedCategory === cat.id
-                    ? "bg-navy-900 text-white shadow-sm"
+                    ? "bg-navy-900 text-white shadow-xs"
                     : "bg-white text-slate-600 hover:bg-slate-200/70 border border-slate-200/80"
                 )}
               >
-                {cat.label} ({cat.count})
+                <span className="sm:hidden">{cat.label} ({cat.count})</span>
+                <span className="hidden sm:inline">{cat.fullLabel} ({cat.count})</span>
               </button>
             ))}
           </div>
         </div>
 
-        {/* Grid of Modules */}
-        <div className="p-6 sm:p-8 overflow-y-auto flex-1">
+        {/* Grid or List of Modules */}
+        <div className="p-3 sm:p-8 overflow-y-auto flex-1 overscroll-contain">
           {filtered.length === 0 ? (
-            <div className="py-16 text-center text-slate-400">
+            <div className="py-12 text-center text-slate-400">
               <p className="text-sm font-bold text-slate-600">Ingen moduler matcher søket ditt.</p>
               <button
                 onClick={() => { setSearch(''); setSelectedCategory('all'); }}
@@ -391,8 +436,8 @@ export default function AllModulesDrawer({
                 Tilbakestill filter
               </button>
             </div>
-          ) : (
-            <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-4">
+          ) : viewMode === 'grid' ? (
+            <div className="grid grid-cols-2 sm:grid-cols-2 lg:grid-cols-3 gap-2 sm:gap-4">
               {filtered.map((m) => (
                 <div
                   key={m.id}
@@ -401,31 +446,73 @@ export default function AllModulesDrawer({
                     onClose();
                   }}
                   className={cn(
-                    "p-4 sm:p-5 rounded-2xl border transition-all cursor-pointer group flex flex-col justify-between shadow-xs hover:shadow-md active:scale-[0.98]",
+                    "p-3 sm:p-5 rounded-2xl border transition-all cursor-pointer group flex flex-col justify-between shadow-2xs hover:shadow-md active:scale-[0.98]",
                     m.bgColor
                   )}
                 >
                   <div>
-                    <div className="flex items-start justify-between gap-2 mb-2.5">
-                      <div className={cn("w-11 h-11 rounded-xl bg-white shadow-sm flex items-center justify-center shrink-0 group-hover:scale-105 transition-transform", m.color)}>
+                    <div className="flex items-start justify-between gap-1.5 mb-2 sm:mb-2.5">
+                      <div className={cn("w-8 h-8 sm:w-11 sm:h-11 rounded-lg sm:rounded-xl bg-white shadow-2xs flex items-center justify-center shrink-0 group-hover:scale-105 transition-transform", m.color)}>
                         {m.icon}
                       </div>
                       {m.badge && (
-                        <span className="px-2 py-0.5 rounded-full text-[10px] font-black uppercase tracking-wider bg-white/90 text-slate-800 border border-slate-200/80 shadow-2xs">
+                        <span className="px-1.5 sm:px-2 py-0.5 rounded-full text-[9px] sm:text-[10px] font-black uppercase tracking-wider bg-white/90 text-slate-800 border border-slate-200/80 shadow-2xs shrink-0 truncate max-w-[70px] sm:max-w-none">
                           {m.badge}
                         </span>
                       )}
                     </div>
-                    <h3 className="text-sm font-extrabold text-navy-900 group-hover:text-purple-700 transition-colors">
+                    <h3 className="text-xs sm:text-sm font-extrabold text-navy-900 group-hover:text-purple-700 transition-colors line-clamp-1 sm:line-clamp-none">
                       {m.title}
                     </h3>
-                    <p className="text-xs text-slate-600 mt-1 leading-relaxed line-clamp-2">
+                    <p className="text-[10px] sm:text-xs text-slate-600 mt-0.5 sm:mt-1 leading-tight sm:leading-relaxed line-clamp-2">
                       {m.subtitle}
                     </p>
                   </div>
 
-                  <div className="flex items-center justify-between text-xs font-bold text-slate-400 group-hover:text-purple-600 mt-4 pt-3 border-t border-slate-200/50">
+                  <div className="hidden sm:flex items-center justify-between text-xs font-bold text-slate-400 group-hover:text-purple-600 mt-4 pt-3 border-t border-slate-200/50">
                     <span>Åpne verktøy</span>
+                    <ArrowRight size={14} className="group-hover:translate-x-1 transition-transform" />
+                  </div>
+                </div>
+              ))}
+            </div>
+          ) : (
+            <div className="flex flex-col gap-1.5 sm:gap-2">
+              {filtered.map((m) => (
+                <div
+                  key={m.id}
+                  onClick={() => {
+                    m.action();
+                    onClose();
+                  }}
+                  className={cn(
+                    "flex items-center justify-between p-2.5 sm:p-3.5 rounded-xl sm:rounded-2xl border transition-all cursor-pointer group shadow-2xs hover:shadow-xs active:scale-[0.99]",
+                    m.bgColor
+                  )}
+                >
+                  <div className="flex items-center gap-2.5 sm:gap-3.5 min-w-0">
+                    <div className={cn("w-8 h-8 sm:w-10 sm:h-10 rounded-lg sm:rounded-xl bg-white shadow-2xs flex items-center justify-center shrink-0 group-hover:scale-105 transition-transform", m.color)}>
+                      {m.icon}
+                    </div>
+                    <div className="min-w-0">
+                      <div className="flex items-center gap-1.5 sm:gap-2">
+                        <h3 className="text-xs sm:text-sm font-extrabold text-navy-900 group-hover:text-purple-700 transition-colors truncate">
+                          {m.title}
+                        </h3>
+                        {m.badge && (
+                          <span className="px-1.5 py-0.5 rounded-full text-[9px] font-black uppercase tracking-wider bg-white/90 text-slate-800 border border-slate-200/80 shrink-0">
+                            {m.badge}
+                          </span>
+                        )}
+                      </div>
+                      <p className="text-[10px] sm:text-xs text-slate-500 truncate">
+                        {m.subtitle}
+                      </p>
+                    </div>
+                  </div>
+
+                  <div className="flex items-center gap-1 text-slate-400 group-hover:text-purple-600 shrink-0 ml-2">
+                    <span className="hidden sm:inline text-xs font-bold">Åpne</span>
                     <ArrowRight size={14} className="group-hover:translate-x-1 transition-transform" />
                   </div>
                 </div>
@@ -434,11 +521,11 @@ export default function AllModulesDrawer({
           )}
         </div>
 
-        {/* Footer info */}
-        <div className="px-6 py-4 bg-slate-50 border-t border-slate-200 flex flex-col sm:flex-row items-center justify-between gap-2 text-xs text-slate-500">
+        {/* Footer info (Desktop only) */}
+        <div className="hidden sm:flex px-6 py-3.5 bg-slate-50 border-t border-slate-200 items-center justify-between gap-2 text-xs text-slate-500 shrink-0">
           <span>💡 <strong>Tips:</strong> Du kan også trykke <strong>Søk</strong> øverst på skjermen eller bruke mikrofonen for å åpne verktøy med stemmen.</span>
           {isSuperAdmin && (
-            <span className="text-rose-600 font-bold flex items-center gap-1">
+            <span className="text-rose-600 font-bold flex items-center gap-1 shrink-0">
               <Shield size={13} /> SuperAdmin-rettigheter aktiv
             </span>
           )}
