@@ -238,6 +238,78 @@ const INTEGRATION_MODULES = [
   }
 ];
 
+function renderFormattedMessage(content: string) {
+  if (!content) return null;
+
+  const lines = content.split('\n');
+
+  return (
+    <div className="space-y-2 leading-relaxed text-slate-800">
+      {lines.map((line, lineIdx) => {
+        const trimmed = line.trim();
+        if (!trimmed) {
+          return <div key={lineIdx} className="h-1.5" />;
+        }
+
+        const isBullet = trimmed.startsWith('- ') || trimmed.startsWith('* ');
+        const isNumbered = /^\d+\.\s/.test(trimmed);
+
+        const textToParse = isBullet 
+          ? trimmed.replace(/^[-*]\s+/, '') 
+          : isNumbered 
+            ? trimmed.replace(/^\d+\.\s+/, '') 
+            : trimmed;
+
+        // Parse markdown inline elements: bold (**text**) and italic (*text*)
+        const tokens = textToParse.split(/(\*\*.*?\*\*|\*.*?\*)/g);
+        const renderedTokens = tokens.map((tok, tokIdx) => {
+          if (tok.startsWith('**') && tok.endsWith('**') && tok.length >= 4) {
+            return (
+              <strong key={tokIdx} className="font-bold text-navy-950">
+                {tok.slice(2, -2)}
+              </strong>
+            );
+          }
+          if (tok.startsWith('*') && tok.endsWith('*') && tok.length >= 2 && !tok.startsWith('**')) {
+            return (
+              <em key={tokIdx} className="italic text-slate-700">
+                {tok.slice(1, -1)}
+              </em>
+            );
+          }
+          return <React.Fragment key={tokIdx}>{tok}</React.Fragment>;
+        });
+
+        if (isBullet) {
+          return (
+            <div key={lineIdx} className="flex items-start gap-2 pl-1">
+              <span className="text-electric-500 font-bold select-none leading-normal">•</span>
+              <div className="flex-1">{renderedTokens}</div>
+            </div>
+          );
+        }
+
+        if (isNumbered) {
+          const numberMatch = trimmed.match(/^(\d+)\./);
+          const num = numberMatch ? numberMatch[1] : `${lineIdx + 1}`;
+          return (
+            <div key={lineIdx} className="flex items-start gap-2 pl-1">
+              <span className="font-bold text-electric-600 select-none leading-normal">{num}.</span>
+              <div className="flex-1">{renderedTokens}</div>
+            </div>
+          );
+        }
+
+        return (
+          <p key={lineIdx}>
+            {renderedTokens}
+          </p>
+        );
+      })}
+    </div>
+  );
+}
+
 export default function MesterAIDemoSimulator({
   onStartFreeTrial,
   id = 'live-demo'
@@ -561,8 +633,8 @@ export default function MesterAIDemoSimulator({
 
                 <div className="max-w-2xl space-y-4">
                   {/* Speech response */}
-                  <div className="bg-slate-50 border border-slate-200 rounded-2xl rounded-tl-xs p-4 text-xs sm:text-sm text-navy-950 leading-relaxed font-sans shadow-xs">
-                    <p className="whitespace-pre-line">{activeScenario.agentReply}</p>
+                  <div className="bg-slate-50 border border-slate-200 rounded-2xl rounded-tl-xs p-4 text-xs sm:text-sm text-navy-950 font-sans shadow-xs">
+                    {renderFormattedMessage(activeScenario.agentReply)}
                   </div>
 
                   {/* Dynamic Visual Document Cards */}
