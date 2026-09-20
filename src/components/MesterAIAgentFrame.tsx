@@ -42,6 +42,8 @@ interface MesterAIAgentFrameProps {
   initialHeight?: string;
   initialPrompt?: string;
   onPromptHandled?: () => void;
+  storageKey?: string;
+  hasBottomNav?: boolean;
 }
 
 /**

@@ -28,7 +28,24 @@ const nextConfig: NextConfig = {
   async headers() {
     return [
       {
-        source: '/:path*',
+        source: '/embed/:path*',
+        headers: [
+          {
+            key: 'X-DNS-Prefetch-Control',
+            value: 'on',
+          },
+          {
+            key: 'Permissions-Policy',
+            value: 'camera=*, microphone=*, geolocation=*',
+          },
+          {
+            key: 'Content-Security-Policy',
+            value: cspHeader.replace("frame-ancestors 'self'", "frame-ancestors *"),
+          },
+        ],
+      },
+      {
+        source: '/((?!embed).*)',
         headers: [
           {
             key: 'X-DNS-Prefetch-Control',

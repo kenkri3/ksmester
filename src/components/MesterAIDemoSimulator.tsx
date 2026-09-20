@@ -1,183 +1,104 @@
 'use client';
 
-import React, { useState, useRef } from 'react';
-import { motion } from 'motion/react';
+import React, { useState } from 'react';
 import { 
   Bot, 
-  Send, 
-  Mic, 
-  MicOff, 
   Sparkles, 
   ShieldCheck, 
-  CheckCircle2, 
-  AlertTriangle, 
-  Lock, 
-  Unlock, 
-  FileText, 
-  Check, 
   ArrowRight, 
   HardHat, 
   Wrench, 
   Building2, 
   Zap, 
-  Clock, 
-  CloudSun, 
-  ChevronRight
+  ChevronRight,
+  Copy,
+  Code,
+  ExternalLink,
+  RefreshCw,
+  Check
 } from 'lucide-react';
 import { cn } from '@/src/lib/utils';
 import { toast } from 'sonner';
+import MesterAIAgentFrame from './MesterAIAgentFrame';
 
 export type DemoRole = 'byggmester' | 'tomrer' | 'rorlegger';
 
-interface DemoScenario {
+interface DemoPreset {
   id: string;
   role: DemoRole;
   label: string;
   prompt: string;
-  agentReply: string;
-  cardType?: 'change_order' | 'daily_log' | 'sja' | 'pre_close' | 'access_restricted';
-  cardData?: any;
+  description: string;
 }
 
-const DEMO_SCENARIOS: DemoScenario[] = [
-  // BYGGMESTER SCENARIOS
+const DEMO_PRESETS: DemoPreset[] = [
+  // BYGGMESTER PRESETS
   {
     id: 'bm-eo',
     role: 'byggmester',
     label: '⚡ Varsle endringsordre (NS 8406)',
     prompt: 'Varsle endringsordre iht. NS 8406 på 28 500 kr for ekstra bærebjelke',
-    agentReply: 'Endringsvarsel iht. **NS 8406 punkt 19** er generert og klart for utsendelse. Frist for varsling «uten ugrunnet opphold» er overholdt, og fristforlengelse på 3 virkedager er registrert.',
-    cardType: 'change_order',
-    cardData: {
-      orderNumber: 'EO-04',
-      project: 'Villa Fjellstrand (Fjellveien 14)',
-      title: 'Montering av forsterket HEB-180 ståldrager',
-      description: 'Byggherre har bestilt fjerning av opprinnelig bærevegg mellom kjøkken og stue. Krever dimensjonert ståldrager med opplegg på søyler.',
-      amount: 28500,
-      daysExtension: 3,
-      standard: 'NS 8406',
-      status: 'SENDT_TIL_BYGGHERRE'
-    }
+    description: 'Genererer formelt krav om vederlagsjustering og fristforlengelse iht. NS 8406 punkt 19.'
   },
   {
     id: 'bm-status',
     role: 'byggmester',
     label: '📊 Prosjekthelse & Krav',
     prompt: 'Hva er prosjekthelse og ubehandlede krav på Villa Fjellstrand?',
-    agentReply: 'Her er status for **Villa Fjellstrand**:\n- 📈 **Fremdrift:** 68% fullført (i henhold til tidsplan)\n- 💰 **Sikret tilleggsfakturering:** kr 94 200,- over 3 godkjente endringsordrer\n- ⚠️ **Kritiske sperrer:** 1 aktiv lukkesperre på Bad 2. etg (venter på VVS-trykktest før tømrer kan lukke vegg)\n- 🛡️ **HMS & SJA:** Alle 4 utførte risikovurderinger er signert.',
-    cardType: 'sja',
-    cardData: {
-      title: 'Prosjekthelsestatus: Villa Fjellstrand',
-      status: 'God fremdrift • 1 kritisk punkt'
-    }
+    description: 'Henter sanntidsstatus på fremdrift, økonomiske krav og aktive lukkesperrer.'
   },
   {
     id: 'bm-offer',
     role: 'byggmester',
     label: '📝 Kalkyle på etterisolering',
     prompt: 'Lag et tilbud på etterisolering og ny kledning med 15% påslag',
-    agentReply: 'Kalkyle er utarbeidet for 140 m² fasade:\n- 🧱 **Materiell (Rockwool + vindsperre + kledning):** kr 84 500,-\n- 🔨 **Arbeidstimer (75 timer à 890,-):** kr 66 750,-\n- 📈 **Påslag (15%):** kr 22 688,-\n- 💵 **Total tilbudssum eks. mva:** **kr 173 938,-**\nTilbudet er klart til å sendes som interaktiv kundeavtale på SMS/e-post.',
-    cardType: 'change_order',
-    cardData: {
-      orderNumber: 'TILBUD-2026-12',
-      project: 'Villa Fjellstrand',
-      title: 'Etterisolering 100mm og dobbelfalset kledning',
-      amount: 173938,
-      status: 'KLAR_FOR_UTSENDELSE'
-    }
+    description: 'Beregner materialer, timer og dekningsbidrag for kundeavtale.'
   },
 
-  // TØMRER SCENARIOS
+  // TØMRER PRESETS
   {
     id: 'tom-log',
     role: 'tomrer',
     label: '🎙️ Stemmestyrt dagbok',
-    prompt: 'Før 7,5 timer lekting og vindsperre i byggedagboken',
-    agentReply: 'Timer og framdrift er registrert i byggedagboken for **Villa Fjellstrand**. Værdata fra **Yr.no** er automatisk hentet og koblet til dagsrapporten for å dokumentere tørre arbeidsforhold.',
-    cardType: 'daily_log',
-    cardData: {
-      date: 'I dag',
-      project: 'Villa Fjellstrand',
-      craftsman: 'Magne (Tømrer)',
-      hours: 7.5,
-      weather: 'Oslo/Ski: 11°C, lett bris 3,2 m/s, opphold',
-      workPerformed: 'Montert vindsperreduk og lektet ferdig sør- og vestvegg. Gjort klart for montering av stående kledning.',
-      status: 'ARKIVERT_I_BYGGEDAGBOK'
-    }
+    prompt: 'Før 7,5 timer lekting og vindsperre i byggedagboken for Villa Fjellstrand',
+    description: 'Loggfører timer og henter sanntids værdata automatisk fra Yr.no.'
   },
   {
     id: 'tom-sja',
     role: 'tomrer',
     label: '🛡️ SJA for arbeid i stillas',
     prompt: 'Lag en SJA for utvendig fasadearbeid og stillas i 3. etasje',
-    agentReply: 'Sikker Jobb Analyse (SJA) er utarbeidet iht. **Forskrift om utførelse av arbeid kap. 17**. Sanntids vinddata fra Yr.no (3,2 m/s) vurderes som trygt for stillasarbeid.',
-    cardType: 'sja',
-    cardData: {
-      task: 'Montering av kledning fra stillas i 3. etasje (høyde over 5 meter)',
-      project: 'Villa Fjellstrand',
-      hazards: [
-        'Fall fra høyde ved arbeid utenfor rekkverk',
-        'Vindkast og fallende verktøy/kledningsbord mot bakkeplan',
-        'Manglende forankring eller sperring på stillas'
-      ],
-      safetyMeasures: [
-        'Stillas godkjent med grønt adgangskort og fullt fotlist/rekkverk',
-        'Sikringstau og verktøystropper på alt batteriverktøy',
-        'Avsperring av bakkeområde med kjegler mot uvedkommende'
-      ],
-      status: 'SIGNERT_PÅ_BYGGEPLASS'
-    }
+    description: 'Strukturerer faremomenter og vernetiltak iht. Forskrift om utførelse av arbeid.'
   },
   {
     id: 'tom-tek17',
     role: 'tomrer',
     label: '📐 Krav til dampsperre (TEK17)',
     prompt: 'Hva sier TEK17 og Våtromsnormen om dampsperre mot yttervegg?',
-    agentReply: 'I henhold til **TEK17 § 13-14** og **BVN 31.205** gjelder følgende:\n1. Dampsperren må være kontinuerlig og klemt med godkjent tape mot tilstøtende bygningsdeler.\n2. Ved våtrom mot yttervegg må samlet dampmotstand beregnes slik at det ikke oppstår fuktfelle mellom membran og dampsperre.\n3. Alle rør- og kabelgjennomføringer må ha tette mansjetter før veggen lukkes.',
-  },
-  {
-    id: 'tom-security',
-    role: 'tomrer',
-    label: '🔒 Sjekk tilgangsbegrensning (Firmaøkonomi)',
-    prompt: 'Hva er firmaets dekningsbidrag og timepriser på prosjektet?',
-    agentReply: '🔒 **Tilgang nektet (Rollebegrenset tilgang):**\nSom fagarbeider har du tilgang til faglig utførelse, timeføring, byggedagbok og HMS for **Villa Fjellstrand**.\n\nFirmaets interne marginer, kalkylepåslag og overordnede regnskapstall er strengt skjermet og kun tilgjengelig for Byggmester og ledelsen.',
-    cardType: 'access_restricted'
+    description: 'Slår opp byggtekniske krav for å unngå kondens og fuktfeller.'
   },
 
-  // RØRLEGGER SCENARIOS
+  // RØRLEGGER PRESETS
   {
     id: 'ror-close',
     role: 'rorlegger',
     label: '🚰 Godkjenn trykktest (Lukkesperre)',
-    prompt: 'Godkjenn trykktest og rør-i-rør for Bad 2. etasje',
-    agentReply: 'Trykktestrapport er verifisert og godkjent (10 bar / 30 min uten trykkfall). **Tverrfaglig Lukkesperre for Bad 2. etasje har skiftet fra RØDT LYS til GRØNT LYS!** Tømrer har nå fått klarsignal om at veggen kan kles og isoleres.',
-    cardType: 'pre_close',
-    cardData: {
-      room: 'Bad 2. etasje (Hovedbad)',
-      project: 'Villa Fjellstrand',
-      trades: {
-        plumbing: true,
-        electric: true,
-        vaporBarrier: true,
-        insulation: true
-      },
-      status: 'GREEN'
-    }
+    prompt: 'Trykktest av rør-i-rør fordelerskap fullført med 10 bar, alt tett',
+    description: 'Kvitterer ut rørleggersjekk og opphever lukkesperre for Bad 2. etasje.'
+  },
+  {
+    id: 'ror-fall',
+    role: 'rorlegger',
+    label: '📐 Fall mot sluk (TEK17)',
+    prompt: 'Hva er kravene til fall mot sluk i TEK17 på bad?',
+    description: 'Viser standardiserte krav til fallforhold i våtsone og gulv generelt.'
   },
   {
     id: 'ror-deviation',
     role: 'rorlegger',
-    label: '📸 Meld avvik: Manglende utsparing',
+    label: '📸 Meld avvik: Utsparing',
     prompt: 'Meld avvik: Bjelkelag mangler utsparing for avløpsrør 110mm i teknisk sjakt',
-    agentReply: 'Avvik registrert som **#AVV-18** under kategorien *Kollisjon mellom fag (Tømrer / Rørlegger)*. Byggeleder Ken har mottatt direktevarsel med tiltaksfrist innen 24 timer for å unngå forsinkelse.',
-    cardType: 'change_order',
-    cardData: {
-      orderNumber: 'AVV-18',
-      project: 'Villa Fjellstrand',
-      title: 'Mangler utsparing for 110mm avløp i bjelkelag',
-      description: 'Hulltaking ikke utført iht. VVS-tegning revisjon C. Hindrer rørlegger i framdrift.',
-      status: 'MELD_TIL_BYGGELEDER'
-    }
+    description: 'Registrerer tverrfaglig avvik og varsler byggeleder Ken direkte.'
   }
 ];
 
@@ -189,130 +110,52 @@ export default function MesterAIDemoSimulator({
   id?: string;
 }) {
   const [selectedRole, setSelectedRole] = useState<DemoRole>('byggmester');
-  const [activeScenario, setActiveScenario] = useState<DemoScenario>(DEMO_SCENARIOS[0]);
-  const [isTyping, setIsTyping] = useState(false);
-  const [customPrompt, setCustomPrompt] = useState('');
-  const [isSimulatedApproved, setIsSimulatedApproved] = useState(false);
-  const [lukkesperreGreen, setLukkesperreGreen] = useState(false);
-  const [isListening, setIsListening] = useState(false);
+  const [viewMode, setViewMode] = useState<'agent' | 'iframe'>('agent');
+  const [pendingPrompt, setPendingPrompt] = useState<string | undefined>(undefined);
+  const [refreshKey, setRefreshKey] = useState<number>(0);
+  const [copiedEmbed, setCopiedEmbed] = useState(false);
 
-  const messagesEndRef = useRef<HTMLDivElement>(null);
-
-  // Switch role and update default scenario
+  // Bytte av rolle
   const handleRoleChange = (role: DemoRole) => {
     setSelectedRole(role);
-    setIsSimulatedApproved(false);
-    setLukkesperreGreen(false);
-    const firstForRole = DEMO_SCENARIOS.find(s => s.role === role) || DEMO_SCENARIOS[0];
-    triggerScenario(firstForRole);
+    setPendingPrompt(undefined);
+    setRefreshKey(prev => prev + 1);
   };
 
-  const triggerScenario = (scenario: DemoScenario) => {
-    setIsTyping(true);
-    setIsSimulatedApproved(false);
-    if (scenario.cardType === 'pre_close') {
-      setLukkesperreGreen(true);
+  // Kjøre en av forhåndskommandoene direkte i agenten
+  const handleTriggerPreset = (prompt: string) => {
+    setViewMode('agent');
+    setPendingPrompt(prompt);
+  };
+
+  const handleResetSession = () => {
+    if (typeof window !== 'undefined') {
+      try {
+        sessionStorage.removeItem(`demo_agent_chat_${selectedRole}`);
+      } catch {}
     }
-    setTimeout(() => {
-      setActiveScenario(scenario);
-      setIsTyping(false);
-    }, 400);
+    setPendingPrompt(undefined);
+    setRefreshKey(prev => prev + 1);
+    toast.success(`Sandkasse for ${selectedRole === 'byggmester' ? 'Byggmester' : selectedRole === 'tomrer' ? 'Tømrer' : 'Rørlegger'} er nullstilt`);
   };
 
-  const handleCustomSubmit = (e: React.FormEvent) => {
-    e.preventDefault();
-    if (!customPrompt.trim()) return;
+  const embedCodeSnippet = `<iframe 
+  src="https://vikingmester.no/embed/agent?role=${selectedRole}&project=Villa+Fjellstrand" 
+  width="100%" 
+  height="600" 
+  frameborder="0" 
+  allow="microphone"
+  style="border-radius: 16px; border: 1px solid #334155; box-shadow: 0 10px 25px -5px rgba(0,0,0,0.3);">
+</iframe>`;
 
-    setIsTyping(true);
-    const query = customPrompt.trim();
-    setCustomPrompt('');
-
-    setTimeout(() => {
-      // Dynamic response matching role
-      let reply = '';
-      let cardType: any = undefined;
-      let cardData: any = undefined;
-
-      const lower = query.toLowerCase();
-
-      if (lower.includes('endring') || lower.includes('ns 8406') || lower.includes('tillegg')) {
-        if (selectedRole === 'byggmester') {
-          reply = `Endringsvarsel iht. **NS 8406 punkt 19** er generert for Villa Fjellstrand basert på din forespørsel: «${query}». Varslet er sendt til byggherre for godkjenning.`;
-          cardType = 'change_order';
-          cardData = {
-            orderNumber: `EO-0${Math.floor(Math.random() * 9) + 5}`,
-            project: 'Villa Fjellstrand',
-            title: query,
-            amount: 19500,
-            daysExtension: 2,
-            standard: 'NS 8406',
-            status: 'SENDT_TIL_BYGGHERRE'
-          };
-        } else {
-          reply = `Som ${selectedRole === 'tomrer' ? 'tømrer' : 'underentreprenør'} kan du melde inn ekstraarbeid i byggedagboken. Byggmester Ken har mottatt notatet og vil utstede formelt NS 8406 varsel.`;
-        }
-      } else if (lower.includes('time') || lower.includes('dagbok') || lower.includes('jobbet')) {
-        reply = `Timer er loggført på **Villa Fjellstrand**. Værdata (11°C, lett bris) er automatisk vedlagt iht. internkontrollforskriften.`;
-        cardType = 'daily_log';
-        cardData = {
-          date: 'I dag',
-          project: 'Villa Fjellstrand',
-          craftsman: selectedRole === 'byggmester' ? 'Byggeleder Ken' : selectedRole === 'tomrer' ? 'Magne (Tømrer)' : 'VVS Teknikk AS',
-          hours: 7.5,
-          weather: 'Yr.no: 11°C, lett bris, opphold',
-          workPerformed: query,
-          status: 'ARKIVERT'
-        };
-      } else if (lower.includes('sja') || lower.includes('sikkerhet') || lower.includes('risiko')) {
-        reply = `Lovpålagt **Sikker Jobb Analyse (SJA)** er opprettet med sanntids værdata og relevante vernetiltak.`;
-        cardType = 'sja';
-        cardData = {
-          task: query,
-          project: 'Villa Fjellstrand',
-          hazards: ['Fall fra høyde eller klemskade', 'Vind og glatt underlag'],
-          safetyMeasures: ['Bruk av påbudt personlig verneutstyr (PVU)', 'Verifisert underlag før oppstart'],
-          status: 'SIGNERT_I_FELT'
-        };
-      } else if (lower.includes('pris') || lower.includes('margin') || lower.includes('regnskap') || lower.includes('lønn')) {
-        if (selectedRole === 'byggmester') {
-          reply = `Firmaets gjennomsnittlige dekningsbidrag på Villa Fjellstrand er 18,4%, med en timepris på kr 890,- eks. mva.`;
-        } else {
-          reply = `🔒 **Tilgang nektet (Rollebegrenset tilgang):** Som fagarbeider/UE har du ikke tilgang til firmaets interne økonomi. Dette er forbeholdt Byggmester/Ledelsen.`;
-          cardType = 'access_restricted';
-        }
-      } else {
-        reply = `Jeg har prosessert din instruks som **${selectedRole === 'byggmester' ? 'Byggmester' : selectedRole === 'tomrer' ? 'Tømrer' : 'Rørlegger'}** på prosjekt **Villa Fjellstrand**. Alt er loggført og i tråd med TEK17 og NS 8406.`;
-      }
-
-      setActiveScenario({
-        id: `custom-${Date.now()}`,
-        role: selectedRole,
-        label: query,
-        prompt: query,
-        agentReply: reply,
-        cardType,
-        cardData
-      });
-      setIsTyping(false);
-    }, 450);
+  const handleCopyEmbedCode = () => {
+    navigator.clipboard.writeText(embedCodeSnippet);
+    setCopiedEmbed(true);
+    toast.success('iFrame-innbyggingskode kopiert til utklippstavlen!');
+    setTimeout(() => setCopiedEmbed(false), 2500);
   };
 
-  const handleSimulateVoice = () => {
-    setIsListening(true);
-    toast.info('Simulerer taleopptak i felt...');
-    setTimeout(() => {
-      setIsListening(false);
-      const voicePrompts: Record<DemoRole, string> = {
-        byggmester: 'Varsle endringsordre på 32 000 kr for ekstra lydisolering i etasjeskiller',
-        tomrer: 'Før 6 timer montering av gips på stue, måtte vente 1 time på elektriker',
-        rorlegger: 'Trykktest av rør-i-rør fordelerskap fullført med 10 bar, alt tett'
-      };
-      setCustomPrompt(voicePrompts[selectedRole]);
-      toast.success('Tale transkribert med MesterAI Norsk Byggemodell!');
-    }, 1200);
-  };
-
-  const roleScenarios = DEMO_SCENARIOS.filter(s => s.role === selectedRole);
+  const rolePresets = DEMO_PRESETS.filter(p => p.role === selectedRole);
 
   return (
     <section id={id} className="py-16 sm:py-24 bg-gradient-to-b from-white via-slate-50 to-white border-b border-slate-200">
@@ -322,26 +165,60 @@ export default function MesterAIDemoSimulator({
         <div className="text-center max-w-3xl mx-auto mb-10">
           <div className="inline-flex items-center gap-2 px-3.5 py-1 rounded-full bg-electric-50 border border-electric-300/40 text-electric-600 text-xs font-bold tracking-wide uppercase shadow-xs mb-3">
             <Sparkles size={14} className="text-electric-500 animate-pulse" />
-            <span>INTERAKTIV SANDKASSE • PRØVEKJØR MESTERAI LIVE</span>
+            <span>100% EKTE BACKEND AGENT • PRØVEKJØR MESTERAI LIVE</span>
           </div>
           <h2 className="text-2xl sm:text-4xl lg:text-5xl font-black tracking-tight text-navy-900 leading-tight">
-            Se hvordan agenten tilpasser seg <span className="text-gradient-purple">hver enkelt rolle</span>.
+            Opplev den virkelige autonome agenten <span className="text-gradient-purple">i sanntid</span>.
           </h2>
           <p className="mt-4 text-sm sm:text-base text-slate-600 leading-relaxed font-sans">
-            Byggmesteren får full økonomisk kontroll, mens tømreren og rørleggeren har en lynrask assistent på byggeplassen – helt uten tilgang til sensitive bedriftstall.
+            Dette er ikke en animert mockup – du kommuniserer direkte med MesterAIs backend-hjerne. Byggmesteren styrer kalkylen og NS-krav, mens tømreren og rørleggeren har en lynrask assistent på byggeplassen.
           </p>
         </div>
 
         {/* Interactive Simulator Shell */}
         <div className="bg-white rounded-3xl border border-slate-200/90 shadow-card-hover overflow-hidden">
           
-          {/* Top Role Selector Tabs */}
-          <div className="p-3 sm:p-4 bg-slate-900 border-b border-slate-800 flex flex-col sm:flex-row sm:items-center justify-between gap-3">
-            <div className="flex items-center gap-2">
-              <span className="w-2.5 h-2.5 rounded-full bg-emerald-400 animate-pulse" />
-              <span className="text-xs font-mono font-bold text-slate-300 uppercase tracking-wider">
-                Aktivt Sandkasse-prosjekt: <strong className="text-white">Villa Fjellstrand</strong>
-              </span>
+          {/* Top Header: Role Selector & Mode Toggle */}
+          <div className="p-3 sm:p-4 bg-slate-900 border-b border-slate-800 flex flex-col md:flex-row md:items-center justify-between gap-3">
+            
+            {/* Project Indicator & View Toggle */}
+            <div className="flex items-center gap-3 flex-wrap">
+              <div className="flex items-center gap-2">
+                <span className="w-2.5 h-2.5 rounded-full bg-emerald-400 animate-pulse" />
+                <span className="text-xs font-mono font-bold text-slate-300 uppercase tracking-wider">
+                  Sandkasse: <strong className="text-white">Villa Fjellstrand</strong>
+                </span>
+              </div>
+
+              {/* View Mode Tabs (Direct Agent vs Embed iFrame) */}
+              <div className="flex items-center bg-slate-800 p-0.5 rounded-xl border border-slate-700">
+                <button
+                  type="button"
+                  onClick={() => setViewMode('agent')}
+                  className={cn(
+                    "px-2.5 py-1 rounded-lg text-[11px] font-bold transition-all flex items-center gap-1.5 cursor-pointer",
+                    viewMode === 'agent'
+                      ? "bg-electric-600 text-white shadow-xs"
+                      : "text-slate-400 hover:text-white"
+                  )}
+                >
+                  <Bot size={13} />
+                  <span>🟢 Ekte Agent</span>
+                </button>
+                <button
+                  type="button"
+                  onClick={() => setViewMode('iframe')}
+                  className={cn(
+                    "px-2.5 py-1 rounded-lg text-[11px] font-bold transition-all flex items-center gap-1.5 cursor-pointer",
+                    viewMode === 'iframe'
+                      ? "bg-electric-600 text-white shadow-xs"
+                      : "text-slate-400 hover:text-white"
+                  )}
+                >
+                  <Code size={13} />
+                  <span>🖼️ iFrame Visning & Kode</span>
+                </button>
+              </div>
             </div>
 
             {/* 3 Role Buttons */}
@@ -350,13 +227,13 @@ export default function MesterAIDemoSimulator({
                 type="button"
                 onClick={() => handleRoleChange('byggmester')}
                 className={cn(
-                  "px-3.5 py-2 rounded-xl text-xs font-bold transition-all flex items-center gap-2 whitespace-nowrap cursor-pointer",
+                  "px-3 py-1.5 rounded-xl text-xs font-bold transition-all flex items-center gap-1.5 whitespace-nowrap cursor-pointer",
                   selectedRole === 'byggmester'
                     ? "bg-electric-600 text-white shadow-md shadow-electric-600/30"
                     : "text-slate-400 hover:text-white hover:bg-slate-700/50"
                 )}
               >
-                <Building2 size={14} />
+                <Building2 size={13} />
                 <span>1. Byggmester / Leder</span>
               </button>
 
@@ -364,13 +241,13 @@ export default function MesterAIDemoSimulator({
                 type="button"
                 onClick={() => handleRoleChange('tomrer')}
                 className={cn(
-                  "px-3.5 py-2 rounded-xl text-xs font-bold transition-all flex items-center gap-2 whitespace-nowrap cursor-pointer",
+                  "px-3 py-1.5 rounded-xl text-xs font-bold transition-all flex items-center gap-1.5 whitespace-nowrap cursor-pointer",
                   selectedRole === 'tomrer'
                     ? "bg-amber-600 text-white shadow-md shadow-amber-600/30"
                     : "text-slate-400 hover:text-white hover:bg-slate-700/50"
                 )}
               >
-                <HardHat size={14} />
+                <HardHat size={13} />
                 <span>2. Tømrer (I stillas)</span>
               </button>
 
@@ -378,332 +255,205 @@ export default function MesterAIDemoSimulator({
                 type="button"
                 onClick={() => handleRoleChange('rorlegger')}
                 className={cn(
-                  "px-3.5 py-2 rounded-xl text-xs font-bold transition-all flex items-center gap-2 whitespace-nowrap cursor-pointer",
+                  "px-3 py-1.5 rounded-xl text-xs font-bold transition-all flex items-center gap-1.5 whitespace-nowrap cursor-pointer",
                   selectedRole === 'rorlegger'
                     ? "bg-blue-600 text-white shadow-md shadow-blue-600/30"
                     : "text-slate-400 hover:text-white hover:bg-slate-700/50"
                 )}
               >
-                <Wrench size={14} />
+                <Wrench size={13} />
                 <span>3. Rørlegger (Lukkesperre)</span>
               </button>
             </div>
           </div>
 
-          {/* Role Status Banner */}
+          {/* Role Status & GDPR Security Banner */}
           <div className={cn(
-            "px-5 py-3 text-xs font-medium flex items-center justify-between border-b transition-colors",
+            "px-4 sm:px-5 py-2.5 text-xs font-medium flex flex-col sm:flex-row sm:items-center justify-between gap-2 border-b transition-colors",
             selectedRole === 'byggmester' && "bg-purple-50 text-purple-900 border-purple-100",
             selectedRole === 'tomrer' && "bg-amber-50 text-amber-900 border-amber-100",
             selectedRole === 'rorlegger' && "bg-blue-50 text-blue-900 border-blue-100"
           )}>
             <div className="flex items-center gap-2 flex-wrap">
-              <span className="font-bold uppercase tracking-wider text-[10px] px-2 py-0.5 rounded-full bg-white/80 border shadow-xs">
-                {selectedRole === 'byggmester' ? 'Full Administrator • Alle Prosjekter & Økonomi' : selectedRole === 'tomrer' ? 'Prosjektbundet • Kun Villa Fjellstrand' : 'Underentreprenør • Faglig Lukkesperre'}
+              <span className="font-bold uppercase tracking-wider text-[10px] px-2 py-0.5 rounded-full bg-white/90 border shadow-xs">
+                {selectedRole === 'byggmester' ? 'Full Administrator • Alle Prosjekter & Kalkyler' : selectedRole === 'tomrer' ? 'Prosjektbundet • Kun Villa Fjellstrand' : 'Underentreprenør • Faglig Lukkesperre'}
               </span>
               <span className="hidden sm:inline-block">•</span>
               <span className="text-[11px]">
                 {selectedRole === 'byggmester' 
                   ? 'Kan utstede NS 8406 krav, godkjenne fakturering og se dekningsgrad.'
                   : selectedRole === 'tomrer'
-                    ? 'Kan føre timer, stemmestyre byggedagbok og lage SJA. Skjermet mot kalkyler.'
+                    ? 'Kan føre timer, stemmestyre byggedagbok og lage SJA. Skjermet mot interne kalkyler.'
                     : 'Kan kvittere trykktest for å oppheve lukkesperre og melde tverrfaglige avvik.'}
               </span>
             </div>
-            <span className="text-[10px] font-mono font-bold uppercase shrink-0 text-slate-500">
-              MesterAI 2.0 Live
-            </span>
+
+            <div className="flex items-center gap-2 shrink-0">
+              <span className="inline-flex items-center gap-1 text-[10px] font-mono font-bold text-slate-500 bg-white/80 px-2 py-0.5 rounded-md border border-slate-200">
+                <ShieldCheck size={12} className="text-emerald-600" />
+                <span>GDPR & Norsk Lov Isolert</span>
+              </span>
+              <button
+                type="button"
+                onClick={handleResetSession}
+                className="p-1 rounded-md text-slate-500 hover:text-slate-900 hover:bg-white/60 transition-colors"
+                title="Nullstill sandkassesamtale"
+              >
+                <RefreshCw size={12} />
+              </button>
+            </div>
           </div>
 
-          {/* Preset Scenario Buttons (Click-to-test) */}
-          <div className="p-4 sm:p-5 bg-slate-50 border-b border-slate-200">
-            <p className="text-[11px] font-black uppercase tracking-wider text-slate-500 mb-2.5 flex items-center gap-1.5">
+          {/* Quick Scenario Buttons (Click-to-test real AI) */}
+          <div className="p-3 sm:p-4 bg-slate-50 border-b border-slate-200">
+            <p className="text-[11px] font-black uppercase tracking-wider text-slate-500 mb-2 flex items-center gap-1.5">
               <Zap size={13} className="text-electric-600" />
-              <span>Prøv en ferdig kommando for denne rollen (eller skriv din egen under):</span>
+              <span>Klikk for å prøve en reell fagforespørsel for denne rollen (eller skriv fritt i chatten):</span>
             </p>
             <div className="flex flex-wrap gap-2">
-              {roleScenarios.map((sc) => {
-                const isActive = activeScenario.id === sc.id;
-                return (
-                  <button
-                    key={sc.id}
-                    type="button"
-                    onClick={() => triggerScenario(sc)}
-                    className={cn(
-                      "px-3 py-2 rounded-xl text-xs font-bold transition-all text-left flex items-center gap-1.5 cursor-pointer shadow-xs",
-                      isActive
-                        ? "bg-navy-950 text-white ring-2 ring-electric-500"
-                        : "bg-white text-navy-900 border border-slate-200/80 hover:border-slate-300 hover:bg-slate-100/80"
-                    )}
-                  >
-                    <span>{sc.label}</span>
-                    <ChevronRight size={13} className={cn("transition-transform", isActive && "translate-x-0.5 text-electric-400")} />
-                  </button>
-                );
-              })}
+              {rolePresets.map((preset) => (
+                <button
+                  key={preset.id}
+                  type="button"
+                  onClick={() => handleTriggerPreset(preset.prompt)}
+                  className="px-3 py-1.5 rounded-xl text-xs font-bold transition-all text-left flex items-center gap-1.5 cursor-pointer shadow-xs bg-white text-navy-900 border border-slate-200/90 hover:border-electric-400 hover:bg-electric-50/50 active:scale-[0.99]"
+                  title={preset.description}
+                >
+                  <span>{preset.label}</span>
+                  <ChevronRight size={12} className="text-slate-400" />
+                </button>
+              ))}
             </div>
           </div>
 
-          {/* Simulator Conversation Area */}
-          <div className="p-5 sm:p-7 space-y-5 bg-white min-h-[380px] max-h-[580px] overflow-y-auto">
-            
-            {/* User Speech / Prompt Bubble */}
-            <div className="flex items-start justify-end gap-3">
-              <div className="max-w-xl bg-navy-950 text-white rounded-2xl rounded-tr-xs p-4 shadow-sm">
-                <div className="flex items-center gap-2 mb-1 text-[11px] font-mono text-slate-400">
-                  <span>Du ({selectedRole === 'byggmester' ? 'Byggmester Ken' : selectedRole === 'tomrer' ? 'Tømrer Magne' : 'Rørlegger VVS Teknikk'})</span>
-                  <span>•</span>
-                  <span>Akkurat nå</span>
+          {/* VIEW MODE 1: LIVE AGENT (Direct MesterAIAgentFrame) */}
+          {viewMode === 'agent' && (
+            <div className="relative bg-slate-900 overflow-hidden">
+              <MesterAIAgentFrame
+                key={`${selectedRole}-${refreshKey}`}
+                className="w-full h-[520px] sm:h-[560px] border-0 rounded-none shadow-none"
+                selectedProjectName="Villa Fjellstrand"
+                userName={
+                  selectedRole === 'byggmester' 
+                    ? 'Byggmester Ken' 
+                    : selectedRole === 'tomrer' 
+                      ? 'Tømrer Magne' 
+                      : 'Rørlegger Ole'
+                }
+                userTrade={
+                  selectedRole === 'rorlegger' 
+                    ? 'plumber' 
+                    : selectedRole === 'tomrer' 
+                      ? 'carpenter' 
+                      : 'general'
+                }
+                companyName="VikingMester Sandkasse"
+                userId={`demo_visitor_${selectedRole}`}
+                storageKey={`demo_agent_chat_${selectedRole}`}
+                hasBottomNav={false}
+                initialPrompt={pendingPrompt}
+                onPromptHandled={() => setPendingPrompt(undefined)}
+              />
+            </div>
+          )}
+
+          {/* VIEW MODE 2: LIVE IFRAME & EMBED SNIPPET */}
+          {viewMode === 'iframe' && (
+            <div className="p-5 sm:p-7 bg-slate-950 text-white space-y-6">
+              
+              <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-3 pb-4 border-b border-slate-800">
+                <div>
+                  <h3 className="text-sm sm:text-base font-bold text-white flex items-center gap-2">
+                    <Code size={16} className="text-electric-400" />
+                    <span>iFrame Integrasjon: MesterAI på din egen nettside eller intranett</span>
+                  </h3>
+                  <p className="text-xs text-slate-400 mt-0.5">
+                    Agenten kan bygges inn i ethvert prosjektverktøy, SharePoint, Byggeweb eller kundens hjemmeside med én enkelt linje HTML.
+                  </p>
                 </div>
-                <p className="text-xs sm:text-sm font-semibold leading-relaxed">
-                  "{activeScenario.prompt}"
+
+                <div className="flex items-center gap-2">
+                  <a
+                    href={`/embed/agent?role=${selectedRole}&project=Villa+Fjellstrand`}
+                    target="_blank"
+                    rel="noopener noreferrer"
+                    className="px-3 py-1.5 rounded-xl bg-slate-800 hover:bg-slate-700 text-slate-200 text-xs font-bold transition-all flex items-center gap-1.5 border border-slate-700"
+                  >
+                    <span>Åpne i nytt vindu</span>
+                    <ExternalLink size={12} />
+                  </a>
+
+                  <button
+                    type="button"
+                    onClick={handleCopyEmbedCode}
+                    className="px-3.5 py-1.5 rounded-xl bg-electric-600 hover:bg-electric-500 text-white text-xs font-bold transition-all flex items-center gap-1.5 shadow-sm cursor-pointer"
+                  >
+                    {copiedEmbed ? <Check size={13} /> : <Copy size={13} />}
+                    <span>{copiedEmbed ? 'Kopiert!' : 'Kopier iFrame-kode'}</span>
+                  </button>
+                </div>
+              </div>
+
+              {/* Real Live iFrame Rendering */}
+              <div className="rounded-2xl overflow-hidden border border-slate-700 bg-slate-900 shadow-2xl">
+                <div className="px-4 py-2 bg-slate-800/80 border-b border-slate-700 flex items-center justify-between text-[11px] font-mono text-slate-400">
+                  <div className="flex items-center gap-2">
+                    <span className="w-2.5 h-2.5 rounded-full bg-rose-500" />
+                    <span className="w-2.5 h-2.5 rounded-full bg-amber-500" />
+                    <span className="w-2.5 h-2.5 rounded-full bg-emerald-500" />
+                    <span className="ml-2 text-slate-300">https://vikingmester.no/embed/agent?role={selectedRole}&project=Villa+Fjellstrand</span>
+                  </div>
+                  <span className="uppercase text-[10px] tracking-wider text-electric-400 font-bold">iFrame Preview</span>
+                </div>
+                <iframe
+                  src={`/embed/agent?role=${selectedRole}&project=Villa+Fjellstrand`}
+                  className="w-full h-[480px] sm:h-[520px] bg-slate-900"
+                  title="MesterAI iFrame Live Preview"
+                  allow="microphone"
+                />
+              </div>
+
+              {/* Code Snippet Box */}
+              <div className="p-4 rounded-2xl bg-slate-900 border border-slate-800">
+                <div className="flex items-center justify-between mb-2">
+                  <span className="text-xs font-mono font-bold text-slate-300">HTML Innbyggingskode:</span>
+                  <button
+                    type="button"
+                    onClick={handleCopyEmbedCode}
+                    className="text-[11px] font-mono text-electric-400 hover:text-electric-300 flex items-center gap-1 cursor-pointer"
+                  >
+                    <Copy size={12} />
+                    <span>Kopier kode</span>
+                  </button>
+                </div>
+                <pre className="p-3 bg-slate-950 rounded-xl text-xs font-mono text-electric-300 overflow-x-auto border border-slate-800/60 leading-relaxed">
+                  {embedCodeSnippet}
+                </pre>
+              </div>
+
+            </div>
+          )}
+
+          {/* GDPR & Multi-Tenant Security Guarantee Footer */}
+          <div className="p-4 sm:p-5 bg-slate-900/90 border-t border-slate-800 text-xs text-slate-400 flex flex-col md:flex-row md:items-center justify-between gap-3">
+            <div className="flex items-start gap-2.5">
+              <ShieldCheck size={18} className="text-emerald-400 shrink-0 mt-0.5" />
+              <div>
+                <strong className="text-slate-200 block text-xs">
+                  Garanti for Multi-Tenant Isolasjon og GDPR (Personvernforordningen Art. 5 & 28):
+                </strong>
+                <p className="text-[11px] text-slate-400 leading-relaxed mt-0.5">
+                  Uansett hvor mange bedrifter eller brukere som opprettes, har hver kunde en unik kryptografisk sesjonshash. Agenten kan <em>aldri</em> forveksle eller dele kalkyler, HMS-avvik, timelister eller personopplysninger mellom bedrifter.
                 </p>
               </div>
-              <div className="w-9 h-9 rounded-xl bg-slate-100 border border-slate-200 flex items-center justify-center text-navy-900 shrink-0 font-black text-xs">
-                {selectedRole === 'byggmester' ? '👔' : selectedRole === 'tomrer' ? '🔨' : '🚰'}
-              </div>
             </div>
 
-            {/* Agent Live Processing State */}
-            {isTyping && (
-              <div className="flex items-center gap-3">
-                <div className="w-9 h-9 rounded-xl bg-purple-600 text-white flex items-center justify-center shrink-0">
-                  <Bot size={18} className="animate-spin" />
-                </div>
-                <div className="px-4 py-3 bg-slate-50 border border-slate-200 rounded-2xl rounded-tl-xs text-xs font-mono text-slate-500 flex items-center gap-2">
-                  <span className="w-2 h-2 rounded-full bg-electric-500 animate-ping" />
-                  <span>MesterAI tolker tale og sjekker TEK17 / NS 8406 regler...</span>
-                </div>
-              </div>
-            )}
-
-            {/* Agent Response Bubble */}
-            {!isTyping && (
-              <motion.div 
-                initial={{ opacity: 0, y: 10 }}
-                animate={{ opacity: 1, y: 0 }}
-                transition={{ duration: 0.25 }}
-                className="flex items-start gap-3"
-              >
-                <div className="w-9 h-9 rounded-xl bg-gradient-to-br from-purple-700 to-indigo-800 text-white flex items-center justify-center shrink-0 shadow-md">
-                  <Sparkles size={18} />
-                </div>
-
-                <div className="max-w-2xl space-y-4">
-                  {/* Speech response */}
-                  <div className="bg-slate-50 border border-slate-200 rounded-2xl rounded-tl-xs p-4 text-xs sm:text-sm text-navy-950 leading-relaxed font-sans shadow-xs">
-                    <p className="whitespace-pre-line">{activeScenario.agentReply}</p>
-                  </div>
-
-                  {/* Dynamic Visual Document Cards */}
-                  {activeScenario.cardType === 'change_order' && activeScenario.cardData && (
-                    <div className="p-4 sm:p-5 rounded-2xl bg-white border-2 border-electric-500/80 shadow-md">
-                      <div className="flex items-center justify-between pb-3 border-b border-slate-100 mb-3">
-                        <div className="flex items-center gap-2">
-                          <FileText size={16} className="text-electric-600" />
-                          <span className="text-xs font-black text-navy-900 tracking-wider">
-                            ENDRINGSORDRE {activeScenario.cardData.orderNumber} (NS 8406)
-                          </span>
-                        </div>
-                        <span className={cn(
-                          "text-[10px] font-black uppercase px-2 py-0.5 rounded-full",
-                          isSimulatedApproved 
-                            ? "bg-emerald-100 text-emerald-800 border border-emerald-300"
-                            : "bg-amber-100 text-amber-800 border border-amber-300"
-                        )}>
-                          {isSimulatedApproved ? 'GODKJENT AV BYGGHERRE' : activeScenario.cardData.status}
-                        </span>
-                      </div>
-
-                      <div className="space-y-1.5 text-xs text-slate-700 mb-4">
-                        <p><strong>Beskrivelse:</strong> {activeScenario.cardData.title}</p>
-                        <p><strong>Prosjekt:</strong> {activeScenario.cardData.project}</p>
-                        <p><strong>Fristforlengelse:</strong> +{activeScenario.cardData.daysExtension || 2} virkedager</p>
-                        <p className="text-sm font-black text-navy-900 mt-2">
-                          Kompensasjonskrav: kr {activeScenario.cardData.amount?.toLocaleString('no-NO')},- eks. mva
-                        </p>
-                      </div>
-
-                      {!isSimulatedApproved ? (
-                        <button
-                          type="button"
-                          onClick={() => {
-                            setIsSimulatedApproved(true);
-                            toast.success('Byggherre godkjente endringsordren via SMS-link!');
-                          }}
-                          className="w-full py-2.5 px-4 bg-emerald-600 hover:bg-emerald-700 text-white rounded-xl text-xs font-bold transition-all flex items-center justify-center gap-1.5 shadow-sm cursor-pointer"
-                        >
-                          <Check size={14} />
-                          <span>Simuler at Byggherre godkjenner på mobil</span>
-                        </button>
-                      ) : (
-                        <div className="p-3 bg-emerald-50 border border-emerald-200 rounded-xl text-xs text-emerald-800 font-bold flex items-center gap-2">
-                          <CheckCircle2 size={16} className="text-emerald-600" />
-                          <span>Kravet er låst og klart for direkte fakturering (hindrer tap av penger).</span>
-                        </div>
-                      )}
-                    </div>
-                  )}
-
-                  {activeScenario.cardType === 'daily_log' && activeScenario.cardData && (
-                    <div className="p-4 sm:p-5 rounded-2xl bg-white border border-slate-200 shadow-md">
-                      <div className="flex items-center justify-between pb-3 border-b border-slate-100 mb-3">
-                        <div className="flex items-center gap-2">
-                          <Clock size={16} className="text-amber-600" />
-                          <span className="text-xs font-black text-navy-900 tracking-wider">
-                            BYGGEDAGBOK • {activeScenario.cardData.project}
-                          </span>
-                        </div>
-                        <span className="text-[10px] font-black uppercase px-2 py-0.5 rounded-full bg-emerald-100 text-emerald-800">
-                          {activeScenario.cardData.status}
-                        </span>
-                      </div>
-
-                      <div className="space-y-2 text-xs text-slate-700">
-                        <div className="p-2.5 bg-slate-50 rounded-xl flex items-center gap-2 text-blue-700">
-                          <CloudSun size={15} />
-                          <span className="font-semibold">{activeScenario.cardData.weather}</span>
-                        </div>
-                        <p><strong>Ført av:</strong> {activeScenario.cardData.craftsman} ({activeScenario.cardData.hours} timer)</p>
-                        <p><strong>Arbeid:</strong> {activeScenario.cardData.workPerformed}</p>
-                      </div>
-                    </div>
-                  )}
-
-                  {activeScenario.cardType === 'sja' && activeScenario.cardData && (
-                    <div className="p-4 sm:p-5 rounded-2xl bg-white border border-amber-200 shadow-md">
-                      <div className="flex items-center justify-between pb-3 border-b border-slate-100 mb-3">
-                        <div className="flex items-center gap-2 text-amber-700 font-black text-xs">
-                          <AlertTriangle size={16} />
-                          <span>SIKKER JOBB ANALYSE (SJA)</span>
-                        </div>
-                        <span className="text-[10px] font-black uppercase px-2 py-0.5 rounded-full bg-amber-100 text-amber-900">
-                          TEK17 & ARBEIDSTILSYNET
-                        </span>
-                      </div>
-
-                      <div className="space-y-2.5 text-xs text-slate-700">
-                        <p><strong>Oppgave:</strong> {activeScenario.cardData.task || activeScenario.cardData.title}</p>
-                        {activeScenario.cardData.hazards && (
-                          <div>
-                            <span className="font-bold text-rose-700">Identifiserte Farer:</span>
-                            <ul className="list-disc list-inside mt-0.5 space-y-0.5 text-slate-600">
-                              {activeScenario.cardData.hazards.map((h: string, idx: number) => (
-                                <li key={idx}>{h}</li>
-                              ))}
-                            </ul>
-                          </div>
-                        )}
-                        {activeScenario.cardData.safetyMeasures && (
-                          <div>
-                            <span className="font-bold text-emerald-700">Iverksatte Sikkerhetstiltak:</span>
-                            <ul className="list-disc list-inside mt-0.5 space-y-0.5 text-slate-600">
-                              {activeScenario.cardData.safetyMeasures.map((m: string, idx: number) => (
-                                <li key={idx}>{m}</li>
-                              ))}
-                            </ul>
-                          </div>
-                        )}
-                      </div>
-                    </div>
-                  )}
-
-                  {activeScenario.cardType === 'pre_close' && (
-                    <div className="p-4 sm:p-5 rounded-2xl bg-white border-2 border-emerald-500 shadow-md">
-                      <div className="flex items-center justify-between pb-3 border-b border-slate-100 mb-3">
-                        <div className="flex items-center gap-2">
-                          <ShieldCheck size={16} className="text-emerald-600" />
-                          <span className="text-xs font-black text-navy-900 tracking-wider">
-                            TVERRFAGLIG LUKKESPERRE (TEK17 § 13-15)
-                          </span>
-                        </div>
-                        <span className="text-[10px] font-black uppercase px-2 py-0.5 rounded-full bg-emerald-100 text-emerald-950 flex items-center gap-1">
-                          <Unlock size={12} />
-                          GRØNT LYS – LUKKING TILLATT
-                        </span>
-                      </div>
-
-                      <div className="grid grid-cols-2 gap-2 text-xs mb-3">
-                        <div className="p-2 bg-emerald-50 rounded-xl border border-emerald-200 flex items-center gap-1.5 text-emerald-900 font-bold">
-                          <Check size={14} className="text-emerald-600 shrink-0" />
-                          <span>Rørlegger: Trykktest 10 bar</span>
-                        </div>
-                        <div className="p-2 bg-emerald-50 rounded-xl border border-emerald-200 flex items-center gap-1.5 text-emerald-900 font-bold">
-                          <Check size={14} className="text-emerald-600 shrink-0" />
-                          <span>Elektriker: K-rør fotografert</span>
-                        </div>
-                        <div className="p-2 bg-emerald-50 rounded-xl border border-emerald-200 flex items-center gap-1.5 text-emerald-900 font-bold">
-                          <Check size={14} className="text-emerald-600 shrink-0" />
-                          <span>Dampsperre: Klemte skjøter</span>
-                        </div>
-                        <div className="p-2 bg-emerald-50 rounded-xl border border-emerald-200 flex items-center gap-1.5 text-emerald-900 font-bold">
-                          <Check size={14} className="text-emerald-600 shrink-0" />
-                          <span>Isolasjon: Uten kuldebro</span>
-                        </div>
-                      </div>
-                      <p className="text-[11px] text-slate-500 italic">
-                        Byggeleder og tømrer varslet automatisk: Vegg på Bad 2. etasje kan nå kles med gipsplater.
-                      </p>
-                    </div>
-                  )}
-
-                  {activeScenario.cardType === 'access_restricted' && (
-                    <div className="p-4 rounded-2xl bg-rose-50 border-2 border-rose-200 text-xs">
-                      <div className="flex items-center gap-2 text-rose-900 font-bold mb-1">
-                        <Lock size={15} className="text-rose-600" />
-                        <span>Sikkerhetsbarriere aktiv</span>
-                      </div>
-                      <p className="text-rose-700">
-                        VikingMester skiller strengt mellom administrative bedriftsdata og byggeplassens fagarbeidere. Dine håndverkere ser kun det de trenger for å bygge feilfritt.
-                      </p>
-                    </div>
-                  )}
-                </div>
-              </motion.div>
-            )}
-
-            <div ref={messagesEndRef} />
+            <div className="flex items-center gap-2 shrink-0">
+              <span className="px-2.5 py-1 rounded-lg bg-slate-800 text-[10px] font-mono font-bold text-emerald-400 border border-slate-700">
+                ISO / GDPR Kompatibel
+              </span>
+            </div>
           </div>
-
-          {/* Interactive Input Bar */}
-          <form onSubmit={handleCustomSubmit} className="p-3 sm:p-4 bg-slate-50 border-t border-slate-200 flex items-center gap-2">
-            <button
-              type="button"
-              onClick={handleSimulateVoice}
-              className={cn(
-                "w-11 h-11 rounded-2xl flex items-center justify-center transition-all shrink-0 cursor-pointer",
-                isListening 
-                  ? "bg-rose-600 text-white animate-pulse" 
-                  : "bg-white hover:bg-slate-100 text-slate-700 border border-slate-300"
-              )}
-              title="Snakk inn på byggeplass"
-            >
-              {isListening ? <MicOff size={18} /> : <Mic size={18} />}
-            </button>
-
-            <input
-              type="text"
-              value={customPrompt}
-              onChange={(e) => setCustomPrompt(e.target.value)}
-              placeholder={
-                selectedRole === 'byggmester' 
-                  ? "Skriv inn tilbud, NS 8406 endring eller spørsmål..." 
-                  : selectedRole === 'tomrer'
-                    ? "Før timer, skriv byggedagbok eller be om TEK17 råd..."
-                    : "Skriv trykktest, avvik eller lukkesperre..."
-              }
-              className="flex-1 px-4 py-3 bg-white border border-slate-300 rounded-2xl text-xs sm:text-sm text-navy-900 placeholder:text-slate-400 focus:outline-hidden focus:ring-2 focus:ring-electric-500 transition-all"
-            />
-
-            <button
-              type="submit"
-              disabled={!customPrompt.trim()}
-              className="px-4 py-3 bg-electric-600 hover:bg-electric-700 disabled:opacity-40 text-white rounded-2xl font-bold text-xs transition-all flex items-center gap-1.5 shrink-0 shadow-sm cursor-pointer"
-            >
-              <span>Test</span>
-              <Send size={14} />
-            </button>
-          </form>
 
           {/* Bottom Conversion CTA Strip */}
           <div className="p-4 sm:p-6 bg-gradient-to-r from-navy-950 via-slate-900 to-navy-950 text-white flex flex-col sm:flex-row sm:items-center justify-between gap-4">

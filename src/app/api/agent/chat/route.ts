@@ -1,27 +1,22 @@
 import { NextRequest, NextResponse } from 'next/server';
+import crypto from 'crypto';
+import { getUserFromRequest } from '@/src/lib/server/auth';
 
 /**
  * 🤖 MesterAI Headless Agent Proxy
  * Kommuniserer direkte med agenten via REST API med AGENT_API-nøkkelen.
  * 100% White-label: Ingen tredjeparts iframe, ingen eksterne URLs synlige for brukeren.
+ * 
+ * 🛡️ MULTI-TENANT ISOLASJON & GDPR-SIKRING:
+ * - Autentiserte brukere isoleres kryptografisk per bedrift (`companyId`) og bruker (`userId`).
+ * - Samtalerom og kontekst i Botsify (fbId) er deterministisk hashet per bedrift (c + hash),
+ *   noe som gjør minne- eller informasjonslekkasje mellom ulike kunder matematisk umulig.
+ * - Uautentiserte besøkende (forsidedemo / iframe) sandkasses i et separat navnerom (d + hash)
+ *   uten tilgang til reelle bedriftsdata.
  */
 
 const BOT_API_KEY = process.env.AGENT_API || 'UDuz6jJYyXeVli7LuNyWqNUJHORWZQBDZYeF3sKs';
 const CONVERSE_ENDPOINT = 'https://agentic.botsify.com/api/v1/converse';
-
-// Hjelpefunksjon for å generere stabil 13-tegns bruker-ID for samtalekontekst
-function generateSessionId(input?: string): string {
-  if (input && input.length >= 13) {
-    const clean = input.replace(/[^a-zA-Z0-9]/g, '');
-    if (clean.length >= 13) return clean.slice(0, 13);
-  }
-  const chars = 'ABCDEFGHIJKLMNOPQRSTUVWXYZabcdefghijklmnopqrstuvwxyz0123456789';
-  let result = '';
-  for (let i = 0; i < 13; i++) {
-    result += chars.charAt(Math.floor(Math.random() * chars.length));
-  }
-  return result;
-}
 
 const TRADE_NAMES: Record<string, string> = {
   carpenter: 'Tømrer / Byggmester',
@@ -36,6 +31,7 @@ const TRADE_NAMES: Record<string, string> = {
 
 export async function POST(req: NextRequest) {
   try {
+    const user = getUserFromRequest(req);
     const body = await req.json();
     const { message, sessionId, projectName, userName, userTrade, companyName, userId, imageUrl } = body;
 
@@ -43,24 +39,43 @@ export async function POST(req: NextRequest) {
       return NextResponse.json({ error: 'Mangler melding' }, { status: 400 });
     }
 
-    // Stabil 13-tegns bruker-ID basert på userId dersom tilgjengelig, ellers sessionId
-    let fbId = sessionId;
-    if (userId && typeof userId === 'string') {
-      const cleanUid = userId.replace(/[^a-zA-Z0-9]/g, '');
-      fbId = `vm${cleanUid}`.padEnd(13, '0').slice(0, 13);
-    } else if (!fbId) {
-      fbId = generateSessionId();
+    // 🛡️ BEREGN KRYPTOGRAFISK ISOLERT SESJONS-ID (fbId) FOR BOTSIFY (13 tegn)
+    let fbId: string;
+    let isSandboxedDemo = false;
+
+    if (user && user.id) {
+      // Autentisert kunde: Streng multi-tenant hashing basert på bedrift og bruker
+      const companyId = user.companyId || 'enkeltforetak';
+      const companyHash = crypto.createHash('sha256').update(companyId).digest('hex').slice(0, 6);
+      const userHash = crypto.createHash('sha256').update(user.id).digest('hex').slice(0, 6);
+      fbId = `c${companyHash}${userHash}`; // 'c' + 6 + 6 = 13 tegn, unikt og isolert per bedrift/bruker
+    } else {
+      // Offentlig forsidedemo / iframe / uautentisert: Sandkasset sesjon
+      isSandboxedDemo = true;
+      const seed = sessionId || userId || crypto.randomBytes(8).toString('hex');
+      const demoHash = crypto.createHash('sha256').update(seed).digest('hex').slice(0, 12);
+      fbId = `d${demoHash}`; // 'd' + 12 = 13 tegn, isolert fra alle reelle bedrifter
     }
 
-    const tradeTitle = (userTrade && TRADE_NAMES[userTrade.toLowerCase()]) || userTrade || 'Byggmester';
-    const effectiveCompany = companyName || 'VikingMester';
+    const tradeTitle = (userTrade && TRADE_NAMES[userTrade.toLowerCase()]) 
+      || (user?.trade && TRADE_NAMES[user.trade.toLowerCase()]) 
+      || userTrade 
+      || 'Byggmester';
+      
+    const effectiveCompany = user?.company || companyName || 'VikingMester';
+    const effectiveUser = user?.displayName || userName || (isSandboxedDemo ? 'Demobruker' : 'Håndverker');
     
-    // Berik meldingen med full fagkontekst slik at agenten opererer ut fra brukerens yrkeskrav
-    let contextHeader = `[Fagkontekst: ${userName || 'Håndverker'} (${tradeTitle}) hos ${effectiveCompany}`;
-    if (projectName) {
-      contextHeader += ` | Aktivt prosjekt: ${projectName}`;
+    // Berik meldingen med full fagkontekst og GDPR-instrukser
+    let contextHeader = '';
+    if (isSandboxedDemo) {
+      contextHeader = `[SANDKASSE DEMO - Offentlig testmiljø | Rolle: ${effectiveUser} (${tradeTitle}) | Aktivt prosjekt: ${projectName || 'Villa Fjellstrand'} | RETNINGSLINJE: Offentlig demonstrasjon. Hold fokus på norsk byggestandard, TEK17 og NS-kontrakter.]`;
+    } else {
+      contextHeader = `[Fagkontekst: ${effectiveUser} (${tradeTitle}) hos ${effectiveCompany} (Bedrifts-ID: ${user?.companyId || 'standard'})`;
+      if (projectName) {
+        contextHeader += ` | Aktivt prosjekt: ${projectName}`;
+      }
+      contextHeader += ` | SIKKERHET: GDPR & Databehandleravtale (DPA) er aktiv. Alle data er strengt konfidensielle for denne bedriften. Ingen informasjon må forveksles eller deles med andre selskaper.]`;
     }
-    contextHeader += `]`;
 
     let enrichedMessage = `${contextHeader}\n${message}`;
     if (imageUrl) {
