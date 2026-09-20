@@ -1,7 +1,6 @@
 import { NextRequest, NextResponse } from 'next/server';
-import { dbQuery, inMemoryStore } from '@/src/lib/server/db';
+import { sendSystemEmail } from '@/src/lib/server/emailSender';
 import { getUserFromRequest } from '@/src/lib/server/auth';
-import { sanitizeHeader } from '@/src/lib/sanitize';
 import { checkRateLimit, getClientIp } from '@/src/lib/server/rateLimit';
 
 export async function POST(req: NextRequest) {
@@ -31,67 +30,26 @@ export async function POST(req: NextRequest) {
       return NextResponse.json({ error: 'Mottaker (to) og innhold (subject/body) er påkrevd.' }, { status: 400 });
     }
 
-    // 🛡️ SECURITY: Sanitize headers to eliminate CRLF injection
-    const sanitizedTo = Array.isArray(to) ? to.map((t) => sanitizeHeader(String(t))) : sanitizeHeader(String(to));
-    const sanitizedSubject = sanitizeHeader(String(subject || 'Melding fra VikingMester'));
-
-    const emailLog = {
-      id: 'email-' + Date.now() + '-' + Math.random().toString(36).substring(2, 7),
-      to: sanitizedTo,
-      subject: sanitizedSubject,
+    const sendRes = await sendSystemEmail({
+      to,
+      subject,
+      html: bodyHtml,
       text: bodyText,
       type,
-      status: 'sent',
-      createdAt: new Date().toISOString(),
-      metadata: JSON.stringify(metadata)
-    };
-
-    // If RESEND_API_KEY is configured, send real email via Resend
-    const resendKey = process.env.RESEND_API_KEY || process.env.RESEND_API || process.env.RESEND_KEY;
-    if (resendKey) {
-      try {
-        const fromEmail = process.env.EMAIL_FROM || process.env.RESEND_FROM || 'VikingMester <hei@vikingmester.no>';
-        const resendRes = await fetch('https://api.resend.com/emails', {
-          method: 'POST',
-          headers: {
-            'Content-Type': 'application/json',
-            'Authorization': `Bearer ${resendKey}`
-          },
-          body: JSON.stringify({
-            from: fromEmail,
-            reply_to: 'hei@vikingmester.no',
-            to: Array.isArray(to) ? to : [to],
-            subject: sanitizedSubject,
-            html: bodyHtml,
-            text: bodyText
-          })
-        });
-
-        if (resendRes.ok) {
-          const resendData = await resendRes.json();
-          emailLog.metadata = JSON.stringify({ ...metadata, resendId: resendData.id });
-        }
-      } catch (sendErr) {
-        console.warn('Resend API error (falling back to logged delivery):', sendErr);
-      }
-    }
-
-    // Persist to database / log
-    await dbQuery(`
-      INSERT INTO email_logs (id, recipient, subject, body, type, status, created_at)
-      VALUES ($1, $2, $3, $4, $5, $6, $7)
-    `, [emailLog.id, emailLog.to, emailLog.subject, emailLog.text, emailLog.type, emailLog.status, emailLog.createdAt]).catch(() => {
-      // In-memory fallback
-      if (!inMemoryStore.email_logs) inMemoryStore.email_logs = [];
-      inMemoryStore.email_logs.push(emailLog);
+      metadata,
+      companyName: (user as any)?.company || 'VikingMester',
+      authorName: user?.displayName || 'Bruker'
     });
 
+    const isSent = sendRes.success && sendRes.status === 'sent';
     return NextResponse.json({
-      success: true,
-      message: `E-post sendt til ${to}`,
-      id: emailLog.id,
-      status: emailLog.status
-    });
+      success: isSent,
+      message: sendRes.message,
+      id: sendRes.id,
+      resendId: sendRes.resendId,
+      status: sendRes.status,
+      fromUsed: sendRes.fromUsed
+    }, { status: isSent ? 200 : 502 });
   } catch (error: any) {
     console.error('Email dispatch error:', error);
     return NextResponse.json({ error: error.message || 'Kunne ikke sende e-post.' }, { status: 500 });
