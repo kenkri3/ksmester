@@ -7,7 +7,7 @@ import MesterAIAgentFrame from '@/src/components/MesterAIAgentFrame';
 function EmbedAgentContent() {
   const searchParams = useSearchParams();
   const role = searchParams.get('role') || 'byggmester';
-  const project = searchParams.get('project') || 'Villa Fjellstrand';
+  const project = searchParams.get('project') || 'Geitekleiva';
   const trade = role === 'tomrer' ? 'carpenter' : (role === 'rorlegger' ? 'plumber' : 'general');
   const userName = role === 'tomrer' ? 'Tømrer Magne' : (role === 'rorlegger' ? 'Rørlegger Ole' : 'Byggmester Ken');
 

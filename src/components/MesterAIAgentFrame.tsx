@@ -196,6 +196,7 @@ export default function MesterAIAgentFrame({
   const fileInputRef = useRef<HTMLInputElement>(null);
 
   const messagesEndRef = useRef<HTMLDivElement>(null);
+  const messagesContainerRef = useRef<HTMLDivElement>(null);
   const recognitionRef = useRef<any>(null);
   const textareaRef = useRef<HTMLTextAreaElement>(null);
   const loadingTimerRef = useRef<any>(null);
@@ -363,7 +364,13 @@ export default function MesterAIAgentFrame({
     try {
       sessionStorage.setItem(effectiveStorageKey, JSON.stringify(messages));
     } catch {}
-    messagesEndRef.current?.scrollIntoView({ behavior: 'smooth' });
+    // Scroll kun internt i meldingsboksen uten å rulle foreldrevinduet eller hele nettsiden
+    if (messagesContainerRef.current) {
+      messagesContainerRef.current.scrollTo({
+        top: messagesContainerRef.current.scrollHeight,
+        behavior: 'smooth'
+      });
+    }
   }, [messages, effectiveStorageKey]);
 
   const handleClearHistory = () => {
@@ -745,7 +752,10 @@ export default function MesterAIAgentFrame({
       </div>
 
       {/* 💬 Meldinger-container */}
-      <div className="flex-1 overflow-y-auto p-4 sm:p-5 space-y-4 bg-slate-50/50 custom-scrollbar">
+      <div 
+        ref={messagesContainerRef}
+        className="flex-1 overflow-y-auto p-4 sm:p-5 space-y-4 bg-slate-50/50 custom-scrollbar"
+      >
         {messages.map((msg) => (
           <div 
             key={msg.id}

@@ -44,7 +44,7 @@ const DEMO_PRESETS: DemoPreset[] = [
     id: 'bm-status',
     role: 'byggmester',
     label: '📊 Prosjekthelse & Krav',
-    prompt: 'Hva er prosjekthelse og ubehandlede krav på Villa Fjellstrand?',
+    prompt: 'Hva er prosjekthelse og ubehandlede krav på Geitekleiva?',
     description: 'Henter sanntidsstatus på fremdrift, økonomiske krav og aktive lukkesperrer.'
   },
   {
@@ -60,7 +60,7 @@ const DEMO_PRESETS: DemoPreset[] = [
     id: 'tom-log',
     role: 'tomrer',
     label: '🎙️ Stemmestyrt dagbok',
-    prompt: 'Før 7,5 timer lekting og vindsperre i byggedagboken for Villa Fjellstrand',
+    prompt: 'Før 7,5 timer lekting og vindsperre i byggedagboken for Geitekleiva',
     description: 'Loggfører timer og henter sanntids værdata automatisk fra Yr.no.'
   },
   {
@@ -140,7 +140,7 @@ export default function MesterAIDemoSimulator({
   };
 
   const embedCodeSnippet = `<iframe 
-  src="https://vikingmester.no/embed/agent?role=${selectedRole}&project=Villa+Fjellstrand" 
+  src="https://vikingmester.no/embed/agent?role=${selectedRole}&project=Geitekleiva" 
   width="100%" 
   height="600" 
   frameborder="0" 
@@ -186,7 +186,7 @@ export default function MesterAIDemoSimulator({
               <div className="flex items-center gap-2">
                 <span className="w-2.5 h-2.5 rounded-full bg-emerald-400 animate-pulse" />
                 <span className="text-xs font-mono font-bold text-slate-300 uppercase tracking-wider">
-                  Sandkasse: <strong className="text-white">Villa Fjellstrand</strong>
+                  Sandkasse: <strong className="text-white">Geitekleiva</strong>
                 </span>
               </div>
 
@@ -276,7 +276,7 @@ export default function MesterAIDemoSimulator({
           )}>
             <div className="flex items-center gap-2 flex-wrap">
               <span className="font-bold uppercase tracking-wider text-[10px] px-2 py-0.5 rounded-full bg-white/90 border shadow-xs">
-                {selectedRole === 'byggmester' ? 'Full Administrator • Alle Prosjekter & Kalkyler' : selectedRole === 'tomrer' ? 'Prosjektbundet • Kun Villa Fjellstrand' : 'Underentreprenør • Faglig Lukkesperre'}
+                {selectedRole === 'byggmester' ? 'Full Administrator • Alle Prosjekter & Kalkyler' : selectedRole === 'tomrer' ? 'Prosjektbundet • Kun Geitekleiva' : 'Underentreprenør • Faglig Lukkesperre'}
               </span>
               <span className="hidden sm:inline-block">•</span>
               <span className="text-[11px]">
@@ -332,7 +332,7 @@ export default function MesterAIDemoSimulator({
               <MesterAIAgentFrame
                 key={`${selectedRole}-${refreshKey}`}
                 className="w-full h-[520px] sm:h-[560px] border-0 rounded-none shadow-none"
-                selectedProjectName="Villa Fjellstrand"
+                selectedProjectName="Geitekleiva"
                 userName={
                   selectedRole === 'byggmester' 
                     ? 'Byggmester Ken' 
@@ -374,7 +374,7 @@ export default function MesterAIDemoSimulator({
 
                 <div className="flex items-center gap-2">
                   <a
-                    href={`/embed/agent?role=${selectedRole}&project=Villa+Fjellstrand`}
+                    href={`/embed/agent?role=${selectedRole}&project=Geitekleiva`}
                     target="_blank"
                     rel="noopener noreferrer"
                     className="px-3 py-1.5 rounded-xl bg-slate-800 hover:bg-slate-700 text-slate-200 text-xs font-bold transition-all flex items-center gap-1.5 border border-slate-700"
@@ -401,12 +401,12 @@ export default function MesterAIDemoSimulator({
                     <span className="w-2.5 h-2.5 rounded-full bg-rose-500" />
                     <span className="w-2.5 h-2.5 rounded-full bg-amber-500" />
                     <span className="w-2.5 h-2.5 rounded-full bg-emerald-500" />
-                    <span className="ml-2 text-slate-300">https://vikingmester.no/embed/agent?role={selectedRole}&project=Villa+Fjellstrand</span>
+                    <span className="ml-2 text-slate-300">https://vikingmester.no/embed/agent?role={selectedRole}&project=Geitekleiva</span>
                   </div>
                   <span className="uppercase text-[10px] tracking-wider text-electric-400 font-bold">iFrame Preview</span>
                 </div>
                 <iframe
-                  src={`/embed/agent?role=${selectedRole}&project=Villa+Fjellstrand`}
+                  src={`/embed/agent?role=${selectedRole}&project=Geitekleiva`}
                   className="w-full h-[480px] sm:h-[520px] bg-slate-900"
                   title="MesterAI iFrame Live Preview"
                   allow="microphone"

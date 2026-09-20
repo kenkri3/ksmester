@@ -65,16 +65,16 @@ export async function POST(req: NextRequest) {
     const effectiveCompany = user?.company || companyName || 'VikingMester';
     const effectiveUser = user?.displayName || userName || (isSandboxedDemo ? 'Demobruker' : 'Håndverker');
     
-    // Berik meldingen med full fagkontekst og GDPR-instrukser
+    // Berik meldingen med full fagkontekst, prosjektfleksibilitet og GDPR-instrukser
     let contextHeader = '';
     if (isSandboxedDemo) {
-      contextHeader = `[SANDKASSE DEMO - Offentlig testmiljø | Rolle: ${effectiveUser} (${tradeTitle}) | Aktivt prosjekt: ${projectName || 'Villa Fjellstrand'} | RETNINGSLINJE: Offentlig demonstrasjon. Hold fokus på norsk byggestandard, TEK17 og NS-kontrakter.]`;
+      contextHeader = `[SANDKASSE DEMO - Offentlig testmiljø | Rolle: ${effectiveUser} (${tradeTitle}) | Aktivt prosjekt: ${projectName || 'Geitekleiva'} | RETNINGSLINJE: Dette er en demonstrasjon av MesterAI for bygg- og anleggsbransjen. Hvis brukeren refererer til ${projectName || 'Geitekleiva'}, eller et fiktivt / nytt prosjekt som en kunde nevner, skal du besvare forespørselen direkte, profesjonelt og handlekraftig (kalkyle, NS 8406 endringsvarsel, SJA, byggedagbok eller TEK17) for dette prosjektet. Du skal ALDRI avvise brukeren eller si at prosjektet ikke finnes.]`;
     } else {
       contextHeader = `[Fagkontekst: ${effectiveUser} (${tradeTitle}) hos ${effectiveCompany} (Bedrifts-ID: ${user?.companyId || 'standard'})`;
       if (projectName) {
         contextHeader += ` | Aktivt prosjekt: ${projectName}`;
       }
-      contextHeader += ` | SIKKERHET: GDPR & Databehandleravtale (DPA) er aktiv. Alle data er strengt konfidensielle for denne bedriften. Ingen informasjon må forveksles eller deles med andre selskaper.]`;
+      contextHeader += ` | INSTRUKS: Svar utfyllende og presist basert på prosjektet. Hvis brukeren spør om nye oppdrag, kalkylering eller fiktive prosjekter, skal du likevel bistå med full faglig styrke (timer, materialer, påslag, NS 8406 endringsvarsel, SJA og TEK17) uten å begrense deg til kun kjente oppdrag. | SIKKERHET: GDPR & Databehandleravtale (DPA) er aktiv. Alle data er strengt konfidensielle for denne bedriften.]`;
     }
 
     let enrichedMessage = `${contextHeader}\n${message}`;
