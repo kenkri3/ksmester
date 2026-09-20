@@ -87,7 +87,7 @@ import ProjectDetails from './ProjectDetails';
 import SmartSearch from './SmartSearch';
 import ChangeOrderModal from './ChangeOrderModal';
 import { changeOrderService } from '../services/changeOrderService';
-import PreCloseInspectorModal, { LukkesperreZone } from './PreCloseInspectorModal';
+import PreCloseInspectorModal, { LukkesperreZone, DEFAULT_LUKKESPERRE_ZONES } from './PreCloseInspectorModal';
 import SJAPreviewModal, { SJADocument } from './SJAPreviewModal';
 import VoiceSJAModal from './VoiceSJAModal';
 import ProjectContactsModal from './ProjectContactsModal';
@@ -274,8 +274,8 @@ export default function Dashboard({
   }, []);
 
   // Lukkesperre & Pre-close state
-  const [lukkesperreZones, setLukkesperreZones] = useState<LukkesperreZone[]>([]);
-  const [selectedLukkesperreZone, setSelectedLukkesperreZone] = useState<LukkesperreZone | null>(null);
+  const [lukkesperreZones, setLukkesperreZones] = useState<LukkesperreZone[]>(DEFAULT_LUKKESPERRE_ZONES);
+  const [selectedLukkesperreZone, setSelectedLukkesperreZone] = useState<LukkesperreZone | null>(DEFAULT_LUKKESPERRE_ZONES[0]);
   const [isPreCloseModalOpen, setIsPreCloseModalOpen] = useState(false);
 
   // SJA Document preview state
@@ -403,7 +403,7 @@ export default function Dashboard({
           break;
         case 'pre_close':
           setActiveTab('kvalitet');
-          setSelectedLukkesperreZone(lukkesperreZones[0]);
+          setSelectedLukkesperreZone(selectedLukkesperreZone || lukkesperreZones[0] || DEFAULT_LUKKESPERRE_ZONES[0]);
           setIsPreCloseModalOpen(true);
           break;
         case 'omnichannel':
@@ -608,7 +608,7 @@ export default function Dashboard({
       case 'pre_close':
       case 'lukkesperre':
         setSelectedProject(null);
-        setSelectedLukkesperreZone(lukkesperreZones[0] || null);
+        setSelectedLukkesperreZone(selectedLukkesperreZone || lukkesperreZones[0] || DEFAULT_LUKKESPERRE_ZONES[0]);
         setIsPreCloseModalOpen(true);
         break;
 
@@ -1158,18 +1158,7 @@ export default function Dashboard({
       <PreCloseInspectorModal
         isOpen={isPreCloseModalOpen}
         onClose={() => setIsPreCloseModalOpen(false)}
-        zone={selectedLukkesperreZone || lukkesperreZones[0] || ({
-          id: 'zone-1',
-          name: 'Bad 2. etasje (Hovedbad)',
-          room: 'Bad 2. etasje',
-          status: 'pending',
-          trades: [
-            { name: 'Rørlegger', status: 'approved', items: ['Trykktest rør-i-rør fullført og godkjent (10 bar)', 'Slukmansjett montert og kontrollert'] },
-            { name: 'Elektriker', status: 'approved', items: ['Varmekabler megging OK', 'Rørføring til belysning og stikkontakter ferdig'] },
-            { name: 'Ventilasjon', status: 'pending', items: ['Avtrekkskanal montert med kondensisolasjon'] },
-            { name: 'Tømrer', status: 'pending', items: ['Dampsperre klemt og tapet mot tilstøtende konstruksjon'] }
-          ]
-        } as any)}
+        zone={selectedLukkesperreZone || lukkesperreZones[0] || DEFAULT_LUKKESPERRE_ZONES[0]}
         onUpdateZone={handleUpdateZone}
         onOpenAIVision={(_roomName) => {
           setIsPreCloseModalOpen(false);

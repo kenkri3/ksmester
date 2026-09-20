@@ -33,6 +33,39 @@ export interface LukkesperreZone {
   evidencePhotoUrl?: string;
 }
 
+export const DEFAULT_LUKKESPERRE_ZONES: LukkesperreZone[] = [
+  {
+    id: 'zone-1',
+    room: 'Bad 2. etasje (Hovedbad)',
+    project: 'Solsiden 12 - Tilbygg',
+    status: 'RED',
+    canClose: false,
+    detail: 'Mangler godkjenning på tverrfaglige kontrollpunkter (dampsperre/isolasjon) før lukking.',
+    checks: {
+      plumbing: true,
+      electric: true,
+      vaporBarrier: false,
+      insulation: false
+    },
+    lastChecked: 'I dag 08:30'
+  },
+  {
+    id: 'zone-2',
+    room: 'Teknisk rom U1',
+    project: 'Solsiden 12 - Tilbygg',
+    status: 'RED',
+    canClose: false,
+    detail: 'Rør og el-installasjoner må verifiseres før sjakter plates.',
+    checks: {
+      plumbing: false,
+      electric: true,
+      vaporBarrier: false,
+      insulation: false
+    },
+    lastChecked: 'I går 14:15'
+  }
+];
+
 interface PreCloseInspectorModalProps {
   isOpen: boolean;
   onClose: () => void;
@@ -52,16 +85,32 @@ export default function PreCloseInspectorModal({
 
   useEffect(() => {
     if (zone) {
-      setCurrentZone({ ...zone });
+      const safeChecks = {
+        plumbing: zone.checks?.plumbing ?? false,
+        electric: zone.checks?.electric ?? false,
+        vaporBarrier: zone.checks?.vaporBarrier ?? false,
+        insulation: zone.checks?.insulation ?? false,
+      };
+      setCurrentZone({
+        ...zone,
+        room: zone.room || (zone as any).name || 'Kontrollsone',
+        project: zone.project || 'Byggeplass',
+        status: zone.status === 'GREEN' ? 'GREEN' : 'RED',
+        canClose: !!zone.canClose,
+        detail: zone.detail || 'Kontroller at rør, elektro, dampsperre og isolasjon er godkjent før vegg lukkes.',
+        checks: safeChecks
+      });
     }
   }, [zone]);
 
   if (!isOpen || !currentZone) return null;
 
+  const checks = currentZone.checks || { plumbing: false, electric: false, vaporBarrier: false, insulation: false };
+
   const toggleCheck = (key: keyof LukkesperreZone['checks']) => {
     const updatedChecks = {
-      ...currentZone.checks,
-      [key]: !currentZone.checks[key]
+      ...checks,
+      [key]: !checks[key]
     };
 
     const allPassed = Object.values(updatedChecks).every(Boolean);
@@ -106,9 +155,7 @@ export default function PreCloseInspectorModal({
     };
     setCurrentZone(updated);
     onUpdateZone(updated);
-    toast.success(`Grønt lys godkjent for ${currentZone.room}!`, {
-      description: 'Lukkesperren er opphevet. Tømrer/montør kan nå plate veggen.'
-    });
+    toast.success(`Full tverrfaglig godkjenning registrert for ${currentZone.room}`);
   };
 
   const handleForceLock = () => {
@@ -190,7 +237,7 @@ export default function PreCloseInspectorModal({
             <h4 className="text-xs font-black uppercase tracking-wider text-slate-400 mb-3 flex items-center justify-between">
               <span>Obligatoriske Sjekkpunkter for lukking</span>
               <span className="text-[11px] font-bold text-electric-600">
-                {Object.values(currentZone.checks).filter(Boolean).length} av 4 godkjent
+                {Object.values(checks).filter(Boolean).length} av 4 godkjent
               </span>
             </h4>
 
@@ -200,7 +247,7 @@ export default function PreCloseInspectorModal({
                 onClick={() => toggleCheck('plumbing')}
                 className={cn(
                   "p-4 rounded-2xl border transition-all cursor-pointer flex items-center justify-between gap-3 group",
-                  currentZone.checks.plumbing 
+                  checks.plumbing 
                     ? "bg-emerald-50/50 border-emerald-200 hover:border-emerald-300" 
                     : "bg-white border-slate-200 hover:border-slate-300"
                 )}
@@ -208,9 +255,9 @@ export default function PreCloseInspectorModal({
                 <div className="flex items-start gap-3">
                   <div className={cn(
                     "w-6 h-6 rounded-lg flex items-center justify-center shrink-0 mt-0.5 transition-colors",
-                    currentZone.checks.plumbing ? "bg-emerald-600 text-white" : "border-2 border-slate-300 bg-white"
+                    checks.plumbing ? "bg-emerald-600 text-white" : "border-2 border-slate-300 bg-white"
                   )}>
-                    {currentZone.checks.plumbing && <Check size={14} strokeWidth={3} />}
+                    {checks.plumbing && <Check size={14} strokeWidth={3} />}
                   </div>
                   <div>
                     <h5 className="text-xs font-bold text-navy-900 group-hover:text-electric-600 transition-colors">
@@ -223,9 +270,9 @@ export default function PreCloseInspectorModal({
                 </div>
                 <span className={cn(
                   "text-[10px] font-black uppercase px-2 py-0.5 rounded-full shrink-0",
-                  currentZone.checks.plumbing ? "bg-emerald-100 text-emerald-800" : "bg-slate-100 text-slate-500"
+                  checks.plumbing ? "bg-emerald-100 text-emerald-800" : "bg-slate-100 text-slate-500"
                 )}>
-                  {currentZone.checks.plumbing ? 'Godkjent' : 'Mangler'}
+                  {checks.plumbing ? 'Godkjent' : 'Mangler'}
                 </span>
               </div>
 
@@ -234,7 +281,7 @@ export default function PreCloseInspectorModal({
                 onClick={() => toggleCheck('electric')}
                 className={cn(
                   "p-4 rounded-2xl border transition-all cursor-pointer flex items-center justify-between gap-3 group",
-                  currentZone.checks.electric 
+                  checks.electric 
                     ? "bg-emerald-50/50 border-emerald-200 hover:border-emerald-300" 
                     : "bg-white border-slate-200 hover:border-slate-300"
                 )}
@@ -242,9 +289,9 @@ export default function PreCloseInspectorModal({
                 <div className="flex items-start gap-3">
                   <div className={cn(
                     "w-6 h-6 rounded-lg flex items-center justify-center shrink-0 mt-0.5 transition-colors",
-                    currentZone.checks.electric ? "bg-emerald-600 text-white" : "border-2 border-slate-300 bg-white"
+                    checks.electric ? "bg-emerald-600 text-white" : "border-2 border-slate-300 bg-white"
                   )}>
-                    {currentZone.checks.electric && <Check size={14} strokeWidth={3} />}
+                    {checks.electric && <Check size={14} strokeWidth={3} />}
                   </div>
                   <div>
                     <h5 className="text-xs font-bold text-navy-900 group-hover:text-electric-600 transition-colors">
@@ -257,9 +304,9 @@ export default function PreCloseInspectorModal({
                 </div>
                 <span className={cn(
                   "text-[10px] font-black uppercase px-2 py-0.5 rounded-full shrink-0",
-                  currentZone.checks.electric ? "bg-emerald-100 text-emerald-800" : "bg-slate-100 text-slate-500"
+                  checks.electric ? "bg-emerald-100 text-emerald-800" : "bg-slate-100 text-slate-500"
                 )}>
-                  {currentZone.checks.electric ? 'Godkjent' : 'Mangler'}
+                  {checks.electric ? 'Godkjent' : 'Mangler'}
                 </span>
               </div>
 
@@ -268,7 +315,7 @@ export default function PreCloseInspectorModal({
                 onClick={() => toggleCheck('vaporBarrier')}
                 className={cn(
                   "p-4 rounded-2xl border transition-all cursor-pointer flex items-center justify-between gap-3 group",
-                  currentZone.checks.vaporBarrier 
+                  checks.vaporBarrier 
                     ? "bg-emerald-50/50 border-emerald-200 hover:border-emerald-300" 
                     : "bg-white border-slate-200 hover:border-slate-300"
                 )}
@@ -276,9 +323,9 @@ export default function PreCloseInspectorModal({
                 <div className="flex items-start gap-3">
                   <div className={cn(
                     "w-6 h-6 rounded-lg flex items-center justify-center shrink-0 mt-0.5 transition-colors",
-                    currentZone.checks.vaporBarrier ? "bg-emerald-600 text-white" : "border-2 border-slate-300 bg-white"
+                    checks.vaporBarrier ? "bg-emerald-600 text-white" : "border-2 border-slate-300 bg-white"
                   )}>
-                    {currentZone.checks.vaporBarrier && <Check size={14} strokeWidth={3} />}
+                    {checks.vaporBarrier && <Check size={14} strokeWidth={3} />}
                   </div>
                   <div>
                     <h5 className="text-xs font-bold text-navy-900 group-hover:text-electric-600 transition-colors">
@@ -291,9 +338,9 @@ export default function PreCloseInspectorModal({
                 </div>
                 <span className={cn(
                   "text-[10px] font-black uppercase px-2 py-0.5 rounded-full shrink-0",
-                  currentZone.checks.vaporBarrier ? "bg-emerald-100 text-emerald-800" : "bg-slate-100 text-slate-500"
+                  checks.vaporBarrier ? "bg-emerald-100 text-emerald-800" : "bg-slate-100 text-slate-500"
                 )}>
-                  {currentZone.checks.vaporBarrier ? 'Godkjent' : 'Mangler'}
+                  {checks.vaporBarrier ? 'Godkjent' : 'Mangler'}
                 </span>
               </div>
 
@@ -302,7 +349,7 @@ export default function PreCloseInspectorModal({
                 onClick={() => toggleCheck('insulation')}
                 className={cn(
                   "p-4 rounded-2xl border transition-all cursor-pointer flex items-center justify-between gap-3 group",
-                  currentZone.checks.insulation 
+                  checks.insulation 
                     ? "bg-emerald-50/50 border-emerald-200 hover:border-emerald-300" 
                     : "bg-white border-slate-200 hover:border-slate-300"
                 )}
@@ -310,9 +357,9 @@ export default function PreCloseInspectorModal({
                 <div className="flex items-start gap-3">
                   <div className={cn(
                     "w-6 h-6 rounded-lg flex items-center justify-center shrink-0 mt-0.5 transition-colors",
-                    currentZone.checks.insulation ? "bg-emerald-600 text-white" : "border-2 border-slate-300 bg-white"
+                    checks.insulation ? "bg-emerald-600 text-white" : "border-2 border-slate-300 bg-white"
                   )}>
-                    {currentZone.checks.insulation && <Check size={14} strokeWidth={3} />}
+                    {checks.insulation && <Check size={14} strokeWidth={3} />}
                   </div>
                   <div>
                     <h5 className="text-xs font-bold text-navy-900 group-hover:text-electric-600 transition-colors">
@@ -325,9 +372,9 @@ export default function PreCloseInspectorModal({
                 </div>
                 <span className={cn(
                   "text-[10px] font-black uppercase px-2 py-0.5 rounded-full shrink-0",
-                  currentZone.checks.insulation ? "bg-emerald-100 text-emerald-800" : "bg-slate-100 text-slate-500"
+                  checks.insulation ? "bg-emerald-100 text-emerald-800" : "bg-slate-100 text-slate-500"
                 )}>
-                  {currentZone.checks.insulation ? 'Godkjent' : 'Mangler'}
+                  {checks.insulation ? 'Godkjent' : 'Mangler'}
                 </span>
               </div>
             </div>
