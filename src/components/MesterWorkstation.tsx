@@ -180,11 +180,9 @@ export default function MesterWorkstation({
   const [copiedId, setCopiedId] = useState<string | null>(null);
   const [selectedChangeOrderForDetail, setSelectedChangeOrderForDetail] = useState<any | null>(null);
 
-  // ✦ Gemini/ChatGPT Live Tankeprosess (Thought process steps & timer)
-  const [liveThinkingSteps, setLiveThinkingSteps] = useState<Array<{ title: string; status: 'completed' | 'active' | 'pending'; detail?: string }>>([]);
+  // ⏱️ Tenketimer for MesterAI
   const [activeThinkingDuration, setActiveThinkingDuration] = useState(0);
   const thinkingTimerRef = useRef<any>(null);
-  const thinkingStepTimerRef = useRef<any>(null);
 
   // 🔍 Top Search Bar & Floating Panel State (Alltid i arbeidsvinduet, aldri popups over menyen)
   const [isTopSearchOpen, setIsTopSearchOpen] = useState(false);
@@ -228,7 +226,6 @@ export default function MesterWorkstation({
   useEffect(() => {
     return () => {
       if (thinkingTimerRef.current) clearInterval(thinkingTimerRef.current);
-      if (thinkingStepTimerRef.current) clearInterval(thinkingStepTimerRef.current);
     };
   }, []);
 
@@ -695,39 +692,16 @@ export default function MesterWorkstation({
     const activeProjName = selectedProject?.name || (projects[0]?.name || 'Geitekleiva 12 - Enebolig');
     const activeProjId = selectedProject?.id || projects[0]?.id;
 
-    // ✦ Gemini/ChatGPT: Generer 4 faglige steg tilpasset brukerens faktiske spørsmål
-    const rawSteps = getThinkingSteps(textToSend, activeProjName);
-    const initialThinkingSteps = rawSteps.map((s, idx) => ({
-      ...s,
-      status: idx === 0 ? ('active' as const) : ('pending' as const)
-    }));
-
-    setLiveThinkingSteps(initialThinkingSteps);
     setActiveThinkingDuration(0);
     setIsLoading(true);
 
     if (thinkingTimerRef.current) clearInterval(thinkingTimerRef.current);
-    if (thinkingStepTimerRef.current) clearInterval(thinkingStepTimerRef.current);
 
     let seconds = 0;
     thinkingTimerRef.current = setInterval(() => {
       seconds += 1;
       setActiveThinkingDuration(seconds);
     }, 1000);
-
-    let currentStepIdx = 0;
-    thinkingStepTimerRef.current = setInterval(() => {
-      currentStepIdx += 1;
-      if (currentStepIdx < initialThinkingSteps.length) {
-        setLiveThinkingSteps(prev => 
-          prev.map((step, i) => {
-            if (i < currentStepIdx) return { ...step, status: 'completed' as const };
-            if (i === currentStepIdx) return { ...step, status: 'active' as const };
-            return { ...step, status: 'pending' as const };
-          })
-        );
-      }
-    }, 1600);
 
     try {
       const res = await fetch('/api/agent/chat', {
@@ -753,22 +727,13 @@ export default function MesterWorkstation({
         clearInterval(thinkingTimerRef.current);
         thinkingTimerRef.current = null;
       }
-      if (thinkingStepTimerRef.current) {
-        clearInterval(thinkingStepTimerRef.current);
-        thinkingStepTimerRef.current = null;
-      }
-
-      const completedSteps = rawSteps.map(s => ({ ...s, status: 'completed' as const }));
-      const durationFinal = Math.max(seconds, 2);
 
       const assistantMessage: ChatMessageItem = {
         id: `a-${Date.now()}`,
         role: 'assistant',
         content: data.reply || 'Forespørselen din er behandlet.',
         timestamp: new Date().toLocaleTimeString('no-NO', { hour: '2-digit', minute: '2-digit' }),
-        quickReplies: data.quickReplies,
-        thoughtSteps: completedSteps,
-        thinkingDuration: durationFinal
+        quickReplies: data.quickReplies
       };
 
       const finalMessages = [...updatedWithUser, assistantMessage];
@@ -782,7 +747,6 @@ export default function MesterWorkstation({
       });
     } catch (err: any) {
       if (thinkingTimerRef.current) clearInterval(thinkingTimerRef.current);
-      if (thinkingStepTimerRef.current) clearInterval(thinkingStepTimerRef.current);
       console.error(err);
       toast.error('Feil ved kontakt med MesterAI: ' + err.message);
       const errMsg: ChatMessageItem = {
@@ -2653,12 +2617,6 @@ export default function MesterWorkstation({
                           </div>
                         )}
 
-                        {msg.role === 'assistant' && msg.thoughtSteps && msg.thoughtSteps.length > 0 && (
-                          <ThoughtProcessAccordion 
-                            steps={msg.thoughtSteps} 
-                            duration={msg.thinkingDuration || 3} 
-                          />
-                        )}
 
                         {msg.role === 'user' ? (
                           <div className="whitespace-pre-wrap font-medium">{msg.content}</div>
@@ -2756,55 +2714,21 @@ export default function MesterWorkstation({
                     </div>
                   ))}
 
-                  {/* ✦ Gemini/ChatGPT Live Thought Process Box while working */}
+                  {/* ✦ Clean & Honest Loading Indicator */}
                   {isLoading && (
-                    <div className="mr-auto w-full max-w-xl p-4 rounded-3xl bg-slate-900/95 border border-slate-750 shadow-2xl space-y-3 animate-in fade-in duration-200">
-                      <div className="flex items-center justify-between text-xs font-bold text-purple-400">
-                        <div className="flex items-center gap-2">
-                          <RefreshCw size={14} className="animate-spin text-purple-400" />
-                          <span className="animate-pulse font-bold">
-                            MesterAI tenker og undersøker ({activeThinkingDuration}s)...
-                          </span>
-                        </div>
-                        <span className="flex items-center gap-1.5 text-[10px] text-slate-400">
-                          <span className="w-1.5 h-1.5 rounded-full bg-purple-400 animate-ping" />
-                          Jobber i sanntid
+                    <div className="mr-auto inline-flex items-center gap-3 px-4 py-2.5 rounded-2xl bg-slate-900/95 border border-purple-500/30 shadow-xl animate-in fade-in duration-200">
+                      <div className="relative flex items-center justify-center">
+                        <RefreshCw size={14} className="animate-spin text-purple-400" />
+                        <span className="absolute w-2 h-2 rounded-full bg-purple-400 animate-ping opacity-40" />
+                      </div>
+                      <span className="text-xs font-medium text-slate-200">
+                        MesterAI tenker og formulerer svar...
+                      </span>
+                      {activeThinkingDuration > 0 && (
+                        <span className="text-[11px] font-mono text-purple-400/90 font-bold bg-purple-500/10 px-2 py-0.5 rounded-full border border-purple-500/20">
+                          {activeThinkingDuration}s
                         </span>
-                      </div>
-
-                      <div className="space-y-2 pt-2 border-t border-slate-800">
-                        {liveThinkingSteps.map((step, idx) => (
-                          <div key={idx} className="flex items-center gap-2.5 text-xs transition-all">
-                            {step.status === 'completed' ? (
-                              <span className="w-4 h-4 rounded-full bg-emerald-500/20 text-emerald-400 flex items-center justify-center shrink-0">
-                                <Check size={10} className="stroke-[3]" />
-                              </span>
-                            ) : step.status === 'active' ? (
-                              <span className="w-4 h-4 rounded-full bg-purple-500/20 text-purple-300 flex items-center justify-center shrink-0 animate-pulse">
-                                <RefreshCw size={10} className="animate-spin text-purple-400" />
-                              </span>
-                            ) : (
-                              <span className="w-4 h-4 rounded-full bg-slate-800 text-slate-600 flex items-center justify-center shrink-0 text-[10px]">
-                                ○
-                              </span>
-                            )}
-                            <div className="min-w-0 flex-1">
-                              <span className={cn(
-                                step.status === 'completed' && "text-slate-400 font-normal",
-                                step.status === 'active' && "text-white font-bold",
-                                step.status === 'pending' && "text-slate-500"
-                              )}>
-                                {step.title}
-                              </span>
-                              {step.status === 'active' && step.detail && (
-                                <span className="block text-[10px] text-purple-300 font-normal animate-pulse mt-0.5">
-                                  {step.detail}
-                                </span>
-                              )}
-                            </div>
-                          </div>
-                        ))}
-                      </div>
+                      )}
                     </div>
                   )}
 
@@ -2945,125 +2869,3 @@ export default function MesterWorkstation({
   );
 }
 
-// 🧠 Hjelpefunksjon for å generere realistiske, faglige steg tilpasset brukerens spørsmål (Gemini/ChatGPT style)
-export function getThinkingSteps(text: string, projectName?: string): Array<{ title: string; detail?: string }> {
-  const lower = (text || '').toLowerCase();
-  const proj = projectName || 'Geitekleiva 12';
-
-  if (lower.includes('nobb') || lower.includes('pris') || lower.includes('materiell') || lower.includes('kostnad') || lower.includes('vare') || lower.includes('kalkyle') || lower.includes('tilbud')) {
-    return [
-      { title: 'Tolker materialspesifikasjon og mengdebehov...', detail: 'Beregner enheter, kapp og forbruk' },
-      { title: 'Søker i NOBB varekatalog og grossistdatabaser...', detail: 'Henter listepriser, rabattsatser og NOBB-varenummer' },
-      { title: `Kalkulerer timeverk og dekningsbidrag for ${proj}...`, detail: 'Beregner påslag, rigg/drift og mva-satser' },
-      { title: 'Ferdigstiller kalkyle og spesifisert pristilbud...', detail: 'Klargjør tilbudsdokument klar til utsending' }
-    ];
-  }
-
-  if (lower.includes('tek17') || lower.includes('sluk') || lower.includes('våtrom') || lower.includes('membran') || lower.includes('forskrift') || lower.includes('fall') || lower.includes('klemring')) {
-    return [
-      { title: 'Slår opp i TEK17 byggteknisk forskrift...', detail: 'Undersøker § 13-15 og krav til fuktsikring' },
-      { title: 'Sjekker Byggebransjens Våtromsnorm (BVN) og NS 3420...', detail: 'Kontrollerer fallkrav mot sluk (1:50 og 1:100)' },
-      { title: 'Verifiserer tilslutning til klemring og slukmansjett...', detail: 'Sikrer vanntett overgang og klemkontroll' },
-      { title: 'Utformer faglig vurdering og kontrollpunkter for lukkesperre...', detail: 'Klargjør godkjenningsgrunnlag før kledning' }
-    ];
-  }
-
-  if (lower.includes('endring') || lower.includes('ns 8406') || lower.includes('ordre') || lower.includes('varsel') || lower.includes('krav') || lower.includes('ekstra') || lower.includes('tillegg')) {
-    return [
-      { title: `Analyserer endringsforhold for ${proj}...`, detail: 'Sjekker avvik fra opprinnelig kontrakt' },
-      { title: 'Kontrollerer varslingsplikt og frister iht. NS 8406 pkt. 19.2...', detail: 'Varsel må gis «uten ugrunnet opphold»' },
-      { title: 'Beregner vederlagsjustering og konsekvens for fremdrift...', detail: 'Kalkulerer timer, materiell og rigg/drift' },
-      { title: 'Utformer formelt endringsvarsel med godkjenningsknapp...', detail: 'Klargjør juridisk bindende dokument for kunde' }
-    ];
-  }
-
-  if (lower.includes('time') || lower.includes('dagbok') || lower.includes('dagsrapport') || lower.includes('jobbet') || lower.includes('logg')) {
-    return [
-      { title: `Henter mannskapsliste og prosjektdata for ${proj}...`, detail: 'Kobler til aktiv byggeplass' },
-      { title: 'Henter lokale værdata og temperatur (Yr.no)...', detail: 'Dokumenterer værforhold iht. Byggherreforskriften' },
-      { title: 'Beregner timeverk fordelt på aktiviteter og fag...', detail: 'Registrerer timer og maskintid' },
-      { title: 'Oppdaterer byggedagbok og arkiverer dagsrapport...', detail: 'Lagrer verifisert logg i KS-systemet' }
-    ];
-  }
-
-  if (lower.includes('sja') || lower.includes('stillas') || lower.includes('sikkerhet') || lower.includes('vern') || lower.includes('hms') || lower.includes('høyde') || lower.includes('risiko')) {
-    return [
-      { title: 'Kartlegger risikofylte arbeidsoperasjoner...', detail: 'Vurderer arbeid i høyden, stillas og fallfare' },
-      { title: 'Identifiserer uønskede hendelser og farekilder...', detail: 'Vurderer værforhold, underlag og verneinnretninger' },
-      { title: 'Fastsetter konkrete vernetiltak og påkrevd PVU...', detail: 'Hjelm, fallsikringssele, fotlist og grønt skilt' },
-      { title: 'Ferdigstiller Sikker Jobb Analyse (SJA)...', detail: 'Klargjør SJA for gjennomgang og signering med laget' }
-    ];
-  }
-
-  if (lower.includes('bilde') || lower.includes('foto') || lower.includes('se på') || lower.includes('analyser') || lower.includes('kamera')) {
-    return [
-      { title: 'Forstørrer og analyserer bildeoppløsning...', detail: 'Forbereder AI-syn og pikselanalyse' },
-      { title: 'Kjører TEK17 vision-skanning mot byggestandarder...', detail: 'Identifiserer rør, mansjetter, isolasjon og dampsperre' },
-      { title: 'Evaluerer håndverksmessig utførelse og toleranser...', detail: 'Sjekker klemring, festemidler og tettingssjikt' },
-      { title: 'Oppretter bildebevis og vurderer lukkesperre...', detail: 'Genererer digital godkjenningsrapport' }
-    ];
-  }
-
-  return [
-    { title: `Tolker instruks og analyserer kontekst for ${proj}...`, detail: 'Gjennomgår oppgaven mot prosjektet' },
-    { title: 'Gjør oppslag i byggfaglige standarder og lover...', detail: 'NS-standarder, TEK17 og Byggherreforskriften' },
-    { title: 'Behandler data og sammenstiller fagmessig svar...', detail: 'Kvalitetssikrer formuleringer og tall' },
-    { title: 'Ferdigstiller anbefaling og konkrete handlingsvalg...', detail: 'Klargjør svar med snarveier' }
-  ];
-}
-
-// ✦ Gemini/ChatGPT Sammenleggbar Tankeprosess (Thought Process Accordion)
-function ThoughtProcessAccordion({
-  steps,
-  duration = 3
-}: {
-  steps: Array<{ title: string; status: 'completed' | 'active' | 'pending'; detail?: string }>;
-  duration?: number;
-}) {
-  const [isExpanded, setIsExpanded] = useState(false);
-
-  return (
-    <div className="mb-3 rounded-2xl bg-slate-950/70 border border-slate-800/80 overflow-hidden text-xs">
-      <button
-        type="button"
-        onClick={() => setIsExpanded(!isExpanded)}
-        className="w-full px-3.5 py-2 flex items-center justify-between text-slate-400 hover:text-slate-200 transition-colors cursor-pointer"
-      >
-        <div className="flex items-center gap-2">
-          <Sparkles size={13} className="text-purple-400" />
-          <span className="font-semibold text-slate-300">
-            Tenkte i {duration} {duration === 1 ? 'sekund' : 'sekunder'}
-          </span>
-          <span className="text-[10px] text-slate-500">• {steps.length} trinn</span>
-        </div>
-        <ChevronDown size={14} className={cn("transition-transform duration-200 text-slate-500", isExpanded && "rotate-180")} />
-      </button>
-
-      <AnimatePresence>
-        {isExpanded && (
-          <motion.div
-            initial={{ height: 0, opacity: 0 }}
-            animate={{ height: 'auto', opacity: 1 }}
-            exit={{ height: 0, opacity: 0 }}
-            transition={{ duration: 0.18 }}
-            className="px-3.5 pb-3 pt-1 border-t border-slate-800/60 space-y-2"
-          >
-            {steps.map((step, idx) => (
-              <div key={idx} className="flex items-start gap-2.5 text-xs">
-                <div className="w-4 h-4 rounded-full bg-emerald-500/20 text-emerald-400 flex items-center justify-center shrink-0 mt-0.5">
-                  <Check size={10} className="stroke-[3]" />
-                </div>
-                <div className="min-w-0">
-                  <p className="font-medium text-slate-300 leading-snug">{step.title}</p>
-                  {step.detail && (
-                    <p className="text-[10px] text-slate-500 mt-0.5">{step.detail}</p>
-                  )}
-                </div>
-              </div>
-            ))}
-          </motion.div>
-        )}
-      </AnimatePresence>
-    </div>
-  );
-}
