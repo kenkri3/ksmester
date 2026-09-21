@@ -11,7 +11,9 @@ export async function GET() {
     { id: 'gpt-4o-mini', object: 'model', created: 1700000000, owned_by: '1min.ai' },
     { id: 'gpt-4o', object: 'model', created: 1700000000, owned_by: '1min.ai' },
     { id: 'claude-3-5-sonnet', object: 'model', created: 1700000000, owned_by: '1min.ai' },
-    { id: 'deepseek-chat', object: 'model', created: 1700000000, owned_by: '1min.ai' }
+    { id: 'deepseek-flash', object: 'model', created: 1700000000, owned_by: 'deepseek' },
+    { id: 'deepseek-v4-flash', object: 'model', created: 1700000000, owned_by: 'deepseek' },
+    { id: 'deepseek-chat', object: 'model', created: 1700000000, owned_by: 'deepseek' }
   ];
 
   return NextResponse.json(

@@ -557,7 +557,8 @@ async function callDeepSeekBackup(
   deepseekKey: string,
   prompt: string,
   systemInstruction?: string,
-  forceJson = false
+  forceJson = false,
+  model = 'deepseek-flash'
 ): Promise<{ text: string; promptTokens: number; completionTokens: number }> {
   const messages: any[] = [];
   if (systemInstruction) {
@@ -566,7 +567,7 @@ async function callDeepSeekBackup(
   messages.push({ role: 'user', content: prompt });
 
   const body: any = {
-    model: 'deepseek-chat',
+    model: model || 'deepseek-flash',
     messages,
     temperature: 0.2
   };
@@ -738,29 +739,31 @@ export async function generateWithAiEngine(options: GenerateAiOptions): Promise<
   // ==========================================================================
   if (deepseekKey) {
     try {
+      const chosenDsModel = options.model?.startsWith('deepseek') ? options.model : 'deepseek-flash';
       const res = await callDeepSeekBackup(
         deepseekKey,
         promptText,
         options.systemInstruction,
-        isJsonExpected
+        isJsonExpected,
+        chosenDsModel
       );
 
       trackTokenCost({
-        model: 'deepseek-chat',
+        model: chosenDsModel,
         promptTokens: res.promptTokens,
         completionTokens: res.completionTokens,
         operation: options.operation || 'ai_generate_deepseek',
         companyId: options.companyId,
         companyName: options.companyName,
         projectId: options.projectId,
-        notes: options.notes || `DeepSeek tertiary backup`,
+        notes: options.notes || `DeepSeek backup (${chosenDsModel})`,
         service: 'gemini'
       }).catch(() => {});
 
       return {
         text: res.text,
         source: 'deepseek_backup',
-        model: 'deepseek-chat',
+        model: chosenDsModel,
         usage: {
           promptTokens: res.promptTokens,
           completionTokens: res.completionTokens,
