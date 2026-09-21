@@ -26,6 +26,7 @@ export interface GenerateAiOptions {
   companyName?: string;
   projectId?: string;
   notes?: string;
+  apiKey?: string;
 }
 
 export interface AiEngineResult {
@@ -600,7 +601,7 @@ async function callDeepSeekBackup(
  * Prioriterer 1_MIN_AI som hovedmotor med automatisk failover til Gemini API backup.
  */
 export async function generateWithAiEngine(options: GenerateAiOptions): Promise<AiEngineResult> {
-  let oneMinKey = get1MinAiKey();
+  let oneMinKey = options.apiKey || get1MinAiKey();
   let geminiKey = getGeminiKey();
   const deepseekKey = getDeepSeekKey();
 
