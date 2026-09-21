@@ -257,7 +257,7 @@ export default function WorkstationSidebar({
         </div>
 
         {/* 3. Scrollable Middle Area: Moduler, Prosjekter og Samtalehistorikk */}
-        <div className="flex-1 overflow-y-auto custom-scrollbar p-2 space-y-4">
+        <div className="flex-1 overflow-y-auto overscroll-y-contain custom-scrollbar p-2 space-y-4 [touch-action:pan-y]">
           {/* Seksjon A: Verktøy & Moduler (Quick access) */}
           <div className="space-y-0.5">
             {!isCollapsedDesktop && (

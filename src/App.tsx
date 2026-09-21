@@ -256,6 +256,32 @@ function AppContent() {
     }
   };
 
+  // 🔒 Forhindre overscroll / elastisk drag på mobil når man er i arbeidsstasjonen
+  useEffect(() => {
+    if (view === 'dashboard' || view === 'mobile') {
+      document.documentElement.style.overflow = 'hidden';
+      document.documentElement.style.height = '100%';
+      document.documentElement.style.overscrollBehavior = 'none';
+      document.body.style.overflow = 'hidden';
+      document.body.style.height = '100%';
+      document.body.style.position = 'fixed';
+      document.body.style.inset = '0';
+      document.body.style.overscrollBehavior = 'none';
+      document.body.style.backgroundColor = '#0A101D';
+      return () => {
+        document.documentElement.style.overflow = '';
+        document.documentElement.style.height = '';
+        document.documentElement.style.overscrollBehavior = '';
+        document.body.style.overflow = '';
+        document.body.style.height = '';
+        document.body.style.position = '';
+        document.body.style.inset = '';
+        document.body.style.overscrollBehavior = '';
+        document.body.style.backgroundColor = '';
+      };
+    }
+  }, [view]);
+
   const publicViews: View[] = ['landing', 'spec', 'pricing', 'about', 'contact', 'privacy', 'terms', 'offer', 'invite', 'customer-portal', 'login', 'public-offer', 'public-change-order', 'partner'];
   const isPublicView = publicViews.includes(view);
 
@@ -528,7 +554,12 @@ function AppContent() {
   }
 
   return (
-    <div className="min-h-screen bg-white text-navy-900 font-sans selection:bg-electric-500/20 selection:text-electric-700">
+    <div className={cn(
+      "font-sans selection:bg-electric-500/20 selection:text-electric-700",
+      view === 'dashboard'
+        ? "h-[100dvh] w-full overflow-hidden fixed inset-0 bg-[#0A101D] text-slate-100"
+        : "min-h-screen bg-white text-navy-900"
+    )}>
       {/* 👑 Fast forankret SuperAdmin Simulator Bar for Kenneth (Sikrer at Kenneth aldri mister tilgang) */}
       <AdminSimulationBar />
 
@@ -1469,7 +1500,8 @@ function AppContent() {
       <main className={cn(
         (view !== 'dashboard' && !['customer-portal', 'offer', 'invite', 'public-offer', 'public-change-order'].includes(view)) ? "pt-16" : "",
         ((user && subscriptionStatus === 'trial') || impersonatedCompanyId) && (view === 'dashboard' || ['customer-portal', 'offer', 'invite', 'public-offer', 'public-change-order'].includes(view) ? "pt-0" : "pt-22"),
-        user && !['customer-portal', 'offer', 'invite', 'public-offer', 'public-change-order'].includes(view) && view !== 'dashboard' ? "pb-24 md:pb-8" : ""
+        user && !['customer-portal', 'offer', 'invite', 'public-offer', 'public-change-order'].includes(view) && view !== 'dashboard' ? "pb-24 md:pb-8" : "",
+        view === 'dashboard' && "h-full w-full overflow-hidden"
       )}>
         <AnimatePresence mode="wait">
           <motion.div
@@ -1478,6 +1510,7 @@ function AppContent() {
             animate={{ opacity: 1, y: 0 }}
             exit={{ opacity: 0, y: -10 }}
             onAnimationComplete={() => scrollToTop()}
+            className={view === 'dashboard' ? "h-full w-full overflow-hidden" : undefined}
           >
             <Suspense fallback={<ModuleLoader />}>
               {view === 'landing' && (

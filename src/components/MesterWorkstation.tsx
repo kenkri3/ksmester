@@ -1275,7 +1275,7 @@ export default function MesterWorkstation({
   };
 
   return (
-    <div className="flex h-[100dvh] w-full bg-[#0A101D] text-slate-100 overflow-hidden font-sans">
+    <div className="fixed inset-0 md:static flex h-[100dvh] w-full bg-[#0A101D] text-slate-100 overflow-hidden font-sans overscroll-none">
       {/* 1. Left Sidebar (Collapsible Desktop + Mobile Drawer) */}
       <WorkstationSidebar
         isOpenMobile={isOpenMobile}
@@ -1762,7 +1762,7 @@ export default function MesterWorkstation({
         </AnimatePresence>
 
         {/* 3. Main Stage Content Area */}
-        <div className="flex-1 overflow-y-auto custom-scrollbar flex flex-col relative">
+        <div className="flex-1 overflow-y-auto overscroll-y-contain custom-scrollbar flex flex-col relative [touch-action:pan-y]">
           {viewMode === 'module' ? (
             /* 📊 MODULE VIEW (When user clicks a module from the left sidebar) */
             <div className="p-4 sm:p-6 max-w-7xl mx-auto w-full space-y-4">
@@ -4163,8 +4163,11 @@ export default function MesterWorkstation({
 
         {/* 4. Floating Rounded-Full Input Box (1:1 Google Gemini App - Screenshot 2 & 3) */}
         {viewMode === 'chat' && (
-          <div className="absolute bottom-0 inset-x-0 bg-gradient-to-t from-black via-black/85 to-transparent pt-6 pb-4 px-3 sm:px-6 z-20">
-            <div className="max-w-3xl mx-auto w-full space-y-2 relative">
+          <div 
+            className="absolute bottom-0 inset-x-0 bg-gradient-to-t from-[#0A101D] via-[#0A101D]/90 to-transparent pt-6 px-3 sm:px-6 z-20 pointer-events-none"
+            style={{ paddingBottom: 'max(12px, env(safe-area-inset-bottom))' }}
+          >
+            <div className="max-w-3xl mx-auto w-full space-y-2 relative pointer-events-auto">
               {/* Forhåndsvisning av vedlagt bilde */}
               {attachedImage && (
                 <div className="flex items-center gap-2.5 p-2 bg-[#1e1f20] rounded-2xl border border-white/15 shadow-md w-fit">

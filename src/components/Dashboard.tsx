@@ -1095,7 +1095,7 @@ export default function Dashboard({
   };
 
   return (
-    <div className="min-h-screen bg-slate-900 text-slate-100 pb-0">
+    <div className="h-full w-full overflow-hidden bg-[#0A101D] text-slate-100 pb-0">
       {/* Modals retained for full compatibility */}
       <CreateProjectModal isOpen={isCreateModalOpen} onClose={() => { setIsCreateModalOpen(false); fetchAgentState(); }} />
       <CreateDeviationModal 
