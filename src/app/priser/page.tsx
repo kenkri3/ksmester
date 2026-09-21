@@ -17,7 +17,7 @@ const baseUrl = process.env.NEXT_PUBLIC_APP_URL || 'https://vikingmester.no';
 
 export const metadata: Metadata = {
   title: 'Priser på KS- og HMS-system | Forutsigbart, ingen binding | VikingMester',
-  description: 'Gjennomsiktige priser på Norges råeste KS- og HMS-system med 100% autonom MesterAI byggeleder. Solo kr 1 490,- eks mva/mnd for én håndverker. Team kr 3 490,- eks mva/mnd for inntil 5-10 brukere. Totalentreprenør fra kr 6 900,- eks mva/mnd. 14 dagers gratis prøveperiode.',
+  description: 'Gjennomsiktige priser på Norges råeste KS- og HMS-system med 100% autonom MesterAI byggeleder. Solo kr 690,- eks mva/mnd (550,- årlig). Team kr 1 490,- eks mva/mnd (1 190,- årlig) for inntil 5-10 brukere. Totalentreprenør Pro kr 2 990,- eks mva/mnd. 14 dagers gratis prøveperiode uten bindingstid.',
   alternates: {
     canonical: `${baseUrl}/priser`,
   },
@@ -93,9 +93,9 @@ export default function PriserPage() {
                 For deg som driver alene og vil ha 100% autonom kontroll på byggeplassen og papirene.
               </p>
               <div className="mb-8">
-                <span className="text-4xl font-black text-navy-900">1 490 kr</span>
+                <span className="text-4xl font-black text-navy-900">690 kr</span>
                 <span className="text-slate-500 text-sm font-medium"> / mnd eks mva</span>
-                <div className="text-xs text-emerald-600 font-bold mt-1">Kun 1 190 kr/mnd ved årlig avtale</div>
+                <div className="text-xs text-emerald-600 font-bold mt-1">Kun 550 kr/mnd ved årlig avtale</div>
               </div>
               <ul className="space-y-3 text-sm text-slate-700 mb-8">
                 <li className="flex items-center gap-2 font-semibold text-navy-900">
@@ -116,7 +116,7 @@ export default function PriserPage() {
                 </li>
                 <li className="flex items-center gap-2">
                   <Check size={16} className="text-emerald-500 shrink-0" />
-                  <span>Handsfree stemme-til-byggedagbok</span>
+                  <span>Handsfree stemme-til-byggedagbok fra bilen</span>
                 </li>
                 <li className="flex items-center gap-2">
                   <Check size={16} className="text-emerald-500 shrink-0" />
@@ -128,11 +128,7 @@ export default function PriserPage() {
                 </li>
                 <li className="flex items-center gap-2">
                   <Check size={16} className="text-emerald-500 shrink-0" />
-                  <span>NOBB / Varebase integrasjon (Egen API-nøkkel)</span>
-                </li>
-                <li className="flex items-center gap-2">
-                  <Check size={16} className="text-emerald-500 shrink-0" />
-                  <span>Yr.no automatisk værsynk & 2 GB lagring</span>
+                  <span>Yr.no automatisk værsynk & timeføring (AML)</span>
                 </li>
                 <li className="flex items-center gap-2">
                   <Check size={16} className="text-emerald-500 shrink-0" />
@@ -159,12 +155,12 @@ export default function PriserPage() {
               </span>
               <h3 className="text-2xl font-bold text-navy-900 mt-1 mb-2">VikingMester Team</h3>
               <p className="text-slate-600 text-sm mb-6">
-                For voksende håndverkerbedrifter som vil samhandle sømløst og sikre marginene.
+                For voksende håndverkerbedrifter som vil samhandle sømløst, sikre ekstratimer og ha full kontroll.
               </p>
               <div className="mb-8">
-                <span className="text-4xl font-black text-navy-900">3 490 kr</span>
+                <span className="text-4xl font-black text-navy-900">1 490 kr</span>
                 <span className="text-slate-500 text-sm font-medium"> / mnd eks mva</span>
-                <div className="text-xs text-emerald-600 font-bold mt-1">Kun 2 790 kr/mnd ved årlig avtale</div>
+                <div className="text-xs text-emerald-600 font-bold mt-1">Kun 1 190 kr/mnd ved årlig avtale</div>
               </div>
               <ul className="space-y-3 text-sm text-slate-700 mb-8">
                 <li className="flex items-center gap-2 font-semibold text-navy-900">
@@ -173,15 +169,15 @@ export default function PriserPage() {
                 </li>
                 <li className="flex items-center gap-2 font-semibold text-navy-900">
                   <Check size={16} className="text-electric-500 shrink-0" />
-                  <span>Inntil 5-10 aktive fagarbeidere (+249,- per ekstra)</span>
+                  <span>Inntil 5-10 aktive fagarbeidere (+199,- per ekstra)</span>
                 </li>
                 <li className="flex items-center gap-2 font-semibold text-electric-600">
                   <Check size={16} className="text-electric-500 shrink-0" />
-                  <span>Omnichannel feltvarsling (Discord, Slack, Teams for hele teamet)</span>
+                  <span>Tale-til-Endringsordre (NS 8406) med SMS-signering</span>
                 </li>
                 <li className="flex items-center gap-2 font-semibold text-electric-600">
                   <Check size={16} className="text-electric-500 shrink-0" />
-                  <span>Tale-til-Endringsordre & fristvarsel (NS 8406)</span>
+                  <span>Tverrfaglig Lukkesperre (Sone låst før VVS/El-signoff)</span>
                 </li>
                 <li className="flex items-center gap-2">
                   <Check size={16} className="text-electric-500 shrink-0" />
@@ -189,15 +185,11 @@ export default function PriserPage() {
                 </li>
                 <li className="flex items-center gap-2">
                   <Check size={16} className="text-electric-500 shrink-0" />
-                  <span>Tverrfaglig Lukkesperre (Rom/Sone før lukking)</span>
+                  <span>Ledergodkjenning av timer & overtid (50%/100%)</span>
                 </li>
                 <li className="flex items-center gap-2">
                   <Check size={16} className="text-electric-500 shrink-0" />
-                  <span>TEK17 AI Vision & avviksfotografering</span>
-                </li>
-                <li className="flex items-center gap-2">
-                  <Check size={16} className="text-electric-500 shrink-0" />
-                  <span>NOBB API-støtte (FDV, EPD & grossistpriser til prosjekter)</span>
+                  <span>1-Klikk Slutt-FDV til Boligmappa</span>
                 </li>
                 <li className="flex items-center gap-2">
                   <Check size={16} className="text-electric-500 shrink-0" />
@@ -227,19 +219,23 @@ export default function PriserPage() {
               <span className="text-xs font-bold uppercase tracking-wider text-slate-500">
                 Større entreprenører & konsern
               </span>
-              <h3 className="text-2xl font-bold text-navy-900 mt-1 mb-2">Totalentreprenør</h3>
+              <h3 className="text-2xl font-bold text-navy-900 mt-1 mb-2">Totalentreprenør Pro</h3>
               <p className="text-slate-600 text-sm mb-6">
-                For konsern med behov for skreddersydde integrasjoner, underentreprenører og API.
+                For konsern med behov for skreddersydde integrasjoner, underentreprenører og komplekse anbud.
               </p>
               <div className="mb-8">
-                <span className="text-3xl font-black text-navy-900">Fra 6 900 kr</span>
+                <span className="text-3xl font-black text-navy-900">2 990 kr</span>
                 <span className="text-slate-500 text-sm font-medium"> / mnd eks mva</span>
-                <div className="text-xs text-slate-500 font-bold mt-1">Tilpasset etter prosjektomfang</div>
+                <div className="text-xs text-emerald-600 font-bold mt-1">Kun 2 390 kr/mnd ved årlig avtale</div>
               </div>
               <ul className="space-y-3 text-sm text-slate-700 mb-8">
                 <li className="flex items-center gap-2 font-semibold text-navy-900">
                   <Check size={16} className="text-emerald-500 shrink-0" />
                   <span>Full autonom AI-arkitektur & UE-portal</span>
+                </li>
+                <li className="flex items-center gap-2 font-semibold text-electric-600">
+                  <Check size={16} className="text-emerald-500 shrink-0" />
+                  <span>Autonom Tilbud-til-Prosjekt-til-KS motor</span>
                 </li>
                 <li className="flex items-center gap-2 font-semibold text-electric-600">
                   <Check size={16} className="text-emerald-500 shrink-0" />

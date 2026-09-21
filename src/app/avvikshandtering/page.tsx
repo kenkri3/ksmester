@@ -86,7 +86,7 @@ export default function AvvikshandteringPage() {
               href="/priser"
               className="w-full sm:w-auto px-8 py-4 bg-white border border-slate-200 hover:bg-slate-50 text-navy-900 font-bold rounded-2xl transition-colors text-base"
             >
-              Se priser (fra kr 1 490,-)
+              Se priser (fra kr 690,-)
             </Link>
           </div>
         </div>

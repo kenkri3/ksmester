@@ -45,7 +45,8 @@ import {
   FileCheck,
   Layers,
   MessageSquare,
-  FileSignature
+  FileSignature,
+  Lock
 } from 'lucide-react';
 import { cn } from '@/src/lib/utils';
 import { Toaster } from 'sonner';
@@ -538,15 +539,38 @@ function AppContent() {
         </div>
       )}
 
+      {/* 🏆 THE DREAM TICKER: Slutt på kveldsarbeid og tapte penger */}
+      {(!user || view !== 'dashboard') && !['customer-portal', 'offer', 'invite', 'public-offer', 'public-change-order'].includes(view) && (
+        <div className="fixed top-0 left-0 right-0 z-[60] bg-slate-950 text-white text-[11px] font-semibold py-1.5 px-4 border-b border-white/10 text-center tracking-wide flex items-center justify-center gap-2 sm:gap-6 flex-wrap">
+          <span className="flex items-center gap-1.5 text-amber-400 font-black tracking-wider uppercase">
+            <Sparkles size={12} className="text-amber-400 animate-spin-slow" />
+            <span>DRØMMEN OM FRIHET:</span>
+          </span>
+          <span className="text-slate-300 hidden sm:inline font-medium">
+            Slutt på kveldsarbeid foran PC etter 10 timer på byggeplassen.
+          </span>
+          <span className="text-emerald-400 font-extrabold flex items-center gap-1">
+            <CheckCircle2 size={12} />
+            <span>Få betalt for alle endringer (NS 8406)</span>
+          </span>
+          <span className="text-electric-300 font-extrabold hidden md:inline">
+            ⚡ 100% Autonom MesterAI
+          </span>
+          <span className="text-amber-300 bg-amber-500/20 border border-amber-400/40 px-2 py-0.5 rounded-full text-[10px] font-black uppercase">
+            14 dager gratis • 0,- etablering
+          </span>
+        </div>
+      )}
+
       {/* Navigation: Skjult i backend kommandosentralen og dedikerte kunde/tilbudsportaler */}
       {(!user || view !== 'dashboard') && !['customer-portal', 'offer', 'invite', 'public-offer', 'public-change-order'].includes(view) && (
         <nav className={cn(
-          "fixed left-0 right-0 z-50 bg-white/90 backdrop-blur-md border-b border-slate-200/80 transition-all shadow-card-soft",
-          (user && subscriptionStatus === 'trial') || impersonatedCompanyId ? "top-6" : "top-0"
+          "fixed left-0 right-0 z-50 bg-white/95 backdrop-blur-md border-b border-slate-200/80 transition-all shadow-card-soft",
+          (!user || ['landing', 'pricing', 'about', 'contact', 'privacy', 'terms'].includes(view)) ? "top-7" : (user && subscriptionStatus === 'trial') || impersonatedCompanyId ? "top-6" : "top-0"
         )}>
         <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8">
           {(!user || ['landing', 'pricing', 'about', 'contact', 'privacy', 'terms'].includes(view)) ? (
-            /* PUBLIC MARKETING NAVBAR */
+            /* PUBLIC MARKETING NAVBAR - SELLER DRØMMEN */
             <div className="flex justify-between h-16 items-center">
               {/* Left: Logo & Audience Tag */}
               <div className="flex items-center gap-3 shrink-0">
@@ -556,28 +580,32 @@ function AppContent() {
                 >
                   <Logo size="md" className="text-navy-900" />
                 </div>
+                <span className="hidden xl:inline-flex items-center gap-1 text-[10px] font-black uppercase tracking-widest text-emerald-700 bg-emerald-50 px-2.5 py-0.5 rounded-full border border-emerald-200">
+                  <span className="w-1.5 h-1.5 rounded-full bg-emerald-500 animate-pulse" />
+                  100% AUTONOM BYGGELEDER
+                </span>
               </div>
 
-              {/* Desktop Center: World-Class SaaS Links */}
+              {/* Desktop Center: World-Class SaaS Links That Sell The Dream */}
               <div className="hidden md:flex items-center gap-1 lg:gap-2">
-                {/* Løsninger Dropdown */}
+                {/* Autonome Superkrefter Dropdown */}
                 <div className="relative group">
                   <button 
                     onClick={() => setIsSolutionsDropdownOpen(!isSolutionsDropdownOpen)}
                     className={cn(
-                      "px-3.5 py-2 rounded-xl text-xs font-bold transition-all flex items-center gap-1.5 cursor-pointer",
+                      "px-3 py-2 rounded-xl text-xs font-bold transition-all flex items-center gap-1.5 cursor-pointer",
                       (view === 'landing' && ['ai', 'hms', 'fdv'].includes(landingTab))
                         ? "bg-electric-50 text-electric-600 font-bold border border-electric-300/30" 
-                        : "text-slate-600 hover:text-navy-900 hover:bg-slate-100"
+                        : "text-slate-700 hover:text-navy-900 hover:bg-slate-100"
                     )}
                   >
-                    <span>{t('nav_solutions', 'Løsninger')}</span>
-                    <ChevronDown size={14} className="text-slate-500 group-hover:text-amber-400 transition-transform group-hover:rotate-180" />
+                    <span>Autonome Superkrefter</span>
+                    <ChevronDown size={14} className="text-slate-400 group-hover:text-amber-500 transition-transform group-hover:rotate-180" />
                   </button>
 
-                  {/* Dropdown Menu */}
+                  {/* Dropdown Menu - Selling Each Dream */}
                   <div className={cn(
-                    "absolute top-full left-0 mt-1.5 w-80 bg-white rounded-2xl shadow-card-hover border border-slate-200 p-2 z-50 animate-in fade-in-50 slide-in-from-top-1 duration-150",
+                    "absolute top-full left-0 mt-1.5 w-96 bg-white rounded-2xl shadow-2xl border border-slate-200 p-2 z-50 animate-in fade-in-50 slide-in-from-top-1 duration-150",
                     isSolutionsDropdownOpen ? "block" : "hidden group-hover:block"
                   )}>
                     <Link 
@@ -585,24 +613,30 @@ function AppContent() {
                       className="w-full text-left p-2.5 rounded-xl hover:bg-slate-50 transition-colors flex items-start gap-3 group/item"
                     >
                       <div className="w-8 h-8 rounded-lg bg-emerald-100 text-emerald-700 flex items-center justify-center shrink-0 group-hover/item:bg-emerald-600 group-hover/item:text-white transition-colors">
-                        <FileCheck size={16} />
+                        <Zap size={16} />
                       </div>
                       <div>
-                        <p className="text-xs font-bold text-navy-900">{t('nav_ks_system', 'KS-system & Kvalitetssikring')}</p>
-                        <p className="text-[10px] text-slate-500 leading-tight">{t('nav_ks_sub', 'Byggedagbok, sjekklister & TEK17')}</p>
+                        <div className="flex items-center gap-1.5">
+                          <p className="text-xs font-bold text-navy-900">Autonom Tilbud-til-KS</p>
+                          <span className="text-[9px] bg-emerald-100 text-emerald-800 font-bold px-1.5 py-0.2 rounded">Magisk</span>
+                        </div>
+                        <p className="text-[10px] text-slate-500 leading-tight">Signert tilbud oppretter kontrakt, prosjekt og sjekklister automatisk på 3 sekunder.</p>
                       </div>
                     </Link>
 
                     <Link 
-                      href="/hms"
+                      href="/prosjektstyring"
                       className="w-full text-left p-2.5 rounded-xl hover:bg-slate-50 transition-colors flex items-start gap-3 group/item"
                     >
-                      <div className="w-8 h-8 rounded-lg bg-blue-100 text-blue-700 flex items-center justify-center shrink-0 group-hover/item:bg-blue-600 group-hover/item:text-white transition-colors">
-                        <ShieldCheck size={16} />
+                      <div className="w-8 h-8 rounded-lg bg-rose-100 text-rose-700 flex items-center justify-center shrink-0 group-hover/item:bg-rose-600 group-hover/item:text-white transition-colors">
+                        <FileSignature size={16} />
                       </div>
                       <div>
-                        <p className="text-xs font-bold text-navy-900">{t('nav_hms', 'HMS & Internkontroll')}</p>
-                        <p className="text-[10px] text-slate-500 leading-tight">{t('nav_hms_sub', 'Lovpålagt § 5, vernerunde & risikovurdering')}</p>
+                        <div className="flex items-center gap-1.5">
+                          <p className="text-xs font-bold text-navy-900">Tale-til-Endringsordre (NS 8406)</p>
+                          <span className="text-[9px] bg-rose-100 text-rose-800 font-bold px-1.5 py-0.2 rounded">Få betalt</span>
+                        </div>
+                        <p className="text-[10px] text-slate-500 leading-tight">Snakk inn endringen på 15 sek ➔ Kunden signerer på SMS før arbeidet starter.</p>
                       </div>
                     </Link>
 
@@ -611,24 +645,43 @@ function AppContent() {
                       className="w-full text-left p-2.5 rounded-xl hover:bg-slate-50 transition-colors flex items-start gap-3 group/item"
                     >
                       <div className="w-8 h-8 rounded-lg bg-purple-100 text-purple-700 flex items-center justify-center shrink-0 group-hover/item:bg-purple-600 group-hover/item:text-white transition-colors">
-                        <Camera size={16} />
+                        <Lock size={16} />
                       </div>
                       <div>
-                        <p className="text-xs font-bold text-navy-900">{t('nav_tek17_vision', 'Avvik med TEK17-visjon')}</p>
-                        <p className="text-[10px] text-slate-500 leading-tight">{t('nav_tek17_sub', 'AI-analyse av bilder på 5 sekunder')}</p>
+                        <div className="flex items-center gap-1.5">
+                          <p className="text-xs font-bold text-navy-900">Tverrfaglig Lukkesperre (TEK17)</p>
+                          <span className="text-[9px] bg-purple-100 text-purple-800 font-bold px-1.5 py-0.2 rounded">Null rivning</span>
+                        </div>
+                        <p className="text-[10px] text-slate-500 leading-tight">Vegg låses mot plating inntil rør & el er fotokvittert. Full trygghet mot tabber.</p>
                       </div>
                     </Link>
 
                     <Link 
-                      href="/sja"
+                      href="/ks-system#fdv"
+                      className="w-full text-left p-2.5 rounded-xl hover:bg-slate-50 transition-colors flex items-start gap-3 group/item"
+                    >
+                      <div className="w-8 h-8 rounded-lg bg-blue-100 text-blue-700 flex items-center justify-center shrink-0 group-hover/item:bg-blue-600 group-hover/item:text-white transition-colors">
+                        <FileCheck size={16} />
+                      </div>
+                      <div>
+                        <div className="flex items-center gap-1.5">
+                          <p className="text-xs font-bold text-navy-900">1-Klikk FDV til Boligmappa</p>
+                          <span className="text-[9px] bg-blue-100 text-blue-800 font-bold px-1.5 py-0.2 rounded">Slutt på permer</span>
+                        </div>
+                        <p className="text-[10px] text-slate-500 leading-tight">All dokumentasjon og bilder samles i en fiks ferdig rapport på ett tastetrykk.</p>
+                      </div>
+                    </Link>
+
+                    <Link 
+                      href="/hms"
                       className="w-full text-left p-2.5 rounded-xl hover:bg-slate-50 transition-colors flex items-start gap-3 group/item"
                     >
                       <div className="w-8 h-8 rounded-lg bg-amber-100 text-amber-700 flex items-center justify-center shrink-0 group-hover/item:bg-amber-600 group-hover/item:text-white transition-colors">
-                        <AlertTriangle size={16} />
+                        <ShieldCheck size={16} />
                       </div>
                       <div>
-                        <p className="text-xs font-bold text-navy-900">{t('nav_sja', 'Sikker Jobb Analyse (SJA)')}</p>
-                        <p className="text-[10px] text-slate-500 leading-tight">{t('nav_sja_sub', 'Risikokartlegging & Yr-vær')}</p>
+                        <p className="text-xs font-bold text-navy-900">HMS, SJA & Yr-sanntidsvær</p>
+                        <p className="text-[10px] text-slate-500 leading-tight">Lovpålagt internkontroll og risikovurdering ferdig på sekunder fra stillaset.</p>
                       </div>
                     </Link>
 
@@ -640,93 +693,85 @@ function AppContent() {
                         <Package size={16} />
                       </div>
                       <div>
-                        <p className="text-xs font-bold text-navy-900">{t('nav_substances', 'Digitalt Stoffkartotek')}</p>
-                        <p className="text-[10px] text-slate-500 leading-tight">{t('nav_substances_sub', 'Sikkerhetsdatablader offline på mobil')}</p>
-                      </div>
-                    </Link>
-
-                    <Link 
-                      href="/prosjektstyring"
-                      className="w-full text-left p-2.5 rounded-xl hover:bg-slate-50 transition-colors flex items-start gap-3 group/item"
-                    >
-                      <div className="w-8 h-8 rounded-lg bg-rose-100 text-rose-700 flex items-center justify-center shrink-0 group-hover/item:bg-rose-600 group-hover/item:text-white transition-colors">
-                        <FolderKanban size={16} />
-                      </div>
-                      <div>
-                        <p className="text-xs font-bold text-navy-900">{t('nav_project_mgmt', 'Prosjektstyring & Endringsordre')}</p>
-                        <p className="text-[10px] text-slate-500 leading-tight">{t('nav_project_mgmt_sub', 'Få betalt for uvarslet ekstraarbeid (NS 8406)')}</p>
+                        <p className="text-xs font-bold text-navy-900">Digitalt Stoffkartotek (Offline)</p>
+                        <p className="text-[10px] text-slate-500 leading-tight">Sikkerhetsdatablader offline på byggeplassen for alle ansatte.</p>
                       </div>
                     </Link>
                   </div>
                 </div>
 
-                {/* Priser */}
+                {/* Priser (Fra 690,- / Spar 40t) */}
                 <Link
                   href="/priser"
                   className={cn(
-                    "px-3.5 py-2 rounded-xl text-xs font-bold transition-all",
+                    "px-3 py-2 rounded-xl text-xs font-bold transition-all flex items-center gap-1.5",
                     view === 'pricing'
                       ? "bg-electric-50 text-electric-600 font-bold border border-electric-300/30"
-                      : "text-slate-600 hover:text-navy-900 hover:bg-slate-100"
+                      : "text-slate-700 hover:text-navy-900 hover:bg-slate-100"
                   )}
                 >
-                  {t('nav_pricing', 'Priser')}
+                  <span>Priser</span>
+                  <span className="text-[10px] font-black uppercase text-electric-700 bg-electric-50 border border-electric-200 px-2 py-0.5 rounded-full">
+                    Fra 690,-
+                  </span>
                 </Link>
 
+                {/* Kundeportal (Digital Signering) */}
+                <button 
+                  onClick={() => setIsPortalModalOpen(true)}
+                  className="px-3 py-2 rounded-xl text-xs font-bold text-slate-700 hover:text-navy-900 hover:bg-slate-100 transition-all flex items-center gap-1.5 cursor-pointer"
+                >
+                  <Users size={14} className="text-emerald-600" />
+                  <span>Kundeportal</span>
+                  <span className="hidden xl:inline text-[9px] font-bold text-emerald-700 bg-emerald-50 px-1.5 py-0.2 rounded border border-emerald-200">
+                    Digital signatur
+                  </span>
+                </button>
 
                 {/* FAQ */}
                 <Link
                   href="/faq"
-                  className="px-3.5 py-2 rounded-xl text-xs font-bold text-slate-600 hover:text-navy-900 hover:bg-slate-100 transition-all"
+                  className="px-2.5 py-2 rounded-xl text-xs font-semibold text-slate-600 hover:text-navy-900 hover:bg-slate-100 transition-all"
                 >
-                  {t('nav_faq', 'FAQ')}
+                  FAQ
                 </Link>
-
-                {/* Kundeportal */}
-                <button 
-                  onClick={() => setIsPortalModalOpen(true)}
-                  className="px-3.5 py-2 rounded-xl text-xs font-bold text-slate-600 hover:text-navy-900 hover:bg-slate-100 transition-all flex items-center gap-1.5 cursor-pointer"
-                >
-                  <Users size={14} className="text-emerald-600" />
-                  <span>{t('nav_customer_portal', 'Kundeportal')}</span>
-                </button>
 
                 {/* Om oss */}
                 <Link
                   href="/om-oss"
                   className={cn(
-                    "px-3.5 py-2 rounded-xl text-xs font-bold transition-all",
+                    "px-2.5 py-2 rounded-xl text-xs font-semibold transition-all",
                     view === 'about'
                       ? "bg-electric-50 text-electric-600 font-bold border border-electric-300/30"
                       : "text-slate-600 hover:text-navy-900 hover:bg-slate-100"
                   )}
                 >
-                  {t('nav_about', 'Om oss')}
+                  Om oss
                 </Link>
 
                 {/* Kontakt */}
                 <Link
                   href="/kontakt"
                   className={cn(
-                    "px-3.5 py-2 rounded-xl text-xs font-bold transition-all",
+                    "px-2.5 py-2 rounded-xl text-xs font-semibold transition-all",
                     view === 'contact'
                       ? "bg-electric-50 text-electric-600 font-bold border border-electric-300/30"
                       : "text-slate-600 hover:text-navy-900 hover:bg-slate-100"
                   )}
                 >
-                  {t('nav_contact', 'Kontakt')}
+                  Kontakt
                 </Link>
               </div>
 
               {/* Desktop Right: Actions */}
-              <div className="hidden md:flex items-center gap-3">
+              <div className="hidden md:flex items-center gap-2.5">
                 {/* Language Selector */}
-                <div className="flex items-center gap-1 px-2.5 py-1.5 bg-slate-100 hover:bg-slate-200/80 rounded-xl border border-slate-200 transition-all">
-                  <Globe size={14} className="text-slate-500 shrink-0" />
+                <div className="flex items-center gap-1 px-2 py-1.5 bg-slate-100 hover:bg-slate-200/80 rounded-xl border border-slate-200 transition-all">
+                  <Globe size={13} className="text-slate-500 shrink-0" />
                   <select 
                     onChange={(e) => changeLanguage(e.target.value)}
                     value={getStandardLang(i18n.language)}
-                    className="text-xs font-bold bg-transparent border-none focus:ring-0 cursor-pointer uppercase text-slate-800 pr-1 outline-none"
+                    className="text-[11px] font-bold bg-transparent border-none focus:ring-0 cursor-pointer uppercase text-slate-800 pr-1 outline-none"
                     title={t('language', 'Bytt språk')}
                   >
                     <option value="no">NO</option>
@@ -748,16 +793,16 @@ function AppContent() {
                   <div className="flex items-center gap-2">
                     <button 
                       onClick={() => setView('login')}
-                      className="text-slate-700 hover:text-navy-900 px-3.5 py-2.5 rounded-xl text-xs font-bold hover:bg-slate-100 transition-all cursor-pointer"
+                      className="text-slate-700 hover:text-navy-900 px-3 py-2 rounded-xl text-xs font-bold hover:bg-slate-100 transition-all cursor-pointer"
                     >
                       {t('nav_login', 'Logg inn')}
                     </button>
                     <button 
                       onClick={handleStartDemo}
-                      className="bg-gradient-to-r from-electric-500 to-electric-400 hover:from-electric-400 hover:to-electric-300 text-white px-4 py-2.5 rounded-xl text-xs font-bold transition-all shadow-purple-cta hover:shadow-purple-hover active:scale-95 flex items-center gap-1.5 cursor-pointer"
+                      className="bg-gradient-to-r from-electric-500 to-electric-400 hover:from-electric-400 hover:to-electric-300 text-white px-4 py-2 rounded-xl text-xs font-extrabold transition-all shadow-purple-cta hover:shadow-purple-hover active:scale-95 flex items-center gap-1.5 cursor-pointer"
                     >
-                      <span>{t('nav_get_started', 'Kom i gang på 2 minutter')}</span>
-                      <ArrowRight size={14} />
+                      <Sparkles size={13} className="text-amber-300 animate-pulse" />
+                      <span>Start 14 dager gratis</span>
                     </button>
                   </div>
                 )}
@@ -984,10 +1029,11 @@ function AppContent() {
                     </div>
                   )}
 
-                  {/* Løsninger Section */}
+                  {/* Løsninger Section - Drømmen om frihet */}
                   <div className="pt-2 border-t border-neutral-100">
-                    <div className="text-[11px] font-black uppercase tracking-wider text-slate-500 mb-2">
-                      Løsninger for bygg & anlegg
+                    <div className="text-[11px] font-black uppercase tracking-wider text-slate-500 mb-2 flex items-center justify-between">
+                      <span>Autonome Superkrefter</span>
+                      <span className="text-emerald-600 font-bold text-[10px]">100% Autonom</span>
                     </div>
                     <div className="space-y-1">
                       <Link 
@@ -996,24 +1042,30 @@ function AppContent() {
                         className="w-full text-left p-2.5 rounded-xl hover:bg-slate-50 text-xs font-bold text-slate-800 flex items-center gap-3"
                       >
                         <div className="w-7 h-7 rounded-lg bg-emerald-50 text-emerald-600 border border-emerald-200 flex items-center justify-center shrink-0">
-                          <FileCheck size={15} />
+                          <Zap size={15} />
                         </div>
                         <div>
-                          <div className="font-bold text-navy-900">KS-system & Kvalitetssikring</div>
-                          <div className="text-[10px] text-slate-500 font-normal">Byggedagbok, sjekklister & TEK17</div>
+                          <div className="font-bold text-navy-900 flex items-center gap-1.5">
+                            <span>Autonom Tilbud-til-KS</span>
+                            <span className="text-[9px] bg-emerald-100 text-emerald-800 font-bold px-1.5 py-0.2 rounded">Magisk</span>
+                          </div>
+                          <div className="text-[10px] text-slate-500 font-normal">Signert tilbud oppretter prosjekt & KS på 3 sek</div>
                         </div>
                       </Link>
                       <Link 
-                        href="/hms"
+                        href="/prosjektstyring"
                         onClick={() => setIsMenuOpen(false)}
                         className="w-full text-left p-2.5 rounded-xl hover:bg-slate-50 text-xs font-bold text-slate-800 flex items-center gap-3"
                       >
-                        <div className="w-7 h-7 rounded-lg bg-blue-50 text-blue-600 border border-blue-200 flex items-center justify-center shrink-0">
-                          <ShieldCheck size={15} />
+                        <div className="w-7 h-7 rounded-lg bg-rose-50 text-rose-600 border border-rose-200 flex items-center justify-center shrink-0">
+                          <FileSignature size={15} />
                         </div>
                         <div>
-                          <div className="font-bold text-navy-900">HMS & Internkontroll (§ 5)</div>
-                          <div className="text-[10px] text-slate-500 font-normal">Lovpålagt § 5 & vernerunder</div>
+                          <div className="font-bold text-navy-900 flex items-center gap-1.5">
+                            <span>Tale-til-Endringsordre (NS 8406)</span>
+                            <span className="text-[9px] bg-rose-100 text-rose-800 font-bold px-1.5 py-0.2 rounded">Få betalt</span>
+                          </div>
+                          <div className="text-[10px] text-slate-500 font-normal">Kunden signerer på SMS før arbeidet starter</div>
                         </div>
                       </Link>
                       <Link 
@@ -1022,24 +1074,43 @@ function AppContent() {
                         className="w-full text-left p-2.5 rounded-xl hover:bg-slate-50 text-xs font-bold text-slate-800 flex items-center gap-3"
                       >
                         <div className="w-7 h-7 rounded-lg bg-purple-50 text-purple-600 border border-purple-200 flex items-center justify-center shrink-0">
-                          <Camera size={15} />
+                          <Lock size={15} />
                         </div>
                         <div>
-                          <div className="font-bold text-navy-900">Avvik med TEK17-visjon</div>
-                          <div className="text-[10px] text-slate-500 font-normal">AI bildekontroll på 5 sekunder</div>
+                          <div className="font-bold text-navy-900 flex items-center gap-1.5">
+                            <span>Tverrfaglig Lukkesperre (TEK17)</span>
+                            <span className="text-[9px] bg-purple-100 text-purple-800 font-bold px-1.5 py-0.2 rounded">Null rivning</span>
+                          </div>
+                          <div className="text-[10px] text-slate-500 font-normal">Vegg låses mot plating inntil rør & el er kvittert</div>
                         </div>
                       </Link>
                       <Link 
-                        href="/sja"
+                        href="/ks-system#fdv"
+                        onClick={() => setIsMenuOpen(false)}
+                        className="w-full text-left p-2.5 rounded-xl hover:bg-slate-50 text-xs font-bold text-slate-800 flex items-center gap-3"
+                      >
+                        <div className="w-7 h-7 rounded-lg bg-blue-50 text-blue-600 border border-blue-200 flex items-center justify-center shrink-0">
+                          <FileCheck size={15} />
+                        </div>
+                        <div>
+                          <div className="font-bold text-navy-900 flex items-center gap-1.5">
+                            <span>1-Klikk FDV til Boligmappa</span>
+                            <span className="text-[9px] bg-blue-100 text-blue-800 font-bold px-1.5 py-0.2 rounded">Slutt på permer</span>
+                          </div>
+                          <div className="text-[10px] text-slate-500 font-normal">Fiks ferdig overleveringsrapport på ett klikk</div>
+                        </div>
+                      </Link>
+                      <Link 
+                        href="/hms"
                         onClick={() => setIsMenuOpen(false)}
                         className="w-full text-left p-2.5 rounded-xl hover:bg-slate-50 text-xs font-bold text-slate-800 flex items-center gap-3"
                       >
                         <div className="w-7 h-7 rounded-lg bg-amber-50 text-amber-600 border border-amber-200 flex items-center justify-center shrink-0">
-                          <AlertTriangle size={15} />
+                          <ShieldCheck size={15} />
                         </div>
                         <div>
-                          <div className="font-bold text-navy-900">Sikker Jobb Analyse (SJA)</div>
-                          <div className="text-[10px] text-slate-500 font-normal">Yr-vær og risikovurdering</div>
+                          <div className="font-bold text-navy-900">HMS, SJA & Yr-sanntidsvær</div>
+                          <div className="text-[10px] text-slate-500 font-normal">Lovpålagt internkontroll og risikovurdering</div>
                         </div>
                       </Link>
                       <Link 
@@ -1052,20 +1123,7 @@ function AppContent() {
                         </div>
                         <div>
                           <div className="font-bold text-navy-900">Digitalt Stoffkartotek</div>
-                          <div className="text-[10px] text-slate-500 font-normal">Sikkerhetsdatablader offline</div>
-                        </div>
-                      </Link>
-                      <Link 
-                        href="/prosjektstyring"
-                        onClick={() => setIsMenuOpen(false)}
-                        className="w-full text-left p-2.5 rounded-xl hover:bg-slate-50 text-xs font-bold text-slate-800 flex items-center gap-3"
-                      >
-                        <div className="w-7 h-7 rounded-lg bg-rose-50 text-rose-600 border border-rose-200 flex items-center justify-center shrink-0">
-                          <FolderKanban size={15} />
-                        </div>
-                        <div>
-                          <div className="font-bold text-navy-900">Prosjektstyring & Endring (NS 8406)</div>
-                          <div className="text-[10px] text-slate-500 font-normal">Få betalt for ekstraarbeid</div>
+                          <div className="text-[10px] text-slate-500 font-normal">Sikkerhetsdatablader offline på mobil</div>
                         </div>
                       </Link>
                     </div>
@@ -1080,9 +1138,10 @@ function AppContent() {
                       <Link 
                         href="/priser"
                         onClick={() => setIsMenuOpen(false)}
-                        className="text-left p-2.5 rounded-xl bg-slate-50 text-xs font-bold text-slate-800 hover:bg-slate-100 border border-slate-200"
+                        className="text-left p-2.5 rounded-xl bg-slate-50 text-xs font-bold text-slate-800 hover:bg-slate-100 border border-slate-200 flex items-center justify-between"
                       >
-                        Priser & Pakker
+                        <span>Priser</span>
+                        <span className="text-[9px] text-electric-600 bg-electric-100 px-1.5 py-0.5 rounded-full font-bold">Fra 690,-</span>
                       </Link>
 
                       <Link 
@@ -1096,7 +1155,7 @@ function AppContent() {
                         onClick={() => { setIsPortalModalOpen(true); setIsMenuOpen(false); }}
                         className="text-left p-2.5 rounded-xl bg-slate-50 text-xs font-bold text-slate-800 hover:bg-slate-100 border border-slate-200 cursor-pointer flex items-center gap-1.5"
                       >
-                        <Users size={13} className="text-electric-600" />
+                        <Users size={13} className="text-emerald-600" />
                         <span>Kundeportal</span>
                       </button>
                       <Link 

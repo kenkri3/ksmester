@@ -103,6 +103,10 @@ const faqSections = [
     icon: ShieldCheck,
     items: [
       {
+        question: 'Hva koster VikingMester etter prøveperioden?',
+        answer: 'VikingMester har faste, lave månedspriser uten skjulte gebyrer: Solo koster kun 690 kr/mnd (550 kr/mnd ved årlig avtale), Team koster 1 490 kr/mnd (1 190 kr/mnd ved årlig avtale) og Totalentreprenør Pro koster fra 2 990 kr/mnd (2 390 kr/mnd ved årlig avtale). Alt av fri norsk support, oppdateringer og omnichannel-varsling er inkludert.',
+      },
+      {
         question: 'Er det bindingstid hos VikingMester?',
         answer: 'Nei, aldri! Vi tror på at du skal bli fordi systemet er best, ikke fordi du er låst. Du kan si opp eller justere abonnementet ditt når som helst med virkning fra neste måned.',
       },

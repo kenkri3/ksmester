@@ -47,17 +47,17 @@ export const PLAN_LIMITS: Record<string, { tokens: number; images: number; month
   solo: {
     tokens: 2_500_000, // 2.5 mill tokens/mnd (Vår tokenkostnad: ca. 8-15 kr)
     images: 250,       // 250 TEK17 bildeanalyser
-    monthlyPrice: 1490  // 1 490 kr/mnd -> 99% bruttomargin
+    monthlyPrice: 690  // 690 kr/mnd -> 98% bruttomargin
   },
   team: {
     tokens: 10_000_000, // 10 mill tokens/mnd (Vår tokenkostnad: ca. 35-60 kr)
     images: 1000,
-    monthlyPrice: 3490  // 3 490 kr/mnd -> 98.5% bruttomargin
+    monthlyPrice: 1490  // 1 490 kr/mnd -> 97% bruttomargin
   },
   entreprenor: {
     tokens: 30_000_000, // 30 mill tokens/mnd (Vår tokenkostnad: ca. 120-180 kr)
     images: 3000,
-    monthlyPrice: 6900  // 6 900 kr/mnd -> 97.5% bruttomargin
+    monthlyPrice: 2990  // 2 990 kr/mnd -> 95% bruttomargin
   },
   partner: {
     tokens: 15_000_000, // 15 mill tokens/mnd (Samarbeidspartnere & Interne kollegaer)

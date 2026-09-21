@@ -1616,9 +1616,9 @@ Svar KUN med gyldig rå JSON (uten markdown \`\`\`json klammer):
                             >
                               <option value="internal">👑 SuperAdmin (0 kr)</option>
                               <option value="demo">🧪 Demo / Test (0 kr)</option>
-                              <option value="solo">Solo (1 490 kr/mnd)</option>
-                              <option value="team">Team (3 490 kr/mnd)</option>
-                              <option value="entreprenor">Totalentreprenør (6 900 kr)</option>
+                              <option value="solo">Solo (690 kr/mnd)</option>
+                              <option value="team">Team (1 490 kr/mnd)</option>
+                              <option value="entreprenor">Totalentreprenør Pro (2 990 kr)</option>
                               <option value="partner">🤝 Partner / Kollega (0 kr)</option>
                             </select>
                           </td>
@@ -2306,7 +2306,7 @@ Svar KUN med gyldig rå JSON (uten markdown \`\`\`json klammer):
                 <strong>1. 1min.AI Credits vs. Tokens:</strong> 1min.AI fakturerer ikke i rå tokens, men trekker <em>kreditter (credits)</em> fra fellespotten på din konto. Fordi vi bruker <strong>gpt-4o-mini</strong> til 90% av alle samtaler og oppgaver, er credit-trekket minimalt (ca. 1 credit per 3-4 ord). Med en standard 1min.AI-pakke (eller Lifetime deal) koster en hel måneds drift av hundrevis av håndverkere bare noen få dollar.
               </p>
               <p>
-                <strong>2. Hva viser tallene over?</strong> Tallet <strong>{totalTokensThisMonth.toLocaleString('no-NO')} tokens</strong> er den faktiske mengden tekst behandlet for kundene. Beløpet <strong>{totalCostNokThisMonth > 0 ? `${totalCostNokThisMonth.toFixed(2)} kr` : '0,07 kr'}</strong> er den reelle underliggende token-kostnaden. Mot en kundeinntekt på 1 490 kr til 6 900 kr per bedrift betyr dette at AI-kostnaden er under 1 % av inntekten din.
+                <strong>2. Hva viser tallene over?</strong> Tallet <strong>{totalTokensThisMonth.toLocaleString('no-NO')} tokens</strong> er den faktiske mengden tekst behandlet for kundene. Beløpet <strong>{totalCostNokThisMonth > 0 ? `${totalCostNokThisMonth.toFixed(2)} kr` : '0,07 kr'}</strong> er den reelle underliggende token-kostnaden. Mot en kundeinntekt på 690 kr til 2 990 kr per bedrift betyr dette at AI-kostnaden er under 1 % av inntekten din.
               </p>
             </div>
           </div>
@@ -4310,9 +4310,9 @@ function EditCompanyInfoModal({ company, onClose, onSuccess }: { company: Compan
               className="w-full px-4 py-3 bg-neutral-50 border border-neutral-200 rounded-2xl focus:ring-2 focus:ring-blue-500 outline-none transition-all font-medium text-sm text-neutral-800"
             >
               <option value="internal">👑 SuperAdmin / System Eier (0 kr · Ubegrenset)</option>
-              <option value="solo">Solo (1 490 kr/mnd · 2.5M tokens)</option>
-              <option value="team">Team (3 490 kr/mnd · 10M tokens)</option>
-              <option value="entreprenor">Totalentreprenør (6 900 kr/mnd · 30M tokens)</option>
+              <option value="solo">Solo (690 kr/mnd · 2.5M tokens)</option>
+              <option value="team">Team (1 490 kr/mnd · 10M tokens)</option>
+              <option value="entreprenor">Totalentreprenør Pro (2 990 kr/mnd · 30M tokens)</option>
               <option value="partner">🤝 Samarbeidspartner / Kollega (0 kr · 15M tokens)</option>
             </select>
           </div>
@@ -4419,9 +4419,9 @@ function CreateCompanyModal({ onClose, onSuccess }: { onClose: () => void, onSuc
               className="w-full px-4 py-3 bg-neutral-50 border border-neutral-200 rounded-2xl focus:ring-2 focus:ring-electric-500 outline-none transition-all font-medium text-sm text-neutral-800"
             >
               <option value="internal">👑 SuperAdmin / System Eier (Ubegrenset tokens - 0 kr/mnd)</option>
-              <option value="solo">Solo (2.5M tokens/mnd - kr 1 490,-)</option>
-              <option value="team">Team (10M tokens/mnd - kr 3 490,-)</option>
-              <option value="entreprenor">Totalentreprenør (30M tokens/mnd - fra kr 6 900,-)</option>
+              <option value="solo">Solo (2.5M tokens/mnd - kr 690,-)</option>
+              <option value="team">Team (10M tokens/mnd - kr 1 490,-)</option>
+              <option value="entreprenor">Totalentreprenør Pro (30M tokens/mnd - kr 2 990,-)</option>
               <option value="partner">🤝 Samarbeidspartner / Kollega (15M tokens - 0 kr/mnd)</option>
             </select>
           </div>
@@ -4901,9 +4901,9 @@ function ConvertLeadModal({
 
             <div className="grid grid-cols-3 gap-2">
               {[
-                { id: 'solo', name: 'Solo', price: '1 490 kr/mnd', desc: '1 bruker · 2.5M tokens' },
-                { id: 'team', name: 'Team', price: '3 490 kr/mnd', desc: 'Inntil 10 brukere · 10M' },
-                { id: 'entreprenor', name: 'Totalentreprenør', price: '6 900 kr/mnd', desc: 'Ubegrenset · 30M' }
+                { id: 'solo', name: 'Solo', price: '690 kr/mnd', desc: '1 bruker · 2.5M tokens' },
+                { id: 'team', name: 'Team', price: '1 490 kr/mnd', desc: 'Inntil 10 brukere · 10M' },
+                { id: 'entreprenor', name: 'Totalentreprenør Pro', price: '2 990 kr/mnd', desc: 'Ubegrenset · 30M' }
               ].map(p => (
                 <button
                   key={p.id}

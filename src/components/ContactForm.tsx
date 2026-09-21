@@ -193,9 +193,9 @@ export function ContactForm() {
             className="w-full px-4 py-3 rounded-xl border border-slate-300 text-sm focus:outline-none focus:ring-2 focus:ring-electric-500 focus:border-transparent text-navy-900 bg-white"
           >
             <option value="demo">Bestille uforpliktende 15 min demo</option>
-            <option value="solo">VikingMester Solo (kr 1 490/mnd)</option>
-            <option value="team">VikingMester Team (kr 3 490/mnd)</option>
-            <option value="entreprenor">Totalentreprenør (fra kr 6 900/mnd)</option>
+            <option value="solo">VikingMester Solo (kr 690/mnd)</option>
+            <option value="team">VikingMester Team (kr 1 490/mnd) ⭐ Mest populær</option>
+            <option value="entreprenor">Totalentreprenør Pro (kr 2 990/mnd)</option>
             <option value="partner">Bli forhandler / Partner</option>
             <option value="support">Spørsmål eller teknisk support</option>
           </select>

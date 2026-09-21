@@ -54,7 +54,8 @@ import {
   Wrench, 
   Hammer,
   FolderKanban,
-  Package
+  Package,
+  Volume2
 } from 'lucide-react';
 import { cn } from '@/src/lib/utils';
 import InstallGuide from './InstallGuide';
@@ -62,7 +63,7 @@ import MesterAIDemoSimulator from './MesterAIDemoSimulator';
 import { toast } from 'sonner';
 import { promptPWAInstall, isPWAInstalled, triggerAppDownloadOrInstall } from '../lib/pwa';
 
-export type LandingTab = 'home' | 'ai' | 'hms' | 'fdv' | 'pricing';
+export type LandingTab = 'home' | 'offers_ks' | 'change_orders' | 'lukkesperre' | 'fdv' | 'customer_portal' | 'pricing' | 'ai' | 'hms';
 
 interface LandingPageProps {
   onStartDemo: () => void;
@@ -121,83 +122,113 @@ export default function LandingPage({
 
   return (
     <div className="bg-white text-navy-900 min-h-screen selection:bg-electric-500/20 selection:text-electric-700 font-sans">
-      {/* Sub-navigation tabs for direct feature drill-downs */}
-      <div className="sticky top-16 z-40 bg-white/95 backdrop-blur-md border-b border-slate-200 px-4 py-2.5 shadow-xs">
+      {/* 🚀 SUB-NAVIGASJON: SELGER DRØMMEN & 100% REFLEKTERER MESTER-WORKSTATIONEN */}
+      <div className="sticky top-16 z-40 bg-slate-950/95 backdrop-blur-md border-b border-slate-800/80 px-3 sm:px-4 py-2 shadow-xl">
         <div className="max-w-7xl mx-auto flex items-center justify-between gap-2 overflow-x-auto no-scrollbar">
           <div className="flex items-center gap-1.5 shrink-0">
             <button
               onClick={() => switchTab('home')}
               className={cn(
-                "px-3.5 py-1.5 rounded-full text-xs font-bold transition-all flex items-center gap-1.5 cursor-pointer",
+                "px-3 py-1.5 rounded-xl text-xs font-bold transition-all flex items-center gap-1.5 cursor-pointer",
                 activeTab === 'home' 
-                  ? "bg-electric-50 text-electric-600 border border-electric-300/40 shadow-xs" 
-                  : "text-slate-600 hover:text-navy-900 hover:bg-slate-100 border border-transparent"
+                  ? "bg-electric-500 text-white shadow-purple-cta" 
+                  : "text-slate-300 hover:text-white hover:bg-slate-900 border border-transparent"
               )}
             >
-              <Hammer size={13} className="text-electric-500" />
+              <Sparkles size={13} className="text-amber-400" />
               <span>Oversikt</span>
             </button>
             <button
-              onClick={() => switchTab('ai')}
+              onClick={() => switchTab('offers_ks')}
               className={cn(
-                "px-3.5 py-1.5 rounded-full text-xs font-bold transition-all flex items-center gap-1.5 cursor-pointer",
-                activeTab === 'ai' 
-                  ? "bg-electric-50 text-electric-600 border border-electric-300/40 shadow-xs" 
-                  : "text-slate-600 hover:text-navy-900 hover:bg-slate-100 border border-transparent"
+                "px-3 py-1.5 rounded-xl text-xs font-bold transition-all flex items-center gap-1.5 cursor-pointer",
+                activeTab === 'offers_ks' 
+                  ? "bg-emerald-600 text-white shadow-md" 
+                  : "text-slate-300 hover:text-white hover:bg-slate-900 border border-transparent"
               )}
             >
-              <Cpu size={13} />
-              <span>Multimodal AI</span>
+              <Zap size={13} className="text-emerald-400" />
+              <span>1. Tilbud til KS</span>
+              <span className="text-[9px] bg-emerald-400/20 text-emerald-300 border border-emerald-400/30 px-1.5 py-0.2 rounded-md uppercase font-black">Autonomt</span>
             </button>
             <button
-              onClick={() => switchTab('hms')}
+              onClick={() => switchTab('change_orders')}
               className={cn(
-                "px-3.5 py-1.5 rounded-full text-xs font-bold transition-all flex items-center gap-1.5 cursor-pointer",
-                activeTab === 'hms' 
-                  ? "bg-electric-50 text-electric-600 border border-electric-300/40 shadow-xs" 
-                  : "text-slate-600 hover:text-navy-900 hover:bg-slate-100 border border-transparent"
+                "px-3 py-1.5 rounded-xl text-xs font-bold transition-all flex items-center gap-1.5 cursor-pointer",
+                activeTab === 'change_orders' 
+                  ? "bg-rose-600 text-white shadow-md" 
+                  : "text-slate-300 hover:text-white hover:bg-slate-900 border border-transparent"
               )}
             >
-              <ShieldCheck size={13} />
-              <span>HMS & SJA</span>
+              <FileSignature size={13} className="text-rose-400" />
+              <span>2. Tale-til-Endring</span>
+              <span className="text-[9px] bg-rose-400/20 text-rose-300 border border-rose-400/30 px-1.5 py-0.2 rounded-md uppercase font-black">NS 8406</span>
+            </button>
+            <button
+              onClick={() => switchTab('lukkesperre')}
+              className={cn(
+                "px-3 py-1.5 rounded-xl text-xs font-bold transition-all flex items-center gap-1.5 cursor-pointer",
+                activeTab === 'lukkesperre' 
+                  ? "bg-purple-600 text-white shadow-md" 
+                  : "text-slate-300 hover:text-white hover:bg-slate-900 border border-transparent"
+              )}
+            >
+              <Lock size={13} className="text-purple-400" />
+              <span>3. Lukkesperre</span>
+              <span className="text-[9px] bg-purple-400/20 text-purple-300 border border-purple-400/30 px-1.5 py-0.2 rounded-md uppercase font-black">TEK17</span>
             </button>
             <button
               onClick={() => switchTab('fdv')}
               className={cn(
-                "px-3.5 py-1.5 rounded-full text-xs font-bold transition-all flex items-center gap-1.5 cursor-pointer",
+                "px-3 py-1.5 rounded-xl text-xs font-bold transition-all flex items-center gap-1.5 cursor-pointer",
                 activeTab === 'fdv' 
-                  ? "bg-electric-50 text-electric-600 border border-electric-300/40 shadow-xs" 
-                  : "text-slate-600 hover:text-navy-900 hover:bg-slate-100 border border-transparent"
+                  ? "bg-blue-600 text-white shadow-md" 
+                  : "text-slate-300 hover:text-white hover:bg-slate-900 border border-transparent"
               )}
             >
-              <FileCheck size={13} />
-              <span>FDV & Boligmappa</span>
+              <FileCheck size={13} className="text-blue-400" />
+              <span>4. 1-Klikk FDV</span>
+              <span className="text-[9px] bg-blue-400/20 text-blue-300 border border-blue-400/30 px-1.5 py-0.2 rounded-md uppercase font-black">Boligmappa</span>
+            </button>
+            <button
+              onClick={() => switchTab('customer_portal')}
+              className={cn(
+                "px-3 py-1.5 rounded-xl text-xs font-bold transition-all flex items-center gap-1.5 cursor-pointer",
+                activeTab === 'customer_portal' 
+                  ? "bg-cyan-600 text-white shadow-md" 
+                  : "text-slate-300 hover:text-white hover:bg-slate-900 border border-transparent"
+              )}
+            >
+              <Smartphone size={13} className="text-cyan-400" />
+              <span>5. Kundeportal</span>
+              <span className="text-[9px] bg-cyan-400/20 text-cyan-300 border border-cyan-400/30 px-1.5 py-0.2 rounded-md uppercase font-black">Signatur</span>
             </button>
             <button
               onClick={() => switchTab('pricing')}
               className={cn(
-                "px-3.5 py-1.5 rounded-full text-xs font-bold transition-all flex items-center gap-1.5 cursor-pointer",
+                "px-3 py-1.5 rounded-xl text-xs font-bold transition-all flex items-center gap-1.5 cursor-pointer",
                 activeTab === 'pricing' 
-                  ? "bg-electric-50 text-electric-600 border border-electric-300/40 shadow-xs" 
-                  : "text-slate-600 hover:text-navy-900 hover:bg-slate-100 border border-transparent"
+                  ? "bg-amber-600 text-white shadow-md" 
+                  : "text-slate-300 hover:text-white hover:bg-slate-900 border border-transparent"
               )}
             >
-              <DollarSign size={13} />
-              <span>Priser & Rammer</span>
+              <DollarSign size={13} className="text-amber-400" />
+              <span>6. Pakker & Priser</span>
+              <span className="text-[9px] bg-amber-400/20 text-amber-300 border border-amber-400/30 px-1.5 py-0.2 rounded-md font-black">Fra 690,-</span>
             </button>
           </div>
 
           <div className="hidden sm:flex items-center gap-2 shrink-0">
-            <span className="flex items-center gap-1.5 text-[11px] font-bold text-emerald-700 bg-emerald-50 px-2.5 py-1 rounded-full border border-emerald-200">
-              <span className="w-1.5 h-1.5 rounded-full bg-emerald-500 animate-pulse" />
-              SYSTEM 100% OPERATIVT
+            <span className="flex items-center gap-1.5 text-[11px] font-bold text-emerald-400 bg-emerald-950/60 px-2.5 py-1 rounded-full border border-emerald-500/30">
+              <span className="w-1.5 h-1.5 rounded-full bg-emerald-400 animate-pulse" />
+              100% AUTONOM MESTERAI
             </span>
             <button
               onClick={handleInstallApp}
-              className="text-xs font-bold text-slate-700 hover:text-navy-900 flex items-center gap-1.5 bg-slate-50 hover:bg-slate-100 px-3 py-1 rounded-full border border-slate-200 transition-colors cursor-pointer"
+              className="text-xs font-bold text-slate-200 hover:text-white flex items-center gap-1.5 bg-slate-900 hover:bg-slate-800 px-3 py-1 rounded-full border border-slate-700 transition-colors cursor-pointer"
             >
-              <Download size={12} />
-              <span>Last ned app / snarvei</span>
+              <Download size={12} className="text-electric-400" />
+              <span>Last ned app</span>
             </button>
           </div>
         </div>
@@ -217,6 +248,71 @@ export default function LandingPage({
               onStartDemo={onStartDemo} 
               onGoToPricing={() => switchTab('pricing')}
               onViewChange={onViewChange}
+              onSwitchTab={switchTab}
+            />
+          </motion.div>
+        )}
+
+        {activeTab === 'offers_ks' && (
+          <motion.div
+            key="offers_ks"
+            initial={{ opacity: 0, y: 10 }}
+            animate={{ opacity: 1, y: 0 }}
+            exit={{ opacity: 0, y: -10 }}
+            transition={{ duration: 0.2 }}
+          >
+            <TacticalOffersKsView 
+              onStartDemo={onStartDemo} 
+              onBack={() => switchTab('home')} 
+              onGoToPricing={() => switchTab('pricing')} 
+            />
+          </motion.div>
+        )}
+
+        {activeTab === 'change_orders' && (
+          <motion.div
+            key="change_orders"
+            initial={{ opacity: 0, y: 10 }}
+            animate={{ opacity: 1, y: 0 }}
+            exit={{ opacity: 0, y: -10 }}
+            transition={{ duration: 0.2 }}
+          >
+            <TacticalChangeOrdersView 
+              onStartDemo={onStartDemo} 
+              onBack={() => switchTab('home')} 
+              onGoToPricing={() => switchTab('pricing')} 
+            />
+          </motion.div>
+        )}
+
+        {activeTab === 'lukkesperre' && (
+          <motion.div
+            key="lukkesperre"
+            initial={{ opacity: 0, y: 10 }}
+            animate={{ opacity: 1, y: 0 }}
+            exit={{ opacity: 0, y: -10 }}
+            transition={{ duration: 0.2 }}
+          >
+            <TacticalLukkesperreView 
+              onStartDemo={onStartDemo} 
+              onBack={() => switchTab('home')} 
+              onGoToPricing={() => switchTab('pricing')} 
+            />
+          </motion.div>
+        )}
+
+        {activeTab === 'customer_portal' && (
+          <motion.div
+            key="customer_portal"
+            initial={{ opacity: 0, y: 10 }}
+            animate={{ opacity: 1, y: 0 }}
+            exit={{ opacity: 0, y: -10 }}
+            transition={{ duration: 0.2 }}
+          >
+            <TacticalPortalView 
+              onStartDemo={onStartDemo} 
+              onBack={() => switchTab('home')} 
+              onGoToPricing={() => switchTab('pricing')} 
             />
           </motion.div>
         )}
@@ -276,7 +372,17 @@ export default function LandingPage({
 // -------------------------------------------------------------
 // TACTICAL HOME VIEW
 // -------------------------------------------------------------
-function TacticalHomeView({ onStartDemo, onGoToPricing, onViewChange }: { onStartDemo: () => void, onGoToPricing: () => void, onViewChange: (view: any) => void }) {
+function TacticalHomeView({ 
+  onStartDemo, 
+  onGoToPricing, 
+  onViewChange,
+  onSwitchTab
+}: { 
+  onStartDemo: () => void, 
+  onGoToPricing: () => void, 
+  onViewChange: (view: any) => void,
+  onSwitchTab?: (tab: LandingTab) => void
+}) {
   const [workerCount, setWorkerCount] = useState<number>(4);
   const [leadEmail, setLeadEmail] = useState('');
   const [leadCompany, setLeadCompany] = useState('');
@@ -329,26 +435,44 @@ function TacticalHomeView({ onStartDemo, onGoToPricing, onViewChange }: { onStar
 
   return (
     <div className="relative">
-      {/* Hero Section */}
+      {/* Hero Section - SELGER DRØMMEN OM FRIHET */}
       <section className="relative overflow-hidden pt-12 pb-20 lg:pt-20 lg:pb-28 border-b border-slate-200 bg-radial-purple bg-grid-slate">
         <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 relative z-10">
           {/* Top Mission Badge */}
           <div className="flex justify-center mb-6">
-            <div className="inline-flex items-center gap-2 px-4 py-1.5 rounded-full bg-electric-50 border border-electric-300/40 text-electric-600 text-xs font-bold tracking-wide uppercase shadow-xs">
-              <span className="w-2 h-2 rounded-full bg-electric-500 animate-ping" />
-              <span>VIKINGMESTER 2.0 • BYGGEBRANSJENS FØRSTE MULTIMODALE KRAFTVERKTØY</span>
+            <div className="inline-flex items-center gap-2 px-4 py-1.5 rounded-full bg-slate-950 border border-slate-800 text-slate-200 text-xs font-bold tracking-wide uppercase shadow-xl">
+              <span className="w-2 h-2 rounded-full bg-emerald-400 animate-ping" />
+              <span className="text-amber-400">VIKINGMESTER 2.0</span>
+              <span className="text-slate-500">•</span>
+              <span>100% AUTONOM BYGGELEDER & MESTER-WORKSTATION</span>
             </div>
           </div>
 
-          {/* Bold Punchy Headline */}
+          {/* Bold Punchy Headline - Selger drømmen til håndverkeren */}
           <div className="text-center max-w-4xl mx-auto mb-8">
             <h1 className="text-3xl sm:text-5xl lg:text-6xl font-black tracking-tight text-navy-900 leading-[1.12]">
-              Byggeplassens råeste kraftverktøy.
-              <span className="block text-gradient-purple mt-2">Alt på stell før du forlater byggeplassen.</span>
+              Friheten tilbake. Null kveldsarbeid.
+              <span className="block text-gradient-purple mt-2">Få betalt for hver eneste endringstime.</span>
             </h1>
             <p className="mt-6 text-base sm:text-lg text-slate-600 max-w-2xl mx-auto leading-relaxed font-sans">
-              Snakk inn byggedagboken fra bilen. Knips avvikene med automatisk TEK17-visjon. Lås inn ekstraarbeider på 15 sekunder med tale-til-endringsordre (NS 8406).
+              Snakk inn byggedagboken fra varebilen på vei hjem. La MesterAI opprette byggeplass, kontrakter og TEK17-sjekklister automatisk. Få kunden til å signere endringsordrer på SMS på 15 sekunder før du rører hammeren. Du har fri når du kommer hjem til familien.
             </p>
+
+            {/* Micro-guarantees */}
+            <div className="flex flex-wrap items-center justify-center gap-3 sm:gap-6 mt-6 text-xs font-bold text-slate-700">
+              <span className="flex items-center gap-1.5 text-emerald-700 bg-emerald-50 px-2.5 py-1 rounded-full border border-emerald-200">
+                <CheckCircle2 size={13} className="text-emerald-600" />
+                <span>Fra kun 690 kr/mnd</span>
+              </span>
+              <span className="flex items-center gap-1.5 text-electric-700 bg-electric-50 px-2.5 py-1 rounded-full border border-electric-200">
+                <CheckCircle2 size={13} className="text-electric-600" />
+                <span>0,- etablering • Ingen binding</span>
+              </span>
+              <span className="flex items-center gap-1.5 text-slate-800 bg-slate-100 px-2.5 py-1 rounded-full border border-slate-200">
+                <CheckCircle2 size={13} className="text-slate-600" />
+                <span>Norsk NS 8406 & TEK17</span>
+              </span>
+            </div>
           </div>
 
           {/* Main Action Triggers */}
@@ -378,143 +502,203 @@ function TacticalHomeView({ onStartDemo, onGoToPricing, onViewChange }: { onStar
             </button>
           </div>
 
-          {/* Interactive Live Cockpit Mockup */}
-          <div className="max-w-5xl mx-auto bg-white border border-slate-200/80 rounded-3xl shadow-card-hover p-4 sm:p-7 relative overflow-hidden">
-            {/* Window Chrome Header */}
-            <div className="flex items-center justify-between pb-4 mb-5 border-b border-slate-200 text-xs font-sans text-slate-500">
+          {/* 💎 1:1 INTERACTIVE MESTER-WORKSTATION TERMINAL MOCKUP (GJENSPEILER BACKEND 100%) */}
+          <div className="max-w-6xl mx-auto bg-[#0A101D] border-2 border-slate-800 rounded-3xl shadow-2xl p-4 sm:p-7 relative overflow-hidden text-white">
+            {/* Ambient cyberpunk background glow */}
+            <div className="absolute top-0 right-1/4 w-96 h-96 bg-purple-600/10 rounded-full blur-3xl pointer-events-none" />
+            <div className="absolute bottom-0 left-1/4 w-96 h-96 bg-emerald-600/10 rounded-full blur-3xl pointer-events-none" />
+
+            {/* Window Chrome Header - Identisk med MesterWorkstation.tsx */}
+            <div className="flex items-center justify-between pb-4 mb-5 border-b border-slate-800 text-xs font-sans text-slate-400 relative z-10">
               <div className="flex items-center gap-2">
-                <span className="w-3 h-3 rounded-full bg-red-400 inline-block" />
-                <span className="w-3 h-3 rounded-full bg-amber-400 inline-block" />
-                <span className="w-3 h-3 rounded-full bg-emerald-400 inline-block" />
-                <span className="ml-2 text-slate-800 font-extrabold tracking-wide">VIKINGMESTER LIVE FIELD TERMINAL</span>
+                <span className="w-3 h-3 rounded-full bg-rose-500/80 inline-block shadow-xs" />
+                <span className="w-3 h-3 rounded-full bg-amber-500/80 inline-block shadow-xs" />
+                <span className="w-3 h-3 rounded-full bg-emerald-500/80 inline-block shadow-xs" />
+                <span className="ml-2 text-white font-extrabold tracking-wide text-[11px] sm:text-xs">
+                  VIKINGMESTER WORKSTATION v2.6 • MESTERAI KJERNE
+                </span>
+                <span className="hidden md:inline-flex items-center gap-1 ml-2 text-[10px] bg-slate-800/80 text-purple-300 px-2 py-0.5 rounded-md border border-purple-500/20">
+                  <FolderKanban size={10} />
+                  <span>Villa Holmenkollen</span>
+                </span>
               </div>
               <div className="flex items-center gap-3">
-                <span className="hidden sm:inline-block text-electric-600 font-bold text-xs">GEMINI 3.8 FLASH ENGINE</span>
-                <span className="text-emerald-700 font-bold bg-emerald-50 px-2.5 py-0.5 rounded-full border border-emerald-200 flex items-center gap-1.5 text-xs">
-                  <span className="w-1.5 h-1.5 rounded-full bg-emerald-500 animate-pulse" />
+                <span className="hidden sm:inline-block text-purple-400 font-mono text-[11px]">
+                  GEMINI 3.8 FLASH (0 ms)
+                </span>
+                <span className="text-emerald-400 font-bold bg-emerald-950/80 px-2.5 py-0.5 rounded-full border border-emerald-500/30 flex items-center gap-1.5 text-xs">
+                  <span className="w-1.5 h-1.5 rounded-full bg-emerald-400 animate-pulse" />
                   ONLINE
                 </span>
               </div>
             </div>
 
-            {/* 3 Real-time Columns */}
-            <div className="grid grid-cols-1 md:grid-cols-3 gap-4">
-              {/* Voice-to-Log Card */}
-              <div className="bg-slate-50 border border-slate-200/80 rounded-2xl p-4 sm:p-5 flex flex-col justify-between">
+            {/* 3 Hyper-realistiske kjernefunksjoner i mørkt workstation-design */}
+            <div className="grid grid-cols-1 md:grid-cols-3 gap-4 relative z-10">
+              
+              {/* 1. Tale-til-Endringsordre (NS 8406) */}
+              <div className="bg-slate-900/90 border border-rose-500/40 rounded-2xl p-4 sm:p-5 flex flex-col justify-between hover:border-rose-400 transition-colors shadow-lg">
                 <div>
                   <div className="flex items-center justify-between mb-3">
-                    <span className="text-xs font-bold text-electric-600 uppercase flex items-center gap-1.5">
-                      <Mic size={14} className="text-electric-500 animate-pulse" />
-                      1. Stemmestyrt Dagbok
+                    <span className="text-xs font-bold text-rose-400 uppercase flex items-center gap-1.5">
+                      <Mic size={14} className="text-rose-400 animate-pulse" />
+                      1. Tale-til-Endring (NS 8406)
                     </span>
-                    <span className="text-xs font-mono text-slate-400">07:42</span>
+                    <span className="text-[10px] font-bold px-2 py-0.5 rounded-full bg-rose-950 text-rose-300 border border-rose-800">
+                      SMS SENDT
+                    </span>
                   </div>
-                  <div className="p-3 rounded-xl bg-white border border-slate-200 shadow-xs text-xs text-slate-800 font-medium italic mb-3">
-                    <p>"Gipset ferdig himling plan 2. Venter på elektriker før vegger lukkes. Yr melder regn, tildekket materialer."</p>
+
+                  {/* Lydtranskripsjon fra stillaset */}
+                  <div className="p-3 rounded-xl bg-[#080C14] border border-slate-800 text-xs text-slate-200 font-medium italic mb-3">
+                    <p className="text-slate-400 text-[10px] uppercase font-mono not-italic mb-1 flex items-center gap-1">
+                      <Volume2 size={11} className="text-rose-400" />
+                      Innlest tale fra byggeplass:
+                    </p>
+                    <p>"Kunden vil ha 6 ekstra downlights og flytte sluk 15 cm på badet."</p>
                   </div>
-                  <div className="text-xs space-y-1.5">
-                    <p className="text-emerald-700 font-semibold flex items-center gap-1.5">
-                      <CheckCircle2 size={13} className="text-emerald-600" />
-                      <span>Værdata lagt til: Oslo 6°C, 3.2 m/s</span>
+
+                  <div className="text-xs space-y-1.5 text-slate-300">
+                    <p className="text-emerald-400 font-semibold flex items-center gap-1.5">
+                      <CheckCircle2 size={13} className="text-emerald-400 shrink-0" />
+                      <span>Beregnet: 18 500 kr eks. mva (+2 dager frist)</span>
                     </p>
-                    <p className="text-slate-700 font-medium flex items-center gap-1.5">
-                      <CheckCircle2 size={13} className="text-slate-400" />
-                      <span>Prosjekt: Villa Holmenkollen</span>
+                    <p className="text-slate-300 flex items-center gap-1.5">
+                      <CheckCircle2 size={13} className="text-rose-400 shrink-0" />
+                      <span>Kunde (Ola Nordmann) signerte på SMS</span>
                     </p>
-                    <p className="text-slate-700 font-medium flex items-center gap-1.5">
-                      <CheckCircle2 size={13} className="text-slate-400" />
-                      <span>Generert PDF-rapport til byggherre</span>
+                    <p className="text-slate-400 text-[11px]">
+                      Juridisk bindende kontrakt arkivert automatisk
                     </p>
                   </div>
                 </div>
-                <div className="mt-4 pt-3 border-t border-slate-200 flex items-center justify-between text-[11px] font-bold">
-                  <span className="text-slate-500">TID BRUKT: 14 SEK</span>
-                  <span className="text-emerald-700 bg-emerald-50 px-2 py-0.5 rounded border border-emerald-200">STATUS: ARKIVERT</span>
+
+                <div className="mt-4 pt-3 border-t border-slate-800 flex items-center justify-between text-[11px] font-bold">
+                  <span className="text-slate-400">FAKTURERT TILLEGG</span>
+                  <span className="text-emerald-400 font-mono bg-emerald-950/80 px-2 py-0.5 rounded border border-emerald-800">
+                    +18 500 KR SIKRET
+                  </span>
                 </div>
               </div>
 
-              {/* Vision Scanner Card */}
-              <div className="bg-slate-50 border-2 border-electric-400/60 rounded-2xl p-4 sm:p-5 flex flex-col justify-between relative overflow-hidden shadow-xs">
-                <div className="absolute top-0 right-0 px-2.5 py-0.5 bg-electric-100 text-electric-700 font-bold text-[10px] uppercase rounded-bl-lg border-b border-l border-electric-300/40">
-                  AI VISION SCAN
-                </div>
+              {/* 2. Tverrfaglig Lukkesperre (TEK17) */}
+              <div className="bg-slate-900/90 border border-purple-500/40 rounded-2xl p-4 sm:p-5 flex flex-col justify-between hover:border-purple-400 transition-colors shadow-lg">
                 <div>
                   <div className="flex items-center justify-between mb-3">
-                    <span className="text-xs font-bold text-electric-600 uppercase flex items-center gap-1.5">
-                      <Camera size={14} className="text-electric-500" />
-                      2. TEK17 Avvikskontroll
+                    <span className="text-xs font-bold text-purple-300 uppercase flex items-center gap-1.5">
+                      <Lock size={14} className="text-purple-400" />
+                      2. Lukkesperre (TEK17)
+                    </span>
+                    <span className="text-[10px] font-bold px-2 py-0.5 rounded-full bg-amber-950 text-amber-300 border border-amber-800">
+                      SONE BAD LÅST
                     </span>
                   </div>
                   
-                  {/* High Tech Blueprint Camera Preview */}
-                  <div className="h-28 rounded-xl bg-gradient-to-br from-navy-900 to-navy-950 border border-navy-800 relative flex items-center justify-center overflow-hidden mb-3 shadow-inner">
-                    {/* Simulated laser scan line */}
-                    <div className="absolute left-0 right-0 h-0.5 bg-gradient-to-r from-transparent via-amber-400 to-transparent animate-scan-laser" />
-                    
-                    {/* Architectural Blueprint grid inside preview */}
-                    <div className="absolute inset-0 opacity-15 bg-[radial-gradient(#9D00FF_1px,transparent_1px)] [background-size:12px_12px]" />
-
-                    <div className="border border-emerald-400/60 rounded-lg px-3 py-1.5 bg-emerald-950/80 text-[11px] font-mono text-emerald-300 flex items-center gap-1.5 shadow-lg relative z-10">
-                      <CheckCircle2 size={13} className="text-emerald-400" />
-                      <span>SLUKMANSJETT GODKJENT (BVN 31.205)</span>
-                    </div>
-                  </div>
-
-                  <div className="text-xs space-y-1.5 text-slate-700 font-medium">
-                    <p className="flex items-center gap-1.5">
-                      <span className="text-emerald-600 font-bold">✓</span>
-                      <span>Klemring montert korrekt</span>
+                  {/* Statusboks med advarsel */}
+                  <div className="p-3 rounded-xl bg-amber-950/40 border border-amber-500/40 text-xs mb-3">
+                    <p className="font-bold text-amber-300 flex items-center gap-1">
+                      <span>⚠️ STOPP: Ikke plate vegg i bad 2. etg</span>
                     </p>
-                    <p className="flex items-center gap-1.5">
-                      <span className="text-emerald-600 font-bold">✓</span>
-                      <span>Oppkant membran: 25 mm [OK]</span>
-                    </p>
-                  </div>
-                </div>
-                <div className="mt-4 pt-3 border-t border-slate-200 flex items-center justify-between text-[11px] font-bold">
-                  <span className="text-slate-500">FDV-DOKUMENTASJON</span>
-                  <span className="text-emerald-700 bg-emerald-50 px-2 py-0.5 rounded border border-emerald-200">100% SAMSVAR</span>
-                </div>
-              </div>
-
-              {/* Cross-Trade Lock Card */}
-              <div className="bg-slate-50 border border-rose-200 rounded-2xl p-4 sm:p-5 flex flex-col justify-between">
-                <div>
-                  <div className="flex items-center justify-between mb-3">
-                    <span className="text-xs font-bold text-rose-600 uppercase flex items-center gap-1.5">
-                      <Shield size={14} className="text-rose-500" />
-                      3. Tverrfaglig Lukkesperre
-                    </span>
-                    <span className="text-[10px] font-bold px-2 py-0.5 rounded-full bg-rose-100 text-rose-700 border border-rose-200">AKTIV</span>
-                  </div>
-                  
-                  <div className="p-3 rounded-xl bg-rose-50 border border-rose-200 text-xs mb-3">
-                    <p className="font-bold text-rose-900 flex items-center gap-1">
-                      <span>⚠️ SONE BAD 2. ETG LÅST FOR GIPSING</span>
-                    </p>
-                    <p className="text-[11px] text-rose-700 mt-1 font-medium leading-relaxed">
-                      Rørlegger har ikke registrert trykktest av rør-i-rør (TEK17 § 13-15).
+                    <p className="text-[11px] text-amber-200/80 mt-1 leading-relaxed">
+                      VVS-underentreprenør mangler trykkprøving av rør-i-rør (TEK17 § 13-15).
                     </p>
                   </div>
 
                   <div className="text-xs space-y-1.5">
-                    <p className="text-emerald-700 font-semibold flex items-center gap-1.5">
-                      <span className="text-emerald-600 font-bold">✓</span>
-                      <span>Elektriker rørføring: Kvittert</span>
+                    <p className="text-emerald-400 font-medium flex items-center gap-1.5">
+                      <span className="text-emerald-400 font-bold">✓</span>
+                      <span>Elektriker rørføring: Kvittert & fotografert</span>
                     </p>
-                    <p className="text-rose-600 font-bold flex items-center gap-1.5">
+                    <p className="text-amber-400 font-bold flex items-center gap-1.5">
                       <span>✗</span>
-                      <span>Trykkprøving VVS: Mangler</span>
+                      <span>Trykkprøving VVS: Venter på kvittering</span>
                     </p>
-                    <p className="text-electric-700 font-medium text-[11px]">
-                      SMS-varsel sendt til underentreprenør
+                    <p className="text-purple-300 text-[11px]">
+                      SMS-purring automatisk sendt til rørlegger
                     </p>
                   </div>
                 </div>
-                <div className="mt-4 pt-3 border-t border-slate-200 flex items-center justify-between text-[11px] font-bold">
-                  <span className="text-slate-500">HINDRER BYGGFEIL</span>
-                  <span className="text-electric-700 bg-electric-50 px-2 py-0.5 rounded border border-electric-200">SPART: 45 000 KR</span>
+
+                <div className="mt-4 pt-3 border-t border-slate-800 flex items-center justify-between text-[11px] font-bold">
+                  <span className="text-slate-400">UNNGÅTT RIVESKADE</span>
+                  <span className="text-purple-300 bg-purple-950/80 px-2 py-0.5 rounded border border-purple-800">
+                    SPART CA. 65 000 KR
+                  </span>
                 </div>
+              </div>
+
+              {/* 3. Autonom Tilbud ➔ Kontrakt ➔ KS */}
+              <div className="bg-slate-900/90 border border-emerald-500/40 rounded-2xl p-4 sm:p-5 flex flex-col justify-between hover:border-emerald-400 transition-colors shadow-lg">
+                <div>
+                  <div className="flex items-center justify-between mb-3">
+                    <span className="text-xs font-bold text-emerald-400 uppercase flex items-center gap-1.5">
+                      <Zap size={14} className="text-emerald-400" />
+                      3. Tilbud til KS (Autonomt)
+                    </span>
+                    <span className="text-[10px] font-bold px-2 py-0.5 rounded-full bg-emerald-950 text-emerald-300 border border-emerald-800">
+                      3 SEKUNDER
+                    </span>
+                  </div>
+
+                  {/* Autopilot kvittering */}
+                  <div className="p-3 rounded-xl bg-[#080C14] border border-slate-800 text-xs text-slate-200 mb-3">
+                    <p className="text-emerald-400 font-bold text-[11px] flex items-center gap-1 mb-1">
+                      <Sparkles size={12} />
+                      Kunde godkjente tilbud kr 420 000,-
+                    </p>
+                    <p className="text-[11px] text-slate-400">
+                      MesterAI har generert prosjektmappe, kontrakt og KS.
+                    </p>
+                  </div>
+
+                  <div className="text-xs space-y-1.5 text-slate-300 font-medium">
+                    <p className="flex items-center gap-1.5 text-emerald-400">
+                      <span>✓</span>
+                      <span>NS 8406 Byggekontrakt generert</span>
+                    </p>
+                    <p className="flex items-center gap-1.5 text-emerald-400">
+                      <span>✓</span>
+                      <span>18 TEK17 sjekkpunkter tildelt fagarbeidere</span>
+                    </p>
+                    <p className="flex items-center gap-1.5 text-slate-300">
+                      <span>✓</span>
+                      <span>Sanntidsvær Yr.no koblet på byggedagbok</span>
+                    </p>
+                  </div>
+                </div>
+
+                <div className="mt-4 pt-3 border-t border-slate-800 flex items-center justify-between text-[11px] font-bold">
+                  <span className="text-slate-400">TID BRUKT</span>
+                  <span className="text-emerald-400 bg-emerald-950/80 px-2 py-0.5 rounded border border-emerald-800">
+                    0 TIMER KVELDSARBEID
+                  </span>
+                </div>
+              </div>
+
+            </div>
+
+            {/* Terminal Bottom Prompt Bar - Lar brukeren oppleve kraften */}
+            <div className="mt-5 pt-4 border-t border-slate-800/80 flex flex-col sm:flex-row items-center justify-between gap-3 text-xs">
+              <div className="flex items-center gap-2.5 w-full sm:w-auto bg-[#080C14] px-3.5 py-2 rounded-xl border border-slate-800 text-slate-300 font-mono">
+                <span className="w-2 h-2 rounded-full bg-emerald-400 animate-pulse" />
+                <span className="text-slate-400">MesterAI Prompt:</span>
+                <span className="text-purple-300 truncate">"Snakk inn endring, avvik eller opprett prosjekt..."</span>
+              </div>
+              <div className="flex items-center gap-2 w-full sm:w-auto justify-end">
+                <button
+                  type="button"
+                  onClick={onStartDemo}
+                  className="px-4 py-2 rounded-xl bg-purple-600 hover:bg-purple-500 text-white font-bold transition-all flex items-center gap-1.5 cursor-pointer shadow-md text-xs"
+                >
+                  <Sparkles size={13} />
+                  <span>Prøvekjør Cockpiten</span>
+                </button>
+                <a
+                  href="#priser"
+                  className="px-4 py-2 rounded-xl bg-slate-800 hover:bg-slate-700 text-slate-200 font-bold transition-all text-xs"
+                >
+                  Se pakker fra 690,-
+                </a>
               </div>
             </div>
           </div>
@@ -522,7 +706,7 @@ function TacticalHomeView({ onStartDemo, onGoToPricing, onViewChange }: { onStar
       </section>
 
       {/* 🚀 Interaktiv MesterAI Simulator (Rollebasert Byggmester, Tømrer & Rørlegger) */}
-      <MesterAIDemoSimulator 
+      <MesterAIDemoSimulator  
         id="live-demo"
         onStartFreeTrial={() => {
           const el = document.getElementById('bestill');
@@ -967,7 +1151,7 @@ function TacticalHomeView({ onStartDemo, onGoToPricing, onViewChange }: { onStar
 
             <div className="text-center">
               <p className="text-sm text-slate-700 mb-4 font-sans font-medium">
-                Pakke som passer for deg: <span className="text-navy-900 font-bold underline decoration-electric-400">{workerCount <= 1 ? 'VikingMester Solo (1 490 kr/mnd)' : workerCount <= 5 ? 'VikingMester Team (3 490 kr/mnd)' : 'VikingMester Totalentreprenør (fra 6 900 kr/mnd)'}</span>
+                Pakke som passer for deg: <span className="text-navy-900 font-bold underline decoration-electric-400">{workerCount <= 1 ? 'VikingMester Solo (690 kr/mnd)' : workerCount <= 5 ? 'VikingMester Team (1 490 kr/mnd)' : 'VikingMester Totalentreprenør Pro (fra 2 990 kr/mnd)'}</span>
               </p>
               <a 
                 href="#bestill"
@@ -1002,9 +1186,9 @@ function TacticalHomeView({ onStartDemo, onGoToPricing, onViewChange }: { onStar
                 <span className="text-xs font-mono font-bold text-slate-500 uppercase">ENKELTMANNSFORETAK / MESTER</span>
                 <h3 className="text-2xl font-black text-navy-900 mt-1">VikingMester Solo</h3>
                 <div className="mt-4 mb-6">
-                  <span className="text-4xl font-black text-navy-900 font-sans">1 490,-</span>
+                  <span className="text-4xl font-black text-navy-900 font-sans">690,-</span>
                   <span className="text-xs text-slate-500 font-mono ml-2">/mnd eks. mva</span>
-                  <div className="text-xs text-emerald-600 font-bold mt-1">Kun 1 190,-/mnd ved årlig avtale</div>
+                  <div className="text-xs text-emerald-600 font-bold mt-1">Kun 550,-/mnd ved årlig avtale</div>
                 </div>
                 <div className="space-y-3 text-xs sm:text-sm font-sans text-slate-700 border-t border-slate-200 pt-4">
                   <p className="text-electric-600 font-bold font-mono text-xs">AUTONOME FUNKSJONER & RAMMER:</p>
@@ -1063,9 +1247,9 @@ function TacticalHomeView({ onStartDemo, onGoToPricing, onViewChange }: { onStar
                 <span className="text-xs font-mono font-bold text-electric-600 uppercase">FOR SMÅ & MELLOMSTORE BYGGFIRMAER</span>
                 <h3 className="text-2xl font-black text-navy-900 mt-1">VikingMester Team</h3>
                 <div className="mt-4 mb-6">
-                  <span className="text-4xl font-black text-electric-600 font-sans">3 490,-</span>
+                  <span className="text-4xl font-black text-electric-600 font-sans">1 490,-</span>
                   <span className="text-xs text-slate-500 font-mono ml-2">/mnd eks. mva</span>
-                  <div className="text-xs text-emerald-600 font-bold mt-1">Kun 2 790,-/mnd ved årlig avtale</div>
+                  <div className="text-xs text-emerald-600 font-bold mt-1">Kun 1 190,-/mnd ved årlig avtale</div>
                 </div>
                 <div className="space-y-3 text-xs sm:text-sm font-sans text-slate-800 font-medium border-t border-slate-200 pt-4">
                   <p className="text-electric-600 font-bold font-mono text-xs">AUTONOME FUNKSJONER & RAMMER:</p>
@@ -1119,11 +1303,11 @@ function TacticalHomeView({ onStartDemo, onGoToPricing, onViewChange }: { onStar
             <div className="bg-white border border-slate-200 rounded-3xl shadow-card-soft p-6 sm:p-8 flex flex-col justify-between">
               <div>
                 <span className="text-xs font-mono font-bold text-slate-500 uppercase">FOR STØRRE ENTREPRENØRER</span>
-                <h3 className="text-2xl font-black text-navy-900 mt-1">Totalentreprenør</h3>
+                <h3 className="text-2xl font-black text-navy-900 mt-1">Totalentreprenør Pro</h3>
                 <div className="mt-4 mb-6">
-                  <span className="text-4xl font-black text-navy-900 font-sans">Fra 6 900,-</span>
+                  <span className="text-4xl font-black text-navy-900 font-sans">Fra 2 990,-</span>
                   <span className="text-xs text-slate-500 font-mono ml-2">/mnd eks. mva</span>
-                  <div className="text-xs text-slate-500 font-bold mt-1">Skreddersydd etter prosjektvolum</div>
+                  <div className="text-xs text-emerald-600 font-bold mt-1">Kun 2 390,-/mnd ved årlig avtale</div>
                 </div>
                 <div className="space-y-3 text-xs sm:text-sm font-sans text-slate-700 border-t border-slate-200 pt-4">
                   <p className="text-electric-600 font-bold font-mono text-xs">AUTONOME FUNKSJONER & RAMMER:</p>
@@ -1334,9 +1518,9 @@ function TacticalHomeView({ onStartDemo, onGoToPricing, onViewChange }: { onStar
                     <select
                       className="w-full bg-slate-50 border border-slate-200 rounded-xl px-4 py-3 text-slate-900 focus:bg-white focus:border-electric-500 focus:ring-2 focus:ring-electric-500/20 outline-none text-sm transition-all cursor-pointer"
                     >
-                      <option value="team">VikingMester Team (3 490,-/mnd)</option>
-                      <option value="solo">VikingMester Solo (1 490,-/mnd)</option>
-                      <option value="entreprenor">Totalentreprenør (fra 6 900,-/mnd)</option>
+                      <option value="team">VikingMester Team (1 490,-/mnd - Mest populær)</option>
+                      <option value="solo">VikingMester Solo (690,-/mnd)</option>
+                      <option value="entreprenor">Totalentreprenør Pro (fra 2 990,-/mnd)</option>
                     </select>
                   </div>
                 </div>
@@ -1366,6 +1550,329 @@ function TacticalHomeView({ onStartDemo, onGoToPricing, onViewChange }: { onStar
           </div>
         </div>
       </section>
+    </div>
+  );
+}
+
+// -------------------------------------------------------------
+// 1. TACTICAL OFFERS TO KS VIEW (AUTONOM PIPELINE)
+// -------------------------------------------------------------
+function TacticalOffersKsView({ onStartDemo, onBack, onGoToPricing }: { onStartDemo: () => void, onBack: () => void, onGoToPricing: () => void }) {
+  return (
+    <div className="max-w-6xl mx-auto px-4 py-12 sm:py-16 font-sans">
+      <button onClick={onBack} className="text-xs font-bold text-electric-600 hover:underline mb-6 flex items-center gap-1 cursor-pointer">
+        ← Tilbake til oversikt
+      </button>
+
+      {/* Hero Card */}
+      <div className="bg-[#0A101D] text-white border-2 border-emerald-500/30 rounded-3xl p-6 sm:p-10 shadow-2xl relative overflow-hidden mb-10">
+        <div className="absolute top-0 right-0 w-96 h-96 bg-emerald-500/10 rounded-full blur-3xl pointer-events-none" />
+        
+        <div className="inline-flex items-center gap-2 px-3 py-1 rounded-full bg-emerald-950/80 border border-emerald-500/40 text-emerald-400 text-xs font-bold uppercase tracking-wider mb-4">
+          <Zap size={14} className="text-emerald-400 animate-pulse" />
+          <span>AUTONOM PROSJEKTOPPRETTELSE • ZERO-ADMIN</span>
+        </div>
+
+        <h1 className="text-2xl sm:text-4xl lg:text-5xl font-black tracking-tight text-white mb-4">
+          Fra signert tilbud til ferdig KS på 3 sekunder.
+        </h1>
+        <p className="text-sm sm:text-base text-slate-300 max-w-3xl leading-relaxed mb-8">
+          Slutt på kveldene hvor du må sitte foran PC-en og manuelt opprette prosjektmapper, sjekklister og juridiske kontrakter. I det øyeblikket kunden signerer tilbudet med fingeren på mobilen, overtar MesterAI styringen.
+        </p>
+
+        <div className="grid grid-cols-1 md:grid-cols-3 gap-4 mb-8">
+          <div className="bg-slate-900/90 border border-slate-800 p-5 rounded-2xl">
+            <span className="text-emerald-400 font-black text-2xl font-mono">1. Signatur</span>
+            <h4 className="text-sm font-bold text-white mt-1 mb-2">Kunde signerer tilbud</h4>
+            <p className="text-xs text-slate-400 leading-relaxed">
+              Kunden mottar tilbudet som en mobilvennlig lenke og godkjenner på under 1 minutt.
+            </p>
+          </div>
+
+          <div className="bg-slate-900/90 border border-emerald-500/40 p-5 rounded-2xl shadow-emerald-500/5 shadow-lg">
+            <span className="text-emerald-400 font-black text-2xl font-mono">2. Autopilot</span>
+            <h4 className="text-sm font-bold text-white mt-1 mb-2">MesterAI bygger riggen</h4>
+            <p className="text-xs text-slate-400 leading-relaxed">
+              Genererer formell NS 8406 / forbrukerkontrakt, oppretter skymappe og tildeler faglige TEK17-sjekklister.
+            </p>
+          </div>
+
+          <div className="bg-slate-900/90 border border-slate-800 p-5 rounded-2xl">
+            <span className="text-emerald-400 font-black text-2xl font-mono">3. Byggeplass</span>
+            <h4 className="text-sm font-bold text-white mt-1 mb-2">Klar for hammeren</h4>
+            <p className="text-xs text-slate-400 leading-relaxed">
+              Gutta på byggeplassen har sjekkpunkter på mobilen og Yr.no byggedagbok koblet på før de har startet bilen.
+            </p>
+          </div>
+        </div>
+
+        <div className="flex flex-wrap items-center gap-4">
+          <button
+            onClick={onStartDemo}
+            className="px-6 py-3.5 rounded-xl bg-emerald-600 hover:bg-emerald-500 text-white font-bold text-xs uppercase tracking-wider shadow-lg transition-all cursor-pointer flex items-center gap-2"
+          >
+            <Sparkles size={14} />
+            <span>Prøv Tilbud-til-KS Live</span>
+          </button>
+          <button
+            onClick={onGoToPricing}
+            className="px-6 py-3.5 rounded-xl bg-slate-800 hover:bg-slate-700 text-slate-200 font-bold text-xs uppercase tracking-wider transition-all cursor-pointer"
+          >
+            Se pakker fra 690,-/mnd
+          </button>
+        </div>
+      </div>
+    </div>
+  );
+}
+
+// -------------------------------------------------------------
+// 2. TACTICAL CHANGE ORDERS VIEW (NS 8406 & TALE)
+// -------------------------------------------------------------
+function TacticalChangeOrdersView({ onStartDemo, onBack, onGoToPricing }: { onStartDemo: () => void, onBack: () => void, onGoToPricing: () => void }) {
+  return (
+    <div className="max-w-6xl mx-auto px-4 py-12 sm:py-16 font-sans">
+      <button onClick={onBack} className="text-xs font-bold text-electric-600 hover:underline mb-6 flex items-center gap-1 cursor-pointer">
+        ← Tilbake til oversikt
+      </button>
+
+      {/* Hero Card */}
+      <div className="bg-[#0A101D] text-white border-2 border-rose-500/30 rounded-3xl p-6 sm:p-10 shadow-2xl relative overflow-hidden mb-10">
+        <div className="absolute top-0 right-0 w-96 h-96 bg-rose-500/10 rounded-full blur-3xl pointer-events-none" />
+        
+        <div className="inline-flex items-center gap-2 px-3 py-1 rounded-full bg-rose-950/80 border border-rose-500/40 text-rose-400 text-xs font-bold uppercase tracking-wider mb-4">
+          <FileSignature size={14} className="text-rose-400 animate-pulse" />
+          <span>NS 8406 & NS 8405 • SLUTT PÅ TAPTE INNTEKTER</span>
+        </div>
+
+        <h1 className="text-2xl sm:text-4xl lg:text-5xl font-black tracking-tight text-white mb-4">
+          Tale-til-Endringsordre på 15 sekunder.
+        </h1>
+        <p className="text-sm sm:text-base text-slate-300 max-w-3xl leading-relaxed mb-8">
+          Norske håndverkere taper i snitt 80 000 kr i året på muntlige avtaler og tillegg som aldri blir varslet skriftlig. Med VikingMester snakker du inn endringen fra stillaset med arbeidshanskene på. Kunden signerer på SMS før du starter saga.
+        </p>
+
+        {/* Realistic Terminal Comparison */}
+        <div className="grid grid-cols-1 md:grid-cols-2 gap-6 mb-8">
+          <div className="bg-slate-900/90 border border-rose-900/60 p-6 rounded-2xl">
+            <h3 className="text-rose-400 font-black text-sm uppercase flex items-center gap-2 mb-3">
+              <span className="w-2 h-2 rounded-full bg-rose-500" />
+              Slik taper bransjen penger i dag:
+            </h3>
+            <ul className="space-y-3 text-xs text-slate-300">
+              <li className="flex items-start gap-2">
+                <span className="text-rose-500 font-bold">✗</span>
+                <span>Byggherre ber muntlig om 4 ekstra stikkontakter og en ekstra vegg.</span>
+              </li>
+              <li className="flex items-start gap-2">
+                <span className="text-rose-500 font-bold">✗</span>
+                <span>Du glemmer å skrive det ned eller utsetter det til kvelden.</span>
+              </li>
+              <li className="flex items-start gap-2">
+                <span className="text-rose-500 font-bold">✗</span>
+                <span>Ved sluttoppgjør nekter kunden å betale: "Dette trodde jeg var inkludert".</span>
+              </li>
+              <li className="flex items-start gap-2">
+                <span className="text-rose-500 font-bold">✗</span>
+                <span>Tap: 35 000 kr + tapt nattesøvn og konflikt.</span>
+              </li>
+            </ul>
+          </div>
+
+          <div className="bg-slate-900/90 border border-emerald-500/40 p-6 rounded-2xl shadow-lg">
+            <h3 className="text-emerald-400 font-black text-sm uppercase flex items-center gap-2 mb-3">
+              <span className="w-2 h-2 rounded-full bg-emerald-400" />
+              Slik sikrer VikingMester pengene dine:
+            </h3>
+            <ul className="space-y-3 text-xs text-slate-300">
+              <li className="flex items-start gap-2">
+                <span className="text-emerald-400 font-bold">✓</span>
+                <span>Du trykker på mikrofonen og sier: "Kunden vil ha 4 ekstra stikk og en ekstra vegg."</span>
+              </li>
+              <li className="flex items-start gap-2">
+                <span className="text-emerald-400 font-bold">✓</span>
+                <span>MesterAI priser arbeid og materiell med fast påslag og lager varsel iht. NS 8406.</span>
+              </li>
+              <li className="flex items-start gap-2">
+                <span className="text-emerald-400 font-bold">✓</span>
+                <span>Kunden mottar SMS på mobilen og signerer med fingeren på 30 sekunder.</span>
+              </li>
+              <li className="flex items-start gap-2">
+                <span className="text-emerald-400 font-bold">✓</span>
+                <span>Gevinst: 35 000 kr rett i lomma, 100% juridisk vanntett sluttoppgjør.</span>
+              </li>
+            </ul>
+          </div>
+        </div>
+
+        <div className="flex flex-wrap items-center gap-4">
+          <button
+            onClick={onStartDemo}
+            className="px-6 py-3.5 rounded-xl bg-rose-600 hover:bg-rose-500 text-white font-bold text-xs uppercase tracking-wider shadow-lg transition-all cursor-pointer flex items-center gap-2"
+          >
+            <Mic size={14} />
+            <span>Test Tale-til-Endringsordre Nå</span>
+          </button>
+          <button
+            onClick={onGoToPricing}
+            className="px-6 py-3.5 rounded-xl bg-slate-800 hover:bg-slate-700 text-slate-200 font-bold text-xs uppercase tracking-wider transition-all cursor-pointer"
+          >
+            Se pakker fra 690,-/mnd
+          </button>
+        </div>
+      </div>
+    </div>
+  );
+}
+
+// -------------------------------------------------------------
+// 3. TACTICAL LUKKESPERRE VIEW (TEK17 & BVN)
+// -------------------------------------------------------------
+function TacticalLukkesperreView({ onStartDemo, onBack, onGoToPricing }: { onStartDemo: () => void, onBack: () => void, onGoToPricing: () => void }) {
+  return (
+    <div className="max-w-6xl mx-auto px-4 py-12 sm:py-16 font-sans">
+      <button onClick={onBack} className="text-xs font-bold text-electric-600 hover:underline mb-6 flex items-center gap-1 cursor-pointer">
+        ← Tilbake til oversikt
+      </button>
+
+      {/* Hero Card */}
+      <div className="bg-[#0A101D] text-white border-2 border-purple-500/30 rounded-3xl p-6 sm:p-10 shadow-2xl relative overflow-hidden mb-10">
+        <div className="absolute top-0 right-0 w-96 h-96 bg-purple-500/10 rounded-full blur-3xl pointer-events-none" />
+        
+        <div className="inline-flex items-center gap-2 px-3 py-1 rounded-full bg-purple-950/80 border border-purple-500/40 text-purple-300 text-xs font-bold uppercase tracking-wider mb-4">
+          <Lock size={14} className="text-purple-400 animate-pulse" />
+          <span>TVERRFAGLIG KONTROLL • NULL RIVESKADER</span>
+        </div>
+
+        <h1 className="text-2xl sm:text-4xl lg:text-5xl font-black tracking-tight text-white mb-4">
+          Tverrfaglig Lukkesperre som redder bunnlinjen.
+        </h1>
+        <p className="text-sm sm:text-base text-slate-300 max-w-3xl leading-relaxed mb-8">
+          Byggebransjens dyreste tabbe er når tømreren gipser over rør som ikke er trykktestet, eller k-rør som ikke er trukket. Lukkesperren låser veggen eller sonen digitalt inntil alle fag har kvittert og tatt bilde.
+        </p>
+
+        <div className="grid grid-cols-1 md:grid-cols-3 gap-4 mb-8">
+          <div className="bg-slate-900/90 border border-purple-500/30 p-5 rounded-2xl">
+            <span className="text-purple-400 font-black text-xl font-mono">1. Digital Lås</span>
+            <h4 className="text-sm font-bold text-white mt-1 mb-2">Vegg eller rom låses</h4>
+            <p className="text-xs text-slate-400 leading-relaxed">
+              MesterAI markerer sonen som "Låst for plating" inntil rørlegger og elektriker har levert dokumentasjon.
+            </p>
+          </div>
+
+          <div className="bg-slate-900/90 border border-purple-500/30 p-5 rounded-2xl">
+            <span className="text-purple-400 font-black text-xl font-mono">2. Automatisk Purring</span>
+            <h4 className="text-sm font-bold text-white mt-1 mb-2">SMS til UE</h4>
+            <p className="text-xs text-slate-400 leading-relaxed">
+              Systemet sender automatisk SMS-påminnelse til rørleggeren om at trykktesten må registreres før plating kan starte.
+            </p>
+          </div>
+
+          <div className="bg-slate-900/90 border border-emerald-500/40 p-5 rounded-2xl">
+            <span className="text-emerald-400 font-black text-xl font-mono">3. Frigivelse</span>
+            <h4 className="text-sm font-bold text-white mt-1 mb-2">Grønt lys for tømrer</h4>
+            <p className="text-xs text-slate-400 leading-relaxed">
+              Når bildene og testen er godkjent, åpnes sonen umiddelbart. Full sporbarhet iht. TEK17 § 13-15.
+            </p>
+          </div>
+        </div>
+
+        <div className="flex flex-wrap items-center gap-4">
+          <button
+            onClick={onStartDemo}
+            className="px-6 py-3.5 rounded-xl bg-purple-600 hover:bg-purple-500 text-white font-bold text-xs uppercase tracking-wider shadow-lg transition-all cursor-pointer flex items-center gap-2"
+          >
+            <ShieldCheck size={14} />
+            <span>Se Lukkesperre i Aksjon</span>
+          </button>
+          <button
+            onClick={onGoToPricing}
+            className="px-6 py-3.5 rounded-xl bg-slate-800 hover:bg-slate-700 text-slate-200 font-bold text-xs uppercase tracking-wider transition-all cursor-pointer"
+          >
+            Se pakker fra 690,-/mnd
+          </button>
+        </div>
+      </div>
+    </div>
+  );
+}
+
+// -------------------------------------------------------------
+// 4. TACTICAL CUSTOMER PORTAL VIEW
+// -------------------------------------------------------------
+function TacticalPortalView({ onStartDemo, onBack, onGoToPricing }: { onStartDemo: () => void, onBack: () => void, onGoToPricing: () => void }) {
+  return (
+    <div className="max-w-6xl mx-auto px-4 py-12 sm:py-16 font-sans">
+      <button onClick={onBack} className="text-xs font-bold text-electric-600 hover:underline mb-6 flex items-center gap-1 cursor-pointer">
+        ← Tilbake til oversikt
+      </button>
+
+      {/* Hero Card */}
+      <div className="bg-[#0A101D] text-white border-2 border-cyan-500/30 rounded-3xl p-6 sm:p-10 shadow-2xl relative overflow-hidden mb-10">
+        <div className="absolute top-0 right-0 w-96 h-96 bg-cyan-500/10 rounded-full blur-3xl pointer-events-none" />
+        
+        <div className="inline-flex items-center gap-2 px-3 py-1 rounded-full bg-cyan-950/80 border border-cyan-500/40 text-cyan-300 text-xs font-bold uppercase tracking-wider mb-4">
+          <Smartphone size={14} className="text-cyan-400 animate-pulse" />
+          <span>KUNDEPORTAL • FULL GJENNOMSIKTIGHET UTEN MAS</span>
+        </div>
+
+        <h1 className="text-2xl sm:text-4xl lg:text-5xl font-black tracking-tight text-white mb-4">
+          Gi byggherren en VIP-opplevelse på mobilen.
+        </h1>
+        <p className="text-sm sm:text-base text-slate-300 max-w-3xl leading-relaxed mb-8">
+          Kunder som ikke vet hva som skjer på byggeplassen ringer deg kl. 21 på kvelden. Med VikingMester Kundeportal får kunden sin egen enkle side på mobilen. Ingen app-nedlasting eller passord nødvendig.
+        </p>
+
+        <div className="grid grid-cols-1 sm:grid-cols-2 md:grid-cols-4 gap-4 mb-8">
+          <div className="bg-slate-900/90 border border-slate-800 p-4 rounded-2xl">
+            <CheckCircle2 size={20} className="text-cyan-400 mb-2" />
+            <h4 className="text-xs font-bold text-white mb-1">Sanntids Bildestrøm</h4>
+            <p className="text-[11px] text-slate-400 leading-relaxed">
+              Kunden ser fremdriften dag for dag gjennom bilder du tar i felt.
+            </p>
+          </div>
+
+          <div className="bg-slate-900/90 border border-slate-800 p-4 rounded-2xl">
+            <FileSignature size={20} className="text-rose-400 mb-2" />
+            <h4 className="text-xs font-bold text-white mb-1">Digital Signatur</h4>
+            <p className="text-[11px] text-slate-400 leading-relaxed">
+              Kunden signerer endringer og tillegg med tommelen på 10 sekunder.
+            </p>
+          </div>
+
+          <div className="bg-slate-900/90 border border-slate-800 p-4 rounded-2xl">
+            <FileCheck size={20} className="text-blue-400 mb-2" />
+            <h4 className="text-xs font-bold text-white mb-1">Slutt-FDV Eksport</h4>
+            <p className="text-[11px] text-slate-400 leading-relaxed">
+              Kunden laster ned ferdig Boligmappa-perm ved overlevering på 1 klikk.
+            </p>
+          </div>
+
+          <div className="bg-slate-900/90 border border-slate-800 p-4 rounded-2xl">
+            <Clock size={20} className="text-emerald-400 mb-2" />
+            <h4 className="text-xs font-bold text-white mb-1">Ro på kveldstid</h4>
+            <p className="text-[11px] text-slate-400 leading-relaxed">
+              Null oppringninger etter arbeidstid. Kunden føler seg trygg og ivaretatt.
+            </p>
+          </div>
+        </div>
+
+        <div className="flex flex-wrap items-center gap-4">
+          <button
+            onClick={onStartDemo}
+            className="px-6 py-3.5 rounded-xl bg-cyan-600 hover:bg-cyan-500 text-white font-bold text-xs uppercase tracking-wider shadow-lg transition-all cursor-pointer flex items-center gap-2"
+          >
+            <Smartphone size={14} />
+            <span>Test Kundeportalen Live</span>
+          </button>
+          <button
+            onClick={onGoToPricing}
+            className="px-6 py-3.5 rounded-xl bg-slate-800 hover:bg-slate-700 text-slate-200 font-bold text-xs uppercase tracking-wider transition-all cursor-pointer"
+          >
+            Se pakker fra 690,-/mnd
+          </button>
+        </div>
+      </div>
     </div>
   );
 }
@@ -1479,7 +1986,7 @@ function TacticalPricingView({ onStartDemo, onBack }: { onStartDemo: () => void,
           FASTE MÅNEDSPRISER • OMNICHANNEL INKLUDERT I ALLE PAKKER
         </h2>
         <p className="text-sm sm:text-base text-slate-600 leading-relaxed font-sans mb-6">
-          Solo: 1 490 kr/mnd • Team: 3 490 kr/mnd • Totalentreprenør: fra 6 900 kr/mnd. Alle pakker inkluderer 100% autonom MesterAI, Omnichannel (Discord, Slack, Teams) for feltarbeidere, og mulighet for egen NOBB API-nøkkel. Faktura sendes på EHF hver måned. 14 dagers gratis prøveperiode.
+          Solo: 690 kr/mnd • Team: 1 490 kr/mnd • Totalentreprenør Pro: fra 2 990 kr/mnd. Alle pakker inkluderer 100% autonom MesterAI, Omnichannel (Discord, Slack, Teams) for feltarbeidere, og mulighet for egen NOBB API-nøkkel. Faktura sendes på EHF hver måned. 14 dagers gratis prøveperiode.
         </p>
         <div className="flex flex-wrap gap-2 mb-8">
           <span className="px-3 py-1 bg-indigo-50 text-indigo-800 border border-indigo-200 rounded-full text-xs font-bold">
@@ -1502,3 +2009,4 @@ function TacticalPricingView({ onStartDemo, onBack }: { onStartDemo: () => void,
     </div>
   );
 }
+
