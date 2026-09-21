@@ -43,7 +43,7 @@ export const finalSettlementService = {
     // 2. Sum approved change orders
     const changeOrders = await changeOrderService.getProjectChangeOrders(project.id);
     const approvedOrders = changeOrders.filter(co => co.status === 'approved');
-    const approvedChangeOrdersAmount = approvedOrders.reduce((sum, co) => sum + co.amountExVat, 0);
+    const approvedChangeOrdersAmount = approvedOrders.reduce((sum, co) => sum + (Number(co.amountExVat ?? (co as any).amount) || 0), 0);
 
     // Total order amount eks mva
     const totalOrderAmount = originalContractAmount + approvedChangeOrdersAmount;

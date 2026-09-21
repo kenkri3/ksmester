@@ -19,6 +19,7 @@ import {
   Calendar
 } from 'lucide-react';
 import { toast } from 'sonner';
+import { cn } from '@/src/lib/utils';
 
 interface ApprenticeGoal {
   goalId: string;
@@ -54,9 +55,10 @@ interface ApprenticeModalProps {
   isOpen: boolean;
   onClose: () => void;
   initialApprenticeId?: string;
+  inline?: boolean;
 }
 
-const ApprenticeModal: React.FC<ApprenticeModalProps> = ({ isOpen, onClose, initialApprenticeId }) => {
+const ApprenticeModal: React.FC<ApprenticeModalProps> = ({ isOpen, onClose, initialApprenticeId, inline = false }) => {
   const [selectedApprenticeId, setSelectedApprenticeId] = useState<string | null>(initialApprenticeId || null);
   const [apprentices, setApprentices] = useState<ApprenticeProfile[]>([]);
   const [isLoading, setIsLoading] = useState<boolean>(false);
@@ -207,15 +209,15 @@ const ApprenticeModal: React.FC<ApprenticeModalProps> = ({ isOpen, onClose, init
 
   if (!isOpen) return null;
 
-  return (
-    <div className="fixed inset-0 z-50 flex items-end sm:items-center justify-center p-0 sm:p-4 bg-black/70 backdrop-blur-sm">
-      <motion.div 
-        initial={{ opacity: 0, scale: 0.98, y: 20 }}
-        animate={{ opacity: 1, scale: 1, y: 0 }}
-        className="bg-neutral-50 w-full max-w-5xl rounded-t-[2rem] sm:rounded-[2.5rem] shadow-2xl overflow-hidden flex flex-col max-h-[94vh] sm:max-h-[92vh] pb-[env(safe-area-inset-bottom,0px)] border border-neutral-200"
-      >
-        {/* Mobile Drag Handle */}
-        <div className="sm:hidden w-12 h-1.5 bg-neutral-300 rounded-full mx-auto mt-3 mb-1 shrink-0" />
+  const modalBody = (
+    <div className={cn(
+      "bg-neutral-50 w-full overflow-hidden flex flex-col border border-neutral-200",
+      inline 
+        ? "rounded-3xl shadow-xl h-full min-h-[82vh]" 
+        : "max-w-5xl rounded-t-[2rem] sm:rounded-[2.5rem] shadow-2xl max-h-[94vh] sm:max-h-[92vh] pb-[env(safe-area-inset-bottom,0px)]"
+    )}>
+      {/* Mobile Drag Handle */}
+      {!inline && <div className="sm:hidden w-12 h-1.5 bg-neutral-300 rounded-full mx-auto mt-3 mb-1 shrink-0" />}
 
         {/* Top Header */}
         <div className="p-4 sm:p-6 border-b border-neutral-200 flex items-center justify-between bg-white shrink-0">
@@ -560,6 +562,21 @@ const ApprenticeModal: React.FC<ApprenticeModalProps> = ({ isOpen, onClose, init
             )}
           </div>
         </div>
+    </div>
+  );
+
+  if (inline) {
+    return modalBody;
+  }
+
+  return (
+    <div className="fixed inset-0 z-50 flex items-end sm:items-center justify-center p-0 sm:p-4 bg-black/70 backdrop-blur-sm">
+      <motion.div 
+        initial={{ opacity: 0, scale: 0.98, y: 20 }}
+        animate={{ opacity: 1, scale: 1, y: 0 }}
+        className="w-full max-w-5xl flex justify-center"
+      >
+        {modalBody}
       </motion.div>
     </div>
   );

@@ -122,11 +122,11 @@ export default function ChangeOrderModal({
 
   const totalApproved = orders
     .filter(o => o.status === 'approved')
-    .reduce((sum, o) => sum + o.amountExVat, 0);
+    .reduce((sum, o) => sum + (Number(o.amountExVat ?? (o as any).amount) || 0), 0);
 
   const totalPending = orders
     .filter(o => o.status === 'pending_customer')
-    .reduce((sum, o) => sum + o.amountExVat, 0);
+    .reduce((sum, o) => sum + (Number(o.amountExVat ?? (o as any).amount) || 0), 0);
 
   if (!isOpen) return null;
 
@@ -374,10 +374,10 @@ export default function ChangeOrderModal({
                     <div className="flex sm:flex-col items-end justify-between gap-2 shrink-0">
                       <div className="text-right">
                         <div className="text-base font-black text-neutral-900">
-                          {order.amountExVat.toLocaleString('no-NO')} kr
+                          {(Number(order.amountExVat ?? (order as any).amount) || 0).toLocaleString('no-NO')} kr
                         </div>
                         <div className="text-[10px] text-neutral-400">
-                          ({order.totalAmount.toLocaleString('no-NO')} kr {t('inc_vat', 'ink. mva')})
+                          ({(Number(order.totalAmount ?? (order as any).total ?? ((Number(order.amountExVat ?? (order as any).amount) || 0) * 1.25)) || 0).toLocaleString('no-NO')} kr {t('inc_vat', 'ink. mva')})
                         </div>
                       </div>
 

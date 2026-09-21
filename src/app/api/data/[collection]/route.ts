@@ -149,6 +149,26 @@ export async function POST(
       return NextResponse.json(saved);
     }
 
+    // Allow public customer to approve/sign a change order
+    if (!user && collection === 'change_orders' && body.id) {
+      const items = await getCollectionItems('change_orders');
+      const existing = items.find((o: any) => 
+        o.id === body.id || 
+        (body.token && (o.token === body.token || o.id === body.token))
+      );
+      if (existing) {
+        const updated = {
+          ...existing,
+          ...body,
+          status: body.status || 'approved',
+          signedByClientAt: body.signedByClientAt || new Date().toISOString(),
+          updatedAt: new Date().toISOString()
+        };
+        const saved = await saveCollectionItem('change_orders', updated);
+        return NextResponse.json(saved);
+      }
+    }
+
     if (!user) {
       return NextResponse.json({ error: 'Uautorisert tilgang. Vennligst logg inn.' }, { status: 401 });
     }

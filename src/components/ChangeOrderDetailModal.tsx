@@ -374,15 +374,15 @@ export default function ChangeOrderDetailModal({
     <tbody>
       <tr>
         <td>Netto tilleggskrav eks. mva</td>
-        <td style="text-align: right; font-weight: 700;">kr ${amountExVat.toLocaleString('no-NO')}</td>
+        <td style="text-align: right; font-weight: 700;">kr ${(Number(amountExVat) || 0).toLocaleString('no-NO')}</td>
       </tr>
       <tr>
         <td>Merverdiavgift (25% mva)</td>
-        <td style="text-align: right; font-weight: 700;">kr ${vatAmount.toLocaleString('no-NO')}</td>
+        <td style="text-align: right; font-weight: 700;">kr ${(Number(vatAmount) || 0).toLocaleString('no-NO')}</td>
       </tr>
       <tr class="total-row">
         <td>Total vederlagsjustering inkl. mva</td>
-        <td style="text-align: right;">kr ${totalAmount.toLocaleString('no-NO')}</td>
+        <td style="text-align: right;">kr ${(Number(totalAmount) || 0).toLocaleString('no-NO')}</td>
       </tr>
       <tr>
         <td>Fremdriftskonsekvens (fristforlengelse)</td>
@@ -484,7 +484,7 @@ export default function ChangeOrderDetailModal({
 
             • Arbeid: ${title}
             • Beskrivelse: ${description || 'Tilleggsarbeid'}
-            • Beløp: kr ${amountExVat.toLocaleString('no-NO')} eks. mva (kr ${totalAmount.toLocaleString('no-NO')} inkl. mva)
+            • Beløp: kr ${(Number(amountExVat) || 0).toLocaleString('no-NO')} eks. mva (kr ${(Number(totalAmount) || 0).toLocaleString('no-NO')} inkl. mva)
             • Fristforlengelse: ${impactDays > 0 ? `+${impactDays} virkedager` : 'Ingen forsinkelse'}
 
             Vennligst gå gjennom spesifikasjonen og signer digitalt her:
@@ -665,19 +665,19 @@ export default function ChangeOrderDetailModal({
                         <tr>
                           <td className="p-3 font-medium text-slate-800">Netto tilleggssum eks. mva</td>
                           <td className="p-3 text-right font-bold text-slate-900">
-                            kr {amountExVat.toLocaleString('no-NO')}
+                            kr {(Number(amountExVat) || 0).toLocaleString('no-NO')}
                           </td>
                         </tr>
                         <tr>
                           <td className="p-3 font-medium text-slate-800">Merverdiavgift (25% mva)</td>
                           <td className="p-3 text-right font-bold text-slate-900">
-                            kr {vatAmount.toLocaleString('no-NO')}
+                            kr {(Number(vatAmount) || 0).toLocaleString('no-NO')}
                           </td>
                         </tr>
                         <tr className="bg-purple-50/80 font-black text-purple-950 text-sm sm:text-base">
                           <td className="p-3">Total sum inkl. 25% mva</td>
                           <td className="p-3 text-right text-purple-700">
-                            kr {totalAmount.toLocaleString('no-NO')}
+                            kr {(Number(totalAmount) || 0).toLocaleString('no-NO')}
                           </td>
                         </tr>
                         <tr className="bg-amber-50/50">
@@ -763,7 +763,7 @@ export default function ChangeOrderDetailModal({
                     />
                     <div className="mt-1 text-[11px] text-slate-400 flex justify-between">
                       <span>Inkl. 25% mva:</span>
-                      <strong className="text-emerald-400 font-bold">kr {totalAmount.toLocaleString('no-NO')}</strong>
+                      <strong className="text-emerald-400 font-bold">kr {(Number(totalAmount) || 0).toLocaleString('no-NO')}</strong>
                     </div>
                   </div>
 

@@ -168,6 +168,32 @@ export default function PublicChangeOrderFlow({
     );
   }
 
+  const amountExVat = Number(order?.amountExVat ?? (order as any)?.amount ?? (order as any)?.price ?? 0) || 0;
+  const vatAmount = Number(order?.vatAmount ?? (order as any)?.vat ?? Math.round(amountExVat * 0.25)) || 0;
+  const totalAmount = Number(order?.totalAmount ?? (order as any)?.total ?? (amountExVat + vatAmount)) || 0;
+  const impactDays = Number(order?.impactDays ?? (order as any)?.days ?? 0) || 0;
+  const changeNumber = Number(order?.changeNumber ?? (order as any)?.number ?? 1) || 1;
+
+  const formatSignedDate = (val?: any) => {
+    if (!val) return 'i dag';
+    try {
+      const d = val?.toDate ? val.toDate() : new Date(val);
+      return isNaN(d.getTime()) ? 'i dag' : d.toLocaleString('no-NO');
+    } catch {
+      return 'i dag';
+    }
+  };
+
+  const effectiveProject: Project = project || ({
+    id: order?.projectId || 'prosjekt',
+    name: (order as any)?.projectName || (order as any)?.project || 'Byggeprosjekt',
+    clientName: order?.clientName || 'Kunde',
+    clientEmail: order?.clientEmail || '',
+    location: (order as any)?.location || (order as any)?.address || 'Byggeplass',
+    address: (order as any)?.address || (order as any)?.location || 'Byggeplass',
+    projectCode: order?.projectCode || ''
+  } as unknown as Project);
+
   return (
     <div className="min-h-screen bg-neutral-950 text-neutral-100 flex flex-col items-center py-8 sm:py-16 px-4">
       {/* Brand Header */}
@@ -194,7 +220,7 @@ export default function PublicChangeOrderFlow({
         <div>
           <div className="flex items-center gap-2 mb-2">
             <span className="px-2.5 py-1 bg-amber-500/10 text-amber-400 text-xs font-black rounded-lg border border-amber-500/20">
-              Endringsmelding #{order.changeNumber}
+              Endringsmelding #{changeNumber}
             </span>
             {isSigned ? (
               <span className="flex items-center gap-1 text-xs font-bold text-emerald-400 bg-emerald-500/10 px-2.5 py-1 rounded-lg border border-emerald-500/20">
@@ -206,9 +232,9 @@ export default function PublicChangeOrderFlow({
               </span>
             )}
           </div>
-          <h1 className="text-2xl sm:text-3xl font-black text-white">{order.title}</h1>
+          <h1 className="text-2xl sm:text-3xl font-black text-white">{order.title || 'Endringsordre'}</h1>
           <p className="text-xs text-neutral-400 mt-1">
-            Prosjekt: <strong className="text-neutral-200">{project?.name || 'Byggeprosjekt'}</strong> | Lokasjon: {project?.location || 'Byggeplass'}
+            Prosjekt: <strong className="text-neutral-200">{effectiveProject.name}</strong> | Lokasjon: {effectiveProject.location || effectiveProject.address || 'Byggeplass'}
           </p>
         </div>
 
@@ -229,10 +255,10 @@ export default function PublicChangeOrderFlow({
               Pris for tillegget
             </div>
             <div className="text-2xl font-black text-amber-400">
-              {order.totalAmount.toLocaleString('no-NO')} kr
+              {totalAmount.toLocaleString('no-NO')} kr
             </div>
             <div className="text-[11px] text-neutral-400">
-              ({order.amountExVat.toLocaleString('no-NO')} kr eks. mva + {order.vatAmount.toLocaleString('no-NO')} kr mva)
+              ({amountExVat.toLocaleString('no-NO')} kr eks. mva + {vatAmount.toLocaleString('no-NO')} kr mva)
             </div>
           </div>
 
@@ -241,10 +267,10 @@ export default function PublicChangeOrderFlow({
               Fremdriftskonsekvens
             </div>
             <div className="text-2xl font-black text-neutral-100">
-              {order.impactDays > 0 ? `+${order.impactDays} dager` : 'Ingen forsinkelse'}
+              {impactDays > 0 ? `+${impactDays} dager` : 'Ingen forsinkelse'}
             </div>
             <div className="text-[11px] text-neutral-400">
-              {order.impactDays > 0 ? 'Fristforlengelse for entreprenør' : 'Ferdigstillelsesdato uendret'}
+              {impactDays > 0 ? 'Fristforlengelse for entreprenør' : 'Ferdigstillelsesdato uendret'}
             </div>
           </div>
         </div>
@@ -326,21 +352,19 @@ export default function PublicChangeOrderFlow({
               <CheckCircle2 size={36} className="text-emerald-400 mx-auto" />
               <h3 className="text-lg font-bold text-white">Endringsavtalen er gyldig signert!</h3>
               <p className="text-xs text-neutral-300">
-                Signert av {order.clientName} den {order.signedByClientAt ? new Date(order.signedByClientAt).toLocaleString('no-NO') : 'i dag'}.
+                Signert av {order.clientName || signerName || 'Kunde'} den {formatSignedDate(order.signedByClientAt)}.
               </p>
               <div className="pt-3 flex flex-col sm:flex-row justify-center gap-3">
-                {project && (
+                <button
+                  onClick={() => pdfService.generateChangeOrderPDF(effectiveProject, order)}
+                  className="px-4 py-2.5 bg-neutral-800 hover:bg-neutral-700 text-white rounded-xl text-xs font-bold inline-flex items-center justify-center gap-2 transition-all cursor-pointer"
+                >
+                  <Download size={14} /> Last ned signert avtale (PDF)
+                </button>
+                {onNavigateToPortal && (project?.id || order.projectId) && (
                   <button
-                    onClick={() => pdfService.generateChangeOrderPDF(project, order)}
-                    className="px-4 py-2.5 bg-neutral-800 hover:bg-neutral-700 text-white rounded-xl text-xs font-bold inline-flex items-center justify-center gap-2 transition-all"
-                  >
-                    <Download size={14} /> Last ned signert avtale (PDF)
-                  </button>
-                )}
-                {onNavigateToPortal && project && (
-                  <button
-                    onClick={() => onNavigateToPortal(project.id)}
-                    className="px-4 py-2.5 bg-emerald-500 hover:bg-emerald-400 text-neutral-950 rounded-xl text-xs font-black inline-flex items-center justify-center gap-2 transition-all"
+                    onClick={() => onNavigateToPortal(project?.id || order.projectId)}
+                    className="px-4 py-2.5 bg-emerald-500 hover:bg-emerald-400 text-neutral-950 rounded-xl text-xs font-black inline-flex items-center justify-center gap-2 transition-all cursor-pointer"
                   >
                     Gå til Kundeportalen <ArrowRight size={14} />
                   </button>

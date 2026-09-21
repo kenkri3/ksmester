@@ -1,6 +1,42 @@
 import { ChangeOrder, Project } from '../types';
 import { api } from './api';
 
+export function normalizeChangeOrder(raw: any): ChangeOrder {
+  if (!raw) return raw;
+  const amountExVat = Number(raw.amountExVat ?? raw.amount ?? raw.price ?? raw.totalPrice ?? 0) || 0;
+  const vatAmount = Number(raw.vatAmount ?? raw.vat ?? Math.round(amountExVat * 0.25)) || 0;
+  const totalAmount = Number(raw.totalAmount ?? raw.total ?? (amountExVat + vatAmount)) || 0;
+  const impactDays = Number(raw.impactDays ?? raw.days ?? 0) || 0;
+  const changeNumber = Number(raw.changeNumber ?? raw.number ?? 1) || 1;
+
+  return {
+    ...raw,
+    id: raw.id || `co_${Date.now()}`,
+    projectId: raw.projectId || raw.project_id || '',
+    projectCode: raw.projectCode || raw.project_code || '',
+    changeNumber,
+    title: raw.title || 'Endringsordre',
+    description: raw.description || '',
+    cause: raw.cause || 'kundetillegg',
+    amountExVat,
+    vatAmount,
+    totalAmount,
+    impactDays,
+    status: (raw.status === 'Godkjent av kunde' ? 'approved' : raw.status) || 'pending_customer',
+    token: raw.token || raw.id,
+    shareUrl: raw.shareUrl || '',
+    clientName: raw.clientName || raw.client || '',
+    clientEmail: raw.clientEmail || '',
+    signedByClientAt: raw.signedByClientAt || null,
+    clientSignatureUrl: raw.clientSignatureUrl || null,
+    clientIp: raw.clientIp || null,
+    authorId: raw.authorId || raw.author_id || '',
+    authorName: raw.authorName || raw.author_name || 'Mester',
+    createdAt: raw.createdAt || raw.created_at || new Date().toISOString(),
+    updatedAt: raw.updatedAt || raw.updated_at || undefined,
+  };
+}
+
 export const changeOrderService = {
   /**
    * Generates a unique crypto-safe token for public customer approval link
@@ -17,6 +53,7 @@ export const changeOrderService = {
       const items = await api.getDocs<ChangeOrder>('change_orders');
       return items
         .filter(item => item.projectId === projectId)
+        .map(normalizeChangeOrder)
         .sort((a, b) => b.changeNumber - a.changeNumber);
     } catch (e) {
       console.warn('Error fetching change orders:', e);
@@ -29,15 +66,23 @@ export const changeOrderService = {
    */
   async getChangeOrderByToken(token: string): Promise<ChangeOrder | null> {
     try {
-      const res = await fetch(`/api/data/change_orders?token=${encodeURIComponent(token)}`);
+      const cleanToken = token ? token.trim() : '';
+      const res = await fetch(`/api/data/change_orders?token=${encodeURIComponent(cleanToken)}`);
       if (res.ok) {
         const data = await res.json();
-        if (Array.isArray(data) && data.length > 0) {
-          return data[0];
+        if (Array.isArray(data) && data.length > 0 && data[0]) {
+          return normalizeChangeOrder(data[0]);
         }
       }
       const items = await api.getDocs<ChangeOrder>('change_orders');
-      return items.find(item => item.token === token) || null;
+      const found = items.find(item => 
+        item.token === cleanToken || 
+        item.id === cleanToken ||
+        (item.token && item.token.toLowerCase() === cleanToken.toLowerCase()) ||
+        (item.id && item.id.toLowerCase() === cleanToken.toLowerCase()) ||
+        (typeof item.shareUrl === 'string' && item.shareUrl.includes(cleanToken))
+      );
+      return found ? normalizeChangeOrder(found) : null;
     } catch (e) {
       console.warn('Error finding change order by token:', e);
       return null;
@@ -134,15 +179,32 @@ export const changeOrderService = {
     signerName: string
   ): Promise<ChangeOrder | null> {
     const orders = await api.getDocs<ChangeOrder>('change_orders');
-    const order = orders.find(o => o.id === orderId);
+    let order = orders.find(o => o.id === orderId || o.token === orderId);
+
+    if (!order) {
+      try {
+        const res = await fetch(`/api/data/change_orders?token=${encodeURIComponent(orderId)}`);
+        if (res.ok) {
+          const data = await res.json();
+          if (Array.isArray(data) && data.length > 0 && data[0]) {
+            order = normalizeChangeOrder(data[0]);
+          }
+        }
+      } catch (err) {
+        console.warn('Fallback token lookup in approveChangeOrder failed:', err);
+      }
+    }
+
     if (!order) return null;
 
+    const normalized = normalizeChangeOrder(order);
+
     const updated: ChangeOrder = {
-      ...order,
+      ...normalized,
       status: 'approved',
       signedByClientAt: new Date().toISOString(),
       clientSignatureUrl: signatureDataUrl,
-      clientName: signerName || order.clientName,
+      clientName: signerName || normalized.clientName || 'Kunde',
       updatedAt: new Date().toISOString()
     };
 

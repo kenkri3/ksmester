@@ -1031,11 +1031,16 @@ export const pdfService = {
     doc.text(descLines, 20, startY2 + 7);
 
     const startY3 = startY2 + 10 + (descLines.length * 5);
+    const amountExVat = Number(changeOrder.amountExVat ?? (changeOrder as any).amount ?? (changeOrder as any).price ?? 0) || 0;
+    const vatAmount = Number(changeOrder.vatAmount ?? (changeOrder as any).vat ?? Math.round(amountExVat * 0.25)) || 0;
+    const totalAmount = Number(changeOrder.totalAmount ?? (changeOrder as any).total ?? (amountExVat + vatAmount)) || 0;
+    const impactDays = Number(changeOrder.impactDays ?? (changeOrder as any).days ?? 0) || 0;
+
     const econData = [
-      ['Tilleggssum eks. mva', `${changeOrder.amountExVat.toLocaleString('no-NO')} kr`],
-      ['Merverdiavgift (25% mva)', `${changeOrder.vatAmount.toLocaleString('no-NO')} kr`],
-      ['Total sum ink. mva', `${changeOrder.totalAmount.toLocaleString('no-NO')} kr`],
-      ['Konsekvens for ferdigstillelse', changeOrder.impactDays > 0 ? `+${changeOrder.impactDays} virkedager (fristforlengelse)` : 'Ingen endring i sluttdato']
+      ['Tilleggssum eks. mva', `${amountExVat.toLocaleString('no-NO')} kr`],
+      ['Merverdiavgift (25% mva)', `${vatAmount.toLocaleString('no-NO')} kr`],
+      ['Total sum ink. mva', `${totalAmount.toLocaleString('no-NO')} kr`],
+      ['Konsekvens for ferdigstillelse', impactDays > 0 ? `+${impactDays} virkedager (fristforlengelse)` : 'Ingen endring i sluttdato']
     ];
 
     doc.autoTable({
@@ -1051,11 +1056,17 @@ export const pdfService = {
     doc.text('Ved godkjenning bekrefter partene at endringsarbeidet inngår som et bindende tillegg til opprinnelig kontrakt.', 20, finalY);
 
     if (changeOrder.signedByClientAt) {
+      let signedDateStr = 'i dag';
+      try {
+        const d = (changeOrder.signedByClientAt as any)?.toDate ? (changeOrder.signedByClientAt as any).toDate() : new Date(changeOrder.signedByClientAt);
+        if (!isNaN(d.getTime())) signedDateStr = d.toLocaleString('no-NO');
+      } catch {}
       doc.setFont('helvetica', 'bold');
-      doc.text(`Digitalt godkjent og signert av ${changeOrder.clientName}: ${new Date(changeOrder.signedByClientAt).toLocaleString('no-NO')}`, 20, finalY + 10);
+      doc.text(`Digitalt godkjent og signert av ${changeOrder.clientName || 'Kunde'}: ${signedDateStr}`, 20, finalY + 10);
     }
 
-    doc.save(`Endringsavtale_${changeOrder.changeNumber}_${project.name.replace(/\s+/g, '_')}.pdf`);
+    const safeProjName = (project?.name || (changeOrder as any)?.projectName || (changeOrder as any)?.project || 'Byggeprosjekt').replace(/\s+/g, '_');
+    doc.save(`Endringsavtale_${changeOrder.changeNumber || (changeOrder as any).number || 1}_${safeProjName}.pdf`);
   },
 
   // --- 14. Byggedagbok & Mannskapsliste (Byggherreforskriften & NS 8405/8406) ---
