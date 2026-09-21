@@ -138,6 +138,17 @@ export default function Dashboard({
   const [selectedProject, setSelectedProject] = useState<Project | null>(null);
   const [isViewingProjectDetails, setIsViewingProjectDetails] = useState(false);
 
+  // 🔄 Hold selectedProject synkronisert med tilgjengelige prosjekter for aktiv kunde (ingen lekkasje mellom bedrifter)
+  useEffect(() => {
+    if (projects && projects.length > 0) {
+      if (!selectedProject || !projects.some(p => p.id === selectedProject.id)) {
+        setSelectedProject(projects[0]);
+      }
+    } else if (projects && projects.length === 0) {
+      setSelectedProject(null);
+    }
+  }, [projects]);
+
   // Modals state
   const [isCreateModalOpen, setIsCreateModalOpen] = useState(false);
   const [isDeviationModalOpen, setIsDeviationModalOpen] = useState(false);

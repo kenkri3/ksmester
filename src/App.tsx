@@ -537,7 +537,7 @@ function AppContent() {
       {/* Impersonation Banner */}
       {impersonatedCompanyId && (
         <div className="fixed top-0 left-0 right-0 z-[60] bg-red-600 text-white text-[11px] font-bold py-1.5 px-4 text-center uppercase tracking-wider flex items-center justify-center gap-4 shadow-md">
-          <span>DU VISER NÅ SYSTEMET SOM KUNDE: <strong className="underline">{impersonatedCompanyId}</strong></span>
+          <span>DU VISER NÅ SYSTEMET SOM KUNDE: <strong className="underline">{impersonatedCompanyId === 'comp-demo-fjellheim' ? 'Fjellheim Bygg & Tømrer AS (Demokunde)' : impersonatedCompanyId}</strong></span>
           <button 
             onClick={() => {
               stopImpersonation();

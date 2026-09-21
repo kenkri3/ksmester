@@ -3,6 +3,7 @@
 import React, { createContext, useContext, useEffect, useState } from 'react';
 import { api } from '../services/api';
 import { setCurrentAuthUser } from '../services/dbAdapter';
+import { chatSessionService } from '../services/chatSessionService';
 
 export interface User {
   uid: string;
@@ -205,6 +206,10 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
     localStorage.setItem('impersonatedRole', role);
     setImpersonatedCompanyId(companyId);
     setImpersonatedRole(role);
+    if (typeof window !== 'undefined') {
+      window.dispatchEvent(new CustomEvent('mester_impersonation_changed', { detail: { companyId, role } }));
+    }
+    chatSessionService.notify();
   };
 
   const stopImpersonation = () => {
@@ -212,6 +217,10 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
     localStorage.removeItem('impersonatedRole');
     setImpersonatedCompanyId(null);
     setImpersonatedRole(null);
+    if (typeof window !== 'undefined') {
+      window.dispatchEvent(new CustomEvent('mester_impersonation_changed', { detail: { companyId: null, role: null } }));
+    }
+    chatSessionService.notify();
   };
 
   return (

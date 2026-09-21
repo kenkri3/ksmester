@@ -141,7 +141,7 @@ export default function MesterWorkstation({
   onOpenSettings,
   onOpenSuperAdmin
 }: MesterWorkstationProps) {
-  const { user, isSuperAdmin, logout, trade, company } = useAuth();
+  const { user, isSuperAdmin, logout, trade, company, impersonatedCompanyId, stopImpersonation } = useAuth();
 
   // 📐 Layout State
   const [isOpenMobile, setIsOpenMobile] = useState(false);
@@ -274,25 +274,38 @@ export default function MesterWorkstation({
     return () => window.removeEventListener('select_chat_session', handleSelectSessionEvent);
   }, [projects]);
 
-  // 🔄 Initialiser eller synkroniser aktiv sesjon
+  // 🔄 Initialiser eller synkroniser aktiv sesjon (isolerer strengt per kunde/bedrift)
   useEffect(() => {
-    const active = chatSessionService.getActiveSession();
-    if (active) {
-      setActiveSessionId(active.id);
-      setMessages(active.messages);
-      if (active.projectId) {
-        const found = projects.find(p => p.id === active.projectId);
-        if (found) onSelectProject(found);
+    const syncActiveSession = () => {
+      const active = chatSessionService.getActiveSession();
+      if (active) {
+        setActiveSessionId(active.id);
+        setMessages(active.messages || []);
+        if (active.projectId) {
+          const found = projects.find(p => p.id === active.projectId);
+          if (found) onSelectProject(found);
+        }
+      } else {
+        const fresh = chatSessionService.createSession({
+          projectName: selectedProject?.name,
+          projectId: selectedProject?.id
+        });
+        setActiveSessionId(fresh.id);
+        setMessages([]);
       }
-    } else {
-      const fresh = chatSessionService.createSession({
-        projectName: selectedProject?.name,
-        projectId: selectedProject?.id
-      });
-      setActiveSessionId(fresh.id);
-      setMessages([]);
-    }
-  }, []);
+    };
+
+    syncActiveSession();
+
+    const handleSessionChange = () => syncActiveSession();
+    window.addEventListener('mester_impersonation_changed', handleSessionChange);
+    window.addEventListener('mester_chat_sessions_changed', handleSessionChange);
+
+    return () => {
+      window.removeEventListener('mester_impersonation_changed', handleSessionChange);
+      window.removeEventListener('mester_chat_sessions_changed', handleSessionChange);
+    };
+  }, [impersonatedCompanyId, company, projects]);
 
   // 📜 Autoscroll til bunnen når nye meldinger ankommer
   useEffect(() => {

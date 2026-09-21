@@ -38,6 +38,7 @@ import { Project } from '../types';
 import { toast } from 'sonner';
 import { useTranslation } from 'react-i18next';
 import { getStandardLang } from '../i18n';
+import { useAuth } from '../hooks/useAuth';
 
 interface WorkstationSidebarProps {
   isOpenMobile: boolean;
@@ -83,6 +84,7 @@ export default function WorkstationSidebar({
   currentActiveTab
 }: WorkstationSidebarProps) {
   const { t, i18n } = useTranslation();
+  const { impersonatedCompanyId, stopImpersonation } = useAuth();
   const [sessions, setSessions] = useState<ChatSession[]>([]);
   const [editingSessionId, setEditingSessionId] = useState<string | null>(null);
   const [editingTitle, setEditingTitle] = useState('');
@@ -95,7 +97,7 @@ export default function WorkstationSidebar({
     reload();
     const unsub = chatSessionService.subscribe(reload);
     return () => unsub();
-  }, []);
+  }, [impersonatedCompanyId]);
 
   const { today, last7Days, older } = chatSessionService.groupSessions(sessions);
 
@@ -497,26 +499,39 @@ export default function WorkstationSidebar({
             <div className="flex items-center gap-2.5 min-w-0">
               <div 
                 onClick={() => {
-                  if (isCollapsedDesktop && isSuperAdmin) {
+                  if (isCollapsedDesktop && isSuperAdmin && !impersonatedCompanyId) {
                     if (onOpenSuperAdmin) onOpenSuperAdmin();
                     else window.dispatchEvent(new CustomEvent("navigate_view", { detail: { view: "super-admin" } }));
                   }
                 }}
                 className={cn(
-                  "w-8 h-8 rounded-full bg-gradient-to-tr from-electric-600 to-purple-500 flex items-center justify-center text-white font-black text-xs shrink-0 ring-2 ring-purple-500/20",
-                  isCollapsedDesktop && isSuperAdmin && "cursor-pointer ring-amber-400/50 hover:scale-105 transition-transform"
+                  "w-8 h-8 rounded-full flex items-center justify-center text-white font-black text-xs shrink-0 ring-2",
+                  impersonatedCompanyId
+                    ? "bg-gradient-to-tr from-amber-600 to-amber-400 ring-amber-500/30"
+                    : "bg-gradient-to-tr from-electric-600 to-purple-500 ring-purple-500/20",
+                  isCollapsedDesktop && isSuperAdmin && !impersonatedCompanyId && "cursor-pointer ring-amber-400/50 hover:scale-105 transition-transform"
                 )}
-                title={isCollapsedDesktop && isSuperAdmin ? "👑 SuperAdmin Portal (klikk her)" : undefined}
+                title={
+                  impersonatedCompanyId
+                    ? `Viser som kunde: ${impersonatedCompanyId === 'comp-demo-fjellheim' ? 'Fjellheim Bygg' : impersonatedCompanyId}`
+                    : (isCollapsedDesktop && isSuperAdmin ? "👑 SuperAdmin Portal (klikk her)" : undefined)
+                }
               >
-                {user?.displayName ? user.displayName.charAt(0).toUpperCase() : 'K'}
+                {impersonatedCompanyId === 'comp-demo-fjellheim' 
+                  ? 'L' 
+                  : (user?.displayName ? user.displayName.charAt(0).toUpperCase() : 'K')}
               </div>
               {!isCollapsedDesktop && (
                 <div className="min-w-0">
                   <p className="text-xs font-bold text-white truncate">
-                    {user?.displayName || 'Kenneth Glosli Kristiansen'}
+                    {impersonatedCompanyId === 'comp-demo-fjellheim' 
+                      ? 'Lars Fjellheim (Demokunde)' 
+                      : (impersonatedCompanyId ? `Kunde: ${impersonatedCompanyId}` : (user?.displayName || 'Kenneth Glosli Kristiansen'))}
                   </p>
                   <p className="text-[10px] text-slate-400 font-medium truncate flex items-center gap-1">
-                    {isSuperAdmin ? (
+                    {impersonatedCompanyId ? (
+                      <span className="text-amber-400 font-bold">👁️ Visningsmodus</span>
+                    ) : isSuperAdmin ? (
                       <button
                         type="button"
                         onClick={() => {
@@ -532,8 +547,26 @@ export default function WorkstationSidebar({
                       <span className="text-emerald-400 font-bold">Byggmester</span>
                     )}
                     <span>•</span>
-                    <span>{user?.company || 'VikingMester'}</span>
+                    <span className="truncate">
+                      {impersonatedCompanyId === 'comp-demo-fjellheim' 
+                        ? 'Fjellheim Bygg & Tømrer AS' 
+                        : (impersonatedCompanyId || user?.company || 'VikingMester')}
+                    </span>
                   </p>
+                  {impersonatedCompanyId && (
+                    <button
+                      type="button"
+                      onClick={() => {
+                        stopImpersonation();
+                        if (onOpenSuperAdmin) onOpenSuperAdmin();
+                        else window.dispatchEvent(new CustomEvent("navigate_view", { detail: { view: "super-admin" } }));
+                      }}
+                      className="text-[10px] text-amber-400 hover:text-amber-300 font-bold hover:underline cursor-pointer flex items-center gap-1 mt-0.5"
+                      title="Avslutt kundevisning og returner til SuperAdmin"
+                    >
+                      <span>← Tilbake til SuperAdmin</span>
+                    </button>
+                  )}
                 </div>
               )}
             </div>

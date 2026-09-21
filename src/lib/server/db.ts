@@ -118,22 +118,76 @@ export const inMemoryStore: Record<string, any[]> = {
     {
       id: 'proj-demo-sjusjoen',
       companyId: 'comp-demo-fjellheim',
+      company: 'comp-demo-fjellheim',
       name: 'Hytte Sjusjøen - Nybygg',
+      projectCode: 'P-2026-FJELL',
       address: 'Birkebeinervegen 42, 2612 Sjusjøen',
       location: 'Birkebeinervegen 42, 2612 Sjusjøen',
       clientName: 'Ola Nordmann (Privatkunde)',
       clientEmail: 'ola.nordmann.demo@gmail.com',
       clientPhone: '98765432',
       status: 'active',
+      stage: 'Pågående',
       category: 'Hytte / Fritidsbolig',
       progress: 35,
       createdAt: new Date().toISOString()
     }
   ],
-  deviations: [],
-  change_orders: [],
+  deviations: [
+    {
+      id: 'dev-demo-sjusjoen-1',
+      companyId: 'comp-demo-fjellheim',
+      company: 'comp-demo-fjellheim',
+      projectId: 'proj-demo-sjusjoen',
+      projectName: 'Hytte Sjusjøen - Nybygg',
+      title: 'Mangler sikringsrekkverk ved stillas østvegg',
+      description: 'Under morgenkontroll ble det oppdaget at øverste stillasbom manglet rekkverk mot øst. Utbedret umiddelbart.',
+      severity: 'medium',
+      status: 'closed',
+      category: 'HMS',
+      reportedBy: 'Lars Fjellheim',
+      createdAt: new Date(Date.now() - 86400000 * 2).toISOString()
+    }
+  ],
+  change_orders: [
+    {
+      id: 'co-demo-sjusjoen-1',
+      companyId: 'comp-demo-fjellheim',
+      company: 'comp-demo-fjellheim',
+      projectId: 'proj-demo-sjusjoen',
+      projectName: 'Hytte Sjusjøen - Nybygg',
+      changeNumber: 1,
+      title: 'Tilvalg: Ekstra takisolering (350mm til 400mm)',
+      description: 'Kunde har bestilt oppgradering til 400 mm innblåst trefiberisolasjon i tak for bedre vinterkomfort.',
+      amountExVat: 24500,
+      totalAmount: 30625,
+      vatAmount: 6125,
+      impactDays: 1,
+      status: 'approved',
+      legalHjemmel: 'NS 8406 pkt. 19.2',
+      createdAt: new Date(Date.now() - 86400000 * 3).toISOString()
+    }
+  ],
   agent_activities: [],
-  sja_reports: [],
+  sja_reports: [
+    {
+      id: 'sja-demo-sjusjoen-1',
+      companyId: 'comp-demo-fjellheim',
+      company: 'comp-demo-fjellheim',
+      projectId: 'proj-demo-sjusjoen',
+      projectName: 'Hytte Sjusjøen - Nybygg',
+      title: 'Sikker Jobb Analyse: Takstolmontasje med mobilkran',
+      status: 'completed',
+      conductedBy: 'Lars Fjellheim',
+      participants: ['Lars Fjellheim (Bas)', 'Ole Tømrer', 'Kranfører Jon'],
+      measures: [
+        'Avsperring av faresone under løft',
+        'Bruk av godkjent fallsikringssele på takverk',
+        'Vindmåling før løft (maks 10 m/s)'
+      ],
+      createdAt: new Date(Date.now() - 86400000).toISOString()
+    }
+  ],
   offers: [],
   contracts: [],
   notifications: [],
