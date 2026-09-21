@@ -21,6 +21,7 @@ import { ProjectDocument, ProjectMaterial } from '../types';
 import { db, collection, query, where, onSnapshot, addDoc, serverTimestamp } from '../services/firebase';
 import { api } from '../services/api';
 import { toast } from 'sonner';
+import { cn } from '@/src/lib/utils';
 
 interface ProjectOption {
   id: string;
@@ -37,13 +38,15 @@ interface DocumentationArchiveProps {
   onClose: () => void;
   projectId?: string;
   projects?: ProjectOption[];
+  inline?: boolean;
 }
 
 const DocumentationArchive: React.FC<DocumentationArchiveProps> = ({ 
   isOpen, 
   onClose, 
   projectId: initialProjectId, 
-  projects = [] 
+  projects = [],
+  inline = false
 }) => {
   const [selectedProjectId, setSelectedProjectId] = useState<string>(
     initialProjectId || (projects.length > 0 ? projects[0].id : '')
@@ -55,6 +58,13 @@ const DocumentationArchive: React.FC<DocumentationArchiveProps> = ({
   const [isSendingEmail, setIsSendingEmail] = useState(false);
   const [syncSuccess, setSyncSuccess] = useState(false);
   const [documents, setDocuments] = useState<ProjectDocument[]>([]);
+  const [showNobbByokModal, setShowNobbByokModal] = useState(false);
+  const [nobbKeyInput, setNobbKeyInput] = useState(() => {
+    if (typeof window !== 'undefined') {
+      return localStorage.getItem('nobb_api_key') || '';
+    }
+    return '';
+  });
   const fileInputRef = useRef<HTMLInputElement>(null);
 
   // Synkroniser når initialProjectId endres
@@ -285,6 +295,10 @@ const DocumentationArchive: React.FC<DocumentationArchiveProps> = ({
   }, [documents, selectedProjectId, searchTerm, activeCategory]);
 
   const handleSyncNOBB = async () => {
+    if (!nobbKeyInput.trim()) {
+      setShowNobbByokModal(true);
+      return;
+    }
     setIsSyncing(true);
     try {
       let materials: ProjectMaterial[] = [];
@@ -366,18 +380,18 @@ const DocumentationArchive: React.FC<DocumentationArchiveProps> = ({
 
   if (!isOpen) return null;
 
-  return (
-    <div className="fixed inset-0 z-50 flex items-end sm:items-center justify-center p-0 sm:p-4 bg-black/60 backdrop-blur-sm">
-      <motion.div 
-        initial={{ opacity: 0, scale: 0.98, y: 20 }}
-        animate={{ opacity: 1, scale: 1, y: 0 }}
-        className="bg-neutral-50 text-neutral-900 w-full max-w-5xl rounded-t-[2rem] sm:rounded-[2.5rem] shadow-2xl overflow-hidden flex flex-col max-h-[92vh] sm:max-h-[90vh] pb-[env(safe-area-inset-bottom,0px)]"
-      >
-        {/* Mobile Grab Handle */}
-        <div className="sm:hidden w-12 h-1.5 bg-neutral-300 rounded-full mx-auto mt-3 mb-1 shrink-0" />
+  const content = (
+    <div className={cn(
+      "bg-neutral-50 text-neutral-900 w-full overflow-hidden flex flex-col",
+      inline 
+        ? "rounded-3xl border border-slate-800 shadow-xl min-h-[600px]" 
+        : "max-w-5xl rounded-t-[2rem] sm:rounded-[2.5rem] shadow-2xl max-h-[92vh] sm:max-h-[90vh] pb-[env(safe-area-inset-bottom,0px)]"
+    )}>
+      {/* Mobile Grab Handle */}
+      {!inline && <div className="sm:hidden w-12 h-1.5 bg-neutral-300 rounded-full mx-auto mt-3 mb-1 shrink-0" />}
 
-        {/* Header */}
-        <div className="p-4 sm:p-8 border-b border-neutral-200 flex items-center justify-between bg-white shrink-0">
+      {/* Header */}
+      <div className="p-4 sm:p-8 border-b border-neutral-200 flex items-center justify-between bg-white shrink-0">
           <div className="flex items-center gap-3 sm:gap-4 min-w-0">
             <div className="w-10 h-10 sm:w-12 sm:h-12 rounded-xl sm:rounded-2xl bg-neutral-900 flex items-center justify-center text-white shadow-lg shadow-neutral-200 shrink-0">
               <Library size={22} className="sm:w-6 sm:h-6" />
@@ -485,10 +499,11 @@ const DocumentationArchive: React.FC<DocumentationArchiveProps> = ({
               <button 
                 onClick={handleSyncNOBB}
                 disabled={isSyncing}
-                className="flex-1 md:flex-none flex items-center justify-center gap-2 px-4 py-2.5 bg-emerald-600 text-white rounded-2xl text-xs font-bold hover:bg-emerald-500 transition-all shadow-sm disabled:opacity-50"
+                className="flex-1 md:flex-none flex items-center justify-center gap-2 px-4 py-2.5 bg-emerald-600 text-white rounded-2xl text-xs font-bold hover:bg-emerald-500 transition-all shadow-sm disabled:opacity-50 cursor-pointer"
+                title="Hent FDV-dokumentasjon direkte fra NOBB med bedriftens egen API-nøkkel (BYOK)"
               >
                 {isSyncing ? <RefreshCw className="animate-spin" size={14} /> : <Sparkles size={14} />}
-                {syncSuccess ? 'Synkronisert!' : 'Hent fra NOBB'}
+                {syncSuccess ? 'Synkronisert!' : 'Hent fra NOBB (BYOK)'}
               </button>
               <button 
                 onClick={() => fileInputRef.current?.click()}
@@ -619,8 +634,109 @@ const DocumentationArchive: React.FC<DocumentationArchiveProps> = ({
             </div>
           )}
         </div>
-      </motion.div>
-    </div>
+      </div>
+  );
+
+  return (
+    <>
+      {inline ? (
+        content
+      ) : (
+        <div className="fixed inset-0 z-50 flex items-end sm:items-center justify-center p-0 sm:p-4 bg-black/60 backdrop-blur-sm">
+          <motion.div 
+            initial={{ opacity: 0, scale: 0.98, y: 20 }}
+            animate={{ opacity: 1, scale: 1, y: 0 }}
+            className="w-full max-w-5xl"
+          >
+            {content}
+          </motion.div>
+        </div>
+      )}
+
+      {/* NOBB BYOK Modal */}
+      {showNobbByokModal && (
+        <div className="fixed inset-0 z-[110] flex items-center justify-center p-4 bg-black/75 backdrop-blur-sm animate-in fade-in">
+          <div className="bg-white rounded-3xl max-w-md w-full p-6 shadow-2xl border border-neutral-200">
+            <div className="flex items-center justify-between mb-4">
+              <div className="flex items-center gap-2.5">
+                <div className="p-2 bg-emerald-100 text-emerald-800 rounded-xl">
+                  <Sparkles size={18} />
+                </div>
+                <div>
+                  <h3 className="text-base font-bold text-neutral-900">NOBB Byggevarebase (BYOK)</h3>
+                  <span className="text-[10px] font-black uppercase tracking-wider bg-amber-100 text-amber-900 px-2 py-0.5 rounded">
+                    Bring Your Own Key
+                  </span>
+                </div>
+              </div>
+              <button 
+                type="button" 
+                onClick={() => setShowNobbByokModal(false)}
+                className="text-neutral-400 hover:text-neutral-600 p-1 cursor-pointer font-bold"
+              >
+                ✕
+              </button>
+            </div>
+
+            <p className="text-xs text-neutral-600 mb-4 leading-relaxed">
+              Norsk Byggtjeneste AS krever at hver enkelt bedrift har egen lisensavtale for API-tilgang til Norsk Byggevarebase (NOBB). VikingMester henter offisielle FDV-blader, EPD og grossistpriser direkte på din bedrifts avtale.
+            </p>
+
+            <div className="mb-4">
+              <label className="block text-[11px] font-black uppercase tracking-wider text-neutral-700 mb-1.5">
+                NOBB API-nøkkel (Subscription Key)
+              </label>
+              <input
+                type="password"
+                value={nobbKeyInput}
+                onChange={(e) => setNobbKeyInput(e.target.value)}
+                placeholder="f.eks. d3b07384d113edec49eaa6238ad5ff00"
+                className="w-full px-3.5 py-2.5 rounded-xl border border-neutral-300 text-sm font-mono focus:border-emerald-500 focus:ring-2 focus:ring-emerald-500/20 outline-none"
+              />
+              <span className="text-[10px] text-neutral-400 mt-1 block">
+                Nøkkelen lagres trygt for din bedrift og benyttes for alle FDV-oppslag.
+              </span>
+            </div>
+
+            <div className="flex gap-2 justify-end pt-3 border-t border-neutral-100">
+              <button
+                type="button"
+                onClick={() => setShowNobbByokModal(false)}
+                className="px-3.5 py-2 rounded-xl text-xs font-bold text-neutral-600 hover:bg-neutral-100 transition-colors cursor-pointer"
+              >
+                Avbryt
+              </button>
+              <button
+                type="button"
+                disabled={!nobbKeyInput.trim()}
+                onClick={async () => {
+                  try {
+                    localStorage.setItem('nobb_api_key', nobbKeyInput.trim());
+                    await fetch('/api/settings/integrations', {
+                      method: 'POST',
+                      headers: { 'Content-Type': 'application/json' },
+                      body: JSON.stringify({
+                        service: 'NOBB',
+                        secretToken: nobbKeyInput.trim(),
+                        status: 'active'
+                      })
+                    }).catch(() => {});
+                    setShowNobbByokModal(false);
+                    toast.success('NOBB API-nøkkel (BYOK) er lagret!');
+                    handleSyncNOBB();
+                  } catch (e) {
+                    toast.error('Kunne ikke lagre NOBB API-nøkkel');
+                  }
+                }}
+                className="px-4 py-2 rounded-xl bg-emerald-600 hover:bg-emerald-500 text-white text-xs font-bold shadow-md transition-all disabled:opacity-50 cursor-pointer"
+              >
+                Lagre og synkroniser FDV
+              </button>
+            </div>
+          </div>
+        </div>
+      )}
+    </>
   );
 };
 

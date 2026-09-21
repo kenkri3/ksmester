@@ -1243,7 +1243,7 @@ export default function Dashboard({
             tasks={dashboardTasks}
             initialPrompt={chatInitialPrompt}
             onPromptHandled={() => setChatInitialPrompt(undefined)}
-            onOpenCreateProject={() => setIsCreateModalOpen(true)}
+            onOpenCreateProject={() => {}}
             onOpenSmartSearch={() => setIsSmartSearchOpen(true)}
             onOpenAllModules={() => setIsAllModulesOpen(true)}
             onApproveChangeOrder={handleApproveChangeOrder}
@@ -1269,7 +1269,7 @@ export default function Dashboard({
             onOpenTimeModal={() => setIsTimeModalOpen(true)}
             onOpenArchiveModal={() => setIsArchiveModalOpen(true)}
             onOpenContactsModal={() => setIsContactsModalOpen(true)}
-            onOpenSettings={() => window.dispatchEvent(new CustomEvent("navigate_view", { detail: { view: "settings" } }))}
+            onOpenSettings={() => {}}
             onOpenSuperAdmin={() => window.dispatchEvent(new CustomEvent("navigate_view", { detail: { view: "super-admin" } }))}
           />
         )}

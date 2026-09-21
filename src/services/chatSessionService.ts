@@ -14,6 +14,12 @@ export interface ChatMessageItem {
   followUpPrompts?: string[];
   quickReplies?: Array<{ title: string; payload: string }>;
   imageUrl?: string;
+  thoughtSteps?: Array<{
+    title: string;
+    status: 'completed' | 'active' | 'pending';
+    detail?: string;
+  }>;
+  thinkingDuration?: number;
 }
 
 export interface ChatSession {

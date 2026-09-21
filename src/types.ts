@@ -72,14 +72,16 @@ export type View = 'landing' | 'dashboard' | 'mobile' | 'spec' | 'settings' | 'c
 export interface Project {
   id: string;
   projectCode?: string;
+  code?: string;
   name: string;
   description?: string;
   location: string;
+  address?: string;
   progress: number;
   status: 'active' | 'completed' | 'delayed';
-  stage: 'offer' | 'contract' | 'active' | 'completion' | 'archived';
-  documentationLevel: number;
-  lastUpdate: string;
+  stage: 'offer' | 'contract' | 'active' | 'completion' | 'archived' | string;
+  documentationLevel?: number;
+  lastUpdate?: string;
   startDate?: string;
   endDate?: string;
   clientName?: string;
@@ -96,6 +98,7 @@ export interface Project {
   bnr?: string;
   portalToken?: string;
   createdAt?: any;
+  updatedAt?: any;
 }
 
 export interface SJAReport {

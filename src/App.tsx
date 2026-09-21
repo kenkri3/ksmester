@@ -1620,8 +1620,8 @@ function AppContent() {
         <IntegrationModal isOpen={isIntegrationModalOpen} onClose={() => setIsIntegrationModalOpen(false)} />
       </Suspense>
 
-      {/* 🛡️ Universal VikingMester AI Chatbot (Ragnar for visitors, hidden on dashboard where MesterAI is the full interface, and hidden in customer/public portals) */}
-      {!['dashboard', 'customer-portal', 'offer', 'invite', 'public-offer', 'public-change-order'].includes(view) && (
+      {/* 🛡️ Universal VikingMester AI Chatbot (Ragnar for visitors, never when logged in and never in settings or portals) */}
+      {!user && !['dashboard', 'settings', 'super-admin', 'customer-portal', 'offer', 'invite', 'public-offer', 'public-change-order'].includes(view) && (
         <VikingChatbot
           user={user}
           currentView={view}

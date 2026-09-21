@@ -4,7 +4,7 @@ import {
   Search, X, Command, Brain, Building2, AlertTriangle, FileText, ArrowRight, 
   Loader2, Sparkles, CheckSquare, Clock, ShieldCheck, DollarSign, Camera, 
   Truck, Package, ExternalLink, HardHat, Info, Wrench, ChevronRight, CornerDownLeft,
-  CheckCircle2, MapPin
+  CheckCircle2, MapPin, MessageSquare, Plus, FolderKanban
 } from 'lucide-react';
 import { useDebounce } from '../hooks/useDebounce';
 import { generateAiContent } from '../services/aiClient';
@@ -12,10 +12,11 @@ import { db, collection, getDocs, query, limit } from '../services/firebase';
 import { Project, Deviation } from '../types';
 import { cn } from '@/src/lib/utils';
 import { useTranslation } from 'react-i18next';
+import { chatSessionService, ChatSession } from '../services/chatSessionService';
 
 export interface SmartSearchItem {
   id?: string;
-  category: 'action' | 'project' | 'deviation' | 'route' | 'status' | 'ai';
+  category: 'chat' | 'action' | 'project' | 'deviation' | 'route' | 'status' | 'ai';
   title: string;
   description: string;
   badge?: string;
@@ -301,10 +302,22 @@ export default function SmartSearch({
   const [aiInsight, setAiInsight] = useState<{ answer: string; suggestedAction?: SmartSearchItem } | null>(null);
   const [liveProjects, setLiveProjects] = useState<Project[]>(initialProjects);
   const [liveDeviations, setLiveDeviations] = useState<Deviation[]>(initialDeviations);
+  const [chatSessions, setChatSessions] = useState<ChatSession[]>([]);
   const [selectedIndex, setSelectedIndex] = useState(0);
 
   const inputRef = useRef<HTMLInputElement>(null);
   const debouncedQuery = useDebounce(queryText, 450);
+
+  // Synchronize chat sessions
+  useEffect(() => {
+    if (isOpen) {
+      setChatSessions(chatSessionService.getSessions());
+    }
+    const unsub = chatSessionService.subscribe(() => {
+      setChatSessions(chatSessionService.getSessions());
+    });
+    return () => unsub();
+  }, [isOpen]);
 
   // Synchronize incoming props or fetch live projects if empty
   useEffect(() => {
@@ -348,7 +361,39 @@ export default function SmartSearch({
 
     const matches: SmartSearchItem[] = [];
 
-    // 1. Check for specific status questions (e.g. "Hva er status på Bjørklund?", "status på...")
+    // 1. Search in Saved Chat Sessions (ChatGPT & Gemini style)
+    for (const session of chatSessions) {
+      const titleMatch = (session.title || '').toLowerCase().includes(q);
+      const matchingMessage = session.messages?.find(m => (m.content || '').toLowerCase().includes(q));
+
+      if (titleMatch || matchingMessage) {
+        let snippet = '';
+        if (matchingMessage) {
+          const clean = (matchingMessage.content || '').replace(/\n+/g, ' ').trim();
+          snippet = clean.length > 80 ? clean.substring(0, 80) + '...' : clean;
+        } else if (session.messages && session.messages.length > 0) {
+          const lastMsg = session.messages[session.messages.length - 1];
+          const clean = (lastMsg.content || '').replace(/\n+/g, ' ').trim();
+          snippet = clean.length > 80 ? clean.substring(0, 80) + '...' : clean;
+        } else {
+          snippet = 'Tidligere samtale i MesterAI';
+        }
+
+        matches.push({
+          id: session.id,
+          category: 'chat',
+          title: session.title || 'Samtale',
+          description: snippet,
+          badge: session.messages.length > 0 ? `${session.messages.length} mld` : 'Samtale',
+          badgeColor: 'purple',
+          icon: MessageSquare,
+          actionType: 'chat',
+          metadata: { session }
+        });
+      }
+    }
+
+    // 2. Check for specific status questions (e.g. "Hva er status på Bjørklund?", "status på...")
     const isStatusQuery = q.includes('status') || q.includes('fremdrift') || q.includes('hva er');
     if (isStatusQuery) {
       for (const p of liveProjects) {
@@ -379,17 +424,6 @@ export default function SmartSearch({
       }
     }
 
-    // 2. Search in System Actions & Tools
-    for (const act of SYSTEM_ACTIONS) {
-      const titleMatch = act.title.toLowerCase().includes(q);
-      const descMatch = act.description.toLowerCase().includes(q);
-      const keywordMatch = act.metadata?.keywords?.some((k: string) => k.toLowerCase().includes(q) || q.includes(k.toLowerCase()));
-
-      if (titleMatch || descMatch || keywordMatch) {
-        matches.push(act);
-      }
-    }
-
     // 3. Search in Live Projects (Name, Code, GNR/BNR, Location, Client, Tags)
     for (const p of liveProjects) {
       const nameMatch = (p.name || '').toLowerCase().includes(q);
@@ -416,7 +450,18 @@ export default function SmartSearch({
       }
     }
 
-    // 4. Search in Live Deviations
+    // 4. Search in System Actions & Tools
+    for (const act of SYSTEM_ACTIONS) {
+      const titleMatch = act.title.toLowerCase().includes(q);
+      const descMatch = act.description.toLowerCase().includes(q);
+      const keywordMatch = act.metadata?.keywords?.some((k: string) => k.toLowerCase().includes(q) || q.includes(k.toLowerCase()));
+
+      if (titleMatch || descMatch || keywordMatch) {
+        matches.push(act);
+      }
+    }
+
+    // 5. Search in Live Deviations
     for (const d of liveDeviations) {
       const titleMatch = (d.title || '').toLowerCase().includes(q);
       const descMatch = (d.description || '').toLowerCase().includes(q);
@@ -439,7 +484,7 @@ export default function SmartSearch({
     }
 
     return matches;
-  }, [queryText, liveProjects, liveDeviations]);
+  }, [queryText, chatSessions, liveProjects, liveDeviations]);
 
   // AI Semantic Fallback & Question Answering
   useEffect(() => {
@@ -541,6 +586,15 @@ Svar i JSON-format:
   }, [debouncedQuery, liveProjects, instantResults.length]);
 
   const handleItemClick = (item: SmartSearchItem) => {
+    if (item.category === 'chat' || item.actionType === 'chat' || item.actionType === 'nav_chat') {
+      if (item.id) {
+        chatSessionService.setActiveSessionId(item.id);
+        window.dispatchEvent(new CustomEvent('select_chat_session', { detail: { sessionId: item.id } }));
+      }
+      onNavigate('chat', item.id, item.metadata);
+      onClose();
+      return;
+    }
     if (item.actionType === 'route') {
       if (typeof window !== 'undefined' && item.id) {
         window.location.href = item.id;
@@ -592,6 +646,7 @@ Svar i JSON-format:
   };
 
   const getIconContainerClasses = (category: string, badgeColor?: string) => {
+    if (category === 'chat') return 'bg-purple-500/20 text-purple-400';
     if (category === 'status') return 'bg-emerald-500/20 text-emerald-400';
     if (category === 'project') return 'bg-blue-500/20 text-blue-400';
     if (category === 'deviation') return 'bg-rose-500/20 text-rose-400';
@@ -608,12 +663,12 @@ Svar i JSON-format:
             initial={{ opacity: 0, scale: 0.95, y: -20 }}
             animate={{ opacity: 1, scale: 1, y: 0 }}
             exit={{ opacity: 0, scale: 0.95, y: -20 }}
-            className="bg-neutral-900 w-full max-w-2xl rounded-2xl sm:rounded-[2rem] shadow-2xl border border-white/10 overflow-hidden flex flex-col max-h-[85vh]"
+            className="bg-[#0A101D] w-full max-w-2xl rounded-2xl sm:rounded-[2rem] shadow-2xl border border-white/10 overflow-hidden flex flex-col max-h-[85vh]"
           >
             {/* Search Input Bar */}
-            <div className="p-4 sm:p-5 border-b border-white/10 flex items-center gap-3 sm:gap-4 bg-gradient-to-r from-emerald-950/40 via-neutral-900 to-blue-950/40 shrink-0">
-              <div className="p-2.5 bg-emerald-500/20 text-emerald-400 border border-emerald-500/30 rounded-xl shadow-lg shadow-emerald-500/10">
-                <Brain size={18} className="sm:w-5 sm:h-5 text-emerald-400" />
+            <div className="p-4 sm:p-5 border-b border-white/10 flex items-center gap-3 sm:gap-4 bg-gradient-to-r from-purple-950/30 via-slate-900 to-blue-950/30 shrink-0">
+              <div className="p-2.5 bg-purple-500/20 text-purple-400 border border-purple-500/30 rounded-xl shadow-lg shadow-purple-500/10">
+                <Brain size={18} className="sm:w-5 sm:h-5 text-purple-400" />
               </div>
               <div className="flex-1 relative">
                 <Search className="absolute left-0 top-1/2 -translate-y-1/2 text-neutral-400 sm:w-5 sm:h-5" size={18} />
@@ -626,13 +681,13 @@ Svar i JSON-format:
                     setSelectedIndex(0);
                   }}
                   onKeyDown={handleKeyDown}
-                  placeholder="Søk i prosjekter, avvik, GNR/BNR, verktøy eller spør MesterAI..."
+                  placeholder="Søk i samtaler, oppgaver og prosjekter... (eller still spørsmål)"
                   className="w-full bg-transparent border-none text-white placeholder-neutral-500 pl-7 sm:pl-9 focus:ring-0 text-sm sm:text-base outline-none font-medium"
                 />
               </div>
               <div className="flex items-center gap-2">
                 {isAiSearching && (
-                  <div className="flex items-center gap-1.5 px-2 py-1 rounded-md bg-emerald-500/10 text-emerald-400 text-xs font-semibold animate-pulse">
+                  <div className="flex items-center gap-1.5 px-2 py-1 rounded-md bg-purple-500/10 text-purple-400 text-xs font-semibold animate-pulse">
                     <Loader2 size={13} className="animate-spin" />
                     <span className="hidden sm:inline">Analyserer...</span>
                   </div>
@@ -697,9 +752,9 @@ Svar i JSON-format:
                         onClick={() => handleItemClick(item)}
                         onMouseEnter={() => setSelectedIndex(i)}
                         className={cn(
-                          "w-full flex items-center gap-3 sm:gap-4 p-2.5 sm:p-3.5 rounded-xl sm:rounded-2xl transition-all group text-left border",
+                          "w-full flex items-center gap-3 sm:gap-4 p-2.5 sm:p-3.5 rounded-xl sm:rounded-2xl transition-all group text-left border cursor-pointer",
                           isSelected
-                            ? "bg-white/10 border-emerald-500/40 shadow-lg shadow-emerald-500/5"
+                            ? "bg-white/10 border-purple-500/40 shadow-lg shadow-purple-500/5"
                             : "hover:bg-white/5 border-transparent hover:border-white/10"
                         )}
                       >
@@ -723,8 +778,8 @@ Svar i JSON-format:
                           </div>
                           <p className="text-[11px] sm:text-xs text-neutral-400 truncate font-medium">{item.description}</p>
                         </div>
-                        <div className="flex items-center gap-1 shrink-0 text-neutral-500 group-hover:text-emerald-400 transition-colors">
-                          <CornerDownLeft size={13} className={cn("hidden sm:inline transition-opacity", isSelected ? "opacity-100 text-emerald-400" : "opacity-0")} />
+                        <div className="flex items-center gap-1 shrink-0 text-neutral-500 group-hover:text-purple-400 transition-colors">
+                          <CornerDownLeft size={13} className={cn("hidden sm:inline transition-opacity", isSelected ? "opacity-100 text-purple-400" : "opacity-0")} />
                           <ChevronRight size={16} />
                         </div>
                       </button>
@@ -736,14 +791,14 @@ Svar i JSON-format:
                   <Info className="mx-auto text-neutral-500" size={28} />
                   <p className="text-xs sm:text-sm text-neutral-300 font-semibold">Ingen direkte treff for &quot;{queryText}&quot;</p>
                   <p className="text-[11px] sm:text-xs text-neutral-500 max-w-sm mx-auto">
-                    Prøv å søke etter prosjektnavn, kundenavn, GNR/BNR, verktøy eller still et fagspørsmål til MesterAI.
+                    Prøv å søke etter tittel på en samtale, prosjektnavn, kunde, GNR/BNR, verktøy eller still et fagspørsmål til MesterAI.
                   </p>
                   <button
                     onClick={() => {
                       onNavigate('ask_ai', undefined, { prompt: queryText });
                       onClose();
                     }}
-                    className="inline-flex items-center gap-2 px-4 py-2 rounded-xl bg-emerald-500 text-slate-950 text-xs font-bold hover:bg-emerald-400 transition-all shadow-md cursor-pointer"
+                    className="inline-flex items-center gap-2 px-4 py-2 rounded-xl bg-purple-600 hover:bg-purple-500 text-white text-xs font-bold transition-all shadow-md cursor-pointer"
                   >
                     <Brain size={14} />
                     <span>Spør MesterAI om &quot;{queryText}&quot;</span>
@@ -753,135 +808,238 @@ Svar i JSON-format:
               ) : (
                 /* Default Quick Actions / Suggestions */
                 <div className="py-2 px-1 sm:px-2 space-y-4">
+                  {/* Seksjon 1: Nylige samtaler */}
                   <div>
-                    <h4 className="text-[10px] font-black uppercase tracking-wider text-neutral-400 mb-2.5 px-1">
-                      Hurtigvalg & Forslag
+                    <div className="flex items-center justify-between mb-2 px-1">
+                      <h4 className="text-[10px] font-black uppercase tracking-wider text-neutral-400 flex items-center gap-1.5">
+                        <MessageSquare size={12} className="text-purple-400" />
+                        <span>Nylige samtaler</span>
+                      </h4>
+                      <button
+                        type="button"
+                        onClick={() => {
+                          onNavigate('new_chat');
+                          onClose();
+                        }}
+                        className="text-[10px] text-purple-400 hover:text-purple-300 font-bold flex items-center gap-1 cursor-pointer"
+                      >
+                        <Plus size={11} /> Ny samtale
+                      </button>
+                    </div>
+
+                    {chatSessions.length === 0 ? (
+                      <div className="p-3.5 rounded-xl bg-white/[0.02] border border-white/5 text-center">
+                        <p className="text-xs text-neutral-400">Ingen tidligere samtaler ennå.</p>
+                        <button
+                          type="button"
+                          onClick={() => {
+                            onNavigate('new_chat');
+                            onClose();
+                          }}
+                          className="mt-2 inline-flex items-center gap-1.5 px-3 py-1.5 rounded-lg bg-purple-600 hover:bg-purple-500 text-white text-xs font-bold transition-colors cursor-pointer shadow-xs"
+                        >
+                          <Plus size={13} />
+                          <span>Start samtale med MesterAI</span>
+                        </button>
+                      </div>
+                    ) : (
+                      <div className="space-y-1">
+                        {chatSessions.slice(0, 3).map((s) => {
+                          const lastMsg = s.messages && s.messages.length > 0 ? s.messages[s.messages.length - 1] : null;
+                          const preview = (lastMsg?.content || '').replace(/\n+/g, ' ').substring(0, 70) || 'Samtale i MesterAI';
+                          return (
+                            <button
+                              key={s.id}
+                              type="button"
+                              onClick={() => handleItemClick({
+                                id: s.id,
+                                category: 'chat',
+                                title: s.title,
+                                description: preview,
+                                badge: `${s.messages.length} mld`,
+                                badgeColor: 'purple',
+                                icon: MessageSquare,
+                                actionType: 'chat'
+                              })}
+                              className="w-full p-2.5 rounded-xl bg-white/[0.03] hover:bg-white/[0.08] transition-all border border-white/5 hover:border-purple-500/30 group flex items-center justify-between gap-3 text-left cursor-pointer"
+                            >
+                              <div className="flex items-center gap-2.5 min-w-0">
+                                <div className="p-2 rounded-lg bg-purple-500/20 text-purple-400 shrink-0 group-hover:scale-105 transition-transform">
+                                  <MessageSquare size={14} />
+                                </div>
+                                <div className="min-w-0">
+                                  <span className="text-xs font-bold text-neutral-200 group-hover:text-white block truncate">
+                                    {s.title}
+                                  </span>
+                                  <span className="text-[10px] text-neutral-400 block truncate">
+                                    {preview}
+                                  </span>
+                                </div>
+                              </div>
+                              <span className="text-[10px] px-2 py-0.5 rounded bg-purple-500/10 text-purple-300 font-semibold border border-purple-500/20 shrink-0">
+                                {s.messages.length} mld
+                              </span>
+                            </button>
+                          );
+                        })}
+                      </div>
+                    )}
+                  </div>
+
+                  {/* Seksjon 2: Aktive prosjekter */}
+                  {liveProjects.length > 0 && (
+                    <div>
+                      <h4 className="text-[10px] font-black uppercase tracking-wider text-neutral-400 mb-2 px-1 flex items-center gap-1.5">
+                        <Building2 size={12} className="text-blue-400" />
+                        <span>Aktive byggeprosjekter</span>
+                      </h4>
+                      <div className="space-y-1">
+                        {liveProjects.slice(0, 3).map((p) => (
+                          <button
+                            key={p.id}
+                            type="button"
+                            onClick={() => handleItemClick({
+                              id: p.id,
+                              category: 'project',
+                              title: p.name,
+                              description: `${p.location || 'Norge'} • Kunde: ${p.clientName || 'Privat'}`,
+                              badge: `${p.progress || 0}%`,
+                              badgeColor: 'blue',
+                              icon: Building2,
+                              actionType: 'nav_project',
+                              metadata: { project: p }
+                            })}
+                            className="w-full p-2.5 rounded-xl bg-white/[0.03] hover:bg-white/[0.08] transition-all border border-white/5 hover:border-blue-500/30 group flex items-center justify-between gap-3 text-left cursor-pointer"
+                          >
+                            <div className="flex items-center gap-2.5 min-w-0">
+                              <div className="p-2 rounded-lg bg-blue-500/20 text-blue-400 shrink-0 group-hover:scale-105 transition-transform">
+                                <Building2 size={14} />
+                              </div>
+                              <div className="min-w-0">
+                                <span className="text-xs font-bold text-neutral-200 group-hover:text-white block truncate">
+                                  {p.name}
+                                </span>
+                                <span className="text-[10px] text-neutral-400 block truncate">
+                                  {p.projectCode ? `${p.projectCode} • ` : ''}{p.location || 'Norge'} • {p.clientName || 'Privat'}
+                                </span>
+                              </div>
+                            </div>
+                            <span className="text-[10px] px-2 py-0.5 rounded bg-blue-500/10 text-blue-300 font-semibold border border-blue-500/20 shrink-0">
+                              {p.progress || 0}% fremdrift
+                            </span>
+                          </button>
+                        ))}
+                      </div>
+                    </div>
+                  )}
+
+                  {/* Seksjon 3: Hurtighandlinger */}
+                  <div>
+                    <h4 className="text-[10px] font-black uppercase tracking-wider text-neutral-400 mb-2 px-1">
+                      Hurtighandlinger
                     </h4>
                     <div className="grid grid-cols-1 sm:grid-cols-2 gap-2">
                       {[
-                        { 
-                          title: 'Vis alle prosjekter', 
-                          action: () => handleItemClick({
-                            category: 'action',
-                            title: 'Vis alle prosjekter',
-                            description: 'Prosjektoversikt og fremdrift',
-                            badge: 'Prosjekter',
-                            badgeColor: 'blue',
-                            icon: Building2,
-                            actionType: 'prosjekter'
-                          }), 
-                          icon: Building2, 
-                          desc: 'Prosjektoversikt og fremdrift' 
-                        },
-                        { 
-                          title: 'Opprett nytt avvik', 
-                          action: () => handleItemClick({
-                            category: 'action',
-                            title: 'Opprett nytt avvik',
-                            description: 'Meld inn HMS- eller kvalitetsavvik',
-                            badge: 'Kvalitet',
-                            badgeColor: 'rose',
-                            icon: AlertTriangle,
-                            actionType: 'create_deviation'
-                          }), 
-                          icon: AlertTriangle, 
-                          desc: 'Meld inn HMS- eller kvalitetsavvik' 
-                        },
-                        { 
-                          title: 'Sjekkliste for tømrer', 
-                          action: () => handleItemClick({
-                            category: 'action',
-                            title: 'Sjekkliste for tømrer',
-                            description: 'NS 3420 kontroll',
-                            badge: 'Tømrer',
-                            badgeColor: 'blue',
-                            icon: CheckSquare,
-                            actionType: 'start_checklist',
-                            metadata: { trade: 'carpenter' }
-                          }), 
-                          icon: CheckSquare, 
-                          desc: 'NS 3420 kontroll' 
-                        },
-                        { 
-                          title: liveProjects[0]?.name ? `Hva er status på ${liveProjects[0].name}?` : 'Hva er status på Bjørklund?', 
+                        {
+                          title: 'Ny samtale med MesterAI',
+                          desc: 'Spør om TEK17, HMS eller kalkyle',
+                          icon: Sparkles,
+                          color: 'text-purple-400 bg-purple-500/20',
                           action: () => {
-                            const pName = liveProjects[0]?.name || 'Bjørklund';
-                            setQueryText(`Hva er status på ${pName}?`);
-                          }, 
-                          icon: Brain, 
-                          desc: 'Still statusspørsmål til AI' 
+                            onNavigate('new_chat');
+                            onClose();
+                          }
                         },
-                        { 
-                          title: 'Automatisk Byggedagbok', 
+                        {
+                          title: 'Nytt byggeprosjekt',
+                          desc: 'Start med GNR/BNR og KS-plan',
+                          icon: HardHat,
+                          color: 'text-emerald-400 bg-emerald-500/20',
+                          action: () => handleItemClick({
+                            category: 'action',
+                            title: 'Opprett nytt prosjekt',
+                            description: 'Start nytt prosjekt',
+                            badge: 'Prosjekt',
+                            badgeColor: 'emerald',
+                            icon: HardHat,
+                            actionType: 'create_project'
+                          })
+                        },
+                        {
+                          title: 'Byggedagbok & Timer',
+                          desc: 'Synkroniser Yr-vær og timer',
+                          icon: Clock,
+                          color: 'text-amber-400 bg-amber-500/20',
                           action: () => handleItemClick({
                             category: 'action',
                             title: 'Automatisk Byggedagbok',
-                            description: 'Yr-værsynk og aktiviteter',
-                            badge: 'Lovpålagt',
-                            badgeColor: 'cyan',
+                            description: 'Før dagbok',
+                            badge: 'Dagbok',
+                            badgeColor: 'amber',
                             icon: Clock,
                             actionType: 'daily_log'
-                          }), 
-                          icon: Clock, 
-                          desc: 'Yr-værsynk og aktiviteter' 
+                          })
                         },
-                        { 
-                          title: 'Endringsordrer (NS 8406)', 
+                        {
+                          title: 'Endringsordrer (NS 8406)',
+                          desc: 'Varsle tillegg og fristforlengelse',
+                          icon: DollarSign,
+                          color: 'text-blue-400 bg-blue-500/20',
                           action: () => handleItemClick({
                             category: 'action',
-                            title: 'Endringsordrer (NS 8406)',
-                            description: 'Varsle tillegg og frist',
+                            title: 'Endringsordrer',
+                            description: 'Varsle tillegg',
                             badge: 'NS 8406',
                             badgeColor: 'purple',
                             icon: DollarSign,
                             actionType: 'change_order'
-                          }), 
-                          icon: DollarSign, 
-                          desc: 'Varsle tillegg og frist' 
+                          })
                         },
-                        { 
-                          title: 'Fallkalkulator (TEK17)', 
-                          action: () => handleItemClick({
-                            category: 'route',
-                            title: 'Fallkalkulator (TEK17 Våtrom)',
-                            description: '1:50 / 1:100 fall mot sluk',
-                            badge: 'Kalkulator',
-                            badgeColor: 'blue',
-                            icon: Wrench,
-                            actionType: 'route',
-                            id: '/verktoy/fall-kalkulator-tek17'
-                          }), 
-                          icon: Wrench, 
-                          desc: '1:50 / 1:100 fall mot sluk' 
-                        },
-                        { 
-                          title: 'Tverrfaglig Lukkesperre', 
+                        {
+                          title: 'Meld inn avvik / RUH',
+                          desc: 'HMS- eller kvalitetsavvik i felt',
+                          icon: AlertTriangle,
+                          color: 'text-rose-400 bg-rose-500/20',
                           action: () => handleItemClick({
                             category: 'action',
-                            title: 'Tverrfaglig Lukkesperre (Pre-close check)',
-                            description: 'Stopp før vegg kles inn',
-                            badge: 'TEK17 Sperre',
+                            title: 'Opprett nytt avvik',
+                            description: 'Meld avvik',
+                            badge: 'Kvalitet',
                             badgeColor: 'rose',
-                            icon: ShieldCheck,
-                            actionType: 'pre_close'
-                          }), 
-                          icon: ShieldCheck, 
-                          desc: 'Stopp før vegg kles inn' 
+                            icon: AlertTriangle,
+                            actionType: 'create_deviation'
+                          })
+                        },
+                        {
+                          title: 'Sjekkliste for tømrer / våtrom',
+                          desc: 'NS 3420 og BVN våtromskontroll',
+                          icon: CheckSquare,
+                          color: 'text-teal-400 bg-teal-500/20',
+                          action: () => handleItemClick({
+                            category: 'action',
+                            title: 'Sjekkliste',
+                            description: 'Kvalitetskontroll',
+                            badge: 'Sjekkliste',
+                            badgeColor: 'cyan',
+                            icon: CheckSquare,
+                            actionType: 'start_checklist'
+                          })
                         }
-                      ].map((sug, i) => {
-                        const Icon = sug.icon;
+                      ].map((item, i) => {
+                        const Icon = item.icon;
                         return (
                           <button
                             key={i}
-                            onClick={sug.action}
-                            className="p-3 text-left rounded-xl bg-white/[0.03] hover:bg-white/[0.08] transition-all border border-white/5 hover:border-white/10 group flex items-start gap-2.5 cursor-pointer"
+                            type="button"
+                            onClick={item.action}
+                            className="p-2.5 text-left rounded-xl bg-white/[0.03] hover:bg-white/[0.08] transition-all border border-white/5 hover:border-white/10 group flex items-start gap-2.5 cursor-pointer"
                           >
-                            <div className="p-2 rounded-lg bg-white/5 text-neutral-300 group-hover:text-emerald-400 group-hover:bg-emerald-500/10 transition-colors shrink-0">
-                              <Icon size={16} />
+                            <div className={cn("p-2 rounded-lg shrink-0 transition-transform group-hover:scale-105", item.color)}>
+                              <Icon size={15} />
                             </div>
                             <div className="flex-1 min-w-0">
-                              <span className="text-xs font-bold text-neutral-200 group-hover:text-white block truncate">{sug.title}</span>
-                              <span className="text-[10px] text-neutral-400 block truncate">{sug.desc}</span>
+                              <span className="text-xs font-bold text-neutral-200 group-hover:text-white block truncate">{item.title}</span>
+                              <span className="text-[10px] text-neutral-400 block truncate">{item.desc}</span>
                             </div>
                           </button>
                         );
