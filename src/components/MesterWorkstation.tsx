@@ -795,8 +795,40 @@ export default function MesterWorkstation({
     setMessages(updatedWithUser);
     setInputVal('');
     if (textareaRef.current) textareaRef.current.style.height = '44px';
-    const activeProjName = selectedProject?.name || (projects[0]?.name || 'Geitekleiva 12 - Enebolig');
-    const activeProjId = selectedProject?.id || projects[0]?.id;
+    // 🔍 Sjekk om meldingen refererer til et spesifikt prosjekt (eller om et prosjekt allerede er valgt)
+    let currentProj = selectedProject;
+    const lowerText = (textToSend || userMessage.content).toLowerCase().trim();
+
+    if (projects && projects.length > 0) {
+      const matched = projects.find(p => {
+        const pName = (p.name || '').toLowerCase().trim();
+        const pAddress = (p.address || (p as any).location || '').toLowerCase().trim();
+        const pCode = (p.code || '').toLowerCase().trim();
+
+        // 1. Eksakt match eller fullt prosjektnavn / adresse i teksten
+        if (pName && (lowerText === pName || lowerText.includes(pName))) return true;
+        if (pAddress && (lowerText === pAddress || lowerText.includes(pAddress))) return true;
+        if (pCode && pCode.length >= 3 && lowerText.includes(pCode)) return true;
+
+        // 2. Delord fra prosjektnavn (f.eks. "Vidjeveien" fra "Renovering Bad Vidjeveien 21")
+        const words = pName.split(/[\s,.-]+/).filter(w => 
+          w.length >= 4 && !['renovering', 'bad', 'enebolig', 'bygg', 'prosjekt', 'tilbygg', 'nybygg', 'hytte'].includes(w)
+        );
+        if (words.length > 0 && words.some(w => lowerText.includes(w))) return true;
+
+        return false;
+      });
+
+      if (matched) {
+        currentProj = matched;
+        if (!selectedProject || selectedProject.id !== matched.id) {
+          onSelectProject(matched);
+        }
+      }
+    }
+
+    const activeProjName = currentProj?.name || undefined;
+    const activeProjId = currentProj?.id || undefined;
 
     setActiveThinkingDuration(0);
     setIsLoading(true);
@@ -817,6 +849,13 @@ export default function MesterWorkstation({
           message: textToSend.trim() || userMessage.content,
           sessionId: activeSessionId,
           projectName: activeProjName,
+          projectId: activeProjId,
+          availableProjects: projects.map(p => ({
+            id: p.id,
+            name: p.name,
+            code: p.code,
+            address: p.address || (p as any).location
+          })),
           userName: user?.displayName || 'Kenneth Glosli Kristiansen',
           userTrade: trade || user?.trade || 'carpenter',
           companyName: company || user?.company || 'Viking Entreprenør AS',
@@ -890,12 +929,16 @@ export default function MesterWorkstation({
         onSelectProject={(p) => {
           onSelectProject(p);
           if (p) {
-            setActiveModuleTab('project_details');
-            setViewMode('module');
+            if (activeModuleTab === 'all_projects' || !activeModuleTab) {
+              setActiveModuleTab('project_details');
+              setViewMode('module');
+            }
             toast.info(`Aktivt prosjekt: ${p.name}`);
           } else {
-            setActiveModuleTab('all_projects');
-            setViewMode('module');
+            if (activeModuleTab === 'project_details') {
+              setActiveModuleTab('all_projects');
+              setViewMode('module');
+            }
             toast.info('Viser alle byggeplasser');
           }
         }}
@@ -1003,8 +1046,10 @@ export default function MesterWorkstation({
                           onClick={() => {
                             onSelectProject(null);
                             setIsProjectDropdownOpen(false);
-                            setActiveModuleTab('all_projects');
-                            setViewMode('module');
+                            if (activeModuleTab === 'project_details') {
+                              setActiveModuleTab('all_projects');
+                              setViewMode('module');
+                            }
                             toast.info('Viser alle byggeplasser');
                           }}
                           className={cn(
@@ -1023,8 +1068,10 @@ export default function MesterWorkstation({
                             onClick={() => {
                               onSelectProject(p);
                               setIsProjectDropdownOpen(false);
-                              setActiveModuleTab('project_details');
-                              setViewMode('module');
+                              if (activeModuleTab === 'all_projects' || !activeModuleTab) {
+                                setActiveModuleTab('project_details');
+                                setViewMode('module');
+                              }
                               toast.info(`Aktivt prosjekt: ${p.name}`);
                             }}
                             className={cn(
@@ -2507,7 +2554,7 @@ export default function MesterWorkstation({
                 </div>
               )}
 
-              {/* 7. 📁 DOKUMENTARKIV & NOBB BYOK */}
+              {/* 7. 📁 DOKUMENTARKIV & FDV */}
               {activeModuleTab === 'archive' && (
                 <div className="space-y-4">
                   <DocumentationArchive
@@ -2515,6 +2562,7 @@ export default function MesterWorkstation({
                     isOpen={true}
                     projectId={selectedProject?.id}
                     projects={projects}
+                    onSelectProject={onSelectProject}
                     onClose={() => setViewMode('chat')}
                   />
                 </div>

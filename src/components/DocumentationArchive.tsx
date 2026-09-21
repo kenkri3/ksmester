@@ -301,6 +301,7 @@ interface DocumentationArchiveProps {
   projectId?: string;
   projects?: ProjectOption[];
   inline?: boolean;
+  onSelectProject?: (project: any) => void;
 }
 
 const DocumentationArchive: React.FC<DocumentationArchiveProps> = ({ 
@@ -308,11 +309,10 @@ const DocumentationArchive: React.FC<DocumentationArchiveProps> = ({
   onClose, 
   projectId: initialProjectId, 
   projects = [],
-  inline = false
+  inline = false,
+  onSelectProject
 }) => {
-  const [selectedProjectId, setSelectedProjectId] = useState<string>(
-    initialProjectId || (projects.length > 0 ? projects[0].id : '')
-  );
+  const [selectedProjectId, setSelectedProjectId] = useState<string>(initialProjectId || '');
   const [searchTerm, setSearchTerm] = useState('');
   const [activeCategory, setActiveCategory] = useState<'all' | 'fdv' | 'drawing' | 'contract'>('all');
   const [isSyncing, setIsSyncing] = useState(false);
@@ -335,14 +335,23 @@ const DocumentationArchive: React.FC<DocumentationArchiveProps> = ({
   });
   const fileInputRef = useRef<HTMLInputElement>(null);
 
-  // Synkroniser når initialProjectId endres
+  // Synkroniser toveis når initialProjectId endres (f.eks. ved prosjektbytte i toppmenyen)
   useEffect(() => {
-    if (initialProjectId) {
-      setSelectedProjectId(initialProjectId);
-    } else if (projects.length > 0 && !selectedProjectId) {
-      setSelectedProjectId(projects[0].id);
+    setSelectedProjectId(initialProjectId || '');
+  }, [initialProjectId]);
+
+  const handleProjectSelect = (e: React.ChangeEvent<HTMLSelectElement>) => {
+    const newId = e.target.value;
+    setSelectedProjectId(newId);
+    if (onSelectProject) {
+      if (!newId) {
+        onSelectProject(null);
+      } else {
+        const found = projects.find(p => p.id === newId) || { id: newId, name: 'Valgt prosjekt' };
+        onSelectProject(found);
+      }
     }
-  }, [initialProjectId, projects]);
+  };
 
   const activeProject = useMemo(() => {
     return projects.find(p => p.id === selectedProjectId) || (selectedProjectId ? { id: selectedProjectId, name: 'Valgt prosjekt' } : null);
@@ -740,10 +749,10 @@ const DocumentationArchive: React.FC<DocumentationArchiveProps> = ({
             <span className="text-xs font-bold text-neutral-600 shrink-0">Prosjekt:</span>
             <select
               value={selectedProjectId}
-              onChange={(e) => setSelectedProjectId(e.target.value)}
+              onChange={handleProjectSelect}
               className="flex-1 max-w-xs px-3 py-1.5 bg-white border border-neutral-300 rounded-xl text-xs font-bold text-neutral-900 outline-none focus:ring-2 focus:ring-neutral-900"
             >
-              <option value="">Alle prosjekter ({documents.length} dok)</option>
+              <option value="">Alle byggeplasser ({documents.length} dok)</option>
               {projects.map(p => (
                 <option key={p.id} value={p.id}>{p.name} {p.category ? `(${p.category})` : ''}</option>
               ))}

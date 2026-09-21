@@ -1079,6 +1079,7 @@ export default function Dashboard({
         onClose={() => setIsArchiveModalOpen(false)} 
         projectId={selectedProject?.id}
         projects={projects}
+        onSelectProject={setSelectedProject}
       />
       <ApprenticeModal 
         isOpen={isApprenticeModalOpen} 
