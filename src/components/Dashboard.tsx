@@ -369,15 +369,21 @@ export default function Dashboard({
           setIsDeviationModalOpen(true);
           break;
         case 'start_checklist':
+        case 'checklist':
+        case 'checklists':
           setIsChecklistModalOpen(true);
           break;
         case 'take_photo':
+        case 'ai_vision':
           setIsAIVisionModalOpen(true);
           break;
         case 'offers':
+        case 'offer':
           setIsOfferModalOpen(true);
           break;
         case 'time_registration':
+        case 'time':
+        case 'time_tracking':
           setIsTimeModalOpen(true);
           break;
         case 'vehicle':
@@ -387,13 +393,22 @@ export default function Dashboard({
           setIsInventoryModalOpen(true);
           break;
         case 'hms':
+        case 'hms_handbook':
           setIsHMSModalOpen(true);
           break;
         case 'building_app':
           setIsBuildingAppModalOpen(true);
           break;
         case 'change_order':
+        case 'change_orders':
           setIsChangeOrderModalOpen(true);
+          break;
+        case 'contract':
+        case 'contracts':
+          setIsContractModalOpen(true);
+          break;
+        case 'handover':
+          setIsHandoverModalOpen(true);
           break;
         case 'sja':
         case 'voice_sja':
@@ -416,6 +431,7 @@ export default function Dashboard({
           setIsArchiveModalOpen(true);
           break;
         case 'pre_close':
+        case 'lukkesperre':
           setActiveTab('kvalitet');
           setSelectedLukkesperreZone(selectedLukkesperreZone || lukkesperreZones[0] || DEFAULT_LUKKESPERRE_ZONES[0]);
           setIsPreCloseModalOpen(true);

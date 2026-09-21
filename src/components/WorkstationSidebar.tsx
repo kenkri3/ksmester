@@ -22,6 +22,7 @@ import {
   Archive,
   Users,
   Shield,
+  Crown,
   Settings,
   LogOut,
   Layers,
@@ -280,6 +281,32 @@ export default function WorkstationSidebar({
                 </button>
               );
             })}
+
+            {/* 👑 SuperAdmin Portal Shortcut (Only visible for superadmins) */}
+            {isSuperAdmin && (
+              <button
+                type="button"
+                onClick={() => {
+                  if (onOpenSuperAdmin) onOpenSuperAdmin();
+                  else window.dispatchEvent(new CustomEvent("navigate_view", { detail: { view: "super-admin" } }));
+                  if (isOpenMobile) onCloseMobile();
+                }}
+                className={cn(
+                  "w-full flex items-center gap-2.5 px-2.5 py-2 rounded-xl text-xs font-bold transition-all cursor-pointer text-left group mt-1.5",
+                  "bg-gradient-to-r from-amber-500/15 via-yellow-500/10 to-amber-600/15 border border-amber-500/40 text-amber-300 hover:text-white hover:bg-amber-500/25 hover:border-amber-400 shadow-xs",
+                  isCollapsedDesktop && "justify-center px-2 py-2"
+                )}
+                title="SuperAdmin Portal - Brukere, lisenser og systemovervåkning"
+              >
+                <Crown size={16} className="text-amber-400 shrink-0 group-hover:scale-110 group-hover:rotate-6 transition-transform" />
+                {!isCollapsedDesktop && (
+                  <div className="flex items-center justify-between w-full min-w-0">
+                    <span className="truncate">SuperAdmin Portal</span>
+                    <span className="text-[9px] px-1.5 py-0.5 rounded-full bg-amber-400/20 text-amber-200 font-mono font-black border border-amber-400/30">SYS</span>
+                  </div>
+                )}
+              </button>
+            )}
           </div>
 
           {/* Seksjon B: Prosjekter (Gemini: "Notatbøker") */}
@@ -468,7 +495,19 @@ export default function WorkstationSidebar({
         <div className="p-3 border-t border-slate-800/80 shrink-0 bg-[#070A11] space-y-2">
           <div className={cn("flex items-center justify-between gap-2", isCollapsedDesktop && "justify-center")}>
             <div className="flex items-center gap-2.5 min-w-0">
-              <div className="w-8 h-8 rounded-full bg-gradient-to-tr from-electric-600 to-purple-500 flex items-center justify-center text-white font-black text-xs shrink-0 ring-2 ring-purple-500/20">
+              <div 
+                onClick={() => {
+                  if (isCollapsedDesktop && isSuperAdmin) {
+                    if (onOpenSuperAdmin) onOpenSuperAdmin();
+                    else window.dispatchEvent(new CustomEvent("navigate_view", { detail: { view: "super-admin" } }));
+                  }
+                }}
+                className={cn(
+                  "w-8 h-8 rounded-full bg-gradient-to-tr from-electric-600 to-purple-500 flex items-center justify-center text-white font-black text-xs shrink-0 ring-2 ring-purple-500/20",
+                  isCollapsedDesktop && isSuperAdmin && "cursor-pointer ring-amber-400/50 hover:scale-105 transition-transform"
+                )}
+                title={isCollapsedDesktop && isSuperAdmin ? "👑 SuperAdmin Portal (klikk her)" : undefined}
+              >
                 {user?.displayName ? user.displayName.charAt(0).toUpperCase() : 'K'}
               </div>
               {!isCollapsedDesktop && (
@@ -477,7 +516,21 @@ export default function WorkstationSidebar({
                     {user?.displayName || 'Kenneth Glosli Kristiansen'}
                   </p>
                   <p className="text-[10px] text-slate-400 font-medium truncate flex items-center gap-1">
-                    <span className="text-emerald-400 font-bold">{isSuperAdmin ? 'SuperAdmin' : 'Byggmester'}</span>
+                    {isSuperAdmin ? (
+                      <button
+                        type="button"
+                        onClick={() => {
+                          if (onOpenSuperAdmin) onOpenSuperAdmin();
+                          else window.dispatchEvent(new CustomEvent("navigate_view", { detail: { view: "super-admin" } }));
+                        }}
+                        className="text-amber-400 hover:text-amber-300 font-bold hover:underline cursor-pointer flex items-center gap-0.5"
+                        title="Åpne SuperAdmin Kontrollpanel"
+                      >
+                        <span>👑 SuperAdmin</span>
+                      </button>
+                    ) : (
+                      <span className="text-emerald-400 font-bold">Byggmester</span>
+                    )}
                     <span>•</span>
                     <span>{user?.company || 'VikingMester'}</span>
                   </p>
@@ -487,6 +540,19 @@ export default function WorkstationSidebar({
 
             {!isCollapsedDesktop && (
               <div className="flex items-center gap-1">
+                {isSuperAdmin && (
+                  <button
+                    type="button"
+                    onClick={() => {
+                      if (onOpenSuperAdmin) onOpenSuperAdmin();
+                      else window.dispatchEvent(new CustomEvent("navigate_view", { detail: { view: "super-admin" } }));
+                    }}
+                    className="p-1.5 rounded-lg text-amber-400 hover:text-white hover:bg-amber-500/20 transition-colors cursor-pointer"
+                    title="SuperAdmin Portal"
+                  >
+                    <Crown size={15} />
+                  </button>
+                )}
                 <button
                   type="button"
                   onClick={onOpenSettings}

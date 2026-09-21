@@ -51,7 +51,16 @@ import {
   Eye,
   CornerDownLeft,
   MessageSquare,
-  CheckSquare
+  CheckSquare,
+  Crown,
+  Car,
+  Package,
+  Languages,
+  GraduationCap,
+  CloudSun,
+  Lock,
+  BookOpen,
+  FileSpreadsheet
 } from 'lucide-react';
 import { cn } from '@/src/lib/utils';
 import { toast } from 'sonner';
@@ -213,6 +222,10 @@ export default function MesterWorkstation({
   const [isCreatingProject, setIsCreatingProject] = useState(false);
   const [projectSearchQuery, setProjectSearchQuery] = useState('');
 
+  // ⋯ Alle fagmoduler filter og søk
+  const [allModulesCategory, setAllModulesCategory] = useState<'all' | 'prosjekt' | 'ks_hms' | 'okonomi' | 'ressurser' | 'superadmin'>('all');
+  const [allModulesSearch, setAllModulesSearch] = useState('');
+
   // Bildeopplasting
   const [attachedImage, setAttachedImage] = useState<{ url: string; preview: string; name?: string } | null>(null);
   const [isUploadingImage, setIsUploadingImage] = useState(false);
@@ -342,6 +355,99 @@ export default function MesterWorkstation({
   const handleOpenModuleFromSidebar = (moduleId: string) => {
     setActiveModuleTab(moduleId);
     setViewMode('module');
+  };
+
+  // 🚀 Aktiver modul fra "Alle moduler"-oversikten
+  const handleModuleCardClick = (actionId: string) => {
+    switch (actionId) {
+      case 'projects':
+        setActiveModuleTab('all_projects');
+        setViewMode('module');
+        break;
+      case 'create_project':
+        setActiveModuleTab('create_project');
+        setViewMode('module');
+        break;
+      case 'dailylog':
+        setActiveModuleTab('dailylog');
+        setViewMode('module');
+        break;
+      case 'weather':
+        setActiveModuleTab('dailylog');
+        setViewMode('module');
+        toast.info('Viser sanntids værdata fra Yr.no i byggedagboken');
+        break;
+      case 'archive':
+        setActiveModuleTab('archive');
+        setViewMode('module');
+        break;
+      case 'building_app':
+        window.dispatchEvent(new CustomEvent('trigger_dashboard_action', { detail: { actionId: 'building_app' } }));
+        break;
+      case 'checklists':
+        window.dispatchEvent(new CustomEvent('trigger_dashboard_action', { detail: { actionId: 'start_checklist' } }));
+        break;
+      case 'ai_vision':
+        if (onOpenAIVision) onOpenAIVision();
+        else window.dispatchEvent(new CustomEvent('trigger_dashboard_action', { detail: { actionId: 'take_photo' } }));
+        break;
+      case 'sja':
+        setActiveModuleTab('sja');
+        setViewMode('module');
+        break;
+      case 'deviations':
+        setActiveModuleTab('deviations');
+        setViewMode('module');
+        break;
+      case 'pre_close':
+        setActiveModuleTab('pre_close');
+        setViewMode('module');
+        break;
+      case 'hms':
+        window.dispatchEvent(new CustomEvent('trigger_dashboard_action', { detail: { actionId: 'hms' } }));
+        break;
+      case 'change_orders':
+        setActiveModuleTab('change_orders');
+        setViewMode('module');
+        break;
+      case 'offers':
+        setActiveModuleTab('offers');
+        setViewMode('module');
+        break;
+      case 'contracts':
+        window.dispatchEvent(new CustomEvent('trigger_dashboard_action', { detail: { actionId: 'contracts' } }));
+        break;
+      case 'time':
+        if (onOpenTimeModal) onOpenTimeModal();
+        else window.dispatchEvent(new CustomEvent('trigger_dashboard_action', { detail: { actionId: 'time_registration' } }));
+        break;
+      case 'handover':
+        window.dispatchEvent(new CustomEvent('trigger_dashboard_action', { detail: { actionId: 'handover' } }));
+        break;
+      case 'vehicle':
+        window.dispatchEvent(new CustomEvent('trigger_dashboard_action', { detail: { actionId: 'vehicle' } }));
+        break;
+      case 'inventory':
+        window.dispatchEvent(new CustomEvent('trigger_dashboard_action', { detail: { actionId: 'inventory' } }));
+        break;
+      case 'contacts':
+        setActiveModuleTab('contacts');
+        setViewMode('module');
+        break;
+      case 'apprentice':
+        window.dispatchEvent(new CustomEvent('trigger_dashboard_action', { detail: { actionId: 'apprentice' } }));
+        break;
+      case 'translator':
+        window.dispatchEvent(new CustomEvent("navigate_view", { detail: { view: "mobile", screen: "translator" } }));
+        break;
+      case 'super_admin':
+        if (onOpenSuperAdmin) onOpenSuperAdmin();
+        else window.dispatchEvent(new CustomEvent("navigate_view", { detail: { view: "super-admin" } }));
+        break;
+      default:
+        handleOpenModuleFromSidebar(actionId);
+        break;
+    }
   };
 
   // 💰 Opprett tilbud direkte fra hurtigkalkyle
@@ -960,6 +1066,20 @@ export default function MesterWorkstation({
           {/* Right Header Controls */}
           {!isTopSearchOpen && (
             <div className="flex items-center gap-1 sm:gap-2">
+              {isSuperAdmin && (
+                <button
+                  type="button"
+                  onClick={() => {
+                    if (onOpenSuperAdmin) onOpenSuperAdmin();
+                    else window.dispatchEvent(new CustomEvent("navigate_view", { detail: { view: "super-admin" } }));
+                  }}
+                  className="inline-flex items-center gap-1.5 px-2.5 py-1.5 rounded-xl bg-amber-500/15 hover:bg-amber-500/25 border border-amber-500/40 text-amber-300 hover:text-white text-xs font-bold transition-all shadow-xs cursor-pointer"
+                  title="Åpne SuperAdmin Portal (Brukere, Lisenser, Logger)"
+                >
+                  <Crown size={14} className="text-amber-400" />
+                  <span className="hidden sm:inline">SuperAdmin</span>
+                </button>
+              )}
               {onOpenOmnichannelModal && (
                 <button
                   type="button"
@@ -2452,43 +2572,425 @@ export default function MesterWorkstation({
               )}
 
               {/* 9. ⋯ ALLE FAGMODULER */}
-              {activeModuleTab === 'all_modules' && (
-                <div className="bg-slate-900 border border-slate-800 rounded-3xl p-5 sm:p-6 space-y-5 shadow-xl">
-                  <div className="pb-4 border-b border-slate-800">
-                    <h3 className="text-lg font-black text-white">Alle Fagmoduler & Verktøy (20+)</h3>
-                    <p className="text-xs text-slate-400 mt-0.5">
-                      Klikk på en modul for å åpne den direkte her i arbeidsvinduet:
-                    </p>
-                  </div>
+              {activeModuleTab === 'all_modules' && (() => {
+                const ALL_MODULES_CATALOG = [
+                  // 🏗️ Kategori 1: Prosjekt & Bygg (6)
+                  {
+                    id: 'projects',
+                    title: 'Prosjektoversikt',
+                    category: 'prosjekt' as const,
+                    categoryLabel: 'Prosjekt',
+                    badge: 'Aktive bygg',
+                    icon: Building2,
+                    color: 'text-blue-400',
+                    bgGlow: 'hover:border-blue-500/50',
+                    desc: 'Oversikt over alle byggeplasser, adresser, fremdrift og milepæler.',
+                    actionId: 'projects'
+                  },
+                  {
+                    id: 'new_project',
+                    title: 'Nytt Prosjekt & Byggeplass',
+                    category: 'prosjekt' as const,
+                    categoryLabel: 'Prosjekt',
+                    badge: 'Rask oppstart',
+                    icon: Plus,
+                    color: 'text-indigo-400',
+                    bgGlow: 'hover:border-indigo-500/50',
+                    desc: 'Opprett nytt byggeoppdrag på under 1 minutt med AI-maler for bad, enebolig og tilbygg.',
+                    actionId: 'create_project'
+                  },
+                  {
+                    id: 'dailylog',
+                    title: 'Byggedagbok & Timer',
+                    category: 'prosjekt' as const,
+                    categoryLabel: 'Prosjekt',
+                    badge: 'Lovkrav',
+                    icon: Clock,
+                    color: 'text-amber-400',
+                    bgGlow: 'hover:border-amber-500/50',
+                    desc: 'Før dagbok via tale eller tekst m/mannskapsliste og automatisk Yr-vær.',
+                    actionId: 'dailylog'
+                  },
+                  {
+                    id: 'weather',
+                    title: 'Vær & Yr.no',
+                    category: 'prosjekt' as const,
+                    categoryLabel: 'Prosjekt',
+                    badge: 'Sanntid',
+                    icon: CloudSun,
+                    color: 'text-cyan-400',
+                    bgGlow: 'hover:border-cyan-500/50',
+                    desc: 'Sanntids værdata, vindstyrke og stillasvurdering for dine aktive byggeplasser.',
+                    actionId: 'weather'
+                  },
+                  {
+                    id: 'archive',
+                    title: 'Dokumentarkiv & FDV',
+                    category: 'prosjekt' as const,
+                    categoryLabel: 'Prosjekt',
+                    badge: 'Dokumentasjon',
+                    icon: Archive,
+                    color: 'text-teal-400',
+                    bgGlow: 'hover:border-teal-500/50',
+                    desc: 'Tegninger, FDV-dokumentasjon, datablader, monteringsanvisninger og godkjenninger.',
+                    actionId: 'archive'
+                  },
+                  {
+                    id: 'building_app',
+                    title: 'Byggesøknad & Nabovarsel',
+                    category: 'prosjekt' as const,
+                    categoryLabel: 'Prosjekt',
+                    badge: 'Veileder',
+                    icon: Building2,
+                    color: 'text-emerald-400',
+                    bgGlow: 'hover:border-emerald-500/50',
+                    desc: 'Veileder for tiltak unntatt søknadsplikt, dispensasjon og automatisk nabovarsling.',
+                    actionId: 'building_app'
+                  },
 
-                  <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-3">
-                    {[
-                      { id: 'offers', name: '📝 Tilbud & Hurtigkalkyle', desc: 'Prising av timer og materiell m/påslag' },
-                      { id: 'dailylog', name: '⏱️ Byggedagbok & Timer', desc: 'Yr-vær, mannskapsliste og timeføring' },
-                      { id: 'change_orders', name: '⚡ Endringsordrer (NS 8406)', desc: 'Varsling, fristforlengelse og krav' },
-                      { id: 'pre_close', name: '📋 KS & Lukkesperre TEK17', desc: 'Obligatorisk sjekk før vegger lukkes' },
-                      { id: 'deviations', name: '🚨 Avvik & RUH', desc: 'Bildebevis og lukking av avvik' },
-                      { id: 'sja', name: '🦺 SJA & HMS', desc: 'Risikovurdering, PVU og vernetiltak' },
-                      { id: 'archive', name: '📁 Dokumentarkiv & FDV', desc: 'NOBB BYOK, monteringsanvisninger' },
-                      { id: 'contacts', name: '👥 Prosjektteam & Kontakter', desc: 'Byggherre og underentreprenører' }
-                    ].map((mod) => (
-                      <button
-                        key={mod.id}
-                        type="button"
-                        onClick={() => handleOpenModuleFromSidebar(mod.id)}
-                        className="p-4 rounded-2xl bg-slate-950 hover:bg-slate-850 border border-slate-800 hover:border-purple-500/50 text-left transition-all cursor-pointer group shadow-xs"
-                      >
-                        <span className="font-bold text-sm text-white block mb-1 group-hover:text-purple-300 transition-colors">
-                          {mod.name}
-                        </span>
-                        <span className="text-xs text-slate-400 block leading-relaxed">
-                          {mod.desc}
-                        </span>
-                      </button>
-                    ))}
+                  // 🛡️ Kategori 2: Kvalitet, KS & HMS (6)
+                  {
+                    id: 'checklists',
+                    title: 'KS-Sjekklister',
+                    category: 'ks_hms' as const,
+                    categoryLabel: 'KS & HMS',
+                    badge: 'Lovpålagt',
+                    icon: ClipboardCheck,
+                    color: 'text-amber-400',
+                    bgGlow: 'hover:border-amber-500/50',
+                    desc: 'Lovpålagte sjekklister tilpasset ditt fag: tømrer, betong, mur, våtrom og elektro.',
+                    actionId: 'checklists'
+                  },
+                  {
+                    id: 'ai_vision',
+                    title: 'AI Bildekontroll TEK17',
+                    category: 'ks_hms' as const,
+                    categoryLabel: 'KS & HMS',
+                    badge: 'AI Vision',
+                    icon: Camera,
+                    color: 'text-blue-400',
+                    bgGlow: 'hover:border-blue-500/50',
+                    desc: 'Automatisk fotokontroll av sluk, membran, kledning og rørgjennomføringer.',
+                    actionId: 'ai_vision'
+                  },
+                  {
+                    id: 'sja',
+                    title: 'Sikker Jobb Analyse (SJA)',
+                    category: 'ks_hms' as const,
+                    categoryLabel: 'KS & HMS',
+                    badge: 'HMS-krav',
+                    icon: HardHat,
+                    color: 'text-blue-400',
+                    bgGlow: 'hover:border-blue-500/50',
+                    desc: 'Risikovurdering, påbudt personlig verneutstyr (PVU) og vernetiltak før oppstart.',
+                    actionId: 'sja'
+                  },
+                  {
+                    id: 'deviations',
+                    title: 'Avvik & RUH',
+                    category: 'ks_hms' as const,
+                    categoryLabel: 'KS & HMS',
+                    badge: 'Kvalitet',
+                    icon: AlertTriangle,
+                    color: 'text-rose-400',
+                    bgGlow: 'hover:border-rose-500/50',
+                    desc: 'Registrer og lukk avvik og uønskede hendelser med foto, årsak og tiltak.',
+                    actionId: 'deviations'
+                  },
+                  {
+                    id: 'pre_close',
+                    title: 'KS & Lukkesperre (TEK17)',
+                    category: 'ks_hms' as const,
+                    categoryLabel: 'KS & HMS',
+                    badge: 'TEK17',
+                    icon: Lock,
+                    color: 'text-emerald-400',
+                    bgGlow: 'hover:border-emerald-500/50',
+                    desc: 'Tverrfaglig sperre som forhindrer lukking av vegger før alle fag har godkjent.',
+                    actionId: 'pre_close'
+                  },
+                  {
+                    id: 'hms',
+                    title: 'HMS & Stoffkartotek',
+                    category: 'ks_hms' as const,
+                    categoryLabel: 'KS & HMS',
+                    badge: 'Internkontroll',
+                    icon: BookOpen,
+                    color: 'text-teal-400',
+                    bgGlow: 'hover:border-teal-500/50',
+                    desc: 'Internkontrollforskriften, sikkerhetsdatablader, vernerunder og kjemikaliehåndtering.',
+                    actionId: 'hms'
+                  },
+
+                  // 💰 Kategori 3: Økonomi, Tilbud & Kontrakt (5)
+                  {
+                    id: 'change_orders',
+                    title: 'Endringsordrer (NS 8406)',
+                    category: 'okonomi' as const,
+                    categoryLabel: 'Økonomi',
+                    badge: 'NS 8406',
+                    icon: FileSignature,
+                    color: 'text-purple-400',
+                    bgGlow: 'hover:border-purple-500/50',
+                    desc: 'Varsling av avvik, fristforlengelse og vederlagskrav med digital kundesignering.',
+                    actionId: 'change_orders'
+                  },
+                  {
+                    id: 'offers',
+                    title: 'Tilbudskalkulator',
+                    category: 'okonomi' as const,
+                    categoryLabel: 'Økonomi',
+                    badge: 'Kalkyle',
+                    icon: Calculator,
+                    color: 'text-indigo-400',
+                    bgGlow: 'hover:border-indigo-500/50',
+                    desc: 'Prising av timer og materiell m/påslag, PDF-tilbud og digital kundeaksept.',
+                    actionId: 'offers'
+                  },
+                  {
+                    id: 'contracts',
+                    title: 'Byggekontrakter',
+                    category: 'okonomi' as const,
+                    categoryLabel: 'Økonomi',
+                    badge: 'Juridisk',
+                    icon: FileSpreadsheet,
+                    color: 'text-violet-400',
+                    bgGlow: 'hover:border-violet-500/50',
+                    desc: 'Juridisk trygge standardkontrakter iht. NS 8405/8406 og Håndverkertjenesteloven.',
+                    actionId: 'contracts'
+                  },
+                  {
+                    id: 'time',
+                    title: 'Timeføring & Lønn',
+                    category: 'okonomi' as const,
+                    categoryLabel: 'Økonomi',
+                    badge: 'Timer',
+                    icon: Clock,
+                    color: 'text-emerald-400',
+                    bgGlow: 'hover:border-emerald-500/50',
+                    desc: 'Timeføring per prosjekt, oppgave, bil og overtid for lønn og fakturagrunnlag.',
+                    actionId: 'time'
+                  },
+                  {
+                    id: 'handover',
+                    title: 'Overtakelse & Sluttoppgjør',
+                    category: 'okonomi' as const,
+                    categoryLabel: 'Økonomi',
+                    badge: 'Signatur',
+                    icon: CheckCircle2,
+                    color: 'text-teal-400',
+                    bgGlow: 'hover:border-teal-500/50',
+                    desc: 'Ferdigbefaring, mangelliste, overtakelsesprotokoll og signert sluttoppgjør.',
+                    actionId: 'handover'
+                  },
+
+                  // 🚗 Kategori 4: Ressurser, Bil & Felt (5)
+                  {
+                    id: 'vehicle',
+                    title: 'Kjørebok & Bil',
+                    category: 'ressurser' as const,
+                    categoryLabel: 'Ressurser',
+                    badge: 'Kjøring',
+                    icon: Car,
+                    color: 'text-amber-400',
+                    bgGlow: 'hover:border-amber-500/50',
+                    desc: 'Elektronisk kjørebok, bompasseringer, km-godtgjørelse og prosjektkobling.',
+                    actionId: 'vehicle'
+                  },
+                  {
+                    id: 'inventory',
+                    title: 'Verktøy & Maskinlager',
+                    category: 'ressurser' as const,
+                    categoryLabel: 'Ressurser',
+                    badge: 'Maskiner',
+                    icon: Package,
+                    color: 'text-orange-400',
+                    bgGlow: 'hover:border-orange-500/50',
+                    desc: 'Ha full kontroll på hvem som har lånt verktøy og maskiner, samt serviceintervaller.',
+                    actionId: 'inventory'
+                  },
+                  {
+                    id: 'contacts',
+                    title: 'Prosjektteam & Kontakter',
+                    category: 'ressurser' as const,
+                    categoryLabel: 'Ressurser',
+                    badge: 'Team',
+                    icon: Users,
+                    color: 'text-cyan-400',
+                    bgGlow: 'hover:border-cyan-500/50',
+                    desc: 'Telefonliste for byggeplassen: byggherre, prosjektleder, bas og underentreprenører.',
+                    actionId: 'contacts'
+                  },
+                  {
+                    id: 'apprentice',
+                    title: 'Lærlingmodul',
+                    category: 'ressurser' as const,
+                    categoryLabel: 'Ressurser',
+                    badge: 'Læreplan',
+                    icon: GraduationCap,
+                    color: 'text-indigo-400',
+                    bgGlow: 'hover:border-indigo-500/50',
+                    desc: 'Loggfør læremål, kompetansemål og dokumentasjon til fagprøve og opplæringskontor.',
+                    actionId: 'apprentice'
+                  },
+                  {
+                    id: 'translator',
+                    title: 'Flerspråklig Oversetter',
+                    category: 'ressurser' as const,
+                    categoryLabel: 'Ressurser',
+                    badge: 'Byggeplass',
+                    icon: Languages,
+                    color: 'text-blue-400',
+                    bgGlow: 'hover:border-blue-500/50',
+                    desc: 'Fagterminologisk oversetter for byggeplassen (polsk, litauisk, ukrainsk, engelsk).',
+                    actionId: 'translator'
+                  },
+
+                  // 👑 Kategori 5: SuperAdmin (hvis bruker har superadmin-tilgang)
+                  ...(isSuperAdmin ? [{
+                    id: 'super_admin',
+                    title: 'SuperAdmin Portal',
+                    category: 'superadmin' as const,
+                    categoryLabel: 'Admin',
+                    badge: 'System',
+                    icon: Crown,
+                    color: 'text-amber-400',
+                    bgGlow: 'hover:border-amber-400/60',
+                    desc: 'Administrasjon av bedrifter, lisenser, brukersesjoner, systemlogger og feilsøking.',
+                    actionId: 'super_admin'
+                  }] : [])
+                ];
+
+                const categories = [
+                  { id: 'all', label: `Alle (${ALL_MODULES_CATALOG.length})` },
+                  { id: 'prosjekt', label: `🏗️ Prosjekt & Bygg (${ALL_MODULES_CATALOG.filter(m => m.category === 'prosjekt').length})` },
+                  { id: 'ks_hms', label: `🛡️ KS & HMS (${ALL_MODULES_CATALOG.filter(m => m.category === 'ks_hms').length})` },
+                  { id: 'okonomi', label: `💰 Økonomi & Kontrakt (${ALL_MODULES_CATALOG.filter(m => m.category === 'okonomi').length})` },
+                  { id: 'ressurser', label: `🚗 Ressurser & Felt (${ALL_MODULES_CATALOG.filter(m => m.category === 'ressurser').length})` },
+                  ...(isSuperAdmin ? [{ id: 'superadmin', label: '👑 SuperAdmin (1)' }] : [])
+                ];
+
+                const filteredModules = ALL_MODULES_CATALOG.filter((m) => {
+                  const matchesCat = allModulesCategory === 'all' || m.category === allModulesCategory;
+                  const q = allModulesSearch.trim().toLowerCase();
+                  const matchesSearch = !q || m.title.toLowerCase().includes(q) || m.desc.toLowerCase().includes(q) || m.badge.toLowerCase().includes(q);
+                  return matchesCat && matchesSearch;
+                });
+
+                return (
+                  <div className="bg-slate-900 border border-slate-800 rounded-3xl p-4 sm:p-6 space-y-5 shadow-xl">
+                    <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-3 pb-4 border-b border-slate-800">
+                      <div>
+                        <div className="flex items-center gap-2">
+                          <h3 className="text-lg sm:text-xl font-black text-white">Alle Fagmoduler & Verktøy ({ALL_MODULES_CATALOG.length})</h3>
+                          <span className="text-[10px] font-bold px-2 py-0.5 rounded-full bg-purple-500/20 text-purple-300 border border-purple-500/30">
+                            Komplett fagsystem
+                          </span>
+                        </div>
+                        <p className="text-xs text-slate-400 mt-1">
+                          Klikk på en modul for å åpne verktøyet direkte eller starte arbeidsflyten:
+                        </p>
+                      </div>
+
+                      {/* Hurtigsøk i moduler */}
+                      <div className="relative w-full sm:w-72">
+                        <Search className="absolute left-3 top-1/2 -translate-y-1/2 text-slate-400" size={14} />
+                        <input
+                          type="text"
+                          placeholder="Søk i moduler..."
+                          value={allModulesSearch}
+                          onChange={(e) => setAllModulesSearch(e.target.value)}
+                          className="w-full pl-8 pr-7 py-2 bg-slate-950 border border-slate-800 rounded-xl text-xs text-white placeholder:text-slate-500 outline-none focus:border-purple-500 transition-colors"
+                        />
+                        {allModulesSearch && (
+                          <button
+                            type="button"
+                            onClick={() => setAllModulesSearch('')}
+                            className="absolute right-2.5 top-1/2 -translate-y-1/2 text-slate-400 hover:text-white cursor-pointer"
+                          >
+                            <X size={13} />
+                          </button>
+                        )}
+                      </div>
+                    </div>
+
+                    {/* Kategori-faner */}
+                    <div className="flex items-center gap-1.5 overflow-x-auto pb-1 no-scrollbar">
+                      {categories.map((cat) => (
+                        <button
+                          key={cat.id}
+                          type="button"
+                          onClick={() => setAllModulesCategory(cat.id as any)}
+                          className={cn(
+                            "px-3 py-1.5 rounded-xl text-xs font-bold transition-all whitespace-nowrap cursor-pointer shrink-0",
+                            allModulesCategory === cat.id
+                              ? "bg-purple-600 text-white shadow-sm"
+                              : "bg-slate-950 hover:bg-slate-800 text-slate-400 hover:text-slate-200 border border-slate-800"
+                          )}
+                        >
+                          {cat.label}
+                        </button>
+                      ))}
+                    </div>
+
+                    {/* Rutenett over moduler */}
+                    {filteredModules.length === 0 ? (
+                      <div className="py-12 text-center text-slate-400 text-xs border border-dashed border-slate-800 rounded-2xl space-y-2">
+                        <p>Ingen moduler matcher søket «{allModulesSearch}».</p>
+                        <button
+                          type="button"
+                          onClick={() => { setAllModulesSearch(''); setAllModulesCategory('all'); }}
+                          className="px-3 py-1.5 bg-slate-800 hover:bg-slate-700 text-white rounded-xl text-xs font-semibold cursor-pointer"
+                        >
+                          Tilbakestill filter
+                        </button>
+                      </div>
+                    ) : (
+                      <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-3">
+                        {filteredModules.map((mod) => {
+                          const IconComp = mod.icon;
+                          return (
+                            <button
+                              key={mod.id}
+                              type="button"
+                              onClick={() => handleModuleCardClick(mod.actionId)}
+                              className={cn(
+                                "p-4 rounded-2xl bg-slate-950 hover:bg-slate-850 border border-slate-800 text-left transition-all cursor-pointer group shadow-xs flex flex-col justify-between",
+                                mod.bgGlow
+                              )}
+                            >
+                              <div>
+                                <div className="flex items-start justify-between gap-2 mb-2">
+                                  <div className="w-9 h-9 rounded-xl bg-slate-900 border border-slate-800 flex items-center justify-center shrink-0 group-hover:scale-105 transition-transform">
+                                    <IconComp size={18} className={mod.color} />
+                                  </div>
+                                  <span className="text-[10px] font-bold px-2 py-0.5 rounded-full bg-slate-900 text-slate-400 border border-slate-800 shrink-0">
+                                    {mod.badge}
+                                  </span>
+                                </div>
+                                <h4 className="font-bold text-sm text-white block mb-1 group-hover:text-purple-300 transition-colors">
+                                  {mod.title}
+                                </h4>
+                                <p className="text-xs text-slate-400 block leading-relaxed line-clamp-2">
+                                  {mod.desc}
+                                </p>
+                              </div>
+
+                              <div className="mt-3 pt-2.5 border-t border-slate-850 flex items-center justify-between text-[11px] font-bold text-slate-500 group-hover:text-purple-400 transition-colors">
+                                <span>{mod.categoryLabel}</span>
+                                <span className="flex items-center gap-1 group-hover:translate-x-0.5 transition-transform">
+                                  <span>Åpne</span>
+                                  <ChevronRight size={13} />
+                                </span>
+                              </div>
+                            </button>
+                          );
+                        })}
+                      </div>
+                    )}
                   </div>
-                </div>
-              )}
+                );
+              })()}
 
               {/* 10. ⚙️ INNSTILLINGER (INLINE TRIGGER) */}
               {activeModuleTab === 'settings' && (
@@ -2499,7 +3001,7 @@ export default function MesterWorkstation({
                   <div>
                     <h3 className="text-base font-black text-white">System- og Bedriftsinnstillinger</h3>
                     <p className="text-xs text-slate-400 mt-1">
-                      Åpne innstillingsboksen for å justere profil, bedriftsdata, team, moduler og NOBB BYOK-nøkkel.
+                      Åpne innstillingsboksen for å justere profil, bedriftsdata, team og moduler.
                     </p>
                   </div>
                   <button
