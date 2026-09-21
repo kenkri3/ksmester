@@ -60,7 +60,8 @@ import {
   CloudSun,
   Lock,
   BookOpen,
-  FileSpreadsheet
+  FileSpreadsheet,
+  FileCheck
 } from 'lucide-react';
 import { cn } from '@/src/lib/utils';
 import { toast } from 'sonner';
@@ -73,10 +74,13 @@ import InChatWorkspace, { InChatFormType } from './InChatWorkspace';
 import DocumentationArchive from './DocumentationArchive';
 import WorkstationSettingsModal from './WorkstationSettingsModal';
 import ChangeOrderDetailModal from './ChangeOrderDetailModal';
-import { formatAiMarkdown } from '../lib/formatAiMarkdown';
 import { db, collection, addDoc } from '../services/firebase';
+import SuperAdmin from './SuperAdmin';
+import OfferModal from './OfferModal';
+import { formatAiMarkdown } from '../lib/formatAiMarkdown';
 
 interface MesterWorkstationProps {
+  initialModuleTab?: string | null;
   projects: Project[];
   selectedProject: Project | null;
   onSelectProject: (project: Project | null) => void;
@@ -110,6 +114,7 @@ interface MesterWorkstationProps {
 }
 
 export default function MesterWorkstation({
+  initialModuleTab,
   projects,
   selectedProject,
   onSelectProject,
@@ -163,10 +168,45 @@ export default function MesterWorkstation({
   };
 
   // 🎯 View Mode: 'chat' | 'module' | 'form'
-  const [viewMode, setViewMode] = useState<'chat' | 'module' | 'form'>('chat');
-  const [activeModuleTab, setActiveModuleTab] = useState<string | null>(null);
+  const [viewMode, setViewMode] = useState<'chat' | 'module' | 'form'>(() => {
+    if (initialModuleTab) return 'module';
+    return 'chat';
+  });
+  const [activeModuleTab, setActiveModuleTab] = useState<string | null>(initialModuleTab || null);
   const [activeForm, setActiveForm] = useState<{ type: InChatFormType; data?: any } | null>(null);
   const [isProjectDropdownOpen, setIsProjectDropdownOpen] = useState(false);
+
+  // Synkroniser aktiv fane dersom initialModuleTab endrer seg eksternt
+  useEffect(() => {
+    if (initialModuleTab) {
+      setActiveModuleTab(initialModuleTab);
+      setViewMode('module');
+    }
+  }, [initialModuleTab]);
+
+  // Håndter global navigasjon inn i SuperAdmin eller andre moduler uten å forlate arbeidsstasjonen
+  useEffect(() => {
+    const handleNavigate = (e: any) => {
+      const targetView = e.detail?.view;
+      if (targetView === 'super-admin' || targetView === 'superadmin') {
+        setActiveModuleTab('superadmin');
+        setViewMode('module');
+      } else if (targetView === 'offers' || targetView === 'kalkyle') {
+        setActiveModuleTab('offers');
+        setViewMode('module');
+      } else if (targetView === 'contacts' || targetView === 'telefonbok') {
+        setActiveModuleTab('contacts');
+        setViewMode('module');
+      }
+    };
+    window.addEventListener('navigate_view', handleNavigate);
+    return () => window.removeEventListener('navigate_view', handleNavigate);
+  }, []);
+
+  const handleOpenSuperAdmin = () => {
+    setActiveModuleTab('superadmin');
+    setViewMode('module');
+  };
 
   // 💬 Chat Session State
   const [activeSessionId, setActiveSessionId] = useState<string>(() => {
@@ -216,6 +256,8 @@ export default function MesterWorkstation({
     email: string;
     companyName?: string;
     projectId?: string;
+    category?: 'team' | 'subcontractor' | 'client' | 'former';
+    isFormer?: boolean;
   }
 
   interface DailyTimeItem {
@@ -232,6 +274,8 @@ export default function MesterWorkstation({
 
   const [projectContacts, setProjectContacts] = useState<ProjectContactItem[]>([]);
   const [contactSearchQuery, setContactSearchQuery] = useState('');
+  const [contactCategoryFilter, setContactCategoryFilter] = useState<'all' | 'team' | 'subcontractor' | 'client' | 'former'>('all');
+  const [newContactCategory, setNewContactCategory] = useState<'team' | 'subcontractor' | 'client' | 'former'>('subcontractor');
   const [isAddContactModalOpen, setIsAddContactModalOpen] = useState(false);
   const [newContactName, setNewContactName] = useState('');
   const [newContactRole, setNewContactRole] = useState('Tømrer / Fagarbeider');
@@ -250,41 +294,64 @@ export default function MesterWorkstation({
   const contactsStorageKey = `mester_contacts_${currentTenantScope}_${selectedProject?.id || 'all'}`;
   const logsStorageKey = `mester_timelogs_${currentTenantScope}_${selectedProject?.id || 'all'}`;
 
-  // Last inn telefonbok / kontakter
+  // Last inn telefonbok / kontakter & auto-synkroniser kunder fra prosjekter og kundeportal
   useEffect(() => {
     try {
       const raw = localStorage.getItem(contactsStorageKey);
-      if (raw) {
-        setProjectContacts(JSON.parse(raw));
-      } else {
-        const initial: ProjectContactItem[] = [];
-        if (selectedProject?.clientName) {
-          initial.push({
-            id: 'c_client',
-            name: selectedProject.clientName,
-            role: 'Byggherre / Kunde',
-            phone: (selectedProject as any)?.clientPhone || '+47 988 00 111',
-            email: selectedProject.clientEmail || 'byggherre@kunde.no',
-            companyName: selectedProject.name
-          });
+      let list: ProjectContactItem[] = raw ? JSON.parse(raw) : [];
+
+      // Auto-synkroniser kunder fra alle tilgjengelige byggeprosjekter (og kundeportal-registreringer)
+      const existingClientEmails = new Set(list.map(c => (c.email || '').trim().toLowerCase()).filter(Boolean));
+      const existingClientNames = new Set(list.map(c => (c.name || '').trim().toLowerCase()).filter(Boolean));
+
+      let hasNewClients = false;
+      projects.forEach(p => {
+        if (p.clientName) {
+          const normName = p.clientName.trim().toLowerCase();
+          const normEmail = (p.clientEmail || '').trim().toLowerCase();
+          if (!existingClientNames.has(normName) && (!normEmail || !existingClientEmails.has(normEmail))) {
+            list.push({
+              id: `c_proj_${p.id}`,
+              name: p.clientName,
+              role: 'Kunde / Byggherre',
+              phone: (p as any).clientPhone || '+47 988 00 111',
+              email: p.clientEmail || 'kunde@kundeportal.no',
+              companyName: p.name,
+              projectId: p.id,
+              category: 'client'
+            });
+            existingClientNames.add(normName);
+            if (normEmail) existingClientEmails.add(normEmail);
+            hasNewClients = true;
+          }
         }
-        if (user && user.displayName) {
-          initial.push({
-            id: 'c_user',
+      });
+
+      // Auto-synkroniser innlogget bruker/ansatt
+      if (user && user.displayName) {
+        const normUserName = user.displayName.trim().toLowerCase();
+        if (!existingClientNames.has(normUserName)) {
+          list.push({
+            id: 'c_user_me',
             name: user.displayName,
             role: (user.role === 'admin' || user.role === 'leader') ? 'Prosjektleder / Byggmester' : 'Fagarbeider',
             phone: '+47 900 00 000',
             email: user.email || 'kontakt@mester.no',
-            companyName: user.company || 'Min Bedrift'
+            companyName: user.company || 'Min Bedrift',
+            category: 'team'
           });
+          hasNewClients = true;
         }
-        setProjectContacts(initial);
-        localStorage.setItem(contactsStorageKey, JSON.stringify(initial));
+      }
+
+      setProjectContacts(list);
+      if (hasNewClients || !raw) {
+        localStorage.setItem(contactsStorageKey, JSON.stringify(list));
       }
     } catch (e) {
       console.warn("Could not load contacts:", e);
     }
-  }, [contactsStorageKey, selectedProject?.id, impersonatedCompanyId]);
+  }, [contactsStorageKey, projects, user, impersonatedCompanyId]);
 
   // Last inn timeføringer
   useEffect(() => {
@@ -313,8 +380,38 @@ export default function MesterWorkstation({
     } catch (e) {}
   }, [logsStorageKey, selectedProject?.id, impersonatedCompanyId]);
 
-  const handleDeleteContact = (id: string, name: string, phone: string) => {
-    if (window.confirm(`Er du sikker på at du vil slette ${name} (${phone}) fra telefonboken?`)) {
+  // Arkiver kontakt som tidligere ansatt / historisk kontakt (anbefalt for reklamasjons- og HMS-historikk)
+  const handleArchiveContact = (id: string, name: string) => {
+    const updated = projectContacts.map(c => c.id === id ? { ...c, category: 'former' as const, isFormer: true } : c);
+    setProjectContacts(updated);
+    try {
+      localStorage.setItem(contactsStorageKey, JSON.stringify(updated));
+    } catch {}
+    toast.success(`"${name}" er arkivert som tidligere kontakt. Telefon og e-post er bevart under "Tidligere ansatte / Arkiv".`);
+  };
+
+  // Gjenopprett kontakt til aktivt team
+  const handleRestoreContact = (id: string, name: string) => {
+    const updated = projectContacts.map(c => c.id === id ? { ...c, category: 'team' as const, isFormer: false } : c);
+    setProjectContacts(updated);
+    try {
+      localStorage.setItem(contactsStorageKey, JSON.stringify(updated));
+    } catch {}
+    toast.success(`"${name}" er gjenopprettet i aktivt team.`);
+  };
+
+  const handleDeleteContact = (id: string, name: string, phone: string, category?: string) => {
+    if (category === 'team') {
+      const shouldArchive = window.confirm(
+        `Tips for reklamasjon og HMS:\nVil du arkivere ${name} som «Tidligere ansatt» slik at telefon og e-post beholdes dersom det oppstår spørsmål om tidligere utført arbeid?\n\n- Trykk OK for å ARKIVERE som tidligere ansatt (anbefalt)\n- Trykk AVBRYT for å slette permanent i neste trinn.`
+      );
+      if (shouldArchive) {
+        handleArchiveContact(id, name);
+        return;
+      }
+    }
+
+    if (window.confirm(`Er du sikker på at du vil slette ${name} (${phone}) permanent fra telefonboken?`)) {
       const updated = projectContacts.filter(c => c.id !== id);
       setProjectContacts(updated);
       try {
@@ -337,7 +434,9 @@ export default function MesterWorkstation({
       phone: newContactPhone.trim() || '+47 000 00 000',
       email: newContactEmail.trim() || 'kontakt@firma.no',
       companyName: newContactCompany.trim() || (user?.company || 'Bedrift'),
-      projectId: selectedProject?.id
+      projectId: selectedProject?.id,
+      category: newContactCategory,
+      isFormer: newContactCategory === 'former'
     };
     const updated = [newC, ...projectContacts];
     setProjectContacts(updated);
@@ -348,6 +447,7 @@ export default function MesterWorkstation({
     setNewContactPhone('');
     setNewContactEmail('');
     setNewContactCompany('');
+    setNewContactCategory('subcontractor');
     setIsAddContactModalOpen(false);
     toast.success(`Kontakt "${newC.name}" lagt til i telefonboken!`);
   };
@@ -629,12 +729,57 @@ export default function MesterWorkstation({
         window.dispatchEvent(new CustomEvent("navigate_view", { detail: { view: "mobile", screen: "translator" } }));
         break;
       case 'super_admin':
-        if (onOpenSuperAdmin) onOpenSuperAdmin();
-        else window.dispatchEvent(new CustomEvent("navigate_view", { detail: { view: "super-admin" } }));
+        handleOpenSuperAdmin();
         break;
       default:
         handleOpenModuleFromSidebar(actionId);
         break;
+    }
+  };
+
+  // 📜 Generer fullstendig FDV-sluttrapport for prosjektet (basert på alt som har skjedd på byggeplassen)
+  const handleGenerateFdvSluttrapport = async (projectToFdv?: Project | null) => {
+    const targetProject = projectToFdv || selectedProject;
+    if (!targetProject) {
+      toast.error('Velg et prosjekt for å generere FDV-sluttrapport.');
+      return;
+    }
+    const toastId = toast.loading(`Samler inn byggedagbok, sjekklister, NOBB-materialer og avvik for ${targetProject.name}...`);
+    try {
+      const res = await fetch('/api/documentation', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({
+          action: 'get_combined_fdv',
+          projectId: targetProject.id,
+          projectInfo: {
+            name: targetProject.name,
+            clientName: targetProject.clientName || 'Byggherre',
+            address: targetProject.address || (targetProject as any).location || 'Byggeplass',
+            code: targetProject.code || targetProject.projectCode || 'PROJ'
+          },
+          companyName: user?.company || 'Viking Entreprenør AS'
+        })
+      });
+      const data = await res.json();
+      toast.dismiss(toastId);
+      if (data.html) {
+        const blob = new Blob([data.html], { type: 'text/html;charset=utf-8' });
+        const url = URL.createObjectURL(blob);
+        const win = window.open(url, '_blank');
+        if (!win) {
+          const a = document.createElement('a');
+          a.href = url;
+          a.download = `FDV_Sluttrapport_${targetProject.name.replace(/\s+/g, '_')}.html`;
+          a.click();
+        }
+        toast.success(`FDV og sluttrapport for ${targetProject.name} er ferdigstilt og åpnet! 🎉`);
+      } else {
+        toast.info(`FDV-rapport samlet: ${data.message || 'Klar til nedlasting'}`);
+      }
+    } catch (err) {
+      toast.dismiss(toastId);
+      toast.error('Kunne ikke hente FDV-rapport. Vennligst sjekk nettverkstilkoblingen.');
     }
   };
 
@@ -1151,7 +1296,7 @@ export default function MesterWorkstation({
         onOpenModule={handleOpenModuleFromSidebar}
         onOpenSmartSearch={() => setIsTopSearchOpen(true)}
         onOpenSettings={() => setIsSettingsModalOpen(true)}
-        onOpenSuperAdmin={onOpenSuperAdmin}
+        onOpenSuperAdmin={handleOpenSuperAdmin}
         user={user}
         isSuperAdmin={isSuperAdmin}
         onLogout={logout}
@@ -1169,16 +1314,23 @@ export default function MesterWorkstation({
                 <input
                   ref={topSearchInputRef}
                   type="text"
+                  placeholder="Søk i byggeplasser, avvik, sjekklister, NOBB-materiell eller NS 8406..."
                   value={topSearchQuery}
                   onChange={(e) => setTopSearchQuery(e.target.value)}
-                  placeholder="Søk i samtaler, prosjekter eller fagsystemer... (Esc for å lukke)"
-                  className="w-full pl-10 pr-9 py-2 rounded-xl bg-slate-900 border border-purple-500/50 text-white placeholder:text-slate-400 text-xs sm:text-sm focus:outline-none focus:ring-1 focus:ring-purple-500"
+                  onKeyDown={(e) => {
+                    if (e.key === 'Escape') {
+                      setIsTopSearchOpen(false);
+                      setTopSearchQuery('');
+                    }
+                  }}
+                  className="w-full pl-10 pr-8 py-2 rounded-xl bg-slate-900 border border-purple-500/30 text-xs sm:text-sm text-white placeholder:text-slate-500 focus:outline-none focus:border-purple-500 shadow-inner"
+                  autoFocus
                 />
                 {topSearchQuery && (
                   <button
                     type="button"
                     onClick={() => setTopSearchQuery('')}
-                    className="absolute right-3 p-0.5 text-slate-400 hover:text-white cursor-pointer"
+                    className="absolute right-2.5 text-slate-400 hover:text-white p-1"
                   >
                     <X size={14} />
                   </button>
@@ -1190,118 +1342,89 @@ export default function MesterWorkstation({
                   setIsTopSearchOpen(false);
                   setTopSearchQuery('');
                 }}
-                className="px-3 py-1.5 rounded-xl bg-slate-800 hover:bg-slate-700 text-slate-300 hover:text-white text-xs font-bold transition-all cursor-pointer"
+                className="px-3 py-2 rounded-xl bg-slate-800 hover:bg-slate-750 text-slate-300 text-xs font-bold transition-all cursor-pointer shrink-0"
               >
-                Lukk
+                Lukk (Esc)
               </button>
             </div>
           ) : (
             <div className="flex items-center gap-2 sm:gap-3 min-w-0">
-              {/* Mobile hamburger menu */}
+              {/* Mobile Menu Toggle */}
               <button
                 type="button"
                 onClick={() => setIsOpenMobile(true)}
-                className="md:hidden p-2 rounded-xl text-slate-400 hover:text-white hover:bg-slate-800/80 transition-colors cursor-pointer"
+                className="md:hidden p-2 rounded-xl bg-slate-900 border border-slate-800 text-slate-300 hover:text-white transition-colors cursor-pointer shrink-0"
                 title="Åpne meny"
               >
-                <Menu size={19} />
+                <Menu size={18} />
               </button>
 
-              {/* Desktop uncollapse button if collapsed */}
-              {isCollapsedDesktop && (
-                <button
-                  type="button"
-                  onClick={toggleCollapseDesktop}
-                  className="hidden md:flex p-2 rounded-xl text-slate-400 hover:text-white hover:bg-slate-800/80 transition-colors cursor-pointer"
-                  title="Åpne sidemeny"
-                >
-                  <PanelLeftOpen size={18} />
-                </button>
-              )}
-
-              {/* Prosjektvelger-dropdown (Aktivt prosjekt) */}
+              {/* Workstation Badge & Selected Project Dropdown */}
               <div className="relative">
                 <button
                   type="button"
                   onClick={() => setIsProjectDropdownOpen(!isProjectDropdownOpen)}
-                  className="flex items-center gap-2 px-3 py-1.5 rounded-xl bg-slate-900/90 hover:bg-slate-800 border border-slate-750 text-xs sm:text-sm font-bold text-white transition-all cursor-pointer max-w-[200px] sm:max-w-[320px] truncate shadow-xs"
+                  className="flex items-center gap-2 px-3 py-1.5 rounded-xl bg-slate-900/90 border border-slate-800 hover:border-slate-700 text-xs font-bold text-white transition-all cursor-pointer shadow-xs group"
                 >
                   <span className="w-2 h-2 rounded-full bg-emerald-400 animate-pulse shrink-0" />
-                  <span className="truncate">
-                    {selectedProject ? selectedProject.name : 'Alle byggeplasser'}
+                  <span className="truncate max-w-[140px] sm:max-w-[220px]">
+                    {selectedProject ? selectedProject.name : 'Alle Byggeplasser'}
                   </span>
-                  <ChevronDown size={14} className={cn("text-slate-400 transition-transform", isProjectDropdownOpen && "rotate-180")} />
+                  <ChevronDown size={14} className="text-slate-400 group-hover:text-white transition-colors shrink-0" />
                 </button>
 
-                <AnimatePresence>
-                  {isProjectDropdownOpen && (
-                    <>
-                      <div className="fixed inset-0 z-40" onClick={() => setIsProjectDropdownOpen(false)} />
-                      <motion.div
-                        initial={{ opacity: 0, y: 6, scale: 0.97 }}
-                        animate={{ opacity: 1, y: 0, scale: 1 }}
-                        exit={{ opacity: 0, y: 6, scale: 0.97 }}
-                        className="absolute left-0 top-full mt-1.5 w-64 bg-slate-900 border border-slate-750 rounded-2xl shadow-2xl p-1.5 z-50 text-slate-200"
+                {/* Project Switcher Dropdown */}
+                {isProjectDropdownOpen && (
+                  <div className="absolute left-0 top-full mt-1.5 w-72 max-h-80 overflow-y-auto bg-slate-900 border border-slate-800 rounded-2xl shadow-2xl p-2 z-50 animate-in fade-in zoom-in-95 duration-100">
+                    <div className="px-3 py-2 text-[10px] font-black uppercase tracking-wider text-slate-400 border-b border-slate-800 flex items-center justify-between">
+                      <span>Velg aktiv byggeplass</span>
+                      <span className="text-emerald-400">{projects.length} prosjekter</span>
+                    </div>
+
+                    <button
+                      type="button"
+                      onClick={() => {
+                        onSelectProject(null);
+                        setIsProjectDropdownOpen(false);
+                        setActiveModuleTab('all_projects');
+                        setViewMode('module');
+                      }}
+                      className={cn(
+                        "w-full flex items-center gap-2.5 px-3 py-2 rounded-xl text-xs font-bold text-left transition-colors cursor-pointer mt-1",
+                        !selectedProject ? "bg-emerald-500/20 text-emerald-300 border border-emerald-500/30" : "text-slate-300 hover:bg-slate-850 hover:text-white"
+                      )}
+                    >
+                      <Building2 size={14} className="shrink-0 text-slate-400" />
+                      <div className="min-w-0">
+                        <p className="truncate font-bold">Alle byggeplasser</p>
+                        <p className="text-[10px] text-slate-500">Oversikt over alle oppdrag</p>
+                      </div>
+                    </button>
+
+                    {projects.map((proj) => (
+                      <button
+                        key={proj.id}
+                        type="button"
+                        onClick={() => {
+                          onSelectProject(proj);
+                          setIsProjectDropdownOpen(false);
+                          setActiveModuleTab('project_details');
+                          setViewMode('module');
+                        }}
+                        className={cn(
+                          "w-full flex items-center gap-2.5 px-3 py-2 rounded-xl text-xs font-bold text-left transition-colors cursor-pointer mt-0.5",
+                          selectedProject?.id === proj.id ? "bg-emerald-500/20 text-emerald-300 border border-emerald-500/30" : "text-slate-300 hover:bg-slate-850 hover:text-white"
+                        )}
                       >
-                        <button
-                          type="button"
-                          onClick={() => {
-                            onSelectProject(null);
-                            setIsProjectDropdownOpen(false);
-                            if (activeModuleTab === 'project_details') {
-                              setActiveModuleTab('all_projects');
-                              setViewMode('module');
-                            }
-                            toast.info('Viser alle byggeplasser');
-                          }}
-                          className={cn(
-                            "w-full flex items-center justify-between px-3 py-2 rounded-xl text-xs font-semibold transition-colors text-left",
-                            !selectedProject ? "bg-electric-600/30 text-white font-bold" : "hover:bg-slate-800 text-slate-300"
-                          )}
-                        >
-                          <span>Alle byggeplasser</span>
-                          {!selectedProject && <Check size={14} className="text-emerald-400" />}
-                        </button>
-                        <div className="h-px bg-slate-800 my-1" />
-                        {projects.map((p) => (
-                          <button
-                            key={p.id}
-                            type="button"
-                            onClick={() => {
-                              onSelectProject(p);
-                              setIsProjectDropdownOpen(false);
-                              if (activeModuleTab === 'all_projects' || !activeModuleTab) {
-                                setActiveModuleTab('project_details');
-                                setViewMode('module');
-                              }
-                              toast.info(`Aktivt prosjekt: ${p.name}`);
-                            }}
-                            className={cn(
-                              "w-full flex items-center justify-between px-3 py-2 rounded-xl text-xs font-medium transition-colors text-left",
-                              selectedProject?.id === p.id ? "bg-electric-600/30 text-white font-bold" : "hover:bg-slate-800 text-slate-300"
-                            )}
-                          >
-                            <span className="truncate">{p.name}</span>
-                            {selectedProject?.id === p.id && <Check size={14} className="text-emerald-400 shrink-0" />}
-                          </button>
-                        ))}
-                        <div className="h-px bg-slate-800 my-1" />
-                        <button
-                          type="button"
-                          onClick={() => {
-                            setIsProjectDropdownOpen(false);
-                            setActiveModuleTab('create_project');
-                            setViewMode('module');
-                          }}
-                          className="w-full flex items-center gap-2 px-3 py-2 rounded-xl text-xs font-semibold text-emerald-400 hover:bg-emerald-500/10 transition-colors text-left cursor-pointer"
-                        >
-                          <Plus size={14} />
-                          <span>Opprett nytt prosjekt</span>
-                        </button>
-                      </motion.div>
-                    </>
-                  )}
-                </AnimatePresence>
+                        <HardHat size={14} className="shrink-0 text-emerald-400" />
+                        <div className="min-w-0">
+                          <p className="truncate font-bold">{proj.name}</p>
+                          <p className="text-[10px] text-slate-400 truncate">{proj.clientName || 'Privat oppdragsgiver'}</p>
+                        </div>
+                      </button>
+                    ))}
+                  </div>
+                )}
               </div>
 
               {/* Status: 100% Autonom */}
@@ -1318,10 +1441,7 @@ export default function MesterWorkstation({
               {isSuperAdmin && (
                 <button
                   type="button"
-                  onClick={() => {
-                    if (onOpenSuperAdmin) onOpenSuperAdmin();
-                    else window.dispatchEvent(new CustomEvent("navigate_view", { detail: { view: "super-admin" } }));
-                  }}
+                  onClick={handleOpenSuperAdmin}
                   className="inline-flex items-center gap-1.5 px-2.5 py-1.5 rounded-xl bg-amber-500/15 hover:bg-amber-500/25 border border-amber-500/40 text-amber-300 hover:text-white text-xs font-bold transition-all shadow-xs cursor-pointer"
                   title="Åpne SuperAdmin Portal (Brukere, Lisenser, Logger)"
                 >
@@ -1336,8 +1456,7 @@ export default function MesterWorkstation({
                   onClick={() => {
                     if (setSimulatedPlan) setSimulatedPlan(null);
                     if (stopImpersonation) stopImpersonation();
-                    if (onOpenSuperAdmin) onOpenSuperAdmin();
-                    else window.dispatchEvent(new CustomEvent("navigate_view", { detail: { view: "super-admin" } }));
+                    handleOpenSuperAdmin();
                   }}
                   className="inline-flex items-center gap-1.5 px-2.5 py-1.5 rounded-xl bg-amber-500 hover:bg-amber-400 text-neutral-950 text-xs font-black transition-all shadow-md cursor-pointer"
                   title="Avslutt visningsmodus og returner til SuperAdmin"
@@ -1551,7 +1670,16 @@ export default function MesterWorkstation({
                   {activeModuleTab === 'create_project' && (
                     <span>Ny byggeplass: <strong className="text-purple-400">Opprett prosjekt</strong></span>
                   )}
-                  {!['project_details', 'all_projects', 'create_project'].includes(activeModuleTab || '') && (
+                  {activeModuleTab === 'superadmin' && (
+                    <span>Systemadministrasjon: <strong className="text-amber-400">👑 SuperAdmin Portal & SaaS Drift</strong></span>
+                  )}
+                  {activeModuleTab === 'offers' && (
+                    <span>Kalkyle & Salg: <strong className="text-purple-400">Tilbud, Kontrakter & Prosjektoppstart</strong></span>
+                  )}
+                  {activeModuleTab === 'contacts' && (
+                    <span>Telefonbok: <strong className="text-emerald-400">Kunder, Ansatte & Samarbeidspartnere</strong></span>
+                  )}
+                  {!['project_details', 'all_projects', 'create_project', 'superadmin', 'offers', 'contacts'].includes(activeModuleTab || '') && (
                     <span>Viser fagsystem: <strong className="text-white capitalize">{activeModuleTab}</strong></span>
                   )}
                 </span>
@@ -1597,6 +1725,15 @@ export default function MesterWorkstation({
                           </div>
 
                           <div className="flex items-center gap-2 shrink-0">
+                            <button
+                              type="button"
+                              onClick={() => handleGenerateFdvSluttrapport(selectedProject)}
+                              className="px-3.5 py-2.5 rounded-xl bg-emerald-600 hover:bg-emerald-500 text-white text-xs font-bold transition-all shadow-md flex items-center gap-1.5 cursor-pointer"
+                              title="Fullfør prosjekt og generer automatisk FDV-dokumentasjon og sluttrapport basert på alt som har skjedd på byggeplassen"
+                            >
+                              <FileCheck size={15} />
+                              <span>Fullfør & Generer FDV</span>
+                            </button>
                             <button
                               type="button"
                               onClick={() => {
@@ -2195,13 +2332,38 @@ export default function MesterWorkstation({
                           Aktiv på <strong className="text-slate-200">{selectedProject?.name || 'Geitekleiva 12 - Enebolig'}</strong>. Hurtig beregning av timepriser, materiell og påslag.
                         </p>
                       </div>
-                      <button
-                        type="button"
-                        onClick={handleCreateOfferFromCalc}
-                        className="inline-flex items-center gap-2 px-4 py-2 rounded-xl bg-purple-600 hover:bg-purple-500 text-white text-xs font-bold transition-all shadow-md cursor-pointer shrink-0"
-                      >
-                        <Plus size={15} /> Opprett tilbud fra kalkyle
-                      </button>
+                      <div className="flex items-center gap-2 flex-wrap">
+                        {onOpenOfferModal && (
+                          <button
+                            type="button"
+                            onClick={() => onOpenOfferModal({ clientName: '', projectId: '' })}
+                            className="inline-flex items-center gap-2 px-3.5 py-2 rounded-xl bg-slate-800 hover:bg-slate-750 text-white text-xs font-bold transition-all border border-slate-700 cursor-pointer shrink-0"
+                          >
+                            <Plus size={15} /> + Nytt tilbud (Frittstående)
+                          </button>
+                        )}
+                        <button
+                          type="button"
+                          onClick={handleCreateOfferFromCalc}
+                          className="inline-flex items-center gap-2 px-4 py-2 rounded-xl bg-purple-600 hover:bg-purple-500 text-white text-xs font-bold transition-all shadow-md cursor-pointer shrink-0"
+                        >
+                          <Plus size={15} /> Opprett tilbud fra kalkyle
+                        </button>
+                      </div>
+                    </div>
+
+                    {/* 💡 Autonom tilbudsflyt banner */}
+                    <div className="p-4 rounded-2xl bg-purple-950/40 border border-purple-500/30 text-xs text-purple-200 flex items-start gap-3 shadow-xs">
+                      <span className="text-xl shrink-0">✨</span>
+                      <div className="space-y-1">
+                        <strong className="text-white block font-bold">100% Autonom Kontrakt- og Prosjektoppstart</strong>
+                        <p className="text-purple-300 leading-relaxed">
+                          Et tilbud trenger <strong>ikke</strong> knyttes til et eksisterende prosjekt – det lages ofte for nye henvendelser.
+                          Når kunden aksepterer tilbudet digitalt, genereres juridisk bindende kontrakt (Håndverkertjenesteloven / NS 8406), 
+                          prosjektet etableres automatisk i systemet, og <strong>tilpassede KS-sjekklister</strong> (våtrom, TEK17 lukkesperre, SJA og sluttkontroll) 
+                          settes opp automatisk basert på tilbudet slik at håndverkeren slipper manuelle forberedelser!
+                        </p>
+                      </div>
                     </div>
 
                     {/* 3 Nøkkeltall for tilbud */}
@@ -2948,23 +3110,85 @@ export default function MesterWorkstation({
                     </div>
                   </div>
 
+                  {/* 🏷️ Kategori Filter Tabs: Tydelig skille mellom kunder, ansatte, UE og arkiv */}
+                  <div className="flex items-center gap-1.5 overflow-x-auto pb-1 scrollbar-none border-b border-slate-800/80">
+                    {[
+                      { id: 'all', label: 'Alle kontakter', count: projectContacts.length },
+                      { id: 'client', label: '🏡 Kunder (Kundeportal)', count: projectContacts.filter(c => c && c.category === 'client').length },
+                      { id: 'team', label: '👥 Ansatte & Team', count: projectContacts.filter(c => c && c.category === 'team').length },
+                      { id: 'subcontractor', label: '🔨 Underentreprenører', count: projectContacts.filter(c => c && c.category === 'subcontractor').length },
+                      { id: 'former', label: '📁 Tidligere ansatte / Arkiv', count: projectContacts.filter(c => c && (c.category === 'former' || c.isFormer)).length },
+                    ].map((tab) => (
+                      <button
+                        key={tab.id}
+                        type="button"
+                        onClick={() => setContactCategoryFilter(tab.id as any)}
+                        className={cn(
+                          "flex items-center gap-1.5 px-3 py-1.5 rounded-xl text-xs font-bold transition-all shrink-0 cursor-pointer",
+                          contactCategoryFilter === tab.id
+                            ? "bg-emerald-500/20 text-emerald-300 border border-emerald-500/40 shadow-xs"
+                            : "bg-slate-950/70 text-slate-400 hover:text-white border border-slate-800 hover:border-slate-700"
+                        )}
+                      >
+                        <span>{tab.label}</span>
+                        <span className={cn(
+                          "px-1.5 py-0.2 rounded-full text-[10px] font-mono",
+                          contactCategoryFilter === tab.id ? "bg-emerald-500/30 text-emerald-200" : "bg-slate-800 text-slate-400"
+                        )}>
+                          {tab.count}
+                        </span>
+                      </button>
+                    ))}
+                  </div>
+
                   {/* Kontakter Grid */}
                   <div className="grid grid-cols-1 sm:grid-cols-2 gap-3">
                     {projectContacts
                       .filter(c => {
+                        if (!c) return false;
+                        if (contactCategoryFilter !== 'all') {
+                          if (contactCategoryFilter === 'former') {
+                            if (c.category !== 'former' && !c.isFormer) return false;
+                          } else if (c.category !== contactCategoryFilter) {
+                            return false;
+                          }
+                        }
                         if (!contactSearchQuery.trim()) return true;
                         const q = contactSearchQuery.toLowerCase();
                         return (
-                          c.name.toLowerCase().includes(q) ||
-                          c.role.toLowerCase().includes(q) ||
-                          c.phone.toLowerCase().includes(q) ||
-                          c.email.toLowerCase().includes(q)
+                          (c.name && c.name.toLowerCase().includes(q)) ||
+                          (c.role && c.role.toLowerCase().includes(q)) ||
+                          (c.phone && c.phone.toLowerCase().includes(q)) ||
+                          (c.email && c.email.toLowerCase().includes(q)) ||
+                          (c.companyName && c.companyName.toLowerCase().includes(q))
                         );
                       })
                       .map((c) => (
                         <div key={c.id} className="p-4 rounded-2xl bg-slate-950 border border-slate-800 flex items-center justify-between gap-3 group hover:border-slate-700 transition-colors">
                           <div className="min-w-0">
-                            <p className="text-sm font-bold text-white truncate">{c.name}</p>
+                            <div className="flex items-center gap-2 flex-wrap mb-0.5">
+                              <p className="text-sm font-bold text-white truncate">{c.name}</p>
+                              {c.category === 'client' && (
+                                <span className="inline-flex items-center gap-1 px-2 py-0.5 rounded-full text-[10px] font-bold bg-emerald-500/20 text-emerald-300 border border-emerald-500/30 shrink-0">
+                                  🏡 Kunde
+                                </span>
+                              )}
+                              {c.category === 'team' && (
+                                <span className="inline-flex items-center gap-1 px-2 py-0.5 rounded-full text-[10px] font-bold bg-blue-500/20 text-blue-300 border border-blue-500/30 shrink-0">
+                                  👥 Ansatt
+                                </span>
+                              )}
+                              {c.category === 'subcontractor' && (
+                                <span className="inline-flex items-center gap-1 px-2 py-0.5 rounded-full text-[10px] font-bold bg-purple-500/20 text-purple-300 border border-purple-500/30 shrink-0">
+                                  🔨 UE
+                                </span>
+                              )}
+                              {(c.category === 'former' || c.isFormer) && (
+                                <span className="inline-flex items-center gap-1 px-2 py-0.5 rounded-full text-[10px] font-bold bg-slate-700/50 text-slate-400 border border-slate-600/50 shrink-0">
+                                  📁 Tidligere
+                                </span>
+                              )}
+                            </div>
                             <p className="text-xs text-emerald-400 font-medium truncate">{c.role}</p>
                             <p className="text-[11px] text-slate-400 mt-1 truncate">
                               <span className="font-mono text-slate-300">{c.phone}</span> • <span>{c.email}</span>
@@ -2988,12 +3212,12 @@ export default function MesterWorkstation({
                             >
                               <Mail size={14} />
                             </a>
-                            {/* 🗑️ Slett kontakt for admin */}
+                            {/* 🗑️ Slett eller arkiver kontakt */}
                             <button
                               type="button"
-                              onClick={() => handleDeleteContact(c.id, c.name, c.phone)}
+                              onClick={() => handleDeleteContact(c.id, c.name, c.phone, c.category)}
                               className="p-2 rounded-xl bg-slate-900 hover:bg-rose-500/20 text-slate-400 hover:text-rose-400 border border-slate-750 transition-colors cursor-pointer"
-                              title={`Slett ${c.name} fra telefonboken`}
+                              title={`Slett eller arkiver ${c.name}`}
                             >
                               <Trash2 size={14} />
                             </button>
@@ -3036,6 +3260,20 @@ export default function MesterWorkstation({
                               onChange={(e) => setNewContactName(e.target.value)}
                               className="w-full px-3 py-2 rounded-xl bg-slate-950 border border-slate-800 text-xs text-white placeholder:text-slate-500 focus:outline-none focus:border-emerald-500"
                             />
+                          </div>
+
+                          <div>
+                            <label className="block text-[11px] font-bold text-slate-300 mb-1">Kategori / Tilhørighet *</label>
+                            <select
+                              value={newContactCategory}
+                              onChange={(e) => setNewContactCategory(e.target.value as any)}
+                              className="w-full px-3 py-2 rounded-xl bg-slate-950 border border-slate-800 text-xs text-white focus:outline-none focus:border-emerald-500"
+                            >
+                              <option value="client">🏡 Kunde (Byggherre / Kundeportal)</option>
+                              <option value="team">👥 Ansatt / Eget team & håndverkere</option>
+                              <option value="subcontractor">🔨 Underentreprenør / Samarbeidspartner</option>
+                              <option value="former">📁 Tidligere ansatt (Historisk arkiv)</option>
+                            </select>
                           </div>
 
                           <div className="grid grid-cols-2 gap-3">
@@ -3547,6 +3785,40 @@ export default function MesterWorkstation({
                   >
                     Åpne innstillinger
                   </button>
+                </div>
+              )}
+
+              {/* 11. 👑 SUPERADMIN (INLINE I ARBEIDSSTASJONEN) */}
+              {activeModuleTab === 'superadmin' && (
+                <div className="w-full">
+                  {isSuperAdmin || isPlatformOwner ? (
+                    <SuperAdmin
+                      onBackToDashboard={() => {
+                        setActiveModuleTab(null);
+                        setViewMode('chat');
+                      }}
+                    />
+                  ) : (
+                    <div className="max-w-md mx-auto my-12 p-8 bg-slate-900 border border-red-500/30 rounded-3xl text-center shadow-xl">
+                      <div className="w-14 h-14 bg-red-500/10 text-red-400 border border-red-500/20 rounded-2xl flex items-center justify-center mx-auto mb-4">
+                        <Shield size={28} />
+                      </div>
+                      <h3 className="text-base font-bold text-white mb-2">Ingen tilgang til SuperAdmin</h3>
+                      <p className="text-slate-400 text-xs mb-6 leading-relaxed">
+                        SuperAdmin-konsollen er forbeholdt plattformeier og systemadministratorer.
+                      </p>
+                      <button
+                        type="button"
+                        onClick={() => {
+                          setActiveModuleTab(null);
+                          setViewMode('chat');
+                        }}
+                        className="px-5 py-2.5 bg-slate-800 hover:bg-slate-700 text-white font-bold text-xs rounded-xl transition-all cursor-pointer"
+                      >
+                        Tilbake til MesterAI
+                      </button>
+                    </div>
+                  )}
                 </div>
               )}
             </div>

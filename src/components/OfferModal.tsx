@@ -376,13 +376,16 @@ const OfferModal: React.FC<OfferModalProps> = ({ isOpen, onClose, initialData })
                       onChange={(e) => handleSelectProject(e.target.value)}
                       className="w-full p-2.5 bg-white border border-emerald-200 rounded-xl font-bold text-xs sm:text-sm text-neutral-800 outline-none focus:ring-2 focus:ring-emerald-500"
                     >
-                      <option value="">-- Nytt frittstående tilbud --</option>
+                      <option value="">-- Nytt frittstående tilbud (Prosjekt opprettes automatisk ved aksept) --</option>
                       {projectsList.map(p => (
                         <option key={p.id} value={p.id}>
                           {p.projectCode ? `[${p.projectCode}] ` : ''}{p.name} ({p.clientName || 'Ingen kunde'})
                         </option>
                       ))}
                     </select>
+                    <p className="text-[11px] text-emerald-700 mt-1.5">
+                      💡 Et tilbud må ikke knyttes til et prosjekt. Ved aksept genereres kontrakt, prosjekt og skreddersydde KS-sjekklister automatisk!
+                    </p>
                   </div>
                 )}
 

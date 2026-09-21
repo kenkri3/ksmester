@@ -101,17 +101,19 @@ export const inMemoryStore: Record<string, any[]> = {
       createdAt: new Date().toISOString()
     },
     {
-      id: 'comp-demo-fjellheim',
-      name: 'Fjellheim Bygg & Tømrer AS (Demokunde)',
-      orgnr: '928 374 651',
-      contactName: 'Lars Fjellheim',
-      email: DEMO_USER_EMAIL,
-      phone: '912 34 567',
-      plan: 'pro',
-      status: 'active',
-      subscriptionStatus: 'active',
-      modules: ['projects', 'checklists', 'deviations', 'ai', 'economy', 'fdv', 'inventory', 'vehicle', 'time', 'apprentice'],
-      createdAt: new Date().toISOString()
+        id: 'comp-demo-fjellheim',
+        name: 'Fjellheim Bygg & Tømrer AS (Demokunde)',
+        orgnr: '928 374 651',
+        contactName: 'Lars Fjellheim',
+        email: DEMO_USER_EMAIL,
+        phone: '912 34 567',
+        plan: 'demo',
+        isDemo: true,
+        monthlyPrice: 0,
+        status: 'active',
+        subscriptionStatus: 'active',
+        modules: ['projects', 'checklists', 'deviations', 'ai', 'economy', 'fdv', 'inventory', 'vehicle', 'time', 'apprentice'],
+        createdAt: new Date().toISOString()
     }
   ],
   projects: [

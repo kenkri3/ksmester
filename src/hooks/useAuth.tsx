@@ -29,6 +29,8 @@ export interface User {
   subscriptionStatus?: string;
   photoURL?: string | null;
   emailVerified?: boolean;
+  plan?: string;
+  modules?: string[];
 }
 
 interface AuthContextType {
@@ -53,7 +55,8 @@ interface AuthContextType {
   trialDaysLeft: number | null;
   impersonatedCompanyId: string | null;
   impersonatedRole: string | null;
-  startImpersonation: (companyId: string, role: string) => void;
+  impersonatedCompanyPlan?: string | null;
+  startImpersonation: (companyId: string, role: string, plan?: string, modules?: string[]) => void;
   stopImpersonation: () => void;
 }
 
@@ -72,6 +75,8 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
 
   const [impersonatedCompanyId, setImpersonatedCompanyId] = useState<string | null>(null);
   const [impersonatedRole, setImpersonatedRole] = useState<string | null>(null);
+  const [impersonatedCompanyPlan, setImpersonatedCompanyPlan] = useState<string | null>(null);
+  const [impersonatedCompanyModules, setImpersonatedCompanyModules] = useState<string[] | null>(null);
   const [simulatedPlan, setSimulatedPlanState] = useState<string | null>(null);
 
   useEffect(() => {
@@ -80,6 +85,11 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
         setImpersonatedCompanyId(localStorage.getItem('impersonatedCompanyId'));
         setImpersonatedRole(localStorage.getItem('impersonatedRole'));
         setSimulatedPlanState(localStorage.getItem('mester_simulated_plan'));
+        setImpersonatedCompanyPlan(localStorage.getItem('impersonatedCompanyPlan'));
+        const storedModules = localStorage.getItem('impersonatedCompanyModules');
+        if (storedModules) {
+          try { setImpersonatedCompanyModules(JSON.parse(storedModules)); } catch {}
+        }
       } catch (e) {
         // Ignore localStorage access issues
       }
@@ -236,22 +246,47 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
     }
   };
 
+  useEffect(() => {
+    const handlePlanUpdated = (e: any) => {
+      const { companyId, plan, modules } = e.detail || {};
+      if (companyId && (companyId === impersonatedCompanyId || companyId === user?.companyId)) {
+        if (plan) {
+          setImpersonatedCompanyPlan(plan);
+          try { localStorage.setItem('impersonatedCompanyPlan', plan); } catch {}
+        }
+        if (modules) {
+          setImpersonatedCompanyModules(modules);
+          try { localStorage.setItem('impersonatedCompanyModules', JSON.stringify(modules)); } catch {}
+        }
+      }
+    };
+    window.addEventListener('mester_company_plan_updated', handlePlanUpdated);
+    return () => window.removeEventListener('mester_company_plan_updated', handlePlanUpdated);
+  }, [impersonatedCompanyId, user?.companyId]);
+
   const hasModuleAccess = (moduleId: string): boolean => {
     if (isSuperAdminUI) return true;
-    const effectivePlan = simulatedPlan || (impersonatedCompanyId ? 'solo' : (user?.subscriptionStatus || 'solo'));
-    return isModuleAllowedForPlan(moduleId, effectivePlan, companyModules);
+    const effectivePlan = (simulatedPlan || impersonatedCompanyPlan || user?.plan || user?.subscriptionStatus || 'solo') as PlanId;
+    const effectiveModules = impersonatedCompanyModules || companyModules || user?.modules || null;
+    return isModuleAllowedForPlan(moduleId, effectivePlan, effectiveModules);
   };
 
-  const startImpersonation = (companyId: string, role: string) => {
+  const startImpersonation = (companyId: string, role: string, plan?: string, modules?: string[]) => {
     if (!isPlatformOwner) return;
     try {
       localStorage.setItem('impersonatedCompanyId', companyId);
       localStorage.setItem('impersonatedRole', role);
+      if (plan) localStorage.setItem('impersonatedCompanyPlan', plan);
+      else localStorage.removeItem('impersonatedCompanyPlan');
+      if (modules) localStorage.setItem('impersonatedCompanyModules', JSON.stringify(modules));
+      else localStorage.removeItem('impersonatedCompanyModules');
     } catch {}
     setImpersonatedCompanyId(companyId);
     setImpersonatedRole(role);
+    setImpersonatedCompanyPlan(plan || null);
+    setImpersonatedCompanyModules(modules || null);
     if (typeof window !== 'undefined') {
-      window.dispatchEvent(new CustomEvent('mester_impersonation_changed', { detail: { companyId, role } }));
+      window.dispatchEvent(new CustomEvent('mester_impersonation_changed', { detail: { companyId, role, plan, modules } }));
     }
     chatSessionService.notify();
   };
@@ -261,10 +296,14 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
       localStorage.removeItem('impersonatedCompanyId');
       localStorage.removeItem('impersonatedRole');
       localStorage.removeItem('mester_simulated_plan');
+      localStorage.removeItem('impersonatedCompanyPlan');
+      localStorage.removeItem('impersonatedCompanyModules');
     } catch {}
     setImpersonatedCompanyId(null);
     setImpersonatedRole(null);
     setSimulatedPlanState(null);
+    setImpersonatedCompanyPlan(null);
+    setImpersonatedCompanyModules(null);
     if (typeof window !== 'undefined') {
       window.dispatchEvent(new CustomEvent('mester_impersonation_changed', { detail: { companyId: null, role: null } }));
     }
@@ -294,6 +333,7 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
       trialDaysLeft: impersonatedCompanyId ? null : trialDaysLeft,
       impersonatedCompanyId,
       impersonatedRole,
+      impersonatedCompanyPlan,
       startImpersonation,
       stopImpersonation
     }}>

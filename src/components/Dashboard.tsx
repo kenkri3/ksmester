@@ -100,16 +100,20 @@ import ApprenticeModal from './ApprenticeModal';
 
 interface DashboardProps {
   initialTab?: any;
+  initialWorkstationTab?: string;
   isDemo?: boolean;
   onTabChange?: (tab: string) => void;
   onOpenPortal?: (project: Project) => void;
+  onOpenSuperAdmin?: () => void;
 }
 
 export default function Dashboard({ 
   initialTab = 'cockpit', 
+  initialWorkstationTab,
   isDemo = false,
   onTabChange,
-  onOpenPortal 
+  onOpenPortal,
+  onOpenSuperAdmin
 }: DashboardProps) {
   const { t } = useTranslation();
   const { user, isSuperAdmin, impersonatedCompanyId } = useAuth();
@@ -1308,6 +1312,7 @@ export default function Dashboard({
           </div>
         ) : (
           <MesterWorkstation
+            initialModuleTab={initialWorkstationTab}
             projects={projects}
             selectedProject={selectedProject}
             onSelectProject={(proj) => {
@@ -1348,7 +1353,7 @@ export default function Dashboard({
             onOpenArchiveModal={() => setIsArchiveModalOpen(true)}
             onOpenContactsModal={() => setIsContactsModalOpen(true)}
             onOpenSettings={() => {}}
-            onOpenSuperAdmin={() => window.dispatchEvent(new CustomEvent("navigate_view", { detail: { view: "super-admin" } }))}
+            onOpenSuperAdmin={onOpenSuperAdmin}
           />
         )}
       </AnimatePresence>

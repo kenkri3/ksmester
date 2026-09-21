@@ -275,10 +275,19 @@ export function isModuleAllowedForPlan(
 ): boolean {
   if (customModules && Array.isArray(customModules) && customModules.length > 0) {
     if (customModules.includes(moduleId) || customModules.includes('all_modules')) return true;
+    // Map legacy aliaser dersom lagret med eldre modul-ID i bedriftsdatabasen
+    if (moduleId === 'archive' && customModules.includes('fdv')) return true;
+    if (moduleId === 'offers' && (customModules.includes('economy') || customModules.includes('ai'))) return true;
+    if (moduleId === 'pre_close' && (customModules.includes('checklists') || customModules.includes('projects'))) return true;
+    if (moduleId === 'sja' && (customModules.includes('checklists') || customModules.includes('hms'))) return true;
+    if (moduleId === 'dailylog' && customModules.includes('time')) return true;
+    if (moduleId === 'time_approval' && customModules.includes('time')) return true;
+    if (moduleId === 'deviations' && (customModules.includes('deviations') || customModules.includes('ai'))) return true;
+    if (moduleId === 'subcontractors' && customModules.includes('projects')) return true;
   }
 
   const normalizedPlan = (planId || 'solo').toLowerCase() as PlanId;
-  const config = PLANS[normalizedPlan] || PLANS.solo;
+  const config = PLANS[normalizedPlan] || (normalizedPlan === 'demo' as any ? PLANS.team : PLANS.solo);
 
   if (config.isInternal) return true;
   return config.allowedModuleIds.includes(moduleId);

@@ -1463,7 +1463,17 @@ function AppContent() {
               {view === 'settings' && <SettingsPage />}
               {view === 'super-admin' && (
                 (isSuperAdmin || isPlatformOwner) ? (
-                  <SuperAdmin onBackToDashboard={() => setView('dashboard')} />
+                  <Dashboard 
+                    isDemo={false} 
+                    initialTab="oversikt"
+                    initialWorkstationTab="superadmin"
+                    onTabChange={(tab) => setDashboardTab(tab as any)}
+                    onOpenPortal={(p) => {
+                      setPortalProject(p);
+                      setView('customer-portal');
+                    }}
+                    onOpenSuperAdmin={() => setView('super-admin')}
+                  />
                 ) : (
                   <div className="max-w-md mx-auto my-20 p-8 bg-white rounded-3xl shadow-xl border border-red-100 text-center">
                     <div className="w-16 h-16 bg-red-100 text-red-600 rounded-2xl flex items-center justify-center mx-auto mb-4">

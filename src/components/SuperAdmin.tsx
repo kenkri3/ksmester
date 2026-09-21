@@ -70,9 +70,10 @@ export interface Company {
   name: string;
   orgNumber?: string;
   subscriptionStatus: 'trial' | 'active' | 'expired' | 'cancelled';
-  plan?: 'solo' | 'team' | 'entreprenor' | 'enterprise' | 'partner' | 'internal' | 'admin';
+  plan?: 'solo' | 'team' | 'entreprenor' | 'enterprise' | 'partner' | 'internal' | 'admin' | 'demo' | 'test' | string;
   isPartner?: boolean;
   isInternal?: boolean;
+  isDemo?: boolean;
   monthlyPrice?: number;
   modules: string[];
   createdAt: any;
@@ -80,9 +81,12 @@ export interface Company {
   userCount?: number;
   trialStartDate?: string;
   contactName?: string;
+  contactPerson?: string;
+  contactEmail?: string;
   email?: string;
   phone?: string;
   industry?: string;
+  status?: string;
 }
 
 // 👑 Hjelper for å identifisere intern system-eier / SuperAdmin (AIChat Norge AS / Vikingnet)
@@ -133,7 +137,7 @@ export default function SuperAdmin({ onBackToDashboard }: { onBackToDashboard?: 
   const [searchTerm, setSearchTerm] = useState('');
   const [activeTab, setActiveTab] = useState<'companies' | 'packages' | 'leads' | 'agent' | 'offers' | 'templates' | 'support'>('companies');
   const [supportSubTab, setSupportSubTab] = useState<'projects' | 'deviations' | 'logs'>('projects');
-  const [companyStatusFilter, setCompanyStatusFilter] = useState<'all' | 'active' | 'trial' | 'partner' | 'internal' | 'cancelled'>('all');
+  const [companyStatusFilter, setCompanyStatusFilter] = useState<'all' | 'active' | 'trial' | 'partner' | 'internal' | 'demo' | 'cancelled'>('all');
   const [tokenCosts, setTokenCosts] = useState<any[]>([]);
   const [accountingData, setAccountingData] = useState<any>(null);
   const [isAddingTopup, setIsAddingTopup] = useState<string | null>(null);
@@ -282,7 +286,7 @@ export default function SuperAdmin({ onBackToDashboard }: { onBackToDashboard?: 
       });
 
       // 🛡️ Sikre at Demobruker / Demobedrift (Fjellheim Bygg & Tømrer AS) alltid er tilgjengelig for multi-tenant testing
-      const hasDemo = data.some(c => c.id === 'comp-demo-fjellheim' || c.name?.toLowerCase().includes('fjellheim'));
+      const hasDemo = data.some(c => c.id === 'comp-demo-fjellheim' || (c.name && c.name.toLowerCase().includes('fjellheim')));
       if (!hasDemo) {
         data.push({
           id: 'comp-demo-fjellheim',
@@ -291,10 +295,11 @@ export default function SuperAdmin({ onBackToDashboard }: { onBackToDashboard?: 
           contactPerson: 'Lars Fjellheim',
           contactEmail: 'demo@fjellheimbygg.no',
           phone: '912 34 567',
-          plan: 'pro',
+          plan: 'demo',
+          isDemo: true,
           status: 'active',
           subscriptionStatus: 'active',
-          monthlyPrice: 1490,
+          monthlyPrice: 0,
           createdAt: new Date().toISOString()
         } as any);
       }
@@ -935,27 +940,43 @@ Svar KUN med gyldig rå JSON (uten markdown \`\`\`json klammer):
     }
   };
 
-  // 🤝 Hjelper for å identifisere samarbeidspartnere, kollegaer eller friplasser (0 kr/mnd)
-  const isCompanyFreeTier = (c: Company) => {
-    if (isCompanyInternalAdmin(c)) return true;
+  // 🧪 Hjelper for å identifisere demobedrifter / testmiljø (0 kr/mnd)
+  const isCompanyDemo = (c?: Partial<Company> | any): boolean => {
+    if (!c) return false;
+    if (Boolean(c.isDemo)) return true;
+    if (c.id === 'comp-demo-fjellheim') return true;
     const plan = (c.plan || '').toLowerCase();
-    return plan === 'partner' || plan === 'intern' || plan === 'internal' || Boolean(c.isPartner) || Boolean(c.isInternal) || c.monthlyPrice === 0;
+    if (plan === 'demo' || plan === 'test') return true;
+    const name = (c.name || '').toLowerCase();
+    if (name.includes('demo') || name.includes('fjellheim')) return true;
+    const email = (c.contactEmail || c.email || '').toLowerCase();
+    if (email.includes('demo@') || email.includes('test@')) return true;
+    return false;
+  };
+
+  // 🤝 Hjelper for å identifisere samarbeidspartnere, kollegaer eller friplasser (0 kr/mnd)
+  const isCompanyFreeTier = (c?: Partial<Company> | any): boolean => {
+    if (!c) return false;
+    if (isCompanyInternalAdmin(c) || isCompanyDemo(c)) return true;
+    const plan = (c.plan || '').toLowerCase();
+    return plan === 'partner' || plan === 'intern' || plan === 'internal' || plan === 'demo' || plan === 'test' || Boolean(c.isPartner) || Boolean(c.isInternal) || Boolean(c.isDemo) || c.monthlyPrice === 0;
   };
 
   // 💰 Reelle SaaS-nøkkeltall for SuperAdmin (ærlige og nøyaktige)
-  const internalCompanies = useMemo(() => companies.filter(c => isCompanyInternalAdmin(c)), [companies]);
-  const partnerCompanies = useMemo(() => companies.filter(c => isCompanyFreeTier(c) && !isCompanyInternalAdmin(c)), [companies]);
-  const activeCompanies = useMemo(() => companies.filter(c => c.subscriptionStatus === 'active'), [companies]);
-  const trialCompanies = useMemo(() => companies.filter(c => c.subscriptionStatus === 'trial' && !isCompanyFreeTier(c)), [companies]);
-  const expiredCompanies = useMemo(() => companies.filter(c => (c.subscriptionStatus === 'expired' || c.subscriptionStatus === 'cancelled') && !isCompanyInternalAdmin(c)), [companies]);
-  const payingActiveCompanies = useMemo(() => activeCompanies.filter(c => !isCompanyFreeTier(c) && !isCompanyInternalAdmin(c)), [activeCompanies]);
-  const newLeads = useMemo(() => leads.filter(l => l.status === 'new' || !l.status), [leads]);
+  const internalCompanies = useMemo(() => (companies || []).filter(c => c && isCompanyInternalAdmin(c)), [companies]);
+  const demoCompanies = useMemo(() => (companies || []).filter(c => c && isCompanyDemo(c)), [companies]);
+  const partnerCompanies = useMemo(() => (companies || []).filter(c => c && isCompanyFreeTier(c) && !isCompanyInternalAdmin(c) && !isCompanyDemo(c)), [companies]);
+  const activeCompanies = useMemo(() => (companies || []).filter(c => c && c.subscriptionStatus === 'active'), [companies]);
+  const trialCompanies = useMemo(() => (companies || []).filter(c => c && c.subscriptionStatus === 'trial' && !isCompanyFreeTier(c)), [companies]);
+  const expiredCompanies = useMemo(() => (companies || []).filter(c => c && (c.subscriptionStatus === 'expired' || c.subscriptionStatus === 'cancelled') && !isCompanyInternalAdmin(c)), [companies]);
+  const payingActiveCompanies = useMemo(() => activeCompanies.filter(c => c && !isCompanyFreeTier(c) && !isCompanyInternalAdmin(c) && !isCompanyDemo(c)), [activeCompanies]);
+  const newLeads = useMemo(() => (leads || []).filter(l => l && (l.status === 'new' || !l.status)), [leads]);
 
   // Reell MRR basert på aktive betalende abonnementer (0 kr hvis ingen betalende ennå):
   // Samarbeidspartnere og kollegaer (0 kr) regnes ALDRI inn i inntekten!
   const activeMrr = useMemo(() => {
     return payingActiveCompanies.reduce((sum, c) => {
-      const plan = (c.plan || 'solo').toLowerCase();
+      const plan = (c?.plan || 'solo').toLowerCase();
       if (plan.includes('entrepren')) return sum + 6900;
       if (plan.includes('team')) return sum + 3490;
       return sum + 1490;
@@ -964,8 +985,8 @@ Svar KUN med gyldig rå JSON (uten markdown \`\`\`json klammer):
 
   // Potensiell MRR i salgspipeline (fra aktive prøveperioder, ekskluderer gratis/partner):
   const pipelineMrr = useMemo(() => {
-    return trialCompanies.filter(c => !isCompanyFreeTier(c)).reduce((sum, c) => {
-      const plan = (c.plan || 'team').toLowerCase();
+    return trialCompanies.filter(c => c && !isCompanyFreeTier(c)).reduce((sum, c) => {
+      const plan = (c?.plan || 'team').toLowerCase();
       if (plan.includes('entrepren')) return sum + 6900;
       if (plan.includes('team')) return sum + 3490;
       return sum + 1490;
@@ -975,22 +996,22 @@ Svar KUN med gyldig rå JSON (uten markdown \`\`\`json klammer):
   // AI-kostnader & Tokenforbruk denne måneden for hele plattformen
   const currentMonthPrefix = useMemo(() => new Date().toISOString().substring(0, 7), []);
   const thisMonthCosts = useMemo(() => {
-    return tokenCosts.filter(c => (c.timestamp || '').startsWith(currentMonthPrefix));
+    return (tokenCosts || []).filter(c => c && (c.timestamp || '').startsWith(currentMonthPrefix));
   }, [tokenCosts, currentMonthPrefix]);
 
   const totalTokensThisMonth = useMemo(() => {
-    const fromCosts = thisMonthCosts.reduce((sum, c) => sum + (Number(c.totalTokens) || 0), 0);
+    const fromCosts = thisMonthCosts.reduce((sum, c) => sum + (Number(c?.totalTokens) || 0), 0);
     return fromCosts || (accountingData?.expensesBreakdown?.totalTokensLogged || 0);
   }, [thisMonthCosts, accountingData]);
 
   const totalCostNokThisMonth = useMemo(() => {
-    const fromCosts = thisMonthCosts.reduce((sum, c) => sum + (Number(c.costNok) || 0), 0);
+    const fromCosts = thisMonthCosts.reduce((sum, c) => sum + (Number(c?.costNok) || 0), 0);
     return fromCosts || (accountingData?.expensesBreakdown?.tokenInferenceNok || 0);
   }, [thisMonthCosts, accountingData]);
 
   // Hjelper for å beregne dager igjen av 14-dagers prøveperiode
   const getTrialInfo = (company: Company) => {
-    if (company.subscriptionStatus !== 'trial' || isCompanyFreeTier(company)) return null;
+    if (!company || company.subscriptionStatus !== 'trial' || isCompanyFreeTier(company)) return null;
     const start = company.trialStartDate 
       ? new Date(company.trialStartDate) 
       : (company.createdAt?.toDate ? company.createdAt.toDate() : new Date(company.createdAt || Date.now()));
@@ -1009,9 +1030,9 @@ Svar KUN med gyldig rå JSON (uten markdown \`\`\`json klammer):
     const isPartner = !isInternal && (raw.includes('partner') || raw.includes('intern'));
     const norm = isInternal ? 'internal' : isPartner ? 'partner' : raw.includes('entrepren') ? 'entreprenor' : raw.includes('team') ? 'team' : 'solo';
     const limit = norm === 'internal' ? 500_000_000 : norm === 'partner' ? 15_000_000 : norm === 'entreprenor' ? 30_000_000 : norm === 'team' ? 10_000_000 : 2_500_000;
-    const used = tokenCosts
-      .filter(c => (c.companyId === companyId || c.companyName === companyId) && (c.timestamp || '').startsWith(currentMonthPrefix))
-      .reduce((sum, c) => sum + (Number(c.totalTokens) || 0), 0);
+    const used = (tokenCosts || [])
+      .filter(c => c && (c.companyId === companyId || c.companyName === companyId) && (c.timestamp || '').startsWith(currentMonthPrefix))
+      .reduce((sum, c) => sum + (Number(c?.totalTokens) || 0), 0);
     const percent = Math.min(100, Math.round((used / limit) * 100));
     return { used, limit, percent, plan: norm, isInternal };
   };
@@ -1019,7 +1040,10 @@ Svar KUN med gyldig rå JSON (uten markdown \`\`\`json klammer):
   // Opprett bruker direkte på valgt bedrift (for kollegaer og partnere)
   const handleCreateUserForCompany = async (e: React.FormEvent) => {
     e.preventDefault();
-    if (!selectedCompany || !newUserEmail || !newUserPassword) return;
+    if (!selectedCompany || !newUserEmail.trim() || !newUserPassword.trim() || !newUserName.trim()) {
+      toast.error('Vennligst fyll ut navn, e-post og passord.');
+      return;
+    }
     setIsCreatingUser(true);
     try {
       const token = typeof window !== 'undefined' ? localStorage.getItem('token') : null;
@@ -1048,6 +1072,7 @@ Svar KUN med gyldig rå JSON (uten markdown \`\`\`json klammer):
       setIsAddingUser(false);
       setNewUserName('');
       setNewUserEmail('');
+      setNewUserPassword('');
       // Oppdater brukerlisten
       setCompanyUsers(prev => [...prev, data.user]);
     } catch (err: any) {
@@ -1059,39 +1084,53 @@ Svar KUN med gyldig rå JSON (uten markdown \`\`\`json klammer):
 
   // ⚡ Bolt: Memoize filtered lists to prevent expensive O(N) recalculations on every render
   const filteredCompanies = useMemo(() => {
-    return companies.filter(c => {
+    const sTerm = (searchTerm || '').trim().toLowerCase();
+    return (companies || []).filter(c => {
+      if (!c) return false;
+      const cName = (c?.name || '').toLowerCase();
+      const cOrg = (c?.orgNumber ? String(c.orgNumber) : '');
+      const cContactEmail = (c?.contactEmail || '').toLowerCase();
+      const cEmail = (c?.email || '').toLowerCase();
       const matchesSearch = 
-        c.name.toLowerCase().includes(searchTerm.toLowerCase()) ||
-        c.orgNumber?.includes(searchTerm) ||
-        (c.email && c.email.toLowerCase().includes(searchTerm.toLowerCase()));
+        !sTerm ||
+        cName.includes(sTerm) ||
+        cOrg.includes(sTerm) ||
+        cContactEmail.includes(sTerm) ||
+        cEmail.includes(sTerm);
       if (!matchesSearch) return false;
       if (companyStatusFilter === 'internal') return isCompanyInternalAdmin(c);
-      if (companyStatusFilter === 'partner') return isCompanyFreeTier(c) && !isCompanyInternalAdmin(c);
-      if (companyStatusFilter === 'active') return c.subscriptionStatus === 'active' && !isCompanyFreeTier(c) && !isCompanyInternalAdmin(c);
-      if (companyStatusFilter === 'trial') return c.subscriptionStatus === 'trial' && !isCompanyFreeTier(c) && !isCompanyInternalAdmin(c);
+      if (companyStatusFilter === 'demo') return isCompanyDemo(c);
+      if (companyStatusFilter === 'partner') return isCompanyFreeTier(c) && !isCompanyInternalAdmin(c) && !isCompanyDemo(c);
+      if (companyStatusFilter === 'active') return c.subscriptionStatus === 'active' && !isCompanyFreeTier(c) && !isCompanyInternalAdmin(c) && !isCompanyDemo(c);
+      if (companyStatusFilter === 'trial') return c.subscriptionStatus === 'trial' && !isCompanyFreeTier(c) && !isCompanyInternalAdmin(c) && !isCompanyDemo(c);
       if (companyStatusFilter === 'cancelled') return (c.subscriptionStatus === 'cancelled' || c.subscriptionStatus === 'expired') && !isCompanyInternalAdmin(c);
       return true;
     });
   }, [companies, searchTerm, companyStatusFilter]);
 
   const filteredProjects = useMemo(() => {
-    return allProjects.filter(p =>
-      !adminProjectSearch ||
-      p.name?.toLowerCase().includes(adminProjectSearch.toLowerCase()) ||
-      p.projectNumber?.toLowerCase().includes(adminProjectSearch.toLowerCase()) ||
-      p.client?.toLowerCase().includes(adminProjectSearch.toLowerCase()) ||
-      p.clientName?.toLowerCase().includes(adminProjectSearch.toLowerCase())
-    );
+    const sTerm = (adminProjectSearch || '').trim().toLowerCase();
+    return (allProjects || []).filter(p => {
+      if (!p) return false;
+      if (!sTerm) return true;
+      const pName = (p.name || '').toLowerCase();
+      const pNum = (p.projectNumber ? String(p.projectNumber) : '').toLowerCase();
+      const pClient = (p.client || '').toLowerCase();
+      const pClientName = (p.clientName || '').toLowerCase();
+      return pName.includes(sTerm) || pNum.includes(sTerm) || pClient.includes(sTerm) || pClientName.includes(sTerm);
+    });
   }, [allProjects, adminProjectSearch]);
 
   const filteredDeviations = useMemo(() => {
-    return allDeviations.filter(d => {
-      const matchesSearch = !adminDeviationSearch ||
-        d.title?.toLowerCase().includes(adminDeviationSearch.toLowerCase()) ||
-        d.description?.toLowerCase().includes(adminDeviationSearch.toLowerCase()) ||
-        d.projectTitle?.toLowerCase().includes(adminDeviationSearch.toLowerCase()) ||
-        d.id?.toLowerCase().includes(adminDeviationSearch.toLowerCase());
+    const sTerm = (adminDeviationSearch || '').trim().toLowerCase();
+    return (allDeviations || []).filter(d => {
+      if (!d) return false;
+      const dTitle = (d.title || '').toLowerCase();
+      const dDesc = (d.description || '').toLowerCase();
+      const dProj = (d.projectTitle || '').toLowerCase();
+      const dId = (d.id ? String(d.id) : '').toLowerCase();
       
+      const matchesSearch = !sTerm || dTitle.includes(sTerm) || dDesc.includes(sTerm) || dProj.includes(sTerm) || dId.includes(sTerm);
       if (!matchesSearch) return false;
       if (deviationSeverityFilter === 'critical') return d.severity === 'critical' || d.severity === 'high';
       if (deviationSeverityFilter === 'open') return d.status !== 'closed' && d.status !== 'resolved';
@@ -1101,12 +1140,15 @@ Svar KUN med gyldig rå JSON (uten markdown \`\`\`json klammer):
   }, [allDeviations, adminDeviationSearch, deviationSeverityFilter]);
 
   const filteredDailyLogs = useMemo(() => {
-    return allDailyLogs.filter(l =>
-      !adminLogSearch ||
-      l.projectName?.toLowerCase().includes(adminLogSearch.toLowerCase()) ||
-      l.workPerformed?.toLowerCase().includes(adminLogSearch.toLowerCase()) ||
-      l.authorName?.toLowerCase().includes(adminLogSearch.toLowerCase())
-    );
+    const sTerm = (adminLogSearch || '').trim().toLowerCase();
+    return (allDailyLogs || []).filter(l => {
+      if (!l) return false;
+      if (!sTerm) return true;
+      const lProj = (l.projectName || '').toLowerCase();
+      const lWork = (l.workPerformed || '').toLowerCase();
+      const lAuth = (l.authorName || '').toLowerCase();
+      return lProj.includes(sTerm) || lWork.includes(sTerm) || lAuth.includes(sTerm);
+    });
   }, [allDailyLogs, adminLogSearch]);
 
   const handleCopyChangeOrderLink = (co: any) => {
@@ -1384,8 +1426,8 @@ Svar KUN med gyldig rå JSON (uten markdown \`\`\`json klammer):
           <div className="text-xs font-bold text-neutral-600 uppercase tracking-wider mt-1">Månedlig SaaS-omsetning</div>
           <p className="text-[11px] text-neutral-500 mt-1">
             {payingActiveCompanies.length === 0 
-              ? `0 betalende abonnenter · ${partnerCompanies.length} partnere (0 kr) · ${internalCompanies.length} admin (0 kr)` 
-              : `${payingActiveCompanies.length} betalende kunder · ${partnerCompanies.length} partnere (0 kr) · ${internalCompanies.length} admin (0 kr)`}
+              ? `0 betalende abonnenter · ${demoCompanies.length > 0 ? `${demoCompanies.length} demo (0 kr) · ` : ''}${partnerCompanies.length > 0 ? `${partnerCompanies.length} partnere (0 kr) · ` : ''}${internalCompanies.length} admin (0 kr)` 
+              : `${payingActiveCompanies.length} betalende kunder · ${demoCompanies.length > 0 ? `${demoCompanies.length} demo (0 kr) · ` : ''}${partnerCompanies.length > 0 ? `${partnerCompanies.length} partnere (0 kr) · ` : ''}${internalCompanies.length} admin (0 kr)`}
           </p>
         </div>
 
@@ -1408,7 +1450,7 @@ Svar KUN med gyldig rå JSON (uten markdown \`\`\`json klammer):
           </div>
           <div className="text-xs font-bold text-neutral-600 uppercase tracking-wider mt-1">Bedriftskunder & Partnere</div>
           <p className="text-[11px] text-neutral-500 mt-1">
-            {payingActiveCompanies.length} betalende · {partnerCompanies.length} partnere · {internalCompanies.length} systemeiere · {trialCompanies.length} prøvetid
+            {payingActiveCompanies.length} betalende · {demoCompanies.length > 0 ? `${demoCompanies.length} demo · ` : ''}{partnerCompanies.length > 0 ? `${partnerCompanies.length} partnere · ` : ''}{internalCompanies.length} systemeiere{trialCompanies.length > 0 ? ` · ${trialCompanies.length} prøvetid` : ''}
           </p>
         </div>
 
@@ -1559,11 +1601,12 @@ Svar KUN med gyldig rå JSON (uten markdown \`\`\`json klammer):
                           {/* Plan Dropdown */}
                           <td className="px-3 sm:px-4 py-3">
                             <select
-                              value={isInternal ? 'internal' : (company.plan === 'partner' || isCompanyFreeTier(company)) ? 'partner' : currentPlan}
+                              value={isInternal ? 'internal' : isCompanyDemo(company) ? 'demo' : (company.plan === 'partner' || isCompanyFreeTier(company)) ? 'partner' : currentPlan}
                               onChange={(e) => handleUpdateCompanyPlan(company.id, e.target.value as any)}
                               className={cn(
                                 "text-xs font-bold rounded-xl px-2.5 py-1.5 outline-none border transition-all cursor-pointer max-w-[175px] truncate",
                                 isInternal ? "bg-amber-100 text-amber-950 border-amber-300 focus:ring-2 focus:ring-amber-400" :
+                                isCompanyDemo(company) ? "bg-cyan-100 text-cyan-900 border-cyan-300 focus:ring-2 focus:ring-cyan-400" :
                                 (currentPlan === 'partner' || isCompanyFreeTier(company)) ? "bg-purple-100 text-purple-900 border-purple-300 focus:ring-2 focus:ring-purple-400" :
                                 currentPlan === 'entreprenor' ? "bg-purple-50 text-purple-800 border-purple-200 focus:ring-2 focus:ring-purple-400" :
                                 currentPlan === 'team' ? "bg-blue-50 text-blue-800 border-blue-200 focus:ring-2 focus:ring-blue-400" :
@@ -1572,6 +1615,7 @@ Svar KUN med gyldig rå JSON (uten markdown \`\`\`json klammer):
                               title="Endre abonnementsplan for kunden"
                             >
                               <option value="internal">👑 SuperAdmin (0 kr)</option>
+                              <option value="demo">🧪 Demo / Test (0 kr)</option>
                               <option value="solo">Solo (1 490 kr/mnd)</option>
                               <option value="team">Team (3 490 kr/mnd)</option>
                               <option value="entreprenor">Totalentreprenør (6 900 kr)</option>
@@ -1585,6 +1629,10 @@ Svar KUN med gyldig rå JSON (uten markdown \`\`\`json klammer):
                               {isInternal ? (
                                 <span className="px-2.5 py-0.5 rounded-full text-[10px] font-black uppercase tracking-wider border bg-amber-100 text-amber-950 border-amber-300">
                                   👑 Eier (Alltid aktiv)
+                                </span>
+                              ) : isCompanyDemo(company) ? (
+                                <span className="px-2.5 py-0.5 rounded-full text-[10px] font-black uppercase tracking-wider border bg-cyan-100 text-cyan-900 border-cyan-300 inline-flex items-center gap-1">
+                                  🧪 Demo / Test (0 kr)
                                 </span>
                               ) : (
                                 <span className={cn(
