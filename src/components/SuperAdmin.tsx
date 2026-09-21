@@ -278,6 +278,24 @@ export default function SuperAdmin({ onBackToDashboard }: { onBackToDashboard?: 
         }
       });
 
+      // 🛡️ Sikre at Demobruker / Demobedrift (Fjellheim Bygg & Tømrer AS) alltid er tilgjengelig for multi-tenant testing
+      const hasDemo = data.some(c => c.id === 'comp-demo-fjellheim' || c.name?.toLowerCase().includes('fjellheim'));
+      if (!hasDemo) {
+        data.push({
+          id: 'comp-demo-fjellheim',
+          name: 'Fjellheim Bygg & Tømrer AS (Demokunde)',
+          orgNumber: '928 374 651',
+          contactPerson: 'Lars Fjellheim',
+          contactEmail: 'demo@fjellheimbygg.no',
+          phone: '912 34 567',
+          plan: 'pro',
+          status: 'active',
+          subscriptionStatus: 'active',
+          monthlyPrice: 1490,
+          createdAt: new Date().toISOString()
+        } as any);
+      }
+
       setCompanies(data);
       setLoading(false);
     }, (error) => {

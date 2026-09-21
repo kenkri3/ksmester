@@ -3,6 +3,7 @@ import bcrypt from 'bcrypt';
 import { getUserFromRequest, isUserAdmin } from '@/src/lib/server/auth';
 import { saveCollectionItem, getCollectionItemById, dbQuery, inMemoryStore } from '@/src/lib/server/db';
 import { sanitize, sanitizeEmail, sanitizeHeader } from '@/src/lib/sanitize';
+import { sendSystemEmail } from '@/src/lib/server/emailSender';
 
 export async function POST(req: NextRequest) {
   try {
@@ -182,12 +183,11 @@ export async function POST(req: NextRequest) {
       password: hashedPassword
     });
 
-    // 4. Send eventuell velkomst-epost
+    // 4. Send eventuell velkomst-epost via Resend
     let emailSent = false;
-    const resendKey = process.env.RESEND_API_KEY || process.env.RESEND_API || process.env.RESEND_KEY;
-    if (sendWelcomeEmail && resendKey) {
+    let emailMessage = '';
+    if (sendWelcomeEmail) {
       try {
-        const fromEmail = process.env.EMAIL_FROM || process.env.RESEND_FROM || 'VikingMester <hei@vikingmester.no>';
         const subject = isInternal 
           ? `Din interne brukerkonto i VikingMester` 
           : `Velkommen som samarbeidspartner i VikingMester`;
@@ -227,23 +227,20 @@ export async function POST(req: NextRequest) {
           </div>
         `;
 
-        const res = await fetch('https://api.resend.com/emails', {
-          method: 'POST',
-          headers: {
-            'Content-Type': 'application/json',
-            'Authorization': `Bearer ${resendKey}`
-          },
-          body: JSON.stringify({
-            from: fromEmail,
-            to: [emailLower],
-            subject,
-            html: emailHtml
-          })
+        const sendRes = await sendSystemEmail({
+          to: emailLower,
+          subject,
+          html: emailHtml,
+          text: `${greetingText}\n\nBrukernavn: ${emailLower}\nMidlertidig passord: ${password}\nFirma: ${companyName}\nInnlogging: https://vikingmester.no`,
+          companyName: companyName || 'VikingMester',
+          authorName: 'VikingMester SuperAdmin'
         });
 
-        emailSent = res.ok;
-      } catch (emailErr) {
+        emailSent = sendRes.success && sendRes.status === 'sent';
+        emailMessage = sendRes.message;
+      } catch (emailErr: any) {
         console.warn('Welcome email error:', emailErr);
+        emailMessage = emailErr.message;
       }
     }
 

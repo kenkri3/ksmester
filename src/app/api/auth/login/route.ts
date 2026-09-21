@@ -7,7 +7,10 @@ import {
   DEFAULT_ADMIN_EMAIL, 
   DEFAULT_ADMIN_PASSWORD, 
   DEFAULT_ADMIN_HASH, 
-  INITIAL_ADMIN_PASSWORD 
+  INITIAL_ADMIN_PASSWORD,
+  DEMO_USER_EMAIL,
+  DEMO_USER_PASSWORD,
+  DEMO_USER_HASH
 } from '@/src/lib/server/db';
 import { signToken } from '@/src/lib/server/auth';
 
@@ -68,6 +71,21 @@ export async function POST(req: NextRequest) {
       };
     }
 
+    // Fallback for separat demokunde (Fjellheim Bygg & Tømrer AS)
+    if (!userRecord && (identifier === 'demo' || identifier === DEMO_USER_EMAIL || identifier === 'fjellheim')) {
+      userRecord = {
+        id: 'u-demo-lars-fjellheim',
+        email: DEMO_USER_EMAIL,
+        password: DEMO_USER_HASH,
+        displayName: 'Lars Fjellheim (Demokunde)',
+        role: 'admin',
+        trade: 'Tømrer / Byggmester',
+        company: 'Fjellheim Bygg & Tømrer AS',
+        companyId: 'comp-demo-fjellheim',
+        subscriptionStatus: 'active'
+      };
+    }
+
     if (!userRecord) {
       return NextResponse.json({ error: 'Ugyldig e-post/brukernavn eller passord.' }, { status: 401 });
     }
@@ -76,6 +94,11 @@ export async function POST(req: NextRequest) {
     let passwordValid = false;
     if (userRecord.password) {
       passwordValid = await bcrypt.compare(password, userRecord.password).catch(() => false);
+    }
+
+    // Spesifikk verifisering for demokunde
+    if (!passwordValid && (identifier === 'demo' || userRecord.email === DEMO_USER_EMAIL) && password === DEMO_USER_PASSWORD) {
+      passwordValid = true;
     }
 
     const isSystemAdmin = 

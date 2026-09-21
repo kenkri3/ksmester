@@ -842,9 +842,22 @@ export default function MesterWorkstation({
     }, 1000);
 
     try {
+      const token = typeof window !== 'undefined' ? localStorage.getItem('token') : null;
+      const impersonated = typeof window !== 'undefined' ? localStorage.getItem('impersonatedCompanyId') : null;
+      const effectiveCompanyId = impersonated || (user as any)?.companyId || 'comp-001';
+      const effectiveCompanyName = impersonated === 'comp-demo-fjellheim' 
+        ? 'Fjellheim Bygg & Tømrer AS' 
+        : (company || user?.company || 'Viking Entreprenør AS');
+      const effectiveUserName = impersonated === 'comp-demo-fjellheim' 
+        ? 'Lars Fjellheim' 
+        : (user?.displayName || 'Kenneth Glosli Kristiansen');
+
       const res = await fetch('/api/agent/chat', {
         method: 'POST',
-        headers: { 'Content-Type': 'application/json' },
+        headers: { 
+          'Content-Type': 'application/json',
+          ...(token ? { 'Authorization': 'Bearer ' + token } : {})
+        },
         body: JSON.stringify({
           message: textToSend.trim() || userMessage.content,
           sessionId: activeSessionId,
@@ -856,10 +869,11 @@ export default function MesterWorkstation({
             code: p.code,
             address: p.address || (p as any).location
           })),
-          userName: user?.displayName || 'Kenneth Glosli Kristiansen',
+          userName: effectiveUserName,
           userTrade: trade || user?.trade || 'carpenter',
-          companyName: company || user?.company || 'Viking Entreprenør AS',
-          userId: user?.uid || user?.id,
+          companyName: effectiveCompanyName,
+          companyId: effectiveCompanyId,
+          userId: impersonated === 'comp-demo-fjellheim' ? 'u-demo-lars-fjellheim' : (user?.uid || user?.id),
           imageUrl: activeImage
         })
       });

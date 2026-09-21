@@ -91,33 +91,46 @@ const InviteModal: React.FC<InviteModalProps> = ({ isOpen, onClose, project }) =
       if (email.trim()) {
         try {
           const roleTitle = role === 'external_worker' ? 'håndverker' : role === 'external_manager' ? 'prosjektleder' : 'medarbeider';
+          const token = typeof window !== 'undefined' ? localStorage.getItem('token') : null;
           const res = await fetch('/api/notify/email', {
             method: 'POST',
-            headers: { 'Content-Type': 'application/json' },
+            headers: { 
+              'Content-Type': 'application/json',
+              ...(token ? { 'Authorization': 'Bearer ' + token } : {})
+            },
             body: JSON.stringify({
               to: email.trim(),
               subject: `Invitasjon til ${project ? `prosjektet "${project.name}"` : companyName}`,
-              content: `
-                Hei!
-                
-                Du har blitt invitert av ${inviterName} til å delta på ${project ? `prosjektet "${project.name}"` : companyName} i VikingMester som ${roleTitle}.
-                
-                Klikk på lenken under for å åpne og akseptere invitasjonen:
-                ${link}
-                
-                Lenken er gyldig i 14 dager.
-                
-                Med vennlig hilsen,
-                ${companyName} / VikingMester
+              content: `Hei!\n\nDu har blitt invitert av ${inviterName} til å delta på ${project ? `prosjektet "${project.name}"` : companyName} i VikingMester som ${roleTitle}.\n\nKlikk på lenken under for å åpne og akseptere invitasjonen:\n${link}\n\nLenken er gyldig i 14 dager.\n\nMed vennlig hilsen,\n${companyName} / VikingMester`,
+              html: `
+                <div style="font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, sans-serif; max-width: 600px; margin: 0 auto; padding: 24px; color: #1e293b; background: #ffffff; border: 1px solid #e2e8f0; border-radius: 14px;">
+                  <div style="background: #0f172a; padding: 20px; border-radius: 10px; color: white; margin-bottom: 20px;">
+                    <h2 style="margin: 0; font-size: 18px;">Invitasjon til VikingMester</h2>
+                    <p style="margin: 4px 0 0 0; color: #94a3b8; font-size: 12px;">${companyName} ${project ? `• ${project.name}` : ''}</p>
+                  </div>
+                  <p>Hei!</p>
+                  <p>Du har blitt invitert av <strong>${inviterName}</strong> til å delta på <strong>${project ? `prosjektet "${project.name}"` : companyName}</strong> som <em>${roleTitle}</em>.</p>
+                  <div style="text-align: center; margin: 26px 0;">
+                    <a href="${link}" style="background: #059669; color: #ffffff !important; font-weight: bold; padding: 14px 28px; border-radius: 10px; text-decoration: none; display: inline-block; font-size: 14px;">
+                      👉 Åpne og godkjenn invitasjonen
+                    </a>
+                  </div>
+                  <p style="font-size: 12px; color: #64748b;">Lenken er gyldig i 14 dager. Ved spørsmål kan du kontakte ${inviterName}.</p>
+                </div>
               `
             })
           });
           if (res.ok) {
             setEmailSent(true);
             toast.success(`Invitasjon er sendt på e-post til ${email.trim()}!`);
+          } else {
+            const errData = await res.json().catch(() => ({}));
+            console.warn('Could not dispatch invite email:', errData);
+            toast.warning(`Invitasjonslenke opprettet, men e-posten kunne ikke leveres: ${errData.error || errData.message || 'Ukjent feil'}. Du kan kopiere lenken manuelt.`);
           }
-        } catch (err) {
+        } catch (err: any) {
           console.warn('Could not dispatch invite email:', err);
+          toast.warning('Invitasjonslenke opprettet, men kunne ikke koble til e-posttjenesten. Kopier lenken.');
         }
       }
     } catch (error) {

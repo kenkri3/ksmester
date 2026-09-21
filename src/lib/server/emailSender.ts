@@ -1,6 +1,13 @@
 import { dbQuery, inMemoryStore, saveCollectionItem } from './db';
 import { sanitizeHeader } from '../sanitize';
 
+export interface EmailAttachment {
+  filename: string;
+  content: string;
+  path?: string;
+  contentType?: string;
+}
+
 export interface SendEmailParams {
   to: string | string[];
   subject: string;
@@ -10,6 +17,7 @@ export interface SendEmailParams {
   metadata?: Record<string, any>;
   companyName?: string;
   authorName?: string;
+  attachments?: EmailAttachment[];
 }
 
 export interface SendEmailResult {
@@ -140,7 +148,8 @@ export async function sendSystemEmail(params: SendEmailParams): Promise<SendEmai
           to: sanitizedTo,
           subject: sanitizedSubject,
           html: bodyHtml,
-          text: bodyText
+          text: bodyText,
+          ...(params.attachments && params.attachments.length > 0 ? { attachments: params.attachments } : {})
         })
       });
 
@@ -172,7 +181,8 @@ export async function sendSystemEmail(params: SendEmailParams): Promise<SendEmai
               to: sanitizedTo,
               subject: sanitizedSubject,
               html: bodyHtml,
-              text: bodyText
+              text: bodyText,
+              ...(params.attachments && params.attachments.length > 0 ? { attachments: params.attachments } : {})
             })
           });
 

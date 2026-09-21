@@ -165,14 +165,61 @@ export default function WorkstationSettingsModal({
     }
   };
 
-  const handleAddMember = () => {
+  const handleAddMember = async () => {
     if (!newMemberEmail.trim()) return;
+    const emailToInvite = newMemberEmail.trim();
     setTeamMembers(prev => [
       ...prev,
-      { id: Date.now().toString(), name: newMemberEmail.split('@')[0], role: newMemberRole, email: newMemberEmail }
+      { id: Date.now().toString(), name: emailToInvite.split('@')[0], role: newMemberRole, email: emailToInvite }
     ]);
     setNewMemberEmail('');
-    toast.success(`Invitasjon sendt til ${newMemberEmail}`);
+    
+    // Send ekte invitasjon på e-post via Resend
+    try {
+      const token = typeof window !== 'undefined' ? localStorage.getItem('token') : null;
+      const baseUrl = typeof window !== 'undefined' ? window.location.origin : 'https://vikingmester.no';
+      const inviteToken = Math.random().toString(36).substring(2, 15) + Math.random().toString(36).substring(2, 15);
+      const link = `${baseUrl}/?invite=${inviteToken}`;
+
+      const res = await fetch('/api/notify/email', {
+        method: 'POST',
+        headers: {
+          'Content-Type': 'application/json',
+          ...(token ? { 'Authorization': 'Bearer ' + token } : {})
+        },
+        body: JSON.stringify({
+          to: emailToInvite,
+          subject: `Invitasjon til ${companyName} i VikingMester`,
+          html: `
+            <div style="font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, sans-serif; max-width: 600px; margin: 0 auto; padding: 24px; color: #1e293b; background: #ffffff; border: 1px solid #e2e8f0; border-radius: 14px;">
+              <div style="background: #0f172a; padding: 20px; border-radius: 10px; color: white; margin-bottom: 20px;">
+                <h2 style="margin: 0; font-size: 18px;">Velkommen til ${companyName}</h2>
+                <p style="margin: 4px 0 0 0; color: #94a3b8; font-size: 12px;">VikingMester KS & Prosjektstyring</p>
+              </div>
+              <p>Hei!</p>
+              <p>Du har blitt invitert av ledelsen til å bli med som <strong>${newMemberRole === 'admin' ? 'Administrator' : newMemberRole === 'manager' ? 'Prosjektleder' : 'Håndverker'}</strong> for <strong>${companyName}</strong> i VikingMester.</p>
+              <div style="text-align: center; margin: 26px 0;">
+                <a href="${link}" style="background: #059669; color: #ffffff !important; font-weight: bold; padding: 14px 28px; border-radius: 10px; text-decoration: none; display: inline-block; font-size: 14px;">
+                  👉 Åpne og godkjenn invitasjonen
+                </a>
+              </div>
+              <p style="font-size: 12px; color: #64748b;">Lenken er gyldig i 14 dager. Ved spørsmål kan du kontakte bedriftsledelsen.</p>
+            </div>
+          `,
+          text: `Hei!\n\nDu er invitert til ${companyName} i VikingMester som ${newMemberRole}.\n\nAksepter invitasjonen her: ${link}`
+        })
+      });
+
+      if (res.ok) {
+        toast.success(`Invitasjon er sendt på e-post til ${emailToInvite}!`);
+      } else {
+        const errData = await res.json().catch(() => ({}));
+        toast.warning(`Medarbeider lagt til, men e-post kunne ikke sendes: ${errData.error || errData.message || 'Sjekk Resend API-nøkkel'}`);
+      }
+    } catch (err) {
+      console.warn('Could not send invite email:', err);
+      toast.success(`Medarbeider lagt til i listen`);
+    }
   };
 
   if (!isOpen) return null;

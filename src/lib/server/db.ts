@@ -22,6 +22,10 @@ export const ADMIN_EMAILS = [
 export const INITIAL_ADMIN_PASSWORD = process.env.INITIAL_ADMIN_PASSWORD || process.env.ADMIN_PASSWORD || 'VikingMester2026!';
 export const INITIAL_ADMIN_HASH = bcrypt.hashSync(INITIAL_ADMIN_PASSWORD, 10);
 
+export const DEMO_USER_EMAIL = 'demo@fjellheimbygg.no';
+export const DEMO_USER_PASSWORD = 'Demo1234!';
+export const DEMO_USER_HASH = bcrypt.hashSync(DEMO_USER_PASSWORD, 10);
+
 let pool: Pool | null = null;
 if (DATABASE_URL) {
   const isInternal = 
@@ -68,6 +72,18 @@ export const inMemoryStore: Record<string, any[]> = {
       companyId: 'comp-001',
       subscriptionStatus: 'active',
       createdAt: new Date().toISOString()
+    },
+    {
+      id: 'u-demo-lars-fjellheim',
+      email: DEMO_USER_EMAIL,
+      password: DEMO_USER_HASH,
+      displayName: 'Lars Fjellheim (Demokunde)',
+      role: 'admin',
+      trade: 'Tømrer / Byggmester',
+      company: 'Fjellheim Bygg & Tømrer AS',
+      companyId: 'comp-demo-fjellheim',
+      subscriptionStatus: 'active',
+      createdAt: new Date().toISOString()
     }
   ],
   companies: [
@@ -83,9 +99,37 @@ export const inMemoryStore: Record<string, any[]> = {
       subscriptionStatus: 'active',
       modules: ['projects', 'checklists', 'deviations', 'ai', 'economy', 'fdv', 'inventory', 'vehicle', 'time', 'apprentice', 'building_app'],
       createdAt: new Date().toISOString()
+    },
+    {
+      id: 'comp-demo-fjellheim',
+      name: 'Fjellheim Bygg & Tømrer AS (Demokunde)',
+      orgnr: '928 374 651',
+      contactName: 'Lars Fjellheim',
+      email: DEMO_USER_EMAIL,
+      phone: '912 34 567',
+      plan: 'pro',
+      status: 'active',
+      subscriptionStatus: 'active',
+      modules: ['projects', 'checklists', 'deviations', 'ai', 'economy', 'fdv', 'inventory', 'vehicle', 'time', 'apprentice'],
+      createdAt: new Date().toISOString()
     }
   ],
-  projects: [],
+  projects: [
+    {
+      id: 'proj-demo-sjusjoen',
+      companyId: 'comp-demo-fjellheim',
+      name: 'Hytte Sjusjøen - Nybygg',
+      address: 'Birkebeinervegen 42, 2612 Sjusjøen',
+      location: 'Birkebeinervegen 42, 2612 Sjusjøen',
+      clientName: 'Ola Nordmann (Privatkunde)',
+      clientEmail: 'ola.nordmann.demo@gmail.com',
+      clientPhone: '98765432',
+      status: 'active',
+      category: 'Hytte / Fritidsbolig',
+      progress: 35,
+      createdAt: new Date().toISOString()
+    }
+  ],
   deviations: [],
   change_orders: [],
   agent_activities: [],
