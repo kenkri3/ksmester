@@ -71,8 +71,8 @@ export async function POST(req: NextRequest) {
           : (name ? `${name} (Partner)` : 'Samarbeidspartner AS');
       }
 
-      const plan = isPartner ? 'partner' : (body.plan || 'team');
-      const monthlyPrice = isPartner ? 0 : (plan === 'solo' ? 1490 : plan === 'entreprenor' ? 6900 : 3490);
+      const plan = isInternal ? 'internal' : isPartner ? 'partner' : (body.plan || 'team');
+      const monthlyPrice = (isPartner || isInternal) ? 0 : (plan === 'solo' ? 1490 : plan === 'entreprenor' ? 6900 : 3490);
 
       finalCompany = {
         id: companyId,
@@ -106,7 +106,12 @@ export async function POST(req: NextRequest) {
         companyName = existingComp.name || companyName;
         existingComp.userCount = (existingComp.userCount || 0) + 1;
         existingComp.updatedAt = now.toISOString();
-        if (isPartner && !existingComp.isPartner) {
+        if (isInternal) {
+          existingComp.isInternal = true;
+          existingComp.plan = 'internal';
+          existingComp.monthlyPrice = 0;
+          existingComp.subscriptionStatus = 'active';
+        } else if (isPartner && !existingComp.isPartner) {
           existingComp.isPartner = true;
           existingComp.plan = 'partner';
           existingComp.monthlyPrice = 0;

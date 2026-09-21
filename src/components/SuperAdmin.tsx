@@ -62,12 +62,12 @@ import { cn } from '../lib/utils';
 import { toast } from 'sonner';
 import ProjectDetails from './ProjectDetails';
 
-interface Company {
+export interface Company {
   id: string;
   name: string;
   orgNumber?: string;
   subscriptionStatus: 'trial' | 'active' | 'expired' | 'cancelled';
-  plan?: 'solo' | 'team' | 'entreprenor' | 'partner';
+  plan?: 'solo' | 'team' | 'entreprenor' | 'partner' | 'internal' | 'admin';
   isPartner?: boolean;
   isInternal?: boolean;
   monthlyPrice?: number;
@@ -81,6 +81,24 @@ interface Company {
   phone?: string;
   industry?: string;
 }
+
+// 👑 Hjelper for å identifisere intern system-eier / SuperAdmin (AIChat Norge AS / Vikingnet)
+export const isCompanyInternalAdmin = (c?: Partial<Company> | any): boolean => {
+  if (!c) return false;
+  const name = (c.name || '').toLowerCase();
+  const plan = (c.plan || '').toLowerCase();
+  const email = (c.email || '').toLowerCase();
+  return (
+    Boolean(c.isInternal) ||
+    plan === 'internal' ||
+    plan === 'admin' ||
+    plan === 'superadmin' ||
+    name.includes('aichat norge') ||
+    name.includes('vikingnet') ||
+    name.includes('vikingmester') ||
+    ['kenkri3@gmail.com', 'aichatnorge@gmail.com', 'kenneth@aichatnorge.no', 'admin@vikingmester.no', 'post@vikingent.no'].includes(email)
+  );
+};
 
 export default function SuperAdmin({ onBackToDashboard }: { onBackToDashboard?: () => void } = {}) {
   const { user, startImpersonation, stopImpersonation, impersonatedCompanyId, isSuperAdmin: authIsSuperAdmin } = useAuth();
@@ -112,7 +130,7 @@ export default function SuperAdmin({ onBackToDashboard }: { onBackToDashboard?: 
   const [searchTerm, setSearchTerm] = useState('');
   const [activeTab, setActiveTab] = useState<'companies' | 'leads' | 'agent' | 'offers' | 'templates' | 'support'>('companies');
   const [supportSubTab, setSupportSubTab] = useState<'projects' | 'deviations' | 'logs'>('projects');
-  const [companyStatusFilter, setCompanyStatusFilter] = useState<'all' | 'active' | 'trial' | 'partner' | 'cancelled'>('all');
+  const [companyStatusFilter, setCompanyStatusFilter] = useState<'all' | 'active' | 'trial' | 'partner' | 'internal' | 'cancelled'>('all');
   const [tokenCosts, setTokenCosts] = useState<any[]>([]);
   const [accountingData, setAccountingData] = useState<any>(null);
   const [isAddingTopup, setIsAddingTopup] = useState<string | null>(null);
@@ -178,6 +196,8 @@ export default function SuperAdmin({ onBackToDashboard }: { onBackToDashboard?: 
   const [isSendingReply, setIsSendingReply] = useState(false);
   const [isAnalyzingLead, setIsAnalyzingLead] = useState<string | null>(null);
   const [leadAnalysis, setLeadAnalysis] = useState<{[key: string]: any}>({});
+  const [isOfferGenerating, setIsOfferGenerating] = useState(false);
+  const [generatedOffer, setGeneratedOffer] = useState<any | null>(null);
   const [isTemplateModalOpen, setIsTemplateModalOpen] = useState(false);
   const [editingTemplateId, setEditingTemplateId] = useState<string | null>(null);
   const [companyUsers, setCompanyUsers] = useState<any[]>([]);
@@ -226,6 +246,38 @@ export default function SuperAdmin({ onBackToDashboard }: { onBackToDashboard?: 
         id: doc.id,
         ...doc.data()
       })) as Company[];
+
+      // Auto-heal systemeier / SuperAdmin (AIChat Norge AS / Vikingnet)
+      data.forEach(c => {
+        if (isCompanyInternalAdmin(c) && (c.plan !== 'internal' || !c.isInternal || c.monthlyPrice !== 0)) {
+          c.plan = 'internal';
+          c.isInternal = true;
+          c.monthlyPrice = 0;
+          c.subscriptionStatus = 'active';
+          updateDoc(doc(db, 'companies', c.id), {
+            plan: 'internal',
+            isInternal: true,
+            monthlyPrice: 0,
+            subscriptionStatus: 'active'
+          }).catch(err => console.warn('Auto-heal error Firestore:', err));
+
+          const token = typeof window !== 'undefined' ? localStorage.getItem('token') : null;
+          fetch(`/api/data/companies/${c.id}`, {
+            method: 'PUT',
+            headers: {
+              'Content-Type': 'application/json',
+              ...(token ? { 'Authorization': 'Bearer ' + token } : {})
+            },
+            body: JSON.stringify({
+              plan: 'internal',
+              isInternal: true,
+              monthlyPrice: 0,
+              subscriptionStatus: 'active'
+            })
+          }).catch(() => {});
+        }
+      });
+
       setCompanies(data);
       setLoading(false);
     }, (error) => {
@@ -661,6 +713,11 @@ Svar KUN med gyldig rå JSON (uten markdown \`\`\`json klammer):
   };
 
   const handleDeleteCompany = async (companyId: string) => {
+    const targetComp = companies.find(c => c.id === companyId);
+    if (targetComp && isCompanyInternalAdmin(targetComp)) {
+      toast.error('Systemeier / SuperAdmin-selskapet kan ikke slettes!');
+      return;
+    }
     if (!window.confirm('Er du sikker på at du vil slette denne kunden? Dette kan ikke angres.')) return;
     try {
       await deleteDoc(doc(db, 'companies', companyId));
@@ -671,8 +728,9 @@ Svar KUN med gyldig rå JSON (uten markdown \`\`\`json klammer):
     }
   };
 
-  const handleUpdateCompanyInfo = async (companyId: string, name: string, orgNumber: string, plan?: 'solo' | 'team' | 'entreprenor' | 'partner') => {
+  const handleUpdateCompanyInfo = async (companyId: string, name: string, orgNumber: string, plan?: 'solo' | 'team' | 'entreprenor' | 'partner' | 'internal') => {
     try {
+      const isInternal = plan === 'internal';
       const isPartner = plan === 'partner';
       const updateData: any = {
         name,
@@ -681,12 +739,19 @@ Svar KUN med gyldig rå JSON (uten markdown \`\`\`json klammer):
       };
       if (plan) {
         updateData.plan = plan;
-        if (isPartner) {
+        if (isInternal) {
+          updateData.isInternal = true;
+          updateData.isPartner = false;
+          updateData.monthlyPrice = 0;
+          updateData.subscriptionStatus = 'active';
+        } else if (isPartner) {
           updateData.isPartner = true;
+          updateData.isInternal = false;
           updateData.monthlyPrice = 0;
           updateData.subscriptionStatus = 'active';
         } else {
           updateData.isPartner = false;
+          updateData.isInternal = false;
           updateData.monthlyPrice = plan === 'solo' ? 1490 : plan === 'entreprenor' ? 6900 : 3490;
         }
       }
@@ -698,26 +763,37 @@ Svar KUN med gyldig rå JSON (uten markdown \`\`\`json klammer):
     }
   };
 
-  const handleUpdateCompanyPlan = async (companyId: string, newPlan: 'solo' | 'team' | 'entreprenor' | 'partner') => {
+  const handleUpdateCompanyPlan = async (companyId: string, newPlan: 'solo' | 'team' | 'entreprenor' | 'partner' | 'internal') => {
     try {
+      const isInternalPlan = newPlan === 'internal';
       const isPartnerPlan = newPlan === 'partner';
       const updateData: any = {
         plan: newPlan,
         updatedAt: serverTimestamp()
       };
-      if (isPartnerPlan) {
+      if (isInternalPlan) {
+        updateData.monthlyPrice = 0;
+        updateData.isInternal = true;
+        updateData.isPartner = false;
+        updateData.subscriptionStatus = 'active';
+      } else if (isPartnerPlan) {
         updateData.monthlyPrice = 0;
         updateData.isPartner = true;
+        updateData.isInternal = false;
         updateData.subscriptionStatus = 'active';
       } else {
         updateData.isPartner = false;
+        updateData.isInternal = false;
         updateData.monthlyPrice = newPlan === 'solo' ? 1490 : newPlan === 'entreprenor' ? 6900 : 3490;
       }
       await updateDoc(doc(db, 'companies', companyId), updateData);
       setCompanies(prev => prev.map(c => c.id === companyId ? { ...c, ...updateData } : c));
-      toast.success(isPartnerPlan 
-        ? 'Oppdatert til Samarbeidspartner / Kollega (0 kr/mnd)!' 
-        : `Abonnementsplan oppdatert til ${newPlan.toUpperCase()}!`
+      toast.success(
+        isInternalPlan
+          ? 'Oppdatert til SuperAdmin / Systemeier (0 kr/mnd · Ubegrenset)!'
+          : isPartnerPlan 
+          ? 'Oppdatert til Samarbeidspartner / Kollega (0 kr/mnd)!' 
+          : `Abonnementsplan oppdatert til ${newPlan.toUpperCase()}!`
       );
     } catch (error) {
       console.error('Feil ved endring av plan:', error);
@@ -761,6 +837,11 @@ Svar KUN med gyldig rå JSON (uten markdown \`\`\`json klammer):
   };
 
   const handleSetSubscriptionStatus = async (companyId: string, newStatus: 'active' | 'trial' | 'cancelled') => {
+    const targetComp = companies.find(c => c.id === companyId);
+    if (targetComp && isCompanyInternalAdmin(targetComp) && newStatus !== 'active') {
+      toast.error('Systemeier / SuperAdmin-selskapet kan ikke deaktiveres eller settes på prøveperiode!');
+      return;
+    }
     try {
       const updateData: any = {
         subscriptionStatus: newStatus,
@@ -835,16 +916,18 @@ Svar KUN med gyldig rå JSON (uten markdown \`\`\`json klammer):
 
   // 🤝 Hjelper for å identifisere samarbeidspartnere, kollegaer eller friplasser (0 kr/mnd)
   const isCompanyFreeTier = (c: Company) => {
+    if (isCompanyInternalAdmin(c)) return true;
     const plan = (c.plan || '').toLowerCase();
     return plan === 'partner' || plan === 'intern' || plan === 'internal' || Boolean(c.isPartner) || Boolean(c.isInternal) || c.monthlyPrice === 0;
   };
 
   // 💰 Reelle SaaS-nøkkeltall for SuperAdmin (ærlige og nøyaktige)
+  const internalCompanies = useMemo(() => companies.filter(c => isCompanyInternalAdmin(c)), [companies]);
+  const partnerCompanies = useMemo(() => companies.filter(c => isCompanyFreeTier(c) && !isCompanyInternalAdmin(c)), [companies]);
   const activeCompanies = useMemo(() => companies.filter(c => c.subscriptionStatus === 'active'), [companies]);
-  const trialCompanies = useMemo(() => companies.filter(c => c.subscriptionStatus === 'trial'), [companies]);
-  const expiredCompanies = useMemo(() => companies.filter(c => c.subscriptionStatus === 'expired' || c.subscriptionStatus === 'cancelled'), [companies]);
-  const partnerCompanies = useMemo(() => companies.filter(c => isCompanyFreeTier(c)), [companies]);
-  const payingActiveCompanies = useMemo(() => activeCompanies.filter(c => !isCompanyFreeTier(c)), [activeCompanies]);
+  const trialCompanies = useMemo(() => companies.filter(c => c.subscriptionStatus === 'trial' && !isCompanyFreeTier(c)), [companies]);
+  const expiredCompanies = useMemo(() => companies.filter(c => (c.subscriptionStatus === 'expired' || c.subscriptionStatus === 'cancelled') && !isCompanyInternalAdmin(c)), [companies]);
+  const payingActiveCompanies = useMemo(() => activeCompanies.filter(c => !isCompanyFreeTier(c) && !isCompanyInternalAdmin(c)), [activeCompanies]);
   const newLeads = useMemo(() => leads.filter(l => l.status === 'new' || !l.status), [leads]);
 
   // Reell MRR basert på aktive betalende abonnementer (0 kr hvis ingen betalende ennå):
@@ -899,16 +982,17 @@ Svar KUN med gyldig rå JSON (uten markdown \`\`\`json klammer):
   };
 
   // Hjelper for å beregne tokenforbruk og kvote per bedrift
-  const getCompanyTokenStats = (companyId: string, planKey: string = 'solo') => {
+  const getCompanyTokenStats = (companyId: string, planKey: string = 'solo', companyObj?: Company) => {
+    const isInternal = companyObj ? isCompanyInternalAdmin(companyObj) : (planKey === 'internal' || planKey === 'admin');
     const raw = (planKey || '').toLowerCase();
-    const isPartner = raw.includes('partner') || raw.includes('intern');
-    const norm = isPartner ? 'partner' : raw.includes('entrepren') ? 'entreprenor' : raw.includes('team') ? 'team' : 'solo';
-    const limit = norm === 'partner' ? 15_000_000 : norm === 'entreprenor' ? 30_000_000 : norm === 'team' ? 10_000_000 : 2_500_000;
+    const isPartner = !isInternal && (raw.includes('partner') || raw.includes('intern'));
+    const norm = isInternal ? 'internal' : isPartner ? 'partner' : raw.includes('entrepren') ? 'entreprenor' : raw.includes('team') ? 'team' : 'solo';
+    const limit = norm === 'internal' ? 500_000_000 : norm === 'partner' ? 15_000_000 : norm === 'entreprenor' ? 30_000_000 : norm === 'team' ? 10_000_000 : 2_500_000;
     const used = tokenCosts
       .filter(c => (c.companyId === companyId || c.companyName === companyId) && (c.timestamp || '').startsWith(currentMonthPrefix))
       .reduce((sum, c) => sum + (Number(c.totalTokens) || 0), 0);
     const percent = Math.min(100, Math.round((used / limit) * 100));
-    return { used, limit, percent, plan: norm };
+    return { used, limit, percent, plan: norm, isInternal };
   };
 
   // Opprett bruker direkte på valgt bedrift (for kollegaer og partnere)
@@ -925,28 +1009,26 @@ Svar KUN med gyldig rå JSON (uten markdown \`\`\`json klammer):
           ...(token ? { 'Authorization': 'Bearer ' + token } : {})
         },
         body: JSON.stringify({
-          accountType: isCompanyFreeTier(selectedCompany) ? 'partner' : 'customer',
+          accountType: isCompanyInternalAdmin(selectedCompany) ? 'internal' : selectedCompany.isPartner ? 'partner' : 'customer',
           companyMode: 'existing',
           companyId: selectedCompany.id,
-          companyName: selectedCompany.name,
-          name: newUserName.trim() || newUserEmail.split('@')[0],
+          name: newUserName.trim(),
           email: newUserEmail.trim(),
           password: newUserPassword.trim(),
           role: newUserRole,
-          trade: selectedCompany.industry || 'Byggmester'
+          sendWelcomeEmail: true
         })
       });
       const data = await res.json();
-      if (res.ok) {
-        toast.success(`Bruker ${data.user?.displayName || newUserEmail} ble opprettet! 🎉`);
-        setCompanyUsers(prev => [data.user, ...prev]);
-        setCompanies(prev => prev.map(c => c.id === selectedCompany.id ? { ...c, userCount: (c.userCount || 0) + 1 } : c));
-        setIsAddingUser(false);
-        setNewUserName('');
-        setNewUserEmail('');
-      } else {
-        toast.error(data.error || 'Kunne ikke opprette bruker');
+      if (!res.ok) {
+        throw new Error(data.error || 'Kunne ikke opprette bruker.');
       }
+      toast.success(`Bruker ${newUserEmail} ble opprettet for ${selectedCompany.name}! 🎉`);
+      setIsAddingUser(false);
+      setNewUserName('');
+      setNewUserEmail('');
+      // Oppdater brukerlisten
+      setCompanyUsers(prev => [...prev, data.user]);
     } catch (err: any) {
       toast.error('Nettverksfeil ved opprettelse av bruker: ' + err.message);
     } finally {
@@ -962,10 +1044,11 @@ Svar KUN med gyldig rå JSON (uten markdown \`\`\`json klammer):
         c.orgNumber?.includes(searchTerm) ||
         (c.email && c.email.toLowerCase().includes(searchTerm.toLowerCase()));
       if (!matchesSearch) return false;
-      if (companyStatusFilter === 'partner') return isCompanyFreeTier(c);
-      if (companyStatusFilter === 'active') return c.subscriptionStatus === 'active' && !isCompanyFreeTier(c);
-      if (companyStatusFilter === 'trial') return c.subscriptionStatus === 'trial' && !isCompanyFreeTier(c);
-      if (companyStatusFilter === 'cancelled') return c.subscriptionStatus === 'cancelled' || c.subscriptionStatus === 'expired';
+      if (companyStatusFilter === 'internal') return isCompanyInternalAdmin(c);
+      if (companyStatusFilter === 'partner') return isCompanyFreeTier(c) && !isCompanyInternalAdmin(c);
+      if (companyStatusFilter === 'active') return c.subscriptionStatus === 'active' && !isCompanyFreeTier(c) && !isCompanyInternalAdmin(c);
+      if (companyStatusFilter === 'trial') return c.subscriptionStatus === 'trial' && !isCompanyFreeTier(c) && !isCompanyInternalAdmin(c);
+      if (companyStatusFilter === 'cancelled') return (c.subscriptionStatus === 'cancelled' || c.subscriptionStatus === 'expired') && !isCompanyInternalAdmin(c);
       return true;
     });
   }, [companies, searchTerm, companyStatusFilter]);
@@ -1279,8 +1362,8 @@ Svar KUN med gyldig rå JSON (uten markdown \`\`\`json klammer):
           <div className="text-xs font-bold text-neutral-600 uppercase tracking-wider mt-1">Månedlig SaaS-omsetning</div>
           <p className="text-[11px] text-neutral-500 mt-1">
             {payingActiveCompanies.length === 0 
-              ? `0 betalende abonnenter · ${partnerCompanies.length} partner/kollega (0 kr)` 
-              : `${payingActiveCompanies.length} betalende kunder · ${partnerCompanies.length} partner/kollega (0 kr)`}
+              ? `0 betalende abonnenter · ${partnerCompanies.length} partnere (0 kr) · ${internalCompanies.length} admin (0 kr)` 
+              : `${payingActiveCompanies.length} betalende kunder · ${partnerCompanies.length} partnere (0 kr) · ${internalCompanies.length} admin (0 kr)`}
           </p>
         </div>
 
@@ -1303,7 +1386,7 @@ Svar KUN med gyldig rå JSON (uten markdown \`\`\`json klammer):
           </div>
           <div className="text-xs font-bold text-neutral-600 uppercase tracking-wider mt-1">Bedriftskunder & Partnere</div>
           <p className="text-[11px] text-neutral-500 mt-1">
-            {payingActiveCompanies.length} betalende · {partnerCompanies.length} partnere/kollegaer · {trialCompanies.length} prøvetid
+            {payingActiveCompanies.length} betalende · {partnerCompanies.length} partnere · {internalCompanies.length} systemeiere · {trialCompanies.length} prøvetid
           </p>
         </div>
 
@@ -1378,6 +1461,7 @@ Svar KUN med gyldig rå JSON (uten markdown \`\`\`json klammer):
                   { id: 'active', label: 'Betalende Aktive', count: payingActiveCompanies.length },
                   { id: 'trial', label: 'Prøveperiode', count: trialCompanies.length },
                   { id: 'partner', label: '🤝 Partnere & Kollegaer (0 kr)', count: partnerCompanies.length },
+                  { id: 'internal', label: '👑 Admin & Interne', count: internalCompanies.length },
                   { id: 'cancelled', label: 'Utløpt/Oppsagt', count: expiredCompanies.length },
                 ].map(f => (
                   <button
@@ -1420,20 +1504,31 @@ Svar KUN med gyldig rå JSON (uten markdown \`\`\`json klammer):
                     </tr>
                   ) : (
                     filteredCompanies.map((company) => {
+                      const isInternal = isCompanyInternalAdmin(company);
                       const trialInfo = getTrialInfo(company);
-                      const tokenStats = getCompanyTokenStats(company.id, company.plan);
-                      const currentPlan = company.plan || 'solo';
+                      const tokenStats = getCompanyTokenStats(company.id, company.plan, company);
+                      const currentPlan = isInternal ? 'internal' : (company.plan || 'solo');
 
                       return (
                         <tr key={company.id} className="hover:bg-neutral-50/80 transition-colors group">
                           {/* Bedrift & Org.nr */}
                           <td className="px-6 sm:px-8 py-5">
                             <div className="flex items-center gap-3.5">
-                              <div className="w-11 h-11 bg-neutral-100 rounded-2xl flex items-center justify-center text-neutral-500 group-hover:bg-purple-100 group-hover:text-purple-700 transition-all shrink-0">
-                                <Building2 size={22} />
+                              <div className={cn(
+                                "w-11 h-11 rounded-2xl flex items-center justify-center transition-all shrink-0",
+                                isInternal ? "bg-amber-100 text-amber-700 font-bold" : "bg-neutral-100 text-neutral-500 group-hover:bg-purple-100 group-hover:text-purple-700"
+                              )}>
+                                {isInternal ? '👑' : <Building2 size={22} />}
                               </div>
                               <div>
-                                <div className="font-bold text-neutral-900 text-sm">{company.name}</div>
+                                <div className="font-bold text-neutral-900 text-sm flex items-center gap-2">
+                                  <span>{company.name}</span>
+                                  {isInternal && (
+                                    <span className="px-2 py-0.5 rounded text-[10px] font-black uppercase tracking-wider bg-amber-100 text-amber-900 border border-amber-300">
+                                      System Eier
+                                    </span>
+                                  )}
+                                </div>
                                 <div className="text-xs text-neutral-500 font-mono">Org: {company.orgNumber || 'Ikke oppgitt'}</div>
                                 <div className="text-[11px] text-neutral-400 mt-0.5">Opprettet: {formatDate(company.createdAt)}</div>
                               </div>
@@ -1443,10 +1538,11 @@ Svar KUN med gyldig rå JSON (uten markdown \`\`\`json klammer):
                           {/* Plan Dropdown */}
                           <td className="px-6 sm:px-8 py-5">
                             <select
-                              value={isCompanyFreeTier(company) ? 'partner' : currentPlan}
+                              value={isInternal ? 'internal' : isCompanyFreeTier(company) ? 'partner' : currentPlan}
                               onChange={(e) => handleUpdateCompanyPlan(company.id, e.target.value as any)}
                               className={cn(
                                 "text-xs font-bold rounded-xl px-3 py-1.5 outline-none border transition-all cursor-pointer",
+                                isInternal ? "bg-amber-100 text-amber-950 border-amber-300 focus:ring-2 focus:ring-amber-400" :
                                 (currentPlan === 'partner' || isCompanyFreeTier(company)) ? "bg-purple-100 text-purple-900 border-purple-300 focus:ring-2 focus:ring-purple-400" :
                                 currentPlan === 'entreprenor' ? "bg-purple-50 text-purple-800 border-purple-200 focus:ring-2 focus:ring-purple-400" :
                                 currentPlan === 'team' ? "bg-blue-50 text-blue-800 border-blue-200 focus:ring-2 focus:ring-blue-400" :
@@ -1454,6 +1550,7 @@ Svar KUN med gyldig rå JSON (uten markdown \`\`\`json klammer):
                               )}
                               title="Endre abonnementsplan for kunden"
                             >
+                              <option value="internal">👑 SuperAdmin / System Eier (0 kr · Ubegrenset)</option>
                               <option value="solo">Solo (1 490 kr/mnd · 2.5M tokens)</option>
                               <option value="team">Team (3 490 kr/mnd · 10M tokens)</option>
                               <option value="entreprenor">Totalentreprenør (6 900 kr/mnd · 30M tokens)</option>
@@ -1464,84 +1561,114 @@ Svar KUN med gyldig rå JSON (uten markdown \`\`\`json klammer):
                           {/* Status & Prøvetid */}
                           <td className="px-6 sm:px-8 py-5">
                             <div className="flex flex-col gap-1.5 items-start">
-                              <span className={cn(
-                                "px-3 py-1 rounded-full text-[10px] font-black uppercase tracking-widest border shadow-2xs inline-flex items-center gap-1.5",
-                                isCompanyFreeTier(company) ? "bg-purple-100 text-purple-900 border-purple-300" :
-                                company.subscriptionStatus === 'active' ? "bg-emerald-100 text-emerald-800 border-emerald-300" :
-                                company.subscriptionStatus === 'trial' ? "bg-amber-100 text-amber-900 border-amber-300" :
-                                "bg-rose-100 text-rose-800 border-rose-300"
-                              )}>
-                                {isCompanyFreeTier(company) && '🤝 Samarbeidspartner (0 kr)'}
-                                {!isCompanyFreeTier(company) && company.subscriptionStatus === 'active' && '🟢 Aktiv Betalende'}
-                                {!isCompanyFreeTier(company) && company.subscriptionStatus === 'trial' && (
-                                  <>
-                                    <span>🟠 Prøveperiode</span>
-                                    {trialInfo && (
-                                      <span className="font-bold opacity-80">({trialInfo.remainingDays} dager igjen)</span>
-                                    )}
-                                  </>
-                                )}
-                                {!isCompanyFreeTier(company) && company.subscriptionStatus !== 'active' && company.subscriptionStatus !== 'trial' && '🔴 Deaktivert / Utløpt'}
-                              </span>
+                              {isInternal ? (
+                                <span className="px-3 py-1 rounded-full text-[10px] font-black uppercase tracking-widest border shadow-2xs inline-flex items-center gap-1.5 bg-amber-100 text-amber-950 border-amber-300">
+                                  👑 SuperAdmin (System Eier)
+                                </span>
+                              ) : (
+                                <span className={cn(
+                                  "px-3 py-1 rounded-full text-[10px] font-black uppercase tracking-widest border shadow-2xs inline-flex items-center gap-1.5",
+                                  isCompanyFreeTier(company) ? "bg-purple-100 text-purple-900 border-purple-300" :
+                                  company.subscriptionStatus === 'active' ? "bg-emerald-100 text-emerald-800 border-emerald-300" :
+                                  company.subscriptionStatus === 'trial' ? "bg-amber-100 text-amber-900 border-amber-300" :
+                                  "bg-rose-100 text-rose-800 border-rose-300"
+                                )}>
+                                  {isCompanyFreeTier(company) && '🤝 Samarbeidspartner (0 kr)'}
+                                  {!isCompanyFreeTier(company) && company.subscriptionStatus === 'active' && '🟢 Aktiv Betalende'}
+                                  {!isCompanyFreeTier(company) && company.subscriptionStatus === 'trial' && (
+                                    <>
+                                      <span>🟠 Prøveperiode</span>
+                                      {trialInfo && (
+                                        <span className="font-bold opacity-80">({trialInfo.remainingDays} dager igjen)</span>
+                                      )}
+                                    </>
+                                  )}
+                                  {!isCompanyFreeTier(company) && company.subscriptionStatus !== 'active' && company.subscriptionStatus !== 'trial' && '🔴 Deaktivert / Utløpt'}
+                                </span>
+                              )}
 
                               {/* Quick Action Buttons for Status */}
-                              <div className="flex items-center gap-1.5 flex-wrap pt-0.5">
-                                {company.subscriptionStatus !== 'active' && (
-                                  <button
-                                    type="button"
-                                    onClick={() => handleSetSubscriptionStatus(company.id, 'active')}
-                                    className="px-2.5 py-1 bg-emerald-600 hover:bg-emerald-700 text-white rounded-lg text-[10px] font-black transition-all cursor-pointer shadow-xs"
-                                    title="Aktiver som betalende kunde"
-                                  >
-                                    Aktiver
-                                  </button>
-                                )}
-                                {company.subscriptionStatus !== 'trial' && (
-                                  <button
-                                    type="button"
-                                    onClick={() => handleSetSubscriptionStatus(company.id, 'trial')}
-                                    className="px-2 py-1 bg-amber-500 hover:bg-amber-600 text-white rounded-lg text-[10px] font-black transition-all cursor-pointer shadow-xs"
-                                    title="Start ny 14-dagers prøveperiode"
-                                  >
-                                    +14 dgr prøve
-                                  </button>
-                                )}
-                                {company.subscriptionStatus !== 'cancelled' && (
-                                  <button
-                                    type="button"
-                                    onClick={() => handleSetSubscriptionStatus(company.id, 'cancelled')}
-                                    className="px-2 py-1 bg-rose-50 hover:bg-rose-100 text-rose-700 border border-rose-200 rounded-lg text-[10px] font-bold transition-all cursor-pointer"
-                                    title="Deaktiver bedriften"
-                                  >
-                                    Deaktiver
-                                  </button>
-                                )}
-                              </div>
+                              {!isInternal ? (
+                                <div className="flex items-center gap-1.5 flex-wrap pt-0.5">
+                                  {company.subscriptionStatus !== 'active' && (
+                                    <button
+                                      type="button"
+                                      onClick={() => handleSetSubscriptionStatus(company.id, 'active')}
+                                      className="px-2.5 py-1 bg-emerald-600 hover:bg-emerald-700 text-white rounded-lg text-[10px] font-black transition-all cursor-pointer shadow-xs"
+                                      title="Aktiver som betalende kunde"
+                                    >
+                                      Aktiver
+                                    </button>
+                                  )}
+                                  {company.subscriptionStatus !== 'trial' && (
+                                    <button
+                                      type="button"
+                                      onClick={() => handleSetSubscriptionStatus(company.id, 'trial')}
+                                      className="px-2 py-1 bg-amber-500 hover:bg-amber-600 text-white rounded-lg text-[10px] font-black transition-all cursor-pointer shadow-xs"
+                                      title="Start ny 14-dagers prøveperiode"
+                                    >
+                                      +14 dgr prøve
+                                    </button>
+                                  )}
+                                  {company.subscriptionStatus !== 'cancelled' && (
+                                    <button
+                                      type="button"
+                                      onClick={() => handleSetSubscriptionStatus(company.id, 'cancelled')}
+                                      className="px-2 py-1 bg-rose-50 hover:bg-rose-100 text-rose-700 border border-rose-200 rounded-lg text-[10px] font-bold transition-all cursor-pointer"
+                                      title="Deaktiver bedriften"
+                                    >
+                                      Deaktiver
+                                    </button>
+                                  )}
+                                </div>
+                              ) : (
+                                <span className="text-[10px] text-amber-800 font-bold bg-amber-50/80 px-2 py-0.5 rounded border border-amber-200/80">
+                                  Beskyttet eierkonto (0 kr · Alltid aktiv)
+                                </span>
+                              )}
                             </div>
                           </td>
 
                           {/* AI Token Kvote */}
                           <td className="px-6 sm:px-8 py-5 min-w-[170px]">
-                            <div className="space-y-1">
-                              <div className="flex items-center justify-between text-[11px] font-medium text-neutral-600">
-                                <span>{tokenStats.used.toLocaleString('no-NO')} tokens</span>
-                                <span className="font-bold text-neutral-900">{tokenStats.percent}%</span>
+                            {isInternal ? (
+                              <div className="space-y-1">
+                                <div className="flex items-center justify-between text-[11px] font-medium text-neutral-600">
+                                  <span>{tokenStats.used.toLocaleString('no-NO')} tokens</span>
+                                  <span className="font-bold text-amber-800">Ubegrenset</span>
+                                </div>
+                                <div className="w-full h-2 bg-amber-100 rounded-full overflow-hidden">
+                                  <div 
+                                    className="h-full rounded-full transition-all bg-amber-500"
+                                    style={{ width: `100%` }}
+                                  />
+                                </div>
+                                <div className="text-[10px] text-amber-800 font-bold">
+                                  Kvote: Ubegrenset (500M / mnd)
+                                </div>
                               </div>
-                              <div className="w-full h-2 bg-neutral-100 rounded-full overflow-hidden">
-                                <div 
-                                  className={cn(
-                                    "h-full rounded-full transition-all",
-                                    tokenStats.percent >= 90 ? "bg-red-500" :
-                                    tokenStats.percent >= 75 ? "bg-amber-500" :
-                                    "bg-purple-600"
-                                  )}
-                                  style={{ width: `${Math.min(100, Math.max(4, tokenStats.percent))}%` }}
-                                />
+                            ) : (
+                              <div className="space-y-1">
+                                <div className="flex items-center justify-between text-[11px] font-medium text-neutral-600">
+                                  <span>{tokenStats.used.toLocaleString('no-NO')} tokens</span>
+                                  <span className="font-bold text-neutral-900">{tokenStats.percent}%</span>
+                                </div>
+                                <div className="w-full h-2 bg-neutral-100 rounded-full overflow-hidden">
+                                  <div 
+                                    className={cn(
+                                      "h-full rounded-full transition-all",
+                                      tokenStats.percent >= 90 ? "bg-red-500" :
+                                      tokenStats.percent >= 75 ? "bg-amber-500" :
+                                      "bg-purple-600"
+                                    )}
+                                    style={{ width: `${Math.min(100, Math.max(4, tokenStats.percent))}%` }}
+                                  />
+                                </div>
+                                <div className="text-[10px] text-neutral-400">
+                                  Kvote: {(tokenStats.limit / 1_000_000).toFixed(1)}M tokens/mnd
+                                </div>
                               </div>
-                              <div className="text-[10px] text-neutral-400">
-                                Kvote: {(tokenStats.limit / 1_000_000).toFixed(1)}M tokens/mnd
-                              </div>
-                            </div>
+                            )}
                           </td>
 
                           {/* Antall brukere */}
@@ -1589,13 +1716,15 @@ Svar KUN med gyldig rå JSON (uten markdown \`\`\`json klammer):
                               >
                                 <Settings size={16} />
                               </button>
-                              <button 
-                                onClick={() => handleDeleteCompany(company.id)}
-                                className="p-2 text-neutral-400 hover:text-rose-600 hover:bg-rose-50 rounded-xl transition-all cursor-pointer"
-                                title="Slett bedrift"
-                              >
-                                <Trash2 size={16} />
-                              </button>
+                              {!isInternal && (
+                                <button 
+                                  onClick={() => handleDeleteCompany(company.id)}
+                                  className="p-2 text-neutral-400 hover:text-rose-600 hover:bg-rose-50 rounded-xl transition-all cursor-pointer"
+                                  title="Slett bedrift"
+                                >
+                                  <Trash2 size={16} />
+                                </button>
+                              )}
                             </div>
                           </td>
                         </tr>
@@ -3796,10 +3925,16 @@ Rolle: ${createdData.user.role === 'admin' ? 'Administrator' : createdData.user.
   );
 }
 
-function EditCompanyInfoModal({ company, onClose, onSuccess }: { company: Company, onClose: () => void, onSuccess: (data: { name: string, orgNumber: string, plan: 'solo' | 'team' | 'entreprenor' | 'partner' }) => void }) {
+function EditCompanyInfoModal({ company, onClose, onSuccess }: { company: Company, onClose: () => void, onSuccess: (data: { name: string, orgNumber: string, plan: 'solo' | 'team' | 'entreprenor' | 'partner' | 'internal' }) => void }) {
+  const isInternal = isCompanyInternalAdmin(company);
   const [name, setName] = useState(company.name);
   const [orgNumber, setOrgNumber] = useState(company.orgNumber || '');
-  const [plan, setPlan] = useState<'solo' | 'team' | 'entreprenor' | 'partner'>(company.plan || 'team');
+  const initialPlan = (isInternal || company.plan === 'admin' || company.plan === 'internal')
+    ? 'internal'
+    : (company.plan === 'solo' || company.plan === 'team' || company.plan === 'entreprenor' || company.plan === 'partner')
+    ? company.plan
+    : 'team';
+  const [plan, setPlan] = useState<'solo' | 'team' | 'entreprenor' | 'partner' | 'internal'>(initialPlan);
   const [loading, setLoading] = useState(false);
 
   const handleSubmit = (e: React.FormEvent) => {
@@ -3850,6 +3985,7 @@ function EditCompanyInfoModal({ company, onClose, onSuccess }: { company: Compan
               onChange={(e) => setPlan(e.target.value as any)}
               className="w-full px-4 py-3 bg-neutral-50 border border-neutral-200 rounded-2xl focus:ring-2 focus:ring-blue-500 outline-none transition-all font-medium text-sm text-neutral-800"
             >
+              <option value="internal">👑 SuperAdmin / System Eier (0 kr · Ubegrenset)</option>
               <option value="solo">Solo (1 490 kr/mnd · 2.5M tokens)</option>
               <option value="team">Team (3 490 kr/mnd · 10M tokens)</option>
               <option value="entreprenor">Totalentreprenør (6 900 kr/mnd · 30M tokens)</option>
@@ -3883,21 +4019,23 @@ function CreateCompanyModal({ onClose, onSuccess }: { onClose: () => void, onSuc
   const [name, setName] = useState('');
   const [orgNumber, setOrgNumber] = useState('');
   const [status, setStatus] = useState<'trial' | 'active'>('trial');
-  const [plan, setPlan] = useState<'solo' | 'team' | 'entreprenor' | 'partner'>('team');
+  const [plan, setPlan] = useState<'solo' | 'team' | 'entreprenor' | 'partner' | 'internal'>('team');
   const [loading, setLoading] = useState(false);
 
   const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault();
     setLoading(true);
     try {
+      const isInternal = plan === 'internal';
       const isPartner = plan === 'partner';
       await addDoc(collection(db, 'companies'), {
         name,
         orgNumber,
-        subscriptionStatus: isPartner ? 'active' : status,
+        subscriptionStatus: (isPartner || isInternal) ? 'active' : status,
         plan,
         isPartner,
-        monthlyPrice: isPartner ? 0 : (plan === 'solo' ? 1490 : plan === 'entreprenor' ? 6900 : 3490),
+        isInternal,
+        monthlyPrice: (isPartner || isInternal) ? 0 : (plan === 'solo' ? 1490 : plan === 'entreprenor' ? 6900 : 3490),
         modules: ['projects', 'checklists', 'deviations', 'ai', 'economy', 'fdv', 'inventory', 'vehicle', 'time', 'apprentice', 'building_app'], // All default modules enabled
         createdAt: serverTimestamp(),
         updatedAt: serverTimestamp(),
@@ -3956,6 +4094,7 @@ function CreateCompanyModal({ onClose, onSuccess }: { onClose: () => void, onSuc
               onChange={(e) => setPlan(e.target.value as any)}
               className="w-full px-4 py-3 bg-neutral-50 border border-neutral-200 rounded-2xl focus:ring-2 focus:ring-electric-500 outline-none transition-all font-medium text-sm text-neutral-800"
             >
+              <option value="internal">👑 SuperAdmin / System Eier (Ubegrenset tokens - 0 kr/mnd)</option>
               <option value="solo">Solo (2.5M tokens/mnd - kr 1 490,-)</option>
               <option value="team">Team (10M tokens/mnd - kr 3 490,-)</option>
               <option value="entreprenor">Totalentreprenør (30M tokens/mnd - fra kr 6 900,-)</option>

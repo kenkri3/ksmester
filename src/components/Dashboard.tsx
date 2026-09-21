@@ -93,6 +93,7 @@ import VoiceSJAModal from './VoiceSJAModal';
 import ProjectContactsModal from './ProjectContactsModal';
 import InviteModal from './InviteModal';
 import MesterAIChat from './MesterAIChat';
+import MesterWorkstation from './MesterWorkstation';
 import AllModulesDrawer from './AllModulesDrawer';
 import QuickStartGuide from './QuickStartGuide';
 import ApprenticeModal from './ApprenticeModal';
@@ -135,6 +136,7 @@ export default function Dashboard({
 
   // Selected project for details view
   const [selectedProject, setSelectedProject] = useState<Project | null>(null);
+  const [isViewingProjectDetails, setIsViewingProjectDetails] = useState(false);
 
   // Modals state
   const [isCreateModalOpen, setIsCreateModalOpen] = useState(false);
@@ -1207,14 +1209,14 @@ export default function Dashboard({
         onClose={() => setIsInviteModalOpen(false)}
       />
 
-      {/* 🌟 MesterAI Control Center Workstation (Direct Full-Screen Backend & Mobile App) */}
+      {/* 🌟 MesterAI Control Center Workstation (Gemini / ChatGPT / Antigravity AI-First Layout) */}
       <AnimatePresence mode="wait">
-        {selectedProject ? (
+        {selectedProject && isViewingProjectDetails ? (
           <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 pt-6 pb-24">
             <ProjectDetails 
               key="project_details"
               project={selectedProject} 
-              onBack={() => setSelectedProject(null)} 
+              onBack={() => setIsViewingProjectDetails(false)} 
               onShare={() => onOpenPortal?.(selectedProject)}
               onStartChecklist={(projectId) => {
                 setChecklistProjectId(projectId);
@@ -1227,23 +1229,20 @@ export default function Dashboard({
             />
           </div>
         ) : (
-          <MesterAIChat 
-            isEmbedded={true}
-            isOpen={true}
-            initialTab={initialTab}
-            currentTab={activeTab === 'prosjekter' ? 'projects' : (activeTab === 'endringsordrer' ? 'admin' : (activeTab === 'agent' ? 'chat' : 'control_center'))}
-            selectedProject={selectedProject}
+          <MesterWorkstation
             projects={projects}
-            tasks={dashboardTasks}
+            selectedProject={selectedProject}
+            onSelectProject={(proj) => {
+              setSelectedProject(proj);
+            }}
             changeOrders={dashboardChangeOrders}
             offers={dashboardOffers}
             deviations={deviations}
             lukkesperreZones={lukkesperreZones}
             recentActivities={recentActivities}
+            tasks={dashboardTasks}
             initialPrompt={chatInitialPrompt}
             onPromptHandled={() => setChatInitialPrompt(undefined)}
-            onSelectProject={(proj) => setSelectedProject(proj)}
-            onOpenPortal={(proj) => onOpenPortal?.(proj)}
             onOpenCreateProject={() => setIsCreateModalOpen(true)}
             onOpenSmartSearch={() => setIsSmartSearchOpen(true)}
             onOpenAllModules={() => setIsAllModulesOpen(true)}
@@ -1253,7 +1252,6 @@ export default function Dashboard({
             onDeleteOffer={handleDeleteDashboardOffer}
             onOpenPreClose={handleOpenPreClose}
             onOpenOmnichannelModal={() => setIsOmnichannelModalOpen(true)}
-            onOpenInviteModal={() => setIsInviteModalOpen(true)}
             onOpenOfferModal={(data) => {
               setOfferInitialData(data);
               setIsOfferModalOpen(true);
@@ -1267,9 +1265,12 @@ export default function Dashboard({
             onOpenAIVision={() => {
               setIsAIVisionModalOpen(true);
             }}
-            onNavigate={(tab) => {
-              if (onTabChange) onTabChange(tab);
-            }}
+            onOpenDailyLogModal={() => setIsDailyLogModalOpen(true)}
+            onOpenTimeModal={() => setIsTimeModalOpen(true)}
+            onOpenArchiveModal={() => setIsArchiveModalOpen(true)}
+            onOpenContactsModal={() => setIsContactsModalOpen(true)}
+            onOpenSettings={() => window.dispatchEvent(new CustomEvent("navigate_view", { detail: { view: "settings" } }))}
+            onOpenSuperAdmin={() => window.dispatchEvent(new CustomEvent("navigate_view", { detail: { view: "super-admin" } }))}
           />
         )}
       </AnimatePresence>

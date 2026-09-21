@@ -63,6 +63,16 @@ export const PLAN_LIMITS: Record<string, { tokens: number; images: number; month
     tokens: 15_000_000, // 15 mill tokens/mnd (Samarbeidspartnere & Interne kollegaer)
     images: 1500,
     monthlyPrice: 0     // 0 kr/mnd -> Alltid ekskludert fra SaaS-omsetning
+  },
+  internal: {
+    tokens: 500_000_000, // 500 mill tokens/mnd (System Eier & SuperAdmin)
+    images: 50000,
+    monthlyPrice: 0      // 0 kr/mnd -> Systemeier
+  },
+  admin: {
+    tokens: 500_000_000,
+    images: 50000,
+    monthlyPrice: 0
   }
 };
 
@@ -203,8 +213,20 @@ export async function checkCompanyQuota(companyId?: string, planKey?: string) {
     }
   }
 
-  // Normaliser plan-nøkkel: f.eks. "entreprenør" -> "entreprenor"
-  if (resolvedPlanKey?.includes('entrepren')) {
+  // Normaliser plan-nøkkel: f.eks. "entreprenør" -> "entreprenor", "internal", "partner"
+  const isInternal = 
+    resolvedPlanKey === 'internal' || 
+    resolvedPlanKey === 'admin' || 
+    resolvedPlanKey?.includes('intern') ||
+    companyId.toLowerCase().includes('aichat norge') ||
+    companyId.toLowerCase().includes('vikingnet') ||
+    companyId.toLowerCase().includes('vikingmester');
+
+  if (isInternal) {
+    resolvedPlanKey = 'internal';
+  } else if (resolvedPlanKey?.includes('partner')) {
+    resolvedPlanKey = 'partner';
+  } else if (resolvedPlanKey?.includes('entrepren')) {
     resolvedPlanKey = 'entreprenor';
   } else if (resolvedPlanKey?.includes('team')) {
     resolvedPlanKey = 'team';

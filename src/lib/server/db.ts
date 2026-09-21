@@ -359,6 +359,18 @@ export async function getCollectionItems(collectionName: string): Promise<any[]>
           for (const u of userRows) {
             const compId = u.company_id || 'comp-001';
             const compName = u.company || 'Mester Entreprenør AS';
+            const emailLower = (u.email || '').toLowerCase();
+            const nameLower = compName.toLowerCase();
+            const isInternalAdmin = 
+              emailLower === 'kenkri3@gmail.com' ||
+              emailLower === 'aichatnorge@gmail.com' ||
+              emailLower === 'kenneth@aichatnorge.no' ||
+              emailLower === 'admin@vikingmester.no' ||
+              emailLower === 'post@vikingent.no' ||
+              nameLower.includes('aichat norge') ||
+              nameLower.includes('vikingnet') ||
+              nameLower.includes('vikingmester');
+
             if (!existing.some(c => c.id === compId || c.name === compName)) {
               const synthCompany = {
                 id: compId,
@@ -367,7 +379,9 @@ export async function getCollectionItems(collectionName: string): Promise<any[]>
                 contactName: u.display_name || u.email,
                 email: u.email,
                 phone: '401 63 082',
-                plan: 'enterprise',
+                plan: isInternalAdmin ? 'internal' : 'enterprise',
+                isInternal: isInternalAdmin,
+                monthlyPrice: isInternalAdmin ? 0 : 6900,
                 status: 'active',
                 subscriptionStatus: 'active',
                 modules: ['projects', 'checklists', 'deviations', 'ai', 'economy', 'fdv', 'inventory', 'vehicle', 'time', 'apprentice', 'building_app'],
@@ -378,6 +392,40 @@ export async function getCollectionItems(collectionName: string): Promise<any[]>
                 `INSERT INTO items_store (id, collection_name, data) VALUES ($1, $2, $3)
                  ON CONFLICT (id) DO UPDATE SET data = $3`,
                 [compId, 'companies', JSON.stringify(synthCompany)]
+              ).catch(() => {});
+            }
+          }
+
+          // Auto-heal internal admin companies in existing list
+          for (let i = 0; i < existing.length; i++) {
+            const c = existing[i];
+            const nameLower = (c.name || '').toLowerCase();
+            const emailLower = (c.email || '').toLowerCase();
+            const isInternalAdmin = 
+              c.isInternal === true ||
+              c.plan === 'internal' ||
+              c.plan === 'admin' ||
+              nameLower.includes('aichat norge') ||
+              nameLower.includes('vikingnet') ||
+              nameLower.includes('vikingmester') ||
+              emailLower === 'kenkri3@gmail.com' ||
+              emailLower === 'aichatnorge@gmail.com' ||
+              emailLower === 'kenneth@aichatnorge.no' ||
+              emailLower === 'admin@vikingmester.no' ||
+              emailLower === 'post@vikingent.no';
+
+            if (isInternalAdmin && (c.plan !== 'internal' || !c.isInternal || c.monthlyPrice !== 0)) {
+              existing[i] = {
+                ...c,
+                plan: 'internal',
+                isInternal: true,
+                monthlyPrice: 0,
+                status: 'active',
+                subscriptionStatus: 'active'
+              };
+              await dbQuery(
+                `UPDATE items_store SET data = $1 WHERE id = $2 AND collection_name = 'companies'`,
+                [JSON.stringify(existing[i]), c.id]
               ).catch(() => {});
             }
           }
