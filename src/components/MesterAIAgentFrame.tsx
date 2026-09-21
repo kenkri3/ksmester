@@ -22,6 +22,7 @@ import { cn } from '@/src/lib/utils';
 import { toast } from 'sonner';
 import ReactMarkdown from 'react-markdown';
 import remarkGfm from 'remark-gfm';
+import { formatAiMarkdown } from '../lib/formatAiMarkdown';
 
 interface Message {
   id: string;
@@ -629,10 +630,7 @@ export default function MesterAIAgentFrame({
   };
 
   const renderFormattedContent = (content: string) => {
-    // Normaliser punktlister: gjør om unike kulepunkter (• og ●) til markdown standard `- `
-    const normalizedContent = (content || '')
-      .replace(/^[ \t]*[•●][ \t]*/gm, '- ')
-      .replace(/\n[ \t]*[•●][ \t]*/g, '\n- ');
+    const formatted = formatAiMarkdown(content || '');
 
     return (
       <div className="text-slate-800 leading-relaxed font-sans text-[13.5px] sm:text-sm">
@@ -640,12 +638,12 @@ export default function MesterAIAgentFrame({
           remarkPlugins={[remarkGfm]}
           components={{
             p: ({ children }) => (
-              <p className="text-[13.5px] sm:text-sm text-slate-800 leading-relaxed my-1.5 first:mt-0 last:mb-0">
+              <p className="text-[13.5px] sm:text-sm text-slate-800 leading-relaxed my-2 first:mt-0 last:mb-0">
                 {children}
               </p>
             ),
             strong: ({ children }) => (
-              <strong className="font-extrabold text-navy-950">
+              <strong className="font-extrabold text-navy-950 bg-slate-100 px-1 py-0.5 rounded text-[13px]">
                 {children}
               </strong>
             ),
@@ -655,43 +653,44 @@ export default function MesterAIAgentFrame({
               </em>
             ),
             ul: ({ children }) => (
-              <ul className="space-y-1.5 my-2 pl-4 list-disc text-[13.5px] sm:text-sm text-slate-800">
+              <ul className="space-y-2 my-2.5 pl-2 list-none text-[13.5px] sm:text-sm text-slate-800">
                 {children}
               </ul>
             ),
             ol: ({ children }) => (
-              <ol className="list-decimal space-y-1.5 my-2 pl-5 text-[13.5px] sm:text-sm text-slate-800 font-medium">
+              <ol className="list-decimal space-y-2 my-2.5 pl-5 text-[13.5px] sm:text-sm text-slate-800 font-medium">
                 {children}
               </ol>
             ),
             li: ({ children }) => (
-              <li className="text-[13.5px] sm:text-sm text-slate-800 leading-relaxed">
-                {children}
+              <li className="text-[13.5px] sm:text-sm text-slate-800 leading-relaxed flex items-start gap-2.5">
+                <span className="w-1.5 h-1.5 rounded-full bg-electric-600 mt-2 shrink-0 shadow-xs" />
+                <span className="flex-1 min-w-0">{children}</span>
               </li>
             ),
             h1: ({ children }) => (
-              <h3 className="text-sm sm:text-base font-black text-navy-950 mt-2.5 mb-1 pb-1 border-b border-slate-100">
+              <h3 className="text-sm sm:text-base font-black text-navy-950 mt-4 mb-2 pb-1 border-b border-slate-200">
                 {children}
               </h3>
             ),
             h2: ({ children }) => (
-              <h4 className="text-[13.5px] sm:text-sm font-black text-electric-800 mt-2 mb-1">
+              <h4 className="text-[13.5px] sm:text-sm font-black text-electric-800 mt-3.5 mb-1.5">
                 {children}
               </h4>
             ),
             h3: ({ children }) => (
-              <h5 className="text-[13px] sm:text-sm font-bold text-navy-950 mt-1.5 mb-0.5">
+              <h5 className="text-[12.5px] sm:text-[13px] font-bold text-teal-800 bg-teal-50 border border-teal-200/60 px-2.5 py-1 rounded-lg w-fit mt-3 mb-1.5 flex items-center gap-1">
                 {children}
               </h5>
             ),
             blockquote: ({ children }) => (
-              <blockquote className="border-l-4 border-electric-500 bg-electric-50/70 pl-3 py-1.5 my-1.5 rounded-r-xl text-xs sm:text-[13px] text-navy-950 font-medium">
+              <blockquote className="border-l-4 border-electric-500 bg-gradient-to-r from-electric-50/80 to-slate-50 pl-3.5 py-2.5 my-3 rounded-r-xl text-xs sm:text-[13px] text-navy-950 font-medium shadow-xs">
                 {children}
               </blockquote>
             )
           }}
         >
-          {normalizedContent}
+          {formatted}
         </ReactMarkdown>
       </div>
     );

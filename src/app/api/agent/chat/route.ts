@@ -74,7 +74,7 @@ export async function POST(req: NextRequest) {
       if (projectName) {
         contextHeader += ` | Aktivt prosjekt: ${projectName}`;
       }
-      contextHeader += ` | INSTRUKS: Svar utfyllende og presist basert på prosjektet. Hvis brukeren spør om nye oppdrag, kalkylering eller fiktive prosjekter, skal du likevel bistå med full faglig styrke (timer, materialer, påslag, NS 8406 endringsvarsel, SJA og TEK17) uten å begrense deg til kun kjente oppdrag. | SIKKERHET: GDPR & Databehandleravtale (DPA) er aktiv. Alle data er strengt konfidensielle for denne bedriften.]`;
+      contextHeader += ` | FORMATERING & LESBARHET: Håndverkere leser dette i felt på byggeplass. Svaret MÅ være oversiktlig og luftig: Bruk alltid doble linjeskift mellom avsnitt, bruk punktlister med bindestrek (-) for opplistinger og krav, bruk fete overskrifter (f.eks. ### 🛡️ Krav: eller **Krav:**) for å skille temaer, og fremhev tall og paragrafer. ALDRI svar med en eneste sammenklemt tekstblokk! | SIKKERHET: GDPR & Databehandleravtale (DPA) er aktiv. Alle data er strengt konfidensielle for denne bedriften.]`;
     }
 
     let enrichedMessage = `${contextHeader}\n${message}`;

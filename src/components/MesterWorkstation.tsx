@@ -63,6 +63,8 @@ import { NotificationBell } from './NotificationBell';
 import InChatWorkspace, { InChatFormType } from './InChatWorkspace';
 import DocumentationArchive from './DocumentationArchive';
 import WorkstationSettingsModal from './WorkstationSettingsModal';
+import ChangeOrderDetailModal from './ChangeOrderDetailModal';
+import { formatAiMarkdown } from '../lib/formatAiMarkdown';
 import { db, collection, addDoc } from '../services/firebase';
 
 interface MesterWorkstationProps {
@@ -176,6 +178,7 @@ export default function MesterWorkstation({
   const [isListeningMic, setIsListeningMic] = useState(false);
   const [isSpeaking, setIsSpeaking] = useState(false);
   const [copiedId, setCopiedId] = useState<string | null>(null);
+  const [selectedChangeOrderForDetail, setSelectedChangeOrderForDetail] = useState<any | null>(null);
 
   // ✦ Gemini/ChatGPT Live Tankeprosess (Thought process steps & timer)
   const [liveThinkingSteps, setLiveThinkingSteps] = useState<Array<{ title: string; status: 'completed' | 'active' | 'pending'; detail?: string }>>([]);
@@ -2171,22 +2174,44 @@ export default function MesterWorkstation({
                   ) : (
                     <div className="grid gap-3">
                       {changeOrders.map((co) => (
-                        <div key={co.id} className="p-4 rounded-2xl bg-slate-950 border border-slate-800 flex flex-col sm:flex-row sm:items-center justify-between gap-3">
-                          <div className="min-w-0">
-                            <div className="flex items-center gap-2">
-                              <span className="font-bold text-sm text-white">{co.title}</span>
+                        <div 
+                          key={co.id} 
+                          onClick={() => setSelectedChangeOrderForDetail(co)}
+                          className="p-4 rounded-2xl bg-slate-950 border border-slate-800 hover:border-purple-500/50 hover:bg-slate-900/90 transition-all flex flex-col sm:flex-row sm:items-center justify-between gap-3 cursor-pointer group shadow-sm"
+                        >
+                          <div className="min-w-0 flex-1">
+                            <div className="flex items-center gap-2 flex-wrap">
+                              <span className="font-bold text-sm text-white group-hover:text-purple-300 transition-colors">{co.title}</span>
                               <span className="text-xs text-purple-400 font-mono">#{co.number}</span>
+                              <span className={cn(
+                                "text-[10px] font-black uppercase tracking-wider px-2 py-0.5 rounded-full",
+                                co.status === 'Godkjent av kunde'
+                                  ? "bg-emerald-500/20 text-emerald-300 border border-emerald-500/30"
+                                  : "bg-amber-500/20 text-amber-300 border border-amber-500/30"
+                              )}>
+                                {co.status === 'Godkjent av kunde' ? '✓ Godkjent' : '⏳ Venter på godkjenning'}
+                              </span>
                             </div>
                             <p className="text-xs text-slate-400 mt-1">
                               {co.project} • {co.legal} • Kr {Number(co.amount).toLocaleString('no-NO')}
+                              {co.days > 0 ? ` • +${co.days} dgr` : ''}
                             </p>
                           </div>
-                          <div className="flex items-center gap-2 shrink-0">
+                          <div className="flex items-center gap-2 shrink-0" onClick={(e) => e.stopPropagation()}>
+                            <button
+                              type="button"
+                              onClick={() => setSelectedChangeOrderForDetail(co)}
+                              className="px-2.5 py-1.5 rounded-xl bg-slate-800 hover:bg-slate-700 text-slate-300 hover:text-white text-xs font-bold transition-all flex items-center gap-1.5 cursor-pointer"
+                              title="Forhåndsvis eller gjør endringer"
+                            >
+                              <Eye size={13} />
+                              <span className="hidden sm:inline">Forhåndsvis / Rediger</span>
+                            </button>
                             {co.status !== 'Godkjent av kunde' && onApproveChangeOrder && (
                               <button
                                 type="button"
                                 onClick={() => onApproveChangeOrder(co.id)}
-                                className="px-3 py-1.5 rounded-xl bg-emerald-600/20 hover:bg-emerald-600/30 text-emerald-300 border border-emerald-500/30 text-xs font-bold cursor-pointer"
+                                className="px-3 py-1.5 rounded-xl bg-emerald-600/20 hover:bg-emerald-600/30 text-emerald-300 border border-emerald-500/30 text-xs font-bold cursor-pointer transition-all"
                               >
                                 Godkjenn
                               </button>
@@ -2639,8 +2664,53 @@ export default function MesterWorkstation({
                           <div className="whitespace-pre-wrap font-medium">{msg.content}</div>
                         ) : (
                           <div className="prose prose-invert prose-sm max-w-none text-slate-200">
-                            <ReactMarkdown remarkPlugins={[remarkGfm]}>
-                              {msg.content}
+                            <ReactMarkdown 
+                              remarkPlugins={[remarkGfm]}
+                              components={{
+                                h1: ({ node, ...props }) => (
+                                  <h3 className="text-base font-black text-white mt-5 mb-2.5 flex items-center gap-2 border-b border-slate-800 pb-2" {...props} />
+                                ),
+                                h2: ({ node, ...props }) => (
+                                  <h4 className="text-sm font-black text-purple-300 mt-4 mb-2 flex items-center gap-2 border-b border-purple-500/20 pb-1.5" {...props} />
+                                ),
+                                h3: ({ node, ...props }) => (
+                                  <h5 className="text-xs sm:text-sm font-bold text-teal-300 mt-4 mb-2 flex items-center gap-1.5 uppercase tracking-wider bg-slate-950/60 w-fit px-2.5 py-1 rounded-lg border border-teal-500/20 shadow-xs" {...props} />
+                                ),
+                                p: ({ node, ...props }) => (
+                                  <p className="text-xs sm:text-sm text-slate-200 leading-relaxed mb-3 last:mb-0" {...props} />
+                                ),
+                                ul: ({ node, ...props }) => (
+                                  <ul className="my-2.5 space-y-2 pl-1 list-none" {...props} />
+                                ),
+                                ol: ({ node, ...props }) => (
+                                  <ol className="my-2.5 space-y-2 pl-4 list-decimal text-slate-200" {...props} />
+                                ),
+                                li: ({ node, ...props }) => (
+                                  <li className="text-xs sm:text-sm text-slate-200 leading-relaxed flex items-start gap-2.5">
+                                    <span className="w-1.5 h-1.5 rounded-full bg-purple-400 mt-2 shrink-0 shadow-xs" />
+                                    <span className="flex-1 min-w-0">{props.children}</span>
+                                  </li>
+                                ),
+                                strong: ({ node, ...props }) => (
+                                  <strong className="font-extrabold text-white bg-slate-800/80 px-1.5 py-0.5 rounded text-[12px] sm:text-[13px] border border-slate-700/60" {...props} />
+                                ),
+                                blockquote: ({ node, ...props }) => (
+                                  <blockquote className="my-3.5 p-3.5 bg-gradient-to-r from-purple-950/40 to-slate-900 border-l-4 border-purple-500 rounded-r-2xl text-xs sm:text-sm text-purple-200 shadow-sm" {...props} />
+                                ),
+                                table: ({ node, ...props }) => (
+                                  <div className="my-3 rounded-2xl border border-slate-800 overflow-hidden text-xs shadow-md">
+                                    <table className="w-full text-left divide-y divide-slate-800" {...props} />
+                                  </div>
+                                ),
+                                th: ({ node, ...props }) => (
+                                  <th className="p-3 bg-slate-950 text-slate-400 font-extrabold text-[11px] uppercase tracking-wider" {...props} />
+                                ),
+                                td: ({ node, ...props }) => (
+                                  <td className="p-3 text-slate-300 border-b border-slate-800/50" {...props} />
+                                )
+                              }}
+                            >
+                              {formatAiMarkdown(msg.content)}
                             </ReactMarkdown>
                           </div>
                         )}
@@ -2857,6 +2927,19 @@ export default function MesterWorkstation({
         onClose={() => setIsSettingsModalOpen(false)}
         user={user}
         isSuperAdmin={isSuperAdmin}
+      />
+
+      {/* 📄 Forhåndsvisning & Redigering av Endringsordrer (NS 8406) */}
+      <ChangeOrderDetailModal
+        isOpen={Boolean(selectedChangeOrderForDetail)}
+        onClose={() => setSelectedChangeOrderForDetail(null)}
+        changeOrder={selectedChangeOrderForDetail}
+        project={selectedProject}
+        onApprove={onApproveChangeOrder}
+        onDelete={onDeleteChangeOrder}
+        onSave={(updated) => {
+          setSelectedChangeOrderForDetail(updated);
+        }}
       />
     </div>
   );

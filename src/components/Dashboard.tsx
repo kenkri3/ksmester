@@ -176,13 +176,25 @@ export default function Dashboard({
           return {
             id: d.id,
             number: data.changeNumber || 1,
-            title: data.title,
+            title: data.title || 'Endringsordre',
             project: data.projectName || data.projectCode || 'Prosjekt',
+            projectId: data.projectId,
             amount: data.amountExVat || data.totalAmount || 0,
+            amountExVat: data.amountExVat || data.totalAmount || 0,
+            totalAmount: data.totalAmount || Math.round((data.amountExVat || 0) * 1.25),
+            vatAmount: data.vatAmount || Math.round((data.amountExVat || 0) * 0.25),
             days: data.impactDays || 0,
+            impactDays: data.impactDays || 0,
             status: data.status === 'approved' ? 'Godkjent av kunde' : data.status === 'rejected' ? 'Avvist' : 'Venter på bas',
             legal: data.legalHjemmel || 'NS 8406 pkt. 19.2',
-            shareUrl: data.shareUrl
+            legalHjemmel: data.legalHjemmel || 'NS 8406 pkt. 19.2',
+            description: data.description || '',
+            cause: data.cause || 'kundetillegg',
+            clientName: data.clientName || '',
+            clientEmail: data.clientEmail || '',
+            createdAt: data.createdAt || new Date().toISOString(),
+            shareUrl: data.shareUrl,
+            raw: data
           };
         });
         setDashboardChangeOrders(liveOrders);
