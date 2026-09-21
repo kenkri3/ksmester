@@ -1,6 +1,6 @@
 import { NextRequest, NextResponse } from 'next/server';
 import { getCollectionItems, saveCollectionItem } from '@/src/lib/server/db';
-import { getUserFromRequest, isUserAdmin } from '@/src/lib/server/auth';
+import { getUserFromRequest, isUserAdmin, isUserSuperAdmin } from '@/src/lib/server/auth';
 import { recalculateProjectProgress } from '@/src/lib/server/progressEngine';
 
 const ALLOWED_COLLECTIONS = [
@@ -82,20 +82,29 @@ export async function GET(
       return NextResponse.json({ error: 'Uautorisert tilgang. Vennligst logg inn.' }, { status: 401 });
     }
 
-    // 2. Authenticated requests: Enforce strict multi-tenant isolation
+    // 2. Authenticated requests: Enforce strict multi-tenant isolation & GDPR compliance
     let items = await getCollectionItems(targetCollection);
 
-    const isAdmin = isUserAdmin(user);
-    if (!isAdmin) {
-      items = items.filter((item: any) => 
-        (item.companyId && (item.companyId === user.companyId || item.companyId === 'system')) ||
-        (item.company && (item.company === user.companyId || (user.company && item.company === user.company) || item.company === 'system')) ||
-        (item.userId && item.userId === user.id) ||
-        (item.authorId && item.authorId === user.id) ||
-        (targetCollection === 'invitations' && item.inviteeEmail && item.inviteeEmail.toLowerCase() === user.email?.toLowerCase()) ||
-        (targetCollection === 'hms_documents' && (!item.companyId || item.companyId === 'system')) ||
-        (targetCollection === 'checklists' && (!item.companyId || item.companyId === 'system'))
-      );
+    const isSuper = isUserSuperAdmin(user);
+    const impersonatedHeader = req.headers.get('x-impersonated-company-id');
+    const effectiveCompanyId = impersonatedHeader || user.companyId;
+
+    // SuperAdmin ONLY gets global unfiltered overview when in SuperAdmin panel (no impersonation header)
+    const isGlobalSuperAdminView = isSuper && !impersonatedHeader;
+
+    if (!isGlobalSuperAdminView && effectiveCompanyId) {
+      items = items.filter((item: any) => {
+        // Shared system documents (e.g. general HMS handbooks, standard industry checklists)
+        if (targetCollection === 'hms_documents' && (!item.companyId || item.companyId === 'system')) return true;
+        if (targetCollection === 'checklists' && (!item.companyId || item.companyId === 'system')) return true;
+
+        const matchCompId = item.companyId && (item.companyId === effectiveCompanyId);
+        const matchComp = item.company && (item.company === effectiveCompanyId || (user.company && item.company === user.company));
+        const matchUser = (item.userId && item.userId === user.id) || (item.authorId && item.authorId === user.id);
+        const matchInvitee = targetCollection === 'invitations' && item.inviteeEmail && item.inviteeEmail.toLowerCase() === user.email?.toLowerCase();
+
+        return matchCompId || matchComp || (targetCollection === 'notifications' && matchUser) || matchInvitee;
+      });
     }
 
     // 3. Strip sensitive internal fields from users collection

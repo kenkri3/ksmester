@@ -53,8 +53,11 @@ import {
   Key,
   Eye,
   EyeOff,
-  Bot
+  Bot,
+  Lock,
+  ShieldCheck
 } from 'lucide-react';
+import { PLANS, PLAN_MODULES, PlanId } from '../config/plans';
 import { generateAiContent } from '../services/aiClient';
 import { db, collection, onSnapshot, query, where, doc, updateDoc, deleteDoc, addDoc, serverTimestamp, handleFirestoreError, OperationType, orderBy } from '../services/firebase';
 import { useAuth } from '../hooks/useAuth';
@@ -67,7 +70,7 @@ export interface Company {
   name: string;
   orgNumber?: string;
   subscriptionStatus: 'trial' | 'active' | 'expired' | 'cancelled';
-  plan?: 'solo' | 'team' | 'entreprenor' | 'partner' | 'internal' | 'admin';
+  plan?: 'solo' | 'team' | 'entreprenor' | 'enterprise' | 'partner' | 'internal' | 'admin';
   isPartner?: boolean;
   isInternal?: boolean;
   monthlyPrice?: number;
@@ -101,9 +104,9 @@ export const isCompanyInternalAdmin = (c?: Partial<Company> | any): boolean => {
 };
 
 export default function SuperAdmin({ onBackToDashboard }: { onBackToDashboard?: () => void } = {}) {
-  const { user, startImpersonation, stopImpersonation, impersonatedCompanyId, isSuperAdmin: authIsSuperAdmin } = useAuth();
+  const { user, startImpersonation, stopImpersonation, impersonatedCompanyId, isSuperAdmin: authIsSuperAdmin, isPlatformOwner, setSimulatedPlan } = useAuth();
   const [selectedProject, setSelectedProject] = useState<any | null>(null);
-  const isSuperAdmin = authIsSuperAdmin || user?.role === 'admin' || user?.role === 'superadmin' || user?.email === 'kenkri3@gmail.com' || user?.email?.toLowerCase() === 'admin@vikingmester.no' || user?.email === 'aichatnorge@gmail.com' || user?.email === 'kenneth@aichatnorge.no' || user?.email === 'post@vikingent.no';
+  const isSuperAdmin = authIsSuperAdmin || isPlatformOwner || user?.role === 'admin' || user?.role === 'superadmin' || user?.email === 'kenkri3@gmail.com' || user?.email?.toLowerCase() === 'admin@vikingmester.no' || user?.email === 'aichatnorge@gmail.com' || user?.email === 'kenneth@aichatnorge.no' || user?.email === 'post@vikingent.no';
 
   const formatDate = (date: any) => {
     if (!date) return '-';
@@ -128,7 +131,7 @@ export default function SuperAdmin({ onBackToDashboard }: { onBackToDashboard?: 
   const [templates, setTemplates] = useState<any[]>([]);
   const [loading, setLoading] = useState(true);
   const [searchTerm, setSearchTerm] = useState('');
-  const [activeTab, setActiveTab] = useState<'companies' | 'leads' | 'agent' | 'offers' | 'templates' | 'support'>('companies');
+  const [activeTab, setActiveTab] = useState<'companies' | 'packages' | 'leads' | 'agent' | 'offers' | 'templates' | 'support'>('companies');
   const [supportSubTab, setSupportSubTab] = useState<'projects' | 'deviations' | 'logs'>('projects');
   const [companyStatusFilter, setCompanyStatusFilter] = useState<'all' | 'active' | 'trial' | 'partner' | 'internal' | 'cancelled'>('all');
   const [tokenCosts, setTokenCosts] = useState<any[]>([]);
@@ -1208,7 +1211,7 @@ Svar KUN med gyldig rå JSON (uten markdown \`\`\`json klammer):
   }
 
   return (
-    <div className="max-w-7xl mx-auto px-3.5 sm:px-6 lg:px-8 py-4 sm:py-10 pb-32 md:pb-16 overflow-x-hidden">
+    <div className="w-full max-w-[1700px] mx-auto px-3 sm:px-6 py-4 sm:py-8 pb-32 md:pb-16">
       {/* Impersonation Notice & Navigation bar */}
       <div className="flex items-center justify-between gap-3 mb-4">
         {onBackToDashboard ? (
@@ -1325,6 +1328,7 @@ Svar KUN med gyldig rå JSON (uten markdown \`\`\`json klammer):
       <div className="flex flex-wrap items-center gap-2 sm:gap-2.5 mb-6 sm:mb-8">
         {[
           { id: 'companies', label: 'Bedrifter & Kunder', icon: <Building2 size={16} />, count: companies.length },
+          { id: 'packages', label: 'Pakkeløsninger & Moduler', icon: <Package size={16} /> },
           { id: 'leads', label: 'Henvendelser & Salgs-leads', icon: <MessageSquare size={16} />, count: newLeads.length, countColor: 'bg-red-500 text-white' },
           { id: 'agent', label: 'AI Marginkontroll & Forbruk', icon: <BrainCircuit size={16} />, live: true },
           { id: 'offers', label: 'Sendte SaaS-tilbud', icon: <Send size={16} />, count: offers.length },
@@ -1499,24 +1503,24 @@ Svar KUN med gyldig rå JSON (uten markdown \`\`\`json klammer):
             </div>
           </div>
 
-          {/* Companies Table */}
-          <div className="bg-white rounded-[2.5rem] border border-neutral-200 shadow-sm overflow-hidden">
-            <div className="overflow-x-auto">
-              <table className="w-full text-left">
+          {/* Companies Table (Kompakt responsiv uten horisontal scroll) */}
+          <div className="bg-white rounded-3xl border border-neutral-200 shadow-sm overflow-hidden w-full">
+            <div className="w-full">
+              <table className="w-full text-left table-auto">
                 <thead>
-                  <tr className="bg-neutral-50 border-b border-neutral-200">
-                    <th className="px-6 sm:px-8 py-4 text-xs font-black uppercase tracking-widest text-neutral-400">Kunde / Bedrift</th>
-                    <th className="px-6 sm:px-8 py-4 text-xs font-black uppercase tracking-widest text-neutral-400">Abonnementsplan</th>
-                    <th className="px-6 sm:px-8 py-4 text-xs font-black uppercase tracking-widest text-neutral-400">Status & Prøvetid</th>
-                    <th className="px-6 sm:px-8 py-4 text-xs font-black uppercase tracking-widest text-neutral-400">AI Kvote & Forbruk</th>
-                    <th className="px-6 sm:px-8 py-4 text-xs font-black uppercase tracking-widest text-neutral-400">Brukere</th>
-                    <th className="px-6 sm:px-8 py-4 text-xs font-black uppercase tracking-widest text-neutral-400">Handlinger</th>
+                  <tr className="bg-neutral-50 border-b border-neutral-200 text-neutral-500">
+                    <th className="px-3 sm:px-4 py-3 text-[11px] font-black uppercase tracking-wider">Kunde / Bedrift</th>
+                    <th className="px-3 sm:px-4 py-3 text-[11px] font-black uppercase tracking-wider">Abonnementsplan</th>
+                    <th className="px-3 sm:px-4 py-3 text-[11px] font-black uppercase tracking-wider">Status & Prøvetid</th>
+                    <th className="px-3 sm:px-4 py-3 text-[11px] font-black uppercase tracking-wider">AI Kvote</th>
+                    <th className="px-3 sm:px-4 py-3 text-[11px] font-black uppercase tracking-wider text-center">Brukere</th>
+                    <th className="px-3 sm:px-4 py-3 text-[11px] font-black uppercase tracking-wider">Handlinger</th>
                   </tr>
                 </thead>
                 <tbody className="divide-y divide-neutral-100">
                   {filteredCompanies.length === 0 ? (
                     <tr>
-                      <td colSpan={6} className="px-8 py-12 text-center text-neutral-400 text-sm">
+                      <td colSpan={6} className="px-6 py-12 text-center text-neutral-400 text-xs">
                         Ingen bedrifter funnet. Klikk på "+ Ny bedriftskunde" øverst for å opprette den første kunden.
                       </td>
                     </tr>
@@ -1525,41 +1529,40 @@ Svar KUN med gyldig rå JSON (uten markdown \`\`\`json klammer):
                       const isInternal = isCompanyInternalAdmin(company);
                       const trialInfo = getTrialInfo(company);
                       const tokenStats = getCompanyTokenStats(company.id, company.plan, company);
-                      const currentPlan = isInternal ? 'internal' : (company.plan || 'solo');
+                      const currentPlan = isInternal ? 'internal' : (company.plan === 'enterprise' || company.plan === 'entreprenor') ? 'entreprenor' : (company.plan || 'solo');
 
                       return (
-                        <tr key={company.id} className="hover:bg-neutral-50/80 transition-colors group">
+                        <tr key={company.id} className="hover:bg-neutral-50/70 transition-colors group">
                           {/* Bedrift & Org.nr */}
-                          <td className="px-6 sm:px-8 py-5">
-                            <div className="flex items-center gap-3.5">
+                          <td className="px-3 sm:px-4 py-3">
+                            <div className="flex items-center gap-2.5 min-w-0">
                               <div className={cn(
-                                "w-11 h-11 rounded-2xl flex items-center justify-center transition-all shrink-0",
+                                "w-9 h-9 rounded-xl flex items-center justify-center transition-all shrink-0 text-xs",
                                 isInternal ? "bg-amber-100 text-amber-700 font-bold" : "bg-neutral-100 text-neutral-500 group-hover:bg-purple-100 group-hover:text-purple-700"
                               )}>
-                                {isInternal ? '👑' : <Building2 size={22} />}
+                                {isInternal ? '👑' : <Building2 size={18} />}
                               </div>
-                              <div>
-                                <div className="font-bold text-neutral-900 text-sm flex items-center gap-2">
-                                  <span>{company.name}</span>
+                              <div className="min-w-0">
+                                <div className="font-bold text-neutral-900 text-xs flex items-center gap-1.5 truncate">
+                                  <span className="truncate">{company.name}</span>
                                   {isInternal && (
-                                    <span className="px-2 py-0.5 rounded text-[10px] font-black uppercase tracking-wider bg-amber-100 text-amber-900 border border-amber-300">
-                                      System Eier
+                                    <span className="px-1.5 py-0.5 rounded text-[9px] font-black uppercase tracking-wider bg-amber-100 text-amber-900 border border-amber-300 shrink-0">
+                                      Eier
                                     </span>
                                   )}
                                 </div>
-                                <div className="text-xs text-neutral-500 font-mono">Org: {company.orgNumber || 'Ikke oppgitt'}</div>
-                                <div className="text-[11px] text-neutral-400 mt-0.5">Opprettet: {formatDate(company.createdAt)}</div>
+                                <div className="text-[11px] text-neutral-500 font-mono truncate">Org: {company.orgNumber || 'Ikke oppgitt'}</div>
                               </div>
                             </div>
                           </td>
 
                           {/* Plan Dropdown */}
-                          <td className="px-6 sm:px-8 py-5">
+                          <td className="px-3 sm:px-4 py-3">
                             <select
-                              value={isInternal ? 'internal' : isCompanyFreeTier(company) ? 'partner' : currentPlan}
+                              value={isInternal ? 'internal' : (company.plan === 'partner' || isCompanyFreeTier(company)) ? 'partner' : currentPlan}
                               onChange={(e) => handleUpdateCompanyPlan(company.id, e.target.value as any)}
                               className={cn(
-                                "text-xs font-bold rounded-xl px-3 py-1.5 outline-none border transition-all cursor-pointer",
+                                "text-xs font-bold rounded-xl px-2.5 py-1.5 outline-none border transition-all cursor-pointer max-w-[175px] truncate",
                                 isInternal ? "bg-amber-100 text-amber-950 border-amber-300 focus:ring-2 focus:ring-amber-400" :
                                 (currentPlan === 'partner' || isCompanyFreeTier(company)) ? "bg-purple-100 text-purple-900 border-purple-300 focus:ring-2 focus:ring-purple-400" :
                                 currentPlan === 'entreprenor' ? "bg-purple-50 text-purple-800 border-purple-200 focus:ring-2 focus:ring-purple-400" :
@@ -1568,110 +1571,58 @@ Svar KUN med gyldig rå JSON (uten markdown \`\`\`json klammer):
                               )}
                               title="Endre abonnementsplan for kunden"
                             >
-                              <option value="internal">👑 SuperAdmin / System Eier (0 kr · Ubegrenset)</option>
-                              <option value="solo">Solo (1 490 kr/mnd · 2.5M tokens)</option>
-                              <option value="team">Team (3 490 kr/mnd · 10M tokens)</option>
-                              <option value="entreprenor">Totalentreprenør (6 900 kr/mnd · 30M tokens)</option>
-                              <option value="partner">🤝 Samarbeidspartner / Kollega (0 kr · 15M tokens)</option>
+                              <option value="internal">👑 SuperAdmin (0 kr)</option>
+                              <option value="solo">Solo (1 490 kr/mnd)</option>
+                              <option value="team">Team (3 490 kr/mnd)</option>
+                              <option value="entreprenor">Totalentreprenør (6 900 kr)</option>
+                              <option value="partner">🤝 Partner / Kollega (0 kr)</option>
                             </select>
                           </td>
 
                           {/* Status & Prøvetid */}
-                          <td className="px-6 sm:px-8 py-5">
-                            <div className="flex flex-col gap-1.5 items-start">
+                          <td className="px-3 sm:px-4 py-3">
+                            <div className="flex flex-col gap-1 items-start">
                               {isInternal ? (
-                                <span className="px-3 py-1 rounded-full text-[10px] font-black uppercase tracking-widest border shadow-2xs inline-flex items-center gap-1.5 bg-amber-100 text-amber-950 border-amber-300">
-                                  👑 SuperAdmin (System Eier)
+                                <span className="px-2.5 py-0.5 rounded-full text-[10px] font-black uppercase tracking-wider border bg-amber-100 text-amber-950 border-amber-300">
+                                  👑 Eier (Alltid aktiv)
                                 </span>
                               ) : (
                                 <span className={cn(
-                                  "px-3 py-1 rounded-full text-[10px] font-black uppercase tracking-widest border shadow-2xs inline-flex items-center gap-1.5",
+                                  "px-2.5 py-0.5 rounded-full text-[10px] font-black uppercase tracking-wider border inline-flex items-center gap-1",
                                   isCompanyFreeTier(company) ? "bg-purple-100 text-purple-900 border-purple-300" :
                                   company.subscriptionStatus === 'active' ? "bg-emerald-100 text-emerald-800 border-emerald-300" :
                                   company.subscriptionStatus === 'trial' ? "bg-amber-100 text-amber-900 border-amber-300" :
                                   "bg-rose-100 text-rose-800 border-rose-300"
                                 )}>
-                                  {isCompanyFreeTier(company) && '🤝 Samarbeidspartner (0 kr)'}
-                                  {!isCompanyFreeTier(company) && company.subscriptionStatus === 'active' && '🟢 Aktiv Betalende'}
+                                  {isCompanyFreeTier(company) && '🤝 Partner (0 kr)'}
+                                  {!isCompanyFreeTier(company) && company.subscriptionStatus === 'active' && '🟢 Aktiv'}
                                   {!isCompanyFreeTier(company) && company.subscriptionStatus === 'trial' && (
                                     <>
-                                      <span>🟠 Prøveperiode</span>
+                                      <span>Prøvetid</span>
                                       {trialInfo && (
-                                        <span className="font-bold opacity-80">({trialInfo.remainingDays} dager igjen)</span>
+                                        <span className="font-bold opacity-80">({trialInfo.remainingDays}d)</span>
                                       )}
                                     </>
                                   )}
-                                  {!isCompanyFreeTier(company) && company.subscriptionStatus !== 'active' && company.subscriptionStatus !== 'trial' && '🔴 Deaktivert / Utløpt'}
-                                </span>
-                              )}
-
-                              {/* Quick Action Buttons for Status */}
-                              {!isInternal ? (
-                                <div className="flex items-center gap-1.5 flex-wrap pt-0.5">
-                                  {company.subscriptionStatus !== 'active' && (
-                                    <button
-                                      type="button"
-                                      onClick={() => handleSetSubscriptionStatus(company.id, 'active')}
-                                      className="px-2.5 py-1 bg-emerald-600 hover:bg-emerald-700 text-white rounded-lg text-[10px] font-black transition-all cursor-pointer shadow-xs"
-                                      title="Aktiver som betalende kunde"
-                                    >
-                                      Aktiver
-                                    </button>
-                                  )}
-                                  {company.subscriptionStatus !== 'trial' && (
-                                    <button
-                                      type="button"
-                                      onClick={() => handleSetSubscriptionStatus(company.id, 'trial')}
-                                      className="px-2 py-1 bg-amber-500 hover:bg-amber-600 text-white rounded-lg text-[10px] font-black transition-all cursor-pointer shadow-xs"
-                                      title="Start ny 14-dagers prøveperiode"
-                                    >
-                                      +14 dgr prøve
-                                    </button>
-                                  )}
-                                  {company.subscriptionStatus !== 'cancelled' && (
-                                    <button
-                                      type="button"
-                                      onClick={() => handleSetSubscriptionStatus(company.id, 'cancelled')}
-                                      className="px-2 py-1 bg-rose-50 hover:bg-rose-100 text-rose-700 border border-rose-200 rounded-lg text-[10px] font-bold transition-all cursor-pointer"
-                                      title="Deaktiver bedriften"
-                                    >
-                                      Deaktiver
-                                    </button>
-                                  )}
-                                </div>
-                              ) : (
-                                <span className="text-[10px] text-amber-800 font-bold bg-amber-50/80 px-2 py-0.5 rounded border border-amber-200/80">
-                                  Beskyttet eierkonto (0 kr · Alltid aktiv)
+                                  {!isCompanyFreeTier(company) && company.subscriptionStatus !== 'active' && company.subscriptionStatus !== 'trial' && '🔴 Utløpt'}
                                 </span>
                               )}
                             </div>
                           </td>
 
                           {/* AI Token Kvote */}
-                          <td className="px-6 sm:px-8 py-5 min-w-[170px]">
+                          <td className="px-3 sm:px-4 py-3 min-w-[130px] max-w-[160px]">
                             {isInternal ? (
-                              <div className="space-y-1">
-                                <div className="flex items-center justify-between text-[11px] font-medium text-neutral-600">
-                                  <span>{tokenStats.used.toLocaleString('no-NO')} tokens</span>
-                                  <span className="font-bold text-amber-800">Ubegrenset</span>
-                                </div>
-                                <div className="w-full h-2 bg-amber-100 rounded-full overflow-hidden">
-                                  <div 
-                                    className="h-full rounded-full transition-all bg-amber-500"
-                                    style={{ width: `100%` }}
-                                  />
-                                </div>
-                                <div className="text-[10px] text-amber-800 font-bold">
-                                  Kvote: Ubegrenset (500M / mnd)
-                                </div>
+                              <div className="text-[11px] font-bold text-amber-800">
+                                Ubegrenset AI
                               </div>
                             ) : (
-                              <div className="space-y-1">
-                                <div className="flex items-center justify-between text-[11px] font-medium text-neutral-600">
-                                  <span>{tokenStats.used.toLocaleString('no-NO')} tokens</span>
+                              <div className="space-y-0.5">
+                                <div className="flex items-center justify-between text-[10px] font-medium text-neutral-600">
+                                  <span>{(tokenStats.used / 1_000_000).toFixed(1)}M</span>
                                   <span className="font-bold text-neutral-900">{tokenStats.percent}%</span>
                                 </div>
-                                <div className="w-full h-2 bg-neutral-100 rounded-full overflow-hidden">
+                                <div className="w-full h-1.5 bg-neutral-100 rounded-full overflow-hidden">
                                   <div 
                                     className={cn(
                                       "h-full rounded-full transition-all",
@@ -1682,23 +1633,20 @@ Svar KUN med gyldig rå JSON (uten markdown \`\`\`json klammer):
                                     style={{ width: `${Math.min(100, Math.max(4, tokenStats.percent))}%` }}
                                   />
                                 </div>
-                                <div className="text-[10px] text-neutral-400">
-                                  Kvote: {(tokenStats.limit / 1_000_000).toFixed(1)}M tokens/mnd
-                                </div>
                               </div>
                             )}
                           </td>
 
                           {/* Antall brukere */}
-                          <td className="px-6 sm:px-8 py-5 font-bold text-neutral-700 text-sm">
-                            <span className="px-2.5 py-1 bg-neutral-100 rounded-lg text-xs font-black text-neutral-700">
+                          <td className="px-3 sm:px-4 py-3 text-center">
+                            <span className="px-2 py-0.5 bg-neutral-100 rounded-lg text-xs font-black text-neutral-700 font-mono">
                               {company.userCount || 0}
                             </span>
                           </td>
 
                           {/* Handlinger */}
-                          <td className="px-6 sm:px-8 py-5">
-                            <div className="flex items-center gap-1.5 flex-wrap">
+                          <td className="px-3 sm:px-4 py-3 whitespace-nowrap">
+                            <div className="flex items-center gap-1">
                               {/* Impersonate Button (Superkraft for support) */}
                               <button 
                                 onClick={() => {
@@ -1706,41 +1654,41 @@ Svar KUN med gyldig rå JSON (uten markdown \`\`\`json klammer):
                                   toast.success(`Logget inn som ${company.name || company.id}. Viser nå kundens system.`);
                                   window.dispatchEvent(new CustomEvent('navigate_view', { detail: { view: 'dashboard' } }));
                                 }}
-                                className="flex items-center gap-1.5 px-3 py-1.5 bg-blue-50 hover:bg-blue-100 text-blue-700 rounded-xl text-xs font-bold border border-blue-200 transition-all cursor-pointer shadow-xs"
+                                className="flex items-center gap-1 px-2.5 py-1.5 bg-blue-50 hover:bg-blue-100 text-blue-700 rounded-xl text-xs font-bold border border-blue-200 transition-all cursor-pointer shadow-xs"
                                 title={`Logg inn som ${company.name || company.id} og se deres system`}
                               >
-                                <ExternalLink size={13} />
-                                <span>Logg inn som</span>
+                                <ExternalLink size={12} />
+                                <span>Logg inn</span>
                               </button>
 
                               <button 
                                 onClick={() => { setSelectedCompany(company); setIsEditInfoModalOpen(true); }}
-                                className="p-2 text-neutral-400 hover:text-blue-600 hover:bg-blue-50 rounded-xl transition-all cursor-pointer"
+                                className="p-1.5 text-neutral-400 hover:text-blue-600 hover:bg-blue-50 rounded-xl transition-all cursor-pointer"
                                 title="Rediger firmanavn og org.nr"
                               >
-                                <Building2 size={16} />
+                                <Building2 size={15} />
                               </button>
                               <button 
                                 onClick={() => { setSelectedCompany(company); setIsUserModalOpen(true); }}
-                                className="p-2 text-neutral-400 hover:text-orange-600 hover:bg-orange-50 rounded-xl transition-all cursor-pointer"
+                                className="p-1.5 text-neutral-400 hover:text-orange-600 hover:bg-orange-50 rounded-xl transition-all cursor-pointer"
                                 title="Administrer brukere"
                               >
-                                <Users size={16} />
+                                <Users size={15} />
                               </button>
                               <button 
                                 onClick={() => { setSelectedCompany(company); setIsEditModalOpen(true); }}
-                                className="p-2 text-neutral-400 hover:text-purple-600 hover:bg-purple-50 rounded-xl transition-all cursor-pointer"
+                                className="p-1.5 text-neutral-400 hover:text-purple-600 hover:bg-purple-50 rounded-xl transition-all cursor-pointer"
                                 title="Skreddersy moduler"
                               >
-                                <Settings size={16} />
+                                <Settings size={15} />
                               </button>
                               {!isInternal && (
                                 <button 
                                   onClick={() => handleDeleteCompany(company.id)}
-                                  className="p-2 text-neutral-400 hover:text-rose-600 hover:bg-rose-50 rounded-xl transition-all cursor-pointer"
+                                  className="p-1.5 text-neutral-400 hover:text-rose-600 hover:bg-rose-50 rounded-xl transition-all cursor-pointer"
                                   title="Slett bedrift"
                                 >
-                                  <Trash2 size={16} />
+                                  <Trash2 size={15} />
                                 </button>
                               )}
                             </div>
@@ -1751,6 +1699,316 @@ Svar KUN med gyldig rå JSON (uten markdown \`\`\`json klammer):
                   )}
                 </tbody>
               </table>
+            </div>
+          </div>
+        </div>
+      )}
+
+      {/* FANE: PAKKELØSNINGER & MODULER (Inspeksjon, Modul-matrise og Simulering) */}
+      {activeTab === 'packages' && (
+        <div className="space-y-8 mb-12">
+          {/* Header Banner */}
+          <div className="bg-gradient-to-r from-neutral-900 via-neutral-800 to-neutral-900 rounded-2xl sm:rounded-3xl p-6 sm:p-8 text-white border border-neutral-700 shadow-xl relative overflow-hidden">
+            <div className="absolute top-0 right-0 w-80 h-80 bg-amber-500/10 rounded-full blur-3xl pointer-events-none" />
+            <div className="relative z-10 flex flex-col md:flex-row md:items-center justify-between gap-6">
+              <div>
+                <div className="flex items-center gap-2 mb-2">
+                  <span className="px-2.5 py-0.5 rounded-full bg-amber-500/20 text-amber-300 border border-amber-500/30 text-xs font-bold uppercase tracking-wider">
+                    SaaS Tilgangskontroll & Moduler
+                  </span>
+                  <span className="px-2 py-0.5 rounded-md bg-white/10 text-neutral-300 text-xs font-mono">
+                    Multi-Tenant Sikkerhet
+                  </span>
+                </div>
+                <h2 className="text-xl sm:text-2xl font-black text-white tracking-tight">
+                  Pakkeløsninger & Modultilganger
+                </h2>
+                <p className="text-neutral-400 text-xs sm:text-sm max-w-2xl mt-1 leading-relaxed">
+                  Oversikt over hva hver abonnementspakke inkluderer av moduler, brukerbegrensninger og AI-ressurser. 
+                  Bruk <strong className="text-amber-300">«Forhåndsvis pakke»</strong> for å teste systemet nøyaktig slik en betalende kunde opplever det – med garantert urokkelig retur til SuperAdmin.
+                </p>
+              </div>
+
+              <div className="flex flex-wrap items-center gap-3 shrink-0">
+                <div className="bg-neutral-800/80 border border-neutral-700 rounded-xl p-3 text-center min-w-[110px]">
+                  <span className="text-[10px] uppercase font-bold text-neutral-400 block">Totalt Kunder</span>
+                  <span className="text-lg font-black text-white">{companies.length}</span>
+                </div>
+                <div className="bg-neutral-800/80 border border-neutral-700 rounded-xl p-3 text-center min-w-[110px]">
+                  <span className="text-[10px] uppercase font-bold text-neutral-400 block">Aktive Pakker</span>
+                  <span className="text-lg font-black text-amber-400">4 nivåer</span>
+                </div>
+              </div>
+            </div>
+          </div>
+
+          {/* Pakkekort (Grid) */}
+          <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4 gap-4 sm:gap-6">
+            {(['solo', 'team', 'entreprenor', 'enterprise'] as PlanId[]).map((planKey) => {
+              const plan = PLANS[planKey];
+              if (!plan) return null;
+              const customerCount = companies.filter(c => (c.plan || 'solo') === planKey).length;
+              const isPopular = planKey === 'team';
+
+              return (
+                <div 
+                  key={planKey}
+                  className={cn(
+                    "rounded-2xl p-5 sm:p-6 flex flex-col justify-between transition-all relative border bg-white shadow-sm hover:shadow-md",
+                    isPopular 
+                      ? "border-blue-500/80 ring-2 ring-blue-500/20 shadow-blue-500/5" 
+                      : "border-neutral-200"
+                  )}
+                >
+                  {isPopular && (
+                    <div className="absolute -top-3 left-1/2 -translate-x-1/2 px-3 py-0.5 bg-blue-600 text-white text-[11px] font-black uppercase tracking-wider rounded-full shadow-sm">
+                      Mest populær
+                    </div>
+                  )}
+
+                  <div>
+                    {/* Pakkeheader */}
+                    <div className="flex items-start justify-between gap-2 mb-3">
+                      <div>
+                        <span className={cn("text-[11px] font-black uppercase tracking-wider block", plan.color)}>
+                          {plan.badge}
+                        </span>
+                        <h3 className="text-lg font-black text-neutral-900 tracking-tight mt-0.5">
+                          {plan.name}
+                        </h3>
+                      </div>
+                      <div className="w-8 h-8 rounded-xl bg-neutral-100 flex items-center justify-center text-neutral-700 shrink-0">
+                        <Package size={16} />
+                      </div>
+                    </div>
+
+                    <p className="text-xs text-neutral-600 line-clamp-2 min-h-[32px] mb-4">
+                      {plan.tagline}
+                    </p>
+
+                    {/* Pris */}
+                    <div className="p-3 bg-neutral-50 rounded-xl border border-neutral-100 mb-4">
+                      <div className="text-2xl font-black text-neutral-900">
+                        {plan.monthlyPriceLabel}
+                      </div>
+                      <div className="text-[11px] text-neutral-500 font-medium">
+                        faktureres månedlig eks. mva
+                      </div>
+                    </div>
+
+                    {/* Nøkkeltall / Begrensninger */}
+                    <div className="space-y-2 mb-4 pb-4 border-b border-neutral-100 text-xs">
+                      <div className="flex items-center justify-between text-neutral-700">
+                        <span className="flex items-center gap-1.5 text-neutral-500 font-medium">
+                          <Users size={13} className="text-neutral-400" /> Brukere:
+                        </span>
+                        <span className="font-bold text-neutral-900">{plan.userLimitLabel}</span>
+                      </div>
+                      <div className="flex items-center justify-between text-neutral-700">
+                        <span className="flex items-center gap-1.5 text-neutral-500 font-medium">
+                          <Layers size={13} className="text-neutral-400" /> Prosjekter:
+                        </span>
+                        <span className="font-bold text-neutral-900">{plan.projectLimitLabel}</span>
+                      </div>
+                      <div className="flex items-center justify-between text-neutral-700">
+                        <span className="flex items-center gap-1.5 text-neutral-500 font-medium">
+                          <Zap size={13} className="text-neutral-400" /> AI Forbruk:
+                        </span>
+                        <span className="font-bold text-neutral-900">{plan.tokenQuotaLabel}</span>
+                      </div>
+                      <div className="flex items-center justify-between text-neutral-700">
+                        <span className="flex items-center gap-1.5 text-neutral-500 font-medium">
+                          <Building2 size={13} className="text-neutral-400" /> Kunder på pakken:
+                        </span>
+                        <span className="font-black text-blue-600 bg-blue-50 px-2 py-0.5 rounded-full text-[11px]">
+                          {customerCount} bedrifter
+                        </span>
+                      </div>
+                    </div>
+
+                    {/* Høydepunkter */}
+                    <div className="space-y-1.5 mb-6">
+                      <span className="text-[11px] font-bold text-neutral-400 uppercase tracking-wider block mb-2">
+                        Inkludert i pakken:
+                      </span>
+                      {plan.features.slice(0, 5).map((f, i) => (
+                        <div key={i} className="flex items-start gap-2 text-xs text-neutral-700">
+                          <Check size={14} className="text-emerald-500 shrink-0 mt-0.5" />
+                          <span className="leading-tight">{f}</span>
+                        </div>
+                      ))}
+                      {plan.features.length > 5 && (
+                        <span className="text-[11px] text-neutral-400 italic block pl-5">
+                          + {plan.features.length - 5} flere funksjoner...
+                        </span>
+                      )}
+                    </div>
+                  </div>
+
+                  {/* Handlinger */}
+                  <div className="space-y-2 pt-3 border-t border-neutral-100">
+                    <button
+                      type="button"
+                      onClick={() => {
+                        setSimulatedPlan(planKey);
+                        toast.success(`Forhåndsviser nå ${plan.name}. Du opplever nå systemet akkurat slik kunden ser det.`);
+                        if (onBackToDashboard) onBackToDashboard();
+                      }}
+                      className={cn(
+                        "w-full flex items-center justify-center gap-2 px-3 py-2.5 rounded-xl font-bold text-xs transition-all cursor-pointer shadow-sm",
+                        isPopular
+                          ? "bg-blue-600 hover:bg-blue-700 text-white"
+                          : "bg-neutral-900 hover:bg-neutral-800 text-white"
+                      )}
+                    >
+                      <Eye size={14} />
+                      <span>Forhåndsvis pakke</span>
+                    </button>
+
+                    <button
+                      type="button"
+                      onClick={() => {
+                        setCompanyStatusFilter('all');
+                        setSearchTerm(planKey);
+                        setActiveTab('companies');
+                      }}
+                      className="w-full py-1.5 text-center text-[11px] font-semibold text-neutral-500 hover:text-neutral-800 transition-colors cursor-pointer"
+                    >
+                      Vis {customerCount} {customerCount === 1 ? 'bedrift' : 'bedrifter'} i listen →
+                    </button>
+                  </div>
+                </div>
+              );
+            })}
+          </div>
+
+          {/* Sammenligningsmatrise: Alle moduler vs Pakker */}
+          <div className="bg-white rounded-2xl sm:rounded-3xl border border-neutral-200 shadow-sm overflow-hidden">
+            <div className="p-5 sm:p-6 border-b border-neutral-200 flex flex-col sm:flex-row sm:items-center justify-between gap-4">
+              <div>
+                <h3 className="text-base sm:text-lg font-black text-neutral-900 tracking-tight flex items-center gap-2">
+                  <ShieldCheck size={18} className="text-emerald-600" />
+                  <span>Modul- & Tilgangsmatrise</span>
+                </h3>
+                <p className="text-xs text-neutral-500 mt-0.5">
+                  Fullstendig oversikt over hvilke moduler og funksjoner som automatisk låses opp eller sperres per pakkenivå.
+                </p>
+              </div>
+              <div className="flex items-center gap-3 text-xs">
+                <span className="flex items-center gap-1.5 text-emerald-700 font-bold bg-emerald-50 px-2.5 py-1 rounded-lg">
+                  <Check size={14} className="text-emerald-600" /> Inkludert
+                </span>
+                <span className="flex items-center gap-1.5 text-neutral-500 font-bold bg-neutral-100 px-2.5 py-1 rounded-lg">
+                  <Lock size={13} className="text-neutral-400" /> Krever oppgradering
+                </span>
+              </div>
+            </div>
+
+            <div className="overflow-x-auto">
+              <table className="w-full text-left border-collapse text-xs">
+                <thead>
+                  <tr className="bg-neutral-50 border-b border-neutral-200 text-neutral-500 font-bold uppercase tracking-wider text-[10px]">
+                    <th className="py-3.5 px-4 sm:px-6">Modul / Funksjon</th>
+                    <th className="py-3.5 px-3">Kategori</th>
+                    <th className="py-3.5 px-4 text-center">Solo (1 bruker)</th>
+                    <th className="py-3.5 px-4 text-center bg-blue-50/50 text-blue-900">Team (5 brukere)</th>
+                    <th className="py-3.5 px-4 text-center">Totalentreprenør (25+)</th>
+                    <th className="py-3.5 px-4 text-center">Enterprise</th>
+                  </tr>
+                </thead>
+                <tbody className="divide-y divide-neutral-100">
+                  {PLAN_MODULES.map((m) => {
+                    const soloHas = PLANS.solo.allowedModuleIds.includes(m.id) || PLANS.solo.allowedModuleIds.includes('all_modules');
+                    const teamHas = PLANS.team.allowedModuleIds.includes(m.id) || PLANS.team.allowedModuleIds.includes('all_modules');
+                    const entreprenorHas = PLANS.entreprenor.allowedModuleIds.includes(m.id) || PLANS.entreprenor.allowedModuleIds.includes('all_modules');
+                    const enterpriseHas = true;
+
+                    return (
+                      <tr key={m.id} className="hover:bg-neutral-50/80 transition-colors">
+                        <td className="py-3.5 px-4 sm:px-6">
+                          <div className="font-bold text-neutral-900">{m.label}</div>
+                          <div className="text-[11px] text-neutral-500 font-normal leading-tight mt-0.5">{m.desc}</div>
+                        </td>
+                        <td className="py-3.5 px-3">
+                          <span className="px-2 py-0.5 rounded-md bg-neutral-100 text-neutral-600 font-semibold text-[10px]">
+                            {m.category}
+                          </span>
+                        </td>
+                        <td className="py-3.5 px-4 text-center">
+                          {soloHas ? (
+                            <span className="inline-flex items-center justify-center w-6 h-6 rounded-full bg-emerald-100 text-emerald-700">
+                              <Check size={14} strokeWidth={3} />
+                            </span>
+                          ) : (
+                            <span className="inline-flex items-center justify-center w-6 h-6 rounded-full bg-neutral-100 text-neutral-400" title="Ikke inkludert i Solo">
+                              <Lock size={12} />
+                            </span>
+                          )}
+                        </td>
+                        <td className="py-3.5 px-4 text-center bg-blue-50/20">
+                          {teamHas ? (
+                            <span className="inline-flex items-center justify-center w-6 h-6 rounded-full bg-emerald-100 text-emerald-700">
+                              <Check size={14} strokeWidth={3} />
+                            </span>
+                          ) : (
+                            <span className="inline-flex items-center justify-center w-6 h-6 rounded-full bg-neutral-100 text-neutral-400" title="Ikke inkludert i Team">
+                              <Lock size={12} />
+                            </span>
+                          )}
+                        </td>
+                        <td className="py-3.5 px-4 text-center">
+                          {entreprenorHas ? (
+                            <span className="inline-flex items-center justify-center w-6 h-6 rounded-full bg-emerald-100 text-emerald-700">
+                              <Check size={14} strokeWidth={3} />
+                            </span>
+                          ) : (
+                            <span className="inline-flex items-center justify-center w-6 h-6 rounded-full bg-neutral-100 text-neutral-400">
+                              <Lock size={12} />
+                            </span>
+                          )}
+                        </td>
+                        <td className="py-3.5 px-4 text-center">
+                          <span className="inline-flex items-center justify-center w-6 h-6 rounded-full bg-emerald-100 text-emerald-700">
+                            <Check size={14} strokeWidth={3} />
+                          </span>
+                        </td>
+                      </tr>
+                    );
+                  })}
+                </tbody>
+              </table>
+            </div>
+
+            {/* Sikkerhets- og Arkitekturforklaring for Kenneth */}
+            <div className="p-4 sm:p-6 bg-gradient-to-r from-amber-50 to-orange-50 border-t border-amber-200/80 flex flex-col md:flex-row items-start md:items-center justify-between gap-4">
+              <div className="flex items-start gap-3">
+                <div className="w-8 h-8 rounded-xl bg-amber-500 text-neutral-950 flex items-center justify-center shrink-0 font-black shadow-sm mt-0.5">
+                  🛡️
+                </div>
+                <div>
+                  <h4 className="text-xs sm:text-sm font-black text-amber-950">
+                    Urokkelig SuperAdmin-sikkerhet (Plattformeier Master Key)
+                  </h4>
+                  <p className="text-xs text-amber-900/80 max-w-3xl mt-0.5 leading-relaxed">
+                    Når du tester en pakke eller impersonerer en kunde, simuleres kundens tilganger i sanntid. Men din underliggende 
+                    identitet som plattformeier (<code className="font-mono bg-white/70 px-1 py-0.5 rounded text-[11px]">isPlatformOwner</code>) 
+                    kan <strong>aldri overskrives</strong>. Den faste svarte/gull simulator-baren øverst på skjermen gjør at du alltid med ett klikk returnerer trygt til SuperAdmin.
+                  </p>
+                </div>
+              </div>
+              <div className="shrink-0">
+                <button
+                  type="button"
+                  onClick={() => {
+                    setSimulatedPlan('solo');
+                    toast.success('Tester nå Solo-pakken...');
+                    if (onBackToDashboard) onBackToDashboard();
+                  }}
+                  className="px-3.5 py-2 bg-amber-600 hover:bg-amber-700 text-white font-bold text-xs rounded-xl shadow-sm transition-all cursor-pointer"
+                >
+                  Test Solo-pakke nå →
+                </button>
+              </div>
             </div>
           </div>
         </div>

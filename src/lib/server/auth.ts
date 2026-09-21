@@ -40,11 +40,12 @@ export function getUserFromRequest(req: NextRequest): TokenPayload | null {
 }
 
 /**
- * 🛡️ Sjekker om brukeren har overordnet administrator-/superadmin-tilgang
+ * 🛡️ Sjekker om brukeren er plattform-eier / SuperAdmin (kun autoriserte superbrukere).
+ * Ordinære kunde-administratorer (rolle: 'admin') har kun tilgang til egen bedrift.
  */
-export function isUserAdmin(user: TokenPayload | null): boolean {
+export function isUserSuperAdmin(user: TokenPayload | null): boolean {
   if (!user) return false;
-  if (user.role === 'admin' || user.role === 'superadmin') return true;
+  if (user.role === 'superadmin') return true;
   const email = (user.email || '').toLowerCase();
   const defaultAdmin = (process.env.ADMIN_EMAIL || 'kenkri3@gmail.com').toLowerCase();
   const adminList = [
@@ -60,6 +61,10 @@ export function isUserAdmin(user: TokenPayload | null): boolean {
     'fredrik@aichatnorge.no'
   ];
   return adminList.includes(email);
+}
+
+export function isUserAdmin(user: TokenPayload | null): boolean {
+  return isUserSuperAdmin(user);
 }
 
 /**

@@ -5,6 +5,18 @@ import { api } from '../services/api';
 import { setCurrentAuthUser } from '../services/dbAdapter';
 import { chatSessionService } from '../services/chatSessionService';
 
+import { isModuleAllowedForPlan, PlanId } from '../config/plans';
+
+export const SUPERADMIN_EMAILS = [
+  'kenkri3@gmail.com',
+  'aichatnorge@gmail.com',
+  'kenneth@aichatnorge.no',
+  'admin@vikingmester.no',
+  'post@vikingent.no',
+  'fredrik.r.ellingsen@gmail.com',
+  'fredrik@aichatnorge.no'
+];
+
 export interface User {
   uid: string;
   id: string;
@@ -29,6 +41,10 @@ interface AuthContextType {
   logout: () => Promise<void>;
   isAuthReady: boolean;
   isSuperAdmin: boolean;
+  isPlatformOwner: boolean; // 👑 Urokkelig systemeier-status for Kenneth (mister ALDRI tilgang)
+  simulatedPlan: string | null;
+  setSimulatedPlan: (plan: string | null) => void;
+  hasModuleAccess: (moduleId: string) => boolean;
   role: string | null;
   trade: string | null;
   company: string | null;
@@ -56,12 +72,14 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
 
   const [impersonatedCompanyId, setImpersonatedCompanyId] = useState<string | null>(null);
   const [impersonatedRole, setImpersonatedRole] = useState<string | null>(null);
+  const [simulatedPlan, setSimulatedPlanState] = useState<string | null>(null);
 
   useEffect(() => {
     if (typeof window !== 'undefined') {
       try {
         setImpersonatedCompanyId(localStorage.getItem('impersonatedCompanyId'));
         setImpersonatedRole(localStorage.getItem('impersonatedRole'));
+        setSimulatedPlanState(localStorage.getItem('mester_simulated_plan'));
       } catch (e) {
         // Ignore localStorage access issues
       }
@@ -74,10 +92,17 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
         const res = await api.getMe();
         if (res && res.user) {
           const u = res.user;
-          const isSuper = u.role === 'superadmin' || u.role === 'admin' || 
-            ['kenkri3@gmail.com', 'aichatnorge@gmail.com', 'kenneth@aichatnorge.no', 'fredrik.r.ellingsen@gmail.com', 'fredrik@aichatnorge.no'].includes((u.email || '').toLowerCase()) ||
-            (u.displayName || '').toLowerCase().includes('ken');
-          const computedRole = isSuper ? 'superadmin' : (u.role || 'worker');
+          const SUPERADMIN_EMAILS = [
+            'kenkri3@gmail.com',
+            'aichatnorge@gmail.com',
+            'kenneth@aichatnorge.no',
+            'admin@vikingmester.no',
+            'post@vikingent.no',
+            'fredrik.r.ellingsen@gmail.com',
+            'fredrik@aichatnorge.no'
+          ];
+          const isSuper = u.role === 'superadmin' || SUPERADMIN_EMAILS.includes((u.email || '').toLowerCase());
+          const computedRole = isSuper ? 'superadmin' : (u.role || 'leader');
 
           const userObj: User = {
             uid: u.id || u.uid,
@@ -86,15 +111,15 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
             displayName: u.displayName || u.email.split('@')[0],
             role: computedRole,
             trade: u.trade || 'Byggmester',
-            company: u.company || 'Mester Entreprenør AS',
-            companyId: u.companyId || 'comp-001',
+            company: u.company || (isSuper ? 'AIChat Norge AS / Vikingnet' : 'Min Bedrift'),
+            companyId: u.companyId || (isSuper ? 'comp-001' : `comp-${u.id || 'user'}`),
             subscriptionStatus: u.subscriptionStatus || 'active'
           };
           setUser(userObj);
           setCurrentAuthUser(userObj);
           setRole(computedRole);
           setTrade(u.trade || 'Byggmester');
-          setCompany(u.company || 'Mester Entreprenør AS');
+          setCompany(userObj.company || 'Min Bedrift');
           setSubscriptionStatus(u.subscriptionStatus || 'active');
           setTrialDaysLeft(typeof u.trialDaysLeft === 'number' ? u.trialDaysLeft : null);
         } else {
@@ -186,24 +211,43 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
     setCompany(null);
   };
 
-  const isSuperAdminComputed = (
-    role === 'superadmin' || 
-    role === 'admin' || 
-    user?.role === 'superadmin' || 
-    user?.role === 'admin' || 
-    user?.displayName?.toLowerCase().includes('ken') || 
-    user?.email === 'kenkri3@gmail.com' ||
-    user?.email === 'aichatnorge@gmail.com' ||
-    user?.email === 'kenneth@aichatnorge.no' ||
-    user?.email?.toLowerCase() === 'admin@vikingmester.no' ||
-    user?.email === 'post@vikingent.no' ||
-    false
+  // 👑 Urokkelig systemeier-status for Kenneth (Plattformeier mister ALDRI tilgang)
+  const isPlatformOwner = Boolean(
+    (user?.email && SUPERADMIN_EMAILS.includes(user.email.toLowerCase())) ||
+    user?.role === 'superadmin' ||
+    role === 'superadmin'
   );
 
+  // Standard UI SuperAdmin-visning (Krone/knapper i dashboard):
+  // Skjult når man forhåndsviser en pakke eller impersonerer en kunde,
+  // slik at opplevelsen er 100% autentisk. MEN Kenneth har alltid Master-baren øverst!
+  const isSuperAdminUI = Boolean(isPlatformOwner && !impersonatedCompanyId && !simulatedPlan);
+
+  const setSimulatedPlan = (plan: string | null) => {
+    if (!isPlatformOwner && plan !== null) return;
+    if (plan) {
+      try { localStorage.setItem('mester_simulated_plan', plan); } catch {}
+    } else {
+      try { localStorage.removeItem('mester_simulated_plan'); } catch {}
+    }
+    setSimulatedPlanState(plan);
+    if (typeof window !== 'undefined') {
+      window.dispatchEvent(new CustomEvent('mester_simulated_plan_changed', { detail: { plan } }));
+    }
+  };
+
+  const hasModuleAccess = (moduleId: string): boolean => {
+    if (isSuperAdminUI) return true;
+    const effectivePlan = simulatedPlan || (impersonatedCompanyId ? 'solo' : (user?.subscriptionStatus || 'solo'));
+    return isModuleAllowedForPlan(moduleId, effectivePlan, companyModules);
+  };
+
   const startImpersonation = (companyId: string, role: string) => {
-    if (!isSuperAdminComputed) return;
-    localStorage.setItem('impersonatedCompanyId', companyId);
-    localStorage.setItem('impersonatedRole', role);
+    if (!isPlatformOwner) return;
+    try {
+      localStorage.setItem('impersonatedCompanyId', companyId);
+      localStorage.setItem('impersonatedRole', role);
+    } catch {}
     setImpersonatedCompanyId(companyId);
     setImpersonatedRole(role);
     if (typeof window !== 'undefined') {
@@ -213,10 +257,14 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
   };
 
   const stopImpersonation = () => {
-    localStorage.removeItem('impersonatedCompanyId');
-    localStorage.removeItem('impersonatedRole');
+    try {
+      localStorage.removeItem('impersonatedCompanyId');
+      localStorage.removeItem('impersonatedRole');
+      localStorage.removeItem('mester_simulated_plan');
+    } catch {}
     setImpersonatedCompanyId(null);
     setImpersonatedRole(null);
+    setSimulatedPlanState(null);
     if (typeof window !== 'undefined') {
       window.dispatchEvent(new CustomEvent('mester_impersonation_changed', { detail: { companyId: null, role: null } }));
     }
@@ -233,7 +281,11 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
       resetPassword,
       logout,
       isAuthReady,
-      isSuperAdmin: isSuperAdminComputed,
+      isSuperAdmin: isSuperAdminUI,
+      isPlatformOwner,
+      simulatedPlan,
+      setSimulatedPlan,
+      hasModuleAccess,
       role: impersonatedRole || role,
       trade,
       company: impersonatedCompanyId || company,

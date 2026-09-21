@@ -30,7 +30,9 @@ import {
   PanelLeftClose,
   PanelLeftOpen,
   MapPin,
-  Check
+  Check,
+  Lock,
+  ArrowLeft
 } from 'lucide-react';
 import { cn } from '@/src/lib/utils';
 import { chatSessionService, ChatSession } from '../services/chatSessionService';
@@ -84,7 +86,14 @@ export default function WorkstationSidebar({
   currentActiveTab
 }: WorkstationSidebarProps) {
   const { t, i18n } = useTranslation();
-  const { impersonatedCompanyId, stopImpersonation } = useAuth();
+  const { 
+    impersonatedCompanyId, 
+    stopImpersonation, 
+    hasModuleAccess, 
+    isPlatformOwner, 
+    simulatedPlan, 
+    setSimulatedPlan 
+  } = useAuth();
   const [sessions, setSessions] = useState<ChatSession[]>([]);
   const [editingSessionId, setEditingSessionId] = useState<string | null>(null);
   const [editingTitle, setEditingTitle] = useState('');
@@ -259,32 +268,44 @@ export default function WorkstationSidebar({
             {MODULES.slice(0, isCollapsedDesktop ? 5 : MODULES.length).map((mod) => {
               const IconComponent = mod.icon;
               const isCurrentTab = currentActiveTab === mod.id;
+              const isAllowed = hasModuleAccess ? hasModuleAccess(mod.id) : true;
               return (
                 <button
                   key={mod.id}
                   type="button"
                   onClick={() => {
+                    if (!isAllowed) {
+                      toast.info(`Modulen "${mod.label}" er låst i din pakke. Oppgrader for å få full tilgang!`);
+                      return;
+                    }
                     onOpenModule(mod.id);
                     if (isOpenMobile) onCloseMobile();
                   }}
                   className={cn(
-                    "w-full flex items-center gap-2.5 px-2.5 py-1.5 rounded-xl text-xs font-medium transition-colors cursor-pointer text-left group",
+                    "w-full flex items-center justify-between gap-2 px-2.5 py-1.5 rounded-xl text-xs font-medium transition-colors cursor-pointer text-left group",
                     isCurrentTab
                       ? "bg-slate-800 text-white font-bold"
-                      : "text-slate-300 hover:text-white hover:bg-slate-850",
+                      : isAllowed 
+                        ? "text-slate-300 hover:text-white hover:bg-slate-850" 
+                        : "text-slate-500 hover:bg-slate-900/60 opacity-65",
                     isCollapsedDesktop && "justify-center px-2 py-2"
                   )}
-                  title={mod.label}
+                  title={isAllowed ? mod.label : `${mod.label} (Låst i gjeldende pakke)`}
                 >
-                  <IconComponent size={16} className={cn(mod.color, "shrink-0 transition-transform group-hover:scale-110")} />
-                  {!isCollapsedDesktop && (
-                    <span className="truncate">{mod.label}</span>
+                  <div className="flex items-center gap-2.5 min-w-0">
+                    <IconComponent size={16} className={cn(isAllowed ? mod.color : "text-slate-600", "shrink-0 transition-transform group-hover:scale-110")} />
+                    {!isCollapsedDesktop && (
+                      <span className="truncate">{mod.label}</span>
+                    )}
+                  </div>
+                  {!isCollapsedDesktop && !isAllowed && (
+                    <Lock size={12} className="text-slate-500 shrink-0" />
                   )}
                 </button>
               );
             })}
 
-            {/* 👑 SuperAdmin Portal Shortcut (Only visible for superadmins) */}
+            {/* 👑 SuperAdmin Portal Shortcut (Only visible for genuine superadmins in superadmin mode) */}
             {isSuperAdmin && (
               <button
                 type="button"
@@ -306,6 +327,31 @@ export default function WorkstationSidebar({
                     <span className="truncate">SuperAdmin Portal</span>
                     <span className="text-[9px] px-1.5 py-0.5 rounded-full bg-amber-400/20 text-amber-200 font-mono font-black border border-amber-400/30">SYS</span>
                   </div>
+                )}
+              </button>
+            )}
+
+            {/* 👑 Plattformeier Hurtig-retur dersom i visningsmodus eller simulering */}
+            {!isSuperAdmin && isPlatformOwner && (impersonatedCompanyId || simulatedPlan) && (
+              <button
+                type="button"
+                onClick={() => {
+                  if (setSimulatedPlan) setSimulatedPlan(null);
+                  if (stopImpersonation) stopImpersonation();
+                  if (onOpenSuperAdmin) onOpenSuperAdmin();
+                  else window.dispatchEvent(new CustomEvent("navigate_view", { detail: { view: "super-admin" } }));
+                  if (isOpenMobile) onCloseMobile();
+                }}
+                className={cn(
+                  "w-full flex items-center gap-2 px-2.5 py-2 rounded-xl text-xs font-black transition-all cursor-pointer text-left group mt-1.5",
+                  "bg-amber-500 text-neutral-950 hover:bg-amber-400 shadow-md",
+                  isCollapsedDesktop && "justify-center px-2 py-2"
+                )}
+                title="Returner til SuperAdmin Portal"
+              >
+                <ArrowLeft size={14} className="shrink-0" />
+                {!isCollapsedDesktop && (
+                  <span className="truncate">← Tilbake til SuperAdmin</span>
                 )}
               </button>
             )}

@@ -3,9 +3,11 @@ import { toast } from 'sonner';
 
 export const getHeaders = () => {
   const token = typeof window !== 'undefined' ? localStorage.getItem('token') : null;
+  const impersonated = typeof window !== 'undefined' ? localStorage.getItem('impersonatedCompanyId') : null;
   return {
     'Content-Type': 'application/json',
-    ...(token ? { 'Authorization': `Bearer ${token}` } : {})
+    ...(token ? { 'Authorization': `Bearer ${token}` } : {}),
+    ...(impersonated ? { 'x-impersonated-company-id': impersonated } : {})
   };
 };
 
@@ -20,6 +22,20 @@ interface SyncQueueItem {
 
 const SYNC_QUEUE_KEY = 'ks_offline_sync_queue';
 const CACHE_PREFIX = 'ks_cache_';
+
+function getTenantCacheScope(): string {
+  if (typeof window === 'undefined') return 'default';
+  try {
+    const impersonated = localStorage.getItem('impersonatedCompanyId');
+    if (impersonated && impersonated.trim()) return `tenant_${impersonated.trim()}`;
+    const userRaw = localStorage.getItem('ks_current_user');
+    if (userRaw) {
+      const u = JSON.parse(userRaw);
+      if (u.companyId && u.companyId.trim()) return `tenant_${u.companyId.trim()}`;
+    }
+  } catch {}
+  return 'default';
+}
 
 function getOfflineQueue(): SyncQueueItem[] {
   if (typeof window === 'undefined') return [];
@@ -44,7 +60,8 @@ function saveOfflineQueue(queue: SyncQueueItem[]) {
 export function getLocalCache<T = any>(collectionName: string): T[] {
   if (typeof window === 'undefined') return [];
   try {
-    const raw = localStorage.getItem(CACHE_PREFIX + collectionName);
+    const scope = getTenantCacheScope();
+    const raw = localStorage.getItem(`${CACHE_PREFIX}${scope}_${collectionName}`);
     return raw ? JSON.parse(raw) : [];
   } catch {
     return [];
@@ -54,7 +71,8 @@ export function getLocalCache<T = any>(collectionName: string): T[] {
 export function setLocalCache<T = any>(collectionName: string, data: T[]) {
   if (typeof window === 'undefined') return;
   try {
-    localStorage.setItem(CACHE_PREFIX + collectionName, JSON.stringify(data));
+    const scope = getTenantCacheScope();
+    localStorage.setItem(`${CACHE_PREFIX}${scope}_${collectionName}`, JSON.stringify(data));
   } catch (e) {
     console.warn('Could not save local cache', e);
   }

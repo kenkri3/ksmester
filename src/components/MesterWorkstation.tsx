@@ -141,7 +141,7 @@ export default function MesterWorkstation({
   onOpenSettings,
   onOpenSuperAdmin
 }: MesterWorkstationProps) {
-  const { user, isSuperAdmin, logout, trade, company, impersonatedCompanyId, stopImpersonation } = useAuth();
+  const { user, isSuperAdmin, isPlatformOwner, simulatedPlan, setSimulatedPlan, logout, trade, company, impersonatedCompanyId, stopImpersonation } = useAuth();
 
   // 📐 Layout State
   const [isOpenMobile, setIsOpenMobile] = useState(false);
@@ -207,9 +207,184 @@ export default function MesterWorkstation({
   // ⚙️ Innstillinger-modal rett inne i arbeidsstasjonen ("liten boks med alle funksjoner")
   const [isSettingsModalOpen, setIsSettingsModalOpen] = useState(false);
 
-  // ⏱️ Byggedagbok hurtigføring
+  // 👥 Prosjektkontakter & Telefonbok state (Tenant & prosjekt-isolert)
+  interface ProjectContactItem {
+    id: string;
+    name: string;
+    role: string;
+    phone: string;
+    email: string;
+    companyName?: string;
+    projectId?: string;
+  }
+
+  interface DailyTimeItem {
+    id: string;
+    workerName: string;
+    role: string;
+    date: string;
+    hours: number;
+    overtime50: number;
+    overtime100: number;
+    task: string;
+    status: 'pending' | 'approved';
+  }
+
+  const [projectContacts, setProjectContacts] = useState<ProjectContactItem[]>([]);
+  const [contactSearchQuery, setContactSearchQuery] = useState('');
+  const [isAddContactModalOpen, setIsAddContactModalOpen] = useState(false);
+  const [newContactName, setNewContactName] = useState('');
+  const [newContactRole, setNewContactRole] = useState('Tømrer / Fagarbeider');
+  const [newContactPhone, setNewContactPhone] = useState('');
+  const [newContactEmail, setNewContactEmail] = useState('');
+  const [newContactCompany, setNewContactCompany] = useState('');
+
+  // ⏱️ Byggedagbok & Timeføring state (AML § 10-7 og ledergodkjenning)
+  const [dailyTimeEntries, setDailyTimeEntries] = useState<DailyTimeItem[]>([]);
+  const [isTimeApprovalView, setIsTimeApprovalView] = useState(false);
   const [logHours, setLogHours] = useState('7.5');
   const [logDescription, setLogDescription] = useState('Lekting av yttervegg og klargjøring for kledning');
+  const [logIsWeekendEvening, setLogIsWeekendEvening] = useState(false);
+
+  const currentTenantScope = impersonatedCompanyId || (user?.company ? user.company.replace(/[^a-zA-Z0-9]/g, '_').toLowerCase() : 'tenant_default');
+  const contactsStorageKey = `mester_contacts_${currentTenantScope}_${selectedProject?.id || 'all'}`;
+  const logsStorageKey = `mester_timelogs_${currentTenantScope}_${selectedProject?.id || 'all'}`;
+
+  // Last inn telefonbok / kontakter
+  useEffect(() => {
+    try {
+      const raw = localStorage.getItem(contactsStorageKey);
+      if (raw) {
+        setProjectContacts(JSON.parse(raw));
+      } else {
+        const initial: ProjectContactItem[] = [];
+        if (selectedProject?.clientName) {
+          initial.push({
+            id: 'c_client',
+            name: selectedProject.clientName,
+            role: 'Byggherre / Kunde',
+            phone: (selectedProject as any)?.clientPhone || '+47 988 00 111',
+            email: selectedProject.clientEmail || 'byggherre@kunde.no',
+            companyName: selectedProject.name
+          });
+        }
+        if (user && user.displayName) {
+          initial.push({
+            id: 'c_user',
+            name: user.displayName,
+            role: (user.role === 'admin' || user.role === 'leader') ? 'Prosjektleder / Byggmester' : 'Fagarbeider',
+            phone: '+47 900 00 000',
+            email: user.email || 'kontakt@mester.no',
+            companyName: user.company || 'Min Bedrift'
+          });
+        }
+        setProjectContacts(initial);
+        localStorage.setItem(contactsStorageKey, JSON.stringify(initial));
+      }
+    } catch (e) {
+      console.warn("Could not load contacts:", e);
+    }
+  }, [contactsStorageKey, selectedProject?.id, impersonatedCompanyId]);
+
+  // Last inn timeføringer
+  useEffect(() => {
+    try {
+      const raw = localStorage.getItem(logsStorageKey);
+      if (raw) {
+        setDailyTimeEntries(JSON.parse(raw));
+      } else {
+        const todayStr = new Date().toISOString().split('T')[0];
+        const initialLogs: DailyTimeItem[] = [
+          {
+            id: 'log_1',
+            workerName: user?.displayName || 'Fagarbeider',
+            role: user?.trade || 'Tømrer',
+            date: todayStr,
+            hours: 7.5,
+            overtime50: 0,
+            overtime100: 0,
+            task: 'Oppstart byggeplass og kontroll av underlag',
+            status: 'approved'
+          }
+        ];
+        setDailyTimeEntries(initialLogs);
+        localStorage.setItem(logsStorageKey, JSON.stringify(initialLogs));
+      }
+    } catch (e) {}
+  }, [logsStorageKey, selectedProject?.id, impersonatedCompanyId]);
+
+  const handleDeleteContact = (id: string, name: string, phone: string) => {
+    if (window.confirm(`Er du sikker på at du vil slette ${name} (${phone}) fra telefonboken?`)) {
+      const updated = projectContacts.filter(c => c.id !== id);
+      setProjectContacts(updated);
+      try {
+        localStorage.setItem(contactsStorageKey, JSON.stringify(updated));
+      } catch {}
+      toast.success(`Kontakt "${name}" er slettet fra telefonboken.`);
+    }
+  };
+
+  const handleAddContact = (e: React.FormEvent) => {
+    e.preventDefault();
+    if (!newContactName.trim()) {
+      toast.error('Vennligst oppgi navn på kontakten');
+      return;
+    }
+    const newC: ProjectContactItem = {
+      id: `c_${Date.now()}`,
+      name: newContactName.trim(),
+      role: newContactRole.trim(),
+      phone: newContactPhone.trim() || '+47 000 00 000',
+      email: newContactEmail.trim() || 'kontakt@firma.no',
+      companyName: newContactCompany.trim() || (user?.company || 'Bedrift'),
+      projectId: selectedProject?.id
+    };
+    const updated = [newC, ...projectContacts];
+    setProjectContacts(updated);
+    try {
+      localStorage.setItem(contactsStorageKey, JSON.stringify(updated));
+    } catch {}
+    setNewContactName('');
+    setNewContactPhone('');
+    setNewContactEmail('');
+    setNewContactCompany('');
+    setIsAddContactModalOpen(false);
+    toast.success(`Kontakt "${newC.name}" lagt til i telefonboken!`);
+  };
+
+  const handleSaveDailyLog = () => {
+    const parsedH = parseFloat(logHours.replace(',', '.')) || 7.5;
+    const normalH = Math.min(7.5, parsedH);
+    const ot50 = logIsWeekendEvening ? 0 : Math.max(0, parsedH - 7.5);
+    const ot100 = logIsWeekendEvening ? parsedH : 0;
+
+    const newEntry: DailyTimeItem = {
+      id: `time_${Date.now()}`,
+      workerName: user?.displayName || 'Fagarbeider',
+      role: user?.trade || 'Tømrer',
+      date: new Date().toISOString().split('T')[0],
+      hours: normalH,
+      overtime50: ot50,
+      overtime100: ot100,
+      task: logDescription || 'Arbeid på byggeplass',
+      status: 'pending'
+    };
+    const updated = [newEntry, ...dailyTimeEntries];
+    setDailyTimeEntries(updated);
+    try {
+      localStorage.setItem(logsStorageKey, JSON.stringify(updated));
+    } catch {}
+    toast.success(`Ført ${parsedH} timer (${ot50 > 0 ? `+${ot50}t 50% overtid` : ot100 > 0 ? `+${ot100}t 100% overtid` : 'normaltid'})`);
+  };
+
+  const handleApproveAllLogs = () => {
+    const updated = dailyTimeEntries.map(entry => ({ ...entry, status: 'approved' as const }));
+    setDailyTimeEntries(updated);
+    try {
+      localStorage.setItem(logsStorageKey, JSON.stringify(updated));
+    } catch {}
+    toast.success('Alle førte timer og overtid er godkjent av leder iht. AML § 10-7.');
+  };
 
   // 🏗️ Nytt prosjekt inline state
   const [newProjName, setNewProjName] = useState('');
@@ -1152,6 +1327,23 @@ export default function MesterWorkstation({
                 >
                   <Crown size={14} className="text-amber-400" />
                   <span className="hidden sm:inline">SuperAdmin</span>
+                </button>
+              )}
+
+              {!isSuperAdmin && isPlatformOwner && (impersonatedCompanyId || simulatedPlan) && (
+                <button
+                  type="button"
+                  onClick={() => {
+                    if (setSimulatedPlan) setSimulatedPlan(null);
+                    if (stopImpersonation) stopImpersonation();
+                    if (onOpenSuperAdmin) onOpenSuperAdmin();
+                    else window.dispatchEvent(new CustomEvent("navigate_view", { detail: { view: "super-admin" } }));
+                  }}
+                  className="inline-flex items-center gap-1.5 px-2.5 py-1.5 rounded-xl bg-amber-500 hover:bg-amber-400 text-neutral-950 text-xs font-black transition-all shadow-md cursor-pointer"
+                  title="Avslutt visningsmodus og returner til SuperAdmin"
+                >
+                  <ArrowLeft size={13} />
+                  <span className="hidden sm:inline">← Til SuperAdmin</span>
                 </button>
               )}
               {onOpenOmnichannelModal && (
@@ -2197,7 +2389,7 @@ export default function MesterWorkstation({
                 </div>
               )}
 
-              {/* 2. ⏱️ BYGGEDAGBOK & TIMER */}
+              {/* 2. ⏱️ BYGGEDAGBOK & TIMER (AML § 10-7) */}
               {activeModuleTab === 'dailylog' && (
                 <div className="bg-slate-900 border border-slate-800 rounded-3xl p-5 sm:p-6 space-y-5 shadow-xl">
                   <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-3 pb-4 border-b border-slate-800">
@@ -2207,102 +2399,227 @@ export default function MesterWorkstation({
                         <span>Byggedagbok & Timer</span>
                       </h3>
                       <p className="text-xs text-slate-400 mt-0.5">
-                        Dokumentasjon iht. Byggherreforskriften for <strong className="text-slate-200">{selectedProject?.name || 'Geitekleiva 12'}</strong>.
-                      </p>
-                    </div>
-                  </div>
-
-                  {/* Yr Vær-kort & Mannskap */}
-                  <div className="grid grid-cols-1 sm:grid-cols-2 gap-3">
-                    <div className="p-4 rounded-2xl bg-slate-950 border border-slate-800 space-y-2">
-                      <span className="text-[10px] font-bold uppercase tracking-wider text-slate-400 flex items-center gap-1.5">
-                        <span>⛅</span> Vær og temperatur (Yr.no)
-                      </span>
-                      <div className="text-base font-bold text-white">
-                        7°C • Lettskyet • 3 m/s SV
-                      </div>
-                      <p className="text-[11px] text-slate-400">
-                        Nedbør siste 24t: 0.0 mm • Forholdene godkjent for utvendig kledningsarbeid.
+                        Lovpålagt time- og værlogging iht. AML § 10-7 for <strong className="text-slate-200">{selectedProject?.name || 'Aktivt prosjekt'}</strong>.
                       </p>
                     </div>
 
-                    <div className="p-4 rounded-2xl bg-slate-950 border border-slate-800 space-y-2">
-                      <span className="text-[10px] font-bold uppercase tracking-wider text-slate-400 flex items-center gap-1.5">
-                        <Users size={12} className="text-emerald-400" /> Mannskapsliste i dag (3 aktive)
-                      </span>
-                      <div className="space-y-1 text-xs text-slate-300">
-                        <div className="flex justify-between">
-                          <span>Ken Kristiansen (Bas)</span>
-                          <strong className="text-white">7,5 t</strong>
-                        </div>
-                        <div className="flex justify-between">
-                          <span>Ole Hansen (Tømrer)</span>
-                          <strong className="text-white">7,5 t</strong>
-                        </div>
-                        <div className="flex justify-between">
-                          <span>Jonas Vik (Lærling)</span>
-                          <strong className="text-white">6,0 t</strong>
-                        </div>
-                      </div>
-                    </div>
-                  </div>
-
-                  {/* Hurtigføring av timer */}
-                  <div className="p-4 rounded-2xl bg-slate-950 border border-slate-800 space-y-3">
-                    <h4 className="text-xs font-bold text-white flex items-center gap-1.5">
-                      <Plus size={14} className="text-amber-400" /> Før timer i byggedagboken
-                    </h4>
-                    <div className="flex flex-col sm:flex-row gap-2">
-                      <input
-                        type="text"
-                        placeholder="Antall timer (f.eks: 7.5)"
-                        value={logHours}
-                        onChange={(e) => setLogHours(e.target.value)}
-                        className="sm:w-32 px-3 py-2 rounded-xl bg-slate-900 border border-slate-750 text-xs text-white placeholder:text-slate-500 focus:outline-none focus:border-amber-500"
-                      />
-                      <input
-                        type="text"
-                        placeholder="Arbeidsoppgave utført..."
-                        value={logDescription}
-                        onChange={(e) => setLogDescription(e.target.value)}
-                        className="flex-1 px-3 py-2 rounded-xl bg-slate-900 border border-slate-750 text-xs text-white placeholder:text-slate-500 focus:outline-none focus:border-amber-500"
-                      />
+                    {/* View Switcher: Dagbok vs Ledergodkjenning */}
+                    <div className="flex items-center gap-1.5 bg-slate-950 p-1 rounded-xl border border-slate-800 self-start sm:self-auto">
                       <button
                         type="button"
-                        onClick={() => {
-                          toast.success(`Ført ${logHours} timer på ${selectedProject?.name || 'Geitekleiva'}: ${logDescription}`);
-                        }}
-                        className="px-4 py-2 rounded-xl bg-amber-600 hover:bg-amber-500 text-white text-xs font-bold transition-all shadow-xs cursor-pointer shrink-0"
+                        onClick={() => setIsTimeApprovalView(false)}
+                        className={cn(
+                          "px-3 py-1.5 rounded-lg text-xs font-bold transition-all cursor-pointer",
+                          !isTimeApprovalView
+                            ? "bg-amber-500 text-slate-950 shadow-xs"
+                            : "text-slate-400 hover:text-white"
+                        )}
                       >
-                        Lagre loggføring
+                        Byggedagbok
+                      </button>
+                      <button
+                        type="button"
+                        onClick={() => setIsTimeApprovalView(true)}
+                        className={cn(
+                          "px-3 py-1.5 rounded-lg text-xs font-bold transition-all cursor-pointer flex items-center gap-1.5",
+                          isTimeApprovalView
+                            ? "bg-amber-500 text-slate-950 shadow-xs"
+                            : "text-slate-400 hover:text-white"
+                        )}
+                      >
+                        <span>Ledergodkjenning</span>
+                        {dailyTimeEntries.filter(e => e.status === 'pending').length > 0 && (
+                          <span className="w-2 h-2 rounded-full bg-rose-500 animate-pulse" />
+                        )}
                       </button>
                     </div>
                   </div>
 
-                  {/* Tidligere loggføringer */}
-                  <div className="space-y-2">
-                    <h4 className="text-xs font-bold uppercase tracking-wider text-slate-400">
-                      Siste oppføringer i byggedagboken
-                    </h4>
-                    <div className="p-3.5 rounded-xl bg-slate-950/80 border border-slate-800 text-xs space-y-1">
-                      <div className="flex items-center justify-between text-slate-400 text-[11px]">
-                        <span>I dag, 15:30 • Ført av Ken Kristiansen</span>
-                        <span className="text-emerald-400 font-bold">Godkjent dagbok</span>
+                  {!isTimeApprovalView ? (
+                    <>
+                      {/* Yr Vær-kort & Mannskap */}
+                      <div className="grid grid-cols-1 sm:grid-cols-2 gap-3">
+                        <div className="p-4 rounded-2xl bg-slate-950 border border-slate-800 space-y-2">
+                          <span className="text-[10px] font-bold uppercase tracking-wider text-slate-400 flex items-center gap-1.5">
+                            <span>⛅</span> Vær og temperatur (Yr.no)
+                          </span>
+                          <div className="text-base font-bold text-white">
+                            8°C • Lettskyet • 3 m/s SV
+                          </div>
+                          <p className="text-[11px] text-slate-400">
+                            Nedbør siste 24t: 0.0 mm • Forholdene godkjent for utvendig byggearbeid og lukking.
+                          </p>
+                        </div>
+
+                        <div className="p-4 rounded-2xl bg-slate-950 border border-slate-800 space-y-2">
+                          <span className="text-[10px] font-bold uppercase tracking-wider text-slate-400 flex items-center gap-1.5">
+                            <Users size={12} className="text-emerald-400" /> Mannskapsliste i dag ({dailyTimeEntries.length} registreringer)
+                          </span>
+                          <div className="space-y-1 text-xs text-slate-300">
+                            {dailyTimeEntries.slice(0, 3).map((entry) => (
+                              <div key={entry.id} className="flex justify-between items-center">
+                                <span>{entry.workerName} ({entry.role})</span>
+                                <strong className="text-white font-mono">{entry.hours + entry.overtime50 + entry.overtime100} t</strong>
+                              </div>
+                            ))}
+                          </div>
+                        </div>
                       </div>
-                      <p className="text-slate-200 font-medium">
-                        Lekting av yttervegg og klargjøring for liggende kledning mot vest. Dampsperre kontrollert før lukking.
-                      </p>
-                    </div>
-                    <div className="p-3.5 rounded-xl bg-slate-950/80 border border-slate-800 text-xs space-y-1">
-                      <div className="flex items-center justify-between text-slate-400 text-[11px]">
-                        <span>I går, 16:00 • Ført av Ole Hansen</span>
-                        <span className="text-emerald-400 font-bold">Godkjent dagbok</span>
+
+                      {/* Hurtigføring av timer */}
+                      <div className="p-4 rounded-2xl bg-slate-950 border border-slate-800 space-y-3">
+                        <h4 className="text-xs font-bold text-white flex items-center gap-1.5">
+                          <Plus size={14} className="text-amber-400" /> Før timer i byggedagboken
+                        </h4>
+                        <div className="flex flex-col sm:flex-row gap-2">
+                          <input
+                            type="text"
+                            placeholder="Timer (f.eks: 7.5)"
+                            value={logHours}
+                            onChange={(e) => setLogHours(e.target.value)}
+                            className="sm:w-28 px-3 py-2 rounded-xl bg-slate-900 border border-slate-750 text-xs text-white placeholder:text-slate-500 focus:outline-none focus:border-amber-500"
+                          />
+                          <input
+                            type="text"
+                            placeholder="Arbeidsoppgave utført..."
+                            value={logDescription}
+                            onChange={(e) => setLogDescription(e.target.value)}
+                            className="flex-1 px-3 py-2 rounded-xl bg-slate-900 border border-slate-750 text-xs text-white placeholder:text-slate-500 focus:outline-none focus:border-amber-500"
+                          />
+                          <label className="flex items-center gap-2 px-3 py-2 bg-slate-900 border border-slate-750 rounded-xl text-xs text-slate-300 cursor-pointer">
+                            <input
+                              type="checkbox"
+                              checked={logIsWeekendEvening}
+                              onChange={(e) => setLogIsWeekendEvening(e.target.checked)}
+                              className="accent-amber-500 rounded"
+                            />
+                            <span className="whitespace-nowrap text-[11px]">Kveld/Helg (100%)</span>
+                          </label>
+                          <button
+                            type="button"
+                            onClick={handleSaveDailyLog}
+                            className="px-4 py-2 rounded-xl bg-amber-600 hover:bg-amber-500 text-white text-xs font-bold transition-all shadow-xs cursor-pointer shrink-0"
+                          >
+                            Lagre loggføring
+                          </button>
+                        </div>
                       </div>
-                      <p className="text-slate-200 font-medium">
-                        Montering av vindsperreduk og klemming i gesims. Elektriker på plass for rørføring i 2. etasje.
-                      </p>
+
+                      {/* Oppføringer i byggedagboken */}
+                      <div className="space-y-2">
+                        <h4 className="text-xs font-bold uppercase tracking-wider text-slate-400">
+                          Siste oppføringer i byggedagboken
+                        </h4>
+                        {dailyTimeEntries.map((entry) => (
+                          <div key={entry.id} className="p-3.5 rounded-xl bg-slate-950/80 border border-slate-800 text-xs space-y-1">
+                            <div className="flex items-center justify-between text-slate-400 text-[11px]">
+                              <span>{entry.date} • {entry.workerName} ({entry.role}) • <strong className="text-white">{entry.hours + entry.overtime50 + entry.overtime100}t</strong> ({entry.hours}t normal{entry.overtime50 > 0 ? ` + ${entry.overtime50}t 50%` : ''}{entry.overtime100 > 0 ? ` + ${entry.overtime100}t 100%` : ''})</span>
+                              <span className={cn("px-2 py-0.5 rounded-full text-[10px] font-bold", entry.status === 'approved' ? "bg-emerald-500/20 text-emerald-400" : "bg-amber-500/20 text-amber-300")}>
+                                {entry.status === 'approved' ? 'Godkjent dagbok' : 'Til godkjenning'}
+                              </span>
+                            </div>
+                            <p className="text-slate-200 font-medium">
+                              {entry.task}
+                            </p>
+                          </div>
+                        ))}
+                      </div>
+                    </>
+                  ) : (
+                    /* 👑 LEDER / ADMIN OVERTIDS- & TIMEGODKJENNING */
+                    <div className="space-y-4">
+                      {/* Nøkkeltall for leder */}
+                      <div className="grid grid-cols-2 sm:grid-cols-4 gap-3">
+                        <div className="p-3 rounded-2xl bg-slate-950 border border-slate-800">
+                          <p className="text-[10px] uppercase font-bold text-slate-400">Førte timer i uken</p>
+                          <p className="text-lg font-black text-white mt-0.5">
+                            {dailyTimeEntries.reduce((sum, e) => sum + e.hours + e.overtime50 + e.overtime100, 0).toFixed(1)} t
+                          </p>
+                        </div>
+                        <div className="p-3 rounded-2xl bg-slate-950 border border-slate-800">
+                          <p className="text-[10px] uppercase font-bold text-blue-400">Normaltid (7.5t/d)</p>
+                          <p className="text-lg font-black text-blue-300 mt-0.5">
+                            {dailyTimeEntries.reduce((sum, e) => sum + e.hours, 0).toFixed(1)} t
+                          </p>
+                        </div>
+                        <div className="p-3 rounded-2xl bg-slate-950 border border-slate-800">
+                          <p className="text-[10px] uppercase font-bold text-amber-400">50% Overtid (AML § 10-6)</p>
+                          <p className="text-lg font-black text-amber-300 mt-0.5">
+                            {dailyTimeEntries.reduce((sum, e) => sum + e.overtime50, 0).toFixed(1)} t
+                          </p>
+                        </div>
+                        <div className="p-3 rounded-2xl bg-slate-950 border border-slate-800">
+                          <p className="text-[10px] uppercase font-bold text-rose-400">100% Overtid (Kveld/Helg)</p>
+                          <p className="text-lg font-black text-rose-300 mt-0.5">
+                            {dailyTimeEntries.reduce((sum, e) => sum + e.overtime100, 0).toFixed(1)} t
+                          </p>
+                        </div>
+                      </div>
+
+                      {/* Godkjenningskontroller */}
+                      <div className="flex flex-wrap items-center justify-between gap-3 p-3.5 bg-slate-950 border border-slate-800 rounded-2xl">
+                        <div className="text-xs text-slate-300">
+                          <span>Utestående til godkjenning: </span>
+                          <strong className="text-amber-400 font-bold">
+                            {dailyTimeEntries.filter(e => e.status === 'pending').length} timelister
+                          </strong>
+                        </div>
+                        <div className="flex items-center gap-2">
+                          <button
+                            type="button"
+                            onClick={() => {
+                              toast.success('Timelister eksportert til Tripletex / Fiken format (.csv)');
+                            }}
+                            className="px-3 py-1.5 bg-slate-900 hover:bg-slate-800 text-slate-300 rounded-xl text-xs font-bold border border-slate-750 transition-all cursor-pointer"
+                          >
+                            Eksporter til lønn
+                          </button>
+                          <button
+                            type="button"
+                            onClick={handleApproveAllLogs}
+                            className="px-4 py-1.5 bg-emerald-600 hover:bg-emerald-500 text-white rounded-xl text-xs font-bold transition-all shadow-xs cursor-pointer flex items-center gap-1.5"
+                          >
+                            <Check size={14} />
+                            <span>Godkjenn alle timer</span>
+                          </button>
+                        </div>
+                      </div>
+
+                      {/* Tabell over timer for ansatte */}
+                      <div className="overflow-x-auto rounded-2xl border border-slate-800">
+                        <table className="w-full text-left text-xs">
+                          <thead>
+                            <tr className="bg-slate-950 border-b border-slate-800 text-slate-400 text-[10px] uppercase font-bold">
+                              <th className="p-3">Ansatt & Fag</th>
+                              <th className="p-3">Dato</th>
+                              <th className="p-3">Normaltid</th>
+                              <th className="p-3">50% Overtid</th>
+                              <th className="p-3">100% Overtid</th>
+                              <th className="p-3">Oppgave</th>
+                              <th className="p-3">Status</th>
+                            </tr>
+                          </thead>
+                          <tbody className="divide-y divide-slate-800/60 bg-slate-900">
+                            {dailyTimeEntries.map((e) => (
+                              <tr key={e.id} className="hover:bg-slate-850/50 transition-colors">
+                                <td className="p-3 font-bold text-white">{e.workerName} ({e.role})</td>
+                                <td className="p-3 text-slate-400 font-mono">{e.date}</td>
+                                <td className="p-3 text-slate-200 font-bold">{e.hours} t</td>
+                                <td className="p-3 text-amber-400 font-bold">{e.overtime50 > 0 ? `+${e.overtime50} t` : '-'}</td>
+                                <td className="p-3 text-rose-400 font-bold">{e.overtime100 > 0 ? `+${e.overtime100} t` : '-'}</td>
+                                <td className="p-3 text-slate-300 max-w-xs truncate">{e.task}</td>
+                                <td className="p-3">
+                                  <span className={cn("px-2 py-0.5 rounded-full text-[10px] font-black uppercase", e.status === 'approved' ? "bg-emerald-500/20 text-emerald-400" : "bg-amber-500/20 text-amber-300")}>
+                                    {e.status === 'approved' ? 'Godkjent' : 'Venter'}
+                                  </span>
+                                </td>
+                              </tr>
+                            ))}
+                          </tbody>
+                        </table>
+                      </div>
                     </div>
-                  </div>
+                  )}
                 </div>
               )}
 
@@ -2595,54 +2912,198 @@ export default function MesterWorkstation({
                 </div>
               )}
 
-              {/* 8. 👥 PROSJEKTKONTAKTER & TEAM */}
+              {/* 8. 👥 PROSJEKTKONTAKTER & TELEFONBOK */}
               {activeModuleTab === 'contacts' && (
-                <div className="bg-slate-900 border border-slate-800 rounded-3xl p-5 sm:p-6 space-y-4 shadow-xl">
-                  <div className="flex items-center justify-between pb-4 border-b border-slate-800">
+                <div className="bg-slate-900 border border-slate-800 rounded-3xl p-5 sm:p-6 space-y-5 shadow-xl">
+                  <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-3 pb-4 border-b border-slate-800">
                     <div>
                       <h3 className="text-lg font-black text-white flex items-center gap-2">
                         <Users className="text-emerald-400" size={20} />
-                        <span>Prosjektkontakter & Team</span>
+                        <span>Prosjektkontakter & Telefonbok</span>
                       </h3>
                       <p className="text-xs text-slate-400 mt-0.5">
-                        Nøkkelpersoner for {selectedProject?.name || 'Geitekleiva 12'}.
+                        Telefonbok og nøkkelpersoner for <strong className="text-slate-200">{selectedProject?.name || 'Aktivt prosjekt'}</strong>.
                       </p>
+                    </div>
+
+                    <div className="flex items-center gap-2">
+                      <div className="relative">
+                        <Search size={14} className="text-slate-400 absolute left-3 top-1/2 -translate-y-1/2" />
+                        <input
+                          type="text"
+                          placeholder="Søk i kontakter..."
+                          value={contactSearchQuery}
+                          onChange={(e) => setContactSearchQuery(e.target.value)}
+                          className="pl-8 pr-3 py-1.5 rounded-xl bg-slate-950 border border-slate-800 text-xs text-white placeholder:text-slate-500 focus:outline-none focus:border-emerald-500 w-44"
+                        />
+                      </div>
+                      <button
+                        type="button"
+                        onClick={() => setIsAddContactModalOpen(true)}
+                        className="flex items-center gap-1.5 px-3 py-1.5 rounded-xl bg-emerald-600 hover:bg-emerald-500 text-white text-xs font-bold transition-all shadow-xs cursor-pointer shrink-0"
+                      >
+                        <Plus size={14} />
+                        <span>Ny kontakt</span>
+                      </button>
                     </div>
                   </div>
 
+                  {/* Kontakter Grid */}
                   <div className="grid grid-cols-1 sm:grid-cols-2 gap-3">
-                    {[
-                      { name: selectedProject?.clientName || 'Privat oppdragsgiver', role: 'Byggherre / Kunde', phone: '+47 988 00 111', email: 'byggherre@kunde.no' },
-                      { name: user?.displayName || 'Ken Kristiansen', role: 'Prosjektleder / Byggmester', phone: '+47 900 00 000', email: user?.email || 'kenkri3@gmail.com' },
-                      { name: 'Ole Hansen', role: 'Bas Tømrer', phone: '+47 911 22 333', email: 'ole@mester.no' },
-                      { name: 'El-Mesteren AS', role: 'Elektroentreprenør', phone: '+47 33 00 11 22', email: 'post@elmesteren.no' },
-                      { name: 'Rør & Varme AS', role: 'Rørleggerbedrift', phone: '+47 33 22 33 44', email: 'post@rorvarme.no' }
-                    ].map((c, i) => (
-                      <div key={i} className="p-4 rounded-2xl bg-slate-950 border border-slate-800 flex items-center justify-between gap-3">
-                        <div>
-                          <p className="text-sm font-bold text-white">{c.name}</p>
-                          <p className="text-xs text-emerald-400 font-medium">{c.role}</p>
-                          <p className="text-[11px] text-slate-400 mt-1">{c.phone} • {c.email}</p>
+                    {projectContacts
+                      .filter(c => {
+                        if (!contactSearchQuery.trim()) return true;
+                        const q = contactSearchQuery.toLowerCase();
+                        return (
+                          c.name.toLowerCase().includes(q) ||
+                          c.role.toLowerCase().includes(q) ||
+                          c.phone.toLowerCase().includes(q) ||
+                          c.email.toLowerCase().includes(q)
+                        );
+                      })
+                      .map((c) => (
+                        <div key={c.id} className="p-4 rounded-2xl bg-slate-950 border border-slate-800 flex items-center justify-between gap-3 group hover:border-slate-700 transition-colors">
+                          <div className="min-w-0">
+                            <p className="text-sm font-bold text-white truncate">{c.name}</p>
+                            <p className="text-xs text-emerald-400 font-medium truncate">{c.role}</p>
+                            <p className="text-[11px] text-slate-400 mt-1 truncate">
+                              <span className="font-mono text-slate-300">{c.phone}</span> • <span>{c.email}</span>
+                            </p>
+                            {c.companyName && (
+                              <p className="text-[10px] text-slate-500 truncate mt-0.5">{c.companyName}</p>
+                            )}
+                          </div>
+                          <div className="flex items-center gap-1.5 shrink-0">
+                            <a
+                              href={`tel:${c.phone}`}
+                              className="p-2 rounded-xl bg-slate-900 hover:bg-emerald-600/20 text-slate-300 hover:text-emerald-400 border border-slate-750 transition-colors"
+                              title={`Ring ${c.phone}`}
+                            >
+                              <Phone size={14} />
+                            </a>
+                            <a
+                              href={`mailto:${c.email}`}
+                              className="p-2 rounded-xl bg-slate-900 hover:bg-blue-600/20 text-slate-300 hover:text-blue-400 border border-slate-750 transition-colors"
+                              title={`Send e-post til ${c.email}`}
+                            >
+                              <Mail size={14} />
+                            </a>
+                            {/* 🗑️ Slett kontakt for admin */}
+                            <button
+                              type="button"
+                              onClick={() => handleDeleteContact(c.id, c.name, c.phone)}
+                              className="p-2 rounded-xl bg-slate-900 hover:bg-rose-500/20 text-slate-400 hover:text-rose-400 border border-slate-750 transition-colors cursor-pointer"
+                              title={`Slett ${c.name} fra telefonboken`}
+                            >
+                              <Trash2 size={14} />
+                            </button>
+                          </div>
                         </div>
-                        <div className="flex items-center gap-1.5 shrink-0">
-                          <a
-                            href={`tel:${c.phone}`}
-                            className="p-2 rounded-xl bg-slate-900 hover:bg-slate-800 text-slate-300 hover:text-white border border-slate-750 transition-colors"
-                            title="Ring"
-                          >
-                            <Phone size={14} />
-                          </a>
-                          <a
-                            href={`mailto:${c.email}`}
-                            className="p-2 rounded-xl bg-slate-900 hover:bg-slate-800 text-slate-300 hover:text-white border border-slate-750 transition-colors"
-                            title="Send e-post"
-                          >
-                            <Mail size={14} />
-                          </a>
-                        </div>
+                      ))}
+                    {projectContacts.length === 0 && (
+                      <div className="col-span-2 p-8 text-center bg-slate-950/60 rounded-2xl border border-slate-800 text-slate-400 text-xs">
+                        Ingen kontakter registrert for dette prosjektet ennå. Klikk "+ Ny kontakt" for å legge til byggherre, bas eller håndverkere.
                       </div>
-                    ))}
+                    )}
                   </div>
+
+                  {/* Modal for å legge til ny kontakt */}
+                  {isAddContactModalOpen && (
+                    <div className="fixed inset-0 z-50 flex items-center justify-center p-4 bg-black/80 backdrop-blur-xs">
+                      <div className="bg-slate-900 border border-slate-800 rounded-3xl p-6 max-w-md w-full shadow-2xl space-y-4">
+                        <div className="flex items-center justify-between pb-3 border-b border-slate-800">
+                          <h4 className="text-sm font-black text-white flex items-center gap-2">
+                            <Plus size={16} className="text-emerald-400" />
+                            <span>Legg til kontakt i telefonboken</span>
+                          </h4>
+                          <button
+                            type="button"
+                            onClick={() => setIsAddContactModalOpen(false)}
+                            className="p-1.5 rounded-lg text-slate-400 hover:text-white hover:bg-slate-800 cursor-pointer"
+                          >
+                            <X size={16} />
+                          </button>
+                        </div>
+
+                        <form onSubmit={handleAddContact} className="space-y-3">
+                          <div>
+                            <label className="block text-[11px] font-bold text-slate-300 mb-1">Fullt navn *</label>
+                            <input
+                              type="text"
+                              required
+                              placeholder="F.eks. Ola Hansen"
+                              value={newContactName}
+                              onChange={(e) => setNewContactName(e.target.value)}
+                              className="w-full px-3 py-2 rounded-xl bg-slate-950 border border-slate-800 text-xs text-white placeholder:text-slate-500 focus:outline-none focus:border-emerald-500"
+                            />
+                          </div>
+
+                          <div className="grid grid-cols-2 gap-3">
+                            <div>
+                              <label className="block text-[11px] font-bold text-slate-300 mb-1">Rolle / Fag *</label>
+                              <input
+                                type="text"
+                                required
+                                placeholder="F.eks. Bas Tømrer / Byggherre"
+                                value={newContactRole}
+                                onChange={(e) => setNewContactRole(e.target.value)}
+                                className="w-full px-3 py-2 rounded-xl bg-slate-950 border border-slate-800 text-xs text-white placeholder:text-slate-500 focus:outline-none focus:border-emerald-500"
+                              />
+                            </div>
+                            <div>
+                              <label className="block text-[11px] font-bold text-slate-300 mb-1">Firma</label>
+                              <input
+                                type="text"
+                                placeholder="F.eks. Hansen Bygg AS"
+                                value={newContactCompany}
+                                onChange={(e) => setNewContactCompany(e.target.value)}
+                                className="w-full px-3 py-2 rounded-xl bg-slate-950 border border-slate-800 text-xs text-white placeholder:text-slate-500 focus:outline-none focus:border-emerald-500"
+                              />
+                            </div>
+                          </div>
+
+                          <div>
+                            <label className="block text-[11px] font-bold text-slate-300 mb-1">Telefonnummer *</label>
+                            <input
+                              type="tel"
+                              required
+                              placeholder="+47 900 00 000"
+                              value={newContactPhone}
+                              onChange={(e) => setNewContactPhone(e.target.value)}
+                              className="w-full px-3 py-2 rounded-xl bg-slate-950 border border-slate-800 text-xs text-white placeholder:text-slate-500 focus:outline-none focus:border-emerald-500 font-mono"
+                            />
+                          </div>
+
+                          <div>
+                            <label className="block text-[11px] font-bold text-slate-300 mb-1">E-postadresse</label>
+                            <input
+                              type="email"
+                              placeholder="kontakt@bedrift.no"
+                              value={newContactEmail}
+                              onChange={(e) => setNewContactEmail(e.target.value)}
+                              className="w-full px-3 py-2 rounded-xl bg-slate-950 border border-slate-800 text-xs text-white placeholder:text-slate-500 focus:outline-none focus:border-emerald-500"
+                            />
+                          </div>
+
+                          <div className="flex items-center justify-end gap-2 pt-3">
+                            <button
+                              type="button"
+                              onClick={() => setIsAddContactModalOpen(false)}
+                              className="px-4 py-2 rounded-xl bg-slate-800 hover:bg-slate-750 text-slate-300 text-xs font-bold transition-all cursor-pointer"
+                            >
+                              Avbryt
+                            </button>
+                            <button
+                              type="submit"
+                              className="px-4 py-2 rounded-xl bg-emerald-600 hover:bg-emerald-500 text-white text-xs font-bold transition-all shadow-xs cursor-pointer"
+                            >
+                              Lagre kontakt
+                            </button>
+                          </div>
+                        </form>
+                      </div>
+                    </div>
+                  )}
                 </div>
               )}
 

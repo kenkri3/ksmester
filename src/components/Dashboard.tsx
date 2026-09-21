@@ -112,7 +112,8 @@ export default function Dashboard({
   onOpenPortal 
 }: DashboardProps) {
   const { t } = useTranslation();
-  const { user, isSuperAdmin } = useAuth();
+  const { user, isSuperAdmin, impersonatedCompanyId } = useAuth();
+  const effectiveCompany = impersonatedCompanyId || user?.company;
   const { projects, deviations, stats, loading: dataLoading, dataUnavailable } = useDashboardData();
 
   // Primary active tab
@@ -176,13 +177,27 @@ export default function Dashboard({
   const [isChangeOrderModalOpen, setIsChangeOrderModalOpen] = useState(false);
   const [isAllModulesOpen, setIsAllModulesOpen] = useState(false);
 
-  // Live Endringsordrer state with deletion capability
+  // Live Endringsordrer state with deletion capability & tenant scoping
   const [dashboardChangeOrders, setDashboardChangeOrders] = useState<any[]>([]);
 
   useEffect(() => {
     const unsub = onSnapshot(collection(db, 'change_orders'), (snapshot) => {
       if (snapshot.docs && snapshot.docs.length > 0) {
-        const liveOrders = snapshot.docs.map(d => {
+        let docs = snapshot.docs;
+        // 🔒 GDPR & Tenant Isolation: Kun vis ordre som tilhører denne bedriften dersom ikke uinnskrenket SuperAdmin
+        if ((!isSuperAdmin || impersonatedCompanyId) && effectiveCompany) {
+          docs = docs.filter(d => {
+            const data = d.data();
+            return (
+              data.company === effectiveCompany ||
+              data.companyId === effectiveCompany ||
+              data.companyName === effectiveCompany ||
+              data.tenantId === effectiveCompany ||
+              !data.company // fallback for demo if newly created
+            );
+          });
+        }
+        const liveOrders = docs.map(d => {
           const data = d.data();
           return {
             id: d.id,
@@ -214,7 +229,7 @@ export default function Dashboard({
       }
     });
     return () => unsub();
-  }, []);
+  }, [isSuperAdmin, impersonatedCompanyId, effectiveCompany]);
 
   const handleDeleteDashboardOrder = async (orderId: string, orderTitle: string) => {
     if (!window.confirm(`Er du sikker på at du vil slette endringsordren "${orderTitle}"?`)) {
@@ -230,13 +245,25 @@ export default function Dashboard({
     }
   };
 
-  // Live Offers (Pristilbud) state with real-time sync and deletion
+  // Live Offers (Pristilbud) state with real-time sync, tenant isolation, and deletion
   const [dashboardOffers, setDashboardOffers] = useState<any[]>([]);
 
   useEffect(() => {
     const unsub = onSnapshot(collection(db, 'offers'), (snapshot) => {
       if (snapshot.docs && snapshot.docs.length > 0) {
-        const live = snapshot.docs.map(d => ({
+        let docs = snapshot.docs;
+        if ((!isSuperAdmin || impersonatedCompanyId) && effectiveCompany) {
+          docs = docs.filter(d => {
+            const data = d.data();
+            return (
+              data.company === effectiveCompany ||
+              data.companyId === effectiveCompany ||
+              data.companyName === effectiveCompany ||
+              !data.company
+            );
+          });
+        }
+        const live = docs.map(d => ({
           id: d.id,
           ...d.data()
         }));
@@ -246,15 +273,26 @@ export default function Dashboard({
       }
     });
     return () => unsub();
-  }, []);
+  }, [isSuperAdmin, impersonatedCompanyId, effectiveCompany]);
 
-  // Live Tasks listener
+  // Live Tasks listener with tenant isolation
   const [dashboardTasks, setDashboardTasks] = useState<any[]>([]);
 
   useEffect(() => {
     const unsub = onSnapshot(collection(db, 'tasks'), (snapshot) => {
       if (snapshot.docs) {
-        const live = snapshot.docs.map(d => ({
+        let docs = snapshot.docs;
+        if ((!isSuperAdmin || impersonatedCompanyId) && effectiveCompany) {
+          docs = docs.filter(d => {
+            const data = d.data();
+            return (
+              data.company === effectiveCompany ||
+              data.companyId === effectiveCompany ||
+              !data.company
+            );
+          });
+        }
+        const live = docs.map(d => ({
           id: d.id,
           ...d.data()
         }));
@@ -264,7 +302,7 @@ export default function Dashboard({
       console.warn('Firestore tasks listener notice:', err);
     });
     return () => unsub();
-  }, []);
+  }, [isSuperAdmin, impersonatedCompanyId, effectiveCompany]);
 
   const handleDeleteDashboardOffer = async (offerId: string, offerTitle: string) => {
     if (!window.confirm(`Er du sikker på at du vil slette tilbudet "${offerTitle}"?`)) {

@@ -78,6 +78,7 @@ const PublicOfferFlow = lazy(() => import('./components/PublicOfferFlow'));
 const PublicChangeOrderFlow = lazy(() => import('./components/PublicChangeOrderFlow'));
 const PartnerPortal = lazy(() => import('./components/PartnerPortal'));
 const IntegrationModal = lazy(() => import('./components/IntegrationModal'));
+import AdminSimulationBar from './components/AdminSimulationBar';
 
 function ModuleLoader() {
   const { t } = useTranslation();
@@ -125,7 +126,7 @@ function AppContent() {
   const [isIntegrationModalOpen, setIsIntegrationModalOpen] = useState(false);
   const [mobileScreen, setMobileScreen] = useState<'home' | 'camera' | 'voice' | 'report' | 'imageResult' | 'translator' | 'laerling' | 'dailyLog' | 'activity' | 'contacts'>('home');
   const { t, i18n } = useTranslation();
-  const { user, logout, isAuthReady, subscriptionStatus, trialDaysLeft, impersonatedCompanyId, stopImpersonation, isSuperAdmin } = useAuth();
+  const { user, logout, isAuthReady, subscriptionStatus, trialDaysLeft, impersonatedCompanyId, stopImpersonation, isSuperAdmin, isPlatformOwner } = useAuth();
 
   useEffect(() => {
     const handleNav = (e: any) => {
@@ -527,26 +528,13 @@ function AppContent() {
 
   return (
     <div className="min-h-screen bg-white text-navy-900 font-sans selection:bg-electric-500/20 selection:text-electric-700">
+      {/* 👑 Fast forankret SuperAdmin Simulator Bar for Kenneth (Sikrer at Kenneth aldri mister tilgang) */}
+      <AdminSimulationBar />
+
       {/* Trial Banner */}
       {user && subscriptionStatus === 'trial' && !impersonatedCompanyId && (
         <div className="fixed top-0 left-0 right-0 z-[60] bg-emerald-600 text-navy-900 text-[10px] font-bold py-1 text-center uppercase tracking-widest">
           {t('trial_active', 'Du er i en prøveperiode.')} {trialDaysLeft} {t('days_left', 'dager igjen.')}
-        </div>
-      )}
-
-      {/* Impersonation Banner */}
-      {impersonatedCompanyId && (
-        <div className="fixed top-0 left-0 right-0 z-[60] bg-red-600 text-white text-[11px] font-bold py-1.5 px-4 text-center uppercase tracking-wider flex items-center justify-center gap-4 shadow-md">
-          <span>DU VISER NÅ SYSTEMET SOM KUNDE: <strong className="underline">{impersonatedCompanyId === 'comp-demo-fjellheim' ? 'Fjellheim Bygg & Tømrer AS (Demokunde)' : impersonatedCompanyId}</strong></span>
-          <button 
-            onClick={() => {
-              stopImpersonation();
-              setView('super-admin');
-            }}
-            className="px-3 py-0.5 bg-white text-red-700 rounded-lg hover:bg-slate-100 transition-colors font-black cursor-pointer shadow-xs"
-          >
-            AVSLUTT &amp; TILBAKE TIL SUPERADMIN
-          </button>
         </div>
       )}
 
@@ -853,7 +841,7 @@ function AppContent() {
                 </button>
 
 
-                {(isSuperAdmin || user?.role === 'admin' || user?.role === 'superadmin') && (
+                {isSuperAdmin && (
                   <button 
                     onClick={() => setView('super-admin')}
                     className={cn(
@@ -1371,7 +1359,7 @@ function AppContent() {
                         <span>Innstillinger</span>
                       </button>
 
-                      {(isSuperAdmin || user?.role === 'admin' || user?.role === 'superadmin' || user?.email === 'kenkri3@gmail.com' || user?.email === 'aichatnorge@gmail.com' || user?.email === 'kenneth@aichatnorge.no' || user?.email?.toLowerCase() === 'admin@vikingmester.no' || user?.email === 'post@vikingent.no') && (
+                      {isSuperAdmin && (
                         <button 
                           onClick={() => { setView('super-admin'); setIsMenuOpen(false); }} 
                           className={cn("col-span-2 flex items-center justify-center gap-2 p-2.5 rounded-xl text-xs font-bold cursor-pointer transition-all", view === 'super-admin' ? "bg-rose-50 text-rose-600 border border-rose-200" : "bg-neutral-900 text-white hover:bg-neutral-800")}
@@ -1474,7 +1462,7 @@ function AppContent() {
               )}
               {view === 'settings' && <SettingsPage />}
               {view === 'super-admin' && (
-                (isSuperAdmin || user?.role === 'admin' || user?.role === 'superadmin' || user?.email === 'kenkri3@gmail.com' || user?.email === 'aichatnorge@gmail.com' || user?.email === 'kenneth@aichatnorge.no' || user?.email?.toLowerCase() === 'admin@vikingmester.no' || user?.email === 'post@vikingent.no') ? (
+                (isSuperAdmin || isPlatformOwner) ? (
                   <SuperAdmin onBackToDashboard={() => setView('dashboard')} />
                 ) : (
                   <div className="max-w-md mx-auto my-20 p-8 bg-white rounded-3xl shadow-xl border border-red-100 text-center">
