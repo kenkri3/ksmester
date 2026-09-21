@@ -998,177 +998,177 @@ function AppContent() {
               initial={{ opacity: 0, y: -20 }}
               animate={{ opacity: 1, y: 0 }}
               exit={{ opacity: 0, y: -20 }}
-              className="absolute top-16 left-0 right-0 bg-white border-b border-white/10 p-4 md:hidden shadow-2xl max-h-[calc(100vh-4rem)] overflow-y-auto custom-scrollbar z-40 pb-20"
+              className="absolute top-16 left-0 right-0 bg-[#060911] border-b border-white/10 p-4 md:hidden shadow-2xl max-h-[calc(100vh-4rem)] overflow-y-auto custom-scrollbar z-40 pb-24 text-slate-100"
             >
               {(!user || ['landing', 'pricing', 'about', 'contact', 'privacy', 'terms'].includes(view)) ? (
-                /* Public Mobile Menu */
+                /* Public Mobile Menu (Gemini OLED Dark Aesthetic) */
                 <div className="space-y-4">
                   {/* Primary Actions */}
                   {user ? (
                     <button 
                       onClick={() => { handleGoToDashboard(); setIsMenuOpen(false); }}
-                      className="w-full bg-gradient-to-r from-electric-500 to-electric-400 text-white py-3.5 rounded-xl text-xs font-bold flex items-center justify-center gap-2 shadow-purple-cta cursor-pointer"
+                      className="w-full bg-gradient-to-r from-purple-600 via-electric-600 to-blue-600 text-white py-3.5 rounded-full text-xs font-bold flex items-center justify-center gap-2 shadow-lg shadow-purple-600/30 cursor-pointer"
                     >
                       <LayoutDashboard size={16} />
-                      <span>Gå til Dashboard</span>
+                      <span>Gå til MesterAI Cockpit</span>
                     </button>
                   ) : (
                     <div className="grid grid-cols-2 gap-2">
                       <button 
                         onClick={() => { handleStartDemo(); setIsMenuOpen(false); }}
-                        className="w-full bg-gradient-to-r from-electric-500 to-electric-400 text-white py-3 rounded-xl text-xs font-bold shadow-purple-cta cursor-pointer text-center"
+                        className="w-full bg-gradient-to-r from-purple-600 to-blue-600 text-white py-3 rounded-full text-xs font-bold shadow-md shadow-purple-600/25 cursor-pointer text-center"
                       >
-                        Prøv gratis
+                        Prøv gratis nå
                       </button>
                       <button 
                         onClick={() => { setView('login'); setIsMenuOpen(false); }}
-                        className="w-full bg-slate-100 hover:bg-slate-200 text-navy-900 border border-slate-200 py-3 rounded-xl text-xs font-bold cursor-pointer text-center"
+                        className="w-full bg-[#1e1f20] hover:bg-[#282a2d] text-white border border-white/10 py-3 rounded-full text-xs font-bold cursor-pointer text-center"
                       >
                         Logg inn
                       </button>
                     </div>
                   )}
 
-                  {/* Løsninger Section - Drømmen om frihet */}
-                  <div className="pt-2 border-t border-neutral-100">
-                    <div className="text-[11px] font-black uppercase tracking-wider text-slate-500 mb-2 flex items-center justify-between">
+                  {/* Løsninger Section - Autonome Superkrefter */}
+                  <div className="pt-2 border-t border-white/10">
+                    <div className="text-[11px] font-black uppercase tracking-wider text-slate-400 mb-2 flex items-center justify-between">
                       <span>Autonome Superkrefter</span>
-                      <span className="text-emerald-600 font-bold text-[10px]">100% Autonom</span>
+                      <span className="text-emerald-400 font-bold text-[10px]">100% Autonom</span>
                     </div>
-                    <div className="space-y-1">
+                    <div className="space-y-1.5">
                       <Link 
                         href="/ks-system"
                         onClick={() => setIsMenuOpen(false)}
-                        className="w-full text-left p-2.5 rounded-xl hover:bg-slate-50 text-xs font-bold text-slate-800 flex items-center gap-3"
+                        className="w-full text-left p-3 rounded-2xl bg-[#0d1322] hover:bg-[#131b2e] border border-white/5 hover:border-white/15 text-xs font-bold text-white flex items-center gap-3 transition-colors"
                       >
-                        <div className="w-7 h-7 rounded-lg bg-emerald-50 text-emerald-600 border border-emerald-200 flex items-center justify-center shrink-0">
-                          <Zap size={15} />
+                        <div className="w-8 h-8 rounded-xl bg-emerald-500/15 text-emerald-400 border border-emerald-500/30 flex items-center justify-center shrink-0">
+                          <Zap size={16} />
                         </div>
                         <div>
-                          <div className="font-bold text-navy-900 flex items-center gap-1.5">
+                          <div className="font-bold text-white flex items-center gap-1.5">
                             <span>Autonom Tilbud-til-KS</span>
-                            <span className="text-[9px] bg-emerald-100 text-emerald-800 font-bold px-1.5 py-0.2 rounded">Magisk</span>
+                            <span className="text-[9px] bg-emerald-500/20 text-emerald-300 font-bold px-1.5 py-0.2 rounded border border-emerald-500/30">Magisk</span>
                           </div>
-                          <div className="text-[10px] text-slate-500 font-normal">Signert tilbud oppretter prosjekt & KS på 3 sek</div>
+                          <div className="text-[10px] text-slate-400 font-normal">Signert tilbud oppretter prosjekt & KS på 3 sek</div>
                         </div>
                       </Link>
                       <Link 
                         href="/prosjektstyring"
                         onClick={() => setIsMenuOpen(false)}
-                        className="w-full text-left p-2.5 rounded-xl hover:bg-slate-50 text-xs font-bold text-slate-800 flex items-center gap-3"
+                        className="w-full text-left p-3 rounded-2xl bg-[#0d1322] hover:bg-[#131b2e] border border-white/5 hover:border-white/15 text-xs font-bold text-white flex items-center gap-3 transition-colors"
                       >
-                        <div className="w-7 h-7 rounded-lg bg-rose-50 text-rose-600 border border-rose-200 flex items-center justify-center shrink-0">
-                          <FileSignature size={15} />
+                        <div className="w-8 h-8 rounded-xl bg-rose-500/15 text-rose-400 border border-rose-500/30 flex items-center justify-center shrink-0">
+                          <FileSignature size={16} />
                         </div>
                         <div>
-                          <div className="font-bold text-navy-900 flex items-center gap-1.5">
+                          <div className="font-bold text-white flex items-center gap-1.5">
                             <span>Tale-til-Endringsordre (NS 8406)</span>
-                            <span className="text-[9px] bg-rose-100 text-rose-800 font-bold px-1.5 py-0.2 rounded">Få betalt</span>
+                            <span className="text-[9px] bg-rose-500/20 text-rose-300 font-bold px-1.5 py-0.2 rounded border border-rose-500/30">Få betalt</span>
                           </div>
-                          <div className="text-[10px] text-slate-500 font-normal">Kunden signerer på SMS før arbeidet starter</div>
+                          <div className="text-[10px] text-slate-400 font-normal">Kunden signerer på SMS før arbeidet starter</div>
                         </div>
                       </Link>
                       <Link 
                         href="/avvikshandtering"
                         onClick={() => setIsMenuOpen(false)}
-                        className="w-full text-left p-2.5 rounded-xl hover:bg-slate-50 text-xs font-bold text-slate-800 flex items-center gap-3"
+                        className="w-full text-left p-3 rounded-2xl bg-[#0d1322] hover:bg-[#131b2e] border border-white/5 hover:border-white/15 text-xs font-bold text-white flex items-center gap-3 transition-colors"
                       >
-                        <div className="w-7 h-7 rounded-lg bg-purple-50 text-purple-600 border border-purple-200 flex items-center justify-center shrink-0">
-                          <Lock size={15} />
+                        <div className="w-8 h-8 rounded-xl bg-purple-500/15 text-purple-400 border border-purple-500/30 flex items-center justify-center shrink-0">
+                          <Lock size={16} />
                         </div>
                         <div>
-                          <div className="font-bold text-navy-900 flex items-center gap-1.5">
+                          <div className="font-bold text-white flex items-center gap-1.5">
                             <span>Tverrfaglig Lukkesperre (TEK17)</span>
-                            <span className="text-[9px] bg-purple-100 text-purple-800 font-bold px-1.5 py-0.2 rounded">Null rivning</span>
+                            <span className="text-[9px] bg-purple-500/20 text-purple-300 font-bold px-1.5 py-0.2 rounded border border-purple-500/30">Null rivning</span>
                           </div>
-                          <div className="text-[10px] text-slate-500 font-normal">Vegg låses mot plating inntil rør & el er kvittert</div>
+                          <div className="text-[10px] text-slate-400 font-normal">Vegg låses mot plating inntil rør & el er kvittert</div>
                         </div>
                       </Link>
                       <Link 
                         href="/ks-system#fdv"
                         onClick={() => setIsMenuOpen(false)}
-                        className="w-full text-left p-2.5 rounded-xl hover:bg-slate-50 text-xs font-bold text-slate-800 flex items-center gap-3"
+                        className="w-full text-left p-3 rounded-2xl bg-[#0d1322] hover:bg-[#131b2e] border border-white/5 hover:border-white/15 text-xs font-bold text-white flex items-center gap-3 transition-colors"
                       >
-                        <div className="w-7 h-7 rounded-lg bg-blue-50 text-blue-600 border border-blue-200 flex items-center justify-center shrink-0">
-                          <FileCheck size={15} />
+                        <div className="w-8 h-8 rounded-xl bg-blue-500/15 text-blue-400 border border-blue-500/30 flex items-center justify-center shrink-0">
+                          <FileCheck size={16} />
                         </div>
                         <div>
-                          <div className="font-bold text-navy-900 flex items-center gap-1.5">
+                          <div className="font-bold text-white flex items-center gap-1.5">
                             <span>1-Klikk FDV til Boligmappa</span>
-                            <span className="text-[9px] bg-blue-100 text-blue-800 font-bold px-1.5 py-0.2 rounded">Slutt på permer</span>
+                            <span className="text-[9px] bg-blue-500/20 text-blue-300 font-bold px-1.5 py-0.2 rounded border border-blue-500/30">Slutt på permer</span>
                           </div>
-                          <div className="text-[10px] text-slate-500 font-normal">Fiks ferdig overleveringsrapport på ett klikk</div>
+                          <div className="text-[10px] text-slate-400 font-normal">Fiks ferdig overleveringsrapport på ett klikk</div>
                         </div>
                       </Link>
                       <Link 
                         href="/hms"
                         onClick={() => setIsMenuOpen(false)}
-                        className="w-full text-left p-2.5 rounded-xl hover:bg-slate-50 text-xs font-bold text-slate-800 flex items-center gap-3"
+                        className="w-full text-left p-3 rounded-2xl bg-[#0d1322] hover:bg-[#131b2e] border border-white/5 hover:border-white/15 text-xs font-bold text-white flex items-center gap-3 transition-colors"
                       >
-                        <div className="w-7 h-7 rounded-lg bg-amber-50 text-amber-600 border border-amber-200 flex items-center justify-center shrink-0">
-                          <ShieldCheck size={15} />
+                        <div className="w-8 h-8 rounded-xl bg-amber-500/15 text-amber-400 border border-amber-500/30 flex items-center justify-center shrink-0">
+                          <ShieldCheck size={16} />
                         </div>
                         <div>
-                          <div className="font-bold text-navy-900">HMS, SJA & Yr-sanntidsvær</div>
-                          <div className="text-[10px] text-slate-500 font-normal">Lovpålagt internkontroll og risikovurdering</div>
+                          <div className="font-bold text-white">HMS, SJA & Yr-sanntidsvær</div>
+                          <div className="text-[10px] text-slate-400 font-normal">Lovpålagt internkontroll og risikovurdering</div>
                         </div>
                       </Link>
                       <Link 
                         href="/stoffkartotek"
                         onClick={() => setIsMenuOpen(false)}
-                        className="w-full text-left p-2.5 rounded-xl hover:bg-slate-50 text-xs font-bold text-slate-800 flex items-center gap-3"
+                        className="w-full text-left p-3 rounded-2xl bg-[#0d1322] hover:bg-[#131b2e] border border-white/5 hover:border-white/15 text-xs font-bold text-white flex items-center gap-3 transition-colors"
                       >
-                        <div className="w-7 h-7 rounded-lg bg-teal-50 text-teal-600 border border-teal-200 flex items-center justify-center shrink-0">
-                          <Package size={15} />
+                        <div className="w-8 h-8 rounded-xl bg-teal-500/15 text-teal-400 border border-teal-500/30 flex items-center justify-center shrink-0">
+                          <Package size={16} />
                         </div>
                         <div>
-                          <div className="font-bold text-navy-900">Digitalt Stoffkartotek</div>
-                          <div className="text-[10px] text-slate-500 font-normal">Sikkerhetsdatablader offline på mobil</div>
+                          <div className="font-bold text-white">Digitalt Stoffkartotek</div>
+                          <div className="text-[10px] text-slate-400 font-normal">Sikkerhetsdatablader offline på mobil</div>
                         </div>
                       </Link>
                     </div>
                   </div>
 
                   {/* Pages Section */}
-                  <div className="pt-2 border-t border-neutral-100">
-                    <div className="text-[11px] font-black uppercase tracking-wider text-slate-500 mb-2">
+                  <div className="pt-2 border-t border-white/10">
+                    <div className="text-[11px] font-black uppercase tracking-wider text-slate-400 mb-2">
                       Informasjon & Ressurser
                     </div>
                     <div className="grid grid-cols-2 gap-2">
                       <Link 
                         href="/priser"
                         onClick={() => setIsMenuOpen(false)}
-                        className="text-left p-2.5 rounded-xl bg-slate-50 text-xs font-bold text-slate-800 hover:bg-slate-100 border border-slate-200 flex items-center justify-between"
+                        className="text-left p-2.5 rounded-xl bg-[#0e1422] text-xs font-bold text-white hover:bg-[#151e33] border border-white/10 flex items-center justify-between"
                       >
                         <span>Priser</span>
-                        <span className="text-[9px] text-electric-600 bg-electric-100 px-1.5 py-0.5 rounded-full font-bold">Fra 690,-</span>
+                        <span className="text-[9px] text-purple-300 bg-purple-500/20 border border-purple-500/30 px-1.5 py-0.5 rounded-full font-bold">Fra 690,-</span>
                       </Link>
 
                       <Link 
                         href="/faq"
                         onClick={() => setIsMenuOpen(false)}
-                        className="text-left p-2.5 rounded-xl bg-slate-50 text-xs font-bold text-slate-800 hover:bg-slate-100 border border-slate-200"
+                        className="text-left p-2.5 rounded-xl bg-[#0e1422] text-xs font-bold text-white hover:bg-[#151e33] border border-white/10"
                       >
                         FAQ
                       </Link>
                       <button 
                         onClick={() => { setIsPortalModalOpen(true); setIsMenuOpen(false); }}
-                        className="text-left p-2.5 rounded-xl bg-slate-50 text-xs font-bold text-slate-800 hover:bg-slate-100 border border-slate-200 cursor-pointer flex items-center gap-1.5"
+                        className="text-left p-2.5 rounded-xl bg-[#0e1422] text-xs font-bold text-white hover:bg-[#151e33] border border-white/10 cursor-pointer flex items-center gap-1.5"
                       >
-                        <Users size={13} className="text-emerald-600" />
+                        <Users size={13} className="text-emerald-400" />
                         <span>Kundeportal</span>
                       </button>
                       <Link 
                         href="/om-oss"
                         onClick={() => setIsMenuOpen(false)}
-                        className="text-left p-2.5 rounded-xl bg-slate-50 text-xs font-bold text-slate-800 hover:bg-slate-100 border border-slate-200"
+                        className="text-left p-2.5 rounded-xl bg-[#0e1422] text-xs font-bold text-white hover:bg-[#151e33] border border-white/10"
                       >
                         Om oss
                       </Link>
                       <Link 
                         href="/kontakt"
                         onClick={() => setIsMenuOpen(false)}
-                        className="text-left p-2.5 rounded-xl bg-slate-50 text-xs font-bold text-slate-800 hover:bg-slate-100 border border-slate-200"
+                        className="text-left p-2.5 rounded-xl bg-[#0e1422] text-xs font-bold text-white hover:bg-[#151e33] border border-white/10"
                       >
                         Kontakt
                       </Link>
@@ -1176,29 +1176,29 @@ function AppContent() {
 
                     <button 
                       onClick={() => { handleInstallApp(); setIsMenuOpen(false); }} 
-                      className="w-full mt-3 flex items-center justify-center gap-2 py-2.5 px-3 bg-electric-50 text-electric-900 rounded-xl text-xs font-bold border border-electric-200 hover:bg-electric-100 transition-all cursor-pointer"
+                      className="w-full mt-3 flex items-center justify-center gap-2 py-2.5 px-3 bg-white/5 hover:bg-white/10 text-white rounded-xl text-xs font-bold border border-white/10 transition-all cursor-pointer"
                     >
-                      <Download size={15} className="text-electric-600" />
+                      <Download size={15} className="text-purple-400" />
                       <span>{t('app_shortcut_download', 'Last ned mobil-app / snarvei')}</span>
                     </button>
                   </div>
 
                   {/* Language Selector */}
-                  <div className="flex items-center justify-between px-4 py-3 bg-slate-50 rounded-xl border border-slate-200 mt-2">
+                  <div className="flex items-center justify-between px-4 py-3 bg-[#131314] rounded-xl border border-white/10 mt-2">
                     <div className="flex items-center gap-2">
-                      <Globe size={16} className="text-electric-600" />
+                      <Globe size={16} className="text-purple-400" />
                       <select 
                         onChange={(e) => { changeLanguage(e.target.value); setIsMenuOpen(false); }}
                         value={getStandardLang(i18n.language)}
-                        className="text-xs font-black bg-transparent border-none focus:ring-0 cursor-pointer uppercase text-neutral-800"
+                        className="text-xs font-black bg-transparent border-none focus:ring-0 cursor-pointer uppercase text-white"
                       >
-                        <option value="no">Norsk (NO)</option>
-                        <option value="en">English (EN)</option>
-                        <option value="pl">Polski (PL)</option>
-                        <option value="lt">Lietuvių (LT)</option>
+                        <option value="no" className="bg-slate-900 text-white">Norsk (NO)</option>
+                        <option value="en" className="bg-slate-900 text-white">English (EN)</option>
+                        <option value="pl" className="bg-slate-900 text-white">Polski (PL)</option>
+                        <option value="lt" className="bg-slate-900 text-white">Lietuvių (LT)</option>
                       </select>
                     </div>
-                    <span className="text-[10px] font-bold uppercase text-electric-700 bg-electric-100 px-2.5 py-0.5 rounded-full border border-electric-200">
+                    <span className="text-[10px] font-bold uppercase text-purple-300 bg-purple-500/20 px-2.5 py-0.5 rounded-full border border-purple-500/30">
                       {t('export_standard_note', 'Eksport: Norsk')}
                     </span>
                   </div>

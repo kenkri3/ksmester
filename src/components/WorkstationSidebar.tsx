@@ -169,30 +169,31 @@ export default function WorkstationSidebar({
         )}
       </AnimatePresence>
 
-      {/* 🖥️ Sidebar Container (Styled identically to Gemini & ChatGPT, in Viking Navy/Dark palette) */}
+      {/* 🖥️ Sidebar Container (Styled identically to Gemini Mobile & Desktop Workstation) */}
       <aside
         className={cn(
-          "bg-[#090D16] text-slate-200 border-r border-slate-800/80 flex flex-col z-40 transition-all duration-300 ease-in-out shrink-0 select-none",
-          // Mobile: Drawer off-canvas
-          "fixed inset-y-0 left-0 h-full w-[285px] sm:w-[305px]",
-          isOpenMobile ? "translate-x-0 shadow-2xl" : "-translate-x-full",
+          "text-slate-200 border-r border-slate-800/80 flex flex-col z-50 transition-all duration-300 ease-in-out shrink-0 select-none",
+          // Mobile: OLED Black Gemini Drawer
+          "fixed inset-y-0 left-0 h-full w-[85vw] max-w-[320px] bg-[#000000] border-r border-white/10 shadow-2xl",
+          isOpenMobile ? "translate-x-0" : "-translate-x-full",
           // Desktop: Static in-flow sidebar
-          "md:static md:translate-x-0 md:h-[100dvh]",
+          "md:static md:translate-x-0 md:h-[100dvh] md:bg-[#090D16] md:border-slate-800/80",
           isCollapsedDesktop ? "md:w-[68px]" : "md:w-[260px] lg:w-[280px]"
         )}
       >
-        {/* 1. Header: Gemini/ChatGPT style with brand & collapse toggle */}
-        <div className="h-14 px-3.5 flex items-center justify-between border-b border-slate-800/80 shrink-0">
+        {/* 1. Header: Gemini style with brand & close/collapse toggle */}
+        <div className="h-14 px-4 flex items-center justify-between border-b border-white/10 md:border-slate-800/80 shrink-0 bg-[#000000] md:bg-transparent">
           <div className="flex items-center gap-2.5 min-w-0">
-            <div className="w-8 h-8 rounded-xl bg-gradient-to-tr from-electric-600 via-purple-600 to-indigo-600 flex items-center justify-center text-white shadow-md shadow-electric-500/20 shrink-0">
-              <Sparkles size={17} className="text-white" />
+            {/* Multi-color glowing Gemini-style star */}
+            <div className="w-8 h-8 rounded-xl bg-gradient-to-tr from-blue-500 via-purple-500 to-pink-500 flex items-center justify-center text-white shadow-md shadow-purple-500/20 shrink-0">
+              <Sparkles size={17} className="text-white fill-white/20" />
             </div>
             {!isCollapsedDesktop && (
               <div className="min-w-0 flex items-center gap-1.5">
                 <span className="font-bold text-sm tracking-tight text-white truncate">
                   VikingMester
                 </span>
-                <span className="px-1.5 py-0.5 rounded-full text-[9px] font-black uppercase tracking-wider bg-electric-500/20 text-electric-300 border border-electric-500/30">
+                <span className="px-1.5 py-0.5 rounded-full text-[9px] font-black uppercase tracking-wider bg-purple-500/20 text-purple-300 border border-purple-500/30">
                   AI
                 </span>
               </div>
@@ -209,19 +210,19 @@ export default function WorkstationSidebar({
             {isCollapsedDesktop ? <PanelLeftOpen size={17} /> : <PanelLeftClose size={17} />}
           </button>
 
-          {/* Mobile close button */}
+          {/* Mobile close button (Gemini round X) */}
           <button
             type="button"
             onClick={onCloseMobile}
-            className="md:hidden p-1.5 rounded-lg text-slate-400 hover:text-white hover:bg-slate-800 transition-colors cursor-pointer"
+            className="md:hidden p-2 rounded-full text-slate-400 hover:text-white hover:bg-white/10 transition-colors cursor-pointer"
             title="Lukk meny"
           >
-            <X size={18} />
+            <X size={19} />
           </button>
         </div>
 
-        {/* 2. Top Primary Action: "+ Ny chat" (ChatGPT / Gemini style) */}
-        <div className="p-3 border-b border-slate-800/60 shrink-0 space-y-1.5">
+        {/* 2. Top Primary Action: "+ Ny samtale" (Gemini Mobile rounded pill style) */}
+        <div className="p-3 border-b border-white/10 md:border-slate-800/60 shrink-0 space-y-2">
           <button
             type="button"
             onClick={() => {
@@ -229,28 +230,28 @@ export default function WorkstationSidebar({
               if (isOpenMobile) onCloseMobile();
             }}
             className={cn(
-              "w-full flex items-center gap-2.5 py-2.5 px-3 rounded-xl font-bold text-xs sm:text-sm text-white transition-all shadow-sm active:scale-98 cursor-pointer",
-              "bg-gradient-to-r from-purple-700 via-electric-600 to-indigo-600 hover:from-purple-600 hover:to-indigo-500",
-              isCollapsedDesktop && "md:p-2.5 md:justify-center"
+              "w-full flex items-center gap-3 py-3 px-4 rounded-full font-semibold text-xs sm:text-sm text-white transition-all shadow-sm active:scale-98 cursor-pointer",
+              "bg-[#1e1f20] hover:bg-[#282a2d] border border-white/10 hover:border-white/20",
+              isCollapsedDesktop && "md:p-2.5 md:justify-center md:rounded-xl"
             )}
             title="Start en ny samtale eller oppgave"
           >
-            <Plus size={17} className="shrink-0" />
+            <Plus size={18} className="text-white shrink-0" />
             {!isCollapsedDesktop && <span className="truncate">Ny samtale</span>}
           </button>
 
-          {/* 🔍 Søk i chatter (Gemini style) */}
+          {/* 🔍 Søk i samtaler (Gemini pill style) */}
           {!isCollapsedDesktop && (
             <button
               type="button"
               onClick={onOpenSmartSearch}
-              className="w-full flex items-center justify-between px-3 py-2 rounded-xl text-xs text-slate-400 hover:text-white hover:bg-slate-850 transition-colors cursor-pointer"
+              className="w-full flex items-center justify-between px-3.5 py-2 rounded-full text-xs text-slate-300 hover:text-white bg-white/5 hover:bg-white/10 border border-transparent hover:border-white/10 transition-all cursor-pointer"
             >
-              <div className="flex items-center gap-2.5">
+              <div className="flex items-center gap-2.5 min-w-0">
                 <Search size={14} className="text-slate-400 shrink-0" />
-                <span>Søk i chatter og prosjekter</span>
+                <span className="truncate">Søk i samtaler & prosjekter</span>
               </div>
-              <kbd className="px-1.5 py-0.5 rounded bg-slate-800 text-[10px] text-slate-400 font-mono">⌘K</kbd>
+              <kbd className="px-1.5 py-0.5 rounded bg-white/10 text-[10px] text-slate-400 font-mono shrink-0">⌘K</kbd>
             </button>
           )}
         </div>
@@ -540,85 +541,62 @@ export default function WorkstationSidebar({
         </div>
 
         {/* 4. Footer: Gemini-style user profile card with location, settings & logout */}
-        <div className="p-3 border-t border-slate-800/80 shrink-0 bg-[#070A11] space-y-2">
-          <div className={cn("flex items-center justify-between gap-2", isCollapsedDesktop && "justify-center")}>
+        <div className="p-3 border-t border-white/10 md:border-slate-800/80 shrink-0 bg-[#000000] md:bg-[#070A11] space-y-2">
+          <div className={cn("p-2 rounded-2xl bg-[#131314] border border-white/10 flex items-center justify-between gap-2 transition-all", isCollapsedDesktop && "justify-center p-1.5 bg-transparent border-transparent")}>
             <div className="flex items-center gap-2.5 min-w-0">
-              <div 
-                onClick={() => {
-                  if (isCollapsedDesktop && isSuperAdmin && !impersonatedCompanyId) {
-                    if (onOpenSuperAdmin) onOpenSuperAdmin();
-                    else window.dispatchEvent(new CustomEvent("navigate_view", { detail: { view: "super-admin" } }));
+              {user?.photoURL ? (
+                <img 
+                  src={user.photoURL} 
+                  alt={user.displayName || 'Profil'} 
+                  className="w-8 h-8 rounded-full border border-white/20 object-cover shrink-0 aspect-square"
+                />
+              ) : (
+                <div 
+                  onClick={() => {
+                    if (isCollapsedDesktop && isSuperAdmin && !impersonatedCompanyId) {
+                      if (onOpenSuperAdmin) onOpenSuperAdmin();
+                      else window.dispatchEvent(new CustomEvent("navigate_view", { detail: { view: "super-admin" } }));
+                    }
+                  }}
+                  className={cn(
+                    "w-8 h-8 rounded-full flex items-center justify-center text-white font-black text-xs shrink-0 ring-2",
+                    impersonatedCompanyId
+                      ? "bg-gradient-to-tr from-amber-600 to-amber-400 ring-amber-500/30"
+                      : "bg-gradient-to-tr from-purple-600 to-blue-500 ring-purple-500/30",
+                    isCollapsedDesktop && isSuperAdmin && !impersonatedCompanyId && "cursor-pointer ring-amber-400/50 hover:scale-105 transition-transform"
+                  )}
+                  title={
+                    impersonatedCompanyId
+                      ? `Viser som kunde: ${impersonatedCompanyId === 'comp-demo-fjellheim' ? 'Fjellheim Bygg' : impersonatedCompanyId}`
+                      : (isCollapsedDesktop && isSuperAdmin ? "👑 SuperAdmin Portal (klikk her)" : undefined)
                   }
-                }}
-                className={cn(
-                  "w-8 h-8 rounded-full flex items-center justify-center text-white font-black text-xs shrink-0 ring-2",
-                  impersonatedCompanyId
-                    ? "bg-gradient-to-tr from-amber-600 to-amber-400 ring-amber-500/30"
-                    : "bg-gradient-to-tr from-electric-600 to-purple-500 ring-purple-500/20",
-                  isCollapsedDesktop && isSuperAdmin && !impersonatedCompanyId && "cursor-pointer ring-amber-400/50 hover:scale-105 transition-transform"
-                )}
-                title={
-                  impersonatedCompanyId
-                    ? `Viser som kunde: ${impersonatedCompanyId === 'comp-demo-fjellheim' ? 'Fjellheim Bygg' : impersonatedCompanyId}`
-                    : (isCollapsedDesktop && isSuperAdmin ? "👑 SuperAdmin Portal (klikk her)" : undefined)
-                }
-              >
-                {impersonatedCompanyId === 'comp-demo-fjellheim' 
-                  ? 'L' 
-                  : (user?.displayName ? user.displayName.charAt(0).toUpperCase() : 'K')}
-              </div>
+                >
+                  {impersonatedCompanyId === 'comp-demo-fjellheim' 
+                    ? 'L' 
+                    : (user?.displayName ? user.displayName.charAt(0).toUpperCase() : 'K')}
+                </div>
+              )}
               {!isCollapsedDesktop && (
                 <div className="min-w-0">
                   <p className="text-xs font-bold text-white truncate">
                     {impersonatedCompanyId === 'comp-demo-fjellheim' 
-                      ? 'Lars Fjellheim (Demokunde)' 
+                      ? 'Lars Fjellheim' 
                       : (impersonatedCompanyId ? `Kunde: ${impersonatedCompanyId}` : (user?.displayName || 'Kenneth Glosli Kristiansen'))}
                   </p>
-                  <p className="text-[10px] text-slate-400 font-medium truncate flex items-center gap-1">
-                    {impersonatedCompanyId ? (
-                      <span className="text-amber-400 font-bold">👁️ Visningsmodus</span>
-                    ) : isSuperAdmin ? (
-                      <button
-                        type="button"
-                        onClick={() => {
-                          if (onOpenSuperAdmin) onOpenSuperAdmin();
-                          else window.dispatchEvent(new CustomEvent("navigate_view", { detail: { view: "super-admin" } }));
-                        }}
-                        className="text-amber-400 hover:text-amber-300 font-bold hover:underline cursor-pointer flex items-center gap-0.5"
-                        title="Åpne SuperAdmin Kontrollpanel"
-                      >
-                        <span>👑 SuperAdmin</span>
-                      </button>
-                    ) : (
-                      <span className="text-emerald-400 font-bold">Byggmester</span>
-                    )}
-                    <span>•</span>
-                    <span className="truncate">
-                      {impersonatedCompanyId === 'comp-demo-fjellheim' 
-                        ? 'Fjellheim Bygg & Tømrer AS' 
-                        : (impersonatedCompanyId || user?.company || 'VikingMester')}
+                  <div className="flex items-center gap-1.5 mt-0.5">
+                    <span className="px-1.5 py-0.2 rounded-full text-[9px] font-black uppercase tracking-wider bg-gradient-to-r from-purple-500/20 to-blue-500/20 text-purple-300 border border-purple-500/30">
+                      MESTER PRO
                     </span>
-                  </p>
-                  {impersonatedCompanyId && (
-                    <button
-                      type="button"
-                      onClick={() => {
-                        stopImpersonation();
-                        if (onOpenSuperAdmin) onOpenSuperAdmin();
-                        else window.dispatchEvent(new CustomEvent("navigate_view", { detail: { view: "super-admin" } }));
-                      }}
-                      className="text-[10px] text-amber-400 hover:text-amber-300 font-bold hover:underline cursor-pointer flex items-center gap-1 mt-0.5"
-                      title="Avslutt kundevisning og returner til SuperAdmin"
-                    >
-                      <span>← Tilbake til SuperAdmin</span>
-                    </button>
-                  )}
+                    {isSuperAdmin && (
+                      <span className="text-[9px] font-bold text-amber-400">👑 Sys</span>
+                    )}
+                  </div>
                 </div>
               )}
             </div>
 
             {!isCollapsedDesktop && (
-              <div className="flex items-center gap-1">
+              <div className="flex items-center gap-0.5 shrink-0">
                 {isSuperAdmin && (
                   <button
                     type="button"
@@ -635,7 +613,7 @@ export default function WorkstationSidebar({
                 <button
                   type="button"
                   onClick={onOpenSettings}
-                  className="p-1.5 rounded-lg text-slate-400 hover:text-white hover:bg-slate-800 transition-colors cursor-pointer"
+                  className="p-1.5 rounded-lg text-slate-400 hover:text-white hover:bg-white/10 transition-colors cursor-pointer"
                   title="Innstillinger"
                 >
                   <Settings size={15} />
@@ -643,7 +621,7 @@ export default function WorkstationSidebar({
                 <button
                   type="button"
                   onClick={onLogout}
-                  className="p-1.5 rounded-lg text-slate-400 hover:text-red-400 hover:bg-red-500/15 transition-colors cursor-pointer"
+                  className="p-1.5 rounded-lg text-slate-400 hover:text-rose-400 hover:bg-rose-500/15 transition-colors cursor-pointer"
                   title="Logg ut"
                 >
                   <LogOut size={15} />

@@ -61,7 +61,10 @@ import {
   Lock,
   BookOpen,
   FileSpreadsheet,
-  FileCheck
+  FileCheck,
+  SquarePen,
+  Image as ImageIcon,
+  Paperclip
 } from 'lucide-react';
 import { cn } from '@/src/lib/utils';
 import { toast } from 'sonner';
@@ -232,6 +235,12 @@ export default function MesterWorkstation({
   // ⏱️ Tenketimer for MesterAI
   const [activeThinkingDuration, setActiveThinkingDuration] = useState(0);
   const thinkingTimerRef = useRef<any>(null);
+
+  // 📱 Gemini Mobile Experience State
+  const [isAttachmentMenuOpen, setIsAttachmentMenuOpen] = useState(false);
+  const [isLiveVoiceActive, setIsLiveVoiceActive] = useState(false);
+  const cameraInputRef = useRef<HTMLInputElement>(null);
+  const docInputRef = useRef<HTMLInputElement>(null);
 
   // 🔍 Top Search Bar & Floating Panel State (Alltid i arbeidsvinduet, aldri popups over menyen)
   const [isTopSearchOpen, setIsTopSearchOpen] = useState(false);
@@ -1231,6 +1240,11 @@ export default function MesterWorkstation({
       const finalMessages = [...updatedWithUser, assistantMessage];
       setMessages(finalMessages);
 
+      // 🎙️ Live Voice mode: les opp svar automatisk
+      if (isLiveVoiceActive && assistantMessage.content) {
+        handleSpeakText(assistantMessage.content);
+      }
+
       // Lagre i sesjonstjenesten (oppdaterer tittel i sidebaren automatisk)
       chatSessionService.saveSessionMessages(activeSessionId, finalMessages, {
         autoTitle: true,
@@ -1348,145 +1362,247 @@ export default function MesterWorkstation({
               </button>
             </div>
           ) : (
-            <div className="flex items-center gap-2 sm:gap-3 min-w-0">
-              {/* Mobile Menu Toggle */}
-              <button
-                type="button"
-                onClick={() => setIsOpenMobile(true)}
-                className="md:hidden p-2 rounded-xl bg-slate-900 border border-slate-800 text-slate-300 hover:text-white transition-colors cursor-pointer shrink-0"
-                title="Åpne meny"
-              >
-                <Menu size={18} />
-              </button>
-
-              {/* Workstation Badge & Selected Project Dropdown */}
-              <div className="relative">
+            <>
+              {/* 📱 MOBILE TOP BAR (1:1 Google Gemini App - Screenshot 3) */}
+              <div className="flex md:hidden items-center justify-between w-full">
+                {/* Left: Hamburger Menu */}
                 <button
                   type="button"
-                  onClick={() => setIsProjectDropdownOpen(!isProjectDropdownOpen)}
-                  className="flex items-center gap-2 px-3 py-1.5 rounded-xl bg-slate-900/90 border border-slate-800 hover:border-slate-700 text-xs font-bold text-white transition-all cursor-pointer shadow-xs group"
+                  onClick={() => setIsOpenMobile(true)}
+                  className="p-2 -ml-1 rounded-full text-slate-300 hover:text-white hover:bg-white/10 transition-colors cursor-pointer"
+                  title="Åpne meny"
                 >
-                  <span className="w-2 h-2 rounded-full bg-emerald-400 animate-pulse shrink-0" />
-                  <span className="truncate max-w-[140px] sm:max-w-[220px]">
-                    {selectedProject ? selectedProject.name : 'Alle Byggeplasser'}
-                  </span>
-                  <ChevronDown size={14} className="text-slate-400 group-hover:text-white transition-colors shrink-0" />
+                  <Menu size={22} />
                 </button>
 
-                {/* Project Switcher Dropdown */}
-                {isProjectDropdownOpen && (
-                  <div className="absolute left-0 top-full mt-1.5 w-72 max-h-80 overflow-y-auto bg-slate-900 border border-slate-800 rounded-2xl shadow-2xl p-2 z-50 animate-in fade-in zoom-in-95 duration-100">
-                    <div className="px-3 py-2 text-[10px] font-black uppercase tracking-wider text-slate-400 border-b border-slate-800 flex items-center justify-between">
-                      <span>Velg aktiv byggeplass</span>
-                      <span className="text-emerald-400">{projects.length} prosjekter</span>
-                    </div>
+                {/* Center: Model / Project Switcher Pill */}
+                <div className="relative">
+                  <button
+                    type="button"
+                    onClick={() => setIsProjectDropdownOpen(!isProjectDropdownOpen)}
+                    className="flex items-center gap-1.5 px-3.5 py-1.5 rounded-full bg-[#1e1f20] border border-white/10 text-xs font-semibold text-white shadow-xs hover:border-white/20 transition-all cursor-pointer"
+                  >
+                    <span className="w-2 h-2 rounded-full bg-emerald-400 animate-pulse shrink-0" />
+                    <span className="truncate max-w-[150px]">
+                      {selectedProject ? selectedProject.name : 'MesterAI v2.6'}
+                    </span>
+                    <ChevronDown size={14} className="text-slate-400 shrink-0" />
+                  </button>
 
-                    <button
-                      type="button"
-                      onClick={() => {
-                        onSelectProject(null);
-                        setIsProjectDropdownOpen(false);
-                        setActiveModuleTab('all_projects');
-                        setViewMode('module');
-                      }}
-                      className={cn(
-                        "w-full flex items-center gap-2.5 px-3 py-2 rounded-xl text-xs font-bold text-left transition-colors cursor-pointer mt-1",
-                        !selectedProject ? "bg-emerald-500/20 text-emerald-300 border border-emerald-500/30" : "text-slate-300 hover:bg-slate-850 hover:text-white"
-                      )}
-                    >
-                      <Building2 size={14} className="shrink-0 text-slate-400" />
-                      <div className="min-w-0">
-                        <p className="truncate font-bold">Alle byggeplasser</p>
-                        <p className="text-[10px] text-slate-500">Oversikt over alle oppdrag</p>
+                  {/* Project Switcher Dropdown on Mobile */}
+                  {isProjectDropdownOpen && (
+                    <div className="absolute left-1/2 -translate-x-1/2 top-full mt-2 w-72 max-h-80 overflow-y-auto bg-[#131314] border border-white/15 rounded-2xl shadow-2xl p-2 z-50 animate-in fade-in zoom-in-95 duration-100">
+                      <div className="px-3 py-2 text-[10px] font-black uppercase tracking-wider text-slate-400 border-b border-white/10 flex items-center justify-between">
+                        <span>Velg aktiv byggeplass</span>
+                        <span className="text-emerald-400 font-mono">{projects.length} prosjekter</span>
                       </div>
-                    </button>
 
-                    {projects.map((proj) => (
                       <button
-                        key={proj.id}
                         type="button"
                         onClick={() => {
-                          onSelectProject(proj);
+                          onSelectProject(null);
                           setIsProjectDropdownOpen(false);
-                          setActiveModuleTab('project_details');
+                          setActiveModuleTab('all_projects');
                           setViewMode('module');
                         }}
                         className={cn(
-                          "w-full flex items-center gap-2.5 px-3 py-2 rounded-xl text-xs font-bold text-left transition-colors cursor-pointer mt-0.5",
-                          selectedProject?.id === proj.id ? "bg-emerald-500/20 text-emerald-300 border border-emerald-500/30" : "text-slate-300 hover:bg-slate-850 hover:text-white"
+                          "w-full flex items-center gap-2.5 px-3 py-2.5 rounded-xl text-xs font-bold text-left transition-colors cursor-pointer mt-1",
+                          !selectedProject ? "bg-white/10 text-white border border-white/20" : "text-slate-300 hover:bg-white/5 hover:text-white"
                         )}
                       >
-                        <HardHat size={14} className="shrink-0 text-emerald-400" />
+                        <Building2 size={15} className="shrink-0 text-slate-400" />
                         <div className="min-w-0">
-                          <p className="truncate font-bold">{proj.name}</p>
-                          <p className="text-[10px] text-slate-400 truncate">{proj.clientName || 'Privat oppdragsgiver'}</p>
+                          <p className="truncate font-bold">Alle byggeplasser</p>
+                          <p className="text-[10px] text-slate-400">Totaloversikt over oppdrag</p>
                         </div>
                       </button>
-                    ))}
-                  </div>
-                )}
+
+                      {projects.map((proj) => (
+                        <button
+                          key={proj.id}
+                          type="button"
+                          onClick={() => {
+                            onSelectProject(proj);
+                            setIsProjectDropdownOpen(false);
+                            setActiveModuleTab('project_details');
+                            setViewMode('module');
+                          }}
+                          className={cn(
+                            "w-full flex items-center gap-2.5 px-3 py-2 rounded-xl text-xs font-bold text-left transition-colors cursor-pointer mt-0.5",
+                            selectedProject?.id === proj.id ? "bg-emerald-500/20 text-emerald-300 border border-emerald-500/30" : "text-slate-300 hover:bg-white/5 hover:text-white"
+                          )}
+                        >
+                          <HardHat size={14} className="shrink-0 text-emerald-400" />
+                          <div className="min-w-0">
+                            <p className="truncate font-bold">{proj.name}</p>
+                            <p className="text-[10px] text-slate-400 truncate">{proj.clientName || 'Privat oppdragsgiver'}</p>
+                          </div>
+                        </button>
+                      ))}
+                    </div>
+                  )}
+                </div>
+
+                {/* Right: Compose ✏️ + Profile Avatar */}
+                <div className="flex items-center gap-1">
+                  <button
+                    type="button"
+                    onClick={() => {
+                      handleNewChat();
+                      setViewMode('chat');
+                    }}
+                    className="p-2 rounded-full text-slate-300 hover:text-white hover:bg-white/10 transition-colors cursor-pointer"
+                    title="Start ny samtale"
+                  >
+                    <SquarePen size={19} />
+                  </button>
+
+                  <button
+                    type="button"
+                    onClick={() => setIsSettingsModalOpen(true)}
+                    className="w-8 h-8 rounded-full border border-white/20 overflow-hidden flex items-center justify-center bg-gradient-to-tr from-purple-600 to-blue-500 text-white font-bold text-xs shrink-0 active:scale-95 transition-transform"
+                    title="Innstillinger & Profil"
+                  >
+                    {user?.photoURL ? (
+                      <img src={user.photoURL} alt="Profil" className="w-full h-full object-cover" />
+                    ) : (
+                      <span>{user?.displayName ? user.displayName.charAt(0).toUpperCase() : 'K'}</span>
+                    )}
+                  </button>
+                </div>
               </div>
 
-              {/* Status: 100% Autonom */}
-              <span className="hidden lg:inline-flex items-center gap-1.5 px-2.5 py-1 rounded-full text-[11px] font-bold bg-emerald-500/10 text-emerald-400 border border-emerald-500/20">
-                <span className="w-1.5 h-1.5 rounded-full bg-emerald-400" />
-                100% Autonom Agent
-              </span>
-            </div>
-          )}
+              {/* 🖥️ DESKTOP TOP BAR (Full workstation cockpit) */}
+              <div className="hidden md:flex items-center justify-between w-full">
+                <div className="flex items-center gap-3 min-w-0">
+                  {/* Workstation Badge & Selected Project Dropdown */}
+                  <div className="relative">
+                    <button
+                      type="button"
+                      onClick={() => setIsProjectDropdownOpen(!isProjectDropdownOpen)}
+                      className="flex items-center gap-2 px-3 py-1.5 rounded-xl bg-slate-900/90 border border-slate-800 hover:border-slate-700 text-xs font-bold text-white transition-all cursor-pointer shadow-xs group"
+                    >
+                      <span className="w-2 h-2 rounded-full bg-emerald-400 animate-pulse shrink-0" />
+                      <span className="truncate max-w-[220px]">
+                        {selectedProject ? selectedProject.name : 'Alle Byggeplasser'}
+                      </span>
+                      <ChevronDown size={14} className="text-slate-400 group-hover:text-white transition-colors shrink-0" />
+                    </button>
 
-          {/* Right Header Controls */}
-          {!isTopSearchOpen && (
-            <div className="flex items-center gap-1 sm:gap-2">
-              {isSuperAdmin && (
-                <button
-                  type="button"
-                  onClick={handleOpenSuperAdmin}
-                  className="inline-flex items-center gap-1.5 px-2.5 py-1.5 rounded-xl bg-amber-500/15 hover:bg-amber-500/25 border border-amber-500/40 text-amber-300 hover:text-white text-xs font-bold transition-all shadow-xs cursor-pointer"
-                  title="Åpne SuperAdmin Portal (Brukere, Lisenser, Logger)"
-                >
-                  <Crown size={14} className="text-amber-400" />
-                  <span className="hidden sm:inline">SuperAdmin</span>
-                </button>
-              )}
+                    {/* Project Switcher Dropdown */}
+                    {isProjectDropdownOpen && (
+                      <div className="absolute left-0 top-full mt-1.5 w-72 max-h-80 overflow-y-auto bg-slate-900 border border-slate-800 rounded-2xl shadow-2xl p-2 z-50 animate-in fade-in zoom-in-95 duration-100">
+                        <div className="px-3 py-2 text-[10px] font-black uppercase tracking-wider text-slate-400 border-b border-slate-800 flex items-center justify-between">
+                          <span>Velg aktiv byggeplass</span>
+                          <span className="text-emerald-400">{projects.length} prosjekter</span>
+                        </div>
 
-              {!isSuperAdmin && isPlatformOwner && (impersonatedCompanyId || simulatedPlan) && (
-                <button
-                  type="button"
-                  onClick={() => {
-                    if (setSimulatedPlan) setSimulatedPlan(null);
-                    if (stopImpersonation) stopImpersonation();
-                    handleOpenSuperAdmin();
-                  }}
-                  className="inline-flex items-center gap-1.5 px-2.5 py-1.5 rounded-xl bg-amber-500 hover:bg-amber-400 text-neutral-950 text-xs font-black transition-all shadow-md cursor-pointer"
-                  title="Avslutt visningsmodus og returner til SuperAdmin"
-                >
-                  <ArrowLeft size={13} />
-                  <span className="hidden sm:inline">← Til SuperAdmin</span>
-                </button>
-              )}
-              {onOpenOmnichannelModal && (
-                <button
-                  type="button"
-                  onClick={onOpenOmnichannelModal}
-                  className="p-2 rounded-xl text-slate-400 hover:text-white hover:bg-slate-800/80 transition-colors cursor-pointer"
-                  title="Omnichannel Lytter (Discord, Slack, Teams, E-post)"
-                >
-                  <Radio size={16} className="text-emerald-400" />
-                </button>
-              )}
+                        <button
+                          type="button"
+                          onClick={() => {
+                            onSelectProject(null);
+                            setIsProjectDropdownOpen(false);
+                            setActiveModuleTab('all_projects');
+                            setViewMode('module');
+                          }}
+                          className={cn(
+                            "w-full flex items-center gap-2.5 px-3 py-2 rounded-xl text-xs font-bold text-left transition-colors cursor-pointer mt-1",
+                            !selectedProject ? "bg-emerald-500/20 text-emerald-300 border border-emerald-500/30" : "text-slate-300 hover:bg-slate-850 hover:text-white"
+                          )}
+                        >
+                          <Building2 size={14} className="shrink-0 text-slate-400" />
+                          <div className="min-w-0">
+                            <p className="truncate font-bold">Alle byggeplasser</p>
+                            <p className="text-[10px] text-slate-500">Oversikt over alle oppdrag</p>
+                          </div>
+                        </button>
 
-              <button
-                type="button"
-                onClick={() => setIsTopSearchOpen(true)}
-                className="p-2 rounded-xl text-slate-400 hover:text-white hover:bg-slate-800/80 transition-colors cursor-pointer"
-                title="Søk i samtaler, prosjekter og moduler (⌘K)"
-              >
-                <Search size={16} />
-              </button>
+                        {projects.map((proj) => (
+                          <button
+                            key={proj.id}
+                            type="button"
+                            onClick={() => {
+                              onSelectProject(proj);
+                              setIsProjectDropdownOpen(false);
+                              setActiveModuleTab('project_details');
+                              setViewMode('module');
+                            }}
+                            className={cn(
+                              "w-full flex items-center gap-2.5 px-3 py-2 rounded-xl text-xs font-bold text-left transition-colors cursor-pointer mt-0.5",
+                              selectedProject?.id === proj.id ? "bg-emerald-500/20 text-emerald-300 border border-emerald-500/30" : "text-slate-300 hover:bg-slate-850 hover:text-white"
+                            )}
+                          >
+                            <HardHat size={14} className="shrink-0 text-emerald-400" />
+                            <div className="min-w-0">
+                              <p className="truncate font-bold">{proj.name}</p>
+                              <p className="text-[10px] text-slate-400 truncate">{proj.clientName || 'Privat oppdragsgiver'}</p>
+                            </div>
+                          </button>
+                        ))}
+                      </div>
+                    )}
+                  </div>
 
-              <NotificationBell darkMode={true} />
-            </div>
+                  {/* Status: 100% Autonom */}
+                  <span className="hidden lg:inline-flex items-center gap-1.5 px-2.5 py-1 rounded-full text-[11px] font-bold bg-emerald-500/10 text-emerald-400 border border-emerald-500/20">
+                    <span className="w-1.5 h-1.5 rounded-full bg-emerald-400" />
+                    100% Autonom Agent
+                  </span>
+                </div>
+
+                {/* Right Desktop Controls */}
+                <div className="flex items-center gap-1 sm:gap-2">
+                  {isSuperAdmin && (
+                    <button
+                      type="button"
+                      onClick={handleOpenSuperAdmin}
+                      className="inline-flex items-center gap-1.5 px-2.5 py-1.5 rounded-xl bg-amber-500/15 hover:bg-amber-500/25 border border-amber-500/40 text-amber-300 hover:text-white text-xs font-bold transition-all shadow-xs cursor-pointer"
+                      title="Åpne SuperAdmin Portal (Brukere, Lisenser, Logger)"
+                    >
+                      <Crown size={14} className="text-amber-400" />
+                      <span>SuperAdmin</span>
+                    </button>
+                  )}
+
+                  {!isSuperAdmin && isPlatformOwner && (impersonatedCompanyId || simulatedPlan) && (
+                    <button
+                      type="button"
+                      onClick={() => {
+                        if (setSimulatedPlan) setSimulatedPlan(null);
+                        if (stopImpersonation) stopImpersonation();
+                        handleOpenSuperAdmin();
+                      }}
+                      className="inline-flex items-center gap-1.5 px-2.5 py-1.5 rounded-xl bg-amber-500 hover:bg-amber-400 text-neutral-950 text-xs font-black transition-all shadow-md cursor-pointer"
+                      title="Avslutt visningsmodus og returner til SuperAdmin"
+                    >
+                      <ArrowLeft size={13} />
+                      <span>← Til SuperAdmin</span>
+                    </button>
+                  )}
+                  {onOpenOmnichannelModal && (
+                    <button
+                      type="button"
+                      onClick={onOpenOmnichannelModal}
+                      className="p-2 rounded-xl text-slate-400 hover:text-white hover:bg-slate-800/80 transition-colors cursor-pointer"
+                      title="Omnichannel Lytter (Discord, Slack, Teams, E-post)"
+                    >
+                      <Radio size={16} className="text-emerald-400" />
+                    </button>
+                  )}
+
+                  <button
+                    type="button"
+                    onClick={() => setIsTopSearchOpen(true)}
+                    className="p-2 rounded-xl text-slate-400 hover:text-white hover:bg-slate-800/80 transition-colors cursor-pointer"
+                    title="Søk i samtaler, prosjekter og moduler (⌘K)"
+                  >
+                    <Search size={16} />
+                  </button>
+
+                  <NotificationBell darkMode={true} />
+                </div>
+              </div>
+            </>
           )}
         </header>
 
@@ -3826,74 +3942,70 @@ export default function MesterWorkstation({
             /* 🤖 THE DEFAULT CHAT INTERFACE (ChatGPT / Gemini / Antigravity style) */
             <div className="flex-1 flex flex-col justify-between max-w-4xl mx-auto w-full px-3 sm:px-6 pt-4 pb-32">
               {messages.length === 0 ? (
-                /* Centered Welcome Hero (Like Gemini: "Hva har du i tankene i dag?") */
+                /* Centered Welcome Hero (1:1 Google Gemini Mobile - Screenshot 3) */
                 <div className="my-auto py-8 sm:py-14 text-center space-y-6 animate-in fade-in duration-300">
-                  <div className="w-14 h-14 mx-auto rounded-2xl bg-gradient-to-tr from-purple-600 via-electric-600 to-indigo-600 flex items-center justify-center text-white shadow-xl shadow-electric-500/25">
-                    <Sparkles size={28} />
+                  {/* Glowing 4-point Gemini star */}
+                  <div className="relative inline-flex items-center justify-center">
+                    <div className="absolute inset-0 rounded-full blur-2xl bg-gradient-to-tr from-blue-500/30 via-purple-500/40 to-pink-500/30 scale-150 animate-pulse" />
+                    <svg viewBox="0 0 48 48" className="w-14 h-14 sm:w-16 sm:h-16 relative z-10 drop-shadow-[0_0_24px_rgba(168,85,247,0.45)]" fill="none" xmlns="http://www.w3.org/2000/svg">
+                      <defs>
+                        <linearGradient id="geminiStarGrad" x1="0%" y1="0%" x2="100%" y2="100%">
+                          <stop offset="0%" stopColor="#4285F4" />
+                          <stop offset="35%" stopColor="#9B72CF" />
+                          <stop offset="70%" stopColor="#D96570" />
+                          <stop offset="100%" stopColor="#F4B400" />
+                        </linearGradient>
+                      </defs>
+                      <path d="M24 0C24 13.2548 13.2548 24 0 24C13.2548 24 24 34.7452 24 48C24 34.7452 34.7452 24 48 24C34.7452 24 24 13.2548 24 0Z" fill="url(#geminiStarGrad)" />
+                    </svg>
                   </div>
 
-                  <div className="space-y-2 max-w-xl mx-auto">
-                    <h2 className="text-2xl sm:text-3xl font-black text-white tracking-tight">
-                      Hva vil du ha utført i dag?
-                    </h2>
-                    <p className="text-xs sm:text-sm text-slate-400 leading-relaxed">
-                      Aktiv på <strong className="text-slate-200">{selectedProject?.name || 'Geitekleiva 12 - Enebolig'}</strong>. MesterAI fører timer, varsler endringsordrer iht. NS 8406, lager SJA og sjekker TEK17.
-                    </p>
-                  </div>
+                  {/* Personalized Greeting (Screenshot 3: "Mikrofonen er din, Kenneth") */}
+                  {(() => {
+                    const rawName = user?.displayName || 'Kenneth';
+                    const firstName = rawName.trim().split(' ')[0] || 'Kenneth';
+                    return (
+                      <div className="space-y-1.5 max-w-xl mx-auto px-4">
+                        <h2 className="text-2xl sm:text-4xl font-semibold tracking-tight text-white">
+                          Mikrofonen er din, {firstName}
+                        </h2>
+                        <p className="text-xs sm:text-sm text-slate-400 font-normal">
+                          Aktiv byggeplass: <strong className="text-slate-200">{selectedProject?.name || 'Alle byggeplasser'}</strong>
+                        </p>
+                      </div>
+                    );
+                  })()}
 
-                  {/* Små hint på siden */}
-                  <div className="max-w-xl mx-auto p-3 rounded-2xl bg-slate-900/90 border border-slate-800 text-xs text-slate-300 flex items-center gap-2.5 text-left shadow-xs">
-                    <span className="text-base shrink-0">💡</span>
-                    <span>
-                      <strong>Tips:</strong> Du kan snakke inn timer, be om NS 8406 endringsordre eller laste opp bilde av utførelsen for automatisk TEK17-sjekk.
-                    </span>
-                  </div>
-
-                  {/* 5 Suggestion Chips */}
-                  <div className="grid grid-cols-1 sm:grid-cols-2 gap-2.5 max-w-2xl mx-auto text-left pt-2">
-                    <button
-                      type="button"
-                      onClick={() => handleSendMessage(`Før 7,5 timer lekting og vindsperre i byggedagboken for ${selectedProject?.name || 'Geitekleiva'}`)}
-                      className="p-3.5 rounded-2xl bg-slate-900/80 hover:bg-slate-850 border border-slate-800 hover:border-slate-700 transition-all text-xs text-slate-300 hover:text-white font-medium cursor-pointer shadow-xs group"
-                    >
-                      <span className="text-amber-400 font-bold block mb-1 flex items-center gap-1.5">
-                        <Clock size={14} /> Før timer i byggedagbok
-                      </span>
-                      «Før 7,5 timer lekting og vindsperre på {selectedProject?.name || 'Geitekleiva'}»
-                    </button>
-
-                    <button
-                      type="button"
-                      onClick={() => handleSendMessage('Varsle endringsordre iht. NS 8406 på 28 500 kr for ekstra bæring')}
-                      className="p-3.5 rounded-2xl bg-slate-900/80 hover:bg-slate-850 border border-slate-800 hover:border-slate-700 transition-all text-xs text-slate-300 hover:text-white font-medium cursor-pointer shadow-xs group"
-                    >
-                      <span className="text-purple-400 font-bold block mb-1 flex items-center gap-1.5">
-                        <FileSignature size={14} /> Varsle endringsordre
-                      </span>
-                      «Varsle endringsordre iht. NS 8406 på 28 500 kr»
-                    </button>
-
-                    <button
-                      type="button"
-                      onClick={() => handleSendMessage('Opprett en ny Sikker Jobb Analyse (SJA) for arbeid i stillas i 3. etasje')}
-                      className="p-3.5 rounded-2xl bg-slate-900/80 hover:bg-slate-850 border border-slate-800 hover:border-slate-700 transition-all text-xs text-slate-300 hover:text-white font-medium cursor-pointer shadow-xs group"
-                    >
-                      <span className="text-blue-400 font-bold block mb-1 flex items-center gap-1.5">
-                        <HardHat size={14} /> SJA for risikofylt arbeid
-                      </span>
-                      «Opprett SJA for arbeid i stillas i 3. etasje»
-                    </button>
-
-                    <button
-                      type="button"
-                      onClick={() => handleSendMessage('Hva er kravene til fall mot sluk og klemring på bad i TEK17?')}
-                      className="p-3.5 rounded-2xl bg-slate-900/80 hover:bg-slate-850 border border-slate-800 hover:border-slate-700 transition-all text-xs text-slate-300 hover:text-white font-medium cursor-pointer shadow-xs group"
-                    >
-                      <span className="text-emerald-400 font-bold block mb-1 flex items-center gap-1.5">
-                        <ClipboardCheck size={14} /> TEK17 Våtrom & Lukkesperre
-                      </span>
-                      «Hva er kravene til fall mot sluk og klemring på bad?»
-                    </button>
+                  {/* 4 Quick Suggestions with curvy arrow ↳ (1:1 Screenshot 3) */}
+                  <div className="space-y-2 max-w-xl mx-auto w-full px-2 pt-2">
+                    {[
+                      { 
+                        text: "Opprett endringsordre for ekstraarbeid (NS 8406)", 
+                        action: "Varsle endringsordre iht. NS 8406 for ekstraarbeid" 
+                      },
+                      { 
+                        text: "Ta TEK17 bildekontroll av sluk og membran", 
+                        action: "Hva er TEK17-kravene til sluk, klemring og membran på bad?" 
+                      },
+                      { 
+                        text: "Snakk inn byggedagbok med Yr-sanntidsvær", 
+                        action: "Før dagens byggedagbok med mannskapsliste og Yr-sanntidsvær" 
+                      },
+                      { 
+                        text: "Sjekk om sone bad er klar for lukking", 
+                        action: "Sjekk sjekkliste og lukkesperre for bad før plating" 
+                      }
+                    ].map((item, idx) => (
+                      <button
+                        key={idx}
+                        type="button"
+                        onClick={() => handleSendMessage(item.action)}
+                        className="w-full flex items-center justify-between gap-3 p-3.5 sm:p-4 rounded-2xl bg-[#1e1f20]/70 hover:bg-[#1e1f20] border border-white/10 hover:border-white/20 text-left text-xs sm:text-sm text-slate-200 hover:text-white transition-all cursor-pointer group active:scale-98 shadow-sm"
+                      >
+                        <span className="truncate font-normal">{item.text}</span>
+                        <CornerDownLeft size={16} className="text-slate-400 group-hover:text-white shrink-0 transition-transform group-hover:-translate-x-0.5" />
+                      </button>
+                    ))}
                   </div>
                 </div>
               ) : (
@@ -4049,15 +4161,15 @@ export default function MesterWorkstation({
           )}
         </div>
 
-        {/* 4. Bottom Pill Input Box (Identical to ChatGPT & Gemini) */}
+        {/* 4. Floating Rounded-Full Input Box (1:1 Google Gemini App - Screenshot 2 & 3) */}
         {viewMode === 'chat' && (
-          <div className="absolute bottom-0 inset-x-0 bg-gradient-to-t from-[#0A101D] via-[#0A101D]/90 to-transparent pt-6 pb-4 px-3 sm:px-6 z-20">
-            <div className="max-w-4xl mx-auto w-full space-y-2">
+          <div className="absolute bottom-0 inset-x-0 bg-gradient-to-t from-black via-black/85 to-transparent pt-6 pb-4 px-3 sm:px-6 z-20">
+            <div className="max-w-3xl mx-auto w-full space-y-2 relative">
               {/* Forhåndsvisning av vedlagt bilde */}
               {attachedImage && (
-                <div className="flex items-center gap-2.5 p-2 bg-slate-900 rounded-2xl border border-slate-750 shadow-md w-fit">
+                <div className="flex items-center gap-2.5 p-2 bg-[#1e1f20] rounded-2xl border border-white/15 shadow-md w-fit">
                   <img src={attachedImage.preview} alt="Vedlegg" className="w-9 h-9 rounded-lg object-cover" />
-                  <span className="text-xs font-medium text-slate-300 truncate max-w-[200px]">{attachedImage.name}</span>
+                  <span className="text-xs font-medium text-slate-200 truncate max-w-[200px]">{attachedImage.name}</span>
                   <button
                     type="button"
                     onClick={() => setAttachedImage(null)}
@@ -4068,14 +4180,85 @@ export default function MesterWorkstation({
                 </div>
               )}
 
-              {/* Pill Container */}
+              {/* 📎 Attachment Menu Popover (+ button) */}
+              <AnimatePresence>
+                {isAttachmentMenuOpen && (
+                  <>
+                    <div 
+                      className="fixed inset-0 z-30" 
+                      onClick={() => setIsAttachmentMenuOpen(false)} 
+                    />
+                    <motion.div
+                      initial={{ opacity: 0, y: 10, scale: 0.95 }}
+                      animate={{ opacity: 1, y: 0, scale: 1 }}
+                      exit={{ opacity: 0, y: 10, scale: 0.95 }}
+                      transition={{ duration: 0.15 }}
+                      className="absolute bottom-16 left-1 sm:left-2 z-40 bg-[#1e1f20] border border-white/15 rounded-3xl p-2 shadow-2xl w-64 space-y-1 backdrop-blur-xl"
+                    >
+                      <button
+                        type="button"
+                        onClick={() => {
+                          cameraInputRef.current?.click();
+                          setIsAttachmentMenuOpen(false);
+                        }}
+                        className="w-full flex items-center gap-3 p-2.5 rounded-2xl hover:bg-white/10 text-xs font-semibold text-white transition-colors cursor-pointer text-left group"
+                      >
+                        <div className="w-8 h-8 rounded-full bg-rose-500/20 text-rose-400 border border-rose-500/30 flex items-center justify-center shrink-0 group-hover:scale-105 transition-transform">
+                          <Camera size={16} />
+                        </div>
+                        <div>
+                          <p className="font-bold">Ta bilde med kamera</p>
+                          <p className="text-[10px] text-slate-400">TEK17 våtrom & slukkontroll</p>
+                        </div>
+                      </button>
+
+                      <button
+                        type="button"
+                        onClick={() => {
+                          fileInputRef.current?.click();
+                          setIsAttachmentMenuOpen(false);
+                        }}
+                        className="w-full flex items-center gap-3 p-2.5 rounded-2xl hover:bg-white/10 text-xs font-semibold text-white transition-colors cursor-pointer text-left group"
+                      >
+                        <div className="w-8 h-8 rounded-full bg-blue-500/20 text-blue-400 border border-blue-500/30 flex items-center justify-center shrink-0 group-hover:scale-105 transition-transform">
+                          <ImageIcon size={16} />
+                        </div>
+                        <div>
+                          <p className="font-bold">Bildegalleri</p>
+                          <p className="text-[10px] text-slate-400">Last opp eksisterende bilder</p>
+                        </div>
+                      </button>
+
+                      <button
+                        type="button"
+                        onClick={() => {
+                          docInputRef.current?.click();
+                          setIsAttachmentMenuOpen(false);
+                        }}
+                        className="w-full flex items-center gap-3 p-2.5 rounded-2xl hover:bg-white/10 text-xs font-semibold text-white transition-colors cursor-pointer text-left group"
+                      >
+                        <div className="w-8 h-8 rounded-full bg-emerald-500/20 text-emerald-400 border border-emerald-500/30 flex items-center justify-center shrink-0 group-hover:scale-105 transition-transform">
+                          <Paperclip size={16} />
+                        </div>
+                        <div>
+                          <p className="font-bold">Tegning & FDV</p>
+                          <p className="text-[10px] text-slate-400">PDF, DWG eller Word-dokument</p>
+                        </div>
+                      </button>
+                    </motion.div>
+                  </>
+                )}
+              </AnimatePresence>
+
+              {/* Pill Container (Rounded-full bg-[#1e1f20]) */}
               <form
                 onSubmit={(e) => {
                   e.preventDefault();
                   handleSendMessage(inputVal);
                 }}
-                className="relative flex items-end bg-slate-900 border border-slate-750 focus-within:border-purple-500/80 focus-within:ring-2 focus-within:ring-purple-500/20 rounded-3xl p-1.5 sm:p-2 shadow-2xl transition-all"
+                className="relative flex items-center bg-[#1e1f20] border border-white/10 focus-within:border-white/20 focus-within:ring-2 focus-within:ring-purple-500/20 rounded-full p-1.5 sm:p-2 shadow-2xl transition-all"
               >
+                {/* Hidden file inputs */}
                 <input
                   type="file"
                   ref={fileInputRef}
@@ -4083,16 +4266,37 @@ export default function MesterWorkstation({
                   accept="image/*"
                   className="hidden"
                 />
+                <input
+                  type="file"
+                  ref={cameraInputRef}
+                  onChange={handleImageSelect}
+                  accept="image/*"
+                  capture="environment"
+                  className="hidden"
+                />
+                <input
+                  type="file"
+                  ref={docInputRef}
+                  onChange={(e) => {
+                    const file = e.target.files?.[0];
+                    if (file) {
+                      toast.success(`Dokument vedlagt: ${file.name}`);
+                      setInputVal(prev => prev ? `${prev} (Vedlagt fil: ${file.name})` : `Analyser vedlagt dokument: ${file.name}`);
+                    }
+                  }}
+                  accept=".pdf,.dwg,.doc,.docx,.xlsx,.txt"
+                  className="hidden"
+                />
 
-                {/* Left: + / 📷 Image upload */}
+                {/* Left: + circular button */}
                 <button
                   type="button"
-                  onClick={() => fileInputRef.current?.click()}
+                  onClick={() => setIsAttachmentMenuOpen(!isAttachmentMenuOpen)}
                   disabled={isUploadingImage || isLoading}
-                  className="p-2 sm:p-2.5 rounded-full text-slate-400 hover:text-white hover:bg-slate-800 transition-colors cursor-pointer shrink-0"
-                  title="Legg ved bilde for TEK17 analyse"
+                  className="w-9 h-9 sm:w-10 sm:h-10 rounded-full bg-white/5 hover:bg-white/10 text-slate-300 hover:text-white flex items-center justify-center shrink-0 cursor-pointer transition-colors active:scale-95"
+                  title="Legg ved bilde, ta foto eller last opp tegning"
                 >
-                  <Camera size={18} />
+                  <Plus size={20} className={cn("transition-transform duration-200", isAttachmentMenuOpen && "rotate-45")} />
                 </button>
 
                 {/* Center: Expanding textarea */}
@@ -4109,46 +4313,75 @@ export default function MesterWorkstation({
                       }
                     }
                   }}
-                  placeholder="Spør MesterAI eller gi en instruks..."
+                  placeholder="Spør MesterAI eller dikter oppgave..."
                   disabled={isLoading}
-                  className="flex-1 bg-transparent px-2.5 py-2 text-sm text-white placeholder:text-slate-500 focus:outline-none resize-none max-h-36 min-h-[40px] leading-relaxed custom-scrollbar"
+                  className="flex-1 bg-transparent px-3 py-2 text-sm text-white placeholder:text-slate-400 focus:outline-none resize-none max-h-32 min-h-[38px] leading-relaxed custom-scrollbar"
                 />
 
-                {/* Right controls: Mic & Send */}
-                <div className="flex items-center gap-1 shrink-0">
+                {/* Right controls: Mic & Live Voice Button */}
+                <div className="flex items-center gap-1.5 shrink-0 pr-1">
+                  {/* Regular Mic Dictation */}
                   <button
                     type="button"
                     onClick={toggleMic}
                     className={cn(
-                      "p-2 sm:p-2.5 rounded-full transition-all cursor-pointer",
+                      "p-2 rounded-full transition-all cursor-pointer",
                       isListeningMic
                         ? "bg-rose-500 text-white animate-pulse"
-                        : "text-slate-400 hover:text-white hover:bg-slate-800"
+                        : "text-slate-400 hover:text-white hover:bg-white/10"
                     )}
-                    title={isListeningMic ? "Lytter... Trykk for å stoppe" : "Snakk inn instruks (handsfree)"}
+                    title={isListeningMic ? "Lytter... Trykk for å stoppe" : "Snakk inn instruks"}
                   >
-                    {isListeningMic ? <MicOff size={18} /> : <Mic size={18} />}
+                    {isListeningMic ? <MicOff size={19} /> : <Mic size={19} />}
                   </button>
 
-                  <button
-                    type="submit"
-                    disabled={isLoading || (!inputVal.trim() && !attachedImage)}
-                    className={cn(
-                      "w-9 h-9 sm:w-10 sm:h-10 rounded-full flex items-center justify-center text-white transition-all shrink-0 cursor-pointer active:scale-95",
-                      (inputVal.trim() || attachedImage)
-                        ? "bg-gradient-to-tr from-purple-600 to-electric-600 hover:from-purple-500 hover:to-electric-500 shadow-md shadow-purple-600/30"
-                        : "bg-slate-800 text-slate-500 cursor-not-allowed opacity-50"
-                    )}
-                    title="Send"
-                  >
-                    <Send size={16} className={cn((inputVal.trim() || attachedImage) && "translate-x-0.5 -translate-y-0.5")} />
-                  </button>
+                  {/* If text or image is present, show Send button */}
+                  {(inputVal.trim() || attachedImage) ? (
+                    <button
+                      type="submit"
+                      disabled={isLoading}
+                      className="w-9 h-9 sm:w-10 sm:h-10 rounded-full bg-gradient-to-tr from-purple-600 to-blue-600 hover:from-purple-500 hover:to-blue-500 text-white flex items-center justify-center shrink-0 cursor-pointer shadow-md shadow-purple-600/30 active:scale-95 transition-all"
+                      title="Send"
+                    >
+                      <Send size={15} className="translate-x-0.5" />
+                    </button>
+                  ) : (
+                    /* 🔵 Live Voice Gemini button (Deep rich blue with vertical sound wave bars - Screenshot 2 & 3) */
+                    <button
+                      type="button"
+                      onClick={() => {
+                        const next = !isLiveVoiceActive;
+                        setIsLiveVoiceActive(next);
+                        if (next) {
+                          toast.info('🎙️ Live Voice samtale aktivert. Snakk fritt!');
+                          if (!isListeningMic) toggleMic();
+                        } else {
+                          toast.info('Live Voice deaktivert.');
+                          if (isListeningMic) toggleMic();
+                        }
+                      }}
+                      className={cn(
+                        "w-9 h-9 sm:w-10 sm:h-10 rounded-full flex items-center justify-center text-white shrink-0 cursor-pointer shadow-md transition-all active:scale-95",
+                        isLiveVoiceActive
+                          ? "bg-gradient-to-tr from-blue-600 via-indigo-600 to-purple-600 ring-2 ring-blue-400/50 shadow-blue-500/40 animate-pulse"
+                          : "bg-[#1a73e8] hover:bg-[#1557b0] shadow-blue-500/25"
+                      )}
+                      title={isLiveVoiceActive ? "Avslutt Live Voice samtale" : "Start Live Voice samtale (handsfree)"}
+                    >
+                      <div className="flex items-center gap-[2.5px] h-4">
+                        <span className={cn("w-[2.5px] rounded-full bg-white transition-all duration-200", isLiveVoiceActive || isListeningMic ? "h-4 animate-bounce" : "h-2")} />
+                        <span className={cn("w-[2.5px] rounded-full bg-white transition-all duration-200 delay-75", isLiveVoiceActive || isListeningMic ? "h-5 animate-bounce" : "h-3.5")} />
+                        <span className={cn("w-[2.5px] rounded-full bg-white transition-all duration-200 delay-150", isLiveVoiceActive || isListeningMic ? "h-3.5 animate-bounce" : "h-2.5")} />
+                        <span className={cn("w-[2.5px] rounded-full bg-white transition-all duration-200 delay-100", isLiveVoiceActive || isListeningMic ? "h-4.5 animate-bounce" : "h-1.5")} />
+                      </div>
+                    </button>
+                  )}
                 </div>
               </form>
 
               {/* Disclaimer footer */}
               <p className="text-[11px] text-slate-500 text-center">
-                MesterAI kan gjøre feil. Kontroller viktige mål og NS 8406 endringsvarsler.
+                MesterAI v2.6 kan gjøre feil. Kontroller viktige mål og NS 8406 endringsvarsler.
               </p>
             </div>
           </div>
