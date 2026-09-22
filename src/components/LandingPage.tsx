@@ -122,22 +122,18 @@ export default function LandingPage({
 
   return (
     <div className="bg-white text-navy-900 min-h-screen selection:bg-electric-500/20 selection:text-electric-700 font-sans">
-      {/* 🚀 SUB-NAVIGASJON: SELGER DRØMMEN & 100% REFLEKTERER MESTER-WORKSTATIONEN */}
-      <div className="sticky top-16 z-40 bg-slate-950/95 backdrop-blur-md border-b border-slate-800/80 px-3 sm:px-4 py-2 shadow-xl">
-        <div className="max-w-7xl mx-auto flex items-center justify-between gap-2 overflow-x-auto no-scrollbar">
-          <div className="flex items-center gap-1.5 shrink-0">
-            <button
-              onClick={() => switchTab('home')}
-              className={cn(
-                "px-3 py-1.5 rounded-xl text-xs font-bold transition-all flex items-center gap-1.5 cursor-pointer",
-                activeTab === 'home' 
-                  ? "bg-electric-500 text-white shadow-purple-cta" 
-                  : "text-slate-300 hover:text-white hover:bg-slate-900 border border-transparent"
-              )}
-            >
-              <Sparkles size={13} className="text-amber-400" />
-              <span>Oversikt</span>
-            </button>
+      {/* 🚀 SUB-NAVIGASJON: Vises kun når man har klikket seg inn på en detaljert fagfane (aldri på selve forsiden) */}
+      {activeTab !== 'home' && (
+        <div className="sticky top-20 sm:top-24 z-40 bg-slate-950/95 backdrop-blur-md border-b border-slate-800/80 px-3 sm:px-4 py-2 shadow-xl">
+          <div className="max-w-7xl mx-auto flex items-center justify-between gap-2 overflow-x-auto no-scrollbar">
+            <div className="flex items-center gap-1.5 shrink-0">
+              <button
+                onClick={() => switchTab('home')}
+                className="px-3 py-1.5 rounded-xl text-xs font-bold transition-all flex items-center gap-1.5 bg-electric-500 text-white shadow-purple-cta cursor-pointer shrink-0"
+              >
+                <Sparkles size={13} className="text-amber-300" />
+                <span>← Tilbake til oversikt</span>
+              </button>
             <button
               onClick={() => switchTab('offers_ks')}
               className={cn(
@@ -233,6 +229,7 @@ export default function LandingPage({
           </div>
         </div>
       </div>
+      )}
 
       {/* Main View Router */}
       <AnimatePresence mode="wait">

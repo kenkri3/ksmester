@@ -30,24 +30,40 @@ export function PublicHeader() {
   return (
     <>
       {/* 🏆 THE DREAM TICKER: Slutt på kveldsarbeid og tapte penger */}
-      <div className="bg-slate-950 text-white text-[11px] font-semibold py-1.5 px-4 border-b border-white/10 text-center tracking-wide flex items-center justify-center gap-2 sm:gap-6 flex-wrap relative z-50">
-        <span className="flex items-center gap-1.5 text-amber-400 font-black tracking-wider uppercase">
-          <Sparkles size={12} className="text-amber-400 animate-spin-slow" />
-          <span>DRØMMEN OM FRIHET:</span>
-        </span>
-        <span className="text-slate-300 hidden sm:inline font-medium">
-          Slutt på kveldsarbeid foran PC etter 10 timer på byggeplassen.
-        </span>
-        <span className="text-emerald-400 font-extrabold flex items-center gap-1">
-          <CheckCircle2 size={12} />
-          <span>Få betalt for alle endringer (NS 8406)</span>
-        </span>
-        <span className="text-electric-300 font-extrabold hidden md:inline">
-          ⚡ 100% Autonom MesterAI
-        </span>
-        <span className="text-amber-300 bg-amber-500/20 border border-amber-400/40 px-2 py-0.5 rounded-full text-[10px] font-black uppercase">
-          14 dager gratis • 0,- etablering
-        </span>
+      <div className="bg-slate-950 text-white py-1.5 px-3 sm:px-4 border-b border-white/10 relative z-50">
+        {/* Desktop */}
+        <div className="hidden sm:flex items-center justify-center gap-3 lg:gap-5 text-[11px] font-semibold tracking-wide whitespace-nowrap overflow-hidden">
+          <span className="flex items-center gap-1.5 text-amber-400 font-black tracking-wider uppercase shrink-0">
+            <Sparkles size={12} className="text-amber-400" />
+            <span>DRØMMEN OM FRIHET:</span>
+          </span>
+          <span className="text-slate-300 font-medium truncate">
+            Slutt på kveldsarbeid foran PC etter 10 timer på byggeplassen.
+          </span>
+          <span className="text-emerald-400 font-extrabold flex items-center gap-1 shrink-0">
+            <CheckCircle2 size={12} />
+            <span>Få betalt for alle endringer (NS 8406)</span>
+          </span>
+          <span className="text-electric-300 font-extrabold hidden lg:inline shrink-0">
+            ⚡ 100% Autonom MesterAI
+          </span>
+          <span className="text-amber-300 bg-amber-500/20 border border-amber-400/40 px-2 py-0.5 rounded-full text-[9px] font-black uppercase shrink-0">
+            14 dager gratis • 0,- etablering
+          </span>
+        </div>
+
+        {/* Mobile (1 ren linje) */}
+        <div className="sm:hidden flex items-center justify-between gap-1.5 text-[10.5px] font-semibold whitespace-nowrap overflow-hidden px-1">
+          <div className="flex items-center gap-1.5 min-w-0">
+            <Sparkles size={11} className="text-amber-400 shrink-0" />
+            <span className="text-slate-200 truncate">
+              Slutt på kveldsarbeid • Få betalt for endringer
+            </span>
+          </div>
+          <span className="text-amber-300 font-bold shrink-0 text-[10px]">
+            14 dgr gratis ➔
+          </span>
+        </div>
       </div>
 
       <header className="sticky top-0 z-40 bg-white/95 backdrop-blur-md border-b border-slate-200 shadow-xs">
@@ -228,18 +244,18 @@ export function PublicHeader() {
           </nav>
 
           {/* Action buttons */}
-          <div className="hidden sm:flex items-center gap-3">
+          <div className="hidden sm:flex items-center gap-2.5 shrink-0">
             <Link
               href="/?login=true"
-              className="px-3.5 py-2 text-xs font-bold text-slate-700 hover:text-navy-900 hover:bg-slate-100 rounded-xl transition-colors"
+              className="whitespace-nowrap shrink-0 px-3 py-2 text-xs font-bold text-slate-700 hover:text-navy-900 hover:bg-slate-100 rounded-xl transition-colors"
             >
               Logg inn
             </Link>
             <Link
               href="/?action=demo"
-              className="px-4 py-2 text-xs font-extrabold text-white bg-gradient-to-r from-electric-500 to-electric-400 hover:from-electric-400 hover:to-electric-300 rounded-xl transition-all shadow-md shadow-electric-500/25 flex items-center gap-1.5 active:scale-95"
+              className="whitespace-nowrap shrink-0 px-4 py-2 text-xs font-extrabold text-white bg-gradient-to-r from-electric-500 to-electric-400 hover:from-electric-400 hover:to-electric-300 rounded-xl transition-all shadow-md shadow-electric-500/25 flex items-center gap-1.5 active:scale-95"
             >
-              <Sparkles size={14} className="text-amber-300 animate-pulse" />
+              <Sparkles size={14} className="text-amber-300 animate-pulse shrink-0" />
               <span>Start 14 dager gratis</span>
             </Link>
           </div>

@@ -80,6 +80,8 @@ import ChangeOrderDetailModal from './ChangeOrderDetailModal';
 import { db, collection, addDoc } from '../services/firebase';
 import SuperAdmin from './SuperAdmin';
 import OfferModal from './OfferModal';
+import ApprenticeModal from './ApprenticeModal';
+import HMSModule from './HMSModule';
 import { formatAiMarkdown } from '../lib/formatAiMarkdown';
 
 interface MesterWorkstationProps {
@@ -701,7 +703,8 @@ export default function MesterWorkstation({
         setViewMode('module');
         break;
       case 'hms':
-        window.dispatchEvent(new CustomEvent('trigger_dashboard_action', { detail: { actionId: 'hms' } }));
+        setActiveModuleTab('hms');
+        setViewMode('module');
         break;
       case 'change_orders':
         setActiveModuleTab('change_orders');
@@ -732,10 +735,12 @@ export default function MesterWorkstation({
         setViewMode('module');
         break;
       case 'apprentice':
-        window.dispatchEvent(new CustomEvent('trigger_dashboard_action', { detail: { actionId: 'apprentice' } }));
+        setActiveModuleTab('apprentice');
+        setViewMode('module');
         break;
       case 'translator':
-        window.dispatchEvent(new CustomEvent("navigate_view", { detail: { view: "mobile", screen: "translator" } }));
+        setViewMode('chat');
+        handleSendMessage('Hei MesterAI! Jeg trenger hjelp med flerspråklig oversettelse på byggeplassen. Hvilke språk støtter du, og kan du hjelpe meg med en faglig oversettelse?');
         break;
       case 'super_admin':
         handleOpenSuperAdmin();
@@ -1795,7 +1800,13 @@ export default function MesterWorkstation({
                   {activeModuleTab === 'contacts' && (
                     <span>Telefonbok: <strong className="text-emerald-400">Kunder, Ansatte & Samarbeidspartnere</strong></span>
                   )}
-                  {!['project_details', 'all_projects', 'create_project', 'superadmin', 'offers', 'contacts'].includes(activeModuleTab || '') && (
+                  {activeModuleTab === 'apprentice' && (
+                    <span>Opplæring: <strong className="text-indigo-400">🎓 Lærlingmodul & Opplæringsbok</strong></span>
+                  )}
+                  {activeModuleTab === 'hms' && (
+                    <span>HMS & Internkontroll: <strong className="text-teal-400">🛡️ HMS, Stoffkartotek & Vernerunder</strong></span>
+                  )}
+                  {!['project_details', 'all_projects', 'create_project', 'superadmin', 'offers', 'contacts', 'apprentice', 'hms'].includes(activeModuleTab || '') && (
                     <span>Viser fagsystem: <strong className="text-white capitalize">{activeModuleTab}</strong></span>
                   )}
                 </span>
@@ -3458,6 +3469,24 @@ export default function MesterWorkstation({
                       </div>
                     </div>
                   )}
+                </div>
+              )}
+
+              {/* 8B. 🎓 LÆRLINGMODUL & OPPLÆRINGSBOK (INLINE) */}
+              {activeModuleTab === 'apprentice' && (
+                <div className="space-y-4">
+                  <ApprenticeModal
+                    inline={true}
+                    isOpen={true}
+                    onClose={() => setViewMode('chat')}
+                  />
+                </div>
+              )}
+
+              {/* 8C. 🛡️ HMS & STOFFKARTOTEK (INLINE) */}
+              {activeModuleTab === 'hms' && (
+                <div className="space-y-4">
+                  <HMSModule projects={projects} />
                 </div>
               )}
 

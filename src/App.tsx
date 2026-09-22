@@ -563,75 +563,90 @@ function AppContent() {
       {/* 👑 Fast forankret SuperAdmin Simulator Bar for Kenneth (Sikrer at Kenneth aldri mister tilgang) */}
       <AdminSimulationBar />
 
-      {/* Trial Banner */}
-      {user && subscriptionStatus === 'trial' && !impersonatedCompanyId && (
-        <div className="fixed top-0 left-0 right-0 z-[60] bg-emerald-600 text-navy-900 text-[10px] font-bold py-1 text-center uppercase tracking-widest">
-          {t('trial_active', 'Du er i en prøveperiode.')} {trialDaysLeft} {t('days_left', 'dager igjen.')}
-        </div>
-      )}
-
-      {/* 🏆 THE DREAM TICKER: Slutt på kveldsarbeid og tapte penger */}
+      {/* 🚀 UNIFIED MARKETING & APP HEADER (Eliminerer all overlapping mellom ticker og meny) */}
       {(!user || view !== 'dashboard') && !['customer-portal', 'offer', 'invite', 'public-offer', 'public-change-order'].includes(view) && (
-        <div className="fixed top-0 left-0 right-0 z-[60] bg-slate-950 text-white text-[11px] font-semibold py-1.5 px-4 border-b border-white/10 text-center tracking-wide flex items-center justify-center gap-2 sm:gap-6 flex-wrap">
-          <span className="flex items-center gap-1.5 text-amber-400 font-black tracking-wider uppercase">
-            <Sparkles size={12} className="text-amber-400 animate-spin-slow" />
-            <span>DRØMMEN OM FRIHET:</span>
-          </span>
-          <span className="text-slate-300 hidden sm:inline font-medium">
-            Slutt på kveldsarbeid foran PC etter 10 timer på byggeplassen.
-          </span>
-          <span className="text-emerald-400 font-extrabold flex items-center gap-1">
-            <CheckCircle2 size={12} />
-            <span>Få betalt for alle endringer (NS 8406)</span>
-          </span>
-          <span className="text-electric-300 font-extrabold hidden md:inline">
-            ⚡ 100% Autonom MesterAI
-          </span>
-          <span className="text-amber-300 bg-amber-500/20 border border-amber-400/40 px-2 py-0.5 rounded-full text-[10px] font-black uppercase">
-            14 dager gratis • 0,- etablering
-          </span>
-        </div>
-      )}
+        <header className="fixed top-0 left-0 right-0 z-50 flex flex-col bg-white/95 backdrop-blur-md border-b border-slate-200/80 shadow-card-soft">
+          {/* 1. Trial Banner (kun ved aktiv prøveperiode) */}
+          {user && subscriptionStatus === 'trial' && !impersonatedCompanyId && (
+            <div className="bg-emerald-600 text-white text-[10px] font-bold py-1 text-center uppercase tracking-widest shrink-0">
+              {t('trial_active', 'Du er i en prøveperiode.')} {trialDaysLeft} {t('days_left', 'dager igjen.')}
+            </div>
+          )}
 
-      {/* Navigation: Skjult i backend kommandosentralen og dedikerte kunde/tilbudsportaler */}
-      {(!user || view !== 'dashboard') && !['customer-portal', 'offer', 'invite', 'public-offer', 'public-change-order'].includes(view) && (
-        <nav className={cn(
-          "fixed left-0 right-0 z-50 bg-white/95 backdrop-blur-md border-b border-slate-200/80 transition-all shadow-card-soft",
-          (!user || ['landing', 'pricing', 'about', 'contact', 'privacy', 'terms'].includes(view)) ? "top-7" : (user && subscriptionStatus === 'trial') || impersonatedCompanyId ? "top-6" : "top-0"
-        )}>
-        <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8">
-          {(!user || ['landing', 'pricing', 'about', 'contact', 'privacy', 'terms'].includes(view)) ? (
-            /* PUBLIC MARKETING NAVBAR - SELLER DRØMMEN */
-            <div className="flex justify-between h-16 items-center">
-              {/* Left: Logo & Audience Tag */}
-              <div className="flex items-center gap-3 shrink-0">
-                <div 
-                  className="flex items-center gap-2 cursor-pointer group"
-                  onClick={() => { setView('landing'); setLandingTab('home'); }}
-                >
-                  <Logo size="md" className="text-navy-900" />
-                </div>
-                <span className="hidden xl:inline-flex items-center gap-1 text-[10px] font-black uppercase tracking-widest text-emerald-700 bg-emerald-50 px-2.5 py-0.5 rounded-full border border-emerald-200">
-                  <span className="w-1.5 h-1.5 rounded-full bg-emerald-500 animate-pulse" />
-                  100% AUTONOM BYGGELEDER
+          {/* 2. 🏆 THE DREAM TICKER: Slutt på kveldsarbeid og tapte penger */}
+          {(!user || ['landing', 'pricing', 'about', 'contact', 'privacy', 'terms'].includes(view)) && (
+            <div className="bg-slate-950 text-white py-1.5 px-3 sm:px-4 border-b border-white/10 shrink-0">
+              {/* Desktop version (Ren, lekker linje med null tekstbryting) */}
+              <div className="hidden sm:flex items-center justify-center gap-3 lg:gap-5 text-[11px] font-semibold tracking-wide whitespace-nowrap overflow-hidden">
+                <span className="flex items-center gap-1.5 text-amber-400 font-black tracking-wider uppercase shrink-0">
+                  <Sparkles size={12} className="text-amber-400" />
+                  <span>DRØMMEN OM FRIHET:</span>
+                </span>
+                <span className="text-slate-300 font-medium truncate">
+                  Slutt på kveldsarbeid foran PC etter 10 timer på byggeplassen.
+                </span>
+                <span className="text-emerald-400 font-extrabold flex items-center gap-1 shrink-0">
+                  <CheckCircle2 size={12} />
+                  <span>Få betalt for alle endringer (NS 8406)</span>
+                </span>
+                <span className="text-electric-300 font-extrabold hidden lg:inline shrink-0">
+                  ⚡ 100% Autonom MesterAI
+                </span>
+                <span className="text-amber-300 bg-amber-500/20 border border-amber-400/40 px-2 py-0.5 rounded-full text-[9px] font-black uppercase shrink-0">
+                  14 dager gratis • 0,- etablering
                 </span>
               </div>
 
+              {/* Mobile Compact Ticker (1 ren, delikat linje som aldri brekker til 3 klumpete rader) */}
+              <div className="sm:hidden flex items-center justify-between gap-1.5 text-[10.5px] font-semibold whitespace-nowrap overflow-hidden px-1">
+                <div className="flex items-center gap-1.5 min-w-0">
+                  <Sparkles size={11} className="text-amber-400 shrink-0" />
+                  <span className="text-slate-200 truncate">
+                    Slutt på kveldsarbeid • Få betalt for endringer
+                  </span>
+                </div>
+                <span className="text-amber-300 font-bold shrink-0 text-[10px]">
+                  14 dgr gratis ➔
+                </span>
+              </div>
+            </div>
+          )}
+
+          {/* 3. Navigation Bar */}
+          <nav className="w-full">
+            <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8">
+              {(!user || ['landing', 'pricing', 'about', 'contact', 'privacy', 'terms'].includes(view)) ? (
+                /* PUBLIC MARKETING NAVBAR - SELLER DRØMMEN */
+                <div className="flex justify-between h-16 items-center">
+                  {/* Left: Logo & Audience Tag */}
+                  <div className="flex items-center gap-3 shrink-0">
+                    <div 
+                      className="flex items-center gap-2 cursor-pointer group"
+                      onClick={() => { setView('landing'); setLandingTab('home'); }}
+                    >
+                      <Logo size="md" className="text-navy-900" />
+                    </div>
+                    <span className="hidden 2xl:inline-flex items-center gap-1 text-[10px] font-black uppercase tracking-widest text-emerald-700 bg-emerald-50 px-2.5 py-0.5 rounded-full border border-emerald-200 shrink-0">
+                      <span className="w-1.5 h-1.5 rounded-full bg-emerald-500 animate-pulse" />
+                      100% AUTONOM BYGGELEDER
+                    </span>
+                  </div>
+
               {/* Desktop Center: World-Class SaaS Links That Sell The Dream */}
-              <div className="hidden md:flex items-center gap-1 lg:gap-2">
+              <div className="hidden md:flex items-center gap-1 lg:gap-1.5 xl:gap-2">
                 {/* Autonome Superkrefter Dropdown */}
                 <div className="relative group">
                   <button 
                     onClick={() => setIsSolutionsDropdownOpen(!isSolutionsDropdownOpen)}
                     className={cn(
-                      "px-3 py-2 rounded-xl text-xs font-bold transition-all flex items-center gap-1.5 cursor-pointer",
+                      "px-2.5 lg:px-3 py-2 rounded-xl text-xs font-bold transition-all flex items-center gap-1.5 cursor-pointer whitespace-nowrap",
                       (view === 'landing' && ['ai', 'hms', 'fdv'].includes(landingTab))
                         ? "bg-electric-50 text-electric-600 font-bold border border-electric-300/30" 
                         : "text-slate-700 hover:text-navy-900 hover:bg-slate-100"
                     )}
                   >
                     <span>Autonome Superkrefter</span>
-                    <ChevronDown size={14} className="text-slate-400 group-hover:text-amber-500 transition-transform group-hover:rotate-180" />
+                    <ChevronDown size={14} className="text-slate-400 group-hover:text-amber-500 transition-transform group-hover:rotate-180 shrink-0" />
                   </button>
 
                   {/* Dropdown Menu - Selling Each Dream */}
@@ -735,14 +750,14 @@ function AppContent() {
                 <Link
                   href="/priser"
                   className={cn(
-                    "px-3 py-2 rounded-xl text-xs font-bold transition-all flex items-center gap-1.5",
+                    "px-2.5 lg:px-3 py-2 rounded-xl text-xs font-bold transition-all flex items-center gap-1.5 whitespace-nowrap",
                     view === 'pricing'
                       ? "bg-electric-50 text-electric-600 font-bold border border-electric-300/30"
                       : "text-slate-700 hover:text-navy-900 hover:bg-slate-100"
                   )}
                 >
                   <span>Priser</span>
-                  <span className="text-[10px] font-black uppercase text-electric-700 bg-electric-50 border border-electric-200 px-2 py-0.5 rounded-full">
+                  <span className="text-[10px] font-black uppercase text-electric-700 bg-electric-50 border border-electric-200 px-1.5 py-0.5 rounded-full shrink-0">
                     Fra 690,-
                   </span>
                 </Link>
@@ -750,11 +765,11 @@ function AppContent() {
                 {/* Kundeportal (Digital Signering) */}
                 <button 
                   onClick={() => setIsPortalModalOpen(true)}
-                  className="px-3 py-2 rounded-xl text-xs font-bold text-slate-700 hover:text-navy-900 hover:bg-slate-100 transition-all flex items-center gap-1.5 cursor-pointer"
+                  className="px-2.5 lg:px-3 py-2 rounded-xl text-xs font-bold text-slate-700 hover:text-navy-900 hover:bg-slate-100 transition-all flex items-center gap-1.5 cursor-pointer whitespace-nowrap"
                 >
-                  <Users size={14} className="text-emerald-600" />
+                  <Users size={14} className="text-emerald-600 shrink-0" />
                   <span>Kundeportal</span>
-                  <span className="hidden xl:inline text-[9px] font-bold text-emerald-700 bg-emerald-50 px-1.5 py-0.2 rounded border border-emerald-200">
+                  <span className="hidden 2xl:inline text-[9px] font-bold text-emerald-700 bg-emerald-50 px-1.5 py-0.2 rounded border border-emerald-200">
                     Digital signatur
                   </span>
                 </button>
@@ -762,7 +777,7 @@ function AppContent() {
                 {/* FAQ */}
                 <Link
                   href="/faq"
-                  className="px-2.5 py-2 rounded-xl text-xs font-semibold text-slate-600 hover:text-navy-900 hover:bg-slate-100 transition-all"
+                  className="hidden xl:inline-flex px-2 lg:px-2.5 py-2 rounded-xl text-xs font-semibold text-slate-600 hover:text-navy-900 hover:bg-slate-100 transition-all whitespace-nowrap"
                 >
                   FAQ
                 </Link>
@@ -771,7 +786,7 @@ function AppContent() {
                 <Link
                   href="/om-oss"
                   className={cn(
-                    "px-2.5 py-2 rounded-xl text-xs font-semibold transition-all",
+                    "hidden xl:inline-flex px-2 lg:px-2.5 py-2 rounded-xl text-xs font-semibold transition-all whitespace-nowrap",
                     view === 'about'
                       ? "bg-electric-50 text-electric-600 font-bold border border-electric-300/30"
                       : "text-slate-600 hover:text-navy-900 hover:bg-slate-100"
@@ -784,7 +799,7 @@ function AppContent() {
                 <Link
                   href="/kontakt"
                   className={cn(
-                    "px-2.5 py-2 rounded-xl text-xs font-semibold transition-all",
+                    "hidden lg:inline-flex px-2 lg:px-2.5 py-2 rounded-xl text-xs font-semibold transition-all whitespace-nowrap",
                     view === 'contact'
                       ? "bg-electric-50 text-electric-600 font-bold border border-electric-300/30"
                       : "text-slate-600 hover:text-navy-900 hover:bg-slate-100"
@@ -795,9 +810,9 @@ function AppContent() {
               </div>
 
               {/* Desktop Right: Actions */}
-              <div className="hidden md:flex items-center gap-2.5">
+              <div className="hidden md:flex items-center gap-2 lg:gap-2.5 shrink-0">
                 {/* Language Selector */}
-                <div className="flex items-center gap-1 px-2 py-1.5 bg-slate-100 hover:bg-slate-200/80 rounded-xl border border-slate-200 transition-all">
+                <div className="flex items-center gap-1 px-2 py-1.5 bg-slate-100 hover:bg-slate-200/80 rounded-xl border border-slate-200 transition-all shrink-0">
                   <Globe size={13} className="text-slate-500 shrink-0" />
                   <select 
                     onChange={(e) => changeLanguage(e.target.value)}
@@ -815,24 +830,24 @@ function AppContent() {
                 {user ? (
                   <button 
                     onClick={handleGoToDashboard}
-                    className="bg-gradient-to-r from-electric-500 to-electric-400 hover:from-electric-400 hover:to-electric-300 text-white px-4 py-2 rounded-xl text-xs font-bold transition-all shadow-purple-cta active:scale-95 flex items-center gap-1.5 cursor-pointer"
+                    className="whitespace-nowrap shrink-0 bg-gradient-to-r from-electric-500 to-electric-400 hover:from-electric-400 hover:to-electric-300 text-white px-3.5 lg:px-4 py-2 rounded-xl text-xs font-bold transition-all shadow-purple-cta active:scale-95 flex items-center gap-1.5 cursor-pointer"
                   >
                     <LayoutDashboard size={14} />
                     <span>{t('nav_dashboard', 'Gå til Dashboard')}</span>
                   </button>
                 ) : (
-                  <div className="flex items-center gap-2">
+                  <div className="flex items-center gap-1.5 lg:gap-2 shrink-0">
                     <button 
                       onClick={() => setView('login')}
-                      className="text-slate-700 hover:text-navy-900 px-3 py-2 rounded-xl text-xs font-bold hover:bg-slate-100 transition-all cursor-pointer"
+                      className="whitespace-nowrap shrink-0 text-slate-700 hover:text-navy-900 px-2.5 lg:px-3 py-2 rounded-xl text-xs font-bold hover:bg-slate-100 transition-all cursor-pointer"
                     >
                       {t('nav_login', 'Logg inn')}
                     </button>
                     <button 
                       onClick={handleStartDemo}
-                      className="bg-gradient-to-r from-electric-500 to-electric-400 hover:from-electric-400 hover:to-electric-300 text-white px-4 py-2 rounded-xl text-xs font-extrabold transition-all shadow-purple-cta hover:shadow-purple-hover active:scale-95 flex items-center gap-1.5 cursor-pointer"
+                      className="whitespace-nowrap shrink-0 bg-gradient-to-r from-electric-500 to-electric-400 hover:from-electric-400 hover:to-electric-300 text-white px-3.5 lg:px-4 py-2 rounded-xl text-xs font-extrabold transition-all shadow-purple-cta hover:shadow-purple-hover active:scale-95 flex items-center gap-1.5 cursor-pointer"
                     >
-                      <Sparkles size={13} className="text-amber-300 animate-pulse" />
+                      <Sparkles size={13} className="text-amber-300 animate-pulse shrink-0" />
                       <span>Start 14 dager gratis</span>
                     </button>
                   </div>
@@ -1029,7 +1044,7 @@ function AppContent() {
               initial={{ opacity: 0, y: -20 }}
               animate={{ opacity: 1, y: 0 }}
               exit={{ opacity: 0, y: -20 }}
-              className="absolute top-16 left-0 right-0 bg-[#060911] border-b border-white/10 p-4 md:hidden shadow-2xl max-h-[calc(100vh-4rem)] overflow-y-auto custom-scrollbar z-40 pb-24 text-slate-100"
+              className="absolute top-full left-0 right-0 bg-[#060911] border-b border-white/10 p-4 md:hidden shadow-2xl max-h-[calc(100dvh-5rem)] overflow-y-auto custom-scrollbar z-40 pb-24 text-slate-100"
             >
               {(!user || ['landing', 'pricing', 'about', 'contact', 'privacy', 'terms'].includes(view)) ? (
                 /* Public Mobile Menu (Gemini OLED Dark Aesthetic) */
@@ -1493,13 +1508,14 @@ function AppContent() {
             </motion.div>
           )}
         </AnimatePresence>
-      </nav>
+          </nav>
+        </header>
       )}
 
       {/* Main Content */}
       <main className={cn(
-        (view !== 'dashboard' && !['customer-portal', 'offer', 'invite', 'public-offer', 'public-change-order'].includes(view)) ? "pt-16" : "",
-        ((user && subscriptionStatus === 'trial') || impersonatedCompanyId) && (view === 'dashboard' || ['customer-portal', 'offer', 'invite', 'public-offer', 'public-change-order'].includes(view) ? "pt-0" : "pt-22"),
+        (view !== 'dashboard' && !['customer-portal', 'offer', 'invite', 'public-offer', 'public-change-order'].includes(view)) ? "pt-24 sm:pt-28" : "",
+        ((user && subscriptionStatus === 'trial') || impersonatedCompanyId) && (view === 'dashboard' || ['customer-portal', 'offer', 'invite', 'public-offer', 'public-change-order'].includes(view) ? "pt-0" : "pt-28"),
         user && !['customer-portal', 'offer', 'invite', 'public-offer', 'public-change-order'].includes(view) && view !== 'dashboard' ? "pb-24 md:pb-8" : "",
         view === 'dashboard' && "h-full w-full overflow-hidden"
       )}>
