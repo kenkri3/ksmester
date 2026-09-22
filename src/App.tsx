@@ -258,7 +258,7 @@ function AppContent() {
 
   // 🔒 Forhindre overscroll / elastisk drag på mobil når man er i arbeidsstasjonen
   useEffect(() => {
-    if (view === 'dashboard' || view === 'mobile') {
+    if (['dashboard', 'mobile', 'super-admin'].includes(view)) {
       document.documentElement.style.overflow = 'hidden';
       document.documentElement.style.height = '100%';
       document.documentElement.style.overscrollBehavior = 'none';
@@ -556,7 +556,7 @@ function AppContent() {
   return (
     <div className={cn(
       "font-sans selection:bg-electric-500/20 selection:text-electric-700",
-      view === 'dashboard'
+      ['dashboard', 'super-admin'].includes(view)
         ? "h-[100dvh] w-full overflow-hidden fixed inset-0 bg-[#0A101D] text-slate-100"
         : "min-h-screen bg-white text-navy-900"
     )}>
@@ -564,7 +564,7 @@ function AppContent() {
       <AdminSimulationBar />
 
       {/* 🚀 UNIFIED MARKETING & APP HEADER (Eliminerer all overlapping mellom ticker og meny) */}
-      {(!user || view !== 'dashboard') && !['customer-portal', 'offer', 'invite', 'public-offer', 'public-change-order'].includes(view) && (
+      {(!user || !['dashboard', 'super-admin'].includes(view)) && !['customer-portal', 'offer', 'invite', 'public-offer', 'public-change-order'].includes(view) && (
         <header className="fixed top-0 left-0 right-0 z-50 flex flex-col bg-white/95 backdrop-blur-md border-b border-slate-200/80 shadow-card-soft">
           {/* 1. Trial Banner (kun ved aktiv prøveperiode) */}
           {user && subscriptionStatus === 'trial' && !impersonatedCompanyId && (
@@ -1514,10 +1514,10 @@ function AppContent() {
 
       {/* Main Content */}
       <main className={cn(
-        (view !== 'dashboard' && !['customer-portal', 'offer', 'invite', 'public-offer', 'public-change-order'].includes(view)) ? "pt-24 sm:pt-28" : "",
-        ((user && subscriptionStatus === 'trial') || impersonatedCompanyId) && (view === 'dashboard' || ['customer-portal', 'offer', 'invite', 'public-offer', 'public-change-order'].includes(view) ? "pt-0" : "pt-28"),
-        user && !['customer-portal', 'offer', 'invite', 'public-offer', 'public-change-order'].includes(view) && view !== 'dashboard' ? "pb-24 md:pb-8" : "",
-        view === 'dashboard' && "h-full w-full overflow-hidden"
+        (!['dashboard', 'super-admin'].includes(view) && !['customer-portal', 'offer', 'invite', 'public-offer', 'public-change-order'].includes(view)) ? "pt-24 sm:pt-28" : "",
+        ((user && subscriptionStatus === 'trial') || impersonatedCompanyId) && (['dashboard', 'super-admin'].includes(view) || ['customer-portal', 'offer', 'invite', 'public-offer', 'public-change-order'].includes(view) ? "pt-0" : "pt-28"),
+        user && !['customer-portal', 'offer', 'invite', 'public-offer', 'public-change-order'].includes(view) && !['dashboard', 'super-admin'].includes(view) ? "pb-24 md:pb-8" : "",
+        ['dashboard', 'super-admin'].includes(view) && "h-full w-full overflow-hidden"
       )}>
         <AnimatePresence mode="wait">
           <motion.div
@@ -1526,7 +1526,7 @@ function AppContent() {
             animate={{ opacity: 1, y: 0 }}
             exit={{ opacity: 0, y: -10 }}
             onAnimationComplete={() => scrollToTop()}
-            className={view === 'dashboard' ? "h-full w-full overflow-hidden" : undefined}
+            className={['dashboard', 'super-admin'].includes(view) ? "h-full w-full overflow-hidden" : undefined}
           >
             <Suspense fallback={<ModuleLoader />}>
               {view === 'landing' && (
@@ -1620,7 +1620,7 @@ function AppContent() {
       </main>
 
       {/* Native Mobile Bottom Navigation Dock (Fixed at bottom on phones) */}
-      {user && !['offer', 'invite', 'customer-portal', 'dashboard'].includes(view) && (
+      {user && !['offer', 'invite', 'customer-portal', 'dashboard', 'super-admin'].includes(view) && (
         <MobileBottomNav
           currentView={view}
           activeTab={dashboardTab}

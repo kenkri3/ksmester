@@ -3941,6 +3941,7 @@ export default function MesterWorkstation({
                       onBackToDashboard={() => {
                         setActiveModuleTab(null);
                         setViewMode('chat');
+                        window.dispatchEvent(new CustomEvent('navigate_view', { detail: { view: 'dashboard' } }));
                       }}
                     />
                   ) : (
@@ -3957,6 +3958,7 @@ export default function MesterWorkstation({
                         onClick={() => {
                           setActiveModuleTab(null);
                           setViewMode('chat');
+                          window.dispatchEvent(new CustomEvent('navigate_view', { detail: { view: 'dashboard' } }));
                         }}
                         className="px-5 py-2.5 bg-slate-800 hover:bg-slate-700 text-white font-bold text-xs rounded-xl transition-all cursor-pointer"
                       >

@@ -1253,13 +1253,13 @@ Svar KUN med gyldig rå JSON (uten markdown \`\`\`json klammer):
   }
 
   return (
-    <div className="w-full max-w-[1700px] mx-auto px-3 sm:px-6 py-4 sm:py-8 pb-32 md:pb-16">
+    <div className="w-full max-w-[1700px] mx-auto px-3 sm:px-6 py-4 sm:py-8 pb-32 md:pb-16 text-slate-100">
       {/* Impersonation Notice & Navigation bar */}
       <div className="flex items-center justify-between gap-3 mb-4">
         {onBackToDashboard ? (
           <button
             onClick={onBackToDashboard}
-            className="inline-flex items-center gap-2 px-3 py-1.5 bg-neutral-100 hover:bg-neutral-200 text-neutral-700 rounded-xl text-xs font-bold transition-all shadow-xs cursor-pointer"
+            className="inline-flex items-center gap-2 px-3.5 py-2 bg-slate-800 hover:bg-slate-700 text-slate-200 border border-slate-700 rounded-xl text-xs font-bold transition-all shadow-xs cursor-pointer"
           >
             <ArrowLeft size={14} />
             <span>← Tilbake til Håndverker Dashboard</span>
@@ -1267,16 +1267,16 @@ Svar KUN med gyldig rå JSON (uten markdown \`\`\`json klammer):
         ) : (
           <div />
         )}
-        <span className="px-2.5 py-0.5 rounded-full bg-purple-100 text-purple-800 text-[10px] sm:text-[11px] font-black uppercase tracking-wider">
+        <span className="px-2.5 py-0.5 rounded-full bg-purple-500/20 text-purple-300 border border-purple-500/30 text-[10px] sm:text-[11px] font-black uppercase tracking-wider">
           SuperAdmin Modus
         </span>
       </div>
 
       {impersonatedCompanyId && (
-        <div className="mb-6 p-4 bg-red-50 border border-red-200 rounded-2xl flex flex-col sm:flex-row items-start sm:items-center justify-between gap-4">
+        <div className="mb-6 p-4 bg-red-950/40 border border-red-500/40 rounded-2xl flex flex-col sm:flex-row items-start sm:items-center justify-between gap-4">
           <div className="flex items-center gap-3">
-            <AlertTriangle className="text-red-600 shrink-0" size={20} />
-            <div className="text-xs text-red-900">
+            <AlertTriangle className="text-red-400 shrink-0" size={20} />
+            <div className="text-xs text-red-200">
               Du er i visningsmodus for en annen kunde (<strong>ID: {impersonatedCompanyId}</strong>). Klikk avslutt for å returnere til din vanlige admin-tilgang.
             </div>
           </div>
@@ -1296,37 +1296,37 @@ Svar KUN med gyldig rå JSON (uten markdown \`\`\`json klammer):
       <div className="flex flex-col md:flex-row md:items-center justify-between gap-4 mb-4 sm:mb-6">
         <div>
           <div className="flex items-center gap-2 mb-1">
-            <span className="w-2.5 h-2.5 rounded-full bg-emerald-500 animate-pulse" />
-            <span className="text-[11px] font-black uppercase tracking-widest text-emerald-600">VikingMester SaaS Kjerne</span>
+            <span className="w-2.5 h-2.5 rounded-full bg-emerald-400 animate-pulse" />
+            <span className="text-[11px] font-black uppercase tracking-widest text-emerald-400">VikingMester SaaS Kjerne</span>
           </div>
-          <h1 className="text-2xl sm:text-4xl font-black tracking-tight text-neutral-900 mb-1">
+          <h1 className="text-2xl sm:text-4xl font-black tracking-tight text-white mb-1">
             SuperAdmin Dashboard
           </h1>
-          <p className="text-xs sm:text-sm text-neutral-500">
+          <p className="text-xs sm:text-sm text-slate-400">
             Full kontroll over bedriftskunder, abonnementsplaner, Gemini AI-marginkontroll og salg.
           </p>
         </div>
         <div className="flex flex-wrap items-center gap-2 sm:gap-3 w-full sm:w-auto">
           <button 
             onClick={() => setIsTemplateModalOpen(true)}
-            className="flex items-center justify-center gap-1.5 px-3 py-2.5 bg-neutral-100 text-neutral-700 rounded-xl font-bold hover:bg-neutral-200 transition-all text-xs sm:text-sm shadow-xs cursor-pointer"
+            className="flex items-center justify-center gap-1.5 px-3.5 py-2.5 bg-slate-800 hover:bg-slate-750 text-slate-200 border border-slate-700 rounded-xl font-bold transition-all text-xs sm:text-sm shadow-xs cursor-pointer"
           >
             <FileText size={16} className="shrink-0" />
             <span className="truncate">E-postmal</span>
           </button>
           <button 
             onClick={() => setIsOfferModalOpen(true)}
-            className="flex items-center justify-center gap-1.5 px-3 py-2.5 bg-blue-600 text-white rounded-xl font-bold hover:bg-blue-500 transition-all shadow-md shadow-blue-100 text-xs sm:text-sm cursor-pointer"
+            className="flex items-center justify-center gap-1.5 px-3.5 py-2.5 bg-blue-600 text-white rounded-xl font-bold hover:bg-blue-500 transition-all shadow-md text-xs sm:text-sm cursor-pointer"
           >
             <Send size={16} className="shrink-0" />
             <span className="truncate">Send tilbud</span>
           </button>
           <button 
             onClick={() => setIsPartnerModalOpen(true)}
-            className="flex items-center justify-center gap-1.5 px-3.5 py-2.5 bg-purple-100 hover:bg-purple-200 text-purple-900 border border-purple-300 rounded-xl font-bold transition-all text-xs sm:text-sm cursor-pointer shadow-xs"
+            className="flex items-center justify-center gap-1.5 px-3.5 py-2.5 bg-purple-950/60 hover:bg-purple-900/60 text-purple-200 border border-purple-500/40 rounded-xl font-bold transition-all text-xs sm:text-sm cursor-pointer shadow-xs"
             title="Opprett samarbeidspartner eller kollega som ikke regnes inn i omsetning (0 kr/mnd)"
           >
-            <UserCheck size={16} className="shrink-0 text-purple-700" />
+            <UserCheck size={16} className="shrink-0 text-purple-400" />
             <span className="truncate">+ Ny Partner / Kollega</span>
           </button>
           <button 
@@ -1340,13 +1340,13 @@ Svar KUN med gyldig rå JSON (uten markdown \`\`\`json klammer):
       </div>
 
       {/* System Health / Driftsovervåking Ribbon */}
-      <div className="mb-6 sm:mb-8 p-3 sm:p-4 rounded-2xl bg-neutral-900 text-white border border-neutral-800 flex flex-wrap items-center justify-between gap-3 text-xs shadow-md">
+      <div className="mb-6 sm:mb-8 p-3 sm:p-4 rounded-2xl bg-slate-900/90 text-white border border-slate-800 flex flex-wrap items-center justify-between gap-3 text-xs shadow-md">
         <div className="flex items-center gap-2">
           <Activity size={16} className="text-emerald-400 shrink-0" />
-          <span className="font-bold text-neutral-200">Plattformstatus:</span>
+          <span className="font-bold text-slate-200">Plattformstatus:</span>
           <span className="px-2 py-0.5 rounded-full bg-emerald-500/20 text-emerald-300 font-mono text-[10px] font-black uppercase">100% Operativ</span>
         </div>
-        <div className="flex items-center gap-4 sm:gap-6 flex-wrap text-[11px] text-neutral-300">
+        <div className="flex items-center gap-4 sm:gap-6 flex-wrap text-[11px] text-slate-300">
           <div className="flex items-center gap-1.5">
             <span className="w-2 h-2 rounded-full bg-emerald-400 inline-block" />
             <span>1min.AI Multi-Model Router (Aktiv)</span>
@@ -1383,8 +1383,8 @@ Svar KUN med gyldig rå JSON (uten markdown \`\`\`json klammer):
             className={cn(
               "flex items-center gap-2 px-3 py-2 sm:px-4 sm:py-2.5 lg:px-5 lg:py-3 rounded-xl sm:rounded-2xl font-bold transition-all whitespace-nowrap text-xs sm:text-sm cursor-pointer",
               activeTab === tab.id 
-                ? "bg-neutral-900 text-white shadow-lg shadow-neutral-900/20" 
-                : "bg-white text-neutral-600 hover:bg-neutral-50 border border-neutral-200"
+                ? "bg-electric-500 text-white shadow-lg shadow-electric-500/25 border border-electric-400" 
+                : "bg-slate-900/90 text-slate-300 hover:text-white hover:bg-slate-800 border border-slate-800"
             )}
           >
             {tab.icon}
@@ -1392,13 +1392,13 @@ Svar KUN med gyldig rå JSON (uten markdown \`\`\`json klammer):
             {tab.count !== undefined && (
               <span className={cn(
                 "px-2 py-0.5 text-[10px] rounded-full font-black",
-                activeTab === tab.id ? "bg-white/20 text-white" : (tab.countColor || "bg-neutral-100 text-neutral-600")
+                activeTab === tab.id ? "bg-white/20 text-white" : (tab.countColor || "bg-slate-800 text-slate-300 border border-slate-700")
               )}>
                 {tab.count}
               </span>
             )}
             {tab.live && (
-              <span className="w-2 h-2 rounded-full bg-emerald-500 animate-pulse inline-block" />
+              <span className="w-2 h-2 rounded-full bg-emerald-400 animate-pulse inline-block" />
             )}
           </button>
         ))}
@@ -1409,22 +1409,22 @@ Svar KUN med gyldig rå JSON (uten markdown \`\`\`json klammer):
         {/* Card 1: MRR */}
         <div 
           onClick={() => setActiveTab('companies')}
-          className="p-5 sm:p-6 rounded-2xl sm:rounded-[2rem] border border-neutral-200 bg-emerald-50/70 shadow-sm cursor-pointer hover:scale-[1.02] hover:shadow-md transition-all"
+          className="p-5 sm:p-6 rounded-2xl sm:rounded-[2rem] border border-emerald-500/30 bg-slate-900/90 shadow-sm cursor-pointer hover:scale-[1.02] hover:border-emerald-500/50 hover:shadow-lg transition-all"
           title="Klikk for å se abonnementsdetaljer"
         >
           <div className="flex items-center justify-between mb-3">
-            <div className="w-10 h-10 bg-white rounded-xl flex items-center justify-center text-emerald-600 shadow-xs">
+            <div className="w-10 h-10 bg-emerald-500/20 text-emerald-400 border border-emerald-500/30 rounded-xl flex items-center justify-center shadow-xs">
               <DollarSign size={20} />
             </div>
-            <span className="text-[10px] font-black text-emerald-700 bg-white/80 px-2.5 py-1 rounded-full uppercase tracking-wider">
+            <span className="text-[10px] font-black text-emerald-400 bg-emerald-500/10 border border-emerald-500/20 px-2.5 py-1 rounded-full uppercase tracking-wider">
               {pipelineMrr > 0 ? `+${pipelineMrr.toLocaleString('no-NO')} kr pipeline` : 'SaaS MRR'}
             </span>
           </div>
-          <div className="text-2xl sm:text-3xl font-black text-neutral-900">
+          <div className="text-2xl sm:text-3xl font-black text-white">
             {activeMrr.toLocaleString('no-NO')} kr
           </div>
-          <div className="text-xs font-bold text-neutral-600 uppercase tracking-wider mt-1">Månedlig SaaS-omsetning</div>
-          <p className="text-[11px] text-neutral-500 mt-1">
+          <div className="text-xs font-bold text-slate-300 uppercase tracking-wider mt-1">Månedlig SaaS-omsetning</div>
+          <p className="text-[11px] text-slate-400 mt-1">
             {payingActiveCompanies.length === 0 
               ? `0 betalende abonnenter · ${demoCompanies.length > 0 ? `${demoCompanies.length} demo (0 kr) · ` : ''}${partnerCompanies.length > 0 ? `${partnerCompanies.length} partnere (0 kr) · ` : ''}${internalCompanies.length} admin (0 kr)` 
               : `${payingActiveCompanies.length} betalende kunder · ${demoCompanies.length > 0 ? `${demoCompanies.length} demo (0 kr) · ` : ''}${partnerCompanies.length > 0 ? `${partnerCompanies.length} partnere (0 kr) · ` : ''}${internalCompanies.length} admin (0 kr)`}
@@ -1434,22 +1434,22 @@ Svar KUN med gyldig rå JSON (uten markdown \`\`\`json klammer):
         {/* Card 2: Bedriftskunder */}
         <div 
           onClick={() => setActiveTab('companies')}
-          className="p-5 sm:p-6 rounded-2xl sm:rounded-[2rem] border border-neutral-200 bg-blue-50/70 shadow-sm cursor-pointer hover:scale-[1.02] hover:shadow-md transition-all"
+          className="p-5 sm:p-6 rounded-2xl sm:rounded-[2rem] border border-blue-500/30 bg-slate-900/90 shadow-sm cursor-pointer hover:scale-[1.02] hover:border-blue-500/50 hover:shadow-lg transition-all"
           title="Klikk for å administrere bedrifter"
         >
           <div className="flex items-center justify-between mb-3">
-            <div className="w-10 h-10 bg-white rounded-xl flex items-center justify-center text-blue-600 shadow-xs">
+            <div className="w-10 h-10 bg-blue-500/20 text-blue-400 border border-blue-500/30 rounded-xl flex items-center justify-center shadow-xs">
               <Building2 size={20} />
             </div>
-            <span className="text-[10px] font-black text-blue-700 bg-white/80 px-2.5 py-1 rounded-full uppercase tracking-wider">
+            <span className="text-[10px] font-black text-blue-400 bg-blue-500/10 border border-blue-500/20 px-2.5 py-1 rounded-full uppercase tracking-wider">
               Tenants
             </span>
           </div>
-          <div className="text-2xl sm:text-3xl font-black text-neutral-900">
+          <div className="text-2xl sm:text-3xl font-black text-white">
             {companies.length}
           </div>
-          <div className="text-xs font-bold text-neutral-600 uppercase tracking-wider mt-1">Bedriftskunder & Partnere</div>
-          <p className="text-[11px] text-neutral-500 mt-1">
+          <div className="text-xs font-bold text-slate-300 uppercase tracking-wider mt-1">Bedriftskunder & Partnere</div>
+          <p className="text-[11px] text-slate-400 mt-1">
             {payingActiveCompanies.length} betalende · {demoCompanies.length > 0 ? `${demoCompanies.length} demo · ` : ''}{partnerCompanies.length > 0 ? `${partnerCompanies.length} partnere · ` : ''}{internalCompanies.length} systemeiere{trialCompanies.length > 0 ? ` · ${trialCompanies.length} prøvetid` : ''}
           </p>
         </div>
@@ -1457,24 +1457,24 @@ Svar KUN med gyldig rå JSON (uten markdown \`\`\`json klammer):
         {/* Card 3: Salgs-leads */}
         <div 
           onClick={() => setActiveTab('leads')}
-          className="p-5 sm:p-6 rounded-2xl sm:rounded-[2rem] border border-neutral-200 bg-amber-50/70 shadow-sm cursor-pointer hover:scale-[1.02] hover:shadow-md transition-all"
+          className="p-5 sm:p-6 rounded-2xl sm:rounded-[2rem] border border-amber-500/30 bg-slate-900/90 shadow-sm cursor-pointer hover:scale-[1.02] hover:border-amber-500/50 hover:shadow-lg transition-all"
           title="Klikk for å følge opp henvendelser"
         >
           <div className="flex items-center justify-between mb-3">
-            <div className="w-10 h-10 bg-white rounded-xl flex items-center justify-center text-amber-600 shadow-xs">
+            <div className="w-10 h-10 bg-amber-500/20 text-amber-400 border border-amber-500/30 rounded-xl flex items-center justify-center shadow-xs">
               <MessageSquare size={20} />
             </div>
             {newLeads.length > 0 && (
-              <span className="text-[10px] font-black text-red-700 bg-red-100 px-2.5 py-1 rounded-full uppercase tracking-wider animate-pulse">
+              <span className="text-[10px] font-black text-amber-300 bg-amber-500/20 border border-amber-500/30 px-2.5 py-1 rounded-full uppercase tracking-wider animate-pulse">
                 {newLeads.length} nye
               </span>
             )}
           </div>
-          <div className="text-2xl sm:text-3xl font-black text-neutral-900">
+          <div className="text-2xl sm:text-3xl font-black text-white">
             {newLeads.length}
           </div>
-          <div className="text-xs font-bold text-neutral-600 uppercase tracking-wider mt-1">Ubehandlede Leads</div>
-          <p className="text-[11px] text-neutral-500 mt-1">
+          <div className="text-xs font-bold text-slate-300 uppercase tracking-wider mt-1">Ubehandlede Leads</div>
+          <p className="text-[11px] text-slate-400 mt-1">
             {leads.length} henvendelser totalt mottatt
           </p>
         </div>
@@ -1482,22 +1482,22 @@ Svar KUN med gyldig rå JSON (uten markdown \`\`\`json klammer):
         {/* Card 4: AI Marginkontroll */}
         <div 
           onClick={() => setActiveTab('agent')}
-          className="p-5 sm:p-6 rounded-2xl sm:rounded-[2rem] border border-neutral-200 bg-purple-50/70 shadow-sm cursor-pointer hover:scale-[1.02] hover:shadow-md transition-all"
+          className="p-5 sm:p-6 rounded-2xl sm:rounded-[2rem] border border-purple-500/30 bg-slate-900/90 shadow-sm cursor-pointer hover:scale-[1.02] hover:border-purple-500/50 hover:shadow-lg transition-all"
           title="Klikk for AI-marginkontroll"
         >
           <div className="flex items-center justify-between mb-3">
-            <div className="w-10 h-10 bg-white rounded-xl flex items-center justify-center text-purple-600 shadow-xs">
+            <div className="w-10 h-10 bg-purple-500/20 text-purple-400 border border-purple-500/30 rounded-xl flex items-center justify-center shadow-xs">
               <BrainCircuit size={20} />
             </div>
-            <span className="text-[10px] font-black text-purple-700 bg-white/80 px-2.5 py-1 rounded-full uppercase tracking-wider">
+            <span className="text-[10px] font-black text-purple-300 bg-purple-500/20 border border-purple-500/30 px-2.5 py-1 rounded-full uppercase tracking-wider">
               &gt;98% Margin
             </span>
           </div>
-          <div className="text-2xl sm:text-3xl font-black text-neutral-900">
+          <div className="text-2xl sm:text-3xl font-black text-white">
             {totalCostNokThisMonth > 0 ? `${totalCostNokThisMonth.toFixed(2)} kr` : '0,00 kr'}
           </div>
-          <div className="text-xs font-bold text-neutral-600 uppercase tracking-wider mt-1">AI API-kostnad (Mnd)</div>
-          <p className="text-[11px] text-neutral-500 mt-1">
+          <div className="text-xs font-bold text-slate-300 uppercase tracking-wider mt-1">AI API-kostnad (Mnd)</div>
+          <p className="text-[11px] text-slate-400 mt-1">
             {totalTokensThisMonth.toLocaleString('no-NO')} tokens · 1min.AI Multi-Model (GPT-4o / Claude / Gemini)
           </p>
         </div>
@@ -1507,16 +1507,16 @@ Svar KUN med gyldig rå JSON (uten markdown \`\`\`json klammer):
       {activeTab === 'companies' && (
         <div className="space-y-6 sm:space-y-8 mb-12">
           {/* Search, Filter & Quick Action Bar */}
-          <div className="bg-white rounded-[2.5rem] border border-neutral-200 p-6 sm:p-8 shadow-sm">
+          <div className="bg-slate-900/90 rounded-[2.5rem] border border-slate-800 p-6 sm:p-8 shadow-sm">
             <div className="flex flex-col md:flex-row gap-4 items-center justify-between">
               <div className="relative w-full md:w-96">
-                <Search className="absolute left-4 top-1/2 -translate-y-1/2 text-neutral-400" size={20} />
+                <Search className="absolute left-4 top-1/2 -translate-y-1/2 text-slate-400" size={20} />
                 <input 
                   type="text"
                   placeholder="Søk etter bedriftsnavn eller org.nr..."
                   value={searchTerm}
                   onChange={(e) => setSearchTerm(e.target.value)}
-                  className="w-full pl-12 pr-4 py-3 bg-neutral-50 border border-neutral-200 rounded-2xl focus:ring-2 focus:ring-purple-500 outline-none transition-all text-sm"
+                  className="w-full pl-12 pr-4 py-3 bg-slate-800/80 border border-slate-700 rounded-2xl focus:ring-2 focus:ring-purple-500 outline-none transition-all text-sm text-white placeholder-slate-400"
                 />
               </div>
               <div className="flex items-center gap-1.5 overflow-x-auto w-full md:w-auto pb-1">
@@ -1534,8 +1534,8 @@ Svar KUN med gyldig rå JSON (uten markdown \`\`\`json klammer):
                     className={cn(
                       "px-3.5 py-2 rounded-xl text-xs font-bold transition-all whitespace-nowrap cursor-pointer",
                       companyStatusFilter === f.id
-                        ? "bg-neutral-900 text-white shadow-xs"
-                        : "bg-neutral-100 text-neutral-600 hover:bg-neutral-200"
+                        ? "bg-purple-600 text-white shadow-xs"
+                        : "bg-slate-800 text-slate-300 hover:bg-slate-750 hover:text-white border border-slate-700"
                     )}
                   >
                     {f.label} ({f.count})
@@ -1546,11 +1546,11 @@ Svar KUN med gyldig rå JSON (uten markdown \`\`\`json klammer):
           </div>
 
           {/* Companies Table (Kompakt responsiv uten horisontal scroll) */}
-          <div className="bg-white rounded-3xl border border-neutral-200 shadow-sm overflow-hidden w-full">
+          <div className="bg-slate-900/90 rounded-3xl border border-slate-800 shadow-sm overflow-hidden w-full">
             <div className="w-full">
               <table className="w-full text-left table-auto">
                 <thead>
-                  <tr className="bg-neutral-50 border-b border-neutral-200 text-neutral-500">
+                  <tr className="bg-slate-800/80 border-b border-slate-700/80 text-slate-400">
                     <th className="px-3 sm:px-4 py-3 text-[11px] font-black uppercase tracking-wider">Kunde / Bedrift</th>
                     <th className="px-3 sm:px-4 py-3 text-[11px] font-black uppercase tracking-wider">Abonnementsplan</th>
                     <th className="px-3 sm:px-4 py-3 text-[11px] font-black uppercase tracking-wider">Status & Prøvetid</th>
@@ -1559,10 +1559,10 @@ Svar KUN med gyldig rå JSON (uten markdown \`\`\`json klammer):
                     <th className="px-3 sm:px-4 py-3 text-[11px] font-black uppercase tracking-wider">Handlinger</th>
                   </tr>
                 </thead>
-                <tbody className="divide-y divide-neutral-100">
+                <tbody className="divide-y divide-slate-800">
                   {filteredCompanies.length === 0 ? (
                     <tr>
-                      <td colSpan={6} className="px-6 py-12 text-center text-neutral-400 text-xs">
+                      <td colSpan={6} className="px-6 py-12 text-center text-slate-400 text-xs">
                         Ingen bedrifter funnet. Klikk på "+ Ny bedriftskunde" øverst for å opprette den første kunden.
                       </td>
                     </tr>
@@ -1574,26 +1574,26 @@ Svar KUN med gyldig rå JSON (uten markdown \`\`\`json klammer):
                       const currentPlan = isInternal ? 'internal' : (company.plan === 'enterprise' || company.plan === 'entreprenor') ? 'entreprenor' : (company.plan || 'solo');
 
                       return (
-                        <tr key={company.id} className="hover:bg-neutral-50/70 transition-colors group">
+                        <tr key={company.id} className="hover:bg-slate-800/40 transition-colors group">
                           {/* Bedrift & Org.nr */}
                           <td className="px-3 sm:px-4 py-3">
                             <div className="flex items-center gap-2.5 min-w-0">
                               <div className={cn(
                                 "w-9 h-9 rounded-xl flex items-center justify-center transition-all shrink-0 text-xs",
-                                isInternal ? "bg-amber-100 text-amber-700 font-bold" : "bg-neutral-100 text-neutral-500 group-hover:bg-purple-100 group-hover:text-purple-700"
+                                isInternal ? "bg-amber-500/20 text-amber-300 font-bold border border-amber-500/30" : "bg-slate-800 text-slate-400 border border-slate-700 group-hover:bg-purple-500/20 group-hover:text-purple-300 group-hover:border-purple-500/30"
                               )}>
                                 {isInternal ? '👑' : <Building2 size={18} />}
                               </div>
                               <div className="min-w-0">
-                                <div className="font-bold text-neutral-900 text-xs flex items-center gap-1.5 truncate">
+                                <div className="font-bold text-white text-xs flex items-center gap-1.5 truncate">
                                   <span className="truncate">{company.name}</span>
                                   {isInternal && (
-                                    <span className="px-1.5 py-0.5 rounded text-[9px] font-black uppercase tracking-wider bg-amber-100 text-amber-900 border border-amber-300 shrink-0">
+                                    <span className="px-1.5 py-0.5 rounded text-[9px] font-black uppercase tracking-wider bg-amber-500/20 text-amber-300 border border-amber-500/30 shrink-0">
                                       Eier
                                     </span>
                                   )}
                                 </div>
-                                <div className="text-[11px] text-neutral-500 font-mono truncate">Org: {company.orgNumber || 'Ikke oppgitt'}</div>
+                                <div className="text-[11px] text-slate-400 font-mono truncate">Org: {company.orgNumber || 'Ikke oppgitt'}</div>
                               </div>
                             </div>
                           </td>
@@ -1604,22 +1604,16 @@ Svar KUN med gyldig rå JSON (uten markdown \`\`\`json klammer):
                               value={isInternal ? 'internal' : isCompanyDemo(company) ? 'demo' : (company.plan === 'partner' || isCompanyFreeTier(company)) ? 'partner' : currentPlan}
                               onChange={(e) => handleUpdateCompanyPlan(company.id, e.target.value as any)}
                               className={cn(
-                                "text-xs font-bold rounded-xl px-2.5 py-1.5 outline-none border transition-all cursor-pointer max-w-[175px] truncate",
-                                isInternal ? "bg-amber-100 text-amber-950 border-amber-300 focus:ring-2 focus:ring-amber-400" :
-                                isCompanyDemo(company) ? "bg-cyan-100 text-cyan-900 border-cyan-300 focus:ring-2 focus:ring-cyan-400" :
-                                (currentPlan === 'partner' || isCompanyFreeTier(company)) ? "bg-purple-100 text-purple-900 border-purple-300 focus:ring-2 focus:ring-purple-400" :
-                                currentPlan === 'entreprenor' ? "bg-purple-50 text-purple-800 border-purple-200 focus:ring-2 focus:ring-purple-400" :
-                                currentPlan === 'team' ? "bg-blue-50 text-blue-800 border-blue-200 focus:ring-2 focus:ring-blue-400" :
-                                "bg-neutral-50 text-neutral-800 border-neutral-200 focus:ring-2 focus:ring-neutral-400"
+                                "text-xs font-bold rounded-xl px-2.5 py-1.5 outline-none border transition-all cursor-pointer max-w-[175px] truncate bg-slate-800 text-slate-200 border-slate-700 focus:ring-2 focus:ring-purple-500"
                               )}
                               title="Endre abonnementsplan for kunden"
                             >
-                              <option value="internal">👑 SuperAdmin (0 kr)</option>
-                              <option value="demo">🧪 Demo / Test (0 kr)</option>
-                              <option value="solo">Solo (690 kr/mnd)</option>
-                              <option value="team">Team (1 490 kr/mnd)</option>
-                              <option value="entreprenor">Totalentreprenør Pro (2 990 kr)</option>
-                              <option value="partner">🤝 Partner / Kollega (0 kr)</option>
+                              <option value="internal" className="bg-slate-900 text-amber-300">👑 SuperAdmin (0 kr)</option>
+                              <option value="demo" className="bg-slate-900 text-cyan-300">🧪 Demo / Test (0 kr)</option>
+                              <option value="solo" className="bg-slate-900 text-slate-200">Solo (690 kr/mnd)</option>
+                              <option value="team" className="bg-slate-900 text-slate-200">Team (1 490 kr/mnd)</option>
+                              <option value="entreprenor" className="bg-slate-900 text-slate-200">Totalentreprenør Pro (2 990 kr)</option>
+                              <option value="partner" className="bg-slate-900 text-purple-300">🤝 Partner / Kollega (0 kr)</option>
                             </select>
                           </td>
 
@@ -1627,20 +1621,20 @@ Svar KUN med gyldig rå JSON (uten markdown \`\`\`json klammer):
                           <td className="px-3 sm:px-4 py-3">
                             <div className="flex flex-col gap-1 items-start">
                               {isInternal ? (
-                                <span className="px-2.5 py-0.5 rounded-full text-[10px] font-black uppercase tracking-wider border bg-amber-100 text-amber-950 border-amber-300">
+                                <span className="px-2.5 py-0.5 rounded-full text-[10px] font-black uppercase tracking-wider border bg-amber-500/20 text-amber-300 border-amber-500/30">
                                   👑 Eier (Alltid aktiv)
                                 </span>
                               ) : isCompanyDemo(company) ? (
-                                <span className="px-2.5 py-0.5 rounded-full text-[10px] font-black uppercase tracking-wider border bg-cyan-100 text-cyan-900 border-cyan-300 inline-flex items-center gap-1">
+                                <span className="px-2.5 py-0.5 rounded-full text-[10px] font-black uppercase tracking-wider border bg-cyan-500/20 text-cyan-300 border-cyan-500/30 inline-flex items-center gap-1">
                                   🧪 Demo / Test (0 kr)
                                 </span>
                               ) : (
                                 <span className={cn(
                                   "px-2.5 py-0.5 rounded-full text-[10px] font-black uppercase tracking-wider border inline-flex items-center gap-1",
-                                  isCompanyFreeTier(company) ? "bg-purple-100 text-purple-900 border-purple-300" :
-                                  company.subscriptionStatus === 'active' ? "bg-emerald-100 text-emerald-800 border-emerald-300" :
-                                  company.subscriptionStatus === 'trial' ? "bg-amber-100 text-amber-900 border-amber-300" :
-                                  "bg-rose-100 text-rose-800 border-rose-300"
+                                  isCompanyFreeTier(company) ? "bg-purple-500/20 text-purple-300 border-purple-500/30" :
+                                  company.subscriptionStatus === 'active' ? "bg-emerald-500/20 text-emerald-300 border-emerald-500/30" :
+                                  company.subscriptionStatus === 'trial' ? "bg-amber-500/20 text-amber-300 border-amber-500/30" :
+                                  "bg-rose-500/20 text-rose-300 border-rose-500/30"
                                 )}>
                                   {isCompanyFreeTier(company) && '🤝 Partner (0 kr)'}
                                   {!isCompanyFreeTier(company) && company.subscriptionStatus === 'active' && '🟢 Aktiv'}
@@ -1661,22 +1655,22 @@ Svar KUN med gyldig rå JSON (uten markdown \`\`\`json klammer):
                           {/* AI Token Kvote */}
                           <td className="px-3 sm:px-4 py-3 min-w-[130px] max-w-[160px]">
                             {isInternal ? (
-                              <div className="text-[11px] font-bold text-amber-800">
+                              <div className="text-[11px] font-bold text-amber-400">
                                 Ubegrenset AI
                               </div>
                             ) : (
                               <div className="space-y-0.5">
-                                <div className="flex items-center justify-between text-[10px] font-medium text-neutral-600">
+                                <div className="flex items-center justify-between text-[10px] font-medium text-slate-400">
                                   <span>{(tokenStats.used / 1_000_000).toFixed(1)}M</span>
-                                  <span className="font-bold text-neutral-900">{tokenStats.percent}%</span>
+                                  <span className="font-bold text-white">{tokenStats.percent}%</span>
                                 </div>
-                                <div className="w-full h-1.5 bg-neutral-100 rounded-full overflow-hidden">
+                                <div className="w-full h-1.5 bg-slate-800 rounded-full overflow-hidden">
                                   <div 
                                     className={cn(
                                       "h-full rounded-full transition-all",
                                       tokenStats.percent >= 90 ? "bg-red-500" :
                                       tokenStats.percent >= 75 ? "bg-amber-500" :
-                                      "bg-purple-600"
+                                      "bg-purple-500"
                                     )}
                                     style={{ width: `${Math.min(100, Math.max(4, tokenStats.percent))}%` }}
                                   />
@@ -1687,7 +1681,7 @@ Svar KUN med gyldig rå JSON (uten markdown \`\`\`json klammer):
 
                           {/* Antall brukere */}
                           <td className="px-3 sm:px-4 py-3 text-center">
-                            <span className="px-2 py-0.5 bg-neutral-100 rounded-lg text-xs font-black text-neutral-700 font-mono">
+                            <span className="px-2 py-0.5 bg-slate-800 border border-slate-700 rounded-lg text-xs font-black text-slate-200 font-mono">
                               {company.userCount || 0}
                             </span>
                           </td>
@@ -1702,7 +1696,7 @@ Svar KUN med gyldig rå JSON (uten markdown \`\`\`json klammer):
                                   toast.success(`Logget inn som ${company.name || company.id}. Viser nå kundens system.`);
                                   window.dispatchEvent(new CustomEvent('navigate_view', { detail: { view: 'dashboard' } }));
                                 }}
-                                className="flex items-center gap-1 px-2.5 py-1.5 bg-blue-50 hover:bg-blue-100 text-blue-700 rounded-xl text-xs font-bold border border-blue-200 transition-all cursor-pointer shadow-xs"
+                                className="flex items-center gap-1 px-2.5 py-1.5 bg-blue-600/20 hover:bg-blue-600/40 text-blue-300 rounded-xl text-xs font-bold border border-blue-500/30 transition-all cursor-pointer shadow-xs"
                                 title={`Logg inn som ${company.name || company.id} og se deres system`}
                               >
                                 <ExternalLink size={12} />
@@ -1711,21 +1705,21 @@ Svar KUN med gyldig rå JSON (uten markdown \`\`\`json klammer):
 
                               <button 
                                 onClick={() => { setSelectedCompany(company); setIsEditInfoModalOpen(true); }}
-                                className="p-1.5 text-neutral-400 hover:text-blue-600 hover:bg-blue-50 rounded-xl transition-all cursor-pointer"
+                                className="p-1.5 text-slate-400 hover:text-blue-400 hover:bg-slate-800 rounded-xl transition-all cursor-pointer"
                                 title="Rediger firmanavn og org.nr"
                               >
                                 <Building2 size={15} />
                               </button>
                               <button 
                                 onClick={() => { setSelectedCompany(company); setIsUserModalOpen(true); }}
-                                className="p-1.5 text-neutral-400 hover:text-orange-600 hover:bg-orange-50 rounded-xl transition-all cursor-pointer"
+                                className="p-1.5 text-slate-400 hover:text-orange-400 hover:bg-slate-800 rounded-xl transition-all cursor-pointer"
                                 title="Administrer brukere"
                               >
                                 <Users size={15} />
                               </button>
                               <button 
                                 onClick={() => { setSelectedCompany(company); setIsEditModalOpen(true); }}
-                                className="p-1.5 text-neutral-400 hover:text-purple-600 hover:bg-purple-50 rounded-xl transition-all cursor-pointer"
+                                className="p-1.5 text-slate-400 hover:text-purple-400 hover:bg-slate-800 rounded-xl transition-all cursor-pointer"
                                 title="Skreddersy moduler"
                               >
                                 <Settings size={15} />
@@ -1733,7 +1727,7 @@ Svar KUN med gyldig rå JSON (uten markdown \`\`\`json klammer):
                               {!isInternal && (
                                 <button 
                                   onClick={() => handleDeleteCompany(company.id)}
-                                  className="p-1.5 text-neutral-400 hover:text-rose-600 hover:bg-rose-50 rounded-xl transition-all cursor-pointer"
+                                  className="p-1.5 text-slate-400 hover:text-rose-400 hover:bg-slate-800 rounded-xl transition-all cursor-pointer"
                                   title="Slett bedrift"
                                 >
                                   <Trash2 size={15} />
