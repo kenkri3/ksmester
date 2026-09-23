@@ -60,7 +60,7 @@ import {
 } from 'lucide-react';
 import { cn } from '@/src/lib/utils';
 import { Project, Deviation, UserProfile, Trade } from '../types';
-import { db, collection, onSnapshot, query, orderBy, where, getDocs, deleteDoc, OperationType, handleFirestoreError } from '../services/firebase';
+import { db, collection, onSnapshot, query, orderBy, where, getDocs, deleteDoc, doc, updateDoc, OperationType, handleFirestoreError } from '../services/firebase';
 import { useTranslation } from 'react-i18next';
 import { toast } from 'sonner';
 import { useDashboardData } from '../hooks/useDashboardData';
@@ -215,7 +215,16 @@ export default function Dashboard({
             vatAmount: data.vatAmount || Math.round((data.amountExVat || 0) * 0.25),
             days: data.impactDays || 0,
             impactDays: data.impactDays || 0,
-            status: data.status === 'approved' ? 'Godkjent av kunde' : data.status === 'rejected' ? 'Avvist' : 'Venter på bas',
+            status: (() => {
+              const s = (data.status || '').toLowerCase();
+              if (s === 'approved' || s === 'godkjent av kunde' || s === 'approved_by_admin' || s === 'godkjent' || s === 'accepted') {
+                return 'Godkjent av kunde';
+              }
+              if (s === 'rejected' || s === 'avvist' || s === 'avslått') {
+                return 'Avvist';
+              }
+              return 'Sendt til kunde';
+            })(),
             legal: data.legalHjemmel || 'NS 8406 pkt. 19.2',
             legalHjemmel: data.legalHjemmel || 'NS 8406 pkt. 19.2',
             description: data.description || '',
@@ -965,9 +974,28 @@ export default function Dashboard({
     setCommandText('');
   };
 
-  // 1-Click Approve Change Order
+  // 1-Click Approve Change Order (Registrer godkjenning / aksept fra kunde)
   const handleApproveChangeOrder = async (changeOrderId: string) => {
     try {
+      // Optimistisk oppdatering i UI umiddelbart
+      setDashboardChangeOrders(prev => prev.map(item => item.id === changeOrderId ? { ...item, status: 'Godkjent av kunde' } : item));
+      setPendingApprovals(prev => prev.filter(item => item.id !== changeOrderId));
+      setAgentMetrics((prev: any) => ({
+        ...prev,
+        pendingApprovalsCount: Math.max(0, prev.pendingApprovalsCount - 1)
+      }));
+
+      // Oppdater Firestore direkte slik at det persisteres umiddelbart
+      try {
+        await updateDoc(doc(db, 'change_orders', changeOrderId), {
+          status: 'Godkjent av kunde',
+          approvedAt: new Date().toISOString(),
+          approvedBy: user?.displayName || 'Byggmester / Admin'
+        });
+      } catch (fsErr) {
+        console.warn('Firestore update fallback:', fsErr);
+      }
+
       const res = await fetch('/api/agent/dispatch', {
         method: 'POST',
         // FIX (11.09.2026): Send med Authorization-token – /api/agent/dispatch krever nå pålogging.
@@ -980,15 +1008,9 @@ export default function Dashboard({
       });
 
       if (res.ok) {
-        toast.success('Endringsordre godkjent!', {
-          description: 'Varsel og godkjenningsdokument (NS 8406) er klargjort for kunden.'
+        toast.success('Endringsordre markert som godkjent av kunde!', {
+          description: 'Varsel og godkjenningsdokument (NS 8406) er oppdatert og arkivert.'
         });
-        // Remove from pending
-        setPendingApprovals(prev => prev.filter(item => item.id !== changeOrderId));
-        setAgentMetrics((prev: any) => ({
-          ...prev,
-          pendingApprovalsCount: Math.max(0, prev.pendingApprovalsCount - 1)
-        }));
         fetchAgentState();
       }
     } catch (err: any) {
@@ -999,6 +1021,18 @@ export default function Dashboard({
   // 1-Click Reject Change Order
   const handleRejectChangeOrder = async (changeOrderId: string) => {
     try {
+      setDashboardChangeOrders(prev => prev.map(item => item.id === changeOrderId ? { ...item, status: 'Avvist' } : item));
+      setPendingApprovals(prev => prev.filter(item => item.id !== changeOrderId));
+
+      try {
+        await updateDoc(doc(db, 'change_orders', changeOrderId), {
+          status: 'rejected',
+          rejectedAt: new Date().toISOString()
+        });
+      } catch (fsErr) {
+        console.warn('Firestore reject fallback:', fsErr);
+      }
+
       const res = await fetch('/api/agent/dispatch', {
         method: 'POST',
         // FIX (11.09.2026): Send med Authorization-token – /api/agent/dispatch krever nå pålogging.
@@ -1010,8 +1044,7 @@ export default function Dashboard({
       });
 
       if (res.ok) {
-        toast.info('Endringsordre avvist / satt på vent');
-        setPendingApprovals(prev => prev.filter(item => item.id !== changeOrderId));
+        toast.info('Endringsordre er markert som avvist.');
         fetchAgentState();
       }
     } catch (err: any) {

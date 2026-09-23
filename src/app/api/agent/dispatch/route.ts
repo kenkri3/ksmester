@@ -3517,7 +3517,7 @@ Du skal opptre som en høyt kvalifisert byggmester og kalkulatør og levere en k
       }
 
       const updated = await updateCollectionItem('change_orders', changeOrderId, {
-        status: 'approved_by_admin',
+        status: 'Godkjent av kunde',
         approvedAt: new Date().toISOString(),
         approvedBy: authorName || user?.email || 'Byggmester / Admin'
       });

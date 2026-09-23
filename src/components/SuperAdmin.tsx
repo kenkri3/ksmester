@@ -107,6 +107,46 @@ export const isCompanyInternalAdmin = (c?: Partial<Company> | any): boolean => {
   );
 };
 
+// 🧪 Hjelper for å identifisere demobedrifter / testmiljø (0 kr/mnd)
+export const isCompanyDemo = (c?: Partial<Company> | any): boolean => {
+  if (!c) return false;
+  if (Boolean(c.isDemo)) return true;
+  if (c.id === 'comp-demo-fjellheim') return true;
+  const plan = (c.plan || '').toLowerCase();
+  if (plan === 'demo' || plan === 'test') return true;
+  const name = (c.name || '').toLowerCase();
+  if (name.includes('demo') || name.includes('fjellheim')) return true;
+  const email = (c.contactEmail || c.email || '').toLowerCase();
+  if (email.includes('demo@') || email.includes('test@')) return true;
+  return false;
+};
+
+// 🤝 Hjelper for å identifisere samarbeidspartnere, kollegaer eller friplasser (0 kr/mnd)
+export const isCompanyFreeTier = (c?: Partial<Company> | any): boolean => {
+  if (!c) return false;
+  if (isCompanyInternalAdmin(c) || isCompanyDemo(c)) return true;
+  const plan = (c.plan || '').toLowerCase();
+  return plan === 'partner' || plan === 'intern' || plan === 'internal' || plan === 'demo' || plan === 'test' || Boolean(c.isPartner) || Boolean(c.isInternal) || Boolean(c.isDemo) || c.monthlyPrice === 0;
+};
+
+// Available modules (definert på modulnivå for full tilgang i alle SuperAdmin-komponenter)
+export const allModules = [
+  { id: 'projects', name: 'Prosjektstyring', icon: <Plus size={16} /> },
+  { id: 'checklists', name: 'KS/HMS Sjekklister', icon: <Shield size={16} /> },
+  { id: 'deviations', name: 'Avvikshåndtering', icon: <AlertTriangle size={16} /> },
+  { id: 'ai', name: 'AI Analyse & Vision', icon: <Zap size={16} /> },
+  { id: 'economy', name: 'Tilbud & Kalkyle', icon: <Calculator size={16} /> },
+  { id: 'change_orders', name: 'Endringsordrer (NS 8406)', icon: <FileSignature size={16} /> },
+  { id: 'fdv', name: 'FDV & Dokumentarkiv', icon: <Library size={16} /> },
+  { id: 'inventory', name: 'Lager & Verktøy', icon: <Package size={16} /> },
+  { id: 'vehicle', name: 'Kjørebok & Bil', icon: <Car size={16} /> },
+  { id: 'time', name: 'Timeføring & Byggedagbok', icon: <Timer size={16} /> },
+  { id: 'contacts', name: 'Kontakter & Team', icon: <Users size={16} /> },
+  { id: 'apprentice', name: 'Lærlingmodul', icon: <GraduationCap size={16} /> },
+  { id: 'building_app', name: 'Byggesøknad', icon: <Building2 size={16} /> },
+  { id: 'all_modules', name: 'Alle 20+ fagmoduler (Full pakke)', icon: <Layers size={16} /> }
+];
+
 export default function SuperAdmin({ onBackToDashboard }: { onBackToDashboard?: () => void } = {}) {
   const { user, startImpersonation, stopImpersonation, impersonatedCompanyId, isSuperAdmin: authIsSuperAdmin, isPlatformOwner, setSimulatedPlan } = useAuth();
   const [selectedProject, setSelectedProject] = useState<any | null>(null);
@@ -229,20 +269,6 @@ export default function SuperAdmin({ onBackToDashboard }: { onBackToDashboard?: 
     category: 'offer'
   });
 
-  // Available modules
-  const allModules = [
-    { id: 'projects', name: 'Prosjektstyring', icon: <Plus size={16} /> },
-    { id: 'checklists', name: 'KS/HMS Sjekklister', icon: <Shield size={16} /> },
-    { id: 'deviations', name: 'Avvikshåndtering', icon: <AlertTriangle size={16} /> },
-    { id: 'ai', name: 'AI Analyse & Vision', icon: <Zap size={16} /> },
-    { id: 'economy', name: 'Tilbud & Kontrakt', icon: <Calculator size={16} /> },
-    { id: 'fdv', name: 'FDV & Dokumentasjon', icon: <Library size={16} /> },
-    { id: 'inventory', name: 'Lager & Verktøy', icon: <Package size={16} /> },
-    { id: 'vehicle', name: 'Kjørebok & Bil', icon: <Car size={16} /> },
-    { id: 'time', name: 'Timeføring', icon: <Timer size={16} /> },
-    { id: 'apprentice', name: 'Lærlingmodul', icon: <GraduationCap size={16} /> },
-    { id: 'building_app', name: 'Byggesøknad', icon: <Building2 size={16} /> }
-  ];
 
   useEffect(() => {
     if (!isSuperAdmin) return;
@@ -856,6 +882,20 @@ Svar KUN med gyldig rå JSON (uten markdown \`\`\`json klammer):
         modules,
         updatedAt: serverTimestamp()
       });
+      setCompanies(prev => prev.map(c => c.id === companyId ? { ...c, modules } : c));
+
+      // Oppdater aktiv simulering / impersonering dersom man inspiserer denne kunden
+      if (impersonatedCompanyId === companyId) {
+        const targetComp = companies.find(c => c.id === companyId);
+        const planToUse = targetComp ? (isCompanyDemo(targetComp) ? 'enterprise' : (targetComp.plan || 'enterprise')) : 'enterprise';
+        startImpersonation(companyId, 'admin', planToUse, modules);
+      }
+
+      if (typeof window !== 'undefined') {
+        window.dispatchEvent(new CustomEvent('mester_company_plan_updated', {
+          detail: { companyId, modules }
+        }));
+      }
       toast.success('Moduler ble oppdatert!');
     } catch (error) {
       handleFirestoreError(error, OperationType.UPDATE, 'companies');
@@ -940,27 +980,6 @@ Svar KUN med gyldig rå JSON (uten markdown \`\`\`json klammer):
     }
   };
 
-  // 🧪 Hjelper for å identifisere demobedrifter / testmiljø (0 kr/mnd)
-  const isCompanyDemo = (c?: Partial<Company> | any): boolean => {
-    if (!c) return false;
-    if (Boolean(c.isDemo)) return true;
-    if (c.id === 'comp-demo-fjellheim') return true;
-    const plan = (c.plan || '').toLowerCase();
-    if (plan === 'demo' || plan === 'test') return true;
-    const name = (c.name || '').toLowerCase();
-    if (name.includes('demo') || name.includes('fjellheim')) return true;
-    const email = (c.contactEmail || c.email || '').toLowerCase();
-    if (email.includes('demo@') || email.includes('test@')) return true;
-    return false;
-  };
-
-  // 🤝 Hjelper for å identifisere samarbeidspartnere, kollegaer eller friplasser (0 kr/mnd)
-  const isCompanyFreeTier = (c?: Partial<Company> | any): boolean => {
-    if (!c) return false;
-    if (isCompanyInternalAdmin(c) || isCompanyDemo(c)) return true;
-    const plan = (c.plan || '').toLowerCase();
-    return plan === 'partner' || plan === 'intern' || plan === 'internal' || plan === 'demo' || plan === 'test' || Boolean(c.isPartner) || Boolean(c.isInternal) || Boolean(c.isDemo) || c.monthlyPrice === 0;
-  };
 
   // 💰 Reelle SaaS-nøkkeltall for SuperAdmin (ærlige og nøyaktige)
   const internalCompanies = useMemo(() => (companies || []).filter(c => c && isCompanyInternalAdmin(c)), [companies]);
@@ -1692,7 +1711,12 @@ Svar KUN med gyldig rå JSON (uten markdown \`\`\`json klammer):
                               {/* Impersonate Button (Superkraft for support) */}
                               <button 
                                 onClick={() => {
-                                  startImpersonation(company.id, 'admin');
+                                  const isDemo = isCompanyDemo(company);
+                                  const planToUse = isDemo ? 'enterprise' : (company.plan || 'enterprise');
+                                  const modulesToUse = isDemo 
+                                    ? allModules.map(m => m.id).concat(['all_modules', 'change_orders', 'contacts', 'dailylog', 'archive'])
+                                    : (company.modules && company.modules.length > 0 ? company.modules : allModules.map(m => m.id));
+                                  startImpersonation(company.id, 'admin', planToUse, modulesToUse);
                                   toast.success(`Logget inn som ${company.name || company.id}. Viser nå kundens system.`);
                                   window.dispatchEvent(new CustomEvent('navigate_view', { detail: { view: 'dashboard' } }));
                                 }}
@@ -3189,25 +3213,28 @@ Svar KUN med gyldig rå JSON (uten markdown \`\`\`json klammer):
                         setSelectedCompany({ ...selectedCompany, modules: newModules });
                       }}
                       className={cn(
-                        "flex items-center gap-4 p-4 rounded-2xl border-2 transition-all text-left",
+                        "flex items-center gap-4 p-4 rounded-2xl border-2 transition-all text-left cursor-pointer",
                         isActive 
-                          ? "border-electric-500 bg-electric-50 text-electric-950" 
-                          : "border-neutral-100 bg-neutral-50 text-neutral-500 hover:border-neutral-200"
+                          ? "border-purple-600 bg-purple-50/90 shadow-xs" 
+                          : "border-slate-200 bg-white hover:border-slate-300"
                       )}
                     >
                       <div className={cn(
-                        "w-10 h-10 rounded-xl flex items-center justify-center shadow-sm",
-                        isActive ? "bg-electric-500 text-white" : "bg-white text-neutral-400"
+                        "w-10 h-10 rounded-xl flex items-center justify-center shadow-xs shrink-0",
+                        isActive ? "bg-purple-600 text-white" : "bg-slate-100 text-slate-500"
                       )}>
                         {module.icon}
                       </div>
-                      <div className="flex-1">
-                        <div className="font-bold">{module.name}</div>
-                        <div className="text-[10px] uppercase tracking-widest font-black opacity-60">
-                          {isActive ? 'Aktiv' : 'Inaktiv'}
+                      <div className="flex-1 min-w-0">
+                        <div className="font-bold text-sm text-slate-900 leading-snug">{module.name}</div>
+                        <div className={cn(
+                          "text-[10px] uppercase tracking-wider font-extrabold mt-0.5",
+                          isActive ? "text-purple-700 font-black" : "text-slate-400"
+                        )}>
+                          {isActive ? '✓ Aktiv' : 'Inaktiv'}
                         </div>
                       </div>
-                      {isActive && <CheckCircle2 size={20} className="text-emerald-600" />}
+                      {isActive && <CheckCircle2 size={20} className="text-emerald-600 shrink-0" />}
                     </button>
                   );
                 })}
@@ -3393,7 +3420,12 @@ Svar KUN med gyldig rå JSON (uten markdown \`\`\`json klammer):
                           <div className="flex items-center gap-2">
                             <button 
                               onClick={() => {
-                                startImpersonation(selectedCompany.id, u.role);
+                                const isDemo = isCompanyDemo(selectedCompany);
+                                const planToUse = isDemo ? 'enterprise' : (selectedCompany.plan || 'enterprise');
+                                const modulesToUse = isDemo 
+                                  ? allModules.map(m => m.id).concat(['all_modules', 'change_orders', 'contacts', 'dailylog', 'archive'])
+                                  : (selectedCompany.modules && selectedCompany.modules.length > 0 ? selectedCompany.modules : allModules.map(m => m.id));
+                                startImpersonation(selectedCompany.id, u.role, planToUse, modulesToUse);
                                 toast.success(`Logget inn som ${u.name || u.email || 'bruker'} (${u.role}) hos ${selectedCompany.name}.`);
                                 setIsUserModalOpen(false);
                                 window.dispatchEvent(new CustomEvent('navigate_view', { detail: { view: 'dashboard' } }));
@@ -4468,7 +4500,7 @@ function ConvertLeadModal({
   lead: any;
   onClose: () => void;
   onSuccess: (companyId: string, companyName: string) => void;
-  startImpersonation: (companyId: string, role: string) => void;
+  startImpersonation: (companyId: string, role: string, plan?: string, modules?: string[]) => void;
   onNavigateToCompany: (companyId: string) => void;
 }) {
   const [companyName, setCompanyName] = useState(lead.company || lead.name || '');
@@ -4668,7 +4700,13 @@ function ConvertLeadModal({
               <button
                 type="button"
                 onClick={() => {
-                  startImpersonation(resultData.company.id, 'admin');
+                  const comp = resultData.company;
+                  const isDemo = isCompanyDemo(comp);
+                  const planToUse = isDemo ? 'enterprise' : (comp.plan || 'enterprise');
+                  const modulesToUse = isDemo 
+                    ? allModules.map(m => m.id).concat(['all_modules', 'change_orders', 'contacts', 'dailylog', 'archive'])
+                    : (comp.modules && comp.modules.length > 0 ? comp.modules : allModules.map(m => m.id));
+                  startImpersonation(comp.id, 'admin', planToUse, modulesToUse);
                   toast.success(`Logget inn som administrator hos ${companyName}!`);
                   onClose();
                   window.dispatchEvent(new CustomEvent('navigate_view', { detail: { view: 'dashboard' } }));

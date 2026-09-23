@@ -281,20 +281,26 @@ export function isModuleAllowedForPlan(
   if (customModules && Array.isArray(customModules) && customModules.length > 0) {
     if (customModules.includes(moduleId) || customModules.includes('all_modules')) return true;
     // Map legacy aliaser dersom lagret med eldre modul-ID i bedriftsdatabasen
-    if (moduleId === 'archive' && customModules.includes('fdv')) return true;
-    if (moduleId === 'offers' && (customModules.includes('economy') || customModules.includes('ai'))) return true;
-    if (moduleId === 'pre_close' && (customModules.includes('checklists') || customModules.includes('projects'))) return true;
-    if (moduleId === 'sja' && (customModules.includes('checklists') || customModules.includes('hms'))) return true;
-    if (moduleId === 'dailylog' && customModules.includes('time')) return true;
-    if (moduleId === 'time_approval' && customModules.includes('time')) return true;
-    if (moduleId === 'deviations' && (customModules.includes('deviations') || customModules.includes('ai'))) return true;
-    if (moduleId === 'subcontractors' && customModules.includes('projects')) return true;
+    if (moduleId === 'archive' && (customModules.includes('fdv') || customModules.includes('archive'))) return true;
+    if (moduleId === 'offers' && (customModules.includes('economy') || customModules.includes('ai') || customModules.includes('offers'))) return true;
+    if (moduleId === 'pre_close' && (customModules.includes('checklists') || customModules.includes('projects') || customModules.includes('pre_close'))) return true;
+    if (moduleId === 'sja' && (customModules.includes('checklists') || customModules.includes('hms') || customModules.includes('sja'))) return true;
+    if (moduleId === 'dailylog' && (customModules.includes('time') || customModules.includes('dailylog'))) return true;
+    if (moduleId === 'time_approval' && (customModules.includes('time') || customModules.includes('time_approval'))) return true;
+    if (moduleId === 'deviations' && (customModules.includes('deviations') || customModules.includes('ai') || customModules.includes('checklists'))) return true;
+    if (moduleId === 'subcontractors' && (customModules.includes('projects') || customModules.includes('subcontractors'))) return true;
+    if (moduleId === 'change_orders' && (customModules.includes('change_orders') || customModules.includes('economy') || customModules.includes('projects'))) return true;
+    if (moduleId === 'contacts' && (customModules.includes('contacts') || customModules.includes('projects'))) return true;
+    // Dersom kunden har 8 eller flere moduler skreddersydd, regnes alle fagsystemer som tilgjengelig
+    if (customModules.length >= 8) return true;
   }
 
   const normalizedPlan = (planId || 'solo').toLowerCase() as PlanId;
-  const config = PLANS[normalizedPlan] || (normalizedPlan === 'demo' as any ? PLANS.team : PLANS.solo);
+  const config = PLANS[normalizedPlan] || ((normalizedPlan === 'demo' as any || normalizedPlan === 'test' as any) ? PLANS.enterprise : PLANS.solo);
 
-  if (config.isInternal) return true;
+  if (config.isInternal || (normalizedPlan as string) === 'demo' || (normalizedPlan as string) === 'test' || normalizedPlan === 'enterprise' || normalizedPlan === 'internal') {
+    return true;
+  }
   return config.allowedModuleIds.includes(moduleId);
 }
 

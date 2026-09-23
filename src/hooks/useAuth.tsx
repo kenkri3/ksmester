@@ -82,13 +82,20 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
   useEffect(() => {
     if (typeof window !== 'undefined') {
       try {
-        setImpersonatedCompanyId(localStorage.getItem('impersonatedCompanyId'));
+        const storedCompId = localStorage.getItem('impersonatedCompanyId');
+        setImpersonatedCompanyId(storedCompId);
         setImpersonatedRole(localStorage.getItem('impersonatedRole'));
         setSimulatedPlanState(localStorage.getItem('mester_simulated_plan'));
-        setImpersonatedCompanyPlan(localStorage.getItem('impersonatedCompanyPlan'));
+        let storedPlan = localStorage.getItem('impersonatedCompanyPlan');
+        if (!storedPlan && storedCompId?.toLowerCase().includes('demo')) {
+          storedPlan = 'enterprise';
+        }
+        setImpersonatedCompanyPlan(storedPlan);
         const storedModules = localStorage.getItem('impersonatedCompanyModules');
         if (storedModules) {
           try { setImpersonatedCompanyModules(JSON.parse(storedModules)); } catch {}
+        } else if (storedCompId?.toLowerCase().includes('demo')) {
+          setImpersonatedCompanyModules(['all_modules']);
         }
       } catch (e) {
         // Ignore localStorage access issues
@@ -266,6 +273,14 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
 
   const hasModuleAccess = (moduleId: string): boolean => {
     if (isSuperAdminUI) return true;
+    if (
+      impersonatedCompanyId?.toLowerCase().includes('demo') ||
+      impersonatedCompanyPlan === 'demo' ||
+      impersonatedCompanyPlan === 'enterprise' ||
+      impersonatedCompanyPlan === 'internal'
+    ) {
+      return true;
+    }
     const effectivePlan = (simulatedPlan || impersonatedCompanyPlan || user?.plan || user?.subscriptionStatus || 'solo') as PlanId;
     const effectiveModules = impersonatedCompanyModules || companyModules || user?.modules || null;
     return isModuleAllowedForPlan(moduleId, effectivePlan, effectiveModules);

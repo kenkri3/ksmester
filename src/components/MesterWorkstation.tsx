@@ -1,6 +1,6 @@
 'use client';
 
-import React, { useState, useEffect, useRef } from 'react';
+import React, { useState, useEffect, useRef, useMemo } from 'react';
 import { motion, AnimatePresence } from 'motion/react';
 import ReactMarkdown from 'react-markdown';
 import remarkGfm from 'remark-gfm';
@@ -234,6 +234,37 @@ export default function MesterWorkstation({
   const [isSpeaking, setIsSpeaking] = useState(false);
   const [copiedId, setCopiedId] = useState<string | null>(null);
   const [selectedChangeOrderForDetail, setSelectedChangeOrderForDetail] = useState<any | null>(null);
+  const [changeOrderScope, setChangeOrderScope] = useState<'project' | 'all'>('project');
+
+  const isApprovedOrder = (co: any) => {
+    const s = (co?.status || '').toLowerCase();
+    return s === 'godkjent av kunde' || s === 'approved' || s === 'approved_by_admin' || s === 'godkjent' || s === 'accepted';
+  };
+
+  const isRejectedOrder = (co: any) => {
+    const s = (co?.status || '').toLowerCase();
+    return s === 'avvist' || s === 'avslått' || s === 'rejected';
+  };
+
+  const projectChangeOrders = useMemo(() => {
+    if (!selectedProject) return changeOrders;
+    return changeOrders.filter(co => {
+      if (co.projectId && selectedProject.id) {
+        return String(co.projectId) === String(selectedProject.id);
+      }
+      if (co.raw?.projectId && selectedProject.id) {
+        return String(co.raw.projectId) === String(selectedProject.id);
+      }
+      if (co.project && selectedProject.name) {
+        return co.project.toLowerCase().trim() === selectedProject.name.toLowerCase().trim();
+      }
+      return false;
+    });
+  }, [changeOrders, selectedProject]);
+
+  const visibleChangeOrders = (selectedProject && changeOrderScope === 'project')
+    ? projectChangeOrders
+    : changeOrders;
 
   // ⏱️ Tenketimer for MesterAI
   const [activeThinkingDuration, setActiveThinkingDuration] = useState(0);
@@ -2938,27 +2969,65 @@ export default function MesterWorkstation({
                 <div className="bg-slate-900 border border-slate-800 rounded-3xl p-5 sm:p-6 space-y-4 shadow-xl">
                   <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-3 pb-4 border-b border-slate-800">
                     <div>
-                      <h3 className="text-lg font-black text-white">Endringsordrer & Varsler (NS 8406)</h3>
+                      <h3 className="text-lg font-black text-white flex items-center gap-2">
+                        <FileSignature className="text-purple-400" size={20} />
+                        <span>Endringsordrer & Varsler (NS 8406)</span>
+                      </h3>
                       <p className="text-xs text-slate-400 mt-0.5">
-                        Totalt sikret: kr {changeOrders.reduce((acc, curr) => acc + (Number(curr.amount) || 0), 0).toLocaleString('no-NO')} eks. mva
+                        Totalt sikret: kr {visibleChangeOrders.reduce((acc, curr) => acc + (Number(curr.amount) || 0), 0).toLocaleString('no-NO')} eks. mva
+                        {selectedProject && ` • ${changeOrderScope === 'project' ? `Prosjekt: ${selectedProject.name}` : 'Viser alle prosjekter'}`}
                       </p>
                     </div>
-                    <button
-                      type="button"
-                      onClick={() => onOpenChangeOrderModal?.()}
-                      className="inline-flex items-center gap-2 px-4 py-2 rounded-xl bg-purple-600 hover:bg-purple-500 text-white text-xs font-bold transition-all shadow-md cursor-pointer"
-                    >
-                      <Plus size={15} /> Ny endringsordre
-                    </button>
+                    <div className="flex items-center gap-2 flex-wrap">
+                      {selectedProject && (
+                        <div className="flex items-center bg-slate-950 p-1 rounded-xl border border-slate-800 text-xs">
+                          <button
+                            type="button"
+                            onClick={() => setChangeOrderScope('project')}
+                            className={cn(
+                              "px-2.5 py-1 rounded-lg font-bold transition-all cursor-pointer",
+                              changeOrderScope === 'project' 
+                                ? "bg-purple-600 text-white shadow-xs" 
+                                : "text-slate-400 hover:text-white"
+                            )}
+                            title={`Vis kun endringsordrer for ${selectedProject.name}`}
+                          >
+                            Kun {selectedProject.name} ({projectChangeOrders.length})
+                          </button>
+                          <button
+                            type="button"
+                            onClick={() => setChangeOrderScope('all')}
+                            className={cn(
+                              "px-2.5 py-1 rounded-lg font-bold transition-all cursor-pointer",
+                              changeOrderScope === 'all' 
+                                ? "bg-purple-600 text-white shadow-xs" 
+                                : "text-slate-400 hover:text-white"
+                            )}
+                            title="Vis endringsordrer på tvers av alle prosjekter"
+                          >
+                            Alle prosjekter ({changeOrders.length})
+                          </button>
+                        </div>
+                      )}
+                      <button
+                        type="button"
+                        onClick={() => onOpenChangeOrderModal?.()}
+                        className="inline-flex items-center gap-2 px-4 py-2 rounded-xl bg-purple-600 hover:bg-purple-500 text-white text-xs font-bold transition-all shadow-md cursor-pointer"
+                      >
+                        <Plus size={15} /> Ny endringsordre
+                      </button>
+                    </div>
                   </div>
 
-                  {changeOrders.length === 0 ? (
+                  {visibleChangeOrders.length === 0 ? (
                     <div className="py-12 text-center text-slate-400 text-sm">
-                      Ingen registrerte endringsordrer ennå. Si «Varsle endringsordre» til MesterAI for å opprette!
+                      {selectedProject && changeOrderScope === 'project'
+                        ? `Ingen registrerte endringsordrer for ${selectedProject.name} ennå. Si «Varsle endringsordre» eller klikk knappen over for å opprette!`
+                        : 'Ingen registrerte endringsordrer ennå. Si «Varsle endringsordre» til MesterAI for å opprette!'}
                     </div>
                   ) : (
                     <div className="grid gap-3">
-                      {changeOrders.map((co) => (
+                      {visibleChangeOrders.map((co) => (
                         <div 
                           key={co.id} 
                           onClick={() => setSelectedChangeOrderForDetail(co)}
@@ -2969,12 +3038,18 @@ export default function MesterWorkstation({
                               <span className="font-bold text-sm text-white group-hover:text-purple-300 transition-colors">{co.title}</span>
                               <span className="text-xs text-purple-400 font-mono">#{co.number}</span>
                               <span className={cn(
-                                "text-[10px] font-black uppercase tracking-wider px-2 py-0.5 rounded-full",
-                                co.status === 'Godkjent av kunde'
+                                "text-[10px] font-black uppercase tracking-wider px-2.5 py-0.5 rounded-full",
+                                isApprovedOrder(co)
                                   ? "bg-emerald-500/20 text-emerald-300 border border-emerald-500/30"
-                                  : "bg-amber-500/20 text-amber-300 border border-amber-500/30"
+                                  : isRejectedOrder(co)
+                                    ? "bg-rose-500/20 text-rose-300 border border-rose-500/30"
+                                    : "bg-blue-500/20 text-blue-300 border border-blue-500/30"
                               )}>
-                                {co.status === 'Godkjent av kunde' ? '✓ Godkjent' : '⏳ Venter på godkjenning'}
+                                {isApprovedOrder(co) 
+                                  ? '✓ Godkjent av kunde' 
+                                  : isRejectedOrder(co) 
+                                    ? '✕ Avvist av kunde' 
+                                    : '📤 Sendt til kunde'}
                               </span>
                             </div>
                             <p className="text-xs text-slate-400 mt-1">
@@ -2992,13 +3067,14 @@ export default function MesterWorkstation({
                               <Eye size={13} />
                               <span className="hidden sm:inline">Forhåndsvis / Rediger</span>
                             </button>
-                            {co.status !== 'Godkjent av kunde' && onApproveChangeOrder && (
+                            {!isApprovedOrder(co) && onApproveChangeOrder && (
                               <button
                                 type="button"
                                 onClick={() => onApproveChangeOrder(co.id)}
                                 className="px-3 py-1.5 rounded-xl bg-emerald-600/20 hover:bg-emerald-600/30 text-emerald-300 border border-emerald-500/30 text-xs font-bold cursor-pointer transition-all"
+                                title="Registrer at kunden har akseptert/signert endringsordren"
                               >
-                                Godkjenn
+                                Registrer godkjenning
                               </button>
                             )}
                             {onDeleteChangeOrder && (
