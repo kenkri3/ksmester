@@ -1221,6 +1221,8 @@ export default function MesterWorkstation({
           companyName: effectiveCompanyName,
           companyId: effectiveCompanyId,
           userId: impersonated === 'comp-demo-fjellheim' ? 'u-demo-lars-fjellheim' : (user?.uid || user?.id),
+          userEmail: user?.email || '',
+          replyTo: user?.email || '',
           imageUrl: activeImage
         })
       });

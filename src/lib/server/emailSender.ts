@@ -13,11 +13,93 @@ export interface SendEmailParams {
   subject: string;
   html?: string;
   text?: string;
+  replyTo?: string;
+  senderEmail?: string;
   type?: 'offer' | 'change_order' | 'general' | 'notice';
   metadata?: Record<string, any>;
   companyName?: string;
   authorName?: string;
   attachments?: EmailAttachment[];
+}
+
+/**
+ * 🧼 Renser markdown og fjerner alle raw hashtags (#, ##, ###),
+ * fjerner interne chat-innledninger ("Ken, jeg klargjør...", "Her er utkastet..."),
+ * og konverterer til ren, profesjonell HTML og pen rentekst uten tekniske symboler.
+ */
+export function cleanMarkdownForEmail(rawText: string): { html: string; text: string } {
+  if (!rawText) return { html: '', text: '' };
+
+  // 1. Fjern eventuelle interne agent-preambler hvis de har lekket inn
+  let cleaned = rawText
+    // Fjern typiske henvendelser til håndverkeren ("Ken, jeg klargjør to test-e-poster nå.")
+    .replace(/^(?:[A-ZÆØÅa-zæøå]+[,!]?\s+)?(?:jeg klargjør|jeg har klargjort|her er utkastet|her er et utkast|jeg sender|klart,?\s+jeg sender|jeg har forberedt)[\s\S]*?(?=(?:Til:|Emne:|Innhold:|Melding:|Hei|Kjære|\n\n[A-ZÆØÅ]))/i, '')
+    // Fjern "Innhold:" eller "Melding:" hvis det står først
+    .replace(/^[-*•]?\s*(?:Innhold|Melding|Tekst):\s*/i, '')
+    .trim();
+
+  // Fjern anførselstegn eller vinkeltegn rundt hele meldingen hvis agenten har satt det i sitat
+  if ((cleaned.startsWith('"') && cleaned.endsWith('"')) || (cleaned.startsWith('«') && cleaned.endsWith('»'))) {
+    cleaned = cleaned.slice(1, -1).trim();
+  }
+
+  const lines = cleaned.split(/\r?\n/);
+  const htmlParts: string[] = [];
+  const textParts: string[] = [];
+
+  for (let line of lines) {
+    const trimmed = line.trim();
+
+    // 2. Overskrifter: Gjør om ### / ## / # til pen HTML <h3> eller fet tekst, ALDRI vis #
+    if (/^#{1,6}\s+/.test(trimmed)) {
+      const heading = trimmed.replace(/^#{1,6}\s+/, '').replace(/[✉️📧📝📬]/g, '').trim();
+      if (heading) {
+        htmlParts.push(`<h3 style="color: #0f172a; margin: 18px 0 6px 0; font-size: 15px; font-weight: 700;">${heading}</h3>`);
+        textParts.push(heading);
+      }
+      continue;
+    }
+
+    // 3. Punktlister: Gjør om til pene <li>
+    if (/^[-*•]\s+/.test(trimmed)) {
+      const itemText = trimmed.replace(/^[-*•]\s+/, '').trim();
+      const formatted = formatInlineEmailStyles(itemText);
+      htmlParts.push(`<li style="margin-bottom: 6px; color: #334155;">${formatted}</li>`);
+      textParts.push(`• ${itemText.replace(/[*_~`#]/g, '')}`);
+      continue;
+    }
+
+    // 4. Tom linje
+    if (!trimmed) {
+      htmlParts.push('<div style="height: 10px;"></div>');
+      textParts.push('');
+      continue;
+    }
+
+    // 5. Vanlig avsnitt
+    const formatted = formatInlineEmailStyles(trimmed);
+    htmlParts.push(`<p style="margin: 0 0 12px 0; line-height: 1.6; color: #334155;">${formatted}</p>`);
+    textParts.push(trimmed.replace(/[*_~`#]/g, ''));
+  }
+
+  // Pakk sammenhengende <li> inn i <ul>
+  let htmlResult = htmlParts.join('\n');
+  htmlResult = htmlResult.replace(/((?:<li[\s\S]*?<\/li>\s*)+)/g, '<ul style="margin: 10px 0 16px 20px; padding: 0;">$1</ul>');
+
+  // Sikkerhetsnett: Sørg for at ingen løse hashtags eller markdown-rester finnes i plain text
+  const textResult = textParts.join('\n').replace(/#{1,6}\s*/g, '');
+
+  return { html: htmlResult, text: textResult };
+}
+
+function formatInlineEmailStyles(text: string): string {
+  return text
+    .replace(/\*\*(.*?)\*\*/g, '<strong>$1</strong>')
+    .replace(/__(.*?)__/g, '<strong>$1</strong>')
+    .replace(/\*(.*?)\*/g, '<em>$1</em>')
+    .replace(/_(.*?)_/g, '<em>$1</em>')
+    .replace(/`([^`]+)`/g, '<code style="background: #f1f5f9; padding: 2px 4px; border-radius: 4px; font-size: 13px;">$1</code>')
+    .replace(/#{1,6}\s*/g, ''); // Garanti: fjern alle hashtags
 }
 
 export interface SendEmailResult {
@@ -119,8 +201,35 @@ export async function sendSystemEmail(params: SendEmailParams): Promise<SendEmai
 
   const sanitizedTo = toList.map(t => sanitizeHeader(String(t).trim()));
   const sanitizedSubject = sanitizeHeader(String(subject || 'Melding fra ' + companyName));
-  const bodyText = text || '';
-  const bodyHtml = html || `<div style="font-family:-apple-system,BlinkMacSystemFont,sans-serif;line-height:1.6;color:#1e293b;padding:20px;">${bodyText}</div>`;
+  
+  // Prioriter alltid håndverkerens / firmaets egen e-post som Reply-To (aldri hei@vikingmester.no som standard)
+  const replyTo = (
+    params.replyTo || 
+    params.senderEmail || 
+    metadata.replyTo || 
+    metadata.senderEmail || 
+    metadata.userEmail || 
+    metadata.authorEmail || 
+    ''
+  ).trim();
+
+  // 🧼 Rengjør markdown og fjern alle rå hashtags (#, ##, ###)
+  const cleanedContent = cleanMarkdownForEmail(text || '');
+  const bodyText = cleanedContent.text || text || '';
+  const bodyHtml = html || `
+    <div style="font-family:-apple-system,BlinkMacSystemFont,'Segoe UI',Roboto,sans-serif;line-height:1.6;color:#1e293b;max-width:600px;margin:0 auto;padding:24px;border:1px solid #e2e8f0;border-radius:12px;background:#ffffff;">
+      <div style="border-bottom:2px solid #0f172a;padding-bottom:12px;margin-bottom:18px;">
+        <h2 style="color:#0f172a;margin:0 0 4px 0;font-size:19px;">${sanitizedSubject}</h2>
+        <p style="margin:0;color:#64748b;font-size:12px;">Avsender: ${companyName}${authorName ? ` (${authorName})` : ''}</p>
+      </div>
+      <div style="font-size:14px;color:#334155;margin-bottom:24px;line-height:1.6;">${cleanedContent.html || bodyText}</div>
+      <hr style="border:none;border-top:1px solid #e2e8f0;margin:20px 0;">
+      <p style="font-size:12px;color:#64748b;margin:0;">
+        Sendt via <strong>VikingMester KS</strong> på vegne av <strong>${companyName}</strong>${authorName ? ` (${authorName})` : ''}.
+      </p>
+      ${replyTo ? `<p style="font-size:12px;color:#64748b;margin:6px 0 0 0;">Svar på denne e-posten sendes direkte til: <strong>${replyTo}</strong>.</p>` : ''}
+    </div>
+  `;
 
   const emailId = 'email-' + Date.now() + '-' + Math.random().toString(36).substring(2, 7);
   const now = new Date().toISOString();
@@ -130,9 +239,16 @@ export async function sendSystemEmail(params: SendEmailParams): Promise<SendEmai
   let sendError: string | undefined = undefined;
 
   const resendKey = getResendApiKey();
-  const preferredFrom = (process.env.EMAIL_FROM || process.env.RESEND_FROM || 'VikingMester <hei@vikingmester.no>').trim();
-  const replyTo = (process.env.EMAIL_REPLY_TO || 'hei@vikingmester.no').trim();
-  let activeFrom = preferredFrom;
+  const rawFrom = (process.env.EMAIL_FROM || process.env.RESEND_FROM || 'VikingMester <hei@vikingmester.no>').trim();
+  
+  // Sett avsendernavn til bedriftens navn hvis tilgjengelig, men behold validert e-postadresse
+  let activeFrom = rawFrom;
+  if (companyName && companyName !== 'VikingMester') {
+    const emailMatch = rawFrom.match(/<([^>]+)>/) || rawFrom.match(/([a-zA-Z0-9._%+-]+@[a-zA-Z0-9.-]+\.[a-zA-Z]{2,})/);
+    if (emailMatch) {
+      activeFrom = `${companyName} <${emailMatch[1]}>`;
+    }
+  }
 
   if (resendKey) {
     try {
@@ -144,7 +260,7 @@ export async function sendSystemEmail(params: SendEmailParams): Promise<SendEmai
         },
         body: JSON.stringify({
           from: activeFrom,
-          reply_to: replyTo,
+          ...(replyTo ? { reply_to: replyTo } : {}),
           to: sanitizedTo,
           subject: sanitizedSubject,
           html: bodyHtml,
@@ -168,7 +284,10 @@ export async function sendSystemEmail(params: SendEmailParams): Promise<SendEmai
         // forsøk automatisk fallback til Resends universelle testsender 'onboarding@resend.dev'
         if (isDomainError && !activeFrom.includes('onboarding@resend.dev')) {
           console.warn(`[EmailSender] Avsender «${activeFrom}» avvist av Resend (${errText}). Forsøker automatisk fallback med onboarding@resend.dev...`);
-          activeFrom = 'VikingMester <onboarding@resend.dev>';
+          activeFrom = companyName && companyName !== 'VikingMester'
+            ? `${companyName} <onboarding@resend.dev>`
+            : 'VikingMester <onboarding@resend.dev>';
+
           resendRes = await fetch('https://api.resend.com/emails', {
             method: 'POST',
             headers: {
@@ -177,7 +296,7 @@ export async function sendSystemEmail(params: SendEmailParams): Promise<SendEmai
             },
             body: JSON.stringify({
               from: activeFrom,
-              reply_to: replyTo,
+              ...(replyTo ? { reply_to: replyTo } : {}),
               to: sanitizedTo,
               subject: sanitizedSubject,
               html: bodyHtml,
@@ -327,10 +446,12 @@ export async function sendOfferByEmail(params: {
   clientName?: string;
   companyName?: string;
   authorName?: string;
+  replyTo?: string;
+  senderEmail?: string;
   customMessage?: string;
   baseUrl?: string;
 }): Promise<SendEmailResult> {
-  const { offer, clientEmail, clientName, companyName = 'Mester Entreprenør AS', authorName = 'Byggmester', customMessage, baseUrl = 'https://vikingmester.no' } = params;
+  const { offer, clientEmail, clientName, companyName = 'Mester Entreprenør AS', authorName = 'Byggmester', replyTo, senderEmail, customMessage, baseUrl = 'https://vikingmester.no' } = params;
 
   const token = offer.token || offer.id;
   const approvalLink = `${baseUrl}/?offerToken=${token}`;
@@ -459,10 +580,12 @@ export async function sendOfferByEmail(params: {
     subject: `Pristilbud: ${offer.title || 'Fagarbeid'} – ${companyName}`,
     html: emailHtml,
     text: `Hei ${cName}!\n\nVi har oversendt tilbudet «${offer.title}» på kr ${totalAmount.toLocaleString('no-NO')} inkl. mva.\n\nKlikk her for å se og godkjenne tilbudet: ${approvalLink}\n\nMed vennlig hilsen,\n${authorName}\n${companyName}`,
+    replyTo: replyTo || senderEmail || undefined,
+    senderEmail: replyTo || senderEmail || undefined,
     type: 'offer',
     companyName,
     authorName,
-    metadata: { offerId: offer.id, token, clientEmail }
+    metadata: { offerId: offer.id, token, clientEmail, replyTo: replyTo || senderEmail }
   });
 }
 
@@ -475,9 +598,11 @@ export async function sendChangeOrderByEmail(params: {
   clientName?: string;
   companyName?: string;
   authorName?: string;
+  replyTo?: string;
+  senderEmail?: string;
   baseUrl?: string;
 }): Promise<SendEmailResult> {
-  const { changeOrder, clientEmail, clientName, companyName = 'Mester Entreprenør AS', authorName = 'Byggmester', baseUrl = 'https://vikingmester.no' } = params;
+  const { changeOrder, clientEmail, clientName, companyName = 'Mester Entreprenør AS', authorName = 'Byggmester', replyTo, senderEmail, baseUrl = 'https://vikingmester.no' } = params;
 
   const token = changeOrder.token || changeOrder.id;
   const shareUrl = `${baseUrl}/?changeOrderToken=${token}`;
@@ -558,10 +683,12 @@ export async function sendChangeOrderByEmail(params: {
     subject: `Endringsvarsel #${changeOrder.changeNumber || '1'}: ${changeOrder.title} – ${companyName}`,
     html: emailHtml,
     text: `Hei ${cName}!\n\nDet er registrert et endringsvarsel for ${changeOrder.projectName}:\n${changeOrder.title} (kr ${totalAmount.toLocaleString('no-NO')} inkl. mva).\n\nGodkjenn her: ${shareUrl}\n\nMed vennlig hilsen,\n${authorName}`,
+    replyTo: replyTo || senderEmail || undefined,
+    senderEmail: replyTo || senderEmail || undefined,
     type: 'change_order',
     companyName,
     authorName,
-    metadata: { changeOrderId: changeOrder.id, token, clientEmail }
+    metadata: { changeOrderId: changeOrder.id, token, clientEmail, replyTo: replyTo || senderEmail }
   });
 }
 
@@ -574,6 +701,8 @@ export async function sendContractByEmail(params: {
   clientName?: string;
   companyName?: string;
   authorName?: string;
+  replyTo?: string;
+  senderEmail?: string;
   baseUrl?: string;
 }): Promise<SendEmailResult> {
   const {
@@ -582,6 +711,8 @@ export async function sendContractByEmail(params: {
     clientName,
     companyName = 'Mester Entreprenør AS',
     authorName = 'Ansvarlig Byggmester',
+    replyTo,
+    senderEmail,
     baseUrl = 'https://vikingmester.no'
   } = params;
 
@@ -691,10 +822,12 @@ export async function sendContractByEmail(params: {
     subject: `Byggekontrakt for digital signering: ${contract.title || 'Byggeprosjekt'} – ${companyName}`,
     html: emailHtml,
     text: `Hei ${cName}!\n\nDitt tilbud er godkjent og kontrakten «${contract.title}» på kr ${totalAmount.toLocaleString('no-NO')} ligger klar for signering.\n\nKlikk her for å signere digitalt: ${signUrl}\n\nMed vennlig hilsen,\n${authorName}\n${companyName}`,
+    replyTo: replyTo || senderEmail || undefined,
+    senderEmail: replyTo || senderEmail || undefined,
     type: 'general',
     companyName,
     authorName,
-    metadata: { contractId: contract.id, token, clientEmail }
+    metadata: { contractId: contract.id, token, clientEmail, replyTo: replyTo || senderEmail }
   });
 }
 

@@ -1,5 +1,5 @@
 import { NextRequest, NextResponse } from 'next/server';
-import { sendSystemEmail } from '@/src/lib/server/emailSender';
+import { sendSystemEmail, cleanMarkdownForEmail } from '@/src/lib/server/emailSender';
 import { getUserFromRequest, verifyCronOrInternalSecret } from '@/src/lib/server/auth';
 import { checkRateLimit, getClientIp } from '@/src/lib/server/rateLimit';
 
@@ -90,6 +90,23 @@ export async function POST(req: NextRequest) {
     const author = (body.authorName || body.userName || req.nextUrl.searchParams.get('author') || 'Byggmester').trim();
     const projectName = body.projectName || req.nextUrl.searchParams.get('projectName') || 'Byggeprosjekt';
 
+    // 🛡️ Svar-til (Reply-To): Må alltid være håndverkerens eller firmaets e-post (ikke hei@vikingmester.no)
+    const replyTo = (
+      body.replyTo || 
+      body.reply_to || 
+      body.senderEmail || 
+      body.sender_email || 
+      body.craftsman_email || 
+      body.craftsmanEmail || 
+      body.author_email || 
+      body.authorEmail || 
+      body.company_email || 
+      body.companyEmail || 
+      req.nextUrl.searchParams.get('replyTo') || 
+      req.nextUrl.searchParams.get('reply_to') || 
+      ''
+    ).trim();
+
     if (!recipient) {
       return NextResponse.json({
         success: false,
@@ -98,21 +115,26 @@ export async function POST(req: NextRequest) {
       }, { status: 400 });
     }
 
+    const cleanedContent = cleanMarkdownForEmail(messageText);
+
     const sendRes = await sendSystemEmail({
       to: recipient,
       subject: subject,
-      text: messageText,
+      text: cleanedContent.text || messageText,
+      replyTo: replyTo || undefined,
+      senderEmail: replyTo || undefined,
       html: `
         <div style="font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, sans-serif; line-height: 1.6; color: #1e293b; max-width: 600px; margin: 0 auto; padding: 24px; border: 1px solid #e2e8f0; border-radius: 12px; background: #ffffff;">
           <div style="border-bottom: 2px solid #0f172a; padding-bottom: 12px; margin-bottom: 18px;">
             <h2 style="color: #0f172a; margin: 0 0 4px 0; font-size: 19px;">${subject}</h2>
             <p style="margin: 0; color: #64748b; font-size: 12px;">Gjelder: ${projectName} • Avsender: ${company}</p>
           </div>
-          <div style="white-space: pre-wrap; font-size: 14px; color: #334155; margin-bottom: 24px;">${messageText || 'Se oversendt henvendelse.'}</div>
+          <div style="font-size: 14px; color: #334155; margin-bottom: 24px; line-height: 1.6;">${cleanedContent.html || messageText || 'Se oversendt henvendelse.'}</div>
           <hr style="border: none; border-top: 1px solid #e2e8f0; margin: 20px 0;">
           <p style="font-size: 12px; color: #64748b; margin: 0;">
             Sendt via <strong>VikingMester KS</strong> på vegne av <strong>${company}</strong> (${author}).
           </p>
+          ${replyTo ? `<p style="font-size: 12px; color: #64748b; margin: 6px 0 0 0;">Svar på denne e-posten sendes direkte til: <strong>${replyTo}</strong>.</p>` : ''}
         </div>
       `,
       companyName: company,
@@ -121,7 +143,7 @@ export async function POST(req: NextRequest) {
 
     const isSent = sendRes.success && sendRes.status === 'sent';
     const statusText = isSent
-      ? `✅ E-post er nå sendt til ${recipient} via Resend!\nEmne: «${subject}»\nMeldings-ID: ${sendRes.resendId || 'ok'}`
+      ? `✅ E-post er nå sendt til ${recipient} via Resend!\nEmne: «${subject}»\nSvar går til: ${replyTo || company}\nMeldings-ID: ${sendRes.resendId || 'ok'}`
       : `⚠️ Kunne ikke levere e-post til ${recipient}: ${sendRes.message || sendRes.error}`;
 
     // Returner 200 slik at Botsify JSON API plugin alltid viser meldingen til brukeren

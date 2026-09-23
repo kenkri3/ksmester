@@ -260,6 +260,7 @@ export async function approveAction(actionId: string, approvedBy: string = 'Bygg
     });
 
     let emailNotice = '';
+    const replyTo = action.data?.replyTo || action.data?.senderEmail || action.data?.companyEmail || (action.data as any)?.userEmail;
     if (clientEmail) {
       try {
         const emailRes = await sendChangeOrderByEmail({
@@ -267,7 +268,9 @@ export async function approveAction(actionId: string, approvedBy: string = 'Bygg
           clientEmail,
           clientName,
           companyName,
-          authorName: approvedBy
+          authorName: approvedBy,
+          replyTo: replyTo || undefined,
+          senderEmail: replyTo || undefined
         });
         if (emailRes.success) {
           emailNotice = ` og automatisk sendt på e-post til ${clientEmail} (Resend ID: ${emailRes.resendId || emailRes.id}).`;
@@ -335,6 +338,7 @@ export async function approveAction(actionId: string, approvedBy: string = 'Bygg
     });
 
     let emailNotice = '';
+    const replyTo = action.data?.replyTo || action.data?.senderEmail || action.data?.companyEmail || (action.data as any)?.userEmail;
     if (clientEmail) {
       try {
         const emailRes = await sendOfferByEmail({
@@ -342,7 +346,9 @@ export async function approveAction(actionId: string, approvedBy: string = 'Bygg
           clientEmail,
           clientName,
           companyName,
-          authorName: approvedBy
+          authorName: approvedBy,
+          replyTo: replyTo || undefined,
+          senderEmail: replyTo || undefined
         });
         if (emailRes.success) {
           emailNotice = ` og automatisk oversendt på e-post til ${clientEmail} (Resend ID: ${emailRes.resendId || emailRes.id}).`;

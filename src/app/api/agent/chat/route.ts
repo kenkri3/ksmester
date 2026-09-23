@@ -1,7 +1,7 @@
 import { NextRequest, NextResponse } from 'next/server';
 import crypto from 'crypto';
 import { getUserFromRequest } from '@/src/lib/server/auth';
-import { sendSystemEmail, sendOfferByEmail, sendChangeOrderByEmail } from '@/src/lib/server/emailSender';
+import { sendSystemEmail, sendOfferByEmail, sendChangeOrderByEmail, cleanMarkdownForEmail } from '@/src/lib/server/emailSender';
 import { getCollectionItems, saveCollectionItem } from '@/src/lib/server/db';
 
 /**
@@ -35,204 +35,342 @@ const TRADE_NAMES: Record<string, string> = {
  * Fanger opp <<<SEND_EMAIL: ...>>> eller JSON-aksjoner generert av agenten,
  * og sender ekte e-post via Resend med tilhørende bekreftelsesbadge.
  */
+interface EmailDispatchItem {
+  to: string;
+  subject: string;
+  body: string; // KUN selve henvendelsen til kunden – ALDRI agentens interne chat-prat
+  isOffer?: boolean;
+  isChangeOrder?: boolean;
+  rawMatchedSnippet?: string;
+}
+
+/**
+ * 🔍 Ekstraherer én eller flere e-poster fra agentens svar.
+ * 🛡️ PERSONVERN: Sørger for at kunden KUN mottar selve meldingen – ALDRI chat-dialogen med håndverkeren
+ * eller interne oppsummeringer ("Ken, jeg klargjør to test-e-poster nå...").
+ */
+function extractEmailsFromReply(
+  replyText: string,
+  context: {
+    companyName: string;
+    authorName: string;
+    projectName?: string;
+    userMessage?: string;
+  }
+): { emails: EmailDispatchItem[]; matchToReplace: string | null } {
+  const items: EmailDispatchItem[] = [];
+  let matchToReplace: string | null = null;
+
+  // 1. Sjekk taggen <<<SEND_EMAIL: ...>>> eller [SEND_EMAIL: ...] (kan være flere i samme svar)
+  const emailTagRegex = /(?:<<<|\[)\s*SEND_EMAIL:\s*([\s\S]*?)(?:>>>|\])/gi;
+  const tagMatches = [...replyText.matchAll(emailTagRegex)];
+  if (tagMatches.length > 0) {
+    matchToReplace = tagMatches.map(m => m[0]).join('\n');
+    for (const tm of tagMatches) {
+      const rawPayload = tm[1].trim();
+      let recipient = '';
+      let subject = '';
+      let body = '';
+
+      if (rawPayload.startsWith('{') && rawPayload.endsWith('}')) {
+        try {
+          const parsed = JSON.parse(rawPayload);
+          recipient = parsed.to || parsed.recipient || parsed.email || '';
+          subject = parsed.subject || parsed.title || parsed.emne || '';
+          body = parsed.body || parsed.message || parsed.text || parsed.innhold || '';
+        } catch {}
+      }
+
+      if (!recipient) {
+        const toMatch = rawPayload.match(/(?:to|til)=["']([^"']+)["']/i) || rawPayload.match(/(?:to|til)=([^\s]+)/i);
+        if (toMatch) recipient = toMatch[1].trim();
+      }
+      if (!subject) {
+        const subjMatch = rawPayload.match(/(?:subject|emne|tittel)=["']([^"']+)["']/i);
+        if (subjMatch) subject = subjMatch[1].trim();
+      }
+      if (!body) {
+        const bodyMatch = rawPayload.match(/(?:body|message|tekst|innhold)=["']([^"']+)["']/i);
+        if (bodyMatch) body = bodyMatch[1].trim();
+      }
+
+      if (recipient) {
+        items.push({
+          to: recipient,
+          subject: subject || `Beskjed fra ${context.companyName}`,
+          body: body || 'Se oversendt beskjed.',
+          rawMatchedSnippet: tm[0]
+        });
+      }
+    }
+    if (items.length > 0) {
+      return { emails: items, matchToReplace };
+    }
+  }
+
+  // 2. Sjekk strukturerte seksjoner generert av agenten (f.eks. "### ✉️ E-post 1" og "### ✉️ E-post 2", eller blokker med Til / Emne / Innhold)
+  const sectionSplitRegex = /(?=#{1,4}\s*(?:✉️|📧)?\s*E-?post\s*\d+|(?:\bE-?post\s+\d+:))/i;
+  const sections = replyText.split(sectionSplitRegex);
+
+  if (sections.length > 1 || (sections.length === 1 && (replyText.includes('Til:') || replyText.includes('To:')) && (replyText.includes('Innhold:') || replyText.includes('Melding:')))) {
+    const candidateSections = sections.length > 1 ? sections.slice(1) : sections;
+
+    for (const sec of candidateSections) {
+      const toMatch = sec.match(/(?:Til|To):\s*([a-zA-Z0-9._%+-]+@[a-zA-Z0-9.-]+\.[a-zA-Z]{2,})/i);
+      if (!toMatch) continue;
+
+      const recipient = toMatch[1].trim();
+      const subjMatch = sec.match(/(?:Emne|Subject):\s*([^\n\r]+)/i);
+      const subject = subjMatch ? subjMatch[1].trim().replace(/^["']|["']$/g, '') : `Beskjed fra ${context.companyName} vedr. ${context.projectName || 'byggeprosjekt'}`;
+
+      // Hent KUN innholdet som følger etter "Innhold:" / "Melding:" / "Tekst:"
+      const bodyMatch = sec.match(/[-*•]?\s*(?:Innhold|Melding|Tekst|Innholdet):\s*([\s\S]+?)(?=(?:\n\s*#{1,4}|\n\s*Vil du at jeg prøver|\n\s*---\s*|$))/i);
+      let bodyText = bodyMatch ? bodyMatch[1].trim() : '';
+
+      // Fjern eventuelle anførselstegn eller sitattegn rundt meldingen hvis den er omsluttet
+      if ((bodyText.startsWith('"') && bodyText.endsWith('"')) || (bodyText.startsWith('«') && bodyText.endsWith('»'))) {
+        bodyText = bodyText.slice(1, -1).trim();
+      }
+
+      if (recipient && bodyText) {
+        items.push({
+          to: recipient,
+          subject,
+          body: bodyText,
+          rawMatchedSnippet: sec
+        });
+      }
+    }
+
+    if (items.length > 0) {
+      matchToReplace = replyText;
+      return { emails: items, matchToReplace };
+    }
+  }
+
+  // 3. Sjekk Botsifys kjente feilmelding der den likevel har ekstrahert mottaker og innhold
+  if (
+    replyText.includes('ble dessverre ikke sendt - e-posttjenesten ga ingen bekreftelse') ||
+    replyText.includes('fikk ingen bekreftelse fra e-posttjenesten') ||
+    replyText.includes('Innholdet som skulle sendes:')
+  ) {
+    const toMatch = replyText.match(/til\s+([a-zA-Z0-9._%+-]+@[a-zA-Z0-9.-]+\.[a-zA-Z]{2,})/i);
+    const subjMatch = replyText.match(/Emne:\s*([^\n\r]+)/i);
+    const msgMatch = replyText.match(/Melding:\s*([\s\S]+?)(?:\n\nVil du at jeg prøver|\n\n$|$)/i);
+
+    if (toMatch && toMatch[1]) {
+      items.push({
+        to: toMatch[1].trim(),
+        subject: subjMatch ? subjMatch[1].trim() : `Beskjed fra ${context.companyName}`,
+        body: msgMatch ? msgMatch[1].trim() : 'Se oversendt beskjed.',
+        rawMatchedSnippet: replyText
+      });
+      return { emails: items, matchToReplace: replyText };
+    }
+  }
+
+  // 4. Fallback: Hvis brukerens melding inneholdt en e-postadresse og en instruks om å sende
+  if (context.userMessage) {
+    const lowerUserMsg = context.userMessage.toLowerCase();
+    const emailMatches = [...context.userMessage.matchAll(/([a-zA-Z0-9._%+-]+@[a-zA-Z0-9.-]+\.[a-zA-Z]{2,})/gi)];
+
+    if (emailMatches.length > 0 && (lowerUserMsg.includes('send') || lowerUserMsg.includes('sende')) && (lowerUserMsg.includes('epost') || lowerUserMsg.includes('e-post') || lowerUserMsg.includes('mail'))) {
+      for (const em of emailMatches) {
+        const recipient = em[1].trim();
+        const isOffer = lowerUserMsg.includes('tilbud');
+        const isChange = lowerUserMsg.includes('endring') || lowerUserMsg.includes('varsel');
+
+        const subject = isOffer 
+          ? `Pristilbud fra ${context.companyName} vedr. ${context.projectName || 'byggeprosjekt'}`
+          : isChange
+          ? `Endringsvarsel (NS 8406) fra ${context.companyName} vedr. ${context.projectName || 'byggeprosjekt'}`
+          : `Melding fra ${context.companyName} vedr. ${context.projectName || 'byggeprosjekt'}`;
+
+        // Rengjør svarteksten slik at vi KUN sender selve beskjeden, aldri interne chat-hilsninger
+        let cleanBody = replyText
+          .replace(/^(?:Ken|Hei [a-zA-ZæøåÆØÅ]+)[,!]?\s*(?:jeg klargjør|jeg har klargjort|her er utkastet|jeg sender)[\s\S]*?(?=(?:Hei|Kjære|\n\n))/i, '')
+          .replace(/Jeg kan dessverre ikke sende e-post[\s\S]*$/i, '')
+          .trim();
+
+        if (!cleanBody || cleanBody.length < 5) {
+          cleanBody = context.userMessage;
+        }
+
+        items.push({
+          to: recipient,
+          subject,
+          body: cleanBody,
+          isOffer,
+          isChangeOrder: isChange,
+          rawMatchedSnippet: replyText
+        });
+      }
+
+      if (items.length > 0) {
+        return { emails: items, matchToReplace: replyText };
+      }
+    }
+  }
+
+  return { emails: items, matchToReplace: null };
+}
+
+/**
+ * Fanger opp og sender rene e-poster via Resend med håndverkerens egen e-post som Reply-To.
+ */
 async function processEmailActionsInReply(
   replyText: string,
   context: {
     companyName: string;
     authorName: string;
+    replyTo?: string;
+    senderEmail?: string;
     projectName?: string;
     projectId?: string;
     userMessage?: string;
     baseUrl?: string;
   }
 ): Promise<string> {
-  let recipient = '';
-  let subject = '';
-  let body = '';
-  let matchToReplace: string | null = null;
+  const { emails, matchToReplace } = extractEmailsFromReply(replyText, context);
 
-  // 1. Sjekk taggen <<<SEND_EMAIL: ...>>> eller [SEND_EMAIL: ...]
-  const emailTagRegex = /(?:<<<|\[)\s*SEND_EMAIL:\s*([\s\S]*?)(?:>>>|\])/i;
-  const tagMatch = replyText.match(emailTagRegex);
-
-  if (tagMatch) {
-    matchToReplace = tagMatch[0];
-    const rawPayload = tagMatch[1].trim();
-
-    // Forsøk JSON-parsing først dersom agenten svarte med JSON
-    if (rawPayload.startsWith('{') && rawPayload.endsWith('}')) {
-      try {
-        const parsed = JSON.parse(rawPayload);
-        recipient = parsed.to || parsed.recipient || parsed.email || '';
-        subject = parsed.subject || parsed.title || parsed.emne || '';
-        body = parsed.body || parsed.message || parsed.text || parsed.innhold || '';
-      } catch {}
-    }
-
-    if (!recipient) {
-      const toMatch = rawPayload.match(/to=["']([^"']+)["']/i) || rawPayload.match(/til=["']([^"']+)["']/i) || rawPayload.match(/to=([^\s]+)/i);
-      if (toMatch) recipient = toMatch[1].trim();
-    }
-    if (!subject) {
-      const subjMatch = rawPayload.match(/subject=["']([^"']+)["']/i) || rawPayload.match(/emne=["']([^"']+)["']/i);
-      if (subjMatch) subject = subjMatch[1].trim();
-    }
-    if (!body) {
-      const bodyMatch = rawPayload.match(/body=["']([^"']+)["']/i) || rawPayload.match(/message=["']([^"']+)["']/i) || rawPayload.match(/tekst=["']([^"']+)["']/i);
-      if (bodyMatch) body = bodyMatch[1].trim();
-    }
-  }
-
-  // 2. Sjekk om Botsify svarte med sin kjente feilmelding der den likevel har ekstrahert e-postinnholdet
-  if (!recipient && (
-    replyText.includes('ble dessverre ikke sendt - e-posttjenesten ga ingen bekreftelse') ||
-    replyText.includes('fikk ingen bekreftelse fra e-posttjenesten') ||
-    replyText.includes('Innholdet som skulle sendes:')
-  )) {
-    const toMatch = replyText.match(/til\s+([a-zA-Z0-9._%+-]+@[a-zA-Z0-9.-]+\.[a-zA-Z]{2,})/i);
-    if (toMatch) recipient = toMatch[1].trim();
-
-    const subjMatch = replyText.match(/Emne:\s*([^\n\r]+)/i);
-    if (subjMatch) subject = subjMatch[1].trim();
-
-    const msgMatch = replyText.match(/Melding:\s*([\s\S]+?)(?:\n\nVil du at jeg prøver|\n\n$|$)/i);
-    if (msgMatch) body = msgMatch[1].trim();
-
-    if (recipient) {
-      matchToReplace = replyText;
-    }
-  }
-
-  // 3. Fallback: Hvis brukerens melding inneholdt en e-postadresse og en instruks om å sende
-  if (!recipient && context.userMessage) {
-    const lowerUserMsg = context.userMessage.toLowerCase();
-    const emailMatches = context.userMessage.match(/([a-zA-Z0-9._%+-]+@[a-zA-Z0-9.-]+\.[a-zA-Z]{2,})/i);
-    
-    if (emailMatches && (lowerUserMsg.includes('send') || lowerUserMsg.includes('sende')) && (lowerUserMsg.includes('epost') || lowerUserMsg.includes('e-post') || lowerUserMsg.includes('mail'))) {
-      recipient = emailMatches[1].trim();
-      
-      if (lowerUserMsg.includes('tilbud')) {
-        subject = `Pristilbud fra ${context.companyName} vedr. ${context.projectName || 'byggeprosjekt'}`;
-      } else if (lowerUserMsg.includes('endring') || lowerUserMsg.includes('varsel')) {
-        subject = `Endringsvarsel (NS 8406) fra ${context.companyName} vedr. ${context.projectName || 'byggeprosjekt'}`;
-      } else {
-        subject = `Melding fra ${context.companyName} vedr. ${context.projectName || 'byggeprosjekt'}`;
-      }
-      
-      body = replyText.replace(/Jeg kan dessverre ikke sende e-post[\s\S]*$/i, '').trim() || context.userMessage;
-      matchToReplace = replyText;
-    }
-  }
-
-  if (!recipient) {
+  if (emails.length === 0) {
+    const emailTagRegex = /(?:<<<|\[)\s*SEND_EMAIL:\s*([\s\S]*?)(?:>>>|\])/i;
+    const tagMatch = replyText.match(emailTagRegex);
     if (tagMatch) {
       return replyText.replace(tagMatch[0], `\n\n*(E-post ble ikke sendt fordi mottakers e-postadresse mangler. Vennligst oppgi hvem som skal motta e-posten.)*`);
     }
     return replyText;
   }
 
-  // Sjekk om det gjelder tilbud og vi har et tilbud i basen
-  const isOffer = subject.toLowerCase().includes('tilbud') || (context.userMessage && context.userMessage.toLowerCase().includes('tilbud'));
-  const isChangeOrder = subject.toLowerCase().includes('endring') || (context.userMessage && context.userMessage.toLowerCase().includes('endring'));
   const baseUrl = context.baseUrl || 'https://vikingmester.no';
+  const badges: string[] = [];
 
-  try {
-    if (isOffer) {
-      const allOffers = await getCollectionItems('offers').catch(() => []);
-      const projectOffers = allOffers.filter((o: any) => 
-        (o.projectId && o.projectId === context.projectId) || 
-        (context.projectName && o.title?.toLowerCase().includes(context.projectName.toLowerCase()))
-      );
-      const targetOffer = projectOffers[projectOffers.length - 1] || allOffers[allOffers.length - 1];
+  for (let i = 0; i < emails.length; i++) {
+    const item = emails[i];
+    const isOffer = item.isOffer || item.subject.toLowerCase().includes('tilbud') || (context.userMessage && context.userMessage.toLowerCase().includes('tilbud'));
+    const isChangeOrder = item.isChangeOrder || item.subject.toLowerCase().includes('endring') || (context.userMessage && context.userMessage.toLowerCase().includes('endring'));
 
-      if (targetOffer) {
-        if (!targetOffer.token) {
-          targetOffer.token = 'o-' + Date.now().toString(36) + Math.random().toString(36).substring(2, 6);
-        }
-        targetOffer.clientEmail = recipient;
-        targetOffer.status = 'sent';
-        await saveCollectionItem('offers', targetOffer);
+    try {
+      if (isOffer) {
+        const allOffers = await getCollectionItems('offers').catch(() => []);
+        const projectOffers = allOffers.filter((o: any) => 
+          (o.projectId && o.projectId === context.projectId) || 
+          (context.projectName && o.title?.toLowerCase().includes(context.projectName.toLowerCase()))
+        );
+        const targetOffer = projectOffers[projectOffers.length - 1] || allOffers[allOffers.length - 1];
 
-        const offerRes = await sendOfferByEmail({
-          offer: targetOffer,
-          clientEmail: recipient,
-          clientName: targetOffer.clientName,
-          companyName: context.companyName,
-          authorName: context.authorName,
-          baseUrl
-        });
+        if (targetOffer) {
+          if (!targetOffer.token) {
+            targetOffer.token = 'o-' + Date.now().toString(36) + Math.random().toString(36).substring(2, 6);
+          }
+          targetOffer.clientEmail = item.to;
+          targetOffer.status = 'sent';
+          await saveCollectionItem('offers', targetOffer);
 
-        const link = `${baseUrl}/?offerToken=${targetOffer.token}`;
-        if (offerRes.success && offerRes.status === 'sent') {
-          const badge = `\n\n> 📬 **Pristilbud er levert på e-post via Resend!**\n> - **Mottaker:** \`${recipient}\`\n> - **Tilbud:** «${targetOffer.title}»\n> - **Totalbeløp:** kr ${(Number(targetOffer.totalAmount || targetOffer.total || 0)).toLocaleString('no-NO')} inkl. mva\n> - **Digital godkjenning:** [Åpne tilbudslenke](${link})\n> - **Resend ID:** \`${offerRes.resendId || 'resend-ok'}\``;
-          return matchToReplace ? replyText.replace(matchToReplace, badge) : replyText + badge;
-        }
-      }
-    }
+          const offerRes = await sendOfferByEmail({
+            offer: targetOffer,
+            clientEmail: item.to,
+            clientName: targetOffer.clientName,
+            companyName: context.companyName,
+            authorName: context.authorName,
+            replyTo: context.replyTo,
+            senderEmail: context.senderEmail,
+            baseUrl
+          });
 
-    if (isChangeOrder) {
-      const allOrders = await getCollectionItems('change_orders').catch(() => []);
-      const projectOrders = allOrders.filter((c: any) => 
-        (c.projectId && c.projectId === context.projectId) || 
-        (context.projectName && c.title?.toLowerCase().includes(context.projectName.toLowerCase()))
-      );
-      const targetOrder = projectOrders[projectOrders.length - 1] || allOrders[allOrders.length - 1];
-
-      if (targetOrder) {
-        const coRes = await sendChangeOrderByEmail({
-          changeOrder: targetOrder,
-          clientEmail: recipient,
-          clientName: targetOrder.clientName,
-          companyName: context.companyName,
-          authorName: context.authorName
-        });
-
-        if (coRes.success && coRes.status === 'sent') {
-          const badge = `\n\n> 📬 **Endringsmelding (NS 8406) er levert via Resend!**\n> - **Mottaker:** \`${recipient}\`\n> - **Endring:** «${targetOrder.title}»\n> - **Krav:** kr ${(Number(targetOrder.totalAmount || targetOrder.amountExVat || 0)).toLocaleString('no-NO')} eks. mva\n> - **Resend ID:** \`${coRes.resendId || 'resend-ok'}\``;
-          return matchToReplace ? replyText.replace(matchToReplace, badge) : replyText + badge;
+          const link = `${baseUrl}/?offerToken=${targetOffer.token}`;
+          if (offerRes.success && offerRes.status === 'sent') {
+            badges.push(`> 📬 **Pristilbud er levert via Resend!**\n> - **Mottaker:** \`${item.to}\`\n> - **Tilbud:** «${targetOffer.title}»\n> - **Totalbeløp:** kr ${(Number(targetOffer.totalAmount || targetOffer.total || 0)).toLocaleString('no-NO')} inkl. mva\n> - **Svar sendes til:** \`${context.replyTo || context.companyName}\`\n> - **Digital godkjenning:** [Åpne tilbudslenke](${link})\n> - **Resend ID:** \`${offerRes.resendId || 'resend-ok'}\``);
+            continue;
+          }
         }
       }
-    }
 
-    // Standard e-post
-    const finalSubject = subject || `Viktig melding vedrørende ${context.projectName || 'byggeprosjekt'}`;
-    const finalBody = body || 'Vennlig hilsen fra byggeplassen.';
+      if (isChangeOrder) {
+        const allOrders = await getCollectionItems('change_orders').catch(() => []);
+        const projectOrders = allOrders.filter((c: any) => 
+          (c.projectId && c.projectId === context.projectId) || 
+          (context.projectName && c.title?.toLowerCase().includes(context.projectName.toLowerCase()))
+        );
+        const targetOrder = projectOrders[projectOrders.length - 1] || allOrders[allOrders.length - 1];
 
-    const sendRes = await sendSystemEmail({
-      to: recipient,
-      subject: finalSubject,
-      text: finalBody,
-      html: `
-        <div style="font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, sans-serif; line-height: 1.6; color: #1e293b; max-width: 600px; margin: 0 auto; padding: 24px; border: 1px solid #e2e8f0; border-radius: 12px; background: #ffffff;">
-          <div style="border-bottom: 2px solid #0f172a; padding-bottom: 12px; margin-bottom: 18px;">
-            <h2 style="color: #0f172a; margin: 0 0 4px 0; font-size: 19px;">${finalSubject}</h2>
-            <p style="margin: 0; color: #64748b; font-size: 12px;">Gjelder: ${context.projectName || 'Byggeprosjekt'} • Avsender: ${context.companyName}</p>
+        if (targetOrder) {
+          const coRes = await sendChangeOrderByEmail({
+            changeOrder: targetOrder,
+            clientEmail: item.to,
+            clientName: targetOrder.clientName,
+            companyName: context.companyName,
+            authorName: context.authorName,
+            replyTo: context.replyTo,
+            senderEmail: context.senderEmail,
+            baseUrl
+          });
+
+          if (coRes.success && coRes.status === 'sent') {
+            badges.push(`> 📬 **Endringsmelding (NS 8406) er levert via Resend!**\n> - **Mottaker:** \`${item.to}\`\n> - **Endring:** «${targetOrder.title}»\n> - **Krav:** kr ${(Number(targetOrder.totalAmount || targetOrder.amountExVat || 0)).toLocaleString('no-NO')} eks. mva\n> - **Svar sendes til:** \`${context.replyTo || context.companyName}\`\n> - **Resend ID:** \`${coRes.resendId || 'resend-ok'}\``);
+            continue;
+          }
+        }
+      }
+
+      // Standard e-post: Rens teksten slik at KUN selve beskjeden sendes, og INGEN rå hashtags (#) finnes
+      const cleaned = cleanMarkdownForEmail(item.body);
+      const finalSubject = item.subject || `Viktig melding vedrørende ${context.projectName || 'byggeprosjekt'}`;
+
+      const sendRes = await sendSystemEmail({
+        to: item.to,
+        subject: finalSubject,
+        text: cleaned.text,
+        replyTo: context.replyTo,
+        senderEmail: context.senderEmail,
+        html: `
+          <div style="font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, sans-serif; line-height: 1.6; color: #1e293b; max-width: 600px; margin: 0 auto; padding: 24px; border: 1px solid #e2e8f0; border-radius: 12px; background: #ffffff;">
+            <div style="border-bottom: 2px solid #0f172a; padding-bottom: 12px; margin-bottom: 18px;">
+              <h2 style="color: #0f172a; margin: 0 0 4px 0; font-size: 19px;">${finalSubject}</h2>
+              <p style="margin: 0; color: #64748b; font-size: 12px;">Gjelder: ${context.projectName || 'Byggeprosjekt'} • Avsender: ${context.companyName}</p>
+            </div>
+            <div style="font-size: 14px; color: #334155; margin-bottom: 24px; line-height: 1.6;">${cleaned.html || 'Se oversendt henvendelse.'}</div>
+            <hr style="border: none; border-top: 1px solid #e2e8f0; margin: 20px 0;">
+            <p style="font-size: 12px; color: #64748b; margin: 0;">
+              Sendt via <strong>VikingMester KS</strong> på vegne av <strong>${context.companyName}</strong> (${context.authorName}).
+            </p>
+            ${context.replyTo ? `<p style="font-size: 12px; color: #64748b; margin: 6px 0 0 0;">Svar på denne e-posten sendes direkte til: <strong>${context.replyTo}</strong>.</p>` : ''}
           </div>
-          <div style="white-space: pre-wrap; font-size: 14px; color: #334155; margin-bottom: 24px;">${finalBody}</div>
-          <hr style="border: none; border-top: 1px solid #e2e8f0; margin: 20px 0;">
-          <p style="font-size: 12px; color: #64748b; margin: 0;">
-            Sendt via <strong>VikingMester KS</strong> på vegne av <strong>${context.companyName}</strong> (${context.authorName}).
-          </p>
-        </div>
-      `,
-      companyName: context.companyName,
-      authorName: context.authorName
-    });
+        `,
+        companyName: context.companyName,
+        authorName: context.authorName
+      });
 
-    if (sendRes.success && sendRes.status === 'sent') {
-      const badge = `\n\n> 📬 **E-post er nå levert via Resend!**\n> - **Mottaker:** \`${recipient}\`\n> - **Emne:** «${finalSubject}»\n> - **Meldings-ID:** \`${sendRes.resendId || 'resend-ok'}\`\n> - **Avsender:** \`${sendRes.fromUsed || 'VikingMester <hei@vikingmester.no>'}\``;
-      return matchToReplace ? replyText.replace(matchToReplace, badge) : replyText + badge;
-    } else if (sendRes.status === 'missing_api_key') {
-      const badge = `\n\n> ⚠️ **E-posten ble ikke levert:** \`RESEND_API_KEY\` mangler under miljøvariablene i Railway. Legg til nøkkelen for å aktivere direkte e-postlevering.`;
-      return matchToReplace ? replyText.replace(matchToReplace, badge) : replyText + badge;
-    } else {
-      const badge = `\n\n> ⚠️ **E-postutsending avvist via Resend:** ${sendRes.message || sendRes.error || 'Ukjent feil'}\n> *(Mottaker: \`${recipient}\`)*`;
-      return matchToReplace ? replyText.replace(matchToReplace, badge) : replyText + badge;
+      if (sendRes.success && sendRes.status === 'sent') {
+        const shortBody = cleaned.text.replace(/\n+/g, ' ').slice(0, 85);
+        badges.push(`> 📬 **E-post ${emails.length > 1 ? `${i + 1} av ${emails.length} ` : ''}er levert via Resend!**\n> - **Mottaker:** \`${item.to}\`\n> - **Emne:** «${finalSubject}»\n> - **Innhold oversendt:** «${shortBody}${cleaned.text.length > 85 ? '...' : ''}»\n> - **Svar sendes til:** \`${context.replyTo || context.companyName}\`\n> - **Meldings-ID:** \`${sendRes.resendId || 'resend-ok'}\``);
+      } else if (sendRes.status === 'missing_api_key') {
+        badges.push(`> ⚠️ **E-posten til ${item.to} ble ikke levert:** \`RESEND_API_KEY\` mangler under miljøvariablene.`);
+      } else {
+        badges.push(`> ⚠️ **E-postutsending til ${item.to} avvist via Resend:** ${sendRes.message || sendRes.error || 'Ukjent feil'}`);
+      }
+
+    } catch (err: any) {
+      badges.push(`> ❌ **Teknisk feil ved utsending til ${item.to}:** ${err.message}`);
     }
-  } catch (err: any) {
-    const badge = `\n\n> ❌ **Teknisk feil ved utsending via Resend:** ${err.message}`;
-    return matchToReplace ? replyText.replace(matchToReplace, badge) : replyText + badge;
   }
+
+  const combinedBadges = badges.join('\n\n');
+
+  if (matchToReplace === replyText) {
+    const introMatch = replyText.match(/^([\s\S]*?)(?:(?=#{1,4}\s*(?:✉️|📧)?\s*E-?post|(?:\bE-?post\s+\d+:)|(?:Til|To):|Innholdet som skulle sendes:))/i);
+    let intro = introMatch ? introMatch[1].trim() : '';
+    if (intro && (intro.includes('klargjør') || intro.includes('klargjort'))) {
+      intro = intro.replace(/klargjør.*$/i, 'har nå levert e-postene direkte via Resend:');
+    }
+    return (intro ? `${intro}\n\n` : '') + combinedBadges;
+  }
+
+  if (matchToReplace) {
+    return replyText.replace(matchToReplace, combinedBadges);
+  }
+
+  return replyText + '\n\n' + combinedBadges;
 }
 
 export async function POST(req: NextRequest) {
@@ -248,8 +386,21 @@ export async function POST(req: NextRequest) {
       userTrade, 
       companyName, 
       userId, 
+      userEmail,
+      replyTo,
+      senderEmail,
+      companyEmail,
       imageUrl 
     } = body;
+
+    const effectiveSenderEmail = (
+      replyTo || 
+      senderEmail || 
+      userEmail || 
+      user?.email || 
+      companyEmail || 
+      ''
+    ).trim();
 
     if (!message || typeof message !== 'string') {
       return NextResponse.json({ error: 'Mangler melding' }, { status: 400 });
@@ -306,7 +457,7 @@ export async function POST(req: NextRequest) {
 4. Hvis brukeren allerede har oppgitt hva arbeidet gjelder (f.eks. oppussing av bad, maling, tilbygg, terrasse), gå rett i gang med å foreslå eller sette opp tilbudet med poster, timeantall og materiell!
 5. Hvis henvendelsen er et generelt fagspørsmål (f.eks. TEK17, HMS-regler, våtromsnorm, materialvalg), svarer du direkte uten å kreve prosjektvalg.`;
       }
-      contextHeader += ` | FORMATERING & LESBARHET: Håndverkere leser dette i felt på byggeplass. Svaret MÅ være oversiktlig og luftig: Bruk alltid doble linjeskift mellom avsnitt, bruk punktlister med bindestrek (-) for opplistinger og krav, bruk fete overskrifter (f.eks. ### 🛡️ Krav: eller **Krav:**) for å skille temaer, og fremhev tall og paragrafer. ALDRI svar med en eneste sammenklemt tekstblokk! | E-POST VIA RESEND: Du har direkte tilgang til å sende e-post til kunder, byggherrer og kontakter via systemets integrasjon med Resend. Når brukeren ber deg sende en e-post (tilbud, endring, varsel, FDV eller melding) og du har mottakers e-postadresse: 1) Bekreft kort at du klargjør sendingen. 2) Inkluder nøyaktig denne koden nederst i svaret: <<<SEND_EMAIL: to="mottaker@epost.no" subject="Emnetittel" body="Hele meldingsteksten">>>. Systemet vil fange opp koden og sende e-posten direkte via Resend. Hvis mottaker-adresse mangler, spør brukeren høflig om e-postadressen. Du må aldri påstå at du har sendt e-post uten å inkludere koden. | SIKKERHET: GDPR & Databehandleravtale (DPA) er aktiv. Alle data er strengt konfidensielle for denne bedriften.]`;
+      contextHeader += ` | FORMATERING & LESBARHET: Håndverkere leser dette i felt på byggeplass. Svaret MÅ være oversiktlig og luftig: Bruk alltid doble linjeskift mellom avsnitt, bruk punktlister med bindestrek (-) for opplistinger og krav, bruk fete overskrifter (f.eks. ### 🛡️ Krav: eller **Krav:**) for å skille temaer, og fremhev tall og paragrafer. ALDRI svar med en eneste sammenklemt tekstblokk! | E-POST VIA RESEND: Systemet sender ekte e-poster direkte via Resend på vegne av håndverkeren (${effectiveUser} / ${effectiveCompany}). Når brukeren ber deg sende en eller flere e-poster (tilbud, endring, varsel, FDV eller melding) og du har mottakers e-postadresse: 1) Bekreft kort at du klargjør sendingen. 2) Inkluder nøyaktig koden <<<SEND_EMAIL: to="mottaker@epost.no" subject="Emnetittel" body="Selve meldingsteksten">>> eller strukturer utkastet med «### ✉️ E-post 1», «- Til: mottaker@epost.no», «- Emne: Emnetittel», «- Innhold: Selve meldingen til kunden». 3) PERSONVERN: Kunder må ALDRI motta interne notater, chat-dialog med håndverkeren, eller rå markdown hashtags (#). Skriv KUN den rene, profesjonelle beskjeden under «Innhold»/body. 4) Svar fra kunden rutes automatisk direkte til håndverkerens egen e-post (${effectiveSenderEmail || 'jobb-e-post'}). | SIKKERHET: GDPR & Databehandleravtale (DPA) er aktiv. Alle data er strengt konfidensielle for denne bedriften.]`;
     }
 
     let enrichedMessage = `${contextHeader}\n${message}`;
@@ -394,6 +545,8 @@ export async function POST(req: NextRequest) {
     replyText = await processEmailActionsInReply(replyText, {
       companyName: effectiveCompany,
       authorName: effectiveUser,
+      replyTo: effectiveSenderEmail,
+      senderEmail: effectiveSenderEmail,
       projectName,
       projectId: body.projectId,
       userMessage: message,
