@@ -27,6 +27,11 @@ export function useDashboardData() {
 
     const effectiveCompany = impersonatedCompanyId || (isGlobalAdmin ? null : company);
 
+    // Reset projects and deviations state immediately upon tenant switch to prevent stale flash
+    setProjects([]);
+    setDeviations([]);
+    setLoading(true);
+
     // Filter by company if present for non-admins (or when admin impersonates)
     if (effectiveCompany) {
       if (role === 'client') {

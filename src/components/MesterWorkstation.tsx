@@ -83,6 +83,7 @@ import OfferModal from './OfferModal';
 import ApprenticeModal from './ApprenticeModal';
 import HMSModule from './HMSModule';
 import { formatAiMarkdown } from '../lib/formatAiMarkdown';
+import WeatherWidget from './WeatherWidget';
 
 interface MesterWorkstationProps {
   initialModuleTab?: string | null;
@@ -1895,6 +1896,12 @@ export default function MesterWorkstation({
                           </div>
                         </div>
 
+                        {/* Sanntids Værvarsel for byggeplassen (Yr / Open-Meteo) */}
+                        <WeatherWidget 
+                          projectLocation={selectedProject.address || (selectedProject as any).location || selectedProject.name} 
+                          className="border-slate-800"
+                        />
+
                         {/* 4 Nøkkeltall / Statuskort for dette prosjektet */}
                         <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-3">
                           <div 
@@ -2048,6 +2055,18 @@ export default function MesterWorkstation({
                           >
                             <ClipboardCheck size={14} className="text-teal-400 shrink-0" />
                             <span>«Sjekk TEK17 krav til lukkesperre»</span>
+                          </button>
+                          <button
+                            type="button"
+                            onClick={() => {
+                              setViewMode('chat');
+                              setActiveModuleTab(null);
+                              handleSendMessage(`Hva blir været på ${selectedProject.name} i dag?`);
+                            }}
+                            className="p-2.5 rounded-xl bg-slate-900 hover:bg-slate-850 border border-slate-800 text-left text-xs text-slate-300 hover:text-white transition-colors flex items-center gap-2 cursor-pointer sm:col-span-2"
+                          >
+                            <CloudSun size={14} className="text-amber-400 shrink-0" />
+                            <span>«Hva blir været på {selectedProject.name} i dag? (Sanntidsvarsel & HMS-arbeidsråd)»</span>
                           </button>
                         </div>
                       </div>

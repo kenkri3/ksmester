@@ -79,6 +79,7 @@ import CreateDeviationModal from './CreateDeviationModal';
 import FinalSettlementModal from './FinalSettlementModal';
 import { budgetAlertService, BudgetStatus } from '../services/budgetAlertService';
 import { toast } from 'sonner';
+import WeatherWidget from './WeatherWidget';
 
 interface ProjectDetailsProps {
   project: Project;
@@ -1046,9 +1047,12 @@ export default function ProjectDetails({ project, onBack, onShare, onStartCheckl
 
           </div>
 
-          {/* Høyre kolonne (1/3 bredde) - Økonomi & Nøkkeltall */}
+          {/* Høyre kolonne (1/3 bredde) - Vær & Økonomi */}
           <div className="space-y-6">
             
+            {/* Sanntids Værvarsel for byggeplassen (Yr.no / Open-Meteo) */}
+            <WeatherWidget projectLocation={project.location || (project as any).address || project.name} />
+
             {/* Prosjektøkonomi */}
             <div className="bg-white rounded-3xl border border-slate-200/80 p-6 shadow-xs space-y-5">
               <div className="flex items-center justify-between">

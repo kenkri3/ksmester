@@ -93,12 +93,39 @@ export async function GET(
     const isGlobalSuperAdminView = isSuper && !impersonatedHeader;
 
     if (!isGlobalSuperAdminView && effectiveCompanyId) {
+      const isDemoFjellheim = effectiveCompanyId === 'comp-demo-fjellheim';
+
       items = items.filter((item: any) => {
         // Shared system documents (e.g. general HMS handbooks, standard industry checklists)
         if (targetCollection === 'hms_documents' && (!item.companyId || item.companyId === 'system')) return true;
         if (targetCollection === 'checklists' && (!item.companyId || item.companyId === 'system')) return true;
 
-        const matchCompId = item.companyId && (item.companyId === effectiveCompanyId);
+        // Strict demo tenant isolation (comp-demo-fjellheim ONLY sees Fjellheim / Sjusjøen data)
+        if (isDemoFjellheim) {
+          const itemComp = String(item.company || '').toLowerCase();
+          const itemCompId = String(item.companyId || '').toLowerCase();
+          const itemName = String(item.name || '').toLowerCase();
+          const itemProject = String(item.projectName || '').toLowerCase();
+
+          return (
+            itemCompId === 'comp-demo-fjellheim' ||
+            itemComp === 'comp-demo-fjellheim' ||
+            itemComp.includes('fjellheim') ||
+            itemName.includes('sjusjøen') ||
+            itemProject.includes('sjusjøen')
+          );
+        }
+
+        // When impersonating any tenant: NEVER match on superadmin's user.company or user.id
+        if (impersonatedHeader) {
+          return (
+            item.companyId === effectiveCompanyId ||
+            item.company === effectiveCompanyId
+          );
+        }
+
+        // Standard tenant isolation for regular authenticated users
+        const matchCompId = item.companyId && item.companyId === effectiveCompanyId;
         const matchComp = item.company && (item.company === effectiveCompanyId || (user.company && item.company === user.company));
         const matchUser = (item.userId && item.userId === user.id) || (item.authorId && item.authorId === user.id);
         const matchInvitee = targetCollection === 'invitations' && item.inviteeEmail && item.inviteeEmail.toLowerCase() === user.email?.toLowerCase();

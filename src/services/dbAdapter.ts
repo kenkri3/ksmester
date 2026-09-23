@@ -166,6 +166,20 @@ export function applyQueryConstraints(items: any[], constraints?: any[]): any[] 
         if (c.field === 'company' || c.field === 'companyId') {
           const compVal = item.company;
           const compIdVal = item.companyId;
+
+          // Special demo tenant isolation: Fjellheim only sees Sjusjøen / Fjellheim data
+          if (c.value === 'comp-demo-fjellheim') {
+            if (c.op === '==') {
+              return (
+                compVal === 'comp-demo-fjellheim' ||
+                compIdVal === 'comp-demo-fjellheim' ||
+                String(compVal || '').toLowerCase().includes('fjellheim') ||
+                String(item.name || '').toLowerCase().includes('sjusjøen') ||
+                String(item.projectName || '').toLowerCase().includes('sjusjøen')
+              );
+            }
+          }
+
           if (c.op === '==') {
             return compVal === c.value || compIdVal === c.value;
           }

@@ -24,8 +24,9 @@ export default function AdminSimulationBar() {
   const currentPlanConfig = simulatedPlan ? PLANS[simulatedPlan as PlanId] : null;
 
   const handleReturnToSuperAdmin = () => {
-    // Stopp eventuell simulering og gå til SuperAdmin
+    // Stopp eventuell simulering og avslutt impersonering slik at man returnerer til ekte SuperAdmin
     setSimulatedPlan(null);
+    stopImpersonation();
     window.dispatchEvent(new CustomEvent('navigate_view', { detail: { view: 'super-admin' } }));
     toast.success('Returnert til SuperAdmin Portal');
   };
