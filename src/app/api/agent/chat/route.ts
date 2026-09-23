@@ -3,6 +3,7 @@ import crypto from 'crypto';
 import { getUserFromRequest } from '@/src/lib/server/auth';
 import { sendSystemEmail, sendOfferByEmail, sendChangeOrderByEmail, cleanMarkdownForEmail } from '@/src/lib/server/emailSender';
 import { getCollectionItems, saveCollectionItem } from '@/src/lib/server/db';
+import { generateWithAiEngine } from '@/src/lib/server/aiEngine';
 
 /**
  * 🤖 MesterAI Headless Agent Proxy
@@ -46,19 +47,47 @@ interface LiveWeatherReport {
 
 function isWeatherQuery(msg: string): boolean {
   const lower = (msg || '').toLowerCase();
+  // Ikke kapre henvendelser som gjelder arrangementer, søk, nyheter eller helgeplaner
+  if (
+    lower.includes('hva skjer') || 
+    lower.includes('skjer det') || 
+    lower.includes('arrangement') || 
+    lower.includes('konsert') || 
+    lower.includes('festival') || 
+    lower.includes('søke') || 
+    lower.includes('søk på') || 
+    lower.includes('google') ||
+    lower.includes('kino') ||
+    lower.includes('restaurant') ||
+    lower.includes('nyheter')
+  ) {
+    return false;
+  }
+
   const weatherWords = [
     'vær', 'været', 'værvarsel', 'værmelding', 'værmeldingen',
     'temperatur', 'temperaturen', 'grader', 'nedbør', 'regn', 'regner',
-    'snø', 'snør', 'vind', 'vindstyrke', 'kuling', 'storm', 'sol',
-    'overskyet', 'frost', 'minusgrader', 'plussgrader', 'arbeidsforhold',
+    'snø', 'snør', 'vind', 'vindstyrke', 'kuling', 'storm',
+    'frost', 'minusgrader', 'plussgrader', 'arbeidsforhold',
     'arbeidsforholdene'
   ];
   return weatherWords.some(w => {
     const rx = new RegExp(`(^|\\s|[.,!?-])${w}([.,!?-]|\\s|$)`, 'i');
     return rx.test(lower);
-  }) || (lower.includes('hva blir') && (lower.includes('dag') || lower.includes('morgen') || lower.includes('ute') || lower.includes('helg')))
-     || (lower.includes('hvordan blir') && (lower.includes('dag') || lower.includes('morgen') || lower.includes('ute') || lower.includes('helg')))
+  }) || (lower.includes('hvordan blir været'))
      || (lower.includes('kan vi jobbe ute'));
+}
+
+function detectWebSearchNeed(msg: string): boolean {
+  const lower = (msg || '').toLowerCase();
+  const searchIndicators = [
+    'søk', 'søke', 'google', 'internett', 'på nettet', 'på nett',
+    'hva skjer', 'skjer i', 'i helgen', 'arrangement', 'festival', 'konsert', 'kino',
+    'hva koster', 'pris på', 'priser på', 'leverandør', 'optimera', 'maxbo', 'monter', 'byggmakker', 'ahlsell', 'elektroskandia',
+    'sintef', 'datablad', 'monteringsanvisning', 'byggeforskrifter',
+    'åpningstider', 'restaurant', 'nyheter', 'kurs', 'arrangementer', 'helgeplan'
+  ];
+  return searchIndicators.some(kw => lower.includes(kw));
 }
 
 function resolveLocationCoords(loc: string): { lat: number; lon: number; name: string } {
@@ -628,91 +657,163 @@ export async function POST(req: NextRequest) {
     // Berik alltid agenten med live vær for det aktive prosjektet
     contextHeader += ` | 🌦️ Sanntidsvær på byggeplassen (${weatherRep.locationName}): ${weatherRep.temp}°C, ${weatherRep.condition}, vind ${weatherRep.windSpeed} m/s (${weatherRep.beaufort}), nedbør ${weatherRep.precipitation} mm. HMS-råd: ${weatherRep.workAdvice}`;
 
+    // 🧠 SJEKK OM FORESPØRSELEN KREVER NETTSØK (ARRANGEMENTER, PRISER, TEK17, NYHETER)
+    const wantsWebSearch = detectWebSearchNeed(message);
+
     let enrichedMessage = `${contextHeader}\n${message}`;
     if (imageUrl) {
       enrichedMessage += `\n[Vedlagt foto for analyse/dokumentasjon: ${imageUrl}]`;
     }
 
-    const payload = {
-      type: 'message',
-      fbId: fbId,
-      bot_key: BOT_API_KEY,
-      text: enrichedMessage,
-      message: enrichedMessage,
-      current_messages: enrichedMessage,
-      url: 'https://vikingmester.no',
-      user_name: userName || 'Byggmester',
-      messages: []
-    };
+    const MASTER_SYSTEM_PROMPT = `Du er MesterAI, en helautonom prosjektpilot og byggmester-assistent i backendsystemet til Vikingmester. Du opererer selvstendig, tenker som en erfaren byggmester/prosjektleder, og utfører oppgaver direkte uten å be om bekreftelse for hvert steg.
 
-    let response: Response;
-    try {
-      response = await fetch(CONVERSE_ENDPOINT, {
-        method: 'POST',
-        headers: {
-          'Content-Type': 'application/json',
-          'Accept': 'application/json'
-        },
-        body: JSON.stringify(payload),
-        signal: AbortSignal.timeout(10000)
-      });
-    } catch (fetchErr: any) {
-      console.warn('Botsify converse timeout or fetch error:', fetchErr.message);
-      const fallbackText = isWeather 
-        ? `🌤️ **Værvarsel for ${weatherRep.locationName}:** ${weatherRep.temp}°C, ${weatherRep.condition}, vind ${weatherRep.windSpeed} m/s. ${weatherRep.workAdvice}`
-        : `Jeg mottok henvendelsen din for **${projectName || 'byggeprosjektet'}**. Værstatus (${weatherRep.temp}°C, ${weatherRep.condition}) er registrert. Hva ønsker du å utføre?`;
+🛡️ 100% WHITE-LABEL:
+Du er MesterAI, utviklet eksklusivt for Vikingmester. Du skal ALDRI nevne eller referere til underliggende AI-modeller, leverandører eller eksterne systemer som DeepSeek, OpenAI, Google, Anthropic eller Botsify. For brukeren er du 100 % MesterAI.
 
-      return NextResponse.json({
-        success: true,
-        sessionId: fbId,
-        reply: fallbackText,
-        quickReplies: [
-          { title: 'Før timer i dag', payload: 'Før 7.5 timer i byggedagboken' },
-          { title: 'Opprett SJA', payload: 'Opprett en SJA for dagens oppgaver' }
-        ]
-      });
-    }
+⚡ HANDLINGSROM (FULL CRUD):
+Du har full tilgang til Vikingmester-systemet og kan:
+- Opprette, lese, oppdatere og slette data i prosjekter, oppgaver, timer, byggedagbok, avvik, SJA, endringsordrer og tilbud.
+- Utføre oppgaver på tvers av moduler og holde prosjekter 100 % oppdatert i sanntid.
+- Velge den mest effektive måten å nå målet på innenfor systemets rammer.
+- Når du utarbeider en SJA, endringsordre, tilbud eller timeføring, presenter det komplett og strukturert slik at det lagres direkte.
 
-    if (!response.ok) {
-      const errText = await response.text();
-      console.error('Agent converse API error:', response.status, errText);
-      return NextResponse.json({ 
-        error: `Agent-API svarte med status ${response.status}`,
-        details: errText
-      }, { status: 502 });
-    }
+🌐 SPRÅK & FLERSPRÅKLIGHET (VIKTIG FOR BYGGEPLASSEN):
+- Kommunikasjon med brukeren: Svar alltid på det samme språket som brukeren snakker eller skriver til deg på (f.eks. norsk, engelsk, polsk, ukrainsk, tysk eller spansk). Tilpass deg håndverkeren umiddelbart.
+- Dokumentasjon i backend: Uansett hvilket språk brukeren snakker, skal all info som logges, lagres eller opprettes i systemet (timer, avvik, byggedagbok, SJA, endringsordrer, tilbud) alltid skrives på formelt og profesjonelt norsk (bokmål) for å sikre samsvar med norske byggherrekrav og standarder.
 
-    const data = await response.json();
+🚫 "INGEN INTERVJUER"-REGEL (VIKTIGST AV ALT):
+- ALDRI still oppfølgingsspørsmål om ting du kan finne ut selv, anta rimelig eller hente fra historikken.
+- ALDRI lag punktlister med spørsmål til brukeren (f.eks. «Kan du oppgi: 1. Hva skal gjøres? 2. Hvor mange timer? 3. Hvilket materiell?»).
+- Fyll ut manglende felter med bransjestandard verdier (f.eks. standard timepris for faget, vanlige materialer for oppgaven).
+- Gjør jobben ferdig i ÉN operasjon. Hvis brukeren gir en ufullstendig instruks, fyller du inn hullene med beste byggfaglige skjønn og presenterer det ferdige resultatet.
+- Hvis brukeren vil endre noe, gjør de det etterpå. Gjør først, juster eventuelt etterpå.
 
-    // Hent ut svartekst og eventuelle hurtigvalg (quick replies)
+🌐 NETTSØK OG ALLSIDIGHET:
+Du er ikke bare en byggassistent – du er et fullverdig arbeidsverktøy for bedriften.
+Bruk nettsøk aktivt og selvstendig når brukeren spør om noe som krever oppdatert eller ekstern informasjon:
+- Priser og tilgjengelighet på materialer fra leverandører (f.eks. Optimera, Maxbo, Monter, Ahlsell, Elektroskandia, Byggmakker).
+- Tekniske datablad, monteringsanvisninger og SINTEF Byggforsk-godkjenninger.
+- Værmeldinger og lokale forhold som påvirker arbeidet.
+- Lokale arrangementer, helgeaktiviteter, nyheter, helligdager eller trafikk som kan påvirke logistikk og byggeplass.
+- Relevante lover, forskrifter, TEK17, HMS-krav eller standarder (NS 8406, NS 3420).
+- Generelle spørsmål brukeren stiller i løpet av arbeidsdagen – enten det gjelder et arrangement i helgen, en restaurant for lunsjmøte, eller valutakurs for importvarer.
+- ALDRI avvis et spørsmål med «dette er utenfor mitt fagområde» eller «jeg kan bare hjelpe med byggedokumentasjon». Søk på nettet, finn svaret, og lever et nyttig og presist svar.
+
+📚 BYGGFAGLIG KUNNSKAPSBASE:
+Alltid forankre faglige vurderinger i gjeldende norske standarder og forskrifter:
+- TEK17 (Byggteknisk forskrift) – brannkrav, ventilasjon, isolasjon, universell utforming, fuktsikring.
+- Våtromsnormen (BVN) – membran, fall mot sluk, tettesjikt, rør-i-rør.
+- NS 8406 / NS 8405 / NS 8407 – standard kontraktsbestemmelser for bygg og anlegg, spesielt varsling av endringer, fristforlengelse og vederlagsjustering.
+- Byggherreforskriften & Internkontrollforskriften – HMS, SJA, vernerunder, avvikshåndtering.
+- DiBK (Direktoratet for byggkvalitet) – veiledninger og godkjenningsordninger.
+- Arbeidstilsynet – stillas, stige, asbest, støv, personlig verneutstyr (PVU).
+
+✉️ E-POST VIA RESEND:
+Når brukeren ber deg sende en eller flere e-poster (tilbud, endring, varsel, FDV eller melding) og du har mottakers e-postadresse:
+1. Bekreft kort og handlekraftig at e-posten sendes.
+2. Inkluder nøyaktig koden <<<SEND_EMAIL: to="mottaker@epost.no" subject="Emnetittel" body="Selve meldingsteksten">>>.
+3. Kunder må ALDRI motta interne notater eller chat-dialog. Skriv KUN den rene, profesjonelle beskjeden under body.
+
+📱 MOBILVENNLIG FORMATERING FOR BYGGEPLASS:
+- Bruk alltid doble linjeskift mellom avsnitt for god luftighet.
+- Bruk punktlister med bindestrek (-) for opplistinger og krav.
+- Bruk fete overskrifter (f.eks. **Krav:** eller ### 🛡️ HMS-tiltak) for å skille temaer.
+- ALDRI svar med en eneste sammenklemt tekstblokk.`;
+
     let replyText = '';
     const quickReplies: Array<{ title: string; payload: string }> = [];
 
-    if (data.messages && Array.isArray(data.messages)) {
-      for (const m of data.messages) {
-        if (m.message) {
-          if (m.message.text) {
-            replyText += (replyText ? '\n\n' : '') + m.message.text;
-          }
-          if (Array.isArray(m.message.quick_replies)) {
-            for (const qr of m.message.quick_replies) {
-              if (qr.title) {
-                quickReplies.push({
-                  title: qr.title,
-                  payload: qr.payload || qr.title
-                });
+    // 🚀 1. PRIMÆRT: Generer svar via VikingMesters interne AI Engine (med full Google Grounding ved nettsøk)
+    try {
+      const aiResult = await generateWithAiEngine({
+        prompt: enrichedMessage,
+        systemInstruction: MASTER_SYSTEM_PROMPT,
+        webSearch: wantsWebSearch,
+        companyId: effectiveCompanyId,
+        companyName: effectiveCompany,
+        projectId: body.projectId,
+        operation: wantsWebSearch ? 'mesterai_web_search' : 'mesterai_chat'
+      });
+
+      if (aiResult && aiResult.text) {
+        replyText = aiResult.text;
+      }
+    } catch (aiEngineErr: any) {
+      console.warn('VikingMester AI Engine primærkall feilet eller mangler nøkkel, forsøker fallback:', aiEngineErr.message);
+    }
+
+    // 🔄 2. SEKUNDÆRT: Hvis intern AI Engine ikke ga svar og Botsify-nøkkel finnes, forsøk headless webhook
+    if (!replyText && BOT_API_KEY && CONVERSE_ENDPOINT) {
+      try {
+        const payload = {
+          type: 'message',
+          fbId: fbId,
+          bot_key: BOT_API_KEY,
+          text: enrichedMessage,
+          message: enrichedMessage,
+          current_messages: enrichedMessage,
+          url: 'https://vikingmester.no',
+          user_name: userName || 'Byggmester',
+          messages: []
+        };
+
+        const response = await fetch(CONVERSE_ENDPOINT, {
+          method: 'POST',
+          headers: {
+            'Content-Type': 'application/json',
+            'Accept': 'application/json'
+          },
+          body: JSON.stringify(payload),
+          signal: AbortSignal.timeout(30000)
+        });
+
+        if (response.ok) {
+          const data = await response.json();
+          if (data.messages && Array.isArray(data.messages)) {
+            for (const m of data.messages) {
+              if (m.message) {
+                if (m.message.text) {
+                  replyText += (replyText ? '\n\n' : '') + m.message.text;
+                }
+                if (Array.isArray(m.message.quick_replies)) {
+                  for (const qr of m.message.quick_replies) {
+                    if (qr.title) {
+                      quickReplies.push({
+                        title: qr.title,
+                        payload: qr.payload || qr.title
+                      });
+                    }
+                  }
+                }
               }
             }
           }
         }
+      } catch (botsifyErr: any) {
+        console.warn('Botsify fallback timeout/error:', botsifyErr.message);
       }
     }
 
+    // 🛡️ 3. SIKKERHETSVENTIL HVIS ALT FEILER: Returner et hjelpsomt og profesjonelt byggmestersvar (ALDRI hermetisk vær-spam)
     if (!replyText) {
       if (isWeather) {
         replyText = `🌤️ **Værvarsel og HMS-arbeidsforhold for ${weatherRep.locationName}**\n*Gjelder byggeplass: ${projectName || weatherRep.locationName}*\n\n• **Temperatur nå:** ${weatherRep.temp}°C (Dagens spenn: ${weatherRep.minTemp}°C til ${weatherRep.maxTemp}°C)\n• **Værforhold:** ${weatherRep.condition}\n• **Vindstyrke:** ${weatherRep.windSpeed} m/s (${weatherRep.beaufort})\n• **Nedbør i dag:** ${weatherRep.precipitation} mm\n• **Luftfuktighet:** ${weatherRep.humidity}%\n\n🛡️ **HMS- og Arbeidsråd:**\n${weatherRep.workAdvice}`;
       } else {
-        replyText = `Forespørselen din vedrørende **${projectName || 'byggeprosjektet'}** er behandlet. Værforhold på plassen: ${weatherRep.temp}°C, ${weatherRep.condition}. Hva ønsker du å utføre videre?`;
+        replyText = `Hei! Jeg er klar til å bistå deg med **${projectName || 'prosjektet ditt'}**.\n\nHva ønsker du at jeg skal utføre for deg nå? Jeg kan blant annet hjelpe deg med:\n- Sette opp et pristilbud eller kalkyle\n- Utarbeide en SJA (Sikker Jobb Analyse) tilpasset dagens arbeidsforhold\n- Føre byggedagbok eller registrere avvik\n- Sjekke oppdaterte regler og krav i TEK17 / Våtromsnormen\n- Søke opp dagsaktuelle priser, tekniske datablad eller arrangementer`;
+      }
+    }
+
+    // Generer intelligente hurtigvalg hvis ingen er spesifisert
+    if (quickReplies.length === 0) {
+      const lowerReply = replyText.toLowerCase();
+      if (lowerReply.includes('sja') || lowerReply.includes('sikker jobb analyse')) {
+        quickReplies.push({ title: 'Opprett SJA', payload: `Opprett en komplett SJA for dagens arbeid på ${projectName || 'byggeplassen'}` });
+      }
+      if (lowerReply.includes('tilbud') || lowerReply.includes('kalkyle')) {
+        quickReplies.push({ title: 'Lag tilbud', payload: 'Sett opp et detaljert pristilbud med materiell og arbeidstimer' });
+      }
+      if (lowerReply.includes('byggedagbok') || lowerReply.includes('time')) {
+        quickReplies.push({ title: 'Før dagbok', payload: `Før 7.5 timer og dagens værforhold i byggedagboken` });
       }
     }
 
@@ -748,8 +849,7 @@ export async function POST(req: NextRequest) {
       success: true,
       sessionId: fbId,
       reply: replyText,
-      quickReplies: quickReplies,
-      raw: data
+      quickReplies: quickReplies
     });
 
   } catch (error: any) {

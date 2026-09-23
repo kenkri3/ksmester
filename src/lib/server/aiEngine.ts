@@ -31,7 +31,7 @@ export interface GenerateAiOptions {
 
 export interface AiEngineResult {
   text: string;
-  source: '1min.ai' | 'gemini_backup' | 'deepseek_backup';
+  source: '1min.ai' | 'gemini_backup' | 'deepseek_backup' | 'deepseek_direct' | 'openrouter';
   model: string;
   usage: {
     promptTokens: number;
@@ -80,7 +80,7 @@ export function getGeminiKey(): string | null {
  * Henter eventuell lagret AI-nøkkel fra databasen (items_store / integrations)
  * dersom miljøvariabel mangler i runtime-miljøet.
  */
-export async function getStoredAiKey(type: '1min.ai' | 'gemini'): Promise<string | null> {
+export async function getStoredAiKey(type: '1min.ai' | 'gemini' | 'deepseek' | 'openrouter'): Promise<string | null> {
   try {
     const { getCollectionItems } = await import('./db');
     const items = await getCollectionItems('integrations');
@@ -102,16 +102,53 @@ export async function getStoredAiKey(type: '1min.ai' | 'gemini'): Promise<string
       if (match?.secretToken || match?.apiKey || match?.token) {
         return String(match.secretToken || match.apiKey || match.token).trim();
       }
+    } else if (type === 'deepseek') {
+      const match = items.find((i: any) => 
+        (i.service === 'deepseek' || i.service === 'deep_seek' || i.service === 'deepseek_api') && 
+        (i.secretToken || i.apiKey || i.token)
+      );
+      if (match?.secretToken || match?.apiKey || match?.token) {
+        return String(match.secretToken || match.apiKey || match.token).trim();
+      }
+    } else if (type === 'openrouter') {
+      const match = items.find((i: any) => 
+        (i.service === 'openrouter' || i.service === 'open_router') && 
+        (i.secretToken || i.apiKey || i.token)
+      );
+      if (match?.secretToken || match?.apiKey || match?.token) {
+        return String(match.secretToken || match.apiKey || match.token).trim();
+      }
     }
   } catch {}
   return null;
 }
 
 /**
- * Henter DeepSeek API-nøkkel (tertiær backup).
+ * Henter DeepSeek API-nøkkel.
  */
 export function getDeepSeekKey(): string | null {
-  return process.env.DEEP_SEEK_API || process.env.DEEPSEEK_API_KEY || null;
+  const env = process.env as Record<string, string | undefined>;
+  return (
+    env.DEEP_SEEK_API || 
+    env.DEEPSEEK_API_KEY || 
+    env.DEEP_SEEK_API_KEY || 
+    env.DEEPSEEK_KEY || 
+    null
+  );
+}
+
+/**
+ * Henter OpenRouter API-nøkkel.
+ */
+export function getOpenRouterKey(): string | null {
+  const env = process.env as Record<string, string | undefined>;
+  return (
+    env.OPENROUTER_API_KEY ||
+    env.OPENROUTER_KEY ||
+    env.OPEN_ROUTER_API_KEY ||
+    env.OPEN_ROUTER_KEY ||
+    null
+  );
 }
 
 /**
@@ -551,14 +588,14 @@ async function callGeminiBackup(
 }
 
 /**
- * Tertiær backup til DeepSeek API.
+ * Direkte anrop til DeepSeek API (deepseek-chat / deepseek-reasoner).
  */
-async function callDeepSeekBackup(
+async function callDeepSeekDirect(
   deepseekKey: string,
+  model: string,
   prompt: string,
   systemInstruction?: string,
-  forceJson = false,
-  model = 'deepseek-flash'
+  forceJson = false
 ): Promise<{ text: string; promptTokens: number; completionTokens: number }> {
   const messages: any[] = [];
   if (systemInstruction) {
@@ -566,12 +603,16 @@ async function callDeepSeekBackup(
   }
   messages.push({ role: 'user', content: prompt });
 
+  const effectiveModel = (model === 'deepseek-reasoner' || model?.includes('reasoner') || model?.includes('r1'))
+    ? 'deepseek-reasoner'
+    : 'deepseek-chat';
+
   const body: any = {
-    model: model || 'deepseek-flash',
+    model: effectiveModel,
     messages,
-    temperature: 0.2
+    temperature: effectiveModel === 'deepseek-reasoner' ? undefined : 0.3
   };
-  if (forceJson) {
+  if (forceJson && effectiveModel !== 'deepseek-reasoner') {
     body.response_format = { type: 'json_object' };
   }
 
@@ -582,11 +623,64 @@ async function callDeepSeekBackup(
       'Authorization': `Bearer ${deepseekKey}`
     },
     body: JSON.stringify(body),
-    signal: AbortSignal.timeout(15000)
+    signal: AbortSignal.timeout(60000)
   });
 
   if (!res.ok) {
-    throw new Error(`DeepSeek feilet med HTTP ${res.status}`);
+    const errText = await res.text().catch(() => '');
+    throw new Error(`DeepSeek feilet med HTTP ${res.status}: ${errText.slice(0, 200)}`);
+  }
+
+  const data = await res.json();
+  const text = data.choices?.[0]?.message?.content || '';
+  const promptTokens = data.usage?.prompt_tokens || Math.round(prompt.length / 4);
+  const completionTokens = data.usage?.completion_tokens || Math.round(text.length / 4);
+
+  return { text, promptTokens, completionTokens };
+}
+
+/**
+ * Anrop til OpenRouter API (støtter DeepSeek V3/V4, Claude, Llama etc.).
+ */
+async function callOpenRouter(
+  openrouterKey: string,
+  model: string,
+  prompt: string,
+  systemInstruction?: string,
+  forceJson = false
+): Promise<{ text: string; promptTokens: number; completionTokens: number }> {
+  const messages: any[] = [];
+  if (systemInstruction) {
+    messages.push({ role: 'system', content: systemInstruction });
+  }
+  messages.push({ role: 'user', content: prompt });
+
+  const effectiveModel = model || 'deepseek/deepseek-chat';
+
+  const body: any = {
+    model: effectiveModel,
+    messages,
+    temperature: 0.3
+  };
+  if (forceJson) {
+    body.response_format = { type: 'json_object' };
+  }
+
+  const res = await fetch('https://openrouter.ai/api/v1/chat/completions', {
+    method: 'POST',
+    headers: {
+      'Content-Type': 'application/json',
+      'Authorization': `Bearer ${openrouterKey}`,
+      'HTTP-Referer': 'https://vikingmester.no',
+      'X-Title': 'VikingMester MesterAI'
+    },
+    body: JSON.stringify(body),
+    signal: AbortSignal.timeout(60000)
+  });
+
+  if (!res.ok) {
+    const errText = await res.text().catch(() => '');
+    throw new Error(`OpenRouter feilet med HTTP ${res.status}: ${errText.slice(0, 200)}`);
   }
 
   const data = await res.json();
@@ -599,12 +693,16 @@ async function callDeepSeekBackup(
 
 /**
  * HOVEDFUNKSJON: generateWithAiEngine
- * Prioriterer 1_MIN_AI som hovedmotor med automatisk failover til Gemini API backup.
+ * Intelligent flermodell-motor som velger optimal modell med automatisk failover:
+ * 1. 1min.AI / Gemini med Google Search Grounding ved nettsøk
+ * 2. DeepSeek direct / OpenRouter hvis eksplisitt konfigurert
+ * 3. Automatisk failover mellom 1min.AI, Gemini og DeepSeek
  */
 export async function generateWithAiEngine(options: GenerateAiOptions): Promise<AiEngineResult> {
   let oneMinKey = options.apiKey || get1MinAiKey();
   let geminiKey = getGeminiKey();
-  const deepseekKey = getDeepSeekKey();
+  let deepseekKey = getDeepSeekKey();
+  let openrouterKey = getOpenRouterKey();
 
   if (!oneMinKey) {
     oneMinKey = await getStoredAiKey('1min.ai');
@@ -612,9 +710,15 @@ export async function generateWithAiEngine(options: GenerateAiOptions): Promise<
   if (!geminiKey) {
     geminiKey = await getStoredAiKey('gemini');
   }
+  if (!deepseekKey) {
+    deepseekKey = await getStoredAiKey('deepseek');
+  }
+  if (!openrouterKey) {
+    openrouterKey = await getStoredAiKey('openrouter');
+  }
 
-  if (!oneMinKey && !geminiKey && !deepseekKey) {
-    throw new Error('Ingen AI-nøkkel (verken 1_MIN_AI eller GEMINI_API_KEY) er konfigurert på serveren eller i innstillingene.');
+  if (!oneMinKey && !geminiKey && !deepseekKey && !openrouterKey) {
+    throw new Error('Ingen AI-nøkkel (verken 1_MIN_AI, GEMINI_API_KEY, DEEPSEEK_API_KEY eller OPENROUTER_API_KEY) er konfigurert på serveren eller i innstillingene.');
   }
 
   const promptText = typeof options.prompt === 'string'
@@ -631,6 +735,68 @@ export async function generateWithAiEngine(options: GenerateAiOptions): Promise<
   }
   if (options.inlineData) {
     imagesToProcess.push({ inlineData: options.inlineData });
+  }
+
+  // Hvis eksplisitt DeepSeek er bedt om og IKKE krever nettsøk:
+  if (options.model?.toLowerCase().includes('deepseek') && !options.webSearch) {
+    if (deepseekKey) {
+      try {
+        const dsModel = options.model.includes('reasoner') || options.model.includes('r1') ? 'deepseek-reasoner' : 'deepseek-chat';
+        const res = await callDeepSeekDirect(deepseekKey, dsModel, promptText, options.systemInstruction, isJsonExpected);
+        trackTokenCost({
+          model: dsModel,
+          promptTokens: res.promptTokens,
+          completionTokens: res.completionTokens,
+          operation: options.operation || 'ai_generate_deepseek_direct',
+          companyId: options.companyId,
+          companyName: options.companyName,
+          projectId: options.projectId,
+          notes: options.notes || `DeepSeek Direct (${dsModel})`,
+          service: 'gemini'
+        }).catch(() => {});
+
+        return {
+          text: res.text,
+          source: 'deepseek_direct',
+          model: dsModel,
+          usage: {
+            promptTokens: res.promptTokens,
+            completionTokens: res.completionTokens,
+            totalTokens: res.promptTokens + res.completionTokens
+          }
+        };
+      } catch (dsErr: any) {
+        console.warn(`[AI Engine] DeepSeek Direct feilet (${dsErr.message}), prøver 1min/Gemini...`);
+      }
+    } else if (openrouterKey) {
+      try {
+        const res = await callOpenRouter(openrouterKey, options.model || 'deepseek/deepseek-chat', promptText, options.systemInstruction, isJsonExpected);
+        trackTokenCost({
+          model: options.model || 'deepseek/deepseek-chat',
+          promptTokens: res.promptTokens,
+          completionTokens: res.completionTokens,
+          operation: options.operation || 'ai_generate_openrouter',
+          companyId: options.companyId,
+          companyName: options.companyName,
+          projectId: options.projectId,
+          notes: options.notes || `OpenRouter (${options.model})`,
+          service: 'gemini'
+        }).catch(() => {});
+
+        return {
+          text: res.text,
+          source: 'openrouter',
+          model: options.model || 'deepseek/deepseek-chat',
+          usage: {
+            promptTokens: res.promptTokens,
+            completionTokens: res.completionTokens,
+            totalTokens: res.promptTokens + res.completionTokens
+          }
+        };
+      } catch (orErr: any) {
+        console.warn(`[AI Engine] OpenRouter feilet (${orErr.message}), prøver 1min/Gemini...`);
+      }
+    }
   }
 
   // ==========================================================================
@@ -692,7 +858,7 @@ export async function generateWithAiEngine(options: GenerateAiOptions): Promise<
   }
 
   // ==========================================================================
-  // 2. SIKKERHETSNETT / BACKUP: Google Gemini API
+  // 2. SIKKERHETSNETT / BACKUP: Google Gemini API (inkl. Google Search Grounding)
   // ==========================================================================
   if (geminiKey) {
     try {
@@ -735,17 +901,17 @@ export async function generateWithAiEngine(options: GenerateAiOptions): Promise<
   }
 
   // ==========================================================================
-  // 3. TERTIÆR BACKUP: DeepSeek API
+  // 3. TERTIÆR BACKUP: DeepSeek API Direct
   // ==========================================================================
   if (deepseekKey) {
     try {
-      const chosenDsModel = options.model?.startsWith('deepseek') ? options.model : 'deepseek-flash';
-      const res = await callDeepSeekBackup(
+      const chosenDsModel = options.model?.includes('reasoner') || options.model?.includes('r1') ? 'deepseek-reasoner' : 'deepseek-chat';
+      const res = await callDeepSeekDirect(
         deepseekKey,
+        chosenDsModel,
         promptText,
         options.systemInstruction,
-        isJsonExpected,
-        chosenDsModel
+        isJsonExpected
       );
 
       trackTokenCost({
@@ -775,7 +941,48 @@ export async function generateWithAiEngine(options: GenerateAiOptions): Promise<
     }
   }
 
-  throw new Error('Alle AI-motorer (1min.AI, Gemini backup og DeepSeek) feilet eller er utilgjengelige.');
+  // ==========================================================================
+  // 4. KVARTER BACKUP: OpenRouter API
+  // ==========================================================================
+  if (openrouterKey) {
+    try {
+      const chosenModel = options.model || 'deepseek/deepseek-chat';
+      const res = await callOpenRouter(
+        openrouterKey,
+        chosenModel,
+        promptText,
+        options.systemInstruction,
+        isJsonExpected
+      );
+
+      trackTokenCost({
+        model: chosenModel,
+        promptTokens: res.promptTokens,
+        completionTokens: res.completionTokens,
+        operation: options.operation || 'ai_generate_openrouter_backup',
+        companyId: options.companyId,
+        companyName: options.companyName,
+        projectId: options.projectId,
+        notes: options.notes || `OpenRouter backup (${chosenModel})`,
+        service: 'gemini'
+      }).catch(() => {});
+
+      return {
+        text: res.text,
+        source: 'openrouter',
+        model: chosenModel,
+        usage: {
+          promptTokens: res.promptTokens,
+          completionTokens: res.completionTokens,
+          totalTokens: res.promptTokens + res.completionTokens
+        }
+      };
+    } catch (orErr: any) {
+      console.warn(`[AI Engine] OpenRouter backup feilet (${orErr.message}).`);
+    }
+  }
+
+  throw new Error('Alle AI-motorer (1min.AI, Gemini, DeepSeek og OpenRouter) feilet eller er utilgjengelige.');
 }
 
 /**
