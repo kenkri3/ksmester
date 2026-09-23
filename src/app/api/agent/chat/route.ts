@@ -718,7 +718,19 @@ Når brukeren ber deg sende en eller flere e-poster (tilbud, endring, varsel, FD
 - Bruk alltid doble linjeskift mellom avsnitt for god luftighet.
 - Bruk punktlister med bindestrek (-) for opplistinger og krav.
 - Bruk fete overskrifter (f.eks. **Krav:** eller ### 🛡️ HMS-tiltak) for å skille temaer.
-- ALDRI svar med en eneste sammenklemt tekstblokk.`;
+- ALDRI svar med en eneste sammenklemt tekstblokk.
+
+🔗 KLIKKBARE KILDELENKER & DOKUMENTASJON (OBLIGATORISK):
+Når du gir faglige råd, oppgir priser, svarer på nettsøk eller henviser til lover, TEK17, forskrifter og leverandører:
+Skal du ALLTID legge ved klikkbare kildelenker i markdown-format: [Kildens tittel](https://adresse.no).
+Avslutt svaret med en dedikert seksjon:
+### 🌐 Kilder & Dokumentasjon
+- [DiBK Byggteknisk forskrift (TEK17)](https://dibk.no/byggereglene/tek17/) - Forskrift om tekniske krav til byggverk
+- [Lovdata - Byggherreforskriften](https://lovdata.no/dokument/SF/forskrift/2009-08-03-1028) - Krav til sikkerhet, helse og arbeidsmiljø (SHA)
+- [SINTEF Byggforsk Kunnskapssystemer](https://www.byggforsk.no) - Anbefalte løsninger og våtromsnormen
+- [Arbeidstilsynet](https://www.arbeidstilsynet.no) - HMS, stillas og personlig verneutstyr
+- [Standard Norge (NS 8406)](https://standard.no) - Forenklet norsk bygge- og anleggskontrakt
+- Reelle lenker fra nettsøk til leverandører (f.eks. Optimera, Maxbo) eller lokale arrangementssider ved dagsaktuelle oppslag.`;
 
     let replyText = '';
     const quickReplies: Array<{ title: string; payload: string }> = [];

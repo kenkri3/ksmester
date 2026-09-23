@@ -246,6 +246,101 @@ export default function MesterWorkstation({
     return s === 'avvist' || s === 'avslått' || s === 'rejected';
   };
 
+  const getThinkingSteps = (query: string) => {
+    const lower = (query || '').toLowerCase();
+    
+    if (
+      lower.includes('søk') || 
+      lower.includes('helg') || 
+      lower.includes('hva skjer') || 
+      lower.includes('google') || 
+      lower.includes('nettsøk') || 
+      lower.includes('nyheter') || 
+      lower.includes('arrangement') || 
+      lower.includes('konsert') ||
+      lower.includes('festival') ||
+      lower.includes('åpningstid')
+    ) {
+      return [
+        { id: 1, title: 'Definerer søkeintensjon og nøkkelord', time: 0 },
+        { id: 2, title: 'Søker i sanntidskilder på nettet', time: 2 },
+        { id: 3, title: 'Analyserer og kryssjekker ferske treff', time: 5 },
+        { id: 4, title: 'Strukturerer svar med verifiserte kilder', time: 8 }
+      ];
+    }
+
+    if (
+      lower.includes('tilbud') || 
+      lower.includes('kalkyle') || 
+      lower.includes('pris') || 
+      lower.includes('kostnad') || 
+      lower.includes('materiell') || 
+      lower.includes('gips')
+    ) {
+      return [
+        { id: 1, title: 'Kartlegger oppdragsbeskrivelse og omfang', time: 0 },
+        { id: 2, title: 'Beregner materialbehov og enhetspriser', time: 2 },
+        { id: 3, title: 'Estimerer timeforbruk iht. bransjestandard', time: 5 },
+        { id: 4, title: 'Utarbeider komplett kalkyle og tilbudsutkast', time: 8 }
+      ];
+    }
+
+    if (
+      lower.includes('sja') || 
+      lower.includes('sikkerhet') || 
+      lower.includes('hms') || 
+      lower.includes('risiko') || 
+      lower.includes('vern') ||
+      lower.includes('stillas') ||
+      lower.includes('fallsikring')
+    ) {
+      return [
+        { id: 1, title: 'Kartlegger arbeidsoppgaver og risikofaktorer', time: 0 },
+        { id: 2, title: 'Konsulterer Byggherreforskriften og HMS-krav', time: 2 },
+        { id: 3, title: 'Definerer forebyggende sikringstiltak og PVU', time: 5 },
+        { id: 4, title: 'Ferdigstiller godkjent Sikker Jobb Analyse (SJA)', time: 8 }
+      ];
+    }
+
+    if (
+      lower.includes('endring') || 
+      lower.includes('ns 8406') || 
+      lower.includes('ns8406') || 
+      lower.includes('varsel') || 
+      lower.includes('tillegg') ||
+      lower.includes('krav')
+    ) {
+      return [
+        { id: 1, title: 'Vurderer varslingsplikt og frister iht. NS 8406', time: 0 },
+        { id: 2, title: 'Beregner konsekvens for fremdrift og vederlag', time: 2 },
+        { id: 3, title: 'Formulerer formelt endringsvarsel for byggherre', time: 5 },
+        { id: 4, title: 'Klargjør dokumentasjon og utsendelsesgrunnlag', time: 8 }
+      ];
+    }
+
+    if (
+      lower.includes('dagbok') || 
+      lower.includes('time') || 
+      lower.includes('timer') || 
+      lower.includes('vær') ||
+      lower.includes('bemanningsliste')
+    ) {
+      return [
+        { id: 1, title: 'Henter gjeldende prosjektdata og sanntidsvær', time: 0 },
+        { id: 2, title: 'Registrerer timefordeling og ressursbruk', time: 2 },
+        { id: 3, title: 'Dokumenterer arbeidsforhold og fremdrift', time: 5 },
+        { id: 4, title: 'Ferdigstiller oppføring i byggedagboken', time: 8 }
+      ];
+    }
+
+    return [
+      { id: 1, title: 'Analyserer henvendelse og byggeplasskontekst', time: 0 },
+      { id: 2, title: 'Konsulterer TEK17 og relevante bransjestandarder', time: 2 },
+      { id: 3, title: 'Utarbeider faglig vurdering og løsningsforslag', time: 5 },
+      { id: 4, title: 'Kvalitetssikrer og ferdigstiller komplett svar', time: 8 }
+    ];
+  };
+
   const projectChangeOrders = useMemo(() => {
     if (!selectedProject) return changeOrders;
     return changeOrders.filter(co => {
@@ -266,8 +361,9 @@ export default function MesterWorkstation({
     ? projectChangeOrders
     : changeOrders;
 
-  // ⏱️ Tenketimer for MesterAI
+  // ⏱️ Tenketimer og aktiv henvendelse for MesterAI
   const [activeThinkingDuration, setActiveThinkingDuration] = useState(0);
+  const [activeThinkingQuery, setActiveThinkingQuery] = useState('');
   const thinkingTimerRef = useRef<any>(null);
 
   // 📱 Gemini Mobile Experience State
@@ -1210,6 +1306,7 @@ export default function MesterWorkstation({
     const activeProjId = currentProj?.id || undefined;
 
     setActiveThinkingDuration(0);
+    setActiveThinkingQuery(textToSend.trim() || userMessage.content || '');
     setIsLoading(true);
 
     if (thinkingTimerRef.current) clearInterval(thinkingTimerRef.current);
@@ -1303,6 +1400,7 @@ export default function MesterWorkstation({
       setMessages(prev => [...prev, errMsg]);
     } finally {
       setIsLoading(false);
+      setActiveThinkingQuery('');
     }
   };
 
@@ -4215,6 +4313,18 @@ export default function MesterWorkstation({
                                 ),
                                 td: ({ node, ...props }) => (
                                   <td className="p-3 text-slate-300 border-b border-slate-800/50" {...props} />
+                                ),
+                                a: ({ node, href, children, ...props }: any) => (
+                                  <a
+                                    href={href}
+                                    target="_blank"
+                                    rel="noopener noreferrer"
+                                    className="inline-flex items-center gap-1.5 text-purple-300 hover:text-white bg-purple-500/15 hover:bg-purple-500/25 px-2.5 py-1 rounded-lg border border-purple-500/30 transition-all font-semibold text-xs no-underline group shadow-xs my-0.5 cursor-pointer"
+                                    {...props}
+                                  >
+                                    <ExternalLink size={12} className="text-purple-400 group-hover:text-purple-300 shrink-0" />
+                                    <span className="underline decoration-purple-400/40 group-hover:decoration-white">{children}</span>
+                                  </a>
                                 )
                               }}
                             >
@@ -4264,21 +4374,64 @@ export default function MesterWorkstation({
                     </div>
                   ))}
 
-                  {/* ✦ Clean & Honest Loading Indicator */}
+                  {/* ✦ Clean & Honest Loading Indicator med levende trinn-for-trinn fremdrift */}
                   {isLoading && (
-                    <div className="mr-auto inline-flex items-center gap-3 px-4 py-2.5 rounded-2xl bg-slate-900/95 border border-purple-500/30 shadow-xl animate-in fade-in duration-200">
-                      <div className="relative flex items-center justify-center">
-                        <RefreshCw size={14} className="animate-spin text-purple-400" />
-                        <span className="absolute w-2 h-2 rounded-full bg-purple-400 animate-ping opacity-40" />
+                    <div className="mr-auto w-full max-w-md rounded-2xl bg-slate-900/95 border border-purple-500/30 p-4 shadow-2xl backdrop-blur-xl animate-in fade-in duration-200 my-2">
+                      <div className="flex items-center justify-between pb-2.5 border-b border-white/10 mb-3">
+                        <div className="flex items-center gap-2.5">
+                          <div className="relative flex items-center justify-center">
+                            <Sparkles size={15} className="text-purple-400 animate-pulse" />
+                            <span className="absolute w-2.5 h-2.5 rounded-full bg-purple-400/40 animate-ping" />
+                          </div>
+                          <span className="text-xs font-bold text-white tracking-wide">
+                            MesterAI arbeider med oppgaven...
+                          </span>
+                        </div>
+                        {activeThinkingDuration > 0 && (
+                          <span className="text-[11px] font-mono font-bold text-purple-300 bg-purple-500/20 px-2.5 py-0.5 rounded-full border border-purple-500/30">
+                            {activeThinkingDuration}s
+                          </span>
+                        )}
                       </div>
-                      <span className="text-xs font-medium text-slate-200">
-                        MesterAI tenker og formulerer svar...
-                      </span>
-                      {activeThinkingDuration > 0 && (
-                        <span className="text-[11px] font-mono text-purple-400/90 font-bold bg-purple-500/10 px-2 py-0.5 rounded-full border border-purple-500/20">
-                          {activeThinkingDuration}s
-                        </span>
-                      )}
+
+                      {/* Punktvis fremdriftsliste */}
+                      <div className="space-y-2">
+                        {getThinkingSteps(activeThinkingQuery).map((step, idx, arr) => {
+                          const isDone = activeThinkingDuration >= (arr[idx + 1]?.time ?? 99);
+                          const isActive = !isDone && activeThinkingDuration >= step.time;
+
+                          return (
+                            <div 
+                              key={step.id} 
+                              className={`flex items-center gap-2.5 text-xs transition-all duration-300 ${
+                                isDone 
+                                  ? 'text-emerald-400 font-medium' 
+                                  : isActive 
+                                  ? 'text-white font-semibold' 
+                                  : 'text-slate-500 opacity-50'
+                              }`}
+                            >
+                              {isDone ? (
+                                <div className="w-4 h-4 rounded-full bg-emerald-500/20 text-emerald-400 border border-emerald-500/40 flex items-center justify-center shrink-0">
+                                  <Check size={10} strokeWidth={3} />
+                                </div>
+                              ) : isActive ? (
+                                <div className="w-4 h-4 rounded-full bg-purple-500/20 text-purple-400 border border-purple-500/40 flex items-center justify-center shrink-0">
+                                  <RefreshCw size={10} className="animate-spin" />
+                                </div>
+                              ) : (
+                                <div className="w-4 h-4 rounded-full bg-slate-800 border border-slate-700 flex items-center justify-center shrink-0">
+                                  <span className="w-1.5 h-1.5 rounded-full bg-slate-600" />
+                                </div>
+                              )}
+                              <span className="flex-1 truncate">
+                                {step.title}
+                                {isActive && '...'}
+                              </span>
+                            </div>
+                          );
+                        })}
+                      </div>
                     </div>
                   )}
 
