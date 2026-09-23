@@ -23,29 +23,72 @@ export async function POST(req: NextRequest) {
       }, { status: 429 });
     }
 
-    const body = await req.json().catch(() => ({}));
+    // 🛡️ Hent parametere fra URL, JSON body eller form-data
+    let body: any = {};
+    const contentType = req.headers.get('content-type') || '';
+    if (contentType.includes('application/x-www-form-urlencoded') || contentType.includes('multipart/form-data')) {
+      const formData = await req.formData().catch(() => null);
+      if (formData) {
+        formData.forEach((val, key) => { body[key] = typeof val === 'string' ? val : val.name; });
+      }
+    } else {
+      body = await req.json().catch(() => ({}));
+    }
+
     const authHeader = req.headers.get('authorization') || '';
     const token = authHeader.replace(/^Bearer\s+/i, '').trim();
-    const providedKey = body.bot_key || body.apiKey || token;
+    const queryKey = req.nextUrl.searchParams.get('bot_key') || req.nextUrl.searchParams.get('apiKey') || req.nextUrl.searchParams.get('key');
+    const providedKey = body.bot_key || body.apiKey || token || queryKey;
 
     // Autentisering: Enten gyldig bot_key, intern hemmelighet, eller innlogget bruker
-    const isBotAuthorized = providedKey && (providedKey === BOT_API_KEY || providedKey === process.env.AGENT_API);
+    const isBotAuthorized = Boolean(providedKey && (providedKey === BOT_API_KEY || providedKey === process.env.AGENT_API));
     const isUserAuthorized = Boolean(getUserFromRequest(req)) || verifyCronOrInternalSecret(req);
 
     if (!isBotAuthorized && !isUserAuthorized) {
       return NextResponse.json({
         success: false,
         error: 'Uautorisert. Vennligst oppgi gyldig bot_key eller API-nøkkel.',
-        messages: [{ message: { text: '⛔ Uautorisert tilgang til e-posttjenesten.' } }]
+        messages: [{ message: { text: '⛔ Uautorisert tilgang til e-posttjenesten. Mangler gyldig bot_key.' } }]
       }, { status: 401 });
     }
 
-    const recipient = (body.to || body.recipient || body.email || body.user_email || '').trim();
-    const subject = (body.subject || body.title || body.emne || 'Beskjed fra håndverker').trim();
-    const messageText = (body.text || body.message || body.body || body.content || body.tekst || '').trim();
-    const company = (body.companyName || body.company || 'Viking Entreprenør AS').trim();
-    const author = (body.authorName || body.userName || 'Byggmester').trim();
-    const projectName = body.projectName || 'Byggeprosjekt';
+    const recipient = (
+      body.to || 
+      body.recipient || 
+      body.email || 
+      body.user_email || 
+      body.client_email || 
+      body.customer_email || 
+      req.nextUrl.searchParams.get('to') || 
+      req.nextUrl.searchParams.get('email') || 
+      ''
+    ).trim();
+
+    const subject = (
+      body.subject || 
+      body.title || 
+      body.emne || 
+      req.nextUrl.searchParams.get('subject') || 
+      req.nextUrl.searchParams.get('emne') || 
+      'Beskjed fra håndverker'
+    ).trim();
+
+    const messageText = (
+      body.text || 
+      body.message || 
+      body.body || 
+      body.content || 
+      body.tekst || 
+      body.msg || 
+      body.description || 
+      req.nextUrl.searchParams.get('message') || 
+      req.nextUrl.searchParams.get('text') || 
+      ''
+    ).trim();
+
+    const company = (body.companyName || body.company || req.nextUrl.searchParams.get('company') || 'Viking Entreprenør AS').trim();
+    const author = (body.authorName || body.userName || req.nextUrl.searchParams.get('author') || 'Byggmester').trim();
+    const projectName = body.projectName || req.nextUrl.searchParams.get('projectName') || 'Byggeprosjekt';
 
     if (!recipient) {
       return NextResponse.json({
@@ -81,13 +124,13 @@ export async function POST(req: NextRequest) {
       ? `✅ E-post er nå sendt til ${recipient} via Resend!\nEmne: «${subject}»\nMeldings-ID: ${sendRes.resendId || 'ok'}`
       : `⚠️ Kunne ikke levere e-post til ${recipient}: ${sendRes.message || sendRes.error}`;
 
+    // Returner 200 slik at Botsify JSON API plugin alltid viser meldingen til brukeren
     return NextResponse.json({
       success: isSent,
       id: sendRes.id,
       resendId: sendRes.resendId,
       status: sendRes.status,
       message: sendRes.message,
-      // Botsify JSON API plugin viser automatisk innholdet i messages-arrayet til brukeren
       messages: [
         {
           message: {
@@ -95,7 +138,7 @@ export async function POST(req: NextRequest) {
           }
         }
       ]
-    }, { status: isSent ? 200 : 502 });
+    }, { status: 200 });
 
   } catch (error: any) {
     console.error('Agent email webhook error:', error);

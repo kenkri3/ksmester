@@ -1,4 +1,5 @@
 import { getCollectionItems, saveCollectionItem, updateCollectionItem } from './db';
+import { sendChangeOrderByEmail, sendOfferByEmail } from './emailSender';
 
 export interface PendingAction {
   id: string;
@@ -223,8 +224,29 @@ export async function approveAction(actionId: string, approvedBy: string = 'Bygg
 
   // 2. Endringsordre godkjenning (NS 8406)
   if (action.type === 'change_order_draft') {
+    let clientEmail = action.data?.clientEmail || action.data?.customerEmail || action.data?.email;
+    let clientName = action.data?.clientName || action.data?.customerName;
+    let companyName = action.data?.companyName;
+
+    // Hvis e-post mangler i handlingen, slå opp prosjektet for å finne kunden
+    if (!clientEmail && action.projectId) {
+      try {
+        const projects = await getCollectionItems('projects');
+        const proj = projects.find((p: any) => p.id === action.projectId);
+        if (proj) {
+          clientEmail = proj.clientEmail || proj.customerEmail || proj.contactEmail;
+          clientName = clientName || proj.clientName || proj.customerName;
+          companyName = companyName || proj.companyName;
+        }
+      } catch (e) {
+        console.warn('[autonomousAgent] Kunne ikke hente prosjekt for klient-epost:', e);
+      }
+    }
+
     const changeOrderData = {
       ...action.data,
+      clientEmail,
+      clientName,
       status: 'approved',
       approvedBy,
       approvedAt: now
@@ -237,21 +259,117 @@ export async function approveAction(actionId: string, approvedBy: string = 'Bygg
       approvedAt: now
     });
 
+    let emailNotice = '';
+    if (clientEmail) {
+      try {
+        const emailRes = await sendChangeOrderByEmail({
+          changeOrder: changeOrderData,
+          clientEmail,
+          clientName,
+          companyName,
+          authorName: approvedBy
+        });
+        if (emailRes.success) {
+          emailNotice = ` og automatisk sendt på e-post til ${clientEmail} (Resend ID: ${emailRes.resendId || emailRes.id}).`;
+        } else {
+          emailNotice = ` (Merk: E-post ble ikke levert: ${emailRes.message || emailRes.error || 'Ukjent feil'})`;
+        }
+      } catch (err: any) {
+        console.error('[autonomousAgent] Kunne ikke sende endringsordre på e-post:', err);
+        emailNotice = ` (Feil ved e-postsending: ${err.message})`;
+      }
+    }
+
     await saveCollectionItem('agent_activities', {
       type: 'change_order_approved',
       title: `Endringsordre godkjent: ${action.title}`,
-      description: `Endringsordre på kr ${(changeOrderData.totalAmount || action.impactAmount || 0).toLocaleString('no-NO')} eks mva godkjent for utsendelse.`,
+      description: `Endringsordre på kr ${(changeOrderData.totalAmount || action.impactAmount || 0).toLocaleString('no-NO')} eks mva godkjent for utsendelse${emailNotice}.`,
       projectId: action.projectId,
       projectName: action.projectName,
-      badge: 'NS 8406 GODKJENT',
+      badge: emailNotice.includes('automatisk sendt') ? 'NS 8406 SENDT' : 'NS 8406 GODKJENT',
       status: 'approved',
       createdAt: now
     });
 
     return {
       success: true,
-      message: `Endringsordre ${action.title} er godkjent og klargjort for utsendelse til kunde.`,
+      message: `Endringsordre ${action.title} er godkjent og klargjort for utsendelse til kunde${emailNotice}.`,
       data: changeOrderData
+    };
+  }
+
+  // 3. Pristilbud godkjenning
+  if (action.type === 'offer_draft') {
+    let clientEmail = action.data?.clientEmail || action.data?.customerEmail || action.data?.email;
+    let clientName = action.data?.clientName || action.data?.customerName;
+    let companyName = action.data?.companyName;
+
+    if (!clientEmail && action.projectId) {
+      try {
+        const projects = await getCollectionItems('projects');
+        const proj = projects.find((p: any) => p.id === action.projectId);
+        if (proj) {
+          clientEmail = proj.clientEmail || proj.customerEmail || proj.contactEmail;
+          clientName = clientName || proj.clientName || proj.customerName;
+          companyName = companyName || proj.companyName;
+        }
+      } catch (e) {
+        console.warn('[autonomousAgent] Kunne ikke hente prosjekt for klient-epost:', e);
+      }
+    }
+
+    const offerData = {
+      ...action.data,
+      clientEmail,
+      clientName,
+      status: 'approved',
+      approvedBy,
+      approvedAt: now
+    };
+    await saveCollectionItem('offers', offerData);
+
+    await updateCollectionItem('pending_actions', actionId, {
+      status: 'approved',
+      approvedBy,
+      approvedAt: now
+    });
+
+    let emailNotice = '';
+    if (clientEmail) {
+      try {
+        const emailRes = await sendOfferByEmail({
+          offer: offerData,
+          clientEmail,
+          clientName,
+          companyName,
+          authorName: approvedBy
+        });
+        if (emailRes.success) {
+          emailNotice = ` og automatisk oversendt på e-post til ${clientEmail} (Resend ID: ${emailRes.resendId || emailRes.id}).`;
+        } else {
+          emailNotice = ` (Merk: E-post ble ikke levert: ${emailRes.message || emailRes.error || 'Ukjent feil'})`;
+        }
+      } catch (err: any) {
+        console.error('[autonomousAgent] Kunne ikke sende tilbud på e-post:', err);
+        emailNotice = ` (Feil ved e-postsending: ${err.message})`;
+      }
+    }
+
+    await saveCollectionItem('agent_activities', {
+      type: 'offer_approved',
+      title: `Pristilbud godkjent: ${action.title}`,
+      description: `Pristilbud på kr ${(offerData.totalAmount || action.impactAmount || 0).toLocaleString('no-NO')} godkjent${emailNotice}.`,
+      projectId: action.projectId,
+      projectName: action.projectName,
+      badge: emailNotice.includes('automatisk oversendt') ? 'TILBUD SENDT' : 'TILBUD GODKJENT',
+      status: 'approved',
+      createdAt: now
+    });
+
+    return {
+      success: true,
+      message: `Pristilbud «${action.title}» er godkjent og aktivert${emailNotice}.`,
+      data: offerData
     };
   }
 
@@ -678,6 +796,9 @@ export async function runAutonomousAuditCycle(): Promise<{
           id: `co-auto-${Date.now()}`,
           projectId: te.projectId,
           projectName: proj.name,
+          clientEmail: proj.clientEmail || proj.customerEmail || proj.contactEmail || '',
+          clientName: proj.clientName || proj.customerName || '',
+          companyName: proj.companyName || '',
           title: `Tilleggsarbeid detektert: ${te.description}`,
           description: `Håndverker ${te.userName || 'Fagperson'} har registrert ${te.hours} timer med merknad: «${te.description}». Formelt krav om tilleggsvederlag klargjort iht. NS 8406 pkt. 19.2.`,
           amountExVat: Math.round(estimatedAmount),
