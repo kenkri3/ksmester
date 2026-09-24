@@ -353,7 +353,7 @@ export default function CrossTradeCoordinator({ project }: CrossTradeCoordinator
             Tale-til-Endringsordre (NS 8406 / Håndverkertjenesteloven)
           </h3>
           <p className="text-xs text-neutral-500">
-            Gjør muntlige kundeønsker på byggeplassen om til et juridisk bindende endringsvarsel med 1-klikks SMS-godkjenning for kunden.
+            Gjør muntlige kundeønsker på byggeplassen om til et juridisk bindende endringsvarsel med 1-klikks digital godkjenning via e-post, Teams eller Slack.
           </p>
         </div>
 
@@ -430,7 +430,7 @@ export default function CrossTradeCoordinator({ project }: CrossTradeCoordinator
                   onClick={() => copyShareLink(generatedChangeOrder.shareUrl)}
                   className="px-3 py-1.5 bg-white hover:bg-neutral-50 text-neutral-900 border border-neutral-200 rounded-lg font-bold text-xs flex items-center gap-1.5 shadow-xs transition-all"
                 >
-                  <Share2 size={13} /> Kopier godkjenningslenke for SMS
+                  <Share2 size={13} /> Kopier godkjenningslenke (e-post / Teams)
                 </button>
               </div>
             </div>

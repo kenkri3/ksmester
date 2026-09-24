@@ -43,7 +43,7 @@
 |---|---|---|
 | **Tale-til-Byggedagbok** | Snakk inn timer, arbeid utført og materialer på norsk talemål | Henter automatisk vær- og vinddata fra Yr.no API for byggeplassen |
 | **TEK17 AI-Bildevisjon** | Knips bilde av utført arbeid | Datamaskinsyn verifiserer mot TEK17 & Våtromsnormen |
-| **Tale-til-Endringsordre** | Generer juridisk bindende endringsmelding fra tale | Digital signering via SMS/BankID; forhindrer tvister |
+| **Tale-til-Endringsordre** | Generer juridisk bindende endringsmelding fra tale | Digital signering via e-post, Teams eller Slack; forhindrer tvister |
 | **Sikker Jobb Analyse (SJA)** | Rask risikovurdering for farlig arbeid | Sjekklister godkjent for Arbeidstilsynets kontroller |
 | **Digitalt Stoffkartotek** | Sikkerhetsdatablader og verneutstyr lett tilgjengelig | Fungerer 100 % offline på mobilen ute på stillaset |
 | **Tverrfaglig Samhandling** | Felles tidslinje for alle fag i prosjektet | Varsler automatisk elektriker når tømrer har lukket veggen |

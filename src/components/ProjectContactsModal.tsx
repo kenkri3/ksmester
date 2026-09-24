@@ -323,20 +323,14 @@ export default function ProjectContactsModal({
                     <Phone size={14} />
                     <span>Ring</span>
                   </a>
-                  <a
-                    href={`sms:${c.phone.replace(/\s+/g, '')}`}
-                    className="px-3.5 py-2 bg-slate-100 hover:bg-slate-200 text-slate-700 rounded-xl text-xs font-bold flex items-center gap-1.5 transition-all active:scale-95 cursor-pointer"
-                  >
-                    <MessageSquare size={14} />
-                    <span>SMS</span>
-                  </a>
                   {c.email && (
                     <a
                       href={`mailto:${c.email}`}
-                      className="p-2 text-slate-400 hover:text-slate-600 hover:bg-slate-100 rounded-xl transition-all"
+                      className="px-3.5 py-2 bg-blue-600 hover:bg-blue-500 text-white rounded-xl text-xs font-bold flex items-center gap-1.5 transition-all active:scale-95 cursor-pointer"
                       title={c.email}
                     >
-                      <Mail size={16} />
+                      <Mail size={14} />
+                      <span>E-post</span>
                     </a>
                   )}
                 </div>

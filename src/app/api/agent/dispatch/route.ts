@@ -117,7 +117,7 @@ export async function GET(req: NextRequest) {
         name: 'VikingMester Autonom Agent',
         status: 'online',
         email: 'hei@vikingmester.no',
-        channels: ['E-post lytter (hei@vikingmester.no)', 'Tale & Diktering i felt', 'TEK17 Vision-skanner', 'SMS/MMS Gateway'],
+        channels: ['E-post lytter (hei@vikingmester.no)', 'Tale & Diktering i felt', 'TEK17 Vision-skanner', 'Microsoft Teams & Slack Gateway'],
         activeRules: [
           'TEK17 § 13-15 (Vanninstallasjoner & Slukmansjett)',
           'Byggherreforskriften § 15 (Elektronisk Byggedagbok)',

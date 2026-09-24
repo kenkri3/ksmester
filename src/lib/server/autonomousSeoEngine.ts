@@ -7,18 +7,19 @@ export interface SeoArticle {
   slug: string;
   title: string;
   metaDescription: string;
-  category: 'tek17' | 'hms' | 'ns-standard' | 'byggeledelse' | 'fag';
+  category: 'tek17' | 'hms' | 'ns-standard' | 'byggeledelse' | 'fag' | 'regionalt';
   categoryTitle: string;
   contentMarkdown: string;
   faqs: { question: string; answer: string }[];
   targetKeywords: string[];
   readTimeMinutes: number;
   author: string;
+  region?: string;
   createdAt: string;
   updatedAt: string;
 }
 
-// ── INTERNAL LINK DICTIONARY (PageRank Sculpting) ─────────────
+// ── INTERNAL LINK DICTIONARY (PageRank Sculpting i Norge) ─────────────
 const INTERNAL_LINKS = [
   { term: 'kvalitetssikring', url: '/ks-system' },
   { term: 'KS-system', url: '/ks-system' },
@@ -35,12 +36,16 @@ const INTERNAL_LINKS = [
   { term: 'for elektrikere', url: '/for/elektriker' },
   { term: 'for murere', url: '/for/murer' },
   { term: 'for malere', url: '/for/maler' },
+  { term: 'prosjektstyring', url: '/prosjektstyring' },
+  { term: 'priser', url: '/priser' },
+  { term: 'avvikskontroll', url: '/avvikshandtering' },
+  { term: 'våtromsnormen', url: '/verktoy/fall-kalkulator-tek17' }
 ];
 
 export function injectInternalLinks(markdown: string): string {
   let result = markdown;
   for (const { term, url } of INTERNAL_LINKS) {
-    // Only replace the first occurrence that is NOT already inside a markdown link [text](url)
+    // Erstatt første forekomst som ikke allerede er del av en lenke
     const regex = new RegExp(`(?<!\\[)(?<!/)\\b(${term})\\b(?!\\])(?![^\\(]*\\))`, 'i');
     if (regex.test(result)) {
       result = result.replace(regex, `[$1](${url})`);
@@ -49,7 +54,7 @@ export function injectInternalLinks(markdown: string): string {
   return result;
 }
 
-// ── SEEDED EVERGREEN ARTICLES (Active from Day 1) ─────────────
+// ── SEEDED EVERGREEN ARTICLES (Aktive fra dag 1) ─────────────
 export const SEEDED_ARTICLES: SeoArticle[] = [
   {
     id: 'art-tek17-fall-sluk',
@@ -61,15 +66,15 @@ export const SEEDED_ARTICLES: SeoArticle[] = [
     readTimeMinutes: 5,
     author: 'VikingMester Byggfag-redaksjon',
     createdAt: '2026-09-01T08:00:00Z',
-    updatedAt: '2026-09-10T12:00:00Z',
-    targetKeywords: ['TEK17 fall mot sluk', 'oppkant våtrom dørterskel', 'BVN 31.205', 'slukmansjett klemring'],
+    updatedAt: '2026-09-24T12:00:00Z',
+    targetKeywords: ['TEK17 fall mot sluk', 'oppkant våtrom dørterskel', 'BVN 31.205', 'slukmansjett klemring', 'våtrom takst feil'],
     faqs: [
       {
         question: 'Hva er preakseptert fall til sluk i dusjsonen?',
         answer: 'I en radius på minst 0,8 meter fra sluket skal fallet være minst 1:50 (20 mm per meter). For resten av gulvet er kravet minst 1:100 (10 mm per meter).'
       },
       {
-        question: 'Er det lov med flatt gulv utenfor dusjsonen?',
+        question: 'Er det lov med flatt gulv utenfor dusjsonen i Norge?',
         answer: 'Ja, forutsatt at dusjsonen er nedsenket med minst 15 mm i forhold til det øvrige gulvet, og det er fall mot sluk i nedsenkingen.'
       },
       {
@@ -78,7 +83,7 @@ export const SEEDED_ARTICLES: SeoArticle[] = [
       }
     ],
     contentMarkdown: `
-## Innledning: Hvorfor fall på våtrom er byggebransjens største reklamasjonsfelle
+## Innledning: Hvorfor fall på våtrom er byggebransjens største reklamasjonsfelle i Norge
 
 Feil fall mot sluk og manglende oppkant ved døråpning er den hyppigste årsaken til tvister ved eierskifte, tilstandsrapporter og rettstvister på nyoppførte eller rehabiliterte bad i Norge.
 
@@ -87,7 +92,7 @@ Byggteknisk forskrift (TEK17 § 13-15) fastslår at:
 
 ---
 
-## 1. Preaksepterte ytelser for fall mot sluk
+## 1. Preaksepterte ytelser for fall mot sluk i Norge
 
 For å oppfylle forskriften uten avansert analyse kan utførende følge Direktoratet for byggkvalitet (DiBK) sine preaksepterte ytelser:
 
@@ -130,7 +135,7 @@ Når sluk, påstøp og membran er ferdig, krever Plan- og bygningsloven at utfø
     readTimeMinutes: 6,
     author: 'VikingMester Entreprise-advokat',
     createdAt: '2026-09-02T08:00:00Z',
-    updatedAt: '2026-09-10T12:00:00Z',
+    updatedAt: '2026-09-24T12:00:00Z',
     targetKeywords: ['NS 8406 endringsvarsel', 'uten ugrunnet opphold frist', 'NS 8406 pkt 19.2', 'preklusjon tilleggsarbeid'],
     faqs: [
       {
@@ -138,8 +143,8 @@ Når sluk, påstøp og membran er ferdig, krever Plan- og bygningsloven at utfø
         answer: 'Standarden krever skriftlig varsel «uten ugrunnet opphold». I praksis betyr det at varselet bør sendes innen 3–7 dager etter at behovet for tilleggsarbeid oppstod.'
       },
       {
-        question: 'Holder det med en SMS eller en e-post?',
-        answer: 'Ja, e-post og SMS regnes som skriftlig, men det kreves at varselet spesifiserer hva endringen går ut på og at det kreves justering av vederlag eller frist.'
+        question: 'Holder det med en skriftlig melding eller e-post?',
+        answer: 'Ja, e-post og digitale meldinger regnes som skriftlig, men det kreves at varselet spesifiserer hva endringen går ut på og at det kreves justering av vederlag eller frist.'
       },
       {
         question: 'Kan byggherre nekte å betale hvis varselet kom for sent?',
@@ -184,21 +189,21 @@ Kravet til «uten ugrunnet opphold» er en rettslig standard. Det innebærer:
 VikingMester er utviklet nettopp for å eliminere denne risikoen:
 1. **Snakk inn endringen:** Når kunden ber om noe ekstra, trykker du på mikrofonen på mobilen.
 2. **Automatisk juridisk utforming:** Systemet genererer et formelt varsel med korrekt henvisning til NS 8406 pkt. 19.2 og beregner time- og materialpåslag.
-3. **Digital signatur:** Varselet sendes direkte til kundens mobil for umiddelbar godkjenning via SMS eller BankID før arbeidet settes i gang.
+3. **Digital signatur:** Varselet sendes direkte til kunden for umiddelbar godkjenning via e-post, Teams eller SMS før arbeidet settes i gang.
 `
   },
   {
     id: 'art-sja-krav',
     slug: 'sja-sikker-jobb-analyse-krav',
-    title: 'Sikker Jobb Analyse (SJA): Når er det lovpålagt, og hvordan gjennomføres det?',
-    metaDescription: 'Full oversikt over kravene til Sikker Jobb Analyse (SJA) i Byggherreforskriften og Internkontrollforskriften. Slik oppfyller du kravene ved tilsyn.',
+    title: 'Sikker Jobb Analyse (SJA): Når er det lovpålagt i Norge, og hvordan gjennomføres det?',
+    metaDescription: 'Full oversikt over kravene til Sikker Jobb Analyse (SJA) i Byggherreforskriften og Internkontrollforskriften. Slik oppfyller du kravene ved tilsyn fra Arbeidstilsynet.',
     category: 'hms',
     categoryTitle: 'HMS & Sikkerhet',
     readTimeMinutes: 5,
     author: 'VikingMester HMS-sjef',
     createdAt: '2026-09-03T08:00:00Z',
-    updatedAt: '2026-09-10T12:00:00Z',
-    targetKeywords: ['Sikker Jobb Analyse', 'SJA byggeplass', 'lovkrav SJA Arbeidstilsynet', 'risikovurdering håndverker'],
+    updatedAt: '2026-09-24T12:00:00Z',
+    targetKeywords: ['Sikker Jobb Analyse', 'SJA byggeplass Norge', 'lovkrav SJA Arbeidstilsynet', 'risikovurdering håndverker'],
     faqs: [
       {
         question: 'Hva er forskjellen på en generell risikovurdering og en SJA?',
@@ -209,183 +214,144 @@ VikingMester er utviklet nettopp for å eliminere denne risikoen:
         answer: 'Alle som skal utføre selve arbeidet må delta, samt ansvarlig arbeidsleder eller bas.'
       },
       {
-        question: 'Må SJA dokumenteres skriftlig?',
+        question: 'Må SJA dokumenteres skriftlig for Arbeidstilsynet?',
         answer: 'Ja, Arbeidstilsynet krever skriftlig dokumentasjon med dato, oppgaver, identifiserte farer, risikoreduserende tiltak og signaturer fra alle deltakere.'
       }
     ],
     contentMarkdown: `
 ## Hva er en Sikker Jobb Analyse (SJA)?
 
-En Sikker Jobb Analyse (SJA) er en systematisk og detaljert gjennomgang av alle faremomenter i forkant av en bestemt arbeidsoperasjon. Målet er å identifisere hva som kan gå galt, og iverksette tiltak som fjerner eller reduserer risikoen før arbeidet starter.
+En Sikker Jobb Analyse (SJA) er en systematisk og detaljert gjennomgang av alle faremomenter i forkant av en bestemt arbeidsoperasjon på norske byggeplasser. Målet er å identifisere hva som kan gå galt, og iverksette tiltak som fjerner eller reduserer risikoen før arbeidet starter.
 
 ---
 
-## 1. Når er en SJA lovpålagt?
+## 1. Når er en SJA lovpålagt i Norge?
 
 I henhold til **Forskrift om utførelse av arbeid**, **Byggherreforskriften** og **Internkontrollforskriften § 5** skal SJA alltid gjennomføres ved:
 
-1. **Arbeid i høyden:** Arbeid på tak, i personløfter eller stillas der det er fare for fall.
-2. **Varme arbeider:** Sveising, skjæring, bruk av åpen flamme eller varmluftpistol.
+1. **Arbeid i høyden:** Arbeid på tak, i personløfter eller stillas der det er fare for fall over 2 meter.
+2. **Varme arbeider:** Sveising, skjæring, bruk av åpen flamme eller varmluftpistol med sertifiseringskrav.
 3. **Graving og grunnarbeid:** Graving dypere enn 1,5 meter eller nær underjordiske høyspentkabler og rør.
-4. **Tunge løft og kranarbeid:** Løft over mannskaper eller komplekse samløft.
-5. **Arbeid i trange eller lukkede rom:** Sjakter, rør og tanker med fare for kvelning eller gass.
+4. **Tunge løft og kranarbeid:** Løft over mannskaper eller samløft med flere kraner.
+5. **Arbeid i trange eller lukkede rom:** Sjakter, rør og tanker med fare for oksygenmangel eller farlig gass.
 6. **Avvik fra vanlige rutiner:** Når en oppgave må utføres på en annen måte enn planlagt.
 
 ---
 
-## 2. De 5 stegene i en profesjonell SJA
+## 2. De 5 stegene i en godkjent SJA
 
 En godkjent SJA følger alltid denne faste rekkefølgen:
 
 1. **Definer arbeidsoppgaven:** Beskriv nøyaktig hva som skal gjøres og hvem som deltar.
 2. **Del opp i deloppgaver:** F.eks. klargjøring, rigging, selve utførelsen og opprydding.
 3. **Identifiser farer for hvert trinn:** Hva kan svikte? (Fall, klemfare, elektrisk støt, støv).
-4. **Vurder risiko og bestem tiltak:** Sannsynlighet $\times$ Konsekvens. Bestem PVU (hjelm, sele, maske) og tekniske barrierer (rekkverk, avsug).
-5. **Gjennomgang og signering:** Alle som deltar må signere før arbeidet settes i gang.
-`
-  },
-  {
-    id: 'art-tek17-lufttetthet',
-    slug: 'tek17-lufttetthet-dampsperre',
-    title: 'TEK17 § 14-2: Krav til tetthet, dampsperre og klemte skjøter',
-    metaDescription: 'Hvordan oppfylle TEK17-kravene til luftlekkasjetall (0,6 til 1,5 luftvekslinger per time)? Klemte skjøter, mansjetter og dokumentasjon.',
-    category: 'tek17',
-    categoryTitle: 'TEK17 & Forskrifter',
-    readTimeMinutes: 5,
-    author: 'VikingMester Byggteknisk Rådgiver',
-    createdAt: '2026-09-04T08:00:00Z',
-    updatedAt: '2026-09-10T12:00:00Z',
-    targetKeywords: ['TEK17 lufttetthet', 'dampsperre klemte skjøter', 'trykktest bolig krav', 'lekkasjetall TEK17'],
-    faqs: [
-      {
-        question: 'Hva er maksimalt tillatt lekkasjetall for boliger i TEK17?',
-        answer: 'Kravet i TEK17 § 14-2 er maksimalt 1,5 luftvekslinger per time ved 50 Pa trykkforskjell (n50 ≤ 1,5 h⁻¹).'
-      },
-      {
-        question: 'Hvorfor holder det ikke bare å teipe dampsperren?',
-        answer: 'Tape kan over tid miste hefteevnen ved temperatur- og fuktvariasjoner. Byggforskserien og TEK17 krever klemte skjøter mot fast underlag ved overganger mot sviller, bjelkelag og rørgjennomføringer.'
-      }
-    ],
-    contentMarkdown: `
-## Bygningsfysikk og tetthet i moderne trehus
-
-Luftlekkasjer i ytterkonstruksjoner fører til fukttransport ut i isolasjon og vindsperre. Dette er en av de største årsakene til skjult råte og muggsopp i nyere norske boliger.
-
-TEK17 § 14-2 stiller strenge krav til bygningens luftlekkasjetall:
-- Småhus og eneboliger: **Maksimalt 1,5 luftvekslinger per time (n50)**.
-- Passivhus / lavenergibygg: Ofte skjerpet til **0,6**.
-
----
-
-## 1. Kritiske detaljer ved dampsperremontasje
-
-1. **Klemte skjøter:**
-   - Dampsperren må klemmes mekanisk med lekt eller klemfjøl mot bunn- og toppsvill.
-   - Skjøter må ha minst 100 mm overlapp og forsegles med godkjent butylfugemasse eller systemtape.
-
-2. **Gjennomføringer for rør og ventilasjon:**
-   - Bruk alltid prefabrikkerte gummimansjetter med klemring fremfor provisorisk teiping.
-   - Hver mansjett må tettes og klemmes mot dampsperreduken.
-
-3. **Fotodokumentasjon før kledning:**
-   - Når elektriker og rørlegger er ferdige, og før vegger og himling kles med gips eller panel, må samtlige gjennomføringer kontrolleres og fotograferes i KS-systemet.
-`
-  },
-  {
-    id: 'art-stoffkartotek-krav',
-    slug: 'stoffkartotek-lovkrav-arbeidstilsynet',
-    title: 'Stoffkartotek på byggeplassen: Dette krever Arbeidstilsynet ved tilsyn',
-    metaDescription: 'Alt du må vite om digitalt stoffkartotek på byggeplassen. Sikkerhetsdatablader (SDS), risikovurdering av kjemikalier og offline-tilgang for ansatte.',
-    category: 'hms',
-    categoryTitle: 'HMS & Sikkerhet',
-    readTimeMinutes: 4,
-    author: 'VikingMester HMS-sjef',
-    createdAt: '2026-09-05T08:00:00Z',
-    updatedAt: '2026-09-10T12:00:00Z',
-    targetKeywords: ['stoffkartotek byggeplass', 'arbeidstilsynet stoffkartotek krav', 'sikkerhetsdatablader håndverker', 'kjemikalieforskriften'],
-    faqs: [
-      {
-        question: 'Må enkeltpersonforetak (ENK) ha stoffkartotek?',
-        answer: 'Ja, enhver som håndterer kjemikalier som kan utgjøre fare på en arbeidsplass er omfattet av forskrift om utførelse av arbeid, spesielt på byggeplasser under Byggherreforskriften.'
-      },
-      {
-        question: 'Er det tilstrekkelig med papirperm på brakka?',
-        answer: 'Papirperm er godkjent så lenge den er oppdatert, men Arbeidstilsynet foretrekker digitale løsninger der montørene har umiddelbar tilgang på mobilen ute på arbeidsstedet.'
-      }
-    ],
-    contentMarkdown: `
-## Hva krever forskriften om stoffkartotek?
-
-I henhold til **Forskrift om utførelse av arbeid kapittel 2** skal alle virksomheter som håndterer, bruker eller oppbevarer helsefarlige kjemikalier opprette et stoffkartotek.
-
-Dette gjelder i praksis nesten samtlige håndverkere:
-- **Tømrere:** Lim, fugemasse, impregneringsmidler og isolasjon.
-- **Rørleggere:** Avfettingsmidler, flussmidler, gasser og kjemikalier for rørrens.
-- **Malere:** Maling, lakk, sparkel, tynnere og epoksyprodukter.
-- **Murere:** Tørrmørtel med kvartsinnhold, avrettingsmasser og syrevask.
-
----
-
-## 1. Hva må stoffkartoteket inneholde?
-
-For hvert kjemikalie krever loven:
-1. **Oppdatert sikkerhetsdatablad (SDS):** Skrevet på norsk med 16 obligatoriske punkter, inkludert førstehjelpstiltak og personlig verneutstyr.
-2. **Kjemisk risikovurdering:** En vurdering av hvordan stoffet faktisk brukes på byggeplassen.
-3. **Substitusjonsplikt:** Dokumentasjon på at man har vurdert om farlige stoffer kan byttes ut med mindre farlige alternativer.
-
----
-
-## 2. VikingMesters offline stoffkartotek
-
-Med VikingMester har alle håndverkere stoffkartoteket direkte i lomma:
-- Søk etter produktnavn på sekunder.
-- Få umiddelbar visning av påkrevde vernehansker, briller og åndedrettsvern.
-- Fungerer 100 % offline når du står i en kjeller eller på et tak uten dekning.
+4. **Vurder risiko og bestem tiltak:** Sannsynlighet $\\times$ Konsekvens. Bestem PVU (hjelm, sele, maske) og tekniske barrierer (rekkverk, avsug).
+5. **Gjennomgang og digital signering:** Alle som deltar må signere før arbeidet settes i gang.
 `
   }
 ];
 
-// ── TOPICS MATRIX FOR AUTONOMOUS EXPANSION ─────────────────────
-const CANDIDATE_TOPICS = [
+// ── NASJONAL OG REGIONAL EMNEMATRISE FOR NORGE ─────────────────────
+export const CANDIDATE_TOPICS = [
   {
-    topic: 'Krav til byggedagbok i Byggherreforskriften § 15 og NS 8405',
-    category: 'byggeledelse',
+    topic: 'Krav til byggedagbok i Byggherreforskriften § 15 og NS 8405 i Norge',
+    category: 'byggeledelse' as const,
     categoryTitle: 'Byggeledelse & Kontrakter'
   },
   {
-    topic: 'Uavhengig kontroll våtrom og lufttetthet: Sjekkpunkter og krav',
-    category: 'tek17',
+    topic: 'Uavhengig kontroll våtrom og lufttetthet: Sjekkpunkter, krav og ansvarlig kontroller',
+    category: 'tek17' as const,
     categoryTitle: 'TEK17 & Forskrifter'
   },
   {
-    topic: 'Våtromsnormen BVN 31.205: Membran, klemring og slukdetaljer',
-    category: 'tek17',
+    topic: 'Våtromsnormen BVN 31.205: Membran, klemring og slukdetaljer i norske boliger',
+    category: 'tek17' as const,
     categoryTitle: 'TEK17 & Forskrifter'
   },
   {
-    topic: 'NEK 400:2022: Viktigste krav til sluttkontroll og 5 sikre',
-    category: 'fag',
+    topic: 'NEK 400:2022: Viktigste krav til sluttkontroll, samsvarserklæring og 5 sikre for elektrikere',
+    category: 'fag' as const,
     categoryTitle: 'Fagkunnskap Elektro'
   },
   {
-    topic: 'Fristforlengelse etter NS 8405: Værforhold og force majeure',
-    category: 'ns-standard',
+    topic: 'Fristforlengelse etter NS 8405: Værforhold, tele, vind og force majeure i Norge',
+    category: 'ns-standard' as const,
     categoryTitle: 'Kontrakter & Norsk Standard'
   },
   {
-    topic: 'Fuktmåling i treverk før lukking av vegger: Toleranser og grenser',
-    category: 'fag',
-    categoryTitle: 'Fagkunnskap Bygg'
+    topic: 'Fuktmåling i treverk før lukking av vegger: Kritiske grenseverdier (15 %) iht. TEK17',
+    category: 'fag' as const,
+    categoryTitle: 'Fagkunnskap Tømrer'
   },
   {
-    topic: 'Kvartsstøv og asbest på byggeplassen: HMS-rutiner og Arbeidstilsynets regler',
-    category: 'hms',
+    topic: 'Kvartsstøv og asbest på byggeplassen: HMS-rutiner, P3-masker og Arbeidstilsynets regler',
+    category: 'hms' as const,
     categoryTitle: 'HMS & Sikkerhet'
   },
   {
-    topic: 'Overflateklasser K1 til K4 iht. NS 3420: Hvordan unngå tvister i slepelys',
-    category: 'fag',
+    topic: 'Overflateklasser K1 til K4 iht. NS 3420: Hvordan unngå tvister i slepelys for malere',
+    category: 'fag' as const,
     categoryTitle: 'Fagkunnskap Maler'
+  },
+  {
+    topic: 'Sluttoppgjør etter NS 8406 og NS 8405: Frister, innsigelser og fellen ved sluttoppgjørsavtale',
+    category: 'ns-standard' as const,
+    categoryTitle: 'Kontrakter & Norsk Standard'
+  },
+  {
+    topic: 'Digitalt stoffkartotek i lomma for håndverkere: Arbeidstilsynets krav ved uanmeldt tilsyn',
+    category: 'hms' as const,
+    categoryTitle: 'HMS & Sikkerhet'
+  },
+  {
+    topic: 'FDV-dokumentasjon og Boligmappa: Hva må overleveres boligeier før ferdigattest?',
+    category: 'tek17' as const,
+    categoryTitle: 'TEK17 & Forskrifter'
+  },
+  {
+    topic: 'Samsvarserklæring og DOK-forskriften: Hvilke byggevarer krever CE-merking og ytelseserklæring?',
+    category: 'tek17' as const,
+    categoryTitle: 'TEK17 & Forskrifter'
+  },
+  {
+    topic: 'Byggeplasskilt, SHA-plan og adgangskontroll: Krav i Byggherreforskriften for små og store prosjekter',
+    category: 'hms' as const,
+    categoryTitle: 'HMS & Sikkerhet'
+  },
+  {
+    topic: 'Rør-i-rør systemer og lekkasjestoppere iht. TEK17 § 13-15: Montering og kontroll for rørleggere',
+    category: 'fag' as const,
+    categoryTitle: 'Fagkunnskap Rørlegger'
+  },
+  {
+    topic: 'Trykktesting av bolig (blowerdoor): Slik oppnår du lekkasjetall n50 under 1,5 uten lekkasjepunkter',
+    category: 'tek17' as const,
+    categoryTitle: 'TEK17 & Forskrifter'
+  },
+  {
+    topic: 'Lærlingoppfølging og halvårsvurderinger for lærebedrifter i byggfagene',
+    category: 'byggeledelse' as const,
+    categoryTitle: 'Byggeledelse & Rekruttering'
+  },
+  {
+    topic: 'Avvikshåndtering på byggeplassen: Fra RUH (Rapport om uønsket hendelse) til lukket korrigerende tiltak',
+    category: 'hms' as const,
+    categoryTitle: 'HMS & Sikkerhet'
+  },
+  {
+    topic: 'Byggmesterens guide til NS 8407 Totalentreprise: Risiko, prosjekteringsansvar og varslingsregler',
+    category: 'ns-standard' as const,
+    categoryTitle: 'Kontrakter & Norsk Standard'
+  },
+  {
+    topic: 'Radonsikring og radonmembran iht. TEK17 § 13-5: Radonsperre, radonavsug og dokumentasjon',
+    category: 'tek17' as const,
+    categoryTitle: 'TEK17 & Forskrifter'
+  },
+  {
+    topic: 'Brakkerigg, sanitærforhold og velferdsrom på byggeplasser: Arbeidstilsynets minstekrav',
+    category: 'hms' as const,
+    categoryTitle: 'HMS & Sikkerhet'
   }
 ];
 
@@ -401,8 +367,9 @@ export async function getAllSeoArticles(): Promise<SeoArticle[]> {
       }
     }
 
-    return combined;
-  } catch (err) {
+    // Sorter med nyeste først
+    return combined.sort((a, b) => new Date(b.updatedAt || b.createdAt).getTime() - new Date(a.updatedAt || a.createdAt).getTime());
+  } catch {
     return SEEDED_ARTICLES;
   }
 }
@@ -412,14 +379,50 @@ export async function getSeoArticleBySlug(slug: string): Promise<SeoArticle | nu
   return all.find(a => a.slug === slug) || null;
 }
 
-// ── AUTONOMOUS EXPANSION CYCLE ─────────────────────────────────
-export async function runAutonomousSeoCycle(): Promise<{ createdCount: number; articlesCreated: string[] }> {
-  console.log('🤖 [Autonomous SEO Engine] Starter autonom analyse og utvidelsessyklus...');
+/**
+ * Sjekker om det er på tide med et nytt autoblogg-innlegg (1-2 ganger i uken = ca. hver 3.5 dag)
+ */
+export async function isAutoblogDue(targetIntervalDays: number = 3.5): Promise<{ due: boolean; daysSinceLast: number; latestDate: string | null }> {
+  const articles = await getAllSeoArticles();
+  if (articles.length === 0) return { due: true, daysSinceLast: 999, latestDate: null };
+
+  const dates = articles.map(a => new Date(a.createdAt || a.updatedAt).getTime());
+  const maxDate = Math.max(...dates);
+  const daysSinceLast = (Date.now() - maxDate) / (1000 * 60 * 60 * 24);
+
+  return {
+    due: daysSinceLast >= targetIntervalDays,
+    daysSinceLast: Number(daysSinceLast.toFixed(1)),
+    latestDate: new Date(maxDate).toISOString()
+  };
+}
+
+// ── AUTONOMOUS EXPANSION CYCLE (Autoblogg på autopilot) ─────────────────
+export async function runAutonomousSeoCycle(options?: { force?: boolean }): Promise<{
+  createdCount: number;
+  articlesCreated: string[];
+  skippedReason?: string;
+  nextScheduled?: string;
+}> {
+  console.log('🤖 [Autoblogg Autopilot] Kjører autonom blogg- og SEO-syklus for Norge...');
+  
+  const scheduleCheck = await isAutoblogDue(3.5);
+  if (!options?.force && !scheduleCheck.due) {
+    const nextDate = new Date(Date.now() + (3.5 - scheduleCheck.daysSinceLast) * 86400000).toLocaleDateString('nb-NO');
+    console.log(`⏳ [Autoblogg Autopilot] Sist publisert for ${scheduleCheck.daysSinceLast} dager siden. Neste publisering planlagt ca. ${nextDate}.`);
+    return {
+      createdCount: 0,
+      articlesCreated: [],
+      skippedReason: `Ikke forfalt ennå (sist publisert for ${scheduleCheck.daysSinceLast} dager siden. Mål: 1-2 artikler/uke).`,
+      nextScheduled: nextDate
+    };
+  }
+
   const existingArticles = await getAllSeoArticles();
   const existingSlugs = new Set(existingArticles.map(a => a.slug));
 
-  // Find the next topic that hasn't been written about yet
-  const nextCandidate = CANDIDATE_TOPICS.find(t => {
+  // Finn neste emne fra matrisen som ikke er skrevet ennå
+  let nextCandidate = CANDIDATE_TOPICS.find(t => {
     const estimatedSlug = t.topic.toLowerCase()
       .replace(/[^a-z0-9æøå]+/g, '-')
       .replace(/^[-\s]+|[-\s]+$/g, '')
@@ -427,35 +430,42 @@ export async function runAutonomousSeoCycle(): Promise<{ createdCount: number; a
     return !Array.from(existingSlugs).some(s => s.includes(estimatedSlug.slice(0, 15)));
   });
 
+  // Hvis alle pre-definerte emner er dekket, generer et nytt hyper-relevant norsk emne
   if (!nextCandidate) {
-    console.log('[Autonomous SEO Engine] Alle emner i kandidatmatrisen er allerede dekket!');
-    return { createdCount: 0, articlesCreated: [] };
+    console.log('[Autoblogg Autopilot] Alle 20 faste emner er dekket! Genererer nytt friskt emne...');
+    nextCandidate = {
+      topic: `Digital byggeledelse og KS for håndverkere i Norge 2026: Nyeste krav og standarder`,
+      category: 'byggeledelse',
+      categoryTitle: 'Byggeledelse & Digitalisering'
+    };
   }
 
-  console.log(`[Autonomous SEO Engine] Genererer ny fagartikkel for: "${nextCandidate.topic}"...`);
+  console.log(`[Autoblogg Autopilot] Forfatter ny dyptgående fagartikkel for Norge: "${nextCandidate.topic}"...`);
 
-  const prompt = `Du er Norges fremste byggesak- og entrepriseretts-ekspert, sivilingeniør og fagsjef i VikingMester (vikingmester.no).
-Skriv en dyptgående, autoritativ og svært nyttig fagartikkel for norske byggmestre, tømrere og håndverkere om temaet:
+  // Prompt optimalisert for AEO (Answer Engine Optimization) & norsk søkeintensjon
+  const prompt = `Du er Norges fremste byggesak- og entrepriseretts-ekspert, sivilingeniør og sjefsredaktør i VikingMester (vikingmester.no).
+Skriv en autoritativ, dyptgående og faglig uangripelig artikkel for norske byggmestre, entreprenører og håndverkere i hele Norge om temaet:
 "${nextCandidate.topic}"
 
-Krav til innhold:
-1. Juridisk og faglig presist: Henvis til spesifikke paragrafer i TEK17, Plan- og bygningsloven, Byggherreforskriften eller relevante Norsk Standard (f.eks. NS 8405, NS 8406, NS 3420).
-2. Formatert i ren GitHub-stil Markdown med h2 (##), h3 (###), punktlister, sitatblokker (>) og fet skrift.
-3. Ingen introduksjonsprat eller hilsen. Start rett på saken med en fengende introduksjon.
-4. Avslutt med 3 relevante, realistiske "Ofte stilte spørsmål" (FAQ) med korte, klare svar.
-5. Inkluder en kort henvisning til hvordan VikingMester forenkler dette i praksis med mobilen.
+Krav til innhold (Bygget på Google Search og AI Answer Engine prinsipper):
+1. BLUF-format (Bottom Line Up Front): Start med en konsis, direkte oppsummering av reglene og hva håndverkeren må gjøre.
+2. Juridisk og faglig forankring i Norge: Sitér spesifikke paragrafer i TEK17, Plan- og bygningsloven (PBL), Byggherreforskriften, Arbeidstilsynets forskrifter eller relevante Norsk Standard (NS 8405, NS 8406, NS 8407, NS 3420).
+3. Struktur: Bruk H2 (##), H3 (###), nummererte lister, sammenligningstabeller i Markdown og sitatblokker (>).
+4. FAQ-seksjon: Minimum 3 konkrete, realistiske spørsmål og svar som norske håndverkere søker etter på Google eller spør ChatGPT om.
+5. Praksis: Avslutt med et konkret avsnitt om hvordan VikingMester løser dette rett fra mobilen på byggeplassen.
+6. Språk: Flytende, profesjonelt norsk fagspråk (bokmål).
 
-Returner svaret som et gyldig JSON-objekt med følgende struktur:
+Returner svaret som et gyldig JSON-objekt med nøyaktig denne strukturen:
 {
-  "slug": "kort-norsk-url-slug",
-  "title": "Tittel på artikkelen",
-  "metaDescription": "Maks 155 tegn engasjerende meta-beskrivelse for Google",
-  "targetKeywords": ["nøkkelord 1", "nøkkelord 2", "nøkkelord 3"],
-  "contentMarkdown": "Hele artikkelteksten i Markdown",
+  "slug": "kort-norsk-url-slug-uten-spesialtegn",
+  "title": "Fengende, autoritativ tittel (f.eks: 'TEK17 krav til...')",
+  "metaDescription": "Nøyaktig 130-155 tegn engasjerende meta-beskrivelse som rangerer på Google",
+  "targetKeywords": ["nøkkelord 1 Norge", "nøkkelord 2", "nøkkelord 3", "fagbegrep"],
+  "contentMarkdown": "Hele artikkelen i rik Markdown med tabeller, overskrifter og lister",
   "faqs": [
-    { "question": "Spørsmål 1?", "answer": "Svar 1" },
-    { "question": "Spørsmål 2?", "answer": "Svar 2" },
-    { "question": "Spørsmål 3?", "answer": "Svar 3" }
+    { "question": "Ofte stilt spørsmål 1?", "answer": "Konkret svar 1" },
+    { "question": "Ofte stilt spørsmål 2?", "answer": "Konkret svar 2" },
+    { "question": "Ofte stilt spørsmål 3?", "answer": "Konkret svar 3" }
   ]
 }`;
 
@@ -464,13 +474,13 @@ Returner svaret som et gyldig JSON-objekt med følgende struktur:
       prompt,
       operation: 'seo_generation',
       responseMimeType: 'application/json',
-      notes: `SEO Article for ${nextCandidate.topic}`
+      notes: `Autoblogg post: ${nextCandidate.topic}`
     });
 
     const cleaned = cleanAiJson(aiRes.text);
     const data = JSON.parse(cleaned);
 
-    // Apply PageRank Sculpting / Internal link injection
+    // Apply PageRank Sculpting / Interne lenker
     const linkedMarkdown = injectInternalLinks(data.contentMarkdown || '');
 
     const newArticle: SeoArticle = {
@@ -478,29 +488,29 @@ Returner svaret som et gyldig JSON-objekt med følgende struktur:
       slug: data.slug || `fag-${Date.now()}`,
       title: data.title,
       metaDescription: data.metaDescription,
-      category: nextCandidate.category as any,
+      category: nextCandidate.category,
       categoryTitle: nextCandidate.categoryTitle,
       contentMarkdown: linkedMarkdown,
       faqs: data.faqs || [],
       targetKeywords: data.targetKeywords || [],
-      readTimeMinutes: Math.max(3, Math.round((linkedMarkdown.length / 1000))),
+      readTimeMinutes: Math.max(4, Math.round((linkedMarkdown.length / 900))),
       author: 'VikingMester Fagredaksjon',
       createdAt: new Date().toISOString(),
       updatedAt: new Date().toISOString()
     };
 
     await saveCollectionItem('seo_articles', newArticle);
-    console.log(`✅ [Autonomous SEO Engine] Publiserte ny artikkel: "${newArticle.title}" (/fag/${newArticle.slug})`);
+    console.log(`✅ [Autoblogg Autopilot] Publiserte ny artikkel: "${newArticle.title}" (/fag/${newArticle.slug})`);
 
-    // Pinge IndexNow og Google for umiddelbar indeksering
-    await pingSearchEngines([`/fag/${newArticle.slug}`, '/sitemap.xml']);
+    // Pinge IndexNow (Bing, Yahoo, Seznam) og Google
+    await pingSearchEngines([`/fag/${newArticle.slug}`, '/sitemap.xml', '/fag']);
 
     return {
       createdCount: 1,
       articlesCreated: [newArticle.slug]
     };
   } catch (err: any) {
-    console.error('[Autonomous SEO Engine] Feil ved autonom artikkelskaping:', err.message);
-    return { createdCount: 0, articlesCreated: [] };
+    console.error('⚠️ [Autoblogg Autopilot] Feil ved artikkelskaping:', err.message);
+    return { createdCount: 0, articlesCreated: [], skippedReason: err.message };
   }
 }

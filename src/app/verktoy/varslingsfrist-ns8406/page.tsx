@@ -1,4 +1,4 @@
-﻿'use client';
+'use client';
 
 import React, { useState } from 'react';
 import Link from 'next/link';
@@ -244,7 +244,7 @@ export default function VarslingsfristKalkulatorPage() {
                 Send endringsvarsel med VikingMester
               </Link>
               <p className="text-[11px] text-slate-400 text-center">
-                Snakk inn varselet på 20 sekunder ute på plassen. Kunden signerer via SMS.
+                Snakk inn varselet på 20 sekunder ute på plassen. Kunden godkjenner direkte via e-post, Teams eller Slack.
               </p>
             </div>
 

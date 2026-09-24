@@ -384,7 +384,7 @@ export default function PartnerPortal({ onBackToApp }: PartnerPortalProps) {
     const link = `https://vikingmester.no?ref=${sName}`;
     navigator.clipboard.writeText(link);
     setCopiedLink(true);
-    toast.success('Hurtiglenke kopiert! Du kan sende denne på SMS til kunden.');
+    toast.success('Hurtiglenke kopiert! Du kan sende denne på e-post, Slack eller Teams til kunden.');
     setTimeout(() => setCopiedLink(false), 3000);
   };
 
@@ -433,7 +433,7 @@ export default function PartnerPortal({ onBackToApp }: PartnerPortalProps) {
                 title="Kopier direkte lenke med din selger-referanse"
               >
                 {copiedLink ? <Check size={14} className="text-emerald-400" /> : <Copy size={14} className="text-purple-400" />}
-                <span>{copiedLink ? 'Kopiert!' : 'Kopier SMS-lenke'}</span>
+                <span>{copiedLink ? 'Kopiert!' : 'Kopier hurtiglenke'}</span>
               </button>
 
               <button

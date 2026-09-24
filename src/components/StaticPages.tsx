@@ -127,7 +127,7 @@ export const PricingPage = () => {
         'Alle 20 moduler + underentreprenør-portal (UE)',
         'Juridisk NS 8405 / NS 8406 endringsordremotor',
         'Tverrfaglig Lukkesperre med tidslås og soner',
-        'Omnichannel tilkobling (Discord, Slack, Teams, E-post, SMS)',
+        'Omnichannel tilkobling (Discord, Slack, Microsoft Teams, E-post)',
         'Tripletex, PowerOffice Go & Fiken API-bro',
         'Dedikert onboarding, opplæring & prioritert support'
       ]

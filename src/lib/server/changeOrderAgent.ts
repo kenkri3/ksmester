@@ -19,7 +19,7 @@ export interface ParsedVoiceChangeOrder {
   totalAmount: number;
   impactDays: number;
   legalHjemmel: string;
-  smsMessageToClient: string;
+  messageToClient: string;
 }
 
 const DEFAULT_HOURLY_RATES: Record<string, number> = {
@@ -51,7 +51,7 @@ Returner KUN et gyldig JSON-objekt med følgende felter:
 - amountExVat: Beregnet eller oppgitt beløp eksklusive mva i kroner (heltall). Hvis timer er oppgitt, regn ca 890 kr/time.
 - impactDays: Antall dager fristforlengelse entreprenøren krever for å utføre endringen (heltall, 0 hvis ikke nevnt).
 - legalHjemmel: Juridisk henvisning (f.eks. "NS 8406 punkt 19.2 (Varsel om vederlagsjustering og fristforlengelse)" eller "Bustadoppføringslova § 9 (Tilleggsarbeid)").
-- smsMessageToClient: En kort, høflig SMS-tekst til kunden med forklaring av tillegget og varsel om godkjenning.`;
+- messageToClient: En kort, høflig melding til kunden med forklaring av tillegget og varsel om godkjenning via e-post, Teams eller Slack.`;
 
   try {
     const aiRes = await generateWithAiEngine({
@@ -77,7 +77,7 @@ Returner KUN et gyldig JSON-objekt med følgende felter:
       totalAmount,
       impactDays: Number(parsed.impactDays) || 0,
       legalHjemmel: parsed.legalHjemmel || 'NS 8406 pkt. 19.2 / Håndverkertjenesteloven § 9',
-      smsMessageToClient: parsed.smsMessageToClient || `Hei! Vi har registrert et tilleggsønske: ${parsed.title}. Se spesifikasjon og godkjenn i VikingMester.`
+      messageToClient: parsed.messageToClient || `Hei! Vi har registrert et tilleggsønske: ${parsed.title}. Se spesifikasjon og godkjenn i VikingMester.`
     };
   } catch (err: any) {
     console.warn('[ChangeOrderAgent] AI parsing feilet, bruker heuristisk fallback:', err.message);
@@ -117,7 +117,7 @@ Returner KUN et gyldig JSON-objekt med følgende felter:
     totalAmount,
     impactDays,
     legalHjemmel: 'NS 8406 pkt. 19.2 (Krav om justering av vederlag og fristforlengelse)',
-    smsMessageToClient: `Hei! Vi har registrert en endringsmelding på kr ${totalAmount.toLocaleString('no-NO')} inkl. mva. Vennligst godkjenn før arbeid igangsettes.`
+    messageToClient: `Hei! Vi har registrert en endringsmelding på kr ${totalAmount.toLocaleString('no-NO')} inkl. mva. Vennligst godkjenn før arbeid igangsettes.`
   };
 }
 
@@ -174,7 +174,7 @@ export async function createAutonomousChangeOrder(params: {
   return {
     success: true,
     changeOrder: saved,
-    smsMessageToClient: parsed.smsMessageToClient,
+    messageToClient: parsed.messageToClient,
     shareUrl
   };
 }

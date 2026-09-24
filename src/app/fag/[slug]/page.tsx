@@ -99,6 +99,15 @@ export default async function FagArticlePage({
           { name: article.title, path: `/fag/${slug}` },
         ]}
         faqs={article.faqs}
+        article={{
+          title: article.title,
+          description: article.metaDescription,
+          slug: article.slug,
+          author: article.author,
+          createdAt: article.createdAt,
+          updatedAt: article.updatedAt,
+          category: article.categoryTitle,
+        }}
       />
 
       {/* Artikkel Header */}

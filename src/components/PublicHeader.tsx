@@ -125,7 +125,7 @@ export function PublicHeader() {
                         <span className="text-[9px] bg-rose-100 text-rose-800 font-bold px-1.5 py-0.2 rounded">Få betalt</span>
                       </div>
                       <div className="text-[11px] text-slate-500 leading-tight">
-                        Snakk inn endringen på 15 sek. Kunden signerer på SMS før arbeidet starter.
+                        Snakk inn endringen på 15 sek. Kunden godkjenner via e-post eller Teams før arbeidet starter.
                       </div>
                     </div>
                   </div>

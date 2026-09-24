@@ -64,7 +64,7 @@ export const TRADES_SEO_DATA: Record<string, TradeSeoProfile> = {
       },
       {
         "title": "Ekstraarbeid låst før saging starter",
-        "description": "Vil kunden endre til dobbelgips eller ekstra isolasjon? Snakk inn endringen på 15 sekunder. Kunden signerer direkte via SMS med full juridisk gyldighet.",
+        "description": "Vil kunden endre til dobbelgips eller ekstra isolasjon? Snakk inn endringen på 15 sekunder. Kunden signerer direkte via e-post, Slack eller Teams med full juridisk gyldighet.",
         "badge": "Stopp tap av penger"
       }
     ],
@@ -229,7 +229,7 @@ export const TRADES_SEO_DATA: Record<string, TradeSeoProfile> = {
       },
       {
         "title": "Ekstra downlights & kurser på farta",
-        "description": "Kunde ber om 6 ekstra punkter og DALI-styring? Snakk inn bestillingen. Kunden godkjenner pristillegget på SMS før kablene trekkes.",
+        "description": "Kunde ber om 6 ekstra punkter og DALI-styring? Snakk inn bestillingen. Kunden godkjenner pristillegget via e-post eller Teams før kablene trekkes.",
         "badge": "Ingen ubetalte timer"
       }
     ],
@@ -412,7 +412,7 @@ export const TRADES_SEO_DATA: Record<string, TradeSeoProfile> = {
       {
         "title": "Kunde krever ekstra strøk eller fargeendring etter oppstart",
         "consequence": "Tapte timer og materialkostnader uten skriftlig godkjenning.",
-        "solution": "Endringsmelding sendes og signeres via SMS på under 2 minutter."
+        "solution": "Endringsmelding sendes og signeres via e-post, Slack eller Teams på under 2 minutter."
       }
     ],
     "checklist": [

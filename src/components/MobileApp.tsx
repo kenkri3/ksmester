@@ -857,7 +857,7 @@ export default function MobileApp({ initialScreen, onScreenChange }: MobileAppPr
                       <PhoneCall size={24} />
                     </div>
                     <span className="text-xs font-bold uppercase tracking-widest text-center">{t('contacts_colleagues', 'Telefonliste')}</span>
-                    <span className="text-[10px] text-cyan-100 font-medium">{t('call_sms_colleagues', 'Ring & SMS kolleger')}</span>
+                    <span className="text-[10px] text-cyan-100 font-medium">{t('call_contact_colleagues', 'Ring & send e-post til kolleger')}</span>
                   </button>
 
                   <button 
@@ -1303,7 +1303,7 @@ export default function MobileApp({ initialScreen, onScreenChange }: MobileAppPr
                     <div>
                       <h2 className="text-lg font-bold text-neutral-900 leading-tight">Telefonliste & Kolleger</h2>
                       <p className="text-[11px] text-neutral-500 font-medium">
-                        {filteredColleagues.length} kolleger • 1-klikks anrop & SMS
+                        {filteredColleagues.length} kolleger • 1-klikks anrop & e-post
                       </p>
                     </div>
                   </div>
@@ -1454,7 +1454,7 @@ export default function MobileApp({ initialScreen, onScreenChange }: MobileAppPr
                               </p>
                             </div>
                           </div>
-                          {/* Handlingsknapper (Ring & SMS) */}
+                          {/* Handlingsknapper (Ring & E-post) */}
                           <div className="flex items-center gap-2 pt-2 sm:pt-0 border-t sm:border-t-0 border-neutral-100 shrink-0">
                             <a
                               href={'tel:' + contact.phone.replace(/\s+/g, '')}
@@ -1464,23 +1464,16 @@ export default function MobileApp({ initialScreen, onScreenChange }: MobileAppPr
                               <Phone size={15} />
                               <span>Ring</span>
                             </a>
-                            <a
-                              href={'sms:' + contact.phone.replace(/\s+/g, '')}
-                              className="flex-1 sm:flex-none flex items-center justify-center gap-1.5 px-3.5 py-2.5 rounded-xl bg-blue-600 hover:bg-blue-700 active:scale-95 text-white font-bold text-xs shadow-sm transition-all"
-                              title={'Send SMS til ' + contact.name}
-                            >
-                              <MessageSquare size={15} />
-                              <span>SMS</span>
-                            </a>
-                            {contact.email && (
+                            {contact.email ? (
                               <a
                                 href={'mailto:' + contact.email}
-                                className="p-2.5 rounded-xl bg-neutral-100 hover:bg-neutral-200 text-neutral-600 active:scale-95 transition-all hidden xs:flex items-center justify-center"
-                                title={'E-post til ' + contact.name}
+                                className="flex-1 sm:flex-none flex items-center justify-center gap-1.5 px-3.5 py-2.5 rounded-xl bg-blue-600 hover:bg-blue-700 active:scale-95 text-white font-bold text-xs shadow-sm transition-all"
+                                title={'Send e-post til ' + contact.name}
                               >
                                 <Mail size={15} />
+                                <span>E-post</span>
                               </a>
-                            )}
+                            ) : null}
                           </div>
                         </div>
                       ))

@@ -3,9 +3,18 @@ import React from 'react';
 interface StructuredDataProps {
   breadcrumbs?: { name: string; path?: string }[];
   faqs?: { question: string; answer: string }[];
+  article?: {
+    title: string;
+    description: string;
+    slug: string;
+    author: string;
+    createdAt: string;
+    updatedAt?: string;
+    category?: string;
+  };
 }
 
-export function StructuredData({ breadcrumbs, faqs }: StructuredDataProps = {}) {
+export function StructuredData({ breadcrumbs, faqs, article }: StructuredDataProps = {}) {
   const baseUrl = process.env.NEXT_PUBLIC_APP_URL || 'https://vikingmester.no';
 
   const organizationSchema = {
@@ -23,7 +32,11 @@ export function StructuredData({ breadcrumbs, faqs }: StructuredDataProps = {}) 
       addressCountry: 'NO',
       addressLocality: 'Oslo',
     },
-    areaServed: 'NO',
+    areaServed: {
+      '@type': 'Country',
+      name: 'Norge',
+      identifier: 'NO',
+    },
     sameAs: [
       'https://www.facebook.com/vikingmester',
       'https://www.linkedin.com/company/vikingmester',
@@ -62,6 +75,7 @@ export function StructuredData({ breadcrumbs, faqs }: StructuredDataProps = {}) 
     operatingSystem: 'Web, iOS, Android',
     description: 'Autonom KS/HMS, TEK17-avvikskontroll og usynlig byggedagbok for håndverkere.',
     url: baseUrl,
+    inLanguage: 'nb-NO',
     offers: [
       {
         '@type': 'Offer',
@@ -107,6 +121,31 @@ export function StructuredData({ breadcrumbs, faqs }: StructuredDataProps = {}) 
         name: crumb.name,
         ...(crumb.path ? { item: `${baseUrl}${crumb.path}` } : {}),
       })),
+    });
+  }
+
+  if (article) {
+    graphItems.push({
+      '@type': 'TechArticle',
+      '@id': `${baseUrl}/fag/${article.slug}#article`,
+      headline: article.title,
+      description: article.description,
+      inLanguage: 'nb-NO',
+      mainEntityOfPage: `${baseUrl}/fag/${article.slug}`,
+      datePublished: article.createdAt,
+      dateModified: article.updatedAt || article.createdAt,
+      author: {
+        '@type': 'Person',
+        name: article.author || 'VikingMester Fagredaksjon',
+      },
+      publisher: {
+        '@id': `${baseUrl}/#organization`,
+      },
+      dependencies: 'TEK17, NS 8406, Byggherreforskriften',
+      about: {
+        '@type': 'Thing',
+        name: article.category || 'Byggteknisk forskrift',
+      },
     });
   }
 

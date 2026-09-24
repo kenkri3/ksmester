@@ -64,7 +64,7 @@ export default function WorkstationSettingsModal({
 
   // Notifications
   const [notifEmail, setNotifEmail] = useState(true);
-  const [notifSms, setNotifSms] = useState(true);
+  const [notifTeamsSlack, setNotifTeamsSlack] = useState(true);
   const [notifPush, setNotifPush] = useState(true);
 
   // Active Modules Toggle
@@ -635,7 +635,7 @@ export default function WorkstationSettingsModal({
             <div className="space-y-3 max-w-2xl">
               {[
                 { title: 'E-postvarsel ved ny endringsordre', desc: 'Motta kopi når en endringsordre opprettes iht. NS 8406', val: notifEmail, setVal: setNotifEmail },
-                { title: 'SMS-varsel ved kritiske RUH & Avvik', desc: 'Umiddelbar SMS til bas/prosjektleder ved alvorlig HMS-hendelse', val: notifSms, setVal: setNotifSms },
+                { title: 'Teams/Slack-varsel ved kritiske RUH & Avvik', desc: 'Umiddelbart varsel til bas/prosjektleder ved alvorlig HMS-hendelse', val: notifTeamsSlack, setVal: setNotifTeamsSlack },
                 { title: 'Push-varsel ved kundegodkjenning', desc: 'Varsel på mobilen når byggherre signerer pristilbud eller endringsordre', val: notifPush, setVal: setNotifPush }
               ].map((item, idx) => (
                 <label key={idx} className="p-3.5 rounded-2xl bg-slate-900 border border-slate-800 flex items-center justify-between gap-3 cursor-pointer">

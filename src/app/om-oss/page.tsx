@@ -72,7 +72,7 @@ export default function OmOssPage() {
               I mange år har norske håndverkere måttet velge mellom to onder: Kostbare, trege systemer med årevis bindingstid, eller uoversiktlige permer og papirskjemaer som forsvinner i firmabilen.
             </p>
             <p className="text-slate-600 leading-relaxed">
-              Vi så håndverkere som tapte hundretusenvis av kroner på uvarslede endringsordrer, og mesterbedrifter som fryktet tilsyn fra Arbeidstilsynet eller kommunen fordi internkontrollen lå spredt på SMS og e-post.
+              Vi så håndverkere som tapte hundretusenvis av kroner på uvarslede endringsordrer, og mesterbedrifter som fryktet tilsyn fra Arbeidstilsynet eller kommunen fordi internkontrollen lå spredt i innbokser, permer og papirlapper.
             </p>
             <p className="text-slate-600 leading-relaxed font-semibold text-navy-900">
               VikingMester løser dette med moderne nettteknologi, kunstig intelligens for TEK17-kontroll, og en mobilapp som er like enkel å bruke som Vipps.

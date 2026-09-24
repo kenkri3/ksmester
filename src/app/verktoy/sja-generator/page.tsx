@@ -237,7 +237,7 @@ export default function SjaGeneratorPage() {
 
             <div className="p-4 rounded-2xl bg-electric-50 border border-electric-200 text-xs text-electric-900 space-y-2">
               <strong className="block font-bold">💡 Vil du tilpasse sjekkpunkter på farta?</strong>
-              <p>I VikingMester snakker du bare inn avvikene. Systemet oppdaterer risikomatrisen autonomt og sender SMS-varsel.</p>
+              <p>I VikingMester snakker du bare inn avvikene. Systemet oppdaterer risikomatrisen autonomt og sender e-post- og Teams-varsel.</p>
               <Link
                 href="/?action=demo"
                 className="inline-flex items-center gap-1 font-bold text-electric-600 hover:text-electric-700 pt-1"

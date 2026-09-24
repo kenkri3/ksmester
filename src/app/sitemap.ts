@@ -99,11 +99,27 @@ export default async function sitemap(): Promise<MetadataRoute.Sitemap> {
       changeFrequency: 'weekly',
       priority: 0.85,
     },
+    // Programmatiske områdesider for hele Norge
+    {
+      url: `${baseUrl}/omrade`,
+      lastModified: now,
+      changeFrequency: 'weekly',
+      priority: 0.9,
+    },
   ];
 
   // Programmatiske bransjesider
   const tradeRoutes: MetadataRoute.Sitemap = Object.keys(TRADES_SEO_DATA).map((trade) => ({
     url: `${baseUrl}/for/${trade}`,
+    lastModified: now,
+    changeFrequency: 'weekly',
+    priority: 0.85,
+  }));
+
+  // Programmatiske stedsider for alle Norges fylker, byer og tettsteder
+  const { NORWAY_LOCATIONS } = await import('@/src/constants/norwayLocationsData');
+  const locationRoutes: MetadataRoute.Sitemap = Object.keys(NORWAY_LOCATIONS).map((locSlug) => ({
+    url: `${baseUrl}/omrade/${locSlug}`,
     lastModified: now,
     changeFrequency: 'weekly',
     priority: 0.85,
@@ -116,12 +132,12 @@ export default async function sitemap(): Promise<MetadataRoute.Sitemap> {
     articleRoutes = articles.map((art) => ({
       url: `${baseUrl}/fag/${art.slug}`,
       lastModified: new Date(art.updatedAt || art.createdAt),
-      changeFrequency: 'monthly',
+      changeFrequency: 'weekly',
       priority: 0.8,
     }));
   } catch (err) {
     console.warn('Sitemap article loading warning:', err);
   }
 
-  return [...coreRoutes, ...tradeRoutes, ...articleRoutes];
+  return [...coreRoutes, ...tradeRoutes, ...locationRoutes, ...articleRoutes];
 }

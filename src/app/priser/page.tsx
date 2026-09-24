@@ -173,7 +173,7 @@ export default function PriserPage() {
                 </li>
                 <li className="flex items-center gap-2 font-semibold text-electric-600">
                   <Check size={16} className="text-electric-500 shrink-0" />
-                  <span>Tale-til-Endringsordre (NS 8406) med SMS-signering</span>
+                  <span>Tale-til-Endringsordre (NS 8406) med e-post- og Teams-signering</span>
                 </li>
                 <li className="flex items-center gap-2 font-semibold text-electric-600">
                   <Check size={16} className="text-electric-500 shrink-0" />
@@ -251,7 +251,7 @@ export default function PriserPage() {
                 </li>
                 <li className="flex items-center gap-2 font-semibold text-emerald-600">
                   <Check size={16} className="text-emerald-500 shrink-0" />
-                  <span>Avansert Omnichannel (Discord, Slack, Teams, E-post, SMS & Webhooks)</span>
+                  <span>Avansert Omnichannel (Discord, Slack, Microsoft Teams, E-post & Webhooks)</span>
                 </li>
                 <li className="flex items-center gap-2">
                   <Check size={16} className="text-emerald-500 shrink-0" />

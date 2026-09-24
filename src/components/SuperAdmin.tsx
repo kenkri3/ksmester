@@ -266,7 +266,7 @@ export default function SuperAdmin({ onBackToDashboard }: { onBackToDashboard?: 
     name: '',
     subject: '',
     body: '',
-    type: 'email' as 'email' | 'sms' | 'system',
+    type: 'email' as 'email' | 'teams' | 'system',
     category: 'offer'
   });
 
@@ -1715,7 +1715,7 @@ Svar KUN med gyldig rå JSON (uten markdown \`\`\`json klammer):
                                   const isDemo = isCompanyDemo(company);
                                   const planToUse = isDemo ? 'enterprise' : (company.plan || 'enterprise');
                                   const modulesToUse = isDemo 
-                                    ? allModules.map(m => m.id).concat(['all_modules', 'change_orders', 'contacts', 'dailylog', 'archive'])
+                                    ? allModules.map(m => m.id).concat(['all_modules', 'change_orders', 'contacts', 'dailylog', 'archive', 'teamchat'])
                                     : (company.modules && company.modules.length > 0 ? company.modules : allModules.map(m => m.id));
                                   startImpersonation(company.id, 'admin', planToUse, modulesToUse);
                                   toast.success(`Logget inn som ${company.name || company.id}. Viser nå kundens system.`);
@@ -3424,7 +3424,7 @@ Svar KUN med gyldig rå JSON (uten markdown \`\`\`json klammer):
                                 const isDemo = isCompanyDemo(selectedCompany);
                                 const planToUse = isDemo ? 'enterprise' : (selectedCompany.plan || 'enterprise');
                                 const modulesToUse = isDemo 
-                                  ? allModules.map(m => m.id).concat(['all_modules', 'change_orders', 'contacts', 'dailylog', 'archive'])
+                                  ? allModules.map(m => m.id).concat(['all_modules', 'change_orders', 'contacts', 'dailylog', 'archive', 'teamchat'])
                                   : (selectedCompany.modules && selectedCompany.modules.length > 0 ? selectedCompany.modules : allModules.map(m => m.id));
                                 startImpersonation(selectedCompany.id, u.role, planToUse, modulesToUse);
                                 toast.success(`Logget inn som ${u.name || u.email || 'bruker'} (${u.role}) hos ${selectedCompany.name}.`);
@@ -3787,7 +3787,7 @@ Svar KUN med gyldig rå JSON (uten markdown \`\`\`json klammer):
                     className="w-full px-4 py-3 bg-neutral-50 border border-neutral-200 rounded-2xl focus:ring-2 focus:ring-blue-500 outline-none transition-all"
                   >
                     <option value="email">E-post</option>
-                    <option value="sms">SMS</option>
+                    <option value="teams">Microsoft Teams</option>
                     <option value="system">Systemmelding</option>
                   </select>
                 </div>
@@ -4705,7 +4705,7 @@ function ConvertLeadModal({
                   const isDemo = isCompanyDemo(comp);
                   const planToUse = isDemo ? 'enterprise' : (comp.plan || 'enterprise');
                   const modulesToUse = isDemo 
-                    ? allModules.map(m => m.id).concat(['all_modules', 'change_orders', 'contacts', 'dailylog', 'archive'])
+                    ? allModules.map(m => m.id).concat(['all_modules', 'change_orders', 'contacts', 'dailylog', 'archive', 'teamchat'])
                     : (comp.modules && comp.modules.length > 0 ? comp.modules : allModules.map(m => m.id));
                   startImpersonation(comp.id, 'admin', planToUse, modulesToUse);
                   toast.success(`Logget inn som administrator hos ${companyName}!`);

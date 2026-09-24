@@ -154,7 +154,7 @@ export const MANAGER_WELCOME_THEMES: WelcomeTheme[] = [
     bullets: [
       { icon: '⚡', label: 'Lynrask kalkyle', text: 'Beskriv jobben i chatten, så beregner jeg materialbehov, timeforbruk og påslag.' },
       { icon: '⚖️', label: 'NS 8406 / NS 8405', text: 'Setter automatisk inn nødvendige standardforbehold så du er juridisk sikret.' },
-      { icon: '📲', label: 'Digital signering', text: 'Kunden mottar tilbudet på SMS/e-post og godkjenner direkte på mobilen.' }
+      { icon: '📲', label: 'Digital signering', text: 'Kunden mottar tilbudet på e-post, Slack eller Teams og godkjenner direkte på mobilen.' }
     ],
     callToAction: 'Vil du teste en kalkyle eller opprette et nytt tilbud nå?',
     suggestedActions: [

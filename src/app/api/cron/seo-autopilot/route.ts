@@ -1,0 +1,111 @@
+import { NextRequest, NextResponse } from 'next/server';
+import { runPageSpeedAudit } from '@/src/lib/server/pagespeedService';
+import { runDeadPageCleanup } from '@/src/lib/server/deadPageCleaner';
+import { runSeoAutoHealer } from '@/src/lib/server/autoHealer';
+import { runAutonomousSeoCycle, isAutoblogDue } from '@/src/lib/server/autonomousSeoEngine';
+import { saveCollectionItem, getCollectionItems } from '@/src/lib/server/db';
+import { checkRateLimit } from '@/src/lib/server/rateLimiter';
+
+export const dynamic = 'force-dynamic';
+export const maxDuration = 60; // 60 sekunder timeout
+
+/**
+ * GET/POST /api/cron/seo-autopilot
+ * Hoved-endepunkt for autonom drift av SEO, PageSpeed, Auto-Healer, Autoblogg og Dead Page Cleanup.
+ */
+export async function GET(req: NextRequest) {
+  return handleAutopilot(req);
+}
+
+export async function POST(req: NextRequest) {
+  return handleAutopilot(req);
+}
+
+async function handleAutopilot(req: NextRequest) {
+  const ip = req.headers.get('x-forwarded-for') || '127.0.0.1';
+  
+  // Rate limiting (maks 10 kjøringer per time for å beskytte mot misbruk)
+  const rl = checkRateLimit(`cron-autopilot-${ip}`, { limit: 10, windowMs: 3600000 });
+  if (!rl.allowed) {
+    return NextResponse.json({ error: 'For mange forespørsler. Prøv igjen senere.' }, { status: 429 });
+  }
+
+  // Sikkerhetsvalidering: Støtter Vercel Cron, CRON_SECRET eller admin-token
+  const authHeader = req.headers.get('authorization');
+  const cronSecret = process.env.CRON_SECRET || 'vikingmester-cron-secret-2026';
+  const url = new URL(req.url);
+  const secretParam = url.searchParams.get('secret');
+  const force = url.searchParams.get('force') === 'true';
+
+  const isAuthorized = 
+    req.headers.get('x-vercel-cron') === '1' ||
+    authHeader === `Bearer ${cronSecret}` ||
+    secretParam === cronSecret ||
+    process.env.NODE_ENV === 'development';
+
+  if (!isAuthorized) {
+    return NextResponse.json({ error: 'Uautorisert. Gyldig CRON_SECRET kreves.' }, { status: 401 });
+  }
+
+  const startTime = Date.now();
+  console.log('🚀 [SEO Autopilot] Kjører full autonom optimaliseringssyklus for hele Norge...');
+
+  try {
+    // 1. 🧹 Rens døde sider og sett opp 301-omdirigeringer
+    const cleanupResult = await runDeadPageCleanup();
+
+    // 2. 🩺 Kjør SEO Auto-Healer (reparerer manglende tags, ferskhet, PageRank interne lenker)
+    const healerResult = await runSeoAutoHealer();
+
+    // 3. ⚡ Mål Google PageSpeed & Core Web Vitals
+    const pageSpeedResult = await runPageSpeedAudit('https://vikingmester.no', 'mobile');
+
+    // 4. 🤖 Autoblogg: Sjekk om det er på tide med 1-2 ukentlige innlegg, eller kjør force
+    const blogResult = await runAutonomousSeoCycle({ force });
+
+    const totalDurationMs = Date.now() - startTime;
+
+    const runRecord = {
+      id: `run-${Date.now()}`,
+      timestamp: new Date().toISOString(),
+      durationMs: totalDurationMs,
+      pageSpeed: {
+        performance: pageSpeedResult.scores.performance,
+        seo: pageSpeedResult.scores.seo,
+        accessibility: pageSpeedResult.scores.accessibility,
+        bestPractices: pageSpeedResult.scores.bestPractices,
+        cwv: pageSpeedResult.coreWebVitals
+      },
+      cleanup: {
+        cleanedCount: cleanupResult.cleanedCount,
+        redirectsCreated: cleanupResult.redirectsCreated
+      },
+      autoHealer: {
+        healedCount: healerResult.articlesHealed,
+        healthScore: healerResult.overallSeoHealthScore,
+        totalScanned: healerResult.totalArticlesScanned
+      },
+      autoblogg: {
+        createdCount: blogResult.createdCount,
+        articlesCreated: blogResult.articlesCreated,
+        skippedReason: blogResult.skippedReason,
+        nextScheduled: blogResult.nextScheduled
+      }
+    };
+
+    // Lagre kjøring i historikk
+    await saveCollectionItem('seo_autopilot_runs', runRecord);
+
+    return NextResponse.json({
+      success: true,
+      message: 'Autopilot-syklus fullført for Norge.',
+      results: runRecord
+    });
+  } catch (error: any) {
+    console.error('❌ [SEO Autopilot] Kritisk feil i autopilot-syklus:', error.message);
+    return NextResponse.json({
+      success: false,
+      error: error.message
+    }, { status: 500 });
+  }
+}

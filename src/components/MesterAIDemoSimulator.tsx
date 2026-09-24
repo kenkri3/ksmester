@@ -82,7 +82,7 @@ const DEMO_SCENARIOS: DemoScenario[] = [
     role: 'byggmester',
     label: '📝 Kalkyle på etterisolering',
     prompt: 'Lag et tilbud på etterisolering og ny kledning med 15% påslag',
-    agentReply: 'Kalkyle er utarbeidet for 140 m² fasade:\n- 🧱 **Materiell (Rockwool + vindsperre + kledning):** kr 84 500,-\n- 🔨 **Arbeidstimer (75 timer à 890,-):** kr 66 750,-\n- 📈 **Påslag (15%):** kr 22 688,-\n- 💵 **Total tilbudssum eks. mva:** **kr 173 938,-**\nTilbudet er klart til å sendes som interaktiv kundeavtale på SMS/e-post.',
+    agentReply: 'Kalkyle er utarbeidet for 140 m² fasade:\n- 🧱 **Materiell (Rockwool + vindsperre + kledning):** kr 84 500,-\n- 🔨 **Arbeidstimer (75 timer à 890,-):** kr 66 750,-\n- 📈 **Påslag (15%):** kr 22 688,-\n- 💵 **Total tilbudssum eks. mva:** **kr 173 938,-**\nTilbudet er klart til å sendes som interaktiv kundeavtale via e-post, Teams eller Slack.',
     cardType: 'change_order',
     cardData: {
       orderNumber: 'TILBUD-2026-12',
@@ -226,9 +226,9 @@ const INTEGRATION_MODULES = [
   },
   {
     icon: Smartphone,
-    title: 'Omnichannel: Tale, SMS & Mobil',
+    title: 'Omnichannel: Tale, E-post, Slack & Teams',
     tag: 'Feltkommunikasjon',
-    description: 'Håndverkerne kan snakke inn timer, sende inn bilder og føre avvik via SMS eller mobilnett uten å måtte navigere i kompliserte menyer.'
+    description: 'Håndverkerne kan snakke inn timer, sende inn bilder og føre avvik via tale, e-post, Slack, Teams eller mobil uten å måtte navigere i kompliserte menyer.'
   },
   {
     icon: FolderArchive,
@@ -672,7 +672,7 @@ export default function MesterAIDemoSimulator({
                           type="button"
                           onClick={() => {
                             setIsSimulatedApproved(true);
-                            toast.success('Byggherre godkjente endringsordren via SMS-link!');
+                            toast.success('Byggherre godkjente endringsordren via e-post / Teams!');
                           }}
                           className="w-full py-2.5 px-3 bg-emerald-600 hover:bg-emerald-700 text-white rounded-xl text-xs font-bold transition-all flex items-center justify-center gap-1.5 shadow-sm cursor-pointer text-center leading-tight"
                         >

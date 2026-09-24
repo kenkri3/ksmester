@@ -36,7 +36,7 @@ export default function MobileQuickActionSheet({
     {
       id: 'contacts',
       label: 'Telefonliste / Kolleger',
-      sublabel: 'Ring eller send SMS til kolleger',
+      sublabel: 'Ring eller send e-post til kolleger',
       icon: <PhoneCall size={22} />,
       color: 'bg-gradient-to-br from-blue-600 to-indigo-700 text-white',
       badge: 'Nyhet'

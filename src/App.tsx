@@ -682,7 +682,7 @@ function AppContent() {
                           <p className="text-xs font-bold text-navy-900">Tale-til-Endringsordre (NS 8406)</p>
                           <span className="text-[9px] bg-rose-100 text-rose-800 font-bold px-1.5 py-0.2 rounded">Få betalt</span>
                         </div>
-                        <p className="text-[10px] text-slate-500 leading-tight">Snakk inn endringen på 15 sek ➔ Kunden signerer på SMS før arbeidet starter.</p>
+                        <p className="text-[10px] text-slate-500 leading-tight">Snakk inn endringen på 15 sek ➔ Kunden godkjenner via e-post eller Teams før arbeidet starter.</p>
                       </div>
                     </Link>
 
@@ -1111,7 +1111,7 @@ function AppContent() {
                             <span>Tale-til-Endringsordre (NS 8406)</span>
                             <span className="text-[9px] bg-rose-500/20 text-rose-300 font-bold px-1.5 py-0.2 rounded border border-rose-500/30">Få betalt</span>
                           </div>
-                          <div className="text-[10px] text-slate-400 font-normal">Kunden signerer på SMS før arbeidet starter</div>
+                          <div className="text-[10px] text-slate-400 font-normal">Kunden godkjenner via e-post eller Teams før arbeidet starter</div>
                         </div>
                       </Link>
                       <Link 

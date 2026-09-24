@@ -5591,18 +5591,20 @@ export default function MesterWorkstation({
         }}
       />
 
-      {/* 🤖 Universell MesterAI Copilot (Alltid tilgjengelig overalt i arbeidsstasjonen) */}
-      <MesterAICopilot
-        user={user}
-        currentView="dashboard"
-        activeModuleTab={viewMode === 'module' ? activeModuleTab : null}
-        selectedProject={selectedProject}
-        projects={projects}
-        onOpenModule={(mod) => {
-          setActiveModuleTab(mod);
-          setViewMode('module');
-        }}
-      />
+      {/* 🤖 Universell MesterAI Copilot (Kun tilgjengelig i fagmoduler, aldri over chattefeltet) */}
+      {viewMode === 'module' && activeModuleTab !== 'teamchat' && (
+        <MesterAICopilot
+          user={user}
+          currentView="dashboard"
+          activeModuleTab={activeModuleTab}
+          selectedProject={selectedProject}
+          projects={projects}
+          onOpenModule={(mod) => {
+            setActiveModuleTab(mod);
+            setViewMode('module');
+          }}
+        />
+      )}
     </div>
   );
 }

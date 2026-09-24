@@ -268,7 +268,7 @@ export default function AllModulesDrawer({
     {
       id: 'contacts',
       title: 'Telefonliste & Kolleger',
-      subtitle: 'Ring, send SMS og finn nøkkelpersoner på byggeplassen',
+      subtitle: 'Ring, send e-post og finn nøkkelpersoner på byggeplassen',
       category: 'ressurser',
       icon: <Users size={22} />,
       color: 'text-cyan-600',

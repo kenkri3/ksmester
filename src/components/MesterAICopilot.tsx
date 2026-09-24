@@ -27,7 +27,8 @@ import {
   ChevronDown,
   ArrowRight,
   Zap,
-  CheckCircle2
+  CheckCircle2,
+  RefreshCw
 } from 'lucide-react';
 import ReactMarkdown from 'react-markdown';
 import remarkGfm from 'remark-gfm';
@@ -505,14 +506,15 @@ export default function MesterAICopilot({
               setIsOpen(true);
               setIsMinimized(false);
             }}
-            className="group relative flex items-center gap-2.5 px-4 py-3 rounded-full bg-gradient-to-r from-electric-600 via-electric-500 to-indigo-600 hover:from-electric-500 hover:to-indigo-500 text-white font-black text-xs sm:text-sm shadow-2xl hover:shadow-electric-500/30 transition-all duration-300 cursor-pointer border border-electric-400/40"
+            className="group relative flex items-center gap-2 p-2.5 sm:px-4 sm:py-3 rounded-full bg-gradient-to-r from-electric-600 via-electric-500 to-indigo-600 hover:from-electric-500 hover:to-indigo-500 text-white font-black text-xs sm:text-sm shadow-2xl hover:shadow-electric-500/30 transition-all duration-300 cursor-pointer border border-electric-400/40"
+            title="Spør MesterAI Pilot (Ctrl+M)"
           >
             <span className="relative flex h-3 w-3">
               <span className="animate-ping absolute inline-flex h-full w-full rounded-full bg-emerald-400 opacity-75" />
               <span className="relative inline-flex rounded-full h-3 w-3 bg-emerald-400" />
             </span>
             <Sparkles size={16} className="text-amber-300 animate-pulse" />
-            <span className="tracking-wide">MesterAI Pilot</span>
+            <span className="hidden sm:inline tracking-wide">MesterAI Pilot</span>
             <span className="hidden md:inline text-[10px] font-mono opacity-70 bg-black/30 px-1.5 py-0.5 rounded-md">
               Ctrl+M
             </span>
@@ -557,14 +559,17 @@ export default function MesterAICopilot({
             exit={{ opacity: 0, y: 30, scale: 0.95 }}
             transition={{ duration: 0.2 }}
             className={cn(
-              "fixed z-50 bg-[#0A101D] border border-slate-800 shadow-2xl flex flex-col overflow-hidden backdrop-blur-2xl transition-all duration-300",
+              "fixed z-50 bg-[#0A101D] shadow-2xl flex flex-col overflow-hidden backdrop-blur-2xl transition-all duration-300",
               isFullscreen
-                ? "inset-2 sm:inset-4 rounded-3xl"
-                : "bottom-4 right-4 sm:bottom-6 sm:right-6 w-[calc(100vw-32px)] sm:w-[480px] h-[640px] max-h-[calc(100vh-32px)] rounded-3xl"
+                ? "inset-0 sm:inset-4 sm:rounded-3xl border-0 sm:border border-slate-800"
+                : "inset-0 sm:inset-auto sm:bottom-6 sm:right-6 sm:w-[500px] sm:h-[660px] sm:max-h-[calc(100vh-48px)] sm:rounded-3xl border-0 sm:border border-slate-800"
             )}
           >
             {/* Header */}
-            <div className="flex items-center justify-between px-4 py-3 bg-slate-900/90 border-b border-slate-800 shrink-0 select-none">
+            <div 
+              className="flex items-center justify-between px-4 py-3 bg-slate-900/95 border-b border-slate-800 shrink-0 select-none"
+              style={{ paddingTop: 'max(12px, env(safe-area-inset-top))' }}
+            >
               <div className="flex items-center gap-2.5 min-w-0">
                 <div className="w-8 h-8 rounded-xl bg-gradient-to-br from-electric-500 to-indigo-600 flex items-center justify-center text-white shadow-md shrink-0">
                   <Sparkles size={16} />
@@ -610,25 +615,12 @@ export default function MesterAICopilot({
                   type="button"
                   title="Lukk MesterAI"
                   onClick={() => setIsOpen(false)}
-                  className="p-1.5 hover:text-rose-400 hover:bg-slate-800 rounded-lg transition-all"
+                  className="p-1.5 hover:text-rose-400 hover:bg-slate-800 rounded-lg transition-all cursor-pointer"
                 >
                   <X size={15} />
                 </button>
               </div>
             </div>
-
-            {/* LIVE ACTION STATUS HUD BANNER */}
-            {isLoading && (
-              <div className="bg-electric-950/80 border-b border-electric-500/30 px-4 py-2 flex items-center justify-between text-xs text-electric-300 font-bold shrink-0 animate-pulse">
-                <div className="flex items-center gap-2 truncate">
-                  <span className="w-2 h-2 rounded-full bg-electric-400 animate-ping" />
-                  <span className="truncate">{loadingStage}</span>
-                </div>
-                <span className="text-[10px] uppercase tracking-wider bg-electric-500/20 px-2 py-0.5 rounded-full border border-electric-400/30 shrink-0">
-                  Live MCP
-                </span>
-              </div>
-            )}
 
             {/* Meldingsliste */}
             <div 
@@ -641,8 +633,8 @@ export default function MesterAICopilot({
                   <div
                     key={m.id}
                     className={cn(
-                      "flex flex-col gap-1.5 max-w-[88%]",
-                      isUser ? "ml-auto items-end" : "mr-auto items-start"
+                      "flex flex-col gap-1.5",
+                      isUser ? "max-w-[88%] ml-auto items-end" : "w-full items-start"
                     )}
                   >
                     <div className="flex items-center gap-1.5 text-[10px] text-slate-400 font-semibold px-1">
@@ -664,10 +656,10 @@ export default function MesterAICopilot({
 
                     <div
                       className={cn(
-                        "p-3.5 rounded-2xl text-xs sm:text-sm leading-relaxed shadow-sm relative group",
+                        "p-3.5 sm:p-4 rounded-2xl text-xs sm:text-sm leading-relaxed shadow-sm relative group",
                         isUser
-                          ? "bg-electric-600 text-white rounded-br-xs"
-                          : "bg-slate-900/90 text-slate-100 border border-slate-800 rounded-bl-xs"
+                          ? "bg-gradient-to-r from-purple-700 to-electric-600 text-white rounded-br-xs"
+                          : "bg-slate-900/90 text-slate-100 border border-slate-800 rounded-bl-xs w-full"
                       )}
                     >
                       {/* Bildevedlegg i meldingen */}
@@ -722,11 +714,38 @@ export default function MesterAICopilot({
                 );
               })}
 
+              {/* ✨ Levende arbeidsindikator direkte i samtalestrømmen (som i hovedchatten) */}
+              {isLoading && (
+                <div className="w-full rounded-2xl bg-slate-900/95 border border-purple-500/40 p-4 shadow-xl backdrop-blur-xl animate-in fade-in duration-200 my-2">
+                  <div className="flex items-center justify-between pb-2 border-b border-white/10 mb-2.5">
+                    <div className="flex items-center gap-2">
+                      <div className="relative flex items-center justify-center">
+                        <Sparkles size={15} className="text-purple-400 animate-pulse" />
+                        <span className="absolute w-2.5 h-2.5 rounded-full bg-purple-400/40 animate-ping" />
+                      </div>
+                      <span className="text-xs font-bold text-white tracking-wide">
+                        MesterAI arbeider med oppgaven...
+                      </span>
+                    </div>
+                    <span className="text-[10px] uppercase font-mono font-bold text-purple-300 bg-purple-500/20 px-2 py-0.5 rounded-full border border-purple-500/30">
+                      Live AI
+                    </span>
+                  </div>
+                  <div className="flex items-center gap-2.5 text-xs text-slate-300">
+                    <RefreshCw size={13} className="animate-spin text-purple-400 shrink-0" />
+                    <span className="font-medium text-slate-200">{loadingStage || 'Beregner og oppdaterer fagsystemet...'}</span>
+                  </div>
+                </div>
+              )}
+
               <div ref={messagesEndRef} />
             </div>
 
             {/* Input-seksjon */}
-            <div className="p-3 bg-slate-900/95 border-t border-slate-800 shrink-0 space-y-2">
+            <div 
+              className="p-3 bg-slate-900/95 border-t border-slate-800 shrink-0 space-y-2"
+              style={{ paddingBottom: 'max(12px, env(safe-area-inset-bottom))' }}
+            >
               {/* Forhåndsvisning av vedlagt bilde */}
               {attachedImage && (
                 <div className="flex items-center gap-2 p-2 bg-slate-800 rounded-xl border border-slate-700 w-fit">
