@@ -80,6 +80,7 @@ import ChangeOrderDetailModal from './ChangeOrderDetailModal';
 import { db, collection, addDoc } from '../services/firebase';
 import SuperAdmin from './SuperAdmin';
 import OfferModal from './OfferModal';
+import OfferDetailModal from './OfferDetailModal';
 import ApprenticeModal from './ApprenticeModal';
 import HMSModule from './HMSModule';
 import { formatAiMarkdown } from '../lib/formatAiMarkdown';
@@ -369,6 +370,7 @@ export default function MesterWorkstation({
   // 📱 Gemini Mobile Experience State
   const [isAttachmentMenuOpen, setIsAttachmentMenuOpen] = useState(false);
   const [isLiveVoiceActive, setIsLiveVoiceActive] = useState(false);
+  const [selectedOfferForDetail, setSelectedOfferForDetail] = useState<any | null>(null);
   const cameraInputRef = useRef<HTMLInputElement>(null);
   const docInputRef = useRef<HTMLInputElement>(null);
 
@@ -1105,32 +1107,73 @@ export default function MesterWorkstation({
     }
 
     setIsUploadingImage(true);
-    toast.info('Laster opp bilde...');
+    const localPreview = URL.createObjectURL(file);
+
+    // Vis bildet umiddelbart så brukeren slipper ventetid
+    setAttachedImage({
+      url: localPreview,
+      preview: localPreview,
+      name: file.name
+    });
+    toast.info('Behandler bilde...');
 
     try {
       const formData = new FormData();
       formData.append('file', file);
 
+      const token = typeof window !== 'undefined' ? (localStorage.getItem('token') || localStorage.getItem('auth_token')) : null;
+      const headers: Record<string, string> = {};
+      if (token) {
+        headers['Authorization'] = `Bearer ${token}`;
+      }
+
       const res = await fetch('/api/upload', {
         method: 'POST',
+        headers,
         body: formData
       });
 
-      if (!res.ok) throw new Error('Opplasting feilet');
-
-      const data = await res.json();
-      setAttachedImage({
-        url: data.url,
-        preview: URL.createObjectURL(file),
-        name: file.name
-      });
-      toast.success('Bilde klart for analyse!');
+      if (res.ok) {
+        const data = await res.json();
+        setAttachedImage({
+          url: data.url || localPreview,
+          preview: localPreview,
+          name: file.name
+        });
+        toast.success('Bilde klart for analyse!');
+      } else {
+        // Fallback til Base64 dersom serveropplasting feiler eller mangler rettigheter
+        const reader = new FileReader();
+        reader.onload = () => {
+          if (reader.result) {
+            setAttachedImage({
+              url: reader.result as string,
+              preview: localPreview,
+              name: file.name
+            });
+            toast.success('Bilde klart for analyse!');
+          }
+        };
+        reader.readAsDataURL(file);
+      }
     } catch (err: any) {
-      console.error(err);
-      toast.error('Kunne ikke laste opp bilde: ' + err.message);
+      console.warn('Opplasting via server feilet, bruker lokal base64:', err);
+      const reader = new FileReader();
+      reader.onload = () => {
+        if (reader.result) {
+          setAttachedImage({
+            url: reader.result as string,
+            preview: localPreview,
+            name: file.name
+          });
+          toast.success('Bilde klart for analyse!');
+        }
+      };
+      reader.readAsDataURL(file);
     } finally {
       setIsUploadingImage(false);
       if (fileInputRef.current) fileInputRef.current.value = '';
+      if (cameraInputRef.current) cameraInputRef.current.value = '';
     }
   };
 
@@ -2794,10 +2837,16 @@ export default function MesterWorkstation({
                       ) : (
                         <div className="grid gap-2.5">
                           {offers.map((off: any) => (
-                            <div key={off.id} className="p-3.5 rounded-2xl bg-slate-950 border border-slate-800 flex flex-col sm:flex-row sm:items-center justify-between gap-3">
+                            <div 
+                              key={off.id} 
+                              onClick={() => setSelectedOfferForDetail(off)}
+                              className="p-4 rounded-2xl bg-slate-950 border border-slate-800 hover:border-purple-500/50 hover:bg-slate-900/90 transition-all flex flex-col sm:flex-row sm:items-center justify-between gap-3 cursor-pointer group shadow-sm"
+                            >
                               <div>
                                 <div className="flex items-center gap-2">
-                                  <span className="font-bold text-sm text-white">{off.title || 'Tilbud byggeoppdrag'}</span>
+                                  <span className="font-bold text-sm text-white group-hover:text-purple-300 transition-colors">
+                                    {off.title || 'Tilbud byggeoppdrag'}
+                                  </span>
                                   <span className="px-2 py-0.5 rounded-full text-[10px] font-bold bg-purple-500/20 text-purple-300 border border-purple-500/30">
                                     {off.status || 'Sendt til kunde'}
                                   </span>
@@ -2807,11 +2856,24 @@ export default function MesterWorkstation({
                                 </p>
                               </div>
 
-                              <div className="flex items-center gap-2 shrink-0">
+                              <div className="flex items-center gap-2 shrink-0" onClick={(e) => e.stopPropagation()}>
+                                <button
+                                  type="button"
+                                  onClick={(e) => {
+                                    e.stopPropagation();
+                                    setSelectedOfferForDetail(off);
+                                  }}
+                                  className="px-3 py-1.5 rounded-xl bg-purple-600/20 hover:bg-purple-600 text-purple-300 hover:text-white border border-purple-500/30 text-xs font-bold transition-all cursor-pointer"
+                                >
+                                  Åpne tilbud
+                                </button>
                                 {onDeleteOffer && (
                                   <button
                                     type="button"
-                                    onClick={() => onDeleteOffer(off.id, off.title)}
+                                    onClick={(e) => {
+                                      e.stopPropagation();
+                                      onDeleteOffer(off.id, off.title);
+                                    }}
                                     className="p-1.5 rounded-xl text-slate-500 hover:text-red-400 hover:bg-red-500/10 transition-colors cursor-pointer"
                                     title="Slett tilbud"
                                   >
@@ -4464,76 +4526,6 @@ export default function MesterWorkstation({
                 </div>
               )}
 
-              {/* 📎 Attachment Menu Popover (+ button) */}
-              <AnimatePresence>
-                {isAttachmentMenuOpen && (
-                  <>
-                    <div 
-                      className="fixed inset-0 z-30" 
-                      onClick={() => setIsAttachmentMenuOpen(false)} 
-                    />
-                    <motion.div
-                      initial={{ opacity: 0, y: 10, scale: 0.95 }}
-                      animate={{ opacity: 1, y: 0, scale: 1 }}
-                      exit={{ opacity: 0, y: 10, scale: 0.95 }}
-                      transition={{ duration: 0.15 }}
-                      className="absolute bottom-16 left-1 sm:left-2 z-40 bg-[#1e1f20] border border-white/15 rounded-3xl p-2 shadow-2xl w-64 space-y-1 backdrop-blur-xl"
-                    >
-                      <button
-                        type="button"
-                        onClick={() => {
-                          cameraInputRef.current?.click();
-                          setIsAttachmentMenuOpen(false);
-                        }}
-                        className="w-full flex items-center gap-3 p-2.5 rounded-2xl hover:bg-white/10 text-xs font-semibold text-white transition-colors cursor-pointer text-left group"
-                      >
-                        <div className="w-8 h-8 rounded-full bg-rose-500/20 text-rose-400 border border-rose-500/30 flex items-center justify-center shrink-0 group-hover:scale-105 transition-transform">
-                          <Camera size={16} />
-                        </div>
-                        <div>
-                          <p className="font-bold">Ta bilde med kamera</p>
-                          <p className="text-[10px] text-slate-400">TEK17 våtrom & slukkontroll</p>
-                        </div>
-                      </button>
-
-                      <button
-                        type="button"
-                        onClick={() => {
-                          fileInputRef.current?.click();
-                          setIsAttachmentMenuOpen(false);
-                        }}
-                        className="w-full flex items-center gap-3 p-2.5 rounded-2xl hover:bg-white/10 text-xs font-semibold text-white transition-colors cursor-pointer text-left group"
-                      >
-                        <div className="w-8 h-8 rounded-full bg-blue-500/20 text-blue-400 border border-blue-500/30 flex items-center justify-center shrink-0 group-hover:scale-105 transition-transform">
-                          <ImageIcon size={16} />
-                        </div>
-                        <div>
-                          <p className="font-bold">Bildegalleri</p>
-                          <p className="text-[10px] text-slate-400">Last opp eksisterende bilder</p>
-                        </div>
-                      </button>
-
-                      <button
-                        type="button"
-                        onClick={() => {
-                          docInputRef.current?.click();
-                          setIsAttachmentMenuOpen(false);
-                        }}
-                        className="w-full flex items-center gap-3 p-2.5 rounded-2xl hover:bg-white/10 text-xs font-semibold text-white transition-colors cursor-pointer text-left group"
-                      >
-                        <div className="w-8 h-8 rounded-full bg-emerald-500/20 text-emerald-400 border border-emerald-500/30 flex items-center justify-center shrink-0 group-hover:scale-105 transition-transform">
-                          <Paperclip size={16} />
-                        </div>
-                        <div>
-                          <p className="font-bold">Tegning & FDV</p>
-                          <p className="text-[10px] text-slate-400">PDF, DWG eller Word-dokument</p>
-                        </div>
-                      </button>
-                    </motion.div>
-                  </>
-                )}
-              </AnimatePresence>
-
               {/* Pill Container (Rounded-full bg-[#1e1f20]) */}
               <form
                 onSubmit={(e) => {
@@ -4542,23 +4534,26 @@ export default function MesterWorkstation({
                 }}
                 className="relative flex items-center bg-[#1e1f20] border border-white/10 focus-within:border-white/20 focus-within:ring-2 focus-within:ring-purple-500/20 rounded-full p-1.5 sm:p-2 shadow-2xl transition-all"
               >
-                {/* Hidden file inputs */}
+                {/* File inputs using sr-only for bulletproof programmatic and label activation */}
                 <input
+                  id="mester-file-input"
                   type="file"
                   ref={fileInputRef}
                   onChange={handleImageSelect}
                   accept="image/*"
-                  className="hidden"
+                  className="sr-only"
                 />
                 <input
+                  id="mester-camera-input"
                   type="file"
                   ref={cameraInputRef}
                   onChange={handleImageSelect}
                   accept="image/*"
                   capture="environment"
-                  className="hidden"
+                  className="sr-only"
                 />
                 <input
+                  id="mester-doc-input"
                   type="file"
                   ref={docInputRef}
                   onChange={(e) => {
@@ -4569,19 +4564,87 @@ export default function MesterWorkstation({
                     }
                   }}
                   accept=".pdf,.dwg,.doc,.docx,.xlsx,.txt"
-                  className="hidden"
+                  className="sr-only"
                 />
 
-                {/* Left: + circular button */}
-                <button
-                  type="button"
-                  onClick={() => setIsAttachmentMenuOpen(!isAttachmentMenuOpen)}
-                  disabled={isUploadingImage || isLoading}
-                  className="w-9 h-9 sm:w-10 sm:h-10 rounded-full bg-white/5 hover:bg-white/10 text-slate-300 hover:text-white flex items-center justify-center shrink-0 cursor-pointer transition-colors active:scale-95"
-                  title="Legg ved bilde, ta foto eller last opp tegning"
-                >
-                  <Plus size={20} className={cn("transition-transform duration-200", isAttachmentMenuOpen && "rotate-45")} />
-                </button>
+                {/* Left: + circular button with direct popover */}
+                <div className="relative shrink-0">
+                  <button
+                    type="button"
+                    onClick={(e) => {
+                      e.stopPropagation();
+                      setIsAttachmentMenuOpen(!isAttachmentMenuOpen);
+                    }}
+                    disabled={isUploadingImage || isLoading}
+                    className="w-9 h-9 sm:w-10 sm:h-10 rounded-full bg-white/5 hover:bg-white/10 text-slate-300 hover:text-white flex items-center justify-center shrink-0 cursor-pointer transition-colors active:scale-95"
+                    title="Legg ved bilde, ta foto eller last opp tegning"
+                  >
+                    <Plus size={20} className={cn("transition-transform duration-200", isAttachmentMenuOpen && "rotate-45")} />
+                  </button>
+
+                  <AnimatePresence>
+                    {isAttachmentMenuOpen && (
+                      <>
+                        <div 
+                          className="fixed inset-0 z-40" 
+                          onClick={(e) => {
+                            e.stopPropagation();
+                            setIsAttachmentMenuOpen(false);
+                          }} 
+                        />
+                        <motion.div
+                          initial={{ opacity: 0, y: 8, scale: 0.95 }}
+                          animate={{ opacity: 1, y: 0, scale: 1 }}
+                          exit={{ opacity: 0, y: 8, scale: 1 }}
+                          transition={{ duration: 0.15 }}
+                          className="absolute bottom-full left-0 mb-3 z-50 bg-[#1e1f20] border border-white/15 rounded-3xl p-2 shadow-2xl w-64 space-y-1 backdrop-blur-xl"
+                        >
+                          <label
+                            htmlFor="mester-camera-input"
+                            onClick={() => setIsAttachmentMenuOpen(false)}
+                            className="w-full flex items-center gap-3 p-2.5 rounded-2xl hover:bg-white/10 text-xs font-semibold text-white transition-colors cursor-pointer text-left group"
+                          >
+                            <div className="w-8 h-8 rounded-full bg-rose-500/20 text-rose-400 border border-rose-500/30 flex items-center justify-center shrink-0 group-hover:scale-105 transition-transform">
+                              <Camera size={16} />
+                            </div>
+                            <div>
+                              <p className="font-bold">Ta bilde med kamera</p>
+                              <p className="text-[10px] text-slate-400">TEK17 våtrom & slukkontroll</p>
+                            </div>
+                          </label>
+
+                          <label
+                            htmlFor="mester-file-input"
+                            onClick={() => setIsAttachmentMenuOpen(false)}
+                            className="w-full flex items-center gap-3 p-2.5 rounded-2xl hover:bg-white/10 text-xs font-semibold text-white transition-colors cursor-pointer text-left group"
+                          >
+                            <div className="w-8 h-8 rounded-full bg-blue-500/20 text-blue-400 border border-blue-500/30 flex items-center justify-center shrink-0 group-hover:scale-105 transition-transform">
+                              <ImageIcon size={16} />
+                            </div>
+                            <div>
+                              <p className="font-bold">Bildegalleri</p>
+                              <p className="text-[10px] text-slate-400">Last opp eksisterende bilder</p>
+                            </div>
+                          </label>
+
+                          <label
+                            htmlFor="mester-doc-input"
+                            onClick={() => setIsAttachmentMenuOpen(false)}
+                            className="w-full flex items-center gap-3 p-2.5 rounded-2xl hover:bg-white/10 text-xs font-semibold text-white transition-colors cursor-pointer text-left group"
+                          >
+                            <div className="w-8 h-8 rounded-full bg-emerald-500/20 text-emerald-400 border border-emerald-500/30 flex items-center justify-center shrink-0 group-hover:scale-105 transition-transform">
+                              <Paperclip size={16} />
+                            </div>
+                            <div>
+                              <p className="font-bold">Tegning & FDV</p>
+                              <p className="text-[10px] text-slate-400">PDF, DWG eller Word-dokument</p>
+                            </div>
+                          </label>
+                        </motion.div>
+                      </>
+                    )}
+                  </AnimatePresence>
+                </div>
 
                 {/* Center: Expanding textarea */}
                 <textarea
@@ -4690,6 +4753,24 @@ export default function MesterWorkstation({
         onDelete={onDeleteChangeOrder}
         onSave={(updated) => {
           setSelectedChangeOrderForDetail(updated);
+        }}
+      />
+
+      {/* 📄 Forhåndsvisning & Detaljvisning av Pristilbud */}
+      <OfferDetailModal
+        isOpen={Boolean(selectedOfferForDetail)}
+        onClose={() => setSelectedOfferForDetail(null)}
+        offer={selectedOfferForDetail}
+        project={selectedProject}
+        onDelete={onDeleteOffer}
+        onEditInBuilder={(off) => {
+          setSelectedOfferForDetail(null);
+          if (onOpenOfferModal) {
+            onOpenOfferModal(off);
+          }
+        }}
+        onSave={(updated) => {
+          setSelectedOfferForDetail(updated);
         }}
       />
     </div>

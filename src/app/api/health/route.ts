@@ -48,8 +48,8 @@ export async function GET() {
     oneMinAiConfigured,
     geminiConfigured,
     deepseekConfigured,
-    aiEngine: oneMinAiConfigured ? '1min.ai (Primary)' : (geminiConfigured ? 'Gemini (Backup)' : (deepseekConfigured ? 'DeepSeek (Backup)' : 'none')),
-    aiModel: oneMinAiConfigured ? 'Multi-Model (gpt-4o-mini / claude-3-5-sonnet / gemini-2.5-flash)' : (geminiConfigured ? (process.env.GEMINI_MODEL || 'gemini-2.5-flash') : (deepseekConfigured ? 'deepseek-chat' : 'none')),
+    aiEngine: deepseekConfigured ? 'DeepSeek (Primary)' : (oneMinAiConfigured ? '1min.ai (Primary)' : (geminiConfigured ? 'Gemini (Backup)' : 'none')),
+    aiModel: deepseekConfigured ? 'deepseek-chat (Text/Chat) + gemini-2.5-flash (Vision)' : (oneMinAiConfigured ? 'Multi-Model (gpt-4o-mini / claude-3-5-sonnet / gemini-2.5-flash)' : (geminiConfigured ? (process.env.GEMINI_MODEL || 'gemini-2.5-flash') : 'none')),
     timestamp: new Date().toISOString()
   }, { status: isHealthy ? 200 : 503 });
 }

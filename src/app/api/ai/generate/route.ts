@@ -35,12 +35,12 @@ export async function POST(req: NextRequest) {
   const deepseekKey = getDeepSeekKey();
 
   if (!oneMinKey && !geminiKey && !deepseekKey) {
-    return NextResponse.json({ error: 'Ingen AI-nøkkel (verken 1_MIN_AI eller GEMINI_API_KEY) er konfigurert på serveren.' }, { status: 500 });
+    return NextResponse.json({ error: 'Ingen AI-nøkkel (verken DEEPSEEK_API_KEY, 1_MIN_AI eller GEMINI_API_KEY) er konfigurert på serveren.' }, { status: 500 });
   }
 
   try {
     const body = await req.json();
-    let { prompt, contents, model = process.env.GEMINI_MODEL || 'gemini-2.5-flash', systemInstruction, responseMimeType, responseSchema, images, inlineData, operation = 'ai_generate' } = body;
+    let { prompt, contents, model, systemInstruction, responseMimeType, responseSchema, images, inlineData, operation = 'ai_generate' } = body;
 
     if (!user && isPortalAccess) {
       if (!prompt || typeof prompt !== 'string' || prompt.length > 5000) {

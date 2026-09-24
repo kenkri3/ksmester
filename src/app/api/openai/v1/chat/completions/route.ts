@@ -67,10 +67,10 @@ export async function POST(req: NextRequest) {
 
     const systemInstruction = systemParts.length > 0 ? systemParts.join('\n\n') : undefined;
 
-    // 3. Kall KS Mester sin integrasjon mot 1min.AI (med failover)
+    // 3. Kall KS Mester sin intelligente AI-motor (DeepSeek primær / failover)
     const result = await generateWithAiEngine({
       prompt,
-      model: typeof model === 'string' ? model : 'gemini-3.8-flash',
+      model: typeof model === 'string' ? model : undefined,
       systemInstruction,
       apiKey: customKey,
       operation: 'botsify_chat_bridge'

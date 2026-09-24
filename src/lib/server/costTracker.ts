@@ -3,7 +3,7 @@ import { saveCollectionItem, getCollectionItems, getCollectionItemById } from '.
 export interface CostLogRecord {
   id: string;
   timestamp: string;
-  service: '1min.ai' | 'gemini' | 'railway' | 'resend' | 'database' | 'infrastructure';
+  service: '1min.ai' | 'gemini' | 'railway' | 'resend' | 'database' | 'infrastructure' | 'deepseek';
   category: 'token_inference' | 'hosting' | 'email_delivery' | 'database';
   model?: string;
   promptTokens?: number;
@@ -114,7 +114,7 @@ export async function trackTokenCost({
   companyName?: string;
   projectId?: string;
   notes?: string;
-  service?: '1min.ai' | 'gemini' | 'railway' | 'resend' | 'database' | 'infrastructure';
+  service?: '1min.ai' | 'gemini' | 'railway' | 'resend' | 'database' | 'infrastructure' | 'deepseek';
 }): Promise<CostLogRecord> {
   const totalTokens = promptTokens + completionTokens;
 
@@ -142,8 +142,8 @@ export async function trackTokenCost({
   const costNok = Number((costUsd * NOK_USD_RATE).toFixed(5));
 
   const resolvedService = service || (
-    mLower.includes('gpt') || mLower.includes('claude') || mLower.includes('1min') ? '1min.ai' :
-    mLower.includes('deepseek') ? 'gemini' : 'gemini'
+    mLower.includes('deepseek') ? 'deepseek' :
+    (mLower.includes('gpt') || mLower.includes('claude') || mLower.includes('1min')) ? '1min.ai' : 'gemini'
   );
 
   const record: CostLogRecord = {

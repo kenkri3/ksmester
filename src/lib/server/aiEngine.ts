@@ -46,7 +46,7 @@ export interface AiEngineResult {
  */
 export function get1MinAiKey(): string | null {
   const env = process.env as Record<string, string | undefined>;
-  return (
+  const key =
     env['1_MIN_AI'] ||
     env['ONE_MIN_AI'] ||
     env['ONE_MIN_AI_KEY'] ||
@@ -57,8 +57,8 @@ export function get1MinAiKey(): string | null {
     env['ONEMINAI_API_KEY'] ||
     env['1_min_ai'] ||
     env['one_min_ai'] ||
-    null
-  );
+    null;
+  return key ? key.trim() : null;
 }
 
 /**
@@ -66,14 +66,14 @@ export function get1MinAiKey(): string | null {
  */
 export function getGeminiKey(): string | null {
   const env = process.env as Record<string, string | undefined>;
-  return (
+  const key =
     env.GEMINI_API_KEY ||
     env.GOOGLE_API_KEY ||
     env.GOOGLE_GENAI_API_KEY ||
     env.GEMINI_KEY ||
     env.GOOGLE_AI_KEY ||
-    null
-  );
+    null;
+  return key ? key.trim() : null;
 }
 
 /**
@@ -128,13 +128,14 @@ export async function getStoredAiKey(type: '1min.ai' | 'gemini' | 'deepseek' | '
  */
 export function getDeepSeekKey(): string | null {
   const env = process.env as Record<string, string | undefined>;
-  return (
-    env.DEEP_SEEK_API || 
+  const key =
     env.DEEPSEEK_API_KEY || 
+    env.DEEP_SEEK_API || 
     env.DEEP_SEEK_API_KEY || 
     env.DEEPSEEK_KEY || 
-    null
-  );
+    env.deepseek_api_key ||
+    null;
+  return key ? key.trim() : null;
 }
 
 /**
@@ -142,88 +143,116 @@ export function getDeepSeekKey(): string | null {
  */
 export function getOpenRouterKey(): string | null {
   const env = process.env as Record<string, string | undefined>;
-  return (
+  const key =
     env.OPENROUTER_API_KEY ||
     env.OPENROUTER_KEY ||
     env.OPEN_ROUTER_API_KEY ||
     env.OPEN_ROUTER_KEY ||
-    null
-  );
+    null;
+  return key ? key.trim() : null;
 }
 
 /**
  * Intelligent modellruter (Kvalitet vs. Tokenkostnad).
  * Ruter oppgaver automatisk til den mest kostnadseffektive modellen uten kvalitetstap:
- * - Nettsøk: gpt-4o-mini (1min.ai krever OpenAI-modeller for webSearchSettings)
- * - Rutine/Byggedagbok: gpt-4o-mini (ekstremt billig, lynrask)
- * - NS 8406 / Juridisk: claude-3-5-sonnet (norgesledende presisjon på entrepriserett)
- * - SEO: claude-3-5-sonnet / gpt-4o-mini (høy E-E-A-T faglig autoritet)
- * - SJA: gemini-2.5-flash / gpt-4o-mini (strukturert JSON)
- * - Vision: gemini-2.5-flash / gpt-4o-mini
+ * - Nettsøk: Gemini med Google Grounding / gpt-4o-mini
+ * - Tekst / Rådgivning / Kalkyle / KS: DeepSeek-V3 (deepseek-chat)
+ * - Kompleks resonnering / NS 8406 tvist: DeepSeek-R1 (deepseek-reasoner)
+ * - SJA: DeepSeek-V3 / Gemini 2.5 Flash
+ * - Vision / Bildeanalyse: Gemini 2.5 Flash
  */
-export function resolveOptimalModel(operation?: string, requestedModel?: string, webSearch = false): { oneMinModel: string; geminiModel: string } {
+export function resolveOptimalModel(
+  operation?: string,
+  requestedModel?: string,
+  webSearch = false
+): { oneMinModel: string; geminiModel: string; deepseekModel: string } {
   const op = (operation || '').toLowerCase();
 
-  // Hvis webSearch er aktivert: 1min.AI krever OpenAI-modeller for webSearchSettings
+  // Hvis webSearch er aktivert:
   if (webSearch) {
     return {
       oneMinModel: process.env.ONE_MIN_AI_SEARCH_MODEL || 'gpt-4o-mini',
-      geminiModel: 'gemini-2.5-flash'
+      geminiModel: 'gemini-2.5-flash',
+      deepseekModel: 'deepseek-chat'
     };
   }
 
-  // Hvis eksplisitt modell er bedt om og ikke er ren gemini-intern streng:
-  if (requestedModel && !requestedModel.startsWith('gemini')) {
-    return {
-      oneMinModel: requestedModel,
-      geminiModel: 'gemini-2.5-flash'
-    };
+  // Hvis eksplisitt modell er bedt om:
+  if (requestedModel) {
+    const reqLower = requestedModel.toLowerCase();
+    if (reqLower.includes('reasoner') || reqLower.includes('r1')) {
+      return {
+        oneMinModel: requestedModel,
+        geminiModel: 'gemini-2.5-flash',
+        deepseekModel: 'deepseek-reasoner'
+      };
+    }
+    if (reqLower.includes('deepseek')) {
+      return {
+        oneMinModel: 'gpt-4o-mini',
+        geminiModel: 'gemini-2.5-flash',
+        deepseekModel: 'deepseek-chat'
+      };
+    }
+    if (!reqLower.startsWith('gemini')) {
+      return {
+        oneMinModel: requestedModel,
+        geminiModel: 'gemini-2.5-flash',
+        deepseekModel: 'deepseek-chat'
+      };
+    }
   }
 
-  // 1. MesterAI Samtalepartner, Rådgivning, Tilbud & Kalkyle -> GPT-4o-mini / GPT-4o / Claude
+  // 1. MesterAI Samtalepartner, Rådgivning, Tilbud & Kalkyle -> DeepSeek-V3 (deepseek-chat)
   if (op.includes('conversation') || op.includes('advisor') || op.includes('consultation') || op.includes('chat') || op.includes('offer') || op.includes('tilbud') || op.includes('kalkyle')) {
     return {
       oneMinModel: process.env.ONE_MIN_AI_CHAT_MODEL || 'gpt-4o-mini',
-      geminiModel: 'gemini-2.5-flash'
+      geminiModel: 'gemini-2.5-flash',
+      deepseekModel: 'deepseek-chat'
     };
   }
 
-  // 2. Juridisk, NS 8406, Endringsordrer, Kontrakt -> GPT-4o-mini / Claude
+  // 2. Juridisk, NS 8406, Endringsordrer, Kontrakt -> DeepSeek-chat / deepseek-reasoner
   if (op.includes('change_order') || op.includes('contract') || op.includes('legal') || op.includes('ns8406') || op.includes('varsel')) {
     return {
       oneMinModel: process.env.ONE_MIN_AI_LEGAL_MODEL || 'gpt-4o-mini',
-      geminiModel: 'gemini-2.5-flash'
+      geminiModel: 'gemini-2.5-flash',
+      deepseekModel: 'deepseek-chat'
     };
   }
 
-  // 2. SEO & Faglige artikler -> Claude 3.5 Sonnet
+  // 3. SEO & Faglige artikler -> Claude 3.5 Sonnet / DeepSeek
   if (op.includes('seo') || op.includes('article')) {
     return {
       oneMinModel: process.env.ONE_MIN_AI_SEO_MODEL || 'claude-3-5-sonnet',
-      geminiModel: 'gemini-2.5-flash'
+      geminiModel: 'gemini-2.5-flash',
+      deepseekModel: 'deepseek-chat'
     };
   }
 
-  // 3. SJA (Sikker Jobb Analyse) -> Gemini 2.5 Flash eller GPT-4o-mini
+  // 4. SJA (Sikker Jobb Analyse) -> DeepSeek-chat / Gemini 2.5 Flash
   if (op.includes('sja')) {
     return {
       oneMinModel: process.env.ONE_MIN_AI_SJA_MODEL || 'gemini-2.5-flash',
-      geminiModel: 'gemini-2.5-flash'
+      geminiModel: 'gemini-2.5-flash',
+      deepseekModel: 'deepseek-chat'
     };
   }
 
-  // 4. Bildeanalyse / TEK17 Vision -> Gemini 2.5 Flash
-  if (op.includes('vision') || op.includes('image')) {
+  // 5. Bildeanalyse / TEK17 Vision -> Gemini 2.5 Flash
+  if (op.includes('vision') || op.includes('image') || op.includes('bilde') || op.includes('foto') || op.includes('scan')) {
     return {
       oneMinModel: process.env.ONE_MIN_AI_VISION_MODEL || 'gemini-2.5-flash',
-      geminiModel: 'gemini-2.5-flash'
+      geminiModel: 'gemini-2.5-flash',
+      deepseekModel: 'deepseek-chat'
     };
   }
 
-  // 5. Standard / Byggedagbok / Oversettelse / Generelt -> GPT-4o-mini (minimal creditkostnad)
+  // 6. Standard / Byggedagbok / Oversettelse / Generelt -> DeepSeek-chat
   return {
     oneMinModel: process.env.ONE_MIN_AI_DEFAULT_MODEL || 'gpt-4o-mini',
-    geminiModel: process.env.GEMINI_MODEL || 'gemini-2.5-flash'
+    geminiModel: process.env.GEMINI_MODEL || 'gemini-2.5-flash',
+    deepseekModel: 'deepseek-chat'
   };
 }
 
@@ -597,23 +626,46 @@ async function callDeepSeekDirect(
   systemInstruction?: string,
   forceJson = false
 ): Promise<{ text: string; promptTokens: number; completionTokens: number }> {
+  const now = new Date();
+  const dateStr = new Intl.DateTimeFormat('no-NO', {
+    weekday: 'long',
+    year: 'numeric',
+    month: 'long',
+    day: 'numeric',
+    timeZone: 'Europe/Oslo'
+  }).format(now);
+  const timeStr = new Intl.DateTimeFormat('no-NO', {
+    hour: '2-digit',
+    minute: '2-digit',
+    timeZone: 'Europe/Oslo'
+  }).format(now);
+  const currentYear = now.getFullYear();
+  const currentMonth = new Intl.DateTimeFormat('no-NO', { month: 'long', timeZone: 'Europe/Oslo' }).format(now);
+  const dateContext = `Dagens reelle dato er ${dateStr} (kl. ${timeStr}, ${currentYear}). Det er ${currentMonth} (${currentYear}, høst).`;
+
+  const fullSystemInstruction = systemInstruction
+    ? `${systemInstruction}\n\n[DATO & TID I SANNTID]: ${dateContext}`
+    : `[DATO & TID I SANNTID]: ${dateContext}`;
+
   const messages: any[] = [];
-  if (systemInstruction) {
-    messages.push({ role: 'system', content: systemInstruction });
-  }
+  messages.push({ role: 'system', content: fullSystemInstruction });
   messages.push({ role: 'user', content: prompt });
 
-  const effectiveModel = (model === 'deepseek-reasoner' || model?.includes('reasoner') || model?.includes('r1'))
-    ? 'deepseek-reasoner'
-    : 'deepseek-chat';
+  // Hvis JSON er påkrevd, MÅ vi bruke deepseek-chat fordi deepseek-reasoner ikke støtter response_format
+  const effectiveModel = (forceJson || (!model?.includes('reasoner') && !model?.includes('r1')))
+    ? 'deepseek-chat'
+    : 'deepseek-reasoner';
 
   const body: any = {
     model: effectiveModel,
-    messages,
-    temperature: effectiveModel === 'deepseek-reasoner' ? undefined : 0.3
+    messages
   };
-  if (forceJson && effectiveModel !== 'deepseek-reasoner') {
-    body.response_format = { type: 'json_object' };
+
+  if (effectiveModel !== 'deepseek-reasoner') {
+    body.temperature = 0.3;
+    if (forceJson) {
+      body.response_format = { type: 'json_object' };
+    }
   }
 
   const res = await fetch('https://api.deepseek.com/chat/completions', {
@@ -632,7 +684,7 @@ async function callDeepSeekDirect(
   }
 
   const data = await res.json();
-  const text = data.choices?.[0]?.message?.content || '';
+  const text = data.choices?.[0]?.message?.content || data.choices?.[0]?.message?.reasoning_content || '';
   const promptTokens = data.usage?.prompt_tokens || Math.round(prompt.length / 4);
   const completionTokens = data.usage?.completion_tokens || Math.round(text.length / 4);
 
@@ -693,10 +745,10 @@ async function callOpenRouter(
 
 /**
  * HOVEDFUNKSJON: generateWithAiEngine
- * Intelligent flermodell-motor som velger optimal modell med automatisk failover:
- * 1. 1min.AI / Gemini med Google Search Grounding ved nettsøk
- * 2. DeepSeek direct / OpenRouter hvis eksplisitt konfigurert
- * 3. Automatisk failover mellom 1min.AI, Gemini og DeepSeek
+ * Intelligent flermodell-motor:
+ * 1. DeepSeek Direct (DEEPSEEK_API_KEY) er absolutt primærmotor for all tekst, rådgivning, kalkyle, KS, SJA og jus.
+ * 2. Google Gemini er primærmotor for bildeanalyse (multimodal vision) og Google Search Grounding.
+ * 3. 1min.AI, Gemini og OpenRouter fungerer som automatiske feiltolerante sikkerhetsnett.
  */
 export async function generateWithAiEngine(options: GenerateAiOptions): Promise<AiEngineResult> {
   let oneMinKey = options.apiKey || get1MinAiKey();
@@ -718,15 +770,12 @@ export async function generateWithAiEngine(options: GenerateAiOptions): Promise<
   }
 
   if (!oneMinKey && !geminiKey && !deepseekKey && !openrouterKey) {
-    throw new Error('Ingen AI-nøkkel (verken 1_MIN_AI, GEMINI_API_KEY, DEEPSEEK_API_KEY eller OPENROUTER_API_KEY) er konfigurert på serveren eller i innstillingene.');
+    throw new Error('Ingen AI-nøkkel (verken DEEPSEEK_API_KEY, 1_MIN_AI, GEMINI_API_KEY eller OPENROUTER_API_KEY) er konfigurert på serveren eller i innstillingene.');
   }
 
   const promptText = typeof options.prompt === 'string'
     ? options.prompt
     : (typeof options.contents === 'string' ? options.contents : JSON.stringify(options.contents || ''));
-
-  const { oneMinModel, geminiModel } = resolveOptimalModel(options.operation, options.model, options.webSearch);
-  const isJsonExpected = options.responseMimeType === 'application/json' || !!options.responseSchema;
 
   // Samle eventuelle bilder
   const imagesToProcess: AiImageAttachment[] = [];
@@ -737,77 +786,73 @@ export async function generateWithAiEngine(options: GenerateAiOptions): Promise<
     imagesToProcess.push({ inlineData: options.inlineData });
   }
 
-  // Hvis eksplisitt DeepSeek er bedt om og IKKE krever nettsøk:
-  if (options.model?.toLowerCase().includes('deepseek') && !options.webSearch) {
-    if (deepseekKey) {
+  const isVisionTask = imagesToProcess.length > 0 ||
+    Boolean(
+      options.operation && (
+        options.operation.includes('vision') ||
+        options.operation.includes('image') ||
+        options.operation.includes('bilde') ||
+        options.operation.includes('scan') ||
+        options.operation.includes('foto')
+      )
+    );
+
+  const isWebSearch = Boolean(options.webSearch);
+  const isJsonExpected = options.responseMimeType === 'application/json' || Boolean(options.responseSchema);
+
+  const { oneMinModel, geminiModel, deepseekModel } = resolveOptimalModel(options.operation, options.model, isWebSearch);
+
+  // ==========================================================================
+  // CASE 1: SYN / BILDEANALYSE (Vision / TEK17 / Foto / Skanning)
+  // DeepSeek er en ren tekst-LLM uten synsstøtte.
+  // Gemini 2.5 Flash / 1.5 Pro er verdensledende på bildeanalyse og brukes primært her.
+  // ==========================================================================
+  if (isVisionTask) {
+    // 1.1 Primær for bildeanalyse: Google Gemini API
+    if (geminiKey) {
       try {
-        const dsModel = options.model.includes('reasoner') || options.model.includes('r1') ? 'deepseek-reasoner' : 'deepseek-chat';
-        const res = await callDeepSeekDirect(deepseekKey, dsModel, promptText, options.systemInstruction, isJsonExpected);
+        const res = await callGeminiBackup(
+          geminiKey,
+          geminiModel,
+          promptText,
+          options.systemInstruction,
+          imagesToProcess,
+          options.responseMimeType,
+          options.responseSchema,
+          false
+        );
+
         trackTokenCost({
-          model: dsModel,
+          model: res.executedModel,
           promptTokens: res.promptTokens,
           completionTokens: res.completionTokens,
-          operation: options.operation || 'ai_generate_deepseek_direct',
+          operation: options.operation || 'ai_generate_vision_gemini',
           companyId: options.companyId,
           companyName: options.companyName,
           projectId: options.projectId,
-          notes: options.notes || `DeepSeek Direct (${dsModel})`,
+          notes: options.notes || `Gemini Vision (${res.executedModel})`,
           service: 'gemini'
         }).catch(() => {});
 
         return {
           text: res.text,
-          source: 'deepseek_direct',
-          model: dsModel,
+          source: 'gemini_backup',
+          model: res.executedModel,
           usage: {
             promptTokens: res.promptTokens,
             completionTokens: res.completionTokens,
             totalTokens: res.promptTokens + res.completionTokens
           }
         };
-      } catch (dsErr: any) {
-        console.warn(`[AI Engine] DeepSeek Direct feilet (${dsErr.message}), prøver 1min/Gemini...`);
-      }
-    } else if (openrouterKey) {
-      try {
-        const res = await callOpenRouter(openrouterKey, options.model || 'deepseek/deepseek-chat', promptText, options.systemInstruction, isJsonExpected);
-        trackTokenCost({
-          model: options.model || 'deepseek/deepseek-chat',
-          promptTokens: res.promptTokens,
-          completionTokens: res.completionTokens,
-          operation: options.operation || 'ai_generate_openrouter',
-          companyId: options.companyId,
-          companyName: options.companyName,
-          projectId: options.projectId,
-          notes: options.notes || `OpenRouter (${options.model})`,
-          service: 'gemini'
-        }).catch(() => {});
-
-        return {
-          text: res.text,
-          source: 'openrouter',
-          model: options.model || 'deepseek/deepseek-chat',
-          usage: {
-            promptTokens: res.promptTokens,
-            completionTokens: res.completionTokens,
-            totalTokens: res.promptTokens + res.completionTokens
-          }
-        };
-      } catch (orErr: any) {
-        console.warn(`[AI Engine] OpenRouter feilet (${orErr.message}), prøver 1min/Gemini...`);
+      } catch (gErr: any) {
+        console.warn(`[AI Engine - Vision] Gemini feilet (${gErr.message}), prøver 1min.AI...`);
       }
     }
-  }
 
-  // ==========================================================================
-  // 1. PRIMÆRMOTOR: 1_MIN_AI
-  // ==========================================================================
-  if (oneMinKey) {
-    try {
-      const assetKeys: string[] = [];
-
-      // Hvis forespørselen har bilder, last opp til 1min.AI Asset API
-      if (imagesToProcess.length > 0) {
+    // 1.2 Sekundær backup for bildeanalyse: 1min.AI Asset API
+    if (oneMinKey) {
+      try {
+        const assetKeys: string[] = [];
         for (const img of imagesToProcess) {
           const rawBase64 = img.inlineData?.data || img.data;
           const mime = img.inlineData?.mimeType || img.mimeType || 'image/jpeg';
@@ -816,15 +861,191 @@ export async function generateWithAiEngine(options: GenerateAiOptions): Promise<
             if (key) assetKeys.push(key);
           }
         }
-      }
 
+        const res = await call1MinAi(
+          oneMinKey,
+          oneMinModel,
+          promptText,
+          options.systemInstruction,
+          assetKeys,
+          false,
+          isJsonExpected
+        );
+
+        if (res.text && res.text.trim().length > 0) {
+          trackTokenCost({
+            model: oneMinModel,
+            promptTokens: res.promptTokens,
+            completionTokens: res.completionTokens,
+            operation: options.operation || 'ai_generate_vision_1min',
+            companyId: options.companyId,
+            companyName: options.companyName,
+            projectId: options.projectId,
+            notes: options.notes || `1min.ai Vision (${oneMinModel})`,
+            service: '1min.ai'
+          }).catch(() => {});
+
+          return {
+            text: res.text,
+            source: '1min.ai',
+            model: oneMinModel,
+            usage: {
+              promptTokens: res.promptTokens,
+              completionTokens: res.completionTokens,
+              totalTokens: res.promptTokens + res.completionTokens
+            }
+          };
+        }
+      } catch (oneMinErr: any) {
+        console.warn(`[AI Engine - Vision] 1min.AI feilet (${oneMinErr.message})`);
+      }
+    }
+
+    throw new Error('Bildeanalyse krever en synsstøttet modell (Google Gemini eller 1min.AI), men ingen var tilgjengelig.');
+  }
+
+  // ==========================================================================
+  // CASE 2: LIVE NETTSØK (Google Search Grounding)
+  // Ved eksplisitt ønske om sanntidsnettsøk brukes Gemini Google Grounding primært.
+  // ==========================================================================
+  if (isWebSearch) {
+    if (geminiKey) {
+      try {
+        const res = await callGeminiBackup(
+          geminiKey,
+          geminiModel,
+          promptText,
+          options.systemInstruction,
+          imagesToProcess,
+          options.responseMimeType,
+          options.responseSchema,
+          true
+        );
+
+        trackTokenCost({
+          model: res.executedModel,
+          promptTokens: res.promptTokens,
+          completionTokens: res.completionTokens,
+          operation: options.operation || 'ai_generate_websearch_gemini',
+          companyId: options.companyId,
+          companyName: options.companyName,
+          projectId: options.projectId,
+          notes: options.notes || `Gemini Search Grounding (${res.executedModel})`,
+          service: 'gemini'
+        }).catch(() => {});
+
+        return {
+          text: res.text,
+          source: 'gemini_backup',
+          model: res.executedModel,
+          usage: {
+            promptTokens: res.promptTokens,
+            completionTokens: res.completionTokens,
+            totalTokens: res.promptTokens + res.completionTokens
+          }
+        };
+      } catch (gErr: any) {
+        console.warn(`[AI Engine - WebSearch] Gemini Google Grounding feilet (${gErr.message}), prøver 1min/DeepSeek...`);
+      }
+    }
+
+    if (oneMinKey) {
+      try {
+        const res = await call1MinAi(
+          oneMinKey,
+          oneMinModel,
+          promptText,
+          options.systemInstruction,
+          [],
+          true,
+          isJsonExpected
+        );
+
+        if (res.text && res.text.trim().length > 0) {
+          trackTokenCost({
+            model: oneMinModel,
+            promptTokens: res.promptTokens,
+            completionTokens: res.completionTokens,
+            operation: options.operation || 'ai_generate_websearch_1min',
+            companyId: options.companyId,
+            companyName: options.companyName,
+            projectId: options.projectId,
+            notes: options.notes || `1min.ai WebSearch (${oneMinModel})`,
+            service: '1min.ai'
+          }).catch(() => {});
+
+          return {
+            text: res.text,
+            source: '1min.ai',
+            model: oneMinModel,
+            usage: {
+              promptTokens: res.promptTokens,
+              completionTokens: res.completionTokens,
+              totalTokens: res.promptTokens + res.completionTokens
+            }
+          };
+        }
+      } catch (oneMinErr: any) {
+        console.warn(`[AI Engine - WebSearch] 1min.AI feilet (${oneMinErr.message})`);
+      }
+    }
+  }
+
+  // ==========================================================================
+  // CASE 3: ALL TEKST / CHAT / KALKYLE / JURIDISK / KS / SJA / BYGGEDAGBOK
+  // DEEPSEEK_API_KEY ER NÅ ABSOLUTT PRIMÆRMOTOR
+  // ==========================================================================
+  if (deepseekKey) {
+    try {
+      const res = await callDeepSeekDirect(
+        deepseekKey,
+        deepseekModel,
+        promptText,
+        options.systemInstruction,
+        isJsonExpected
+      );
+
+      if (res.text && res.text.trim().length > 0) {
+        trackTokenCost({
+          model: deepseekModel,
+          promptTokens: res.promptTokens,
+          completionTokens: res.completionTokens,
+          operation: options.operation || 'ai_generate_deepseek_primary',
+          companyId: options.companyId,
+          companyName: options.companyName,
+          projectId: options.projectId,
+          notes: options.notes || `DeepSeek Primary (${deepseekModel})`,
+          service: 'deepseek'
+        }).catch(() => {});
+
+        return {
+          text: res.text,
+          source: 'deepseek_direct',
+          model: deepseekModel,
+          usage: {
+            promptTokens: res.promptTokens,
+            completionTokens: res.completionTokens,
+            totalTokens: res.promptTokens + res.completionTokens
+          }
+        };
+      }
+    } catch (dsErr: any) {
+      console.warn(`[AI Engine] DeepSeek primærmotor feilet (${dsErr.message}). Kobler over til backup...`);
+    }
+  }
+
+  // ==========================================================================
+  // SEKUNDÆR BACKUP: 1_MIN_AI (hvis DeepSeek feilet eller mangler nøkkel)
+  // ==========================================================================
+  if (oneMinKey) {
+    try {
       const res = await call1MinAi(
         oneMinKey,
         oneMinModel,
         promptText,
         options.systemInstruction,
-        assetKeys,
-        options.webSearch || false,
+        [],
+        false,
         isJsonExpected
       );
 
@@ -833,11 +1054,11 @@ export async function generateWithAiEngine(options: GenerateAiOptions): Promise<
           model: oneMinModel,
           promptTokens: res.promptTokens,
           completionTokens: res.completionTokens,
-          operation: options.operation || 'ai_generate',
+          operation: options.operation || 'ai_generate_1min_backup',
           companyId: options.companyId,
           companyName: options.companyName,
           projectId: options.projectId,
-          notes: options.notes || `1min.ai request (${oneMinModel})`,
+          notes: options.notes || `1min.ai backup (${oneMinModel})`,
           service: '1min.ai'
         }).catch(() => {});
 
@@ -853,12 +1074,12 @@ export async function generateWithAiEngine(options: GenerateAiOptions): Promise<
         };
       }
     } catch (err: any) {
-      console.warn(`[AI Engine] 1min.AI feilet eller utilgjengelig (${err.message}). Kobler over til Gemini backup...`);
+      console.warn(`[AI Engine] 1min.AI backup feilet (${err.message}). Kobler over til Gemini...`);
     }
   }
 
   // ==========================================================================
-  // 2. SIKKERHETSNETT / BACKUP: Google Gemini API (inkl. Google Search Grounding)
+  // TERTIÆR BACKUP: Google Gemini API
   // ==========================================================================
   if (geminiKey) {
     try {
@@ -867,17 +1088,17 @@ export async function generateWithAiEngine(options: GenerateAiOptions): Promise<
         geminiModel,
         promptText,
         options.systemInstruction,
-        imagesToProcess,
+        [],
         options.responseMimeType,
         options.responseSchema,
-        options.webSearch || false
+        false
       );
 
       trackTokenCost({
         model: res.executedModel,
         promptTokens: res.promptTokens,
         completionTokens: res.completionTokens,
-        operation: options.operation || 'ai_generate_backup',
+        operation: options.operation || 'ai_generate_gemini_backup',
         companyId: options.companyId,
         companyName: options.companyName,
         projectId: options.projectId,
@@ -901,48 +1122,7 @@ export async function generateWithAiEngine(options: GenerateAiOptions): Promise<
   }
 
   // ==========================================================================
-  // 3. TERTIÆR BACKUP: DeepSeek API Direct
-  // ==========================================================================
-  if (deepseekKey) {
-    try {
-      const chosenDsModel = options.model?.includes('reasoner') || options.model?.includes('r1') ? 'deepseek-reasoner' : 'deepseek-chat';
-      const res = await callDeepSeekDirect(
-        deepseekKey,
-        chosenDsModel,
-        promptText,
-        options.systemInstruction,
-        isJsonExpected
-      );
-
-      trackTokenCost({
-        model: chosenDsModel,
-        promptTokens: res.promptTokens,
-        completionTokens: res.completionTokens,
-        operation: options.operation || 'ai_generate_deepseek',
-        companyId: options.companyId,
-        companyName: options.companyName,
-        projectId: options.projectId,
-        notes: options.notes || `DeepSeek backup (${chosenDsModel})`,
-        service: 'gemini'
-      }).catch(() => {});
-
-      return {
-        text: res.text,
-        source: 'deepseek_backup',
-        model: chosenDsModel,
-        usage: {
-          promptTokens: res.promptTokens,
-          completionTokens: res.completionTokens,
-          totalTokens: res.promptTokens + res.completionTokens
-        }
-      };
-    } catch (dErr: any) {
-      console.warn(`[AI Engine] DeepSeek backup feilet (${dErr.message}).`);
-    }
-  }
-
-  // ==========================================================================
-  // 4. KVARTER BACKUP: OpenRouter API
+  // KVARTER BACKUP: OpenRouter API
   // ==========================================================================
   if (openrouterKey) {
     try {
@@ -982,11 +1162,11 @@ export async function generateWithAiEngine(options: GenerateAiOptions): Promise<
     }
   }
 
-  throw new Error('Alle AI-motorer (1min.AI, Gemini, DeepSeek og OpenRouter) feilet eller er utilgjengelige.');
+  throw new Error('Alle AI-motorer (DeepSeek, 1min.AI, Gemini og OpenRouter) feilet eller er utilgjengelige.');
 }
 
 /**
- * Hjelpefunksjon for å vaske JSON-respons fra eventuelle markdown-omslag.
+ * Hjelpefunksjon for å vaske JSON-respons fra eventuelle markdown-omslag eller ekstra tekst.
  */
 export function cleanAiJson(rawText: string): string {
   let cleaned = (rawText || '').trim();
@@ -995,5 +1175,20 @@ export function cleanAiJson(rawText: string): string {
   } else if (cleaned.startsWith('```')) {
     cleaned = cleaned.replace(/^```\s*/, '').replace(/\s*```$/, '');
   }
-  return cleaned.trim();
+  cleaned = cleaned.trim();
+
+  // Hvis teksten har omkransende tekst, finn den ytterste JSON-blokken
+  if (!cleaned.startsWith('{') && !cleaned.startsWith('[')) {
+    const firstBrace = cleaned.indexOf('{');
+    const lastBrace = cleaned.lastIndexOf('}');
+    if (firstBrace !== -1 && lastBrace !== -1 && lastBrace > firstBrace) {
+      return cleaned.slice(firstBrace, lastBrace + 1);
+    }
+    const firstBracket = cleaned.indexOf('[');
+    const lastBracket = cleaned.lastIndexOf(']');
+    if (firstBracket !== -1 && lastBracket !== -1 && lastBracket > firstBracket) {
+      return cleaned.slice(firstBracket, lastBracket + 1);
+    }
+  }
+  return cleaned;
 }
