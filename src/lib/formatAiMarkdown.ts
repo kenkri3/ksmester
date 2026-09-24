@@ -11,6 +11,10 @@ export function formatAiMarkdown(text: string): string {
   let formatted = text.trim();
   // Normaliser linjeskift
   formatted = formatted.replace(/\r\n/g, '\n');
+  // Normaliser uformelle kulepunkter (en-dash –, em-dash —, bullet •, ●) til standard markdown '- '
+  formatted = formatted
+    .replace(/^[ \t]*[•●–—][ \t]*/gm, '- ')
+    .replace(/\n[ \t]*[•●–—][ \t]*/g, '\n- ');
 
   const lines = formatted.split('\n');
   const resultLines: string[] = [];

@@ -28,8 +28,10 @@ import {
   ArrowRight,
   Zap,
   CheckCircle2,
-  RefreshCw
+  RefreshCw,
+  Loader2
 } from 'lucide-react';
+import { getDynamicReasoningFlow } from '@/src/lib/reasoningEngine';
 import ReactMarkdown from 'react-markdown';
 import remarkGfm from 'remark-gfm';
 import { cn } from '@/src/lib/utils';
@@ -72,6 +74,10 @@ export default function MesterAICopilot({
   const [inputVal, setInputVal] = useState('');
   const [isLoading, setIsLoading] = useState(false);
   const [loadingStage, setLoadingStage] = useState('MesterAI tenker og analyserer...');
+  const [activeThinkingDuration, setActiveThinkingDuration] = useState(0);
+  const [activeThinkingQuery, setActiveThinkingQuery] = useState('');
+  const [activeThinkingHasImage, setActiveThinkingHasImage] = useState(false);
+  const thinkingTimerRef = useRef<any>(null);
   const [isListeningMic, setIsListeningMic] = useState(false);
   const [copiedId, setCopiedId] = useState<string | null>(null);
   const [attachedImage, setAttachedImage] = useState<{ url: string; preview: string; name?: string } | null>(null);
@@ -382,27 +388,17 @@ export default function MesterAICopilot({
       return;
     }
 
+    setActiveThinkingDuration(0);
+    setActiveThinkingQuery(textToSend.trim() || userMsgText || '');
+    setActiveThinkingHasImage(Boolean(activeImage));
     setIsLoading(true);
 
-    // 🚀 Start live statusHUD
-    const stages = activeImage
-      ? ['Analyserer bildet med AI-syn og TEK17...', 'Sjekker detaljer og utførelse...', 'Ferdigstiller rapport...']
-      : textToSend.toLowerCase().includes('time') 
-        ? ['Beregner timer og oppgave...', 'Kobler mot byggedagboken...', 'Registrerer i VikingMester...']
-        : textToSend.toLowerCase().includes('sja')
-          ? ['Vurderer risikofaktorer...', 'Strukturerer vernetiltak...', 'Oppretter SJA i KS-systemet...']
-          : textToSend.toLowerCase().includes('avvik')
-            ? ['Vurderer TEK17-avvik...', 'Klargjør strakstiltak...', 'Logger avvik i systemet...']
-            : ['MesterAI tenker og analyserer...', 'Behandler data i VikingMester...', 'Ferdigstiller svar...'];
-
-    setLoadingStage(stages[0]);
-    if (loadingTimerRef.current) clearInterval(loadingTimerRef.current);
-    let stageIdx = 0;
-    loadingTimerRef.current = setInterval(() => {
-      stageIdx++;
-      if (stageIdx < stages.length) setLoadingStage(stages[stageIdx]);
-      else clearInterval(loadingTimerRef.current);
-    }, 2400);
+    if (thinkingTimerRef.current) clearInterval(thinkingTimerRef.current);
+    let seconds = 0;
+    thinkingTimerRef.current = setInterval(() => {
+      seconds += 1;
+      setActiveThinkingDuration(seconds);
+    }, 1000);
 
     try {
       const token = typeof window !== 'undefined' ? localStorage.getItem('token') : null;
@@ -414,6 +410,10 @@ export default function MesterAICopilot({
         },
         body: JSON.stringify({
           message: textToSend.trim() || userMsgText,
+          history: messages
+            .filter(m => m.id !== 'welcome' && m.id !== userMsg.id)
+            .slice(-8)
+            .map(m => ({ role: m.role, content: m.content })),
           sessionId: `copilot-${user?.id || 'guest'}`,
           projectName: currentProjName,
           projectId: selectedProject?.id,
@@ -470,8 +470,11 @@ export default function MesterAICopilot({
         }
       ]);
     } finally {
+      if (thinkingTimerRef.current) clearInterval(thinkingTimerRef.current);
       if (loadingTimerRef.current) clearInterval(loadingTimerRef.current);
       setIsLoading(false);
+      setActiveThinkingQuery('');
+      setActiveThinkingHasImage(false);
     }
   };
 
@@ -726,29 +729,93 @@ export default function MesterAICopilot({
                 );
               })}
 
-              {/* ✨ Levende arbeidsindikator direkte i samtalestrømmen (som i hovedchatten) */}
-              {isLoading && (
-                <div className="w-full rounded-2xl bg-slate-900/95 border border-purple-500/40 p-4 shadow-xl backdrop-blur-xl animate-in fade-in duration-200 my-2">
-                  <div className="flex items-center justify-between pb-2 border-b border-white/10 mb-2.5">
-                    <div className="flex items-center gap-2">
-                      <div className="relative flex items-center justify-center">
-                        <Sparkles size={15} className="text-purple-400 animate-pulse" />
-                        <span className="absolute w-2.5 h-2.5 rounded-full bg-purple-400/40 animate-ping" />
+              {/* ✨ Next-Gen Dynamic Reasoning HUD i samtalestrømmen */}
+              {isLoading && (() => {
+                const flow = getDynamicReasoningFlow(
+                  activeThinkingQuery,
+                  activeThinkingHasImage,
+                  i18n?.language || 'no'
+                );
+
+                return (
+                  <div className="w-full rounded-2xl bg-[#0c1220]/95 border border-purple-500/30 p-3.5 shadow-2xl backdrop-blur-xl animate-in fade-in duration-200 my-2 overflow-hidden relative">
+                    {/* Subtil bakgrunnsglød */}
+                    <div className="absolute -top-10 -left-10 w-24 h-24 bg-purple-600/10 rounded-full blur-xl pointer-events-none" />
+                    <div className="absolute -bottom-10 -right-10 w-24 h-24 bg-blue-600/10 rounded-full blur-xl pointer-events-none" />
+
+                    {/* Topplinje med tittel og timer */}
+                    <div className="flex items-center justify-between pb-2 border-b border-white/10 relative z-10">
+                      <div className="flex items-center gap-2 min-w-0 pr-2">
+                        <div className="relative flex items-center justify-center w-6 h-6 rounded-lg bg-gradient-to-tr from-purple-600/25 to-blue-600/25 border border-purple-500/35 shrink-0">
+                          <Sparkles size={12} className="text-purple-300 animate-pulse" />
+                          <span className="absolute inset-0 rounded-lg bg-purple-400/20 animate-ping opacity-60" />
+                        </div>
+                        <div className="flex flex-col min-w-0">
+                          <span className="text-xs font-bold text-white tracking-wide truncate">
+                            {flow.headline}
+                          </span>
+                          <span className="text-[9px] text-purple-300/80 font-mono tracking-wider uppercase font-semibold">
+                            {flow.subSummary}
+                          </span>
+                        </div>
                       </div>
-                      <span className="text-xs font-bold text-white tracking-wide">
-                        MesterAI arbeider med oppgaven...
-                      </span>
+
+                      {/* Sanntids tenketimer */}
+                      <div className="flex items-center gap-1.5 px-2 py-0.5 rounded-full bg-purple-500/15 border border-purple-500/30 text-[10px] font-mono text-purple-300 shrink-0">
+                        <span className="w-1.5 h-1.5 rounded-full bg-purple-400 animate-pulse" />
+                        <span>{activeThinkingDuration}s</span>
+                      </div>
                     </div>
-                    <span className="text-[10px] uppercase font-mono font-bold text-purple-300 bg-purple-500/20 px-2 py-0.5 rounded-full border border-purple-500/30">
-                      Live AI
-                    </span>
+
+                    {/* Levende fremdriftslinje */}
+                    <div className="w-full h-0.5 bg-white/5 rounded-full overflow-hidden my-2 relative z-10">
+                      <div 
+                        className="h-full bg-gradient-to-r from-purple-500 via-indigo-500 to-emerald-400 transition-all duration-700 ease-out rounded-full"
+                        style={{ width: `${Math.min(96, Math.max(16, (activeThinkingDuration / 7.5) * 100))}%` }}
+                      />
+                    </div>
+
+                    {/* Dynamisk punktvis resonneringsstrøm */}
+                    <div className="space-y-1.5 relative z-10">
+                      {flow.steps.map((step, idx, arr) => {
+                        const isDone = activeThinkingDuration >= (arr[idx + 1]?.time ?? 99);
+                        const isActive = !isDone && activeThinkingDuration >= step.time;
+
+                        return (
+                          <div 
+                            key={step.id} 
+                            className={`flex items-center gap-2 text-xs transition-all duration-300 ${
+                              isDone 
+                                ? 'text-slate-300 font-normal' 
+                                : isActive 
+                                ? 'text-white font-medium drop-shadow-[0_0_8px_rgba(255,255,255,0.2)]' 
+                                : 'text-slate-500/70 opacity-40'
+                            }`}
+                          >
+                            {isDone ? (
+                              <div className="w-3.5 h-3.5 rounded-full bg-emerald-500/20 text-emerald-400 border border-emerald-500/40 flex items-center justify-center shrink-0">
+                                <Check size={9} strokeWidth={3} />
+                              </div>
+                            ) : isActive ? (
+                              <div className="w-3.5 h-3.5 rounded-full bg-purple-500/20 text-purple-300 border border-purple-500/40 flex items-center justify-center shrink-0">
+                                <Loader2 size={9} className="animate-spin text-purple-400" />
+                              </div>
+                            ) : (
+                              <div className="w-3.5 h-3.5 rounded-full bg-slate-800/80 border border-slate-700/80 flex items-center justify-center shrink-0">
+                                <span className="w-1 h-1 rounded-full bg-slate-600" />
+                              </div>
+                            )}
+                            <span className="flex-1 truncate">
+                              {step.title}
+                              {isActive && <span className="inline-block animate-pulse ml-0.5">...</span>}
+                            </span>
+                          </div>
+                        );
+                      })}
+                    </div>
                   </div>
-                  <div className="flex items-center gap-2.5 text-xs text-slate-300">
-                    <RefreshCw size={13} className="animate-spin text-purple-400 shrink-0" />
-                    <span className="font-medium text-slate-200">{loadingStage || 'Beregner og oppdaterer fagsystemet...'}</span>
-                  </div>
-                </div>
-              )}
+                );
+              })()}
 
               <div ref={messagesEndRef} />
             </div>

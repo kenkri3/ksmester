@@ -536,6 +536,7 @@ export async function POST(req: NextRequest) {
     const body = await req.json();
     const { 
       message, 
+      history,
       sessionId, 
       projectName, 
       availableProjects, 
@@ -1152,7 +1153,33 @@ export async function POST(req: NextRequest) {
     // 🧠 SJEKK OM FORESPØRSELEN KREVER NETTSØK (ARRANGEMENTER, PRISER, TEK17, NYHETER)
     const wantsWebSearch = detectWebSearchNeed(message);
 
-    let enrichedMessage = `${contextHeader}\n${message}`;
+    let enrichedMessage = `${contextHeader}\n`;
+
+    // 🧠 Multi-turn samtalehukommelse: Inkluder tidligere meldinger i tråden slik at agenten husker kontekst
+    if (Array.isArray(history) && history.length > 0) {
+      const cleanHistory = history
+        .filter((h: any) => h && (h.content || h.text || h.message))
+        .slice(-8);
+
+      if (cleanHistory.length > 0) {
+        enrichedMessage += `\n[TIDLIGERE SAMTALEHISTORIKK I DENNE TRÅDEN]:\n`;
+        for (const item of cleanHistory) {
+          const roleName = (item.role === 'assistant' || item.role === 'model' || item.sender === 'bot')
+            ? 'MesterAI'
+            : (effectiveUser || 'Håndverker');
+          const itemText = (item.content || item.text || item.message || '').toString().trim();
+          if (itemText) {
+            // Unngå for lange historiske meldinger
+            const truncatedItem = itemText.length > 500 ? itemText.slice(0, 500) + '...' : itemText;
+            enrichedMessage += `${roleName}: ${truncatedItem}\n`;
+          }
+        }
+        enrichedMessage += `[SLUTT PÅ SAMTALEHISTORIKK - NÅVÆRENDE HENVENDELSE FRA HÅNDVERKER UNDER]\n\n`;
+      }
+    }
+
+    enrichedMessage += message;
+
     if (hasImage) {
       enrichedMessage += `\n\n[📷 VEDLAGT BILDE FOR SYNSSJEKK]: Et bilde er lastet opp. Gjennomfør en grundig faglig bildeanalyse av motivet. Beskriv hva du observerer (utførelse, materialer, konstruksjon, tilstand), vurder opp mot gjeldende krav (TEK17 / BVN / HMS), påpek eventuelle feil eller avvik, og gi konkrete råd eller forslag til videre tiltak.`;
     }
@@ -1176,6 +1203,12 @@ export async function POST(req: NextRequest) {
 
     const MASTER_SYSTEM_PROMPT = `Du er MesterAI, en helautonom prosjektpilot og byggmester-assistent i backendsystemet til Vikingmester. Du opererer selvstendig, tenker som en erfaren byggmester/prosjektleder, og utfører oppgaver direkte uten unødige forhør.
 ${langDirective}
+🧠 SAMTALEHUKOMMELSE & KONTEKST (MULTI-TURN DIALOG):
+- Du har tilgang til tidligere meldinger i denne samtaletråden ovenfor under [TIDLIGERE SAMTALEHISTORIKK I DENNE TRÅDEN].
+- Du HUSKER hva dere nettopp snakket om, tidligere beregninger, oppgitte mål, materialer og tilbudsposter.
+- Når brukeren svarer kort eller refererer til forrige svar (f.eks: «ja», «50 kvm», «legg til vinduer også», «hva koster det?», «send det på e-post nå», «endre timeprisen til 950»), skal du forstå konteksten umiddelbart og bygge videre på det dere har diskutert.
+- Du skal ALDRI glemme tidligere oppgitte detaljer eller stille de samme spørsmålene på nytt i samme tråd. Hold samtalen flytende, naturlig, samarbeidende og handlingsorientert!
+
 🛡️ 100% WHITE-LABEL:
 Du er MesterAI, utviklet eksklusivt for Vikingmester. Du skal ALDRI nevne eller referere til underliggende AI-modeller, leverandører eller eksterne systemer som DeepSeek, OpenAI, Google, Anthropic eller Botsify. For brukeren er du 100 % MesterAI.
 

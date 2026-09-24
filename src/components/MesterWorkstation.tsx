@@ -65,8 +65,10 @@ import {
   FileCheck,
   SquarePen,
   Image as ImageIcon,
-  Paperclip
+  Paperclip,
+  Loader2
 } from 'lucide-react';
+import { getDynamicReasoningFlow } from '@/src/lib/reasoningEngine';
 import { cn } from '@/src/lib/utils';
 import { toast } from 'sonner';
 import { useTranslation } from 'react-i18next';
@@ -263,99 +265,8 @@ export default function MesterWorkstation({
     return s === 'avvist' || s === 'avslått' || s === 'rejected';
   };
 
-  const getThinkingSteps = (query: string) => {
-    const lower = (query || '').toLowerCase();
-    
-    if (
-      lower.includes('søk') || 
-      lower.includes('helg') || 
-      lower.includes('hva skjer') || 
-      lower.includes('google') || 
-      lower.includes('nettsøk') || 
-      lower.includes('nyheter') || 
-      lower.includes('arrangement') || 
-      lower.includes('konsert') ||
-      lower.includes('festival') ||
-      lower.includes('åpningstid')
-    ) {
-      return [
-        { id: 1, title: 'Definerer søkeintensjon og nøkkelord', time: 0 },
-        { id: 2, title: 'Søker i sanntidskilder på nettet', time: 2 },
-        { id: 3, title: 'Analyserer og kryssjekker ferske treff', time: 5 },
-        { id: 4, title: 'Strukturerer svar med verifiserte kilder', time: 8 }
-      ];
-    }
-
-    if (
-      lower.includes('tilbud') || 
-      lower.includes('kalkyle') || 
-      lower.includes('pris') || 
-      lower.includes('kostnad') || 
-      lower.includes('materiell') || 
-      lower.includes('gips')
-    ) {
-      return [
-        { id: 1, title: 'Kartlegger oppdragsbeskrivelse og omfang', time: 0 },
-        { id: 2, title: 'Beregner materialbehov og enhetspriser', time: 2 },
-        { id: 3, title: 'Estimerer timeforbruk iht. bransjestandard', time: 5 },
-        { id: 4, title: 'Utarbeider komplett kalkyle og tilbudsutkast', time: 8 }
-      ];
-    }
-
-    if (
-      lower.includes('sja') || 
-      lower.includes('sikkerhet') || 
-      lower.includes('hms') || 
-      lower.includes('risiko') || 
-      lower.includes('vern') ||
-      lower.includes('stillas') ||
-      lower.includes('fallsikring')
-    ) {
-      return [
-        { id: 1, title: 'Kartlegger arbeidsoppgaver og risikofaktorer', time: 0 },
-        { id: 2, title: 'Konsulterer Byggherreforskriften og HMS-krav', time: 2 },
-        { id: 3, title: 'Definerer forebyggende sikringstiltak og PVU', time: 5 },
-        { id: 4, title: 'Ferdigstiller godkjent Sikker Jobb Analyse (SJA)', time: 8 }
-      ];
-    }
-
-    if (
-      lower.includes('endring') || 
-      lower.includes('ns 8406') || 
-      lower.includes('ns8406') || 
-      lower.includes('varsel') || 
-      lower.includes('tillegg') ||
-      lower.includes('krav')
-    ) {
-      return [
-        { id: 1, title: 'Vurderer varslingsplikt og frister iht. NS 8406', time: 0 },
-        { id: 2, title: 'Beregner konsekvens for fremdrift og vederlag', time: 2 },
-        { id: 3, title: 'Formulerer formelt endringsvarsel for byggherre', time: 5 },
-        { id: 4, title: 'Klargjør dokumentasjon og utsendelsesgrunnlag', time: 8 }
-      ];
-    }
-
-    if (
-      lower.includes('dagbok') || 
-      lower.includes('time') || 
-      lower.includes('timer') || 
-      lower.includes('vær') ||
-      lower.includes('bemanningsliste')
-    ) {
-      return [
-        { id: 1, title: 'Henter gjeldende prosjektdata og sanntidsvær', time: 0 },
-        { id: 2, title: 'Registrerer timefordeling og ressursbruk', time: 2 },
-        { id: 3, title: 'Dokumenterer arbeidsforhold og fremdrift', time: 5 },
-        { id: 4, title: 'Ferdigstiller oppføring i byggedagboken', time: 8 }
-      ];
-    }
-
-    return [
-      { id: 1, title: 'Analyserer henvendelse og byggeplasskontekst', time: 0 },
-      { id: 2, title: 'Konsulterer TEK17 og relevante bransjestandarder', time: 2 },
-      { id: 3, title: 'Utarbeider faglig vurdering og løsningsforslag', time: 5 },
-      { id: 4, title: 'Kvalitetssikrer og ferdigstiller komplett svar', time: 8 }
-    ];
+  const getThinkingSteps = (query: string, hasImg?: boolean) => {
+    return getDynamicReasoningFlow(query, hasImg, i18n?.language || 'no').steps;
   };
 
   const projectChangeOrders = useMemo(() => {
@@ -381,6 +292,7 @@ export default function MesterWorkstation({
   // ⏱️ Tenketimer og aktiv henvendelse for MesterAI
   const [activeThinkingDuration, setActiveThinkingDuration] = useState(0);
   const [activeThinkingQuery, setActiveThinkingQuery] = useState('');
+  const [activeThinkingHasImage, setActiveThinkingHasImage] = useState(false);
   const thinkingTimerRef = useRef<any>(null);
 
   // 📱 Gemini Mobile Experience State
@@ -1716,6 +1628,7 @@ export default function MesterWorkstation({
 
     setActiveThinkingDuration(0);
     setActiveThinkingQuery(textToSend.trim() || userMessage.content || '');
+    setActiveThinkingHasImage(Boolean(activeImage || base64Image));
     setIsLoading(true);
 
     if (thinkingTimerRef.current) clearInterval(thinkingTimerRef.current);
@@ -1737,6 +1650,14 @@ export default function MesterWorkstation({
         ? 'Lars Fjellheim' 
         : (user?.displayName || 'Kenneth Glosli Kristiansen');
 
+      const historyPayload = messages
+        .filter(m => m.id !== 'welcome' && m.id !== userMessage.id)
+        .slice(-8)
+        .map(m => ({
+          role: m.role === 'assistant' ? 'assistant' : 'user',
+          content: m.content
+        }));
+
       const res = await fetch('/api/agent/chat', {
         method: 'POST',
         headers: { 
@@ -1745,6 +1666,7 @@ export default function MesterWorkstation({
         },
         body: JSON.stringify({
           message: textToSend.trim() || userMessage.content,
+          history: historyPayload,
           sessionId: activeSessionId,
           projectName: activeProjName,
           projectId: activeProjId,
@@ -1830,8 +1752,10 @@ export default function MesterWorkstation({
       };
       setMessages(prev => [...prev, errMsg]);
     } finally {
+      if (thinkingTimerRef.current) clearInterval(thinkingTimerRef.current);
       setIsLoading(false);
       setActiveThinkingQuery('');
+      setActiveThinkingHasImage(false);
     }
   };
 
@@ -2349,12 +2273,32 @@ export default function MesterWorkstation({
         </AnimatePresence>
 
         {/* 3. Main Stage Content Area */}
-        <div className="flex-1 overflow-y-auto overscroll-y-contain custom-scrollbar flex flex-col relative [touch-action:pan-y]">
-          {viewMode === 'module' ? (
-            /* 📊 MODULE VIEW (When user clicks a module from the left sidebar) */
-            <div className="p-4 sm:p-6 max-w-7xl mx-auto w-full space-y-4">
-              {/* Back to chat banner & Copilot quick launcher */}
-              <div className="flex items-center justify-between bg-slate-900/90 border border-slate-800 p-3 sm:p-4 rounded-2xl shadow-xs gap-2">
+        {viewMode === 'module' && activeModuleTab === 'teamchat' ? (
+          /* 💬 PROSJEKT- & FIRMACHATT: FULLSKJERM EDGE-TO-EDGE SOM HOVEDCHATTEN (INGEN DOBLE BOKSER ELLER SCROLLBARS) */
+          <div className="flex-1 flex flex-col h-full w-full overflow-hidden bg-[#0A101D] relative">
+            <ProjectTeamChat
+              projects={projects}
+              selectedProject={selectedProject}
+              onSelectProject={onSelectProject}
+              user={user}
+              projectContacts={projectContacts}
+              onOpenCopilot={(prompt) => {
+                if (prompt) handleSendMessage(prompt);
+                else window.dispatchEvent(new CustomEvent('mesterai:open-copilot'));
+              }}
+              onBackToWorkstation={() => {
+                setViewMode('chat');
+                setActiveModuleTab(null);
+              }}
+            />
+          </div>
+        ) : (
+          <div className="flex-1 overflow-y-auto overscroll-y-contain custom-scrollbar flex flex-col relative [touch-action:pan-y]">
+            {viewMode === 'module' ? (
+              /* 📊 MODULE VIEW (When user clicks a module from the left sidebar) */
+              <div className="p-4 sm:p-6 max-w-7xl mx-auto w-full space-y-4">
+                {/* Back to chat banner & Copilot quick launcher */}
+                <div className="flex items-center justify-between bg-slate-900/90 border border-slate-800 p-3 sm:p-4 rounded-2xl shadow-xs gap-2">
                 <div className="flex items-center gap-2">
                   <button
                     type="button"
@@ -4535,23 +4479,7 @@ export default function MesterWorkstation({
                 </div>
               )}
 
-              {/* 8D. 💬 PROSJEKT- & FIRMACHATT (INTERNKOMMUNIKASJON) */}
-              {activeModuleTab === 'teamchat' && (
-                <div className="w-full">
-                  <ProjectTeamChat
-                    projects={projects}
-                    selectedProject={selectedProject}
-                    onSelectProject={onSelectProject}
-                    user={user}
-                    projectContacts={projectContacts}
-                    onOpenCopilot={(prompt) => {
-                      if (prompt) handleSendMessage(prompt);
-                      else window.dispatchEvent(new CustomEvent('mesterai:open-copilot'));
-                    }}
-                    onBackToWorkstation={() => setViewMode('chat')}
-                  />
-                </div>
-              )}
+
 
               {/* 9. ⋯ ALLE FAGMODULER */}
               {activeModuleTab === 'all_modules' && (() => {
@@ -5256,66 +5184,93 @@ export default function MesterWorkstation({
                     </div>
                   ))}
 
-                  {/* ✦ Clean & Honest Loading Indicator med levende trinn-for-trinn fremdrift */}
-                  {isLoading && (
-                    <div className="w-full rounded-2xl bg-slate-900/95 border border-purple-500/30 p-4 shadow-2xl backdrop-blur-xl animate-in fade-in duration-200 my-2">
-                      <div className="flex items-center justify-between pb-2.5 border-b border-white/10 mb-3">
-                        <div className="flex items-center gap-2.5">
-                          <div className="relative flex items-center justify-center">
-                            <Sparkles size={15} className="text-purple-400 animate-pulse" />
-                            <span className="absolute w-2.5 h-2.5 rounded-full bg-purple-400/40 animate-ping" />
-                          </div>
-                          <span className="text-xs font-bold text-white tracking-wide">
-                            MesterAI arbeider med oppgaven...
-                          </span>
-                        </div>
-                        {activeThinkingDuration > 0 && (
-                          <span className="text-[11px] font-mono font-bold text-purple-300 bg-purple-500/20 px-2.5 py-0.5 rounded-full border border-purple-500/30">
-                            {activeThinkingDuration}s
-                          </span>
-                        )}
-                      </div>
+                  {/* ✦ Next-Gen Dynamic Thinking & Reasoning HUD (Gemini / o3 / Perplexity inspired) */}
+                  {isLoading && (() => {
+                    const flow = getDynamicReasoningFlow(
+                      activeThinkingQuery,
+                      activeThinkingHasImage,
+                      i18n?.language || 'no'
+                    );
 
-                      {/* Punktvis fremdriftsliste */}
-                      <div className="space-y-2">
-                        {getThinkingSteps(activeThinkingQuery).map((step, idx, arr) => {
-                          const isDone = activeThinkingDuration >= (arr[idx + 1]?.time ?? 99);
-                          const isActive = !isDone && activeThinkingDuration >= step.time;
+                    return (
+                      <div className="w-full rounded-2xl bg-[#0c1220]/95 border border-purple-500/30 p-3.5 shadow-2xl backdrop-blur-xl animate-in fade-in duration-200 my-2.5 overflow-hidden relative">
+                        {/* Subtil bakgrunnsglød */}
+                        <div className="absolute -top-10 -left-10 w-28 h-28 bg-purple-600/10 rounded-full blur-2xl pointer-events-none" />
+                        <div className="absolute -bottom-10 -right-10 w-28 h-28 bg-blue-600/10 rounded-full blur-2xl pointer-events-none" />
 
-                          return (
-                            <div 
-                              key={step.id} 
-                              className={`flex items-center gap-2.5 text-xs transition-all duration-300 ${
-                                isDone 
-                                  ? 'text-emerald-400 font-medium' 
-                                  : isActive 
-                                  ? 'text-white font-semibold' 
-                                  : 'text-slate-500 opacity-50'
-                              }`}
-                            >
-                              {isDone ? (
-                                <div className="w-4 h-4 rounded-full bg-emerald-500/20 text-emerald-400 border border-emerald-500/40 flex items-center justify-center shrink-0">
-                                  <Check size={10} strokeWidth={3} />
-                                </div>
-                              ) : isActive ? (
-                                <div className="w-4 h-4 rounded-full bg-purple-500/20 text-purple-400 border border-purple-500/40 flex items-center justify-center shrink-0">
-                                  <RefreshCw size={10} className="animate-spin" />
-                                </div>
-                              ) : (
-                                <div className="w-4 h-4 rounded-full bg-slate-800 border border-slate-700 flex items-center justify-center shrink-0">
-                                  <span className="w-1.5 h-1.5 rounded-full bg-slate-600" />
-                                </div>
-                              )}
-                              <span className="flex-1 truncate">
-                                {step.title}
-                                {isActive && '...'}
+                        {/* Topplinje med dynamisk oppgavetittel og sanntidstimer */}
+                        <div className="flex items-center justify-between pb-2 border-b border-white/10 relative z-10">
+                          <div className="flex items-center gap-2.5 min-w-0 pr-2">
+                            <div className="relative flex items-center justify-center w-7 h-7 rounded-lg bg-gradient-to-tr from-purple-600/25 to-blue-600/25 border border-purple-500/35 shrink-0">
+                              <Sparkles size={13} className="text-purple-300 animate-pulse" />
+                              <span className="absolute inset-0 rounded-lg bg-purple-400/20 animate-ping opacity-60" />
+                            </div>
+                            <div className="flex flex-col min-w-0">
+                              <span className="text-xs font-bold text-white tracking-wide truncate">
+                                {flow.headline}
+                              </span>
+                              <span className="text-[10px] text-purple-300/80 font-mono tracking-wider uppercase font-semibold">
+                                {flow.subSummary}
                               </span>
                             </div>
-                          );
-                        })}
+                          </div>
+
+                          {/* Sanntids tenketimer */}
+                          <div className="flex items-center gap-1.5 px-2.5 py-0.5 rounded-full bg-purple-500/15 border border-purple-500/30 text-[11px] font-mono text-purple-300 shrink-0">
+                            <span className="w-1.5 h-1.5 rounded-full bg-purple-400 animate-pulse" />
+                            <span>{activeThinkingDuration}s</span>
+                          </div>
+                        </div>
+
+                        {/* Levende fremdriftslinje */}
+                        <div className="w-full h-0.5 bg-white/5 rounded-full overflow-hidden my-2.5 relative z-10">
+                          <div 
+                            className="h-full bg-gradient-to-r from-purple-500 via-indigo-500 to-emerald-400 transition-all duration-700 ease-out rounded-full"
+                            style={{ width: `${Math.min(96, Math.max(16, (activeThinkingDuration / 7.5) * 100))}%` }}
+                          />
+                        </div>
+
+                        {/* Dynamisk punktvis resonneringsstrøm */}
+                        <div className="space-y-2 relative z-10">
+                          {flow.steps.map((step, idx, arr) => {
+                            const isDone = activeThinkingDuration >= (arr[idx + 1]?.time ?? 99);
+                            const isActive = !isDone && activeThinkingDuration >= step.time;
+
+                            return (
+                              <div 
+                                key={step.id} 
+                                className={`flex items-center gap-2.5 text-xs transition-all duration-300 ${
+                                  isDone 
+                                    ? 'text-slate-300 font-normal' 
+                                    : isActive 
+                                    ? 'text-white font-medium drop-shadow-[0_0_8px_rgba(255,255,255,0.2)]' 
+                                    : 'text-slate-500/70 opacity-40'
+                                }`}
+                              >
+                                {isDone ? (
+                                  <div className="w-4 h-4 rounded-full bg-emerald-500/20 text-emerald-400 border border-emerald-500/40 flex items-center justify-center shrink-0">
+                                    <Check size={10} strokeWidth={3} />
+                                  </div>
+                                ) : isActive ? (
+                                  <div className="w-4 h-4 rounded-full bg-purple-500/20 text-purple-300 border border-purple-500/40 flex items-center justify-center shrink-0">
+                                    <Loader2 size={10} className="animate-spin text-purple-400" />
+                                  </div>
+                                ) : (
+                                  <div className="w-4 h-4 rounded-full bg-slate-800/80 border border-slate-700/80 flex items-center justify-center shrink-0">
+                                    <span className="w-1.5 h-1.5 rounded-full bg-slate-600" />
+                                  </div>
+                                )}
+                                <span className="flex-1 truncate">
+                                  {step.title}
+                                  {isActive && <span className="inline-block animate-pulse ml-0.5">...</span>}
+                                </span>
+                              </div>
+                            );
+                          })}
+                        </div>
                       </div>
-                    </div>
-                  )}
+                    );
+                  })()}
 
                   <div ref={messagesEndRef} />
                 </div>

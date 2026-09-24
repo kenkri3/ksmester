@@ -32,12 +32,16 @@ import {
   Eye,
   Paperclip,
   Maximize2,
-  Trash2
+  Trash2,
+  ArrowLeft
 } from 'lucide-react';
 import { toast } from 'sonner';
 import { Project } from '@/src/types';
 import { generateAiContent } from '@/src/services/aiClient';
 import { cn } from '@/src/lib/utils';
+import ReactMarkdown from 'react-markdown';
+import remarkGfm from 'remark-gfm';
+import { formatAiMarkdown } from '@/src/lib/formatAiMarkdown';
 
 export interface TeamChatMessage {
   id: string;
@@ -134,6 +138,7 @@ export default function ProjectTeamChat({
   const [selectedContactForCard, setSelectedContactForCard] = useState<TeamChatMessage | null>(null);
   const [showAiSuggestions, setShowAiSuggestions] = useState(false);
   const [activeEmojiPickerForMsgId, setActiveEmojiPickerForMsgId] = useState<string | null>(null);
+  const [isAttachmentMenuOpen, setIsAttachmentMenuOpen] = useState(false);
 
   // Tale-diktering state
   const [isRecording, setIsRecording] = useState(false);
@@ -144,6 +149,7 @@ export default function ProjectTeamChat({
 
   const messagesEndRef = useRef<HTMLDivElement>(null);
   const fileInputRef = useRef<HTMLInputElement>(null);
+  const cameraInputRef = useRef<HTMLInputElement>(null);
   const inputRef = useRef<HTMLInputElement>(null);
 
   // Bytt kanal automatisk hvis bruker velger nytt prosjekt i toppen
@@ -284,6 +290,7 @@ export default function ProjectTeamChat({
     setInputVal('');
     setAttachedImage(null);
     setShowAiSuggestions(false);
+    setIsAttachmentMenuOpen(false);
 
     // Hvis meldingen inneholder @MesterAI eller brukeren kaller på AI, trigger autonomt svar
     if (content.toLowerCase().includes('@mesterai') || content.toLowerCase().includes('@ai')) {
@@ -395,6 +402,7 @@ Maks 2-4 avsnitt eller punktliste.`;
     const reader = new FileReader();
     reader.onload = () => {
       setAttachedImage(reader.result as string);
+      setIsAttachmentMenuOpen(false);
       toast.success('Bilde vedlagt – legg til tekst og trykk send');
     };
     reader.readAsDataURL(file);
@@ -486,73 +494,93 @@ Maks 2-4 avsnitt eller punktliste.`;
   }, [selectedContactForCard, projectContacts, user?.company]);
 
   return (
-    <div className="flex flex-col h-[calc(100vh-80px)] sm:h-[calc(100vh-100px)] max-w-7xl mx-auto w-full bg-slate-950 border border-slate-800 rounded-3xl overflow-hidden shadow-2xl">
-      {/* 1. Topp-fane / Prosjekthode */}
-      <div className="flex items-center justify-between px-3 sm:px-4 py-3 bg-slate-900 border-b border-slate-800 shrink-0">
-        <div className="flex items-center gap-2 sm:gap-2.5 min-w-0">
-          {/* Valgfri tilbakeknapp til arbeidsstasjon */}
+    <div className="flex-1 flex flex-col h-full w-full bg-[#0A101D] text-slate-100 overflow-hidden relative select-text">
+      {/* Skjulte fil-innganger for kamera og galleri */}
+      <input
+        ref={fileInputRef}
+        type="file"
+        accept="image/*"
+        className="hidden"
+        onChange={handleImageFileChange}
+      />
+      <input
+        ref={cameraInputRef}
+        type="file"
+        accept="image/*"
+        capture="environment"
+        className="hidden"
+        onChange={handleImageFileChange}
+      />
+
+      {/* 1. Header (Clean, minimal, 100% integrert i appen) */}
+      <div className="sticky top-0 z-30 flex items-center justify-between px-3 sm:px-6 py-2.5 sm:py-3 bg-[#0A101D]/90 backdrop-blur-md border-b border-white/10 shrink-0">
+        <div className="flex items-center gap-2 sm:gap-3 min-w-0">
+          {/* Mobil navigasjon: Tilbake til liste eller tilbake til arbeidsstasjon */}
+          <button
+            type="button"
+            onClick={() => {
+              if (mobileTab === 'chat') {
+                setMobileTab('list');
+              } else if (onBackToWorkstation) {
+                onBackToWorkstation();
+              }
+            }}
+            className="md:hidden p-2 rounded-full bg-white/5 hover:bg-white/10 text-slate-300 hover:text-white transition-colors cursor-pointer shrink-0 active:scale-95"
+            title={mobileTab === 'chat' ? 'Vis alle kanaler' : 'Tilbake til systemet'}
+          >
+            <ChevronLeft size={20} />
+          </button>
+
+          {/* Desktop Tilbakeknapp */}
           {onBackToWorkstation && (
             <button
               type="button"
               onClick={onBackToWorkstation}
-              className="p-2 rounded-xl bg-slate-800 hover:bg-slate-750 text-slate-300 hover:text-white border border-slate-750 text-xs font-bold transition-colors cursor-pointer flex items-center gap-1 shrink-0"
+              className="hidden md:flex items-center gap-1.5 px-3 py-1.5 rounded-full bg-white/5 hover:bg-white/10 text-slate-300 hover:text-white border border-white/10 text-xs font-semibold transition-colors cursor-pointer shrink-0 active:scale-95"
               title="Gå tilbake til arbeidsstasjonen"
             >
-              <ChevronLeft size={16} />
-              <span className="hidden sm:inline">Tilbake</span>
+              <ArrowLeft size={14} />
+              <span>Tilbake</span>
             </button>
           )}
 
-          {/* Mobil tilbake til kanalliste-knapp */}
-          <button
-            type="button"
-            onClick={() => setMobileTab(mobileTab === 'chat' ? 'list' : 'chat')}
-            className="md:hidden p-2 rounded-xl bg-slate-800 text-slate-300 hover:text-white shrink-0"
-            title={mobileTab === 'chat' ? 'Vis alle kanaler' : 'Vis samtale'}
-          >
-            {mobileTab === 'chat' ? <Users size={16} /> : <ChevronLeft size={16} />}
-          </button>
-
-          <div className="w-9 h-9 rounded-xl bg-purple-600/20 text-purple-400 border border-purple-500/30 flex items-center justify-center shrink-0">
-            {activeChannel.type === 'company' && <Building2 size={18} />}
-            {activeChannel.type === 'project' && <HardHat size={18} />}
-            {activeChannel.type === 'hms' && <AlertTriangle size={18} />}
-            {activeChannel.type === 'dm' && <User size={18} />}
+          {/* Kanal ikon */}
+          <div className="w-8 h-8 sm:w-9 sm:h-9 rounded-full bg-purple-500/15 text-purple-400 border border-purple-500/25 flex items-center justify-center shrink-0">
+            {activeChannel.type === 'company' && <Building2 size={16} />}
+            {activeChannel.type === 'project' && <HardHat size={16} />}
+            {activeChannel.type === 'hms' && <AlertTriangle size={16} />}
+            {activeChannel.type === 'dm' && <User size={16} />}
           </div>
 
+          {/* Kanal tittel & metadata */}
           <div className="min-w-0">
             <div className="flex items-center gap-2">
-              <h2 className="text-sm sm:text-base font-black text-white truncate flex items-center gap-1.5">
+              <h2 className="text-sm sm:text-base font-bold text-white truncate flex items-center gap-1.5">
                 <span>{activeChannel.name}</span>
                 {activeChannel.type === 'project' && (
-                  <span className="hidden sm:inline-flex px-2 py-0.5 rounded-full text-[10px] font-bold bg-emerald-500/10 text-emerald-400 border border-emerald-500/30">
+                  <span className="hidden sm:inline-flex px-2 py-0.5 rounded-full text-[10px] font-bold bg-emerald-500/15 text-emerald-400 border border-emerald-500/30">
                     Byggeplass
-                  </span>
-                )}
-                {activeChannel.type === 'dm' && (
-                  <span className="hidden sm:inline-flex px-2 py-0.5 rounded-full text-[10px] font-bold bg-purple-500/10 text-purple-400 border border-purple-500/30">
-                    Direkte
                   </span>
                 )}
               </h2>
             </div>
-            <p className="text-[11px] text-slate-400 truncate max-w-xs sm:max-w-md">
+            <p className="text-[11px] text-slate-400 truncate max-w-[200px] sm:max-w-md">
               {activeChannel.description}
             </p>
           </div>
         </div>
 
         {/* Høyre toppkontroller */}
-        <div className="flex items-center gap-1.5 shrink-0">
+        <div className="flex items-center gap-1.5 sm:gap-2 shrink-0">
           {/* Spør MesterAI i samtalen */}
           <button
             type="button"
             onClick={handleAskMesterAiDirectly}
-            className="flex items-center gap-1.5 px-2.5 sm:px-3 py-1.5 rounded-xl bg-gradient-to-r from-purple-600 to-electric-600 hover:from-purple-500 hover:to-electric-500 text-white text-xs font-bold shadow-xs transition-all cursor-pointer border border-purple-400/40"
+            className="flex items-center gap-1.5 px-2.5 sm:px-3 py-1.5 rounded-full bg-purple-500/15 hover:bg-purple-500/25 text-purple-300 hover:text-white text-xs font-bold transition-all cursor-pointer border border-purple-500/30 active:scale-95"
             title="Kall på MesterAI for å gi fagråd i chatten"
           >
-            <Sparkles size={14} className="text-amber-300 animate-pulse shrink-0" />
-            <span className="hidden sm:inline">@MesterAI i chatten</span>
+            <Sparkles size={13} className="text-amber-300 animate-pulse shrink-0" />
+            <span className="hidden sm:inline">@MesterAI</span>
             <span className="sm:hidden font-mono text-[11px]">@AI</span>
           </button>
 
@@ -561,30 +589,29 @@ Maks 2-4 avsnitt eller punktliste.`;
             type="button"
             onClick={() => setIsSearchOpen(!isSearchOpen)}
             className={cn(
-              "p-2 rounded-xl border transition-colors cursor-pointer",
-              isSearchOpen ? "bg-purple-600/20 text-purple-300 border-purple-500/40" : "bg-slate-800 text-slate-400 hover:text-white border-slate-750"
+              "w-8 h-8 sm:w-9 sm:h-9 rounded-full flex items-center justify-center transition-colors cursor-pointer",
+              isSearchOpen ? "bg-purple-600 text-white" : "bg-white/5 text-slate-400 hover:text-white hover:bg-white/10"
             )}
             title="Søk i samtalehistorikk"
           >
             <Search size={15} />
           </button>
 
-          {/* Medlemsliste / Telefonbok for kanalen */}
+          {/* Medlemsliste / Telefonbok */}
           <button
             type="button"
             onClick={() => setIsMembersModalOpen(true)}
-            className="flex items-center gap-1.5 px-2.5 py-2 rounded-xl bg-slate-800 hover:bg-slate-750 text-slate-300 hover:text-white border border-slate-750 text-xs font-bold transition-colors cursor-pointer"
-            title="Se hvem som er med i kanalen, ring eller start 1-til-1 samtale"
+            className="w-8 h-8 sm:w-9 sm:h-9 rounded-full bg-white/5 hover:bg-white/10 text-slate-300 hover:text-white flex items-center justify-center transition-colors cursor-pointer"
+            title="Se deltakere, ring eller start privat samtale"
           >
-            <Users size={15} className="text-cyan-400" />
-            <span className="hidden sm:inline">Deltakere</span>
+            <Users size={15} />
           </button>
         </div>
       </div>
 
-      {/* 2. Søkelinje (ved klikk på søk) */}
+      {/* 2. Søkelinje ved klikk */}
       {isSearchOpen && (
-        <div className="px-4 py-2 bg-slate-900/90 border-b border-slate-800 flex items-center gap-2 animate-in fade-in">
+        <div className="px-4 py-2 bg-[#0d1424] border-b border-white/10 flex items-center gap-2 animate-in fade-in shrink-0">
           <Search size={14} className="text-slate-400 shrink-0" />
           <input
             type="text"
@@ -598,7 +625,7 @@ Maks 2-4 avsnitt eller punktliste.`;
             <button
               type="button"
               onClick={() => setSearchQuery('')}
-              className="p-1 text-slate-400 hover:text-white"
+              className="p-1 text-slate-400 hover:text-white cursor-pointer"
             >
               <X size={13} />
             </button>
@@ -606,33 +633,47 @@ Maks 2-4 avsnitt eller punktliste.`;
         </div>
       )}
 
-      {/* 3. Festede meldinger banner (hvis noen er festet) */}
+      {/* 3. Festet beskjed banner (Kompakt og elegant) */}
       {pinnedMessages.length > 0 && (
-        <div className="px-4 py-2 bg-purple-950/40 border-b border-purple-900/40 flex items-center justify-between gap-2 text-xs">
+        <div className="px-4 py-1.5 bg-[#17122b]/80 border-b border-purple-500/20 flex items-center justify-between gap-2 text-xs shrink-0">
           <div className="flex items-center gap-2 text-purple-300 min-w-0">
-            <Pin size={13} className="shrink-0 text-amber-400 fill-amber-400" />
-            <span className="font-bold text-[11px] text-amber-300 shrink-0">Festet beskjed:</span>
-            <p className="truncate text-slate-300 font-medium">
-              {pinnedMessages[pinnedMessages.length - 1].content}
+            <Pin size={12} className="shrink-0 text-amber-400 fill-amber-400" />
+            <span className="font-bold text-[11px] text-amber-300 shrink-0">Festet:</span>
+            <p className="truncate text-slate-300 text-xs font-medium">
+              {pinnedMessages[pinnedMessages.length - 1].content.replace(/\*\*/g, '').replace(/^[•●–—]\s*/, '')}
             </p>
           </div>
-          <span className="text-[10px] text-purple-400/80 shrink-0">
+          <span className="text-[10px] text-purple-400/80 shrink-0 font-medium">
             {pinnedMessages.length} festet
           </span>
         </div>
       )}
 
-      {/* 4. Hovedkropp: Split view (Kanaler til venstre på desktop, samtale til høyre) */}
-      <div className="flex-1 flex overflow-hidden">
+      {/* 4. Hovedkropp: Split view på desktop, fullskjerm på mobil */}
+      <div className="flex-1 flex overflow-hidden relative">
         {/* Venstre kanal- og kontaktliste */}
         <div className={cn(
-          "w-full md:w-72 lg:w-80 border-r border-slate-800 bg-slate-900/70 flex flex-col shrink-0 overflow-y-auto custom-scrollbar",
+          "w-full md:w-72 lg:w-80 border-r border-white/10 bg-[#0d1424]/70 flex flex-col shrink-0 overflow-y-auto no-scrollbar",
           mobileTab === 'list' ? "flex" : "hidden md:flex"
         )}>
-          {/* Seksjon: Kanaler */}
-          <div className="p-3 border-b border-slate-800/80">
+          {/* Mobil topprad i listen */}
+          <div className="md:hidden p-3 border-b border-white/10 flex items-center justify-between">
+            <span className="text-xs font-black uppercase tracking-wider text-slate-400">Kanaler & Samtaler</span>
+            {onBackToWorkstation && (
+              <button
+                type="button"
+                onClick={onBackToWorkstation}
+                className="text-xs font-bold text-purple-400 hover:text-purple-300 cursor-pointer"
+              >
+                Tilbake til systemet
+              </button>
+            )}
+          </div>
+
+          {/* Seksjon: Felles og Byggeplasskanaler */}
+          <div className="p-3 border-b border-white/5">
             <div className="px-2 py-1 text-[11px] font-black text-slate-400 uppercase tracking-wider flex items-center justify-between">
-              <span>Sammendrag & Kanaler</span>
+              <span>Byggeplass & Firma</span>
               <span className="text-[10px] font-normal text-purple-400">{user?.company || 'Firma'}</span>
             </div>
             <div className="space-y-1 mt-1.5">
@@ -647,19 +688,19 @@ Maks 2-4 avsnitt eller punktliste.`;
                       setMobileTab('chat');
                     }}
                     className={cn(
-                      "w-full flex items-center gap-2.5 px-3 py-2 rounded-xl text-xs font-bold text-left transition-all cursor-pointer group",
+                      "w-full flex items-center gap-2.5 px-3 py-2.5 rounded-2xl text-xs font-bold text-left transition-all cursor-pointer group",
                       isActive
-                        ? "bg-purple-600 text-white shadow-md shadow-purple-900/20"
-                        : "text-slate-300 hover:bg-slate-800/80 hover:text-white"
+                        ? "bg-purple-600 text-white shadow-md shadow-purple-900/30"
+                        : "text-slate-300 hover:bg-white/5 hover:text-white"
                     )}
                   >
                     <div className={cn(
-                      "w-6 h-6 rounded-lg flex items-center justify-center shrink-0",
-                      isActive ? "bg-white/20 text-white" : "bg-slate-800 text-slate-400 group-hover:text-purple-300"
+                      "w-7 h-7 rounded-xl flex items-center justify-center shrink-0",
+                      isActive ? "bg-white/20 text-white" : "bg-white/5 text-slate-400 group-hover:text-purple-300"
                     )}>
-                      {ch.type === 'company' && <Building2 size={13} />}
-                      {ch.type === 'project' && <HardHat size={13} />}
-                      {ch.type === 'hms' && <AlertTriangle size={13} className="text-amber-400" />}
+                      {ch.type === 'company' && <Building2 size={14} />}
+                      {ch.type === 'project' && <HardHat size={14} />}
+                      {ch.type === 'hms' && <AlertTriangle size={14} className="text-amber-400" />}
                     </div>
                     <div className="min-w-0 flex-1">
                       <p className="truncate">{ch.name}</p>
@@ -673,11 +714,11 @@ Maks 2-4 avsnitt eller punktliste.`;
             </div>
           </div>
 
-          {/* Seksjon: Direktemeldinger / Prosjektkolleger */}
+          {/* Seksjon: Direktemeldinger */}
           <div className="p-3 flex-1">
             <div className="px-2 py-1 text-[11px] font-black text-slate-400 uppercase tracking-wider flex items-center justify-between">
-              <span>Direktemeldinger (1-til-1)</span>
-              <span className="text-emerald-400 text-[10px]">{channels.filter(c => c.type === 'dm').length} kontakter</span>
+              <span>Direktemeldinger</span>
+              <span className="text-emerald-400 text-[10px]">{channels.filter(c => c.type === 'dm').length} kolleger</span>
             </div>
             <div className="space-y-1 mt-1.5">
               {channels.filter(c => c.type === 'dm').map(dm => {
@@ -692,22 +733,20 @@ Maks 2-4 avsnitt eller punktliste.`;
                       setMobileTab('chat');
                     }}
                     className={cn(
-                      "w-full flex items-center gap-2.5 px-3 py-2 rounded-xl text-xs font-bold text-left transition-all cursor-pointer group",
+                      "w-full flex items-center gap-2.5 px-3 py-2 rounded-2xl text-xs font-bold text-left transition-all cursor-pointer group",
                       isActive
-                        ? "bg-purple-600 text-white shadow-md shadow-purple-900/20"
-                        : "text-slate-300 hover:bg-slate-800/80 hover:text-white"
+                        ? "bg-purple-600 text-white shadow-md shadow-purple-900/30"
+                        : "text-slate-300 hover:bg-white/5 hover:text-white"
                     )}
                   >
                     <div className={cn(
                       "w-7 h-7 rounded-full flex items-center justify-center text-xs font-black shrink-0",
-                      isActive ? "bg-white text-purple-900" : "bg-slate-800 text-purple-300 border border-slate-750"
+                      isActive ? "bg-white text-purple-900" : "bg-white/10 text-purple-300 border border-white/10"
                     )}>
                       {dm.name.charAt(0).toUpperCase()}
                     </div>
                     <div className="min-w-0 flex-1">
-                      <div className="flex items-center justify-between">
-                        <p className="truncate">{dm.name}</p>
-                      </div>
+                      <p className="truncate">{dm.name}</p>
                       <p className={cn("text-[10px] truncate font-normal", isActive ? "text-purple-200" : "text-slate-500")}>
                         {contact?.role || 'Kollega'}
                       </p>
@@ -719,27 +758,33 @@ Maks 2-4 avsnitt eller punktliste.`;
           </div>
         </div>
 
-        {/* Høyre spalte: Meldingsfeed og inntasting */}
+        {/* Høyre spalte: Meldingsfeed */}
         <div className={cn(
-          "flex-1 flex flex-col bg-slate-950 overflow-hidden",
+          "flex-1 flex flex-col bg-[#0A101D] overflow-hidden relative",
           mobileTab === 'chat' ? "flex" : "hidden md:flex"
         )}>
-          {/* Meldingsstrøm */}
-          <div className="flex-1 overflow-y-auto custom-scrollbar p-3 sm:p-5 space-y-4 [touch-action:pan-y]">
+          {/* Meldingsstrøm - Med god padding i bunnen slik at ingenting gjemmes bak floating input pill */}
+          <div className="flex-1 overflow-y-auto custom-scrollbar p-3 sm:p-6 space-y-4 [touch-action:pan-y] pb-32 sm:pb-36">
             {filteredMessages.length === 0 ? (
-              <div className="py-14 text-center space-y-3">
-                <div className="w-12 h-12 rounded-2xl bg-purple-500/10 text-purple-400 border border-purple-500/20 flex items-center justify-center mx-auto">
-                  <MessageSquare size={22} />
+              <div className="py-20 text-center space-y-3">
+                <div className="w-14 h-14 rounded-full bg-purple-500/10 text-purple-400 border border-purple-500/20 flex items-center justify-center mx-auto">
+                  <MessageSquare size={24} />
                 </div>
                 <h4 className="text-sm font-bold text-white">Ingen meldinger ennå i {activeChannel.name}</h4>
                 <p className="text-xs text-slate-400 max-w-sm mx-auto">
-                  Vær den første til å dele en oppdatering, et byggeplassbilde eller stille et spørsmål til teamet!
+                  Del en oppdatering, et bilde eller still et spørsmål til teamet eller MesterAI.
                 </p>
               </div>
             ) : (
               filteredMessages.map((msg, idx) => {
                 const isMe = msg.senderId === user?.id || (msg.senderCategory === 'admin' && user?.role === 'admin');
                 const isAi = msg.isAiGenerated || msg.senderCategory === 'ai';
+
+                // Unngå duplikat rollevisning som "Kenneth (Prosjektleder) (Prosjektleder)"
+                const displayName = msg.senderName;
+                const roleToShow = msg.senderRole && !displayName.toLowerCase().includes(msg.senderRole.toLowerCase())
+                  ? msg.senderRole
+                  : null;
 
                 return (
                   <div
@@ -764,17 +809,17 @@ Maks 2-4 avsnitt eller punktliste.`;
                           type="button"
                           onClick={() => setSelectedContactForCard(msg)}
                           className="font-bold text-slate-200 hover:text-purple-300 transition-colors cursor-pointer flex items-center gap-1.5"
-                          title="Klikk for å se kontaktkort og ringe/sende melding"
+                          title="Klikk for å se kontaktkort"
                         >
-                          <span>{msg.senderName}</span>
-                          {msg.senderRole && (
+                          <span>{displayName}</span>
+                          {roleToShow && (
                             <span className="text-[10px] text-slate-400 font-normal">
-                              ({msg.senderRole})
+                              ({roleToShow})
                             </span>
                           )}
                         </button>
                       )}
-                      <span className="text-[10px] text-slate-400">{msg.formattedTime}</span>
+                      <span className="text-[10px] text-slate-500">{msg.formattedTime}</span>
                       {msg.isPinned && (
                         <span className="flex items-center gap-0.5 text-amber-400 text-[10px] font-bold">
                           <Pin size={10} className="fill-amber-400" />
@@ -786,17 +831,17 @@ Maks 2-4 avsnitt eller punktliste.`;
                     {/* Selve meldingsboksen */}
                     <div
                       className={cn(
-                        "p-3.5 sm:p-4 rounded-2xl text-xs sm:text-sm leading-relaxed max-w-[94%] sm:max-w-[85%] shadow-md relative group",
+                        "p-3.5 sm:p-4 rounded-2xl text-xs sm:text-sm leading-relaxed max-w-[88%] sm:max-w-[80%] shadow-lg relative group",
                         isAi
-                          ? "bg-slate-900 border border-purple-500/40 text-slate-100 rounded-tl-xs"
+                          ? "bg-[#131b2e] border border-purple-500/30 text-slate-100 rounded-tl-xs"
                           : isMe
-                          ? "bg-gradient-to-r from-purple-700 to-electric-600 text-white rounded-tr-xs"
-                          : "bg-slate-900 text-slate-200 border border-slate-800 rounded-tl-xs"
+                          ? "bg-gradient-to-r from-purple-600 to-electric-600 text-white rounded-tr-xs"
+                          : "bg-[#131b2e] text-slate-200 border border-white/10 rounded-tl-xs"
                       )}
                     >
                       {/* Hurtigtags visning */}
                       {msg.quickTag && (
-                        <div className="inline-flex items-center gap-1.5 px-2 py-0.5 rounded-lg bg-black/30 text-amber-300 font-bold text-[10px] uppercase tracking-wider mb-2 border border-white/10">
+                        <div className="inline-flex items-center gap-1.5 px-2.5 py-0.5 rounded-full bg-black/40 text-amber-300 font-bold text-[10px] uppercase tracking-wider mb-2 border border-white/10">
                           {msg.quickTag === 'onsite' && <MapPin size={11} />}
                           {msg.quickTag === 'delivery' && <Truck size={11} />}
                           {msg.quickTag === 'inspection' && <CheckCircle2 size={11} />}
@@ -830,8 +875,76 @@ Maks 2-4 avsnitt eller punktliste.`;
                         </div>
                       )}
 
-                      {/* Tekstinnhold */}
-                      <p className="whitespace-pre-wrap">{msg.content}</p>
+                      {/* Tekstinnhold med ekte Markdown-parsing slik at **fet skrift**, lister og overskrifter ikke vises som rå stjerner/firkanter */}
+                      {isAi ? (
+                        <div className="prose prose-invert prose-sm max-w-none text-slate-100 leading-relaxed font-sans">
+                          <ReactMarkdown
+                            remarkPlugins={[remarkGfm]}
+                            components={{
+                              h1: ({ node, ...props }) => (
+                                <h3 className="text-sm font-black text-white mt-3 mb-1.5 flex items-center gap-1.5 border-b border-purple-500/20 pb-1" {...props} />
+                              ),
+                              h2: ({ node, ...props }) => (
+                                <h4 className="text-xs sm:text-sm font-black text-purple-300 mt-2.5 mb-1 flex items-center gap-1.5" {...props} />
+                              ),
+                              h3: ({ node, ...props }) => (
+                                <h5 className="text-xs font-bold text-teal-300 mt-2 mb-1 uppercase tracking-wider" {...props} />
+                              ),
+                              p: ({ node, ...props }) => (
+                                <p className="text-xs sm:text-sm text-slate-200 leading-relaxed mb-2.5 last:mb-0" {...props} />
+                              ),
+                              ul: ({ node, ...props }) => (
+                                <ul className="my-2 space-y-1.5 pl-1 list-none" {...props} />
+                              ),
+                              ol: ({ node, ...props }) => (
+                                <ol className="my-2 space-y-1.5 pl-4 list-decimal text-slate-200 text-xs sm:text-sm" {...props} />
+                              ),
+                              li: ({ node, ...props }) => (
+                                <li className="text-xs sm:text-sm text-slate-200 leading-relaxed flex items-start gap-2">
+                                  <span className="w-1.5 h-1.5 rounded-full bg-purple-400 mt-1.5 shrink-0 shadow-xs" />
+                                  <span className="flex-1 min-w-0">{props.children}</span>
+                                </li>
+                              ),
+                              strong: ({ node, ...props }) => (
+                                <strong className="font-extrabold text-white" {...props} />
+                              ),
+                              blockquote: ({ node, ...props }) => (
+                                <blockquote className="my-2 p-2.5 bg-purple-950/40 border-l-3 border-purple-500 rounded-r-xl text-xs text-purple-200 shadow-sm" {...props} />
+                              ),
+                              code: ({ node, inline, ...props }: any) => (
+                                inline ? (
+                                  <code className="px-1.5 py-0.5 rounded bg-black/40 text-purple-300 font-mono text-xs" {...props} />
+                                ) : (
+                                  <code className="block p-2 rounded-xl bg-black/50 text-slate-200 font-mono text-xs overflow-x-auto my-2" {...props} />
+                                )
+                              )
+                            }}
+                          >
+                            {formatAiMarkdown(msg.content)}
+                          </ReactMarkdown>
+                        </div>
+                      ) : (
+                        <div className="text-xs sm:text-sm leading-relaxed text-inherit font-sans">
+                          <ReactMarkdown
+                            remarkPlugins={[remarkGfm]}
+                            components={{
+                              p: ({ node, ...props }) => <p className="mb-1 last:mb-0 leading-relaxed" {...props} />,
+                              strong: ({ node, ...props }) => <strong className="font-bold underline decoration-white/20" {...props} />,
+                              ul: ({ node, ...props }) => <ul className="my-1.5 space-y-1 pl-3 list-disc" {...props} />,
+                              li: ({ node, ...props }) => <li className="leading-relaxed" {...props} />,
+                              a: ({ node, href, children, ...props }: any) => (
+                                <a href={href} target="_blank" rel="noopener noreferrer" className="underline hover:text-white" {...props}>
+                                  {children}
+                                </a>
+                              )
+                            }}
+                          >
+                            {(msg.content || '')
+                              .replace(/^[ \t]*[•●–—][ \t]*/gm, '- ')
+                              .replace(/\n[ \t]*[•●–—][ \t]*/g, '\n- ')}
+                          </ReactMarkdown>
+                        </div>
+                      )}
 
                       {/* Emojireaksjoner */}
                       {msg.reactions && Object.keys(msg.reactions).length > 0 && (
@@ -841,7 +954,7 @@ Maks 2-4 avsnitt eller punktliste.`;
                               key={emoji}
                               type="button"
                               onClick={() => handleToggleReaction(msg.id, emoji)}
-                              className="px-2 py-0.5 rounded-lg bg-black/30 hover:bg-black/50 border border-white/15 text-[11px] font-bold text-white flex items-center gap-1 cursor-pointer transition-colors"
+                              className="px-2 py-0.5 rounded-full bg-black/30 hover:bg-black/50 border border-white/15 text-[11px] font-bold text-white flex items-center gap-1 cursor-pointer transition-colors"
                               title={`Reagert av: ${users.join(', ')}`}
                             >
                               <span>{emoji}</span>
@@ -853,14 +966,14 @@ Maks 2-4 avsnitt eller punktliste.`;
 
                       {/* Hurtigverktøy for melding (Fest, reaksjon, slett) */}
                       <div className={cn(
-                        "absolute -top-3 z-10 flex items-center gap-1 bg-slate-800/95 border border-slate-700 rounded-xl px-1.5 py-0.5 shadow-lg transition-opacity",
+                        "absolute -top-3 z-10 flex items-center gap-1 bg-slate-900 border border-slate-700 rounded-full px-2 py-0.5 shadow-lg transition-opacity",
                         isMe ? "right-2" : "left-2",
                         "opacity-0 group-hover:opacity-100 focus-within:opacity-100"
                       )}>
                         <button
                           type="button"
                           onClick={() => handleTogglePin(msg.id)}
-                          className="p-1 text-slate-400 hover:text-amber-400 rounded-md transition-colors cursor-pointer"
+                          className="p-1 text-slate-400 hover:text-amber-400 rounded-full transition-colors cursor-pointer"
                           title={msg.isPinned ? "Løsne beskjed" : "Fest beskjed øverst"}
                         >
                           <Pin size={12} className={msg.isPinned ? "fill-amber-400 text-amber-400" : ""} />
@@ -869,7 +982,7 @@ Maks 2-4 avsnitt eller punktliste.`;
                         <button
                           type="button"
                           onClick={() => setActiveEmojiPickerForMsgId(activeEmojiPickerForMsgId === msg.id ? null : msg.id)}
-                          className="p-1 text-slate-400 hover:text-white rounded-md transition-colors cursor-pointer"
+                          className="p-1 text-slate-400 hover:text-white rounded-full transition-colors cursor-pointer"
                           title="Velg reaksjon"
                         >
                           <Smile size={12} />
@@ -878,7 +991,7 @@ Maks 2-4 avsnitt eller punktliste.`;
                         <button
                           type="button"
                           onClick={() => handleToggleReaction(msg.id, '👍')}
-                          className="p-1 text-slate-400 hover:text-white rounded-md transition-colors cursor-pointer text-xs"
+                          className="p-1 text-slate-400 hover:text-white rounded-full transition-colors cursor-pointer text-xs"
                           title="Tommel opp"
                         >
                           👍
@@ -887,7 +1000,7 @@ Maks 2-4 avsnitt eller punktliste.`;
                         <button
                           type="button"
                           onClick={() => handleToggleReaction(msg.id, '🔨')}
-                          className="p-1 text-slate-400 hover:text-white rounded-md transition-colors cursor-pointer text-xs"
+                          className="p-1 text-slate-400 hover:text-white rounded-full transition-colors cursor-pointer text-xs"
                           title="Bygge-hammer"
                         >
                           🔨
@@ -898,7 +1011,7 @@ Maks 2-4 avsnitt eller punktliste.`;
                           <button
                             type="button"
                             onClick={() => handleDeleteMessage(msg.id)}
-                            className="p-1 text-slate-400 hover:text-rose-400 rounded-md transition-colors cursor-pointer"
+                            className="p-1 text-slate-400 hover:text-rose-400 rounded-full transition-colors cursor-pointer"
                             title="Slett melding"
                           >
                             <Trash2 size={12} />
@@ -909,7 +1022,7 @@ Maks 2-4 avsnitt eller punktliste.`;
                       {/* Utvidet emojivelger ved klikk på smile-ikon */}
                       {activeEmojiPickerForMsgId === msg.id && (
                         <div className={cn(
-                          "absolute -top-10 z-20 flex items-center gap-1 p-1 bg-slate-900 border border-slate-700 rounded-xl shadow-xl animate-in zoom-in-95",
+                          "absolute -top-10 z-20 flex items-center gap-1 p-1 bg-slate-900 border border-slate-700 rounded-full shadow-xl animate-in zoom-in-95",
                           isMe ? "right-2" : "left-2"
                         )}>
                           {POPULAR_EMOJIS.map(emoji => (
@@ -920,7 +1033,7 @@ Maks 2-4 avsnitt eller punktliste.`;
                                 handleToggleReaction(msg.id, emoji);
                                 setActiveEmojiPickerForMsgId(null);
                               }}
-                              className="p-1 hover:bg-slate-800 rounded-lg text-sm transition-transform hover:scale-125 cursor-pointer"
+                              className="p-1 hover:bg-white/10 rounded-full text-sm transition-transform hover:scale-125 cursor-pointer"
                             >
                               {emoji}
                             </button>
@@ -944,140 +1057,180 @@ Maks 2-4 avsnitt eller punktliste.`;
             <div ref={messagesEndRef} />
           </div>
 
-          {/* 5. MesterAI Hurtigforslag (hvis åpnet) */}
-          {showAiSuggestions && (
-            <div className="px-3 pt-2 bg-purple-950/40 border-t border-purple-900/50 flex flex-wrap items-center gap-1.5 pb-2 shrink-0 animate-in fade-in">
-              <span className="text-[10px] font-bold text-amber-300 uppercase tracking-wider shrink-0 flex items-center gap-1">
-                <Sparkles size={11} /> Spør AI om:
-              </span>
-              {AI_SUGGESTIONS.map((item, idx) => (
-                <button
-                  key={idx}
-                  type="button"
-                  onClick={() => handleSendMessage(item.prompt)}
-                  className="inline-flex items-center gap-1 px-2.5 py-1 rounded-xl bg-purple-900/60 hover:bg-purple-800 text-purple-200 hover:text-white border border-purple-700/60 text-[11px] font-medium transition-all active:scale-95 cursor-pointer"
-                >
-                  <span>{item.label}</span>
-                </button>
-              ))}
-            </div>
-          )}
+          {/* 5. FLOATING ROUNDED-FULL INPUT BOX (1:1 GOOGLE GEMINI APP & HOVEDCHAT) */}
+          <div 
+            className="absolute bottom-0 inset-x-0 bg-gradient-to-t from-[#0A101D] via-[#0A101D]/95 to-transparent pt-6 px-3 sm:px-6 z-20 pointer-events-none"
+            style={{ paddingBottom: 'max(12px, env(safe-area-inset-bottom))' }}
+          >
+            <div className="max-w-3xl mx-auto w-full space-y-2 relative pointer-events-auto">
+              {/* Forhåndsvisning av vedlagt bilde */}
+              {attachedImage && (
+                <div className="flex items-center gap-2.5 p-2 bg-[#1e1f20] rounded-2xl border border-white/15 shadow-xl w-fit">
+                  <img src={attachedImage} alt="Klargjort bilde" className="w-9 h-9 rounded-lg object-cover" />
+                  <span className="text-xs text-purple-300 font-medium">Bilde klart for sending</span>
+                  <button
+                    type="button"
+                    onClick={() => setAttachedImage(null)}
+                    className="p-1 text-slate-400 hover:text-rose-400 rounded-lg cursor-pointer"
+                  >
+                    <X size={14} />
+                  </button>
+                </div>
+              )}
 
-          {/* 6. Felt-hurtigknapper (1-klikk feltknapper for byggeplassen) */}
-          <div className="px-3 pt-2 bg-slate-900/90 border-t border-slate-850 overflow-x-auto custom-scrollbar flex items-center gap-1.5 pb-1 shrink-0">
-            <span className="text-[10px] font-bold text-slate-400 uppercase tracking-wider shrink-0 pl-1">
-              Felt:
-            </span>
-            {QUICK_TAGS.map(tag => {
-              const Icon = tag.icon;
-              return (
-                <button
-                  key={tag.id}
-                  type="button"
-                  onClick={() => handleSendMessage(tag.text, tag.id)}
-                  className="inline-flex items-center gap-1 px-2.5 py-1 rounded-xl bg-slate-800 hover:bg-slate-750 text-slate-300 hover:text-white border border-slate-700 text-[11px] font-medium shrink-0 transition-all active:scale-95 cursor-pointer shadow-xs"
-                >
-                  <Icon size={12} className="text-purple-400 shrink-0" />
-                  <span>{tag.label}</span>
-                </button>
-              );
-            })}
-          </div>
+              {/* AI forslag (hvis aktivert) */}
+              {showAiSuggestions && (
+                <div className="flex items-center gap-1.5 overflow-x-auto no-scrollbar scrollbar-none [&::-webkit-scrollbar]:hidden [-ms-overflow-style:none] [scrollbar-width:none] pb-1 px-1">
+                  {AI_SUGGESTIONS.map((item, idx) => (
+                    <button
+                      key={idx}
+                      type="button"
+                      onClick={() => handleSendMessage(item.prompt)}
+                      className="inline-flex items-center gap-1 px-3 py-1 rounded-full bg-purple-900/60 hover:bg-purple-800 text-purple-200 hover:text-white border border-purple-700/60 text-xs font-semibold shrink-0 transition-all active:scale-95 cursor-pointer backdrop-blur-sm shadow-xs"
+                    >
+                      <Sparkles size={11} className="text-amber-300" />
+                      <span>{item.label}</span>
+                    </button>
+                  ))}
+                </div>
+              )}
 
-          {/* 7. Inntastingsfelt for melding */}
-          <div className="p-3 bg-slate-900 border-t border-slate-800 shrink-0 space-y-2">
-            {/* Forhåndsvisning av vedlagt bilde */}
-            {attachedImage && (
-              <div className="flex items-center gap-2 p-2 bg-slate-950 rounded-xl border border-purple-500/40 w-fit">
-                <img src={attachedImage} alt="Klargjort bilde" className="w-10 h-10 rounded-lg object-cover" />
-                <span className="text-xs text-purple-300 font-medium">Bilde klart for sending</span>
-                <button
-                  type="button"
-                  onClick={() => setAttachedImage(null)}
-                  className="p-1 text-slate-400 hover:text-rose-400 cursor-pointer"
-                >
-                  <X size={14} />
-                </button>
+              {/* Raske feltknapper (Sleek swipeable chips uten stygg scrollbar!) */}
+              <div className="flex items-center gap-1.5 overflow-x-auto no-scrollbar scrollbar-none [&::-webkit-scrollbar]:hidden [-ms-overflow-style:none] [scrollbar-width:none] pb-1 px-1">
+                {QUICK_TAGS.map(tag => {
+                  const Icon = tag.icon;
+                  return (
+                    <button
+                      key={tag.id}
+                      type="button"
+                      onClick={() => handleSendMessage(tag.text, tag.id)}
+                      className="inline-flex items-center gap-1.5 px-3 py-1.5 rounded-full bg-[#182235]/90 hover:bg-[#202d47] text-slate-300 hover:text-white border border-white/10 text-xs font-semibold shrink-0 transition-all active:scale-95 cursor-pointer shadow-xs backdrop-blur-sm"
+                    >
+                      <Icon size={12} className="text-purple-400 shrink-0" />
+                      <span>{tag.label}</span>
+                    </button>
+                  );
+                })}
               </div>
-            )}
 
-            <form
-              onSubmit={(e) => {
-                e.preventDefault();
-                handleSendMessage();
-              }}
-              className="flex items-center gap-2"
-            >
-              {/* Skjult fil-opplasting for kamera/galleri */}
-              <input
-                ref={fileInputRef}
-                type="file"
-                accept="image/*"
-                className="hidden"
-                onChange={handleImageFileChange}
-              />
-
-              {/* Kamera / Bildeknapp */}
-              <button
-                type="button"
-                onClick={() => fileInputRef.current?.click()}
-                className="p-2.5 rounded-xl bg-slate-800 hover:bg-slate-750 text-slate-300 hover:text-white border border-slate-750 transition-colors cursor-pointer shrink-0"
-                title="Ta bilde eller legg ved bilde fra byggeplassen"
+              {/* Hovedinndata-pille (Rounded-full bg-[#1e1f20]) */}
+              <form
+                onSubmit={(e) => {
+                  e.preventDefault();
+                  handleSendMessage();
+                }}
+                className="relative flex items-center bg-[#1e1f20] border border-white/10 focus-within:border-purple-500/50 focus-within:ring-2 focus-within:ring-purple-500/20 rounded-full p-1.5 sm:p-2 shadow-2xl transition-all"
               >
-                <Camera size={17} className="text-purple-400" />
-              </button>
+                {/* Pluss-knapp (+) som åpner kamera/galleri/handlinger */}
+                <div className="relative shrink-0">
+                  <button
+                    type="button"
+                    onClick={() => setIsAttachmentMenuOpen(!isAttachmentMenuOpen)}
+                    className="w-9 h-9 sm:w-10 sm:h-10 rounded-full bg-white/5 hover:bg-white/10 text-slate-300 hover:text-white flex items-center justify-center shrink-0 cursor-pointer transition-colors active:scale-95"
+                    title="Legg ved bilde eller hurtighandling"
+                  >
+                    <Plus size={18} />
+                  </button>
 
-              {/* Mikrofon tale-diktering */}
-              <button
-                type="button"
-                onClick={toggleVoiceRecording}
-                className={cn(
-                  "p-2.5 rounded-xl border transition-all cursor-pointer shrink-0",
-                  isRecording
-                    ? "bg-rose-600 text-white border-rose-500 animate-pulse shadow-md"
-                    : "bg-slate-800 hover:bg-slate-750 text-slate-300 hover:text-white border-slate-750"
-                )}
-                title={isRecording ? "Trykk for å stoppe diktering" : "Snakk inn beskjed (tale-til-tekst)"}
-              >
-                {isRecording ? <MicOff size={17} /> : <Mic size={17} className="text-emerald-400" />}
-              </button>
+                  {/* Popover meny ved trykk på + */}
+                  {isAttachmentMenuOpen && (
+                    <div className="absolute bottom-12 left-0 z-50 w-56 p-1.5 rounded-2xl bg-[#1e1f20] border border-white/15 shadow-2xl space-y-1 animate-in zoom-in-95 backdrop-blur-xl">
+                      <button
+                        type="button"
+                        onClick={() => {
+                          cameraInputRef.current?.click();
+                          setIsAttachmentMenuOpen(false);
+                        }}
+                        className="w-full flex items-center gap-2.5 px-3 py-2 rounded-xl hover:bg-white/10 text-left text-xs font-bold text-slate-200 cursor-pointer transition-colors"
+                      >
+                        <Camera size={15} className="text-purple-400" />
+                        <span>Ta bilde med kamera</span>
+                      </button>
 
-              {/* Tekstfelt */}
-              <input
-                ref={inputRef}
-                type="text"
-                placeholder={isRecording ? "Lytter... snakk nå..." : `Skriv melding til ${activeChannel.name}...`}
-                value={inputVal}
-                onChange={(e) => setInputVal(e.target.value)}
-                className="flex-1 px-4 py-2.5 rounded-xl bg-slate-950 border border-slate-800 text-xs sm:text-sm text-white placeholder:text-slate-500 focus:outline-none focus:border-purple-500"
-              />
+                      <button
+                        type="button"
+                        onClick={() => {
+                          fileInputRef.current?.click();
+                          setIsAttachmentMenuOpen(false);
+                        }}
+                        className="w-full flex items-center gap-2.5 px-3 py-2 rounded-xl hover:bg-white/10 text-left text-xs font-bold text-slate-200 cursor-pointer transition-colors"
+                      >
+                        <ImageIcon size={15} className="text-teal-400" />
+                        <span>Last opp fra bildegalleri</span>
+                      </button>
 
-              {/* Sendknapp */}
-              <button
-                type="submit"
-                disabled={!inputVal.trim() && !attachedImage}
-                className={cn(
-                  "p-2.5 rounded-xl font-bold transition-all shrink-0 cursor-pointer shadow-md",
-                  (inputVal.trim() || attachedImage)
-                    ? "bg-purple-600 hover:bg-purple-500 text-white"
-                    : "bg-slate-800 text-slate-500 cursor-not-allowed opacity-50"
-                )}
-                title="Send melding"
-              >
-                <Send size={16} />
-              </button>
-            </form>
+                      <button
+                        type="button"
+                        onClick={() => {
+                          handleAskMesterAiDirectly();
+                          setIsAttachmentMenuOpen(false);
+                        }}
+                        className="w-full flex items-center gap-2.5 px-3 py-2 rounded-xl hover:bg-white/10 text-left text-xs font-bold text-purple-300 cursor-pointer transition-colors border-t border-white/5"
+                      >
+                        <Sparkles size={15} className="text-amber-300" />
+                        <span>Spør @MesterAI</span>
+                      </button>
+                    </div>
+                  )}
+                </div>
+
+                {/* Tekstfelt */}
+                <input
+                  ref={inputRef}
+                  type="text"
+                  placeholder={isRecording ? "Lytter... snakk nå..." : `Skriv melding til #${activeChannel.name}...`}
+                  value={inputVal}
+                  onChange={(e) => setInputVal(e.target.value)}
+                  className="flex-1 bg-transparent px-3 py-2 text-xs sm:text-sm text-white placeholder:text-slate-400 focus:outline-none"
+                />
+
+                {/* Mikrofon tale-diktering */}
+                <button
+                  type="button"
+                  onClick={toggleVoiceRecording}
+                  className={cn(
+                    "w-9 h-9 sm:w-10 sm:h-10 rounded-full flex items-center justify-center shrink-0 cursor-pointer transition-all",
+                    isRecording
+                      ? "bg-rose-600 text-white animate-pulse shadow-md"
+                      : "text-slate-400 hover:text-white hover:bg-white/10"
+                  )}
+                  title={isRecording ? "Stopp diktering" : "Snakk inn beskjed (tale-til-tekst)"}
+                >
+                  {isRecording ? <MicOff size={18} /> : <Mic size={18} className="text-slate-300" />}
+                </button>
+
+                {/* Send-knapp */}
+                <button
+                  type="submit"
+                  disabled={!inputVal.trim() && !attachedImage}
+                  className={cn(
+                    "w-9 h-9 sm:w-10 sm:h-10 rounded-full flex items-center justify-center shrink-0 transition-all cursor-pointer shadow-md",
+                    (inputVal.trim() || attachedImage)
+                      ? "bg-gradient-to-tr from-purple-600 to-electric-500 text-white hover:scale-105 active:scale-95 shadow-purple-500/30"
+                      : "bg-white/5 text-slate-500 cursor-not-allowed opacity-40"
+                  )}
+                  title="Send melding"
+                >
+                  <Send size={16} />
+                </button>
+              </form>
+
+              {/* Sub-label under pillen */}
+              <p className="text-[10px] text-center text-slate-500 pb-0.5 font-medium">
+                Trykk + for kamera, bilder og feltstatuser
+              </p>
+            </div>
           </div>
         </div>
       </div>
 
-      {/* 8. Modal: Deltakere / Telefonbok i aktiv kanal */}
+      {/* 6. Modal: Deltakere / Telefonbok */}
       {isMembersModalOpen && (
-        <div className="fixed inset-0 z-50 flex items-center justify-center p-4 bg-black/80 backdrop-blur-xs">
-          <div className="bg-slate-900 border border-slate-800 rounded-3xl p-6 max-w-md w-full shadow-2xl space-y-4">
-            <div className="flex items-center justify-between pb-3 border-b border-slate-800">
+        <div className="fixed inset-0 z-50 flex items-center justify-center p-4 bg-black/80 backdrop-blur-md">
+          <div className="bg-[#131b2e] border border-white/15 rounded-3xl p-6 max-w-md w-full shadow-2xl space-y-4">
+            <div className="flex items-center justify-between pb-3 border-b border-white/10">
               <div className="flex items-center gap-2">
-                <div className="w-8 h-8 rounded-xl bg-cyan-500/20 text-cyan-400 border border-cyan-500/30 flex items-center justify-center">
+                <div className="w-8 h-8 rounded-full bg-cyan-500/20 text-cyan-400 border border-cyan-500/30 flex items-center justify-center">
                   <Users size={16} />
                 </div>
                 <div>
@@ -1088,7 +1241,7 @@ Maks 2-4 avsnitt eller punktliste.`;
               <button
                 type="button"
                 onClick={() => setIsMembersModalOpen(false)}
-                className="p-1.5 rounded-lg text-slate-400 hover:text-white hover:bg-slate-800"
+                className="p-1.5 rounded-full text-slate-400 hover:text-white hover:bg-white/10 cursor-pointer"
               >
                 <X size={16} />
               </button>
@@ -1103,7 +1256,7 @@ Maks 2-4 avsnitt eller punktliste.`;
                 projectContacts.map(c => (
                   <div
                     key={c.id}
-                    className="flex items-center justify-between p-2.5 rounded-xl bg-slate-950 border border-slate-800 hover:border-slate-700 transition-colors"
+                    className="flex items-center justify-between p-2.5 rounded-2xl bg-white/5 border border-white/10 hover:border-white/20 transition-colors"
                   >
                     <div className="min-w-0">
                       <p className="text-xs font-bold text-white truncate">{c.name}</p>
@@ -1119,7 +1272,7 @@ Maks 2-4 avsnitt eller punktliste.`;
                           setMobileTab('chat');
                           toast.success(`Åpnet 1-til-1 samtale med ${c.name}`);
                         }}
-                        className="p-1.5 rounded-lg bg-purple-500/20 text-purple-300 hover:bg-purple-500/30 transition-colors cursor-pointer"
+                        className="p-2 rounded-full bg-purple-500/20 text-purple-300 hover:bg-purple-500/30 transition-colors cursor-pointer"
                         title={`Send direktemelding til ${c.name}`}
                       >
                         <MessageSquare size={13} />
@@ -1129,7 +1282,7 @@ Maks 2-4 avsnitt eller punktliste.`;
                       {c.phone && (
                         <a
                           href={`tel:${c.phone}`}
-                          className="p-1.5 rounded-lg bg-emerald-500/20 text-emerald-300 hover:bg-emerald-500/30 transition-colors"
+                          className="p-2 rounded-full bg-emerald-500/20 text-emerald-300 hover:bg-emerald-500/30 transition-colors"
                           title={`Ring ${c.name} (${c.phone})`}
                         >
                           <Phone size={13} />
@@ -1140,7 +1293,7 @@ Maks 2-4 avsnitt eller punktliste.`;
                       {c.email && (
                         <a
                           href={`mailto:${c.email}`}
-                          className="p-1.5 rounded-lg bg-blue-500/20 text-blue-300 hover:bg-blue-500/30 transition-colors"
+                          className="p-2 rounded-full bg-blue-500/20 text-blue-300 hover:bg-blue-500/30 transition-colors"
                           title={`E-post til ${c.name}`}
                         >
                           <Mail size={13} />
@@ -1155,13 +1308,13 @@ Maks 2-4 avsnitt eller punktliste.`;
         </div>
       )}
 
-      {/* 9. Modal: Kontaktprofilkort ved klikk på avsender */}
+      {/* 7. Modal: Kontaktprofilkort ved klikk på avsender */}
       {selectedContactForCard && contactDetails && (
-        <div className="fixed inset-0 z-50 flex items-center justify-center p-4 bg-black/80 backdrop-blur-xs animate-in fade-in">
-          <div className="bg-slate-900 border border-slate-800 rounded-3xl p-6 max-w-sm w-full shadow-2xl space-y-4">
-            <div className="flex items-center justify-between pb-3 border-b border-slate-800">
+        <div className="fixed inset-0 z-50 flex items-center justify-center p-4 bg-black/80 backdrop-blur-md animate-in fade-in">
+          <div className="bg-[#131b2e] border border-white/15 rounded-3xl p-6 max-w-sm w-full shadow-2xl space-y-4">
+            <div className="flex items-center justify-between pb-3 border-b border-white/10">
               <div className="flex items-center gap-3">
-                <div className="w-12 h-12 rounded-2xl bg-gradient-to-tr from-purple-600 to-indigo-600 text-white font-black text-lg flex items-center justify-center shadow-lg shadow-purple-500/20">
+                <div className="w-12 h-12 rounded-full bg-gradient-to-tr from-purple-600 to-indigo-600 text-white font-black text-lg flex items-center justify-center shadow-lg shadow-purple-500/20">
                   {contactDetails.name.charAt(0).toUpperCase()}
                 </div>
                 <div>
@@ -1173,7 +1326,7 @@ Maks 2-4 avsnitt eller punktliste.`;
               <button
                 type="button"
                 onClick={() => setSelectedContactForCard(null)}
-                className="p-1.5 rounded-lg text-slate-400 hover:text-white hover:bg-slate-800"
+                className="p-1.5 rounded-full text-slate-400 hover:text-white hover:bg-white/10 cursor-pointer"
               >
                 <X size={16} />
               </button>
@@ -1183,10 +1336,10 @@ Maks 2-4 avsnitt eller punktliste.`;
               {contactDetails.phone ? (
                 <a
                   href={`tel:${contactDetails.phone}`}
-                  className="flex items-center justify-between p-3 rounded-xl bg-slate-950 border border-slate-800 hover:border-emerald-500/50 hover:bg-emerald-500/5 transition-colors group"
+                  className="flex items-center justify-between p-3 rounded-2xl bg-white/5 border border-white/10 hover:border-emerald-500/50 hover:bg-emerald-500/5 transition-colors group"
                 >
                   <div className="flex items-center gap-2.5">
-                    <div className="p-2 rounded-lg bg-emerald-500/10 text-emerald-400 group-hover:bg-emerald-500/20">
+                    <div className="p-2 rounded-full bg-emerald-500/10 text-emerald-400 group-hover:bg-emerald-500/20">
                       <Phone size={16} />
                     </div>
                     <div>
@@ -1197,7 +1350,7 @@ Maks 2-4 avsnitt eller punktliste.`;
                   <span className="text-xs text-emerald-400 font-bold">Ring nå →</span>
                 </a>
               ) : (
-                <div className="p-3 rounded-xl bg-slate-950 border border-slate-800 text-xs text-slate-400 flex items-center gap-2">
+                <div className="p-3 rounded-2xl bg-white/5 border border-white/10 text-xs text-slate-400 flex items-center gap-2">
                   <Phone size={14} className="text-slate-500" />
                   <span>Telefonnummer ikke registrert</span>
                 </div>
@@ -1206,10 +1359,10 @@ Maks 2-4 avsnitt eller punktliste.`;
               {contactDetails.email && (
                 <a
                   href={`mailto:${contactDetails.email}`}
-                  className="flex items-center justify-between p-3 rounded-xl bg-slate-950 border border-slate-800 hover:border-blue-500/50 hover:bg-blue-500/5 transition-colors group"
+                  className="flex items-center justify-between p-3 rounded-2xl bg-white/5 border border-white/10 hover:border-blue-500/50 hover:bg-blue-500/5 transition-colors group"
                 >
                   <div className="flex items-center gap-2.5">
-                    <div className="p-2 rounded-lg bg-blue-500/10 text-blue-400 group-hover:bg-blue-500/20">
+                    <div className="p-2 rounded-full bg-blue-500/10 text-blue-400 group-hover:bg-blue-500/20">
                       <Mail size={16} />
                     </div>
                     <div className="min-w-0">
@@ -1229,7 +1382,7 @@ Maks 2-4 avsnitt eller punktliste.`;
                   setMobileTab('chat');
                   toast.success(`Åpnet 1-til-1 samtale med ${contactDetails.name}`);
                 }}
-                className="w-full flex items-center justify-center gap-2 p-3 rounded-xl bg-purple-600 hover:bg-purple-500 text-white font-bold text-xs shadow-md transition-all cursor-pointer mt-3"
+                className="w-full flex items-center justify-center gap-2 p-3 rounded-full bg-purple-600 hover:bg-purple-500 text-white font-bold text-xs shadow-md transition-all cursor-pointer mt-3"
               >
                 <MessageSquare size={16} />
                 <span>Åpne direktemelding (1-til-1)</span>
@@ -1239,7 +1392,7 @@ Maks 2-4 avsnitt eller punktliste.`;
         </div>
       )}
 
-      {/* 10. Lightbox for bildevisning i fullskjerm */}
+      {/* 8. Lightbox for bildevisning i fullskjerm */}
       {previewImage && (
         <div
           onClick={() => setPreviewImage(null)}

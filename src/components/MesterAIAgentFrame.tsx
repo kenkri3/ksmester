@@ -463,6 +463,10 @@ export default function MesterAIAgentFrame({
         headers: { 'Content-Type': 'application/json' },
         body: JSON.stringify({
           message: apiPayload,
+          history: messages
+            .filter(m => m.id !== 'welcome' && m.id !== userMsg.id)
+            .slice(-8)
+            .map(m => ({ role: m.role, content: m.content })),
           sessionId,
           projectName: selectedProjectName,
           userName,

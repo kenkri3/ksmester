@@ -41,8 +41,9 @@ export async function POST(req: NextRequest) {
     const providedKey = body.bot_key || body.apiKey || token || queryKey;
 
     // Autentisering: Enten gyldig bot_key, intern hemmelighet, eller innlogget bruker
+    const user = getUserFromRequest(req);
     const isBotAuthorized = Boolean(providedKey && (providedKey === BOT_API_KEY || providedKey === process.env.AGENT_API));
-    const isUserAuthorized = Boolean(getUserFromRequest(req)) || verifyCronOrInternalSecret(req);
+    const isUserAuthorized = Boolean(user) || verifyCronOrInternalSecret(req);
 
     if (!isBotAuthorized && !isUserAuthorized) {
       return NextResponse.json({
@@ -137,13 +138,14 @@ export async function POST(req: NextRequest) {
           ${replyTo ? `<p style="font-size: 12px; color: #64748b; margin: 6px 0 0 0;">Svar på denne e-posten sendes direkte til: <strong>${replyTo}</strong>.</p>` : ''}
         </div>
       `,
+      companyId: user?.companyId || body.companyId || body.company_id,
       companyName: company,
       authorName: author
     });
 
     const isSent = sendRes.success && sendRes.status === 'sent';
     const statusText = isSent
-      ? `✅ E-post er nå sendt til ${recipient} via Resend!\nEmne: «${subject}»\nSvar går til: ${replyTo || company}\nMeldings-ID: ${sendRes.resendId || 'ok'}`
+      ? `✅ E-post er sendt til ${recipient} ${sendRes.providerUsed === 'smtp' ? 'direkte via bedriftens egen e-postserver' : sendRes.providerUsed === 'resend_byok' ? 'via bedriftens domene' : 'via skyavsender'}!\nEmne: «${subject}»\nAvsender: ${sendRes.fromUsed || company}\nMeldings-ID: ${sendRes.resendId || 'ok'}`
       : `⚠️ Kunne ikke levere e-post til ${recipient}: ${sendRes.message || sendRes.error}`;
 
     // Returner 200 slik at Botsify JSON API plugin alltid viser meldingen til brukeren

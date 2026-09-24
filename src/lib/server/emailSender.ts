@@ -1,5 +1,7 @@
 import { dbQuery, inMemoryStore, saveCollectionItem } from './db';
 import { sanitizeHeader } from '../sanitize';
+import nodemailer from 'nodemailer';
+import { getCompanyEmailConfig, getCompanyEmailConfigByName, CompanyEmailConfig } from './emailConfig';
 
 export interface EmailAttachment {
   filename: string;
@@ -18,6 +20,7 @@ export interface SendEmailParams {
   type?: 'offer' | 'change_order' | 'general' | 'notice';
   metadata?: Record<string, any>;
   companyName?: string;
+  companyId?: string;
   authorName?: string;
   attachments?: EmailAttachment[];
 }
@@ -111,6 +114,7 @@ export interface SendEmailResult {
   error?: string;
   fromUsed?: string;
   previewUrl?: string;
+  providerUsed?: 'smtp' | 'resend_byok' | 'system_relay';
 }
 
 /**
@@ -237,6 +241,8 @@ export async function sendSystemEmail(params: SendEmailParams): Promise<SendEmai
   let deliveryStatus: 'sent' | 'failed' | 'missing_api_key' | 'logged_only' | 'logged_simulated' = 'logged_simulated';
   let resendId: string | undefined = undefined;
   let sendError: string | undefined = undefined;
+  let providerUsed: 'smtp' | 'resend_byok' | 'system_relay' = 'system_relay';
+  let sentViaCustomProvider = false;
 
   const resendKey = getResendApiKey();
   const rawFrom = (process.env.EMAIL_FROM || process.env.RESEND_FROM || 'VikingMester <hei@vikingmester.no>').trim();
@@ -250,7 +256,106 @@ export async function sendSystemEmail(params: SendEmailParams): Promise<SendEmai
     }
   }
 
-  if (resendKey) {
+  // 🏢 1. Sjekk om bedriften har konfigurert sitt eget e-postoppsett (SMTP, Microsoft 365, Gmail, Domeneshop, One.com osv.)
+  const targetCompanyId = params.companyId || metadata.companyId;
+  let customEmailConfig: CompanyEmailConfig | null = null;
+  if (targetCompanyId) {
+    customEmailConfig = await getCompanyEmailConfig(targetCompanyId);
+  }
+  if (!customEmailConfig && companyName && companyName !== 'VikingMester') {
+    customEmailConfig = await getCompanyEmailConfigByName(companyName);
+  }
+
+  if (customEmailConfig && customEmailConfig.enabled && customEmailConfig.provider !== 'system_default') {
+    if (customEmailConfig.provider === 'resend_byok' && customEmailConfig.resendApiKey) {
+      // Egen Resend API-nøkkel på eget registrert domene
+      try {
+        const byokFrom = `"${customEmailConfig.fromName || companyName}" <${customEmailConfig.fromEmail}>`;
+        const resendRes = await fetch('https://api.resend.com/emails', {
+          method: 'POST',
+          headers: {
+            'Content-Type': 'application/json',
+            'Authorization': `Bearer ${customEmailConfig.resendApiKey.trim()}`
+          },
+          body: JSON.stringify({
+            from: byokFrom,
+            ...(replyTo || customEmailConfig.replyTo ? { reply_to: replyTo || customEmailConfig.replyTo } : {}),
+            to: sanitizedTo,
+            subject: sanitizedSubject,
+            html: bodyHtml,
+            text: bodyText,
+            ...(params.attachments && params.attachments.length > 0 ? { attachments: params.attachments } : {})
+          })
+        });
+
+        if (resendRes.ok) {
+          const resendData = await resendRes.json();
+          resendId = resendData.id;
+          deliveryStatus = 'sent';
+          activeFrom = byokFrom;
+          providerUsed = 'resend_byok';
+          sentViaCustomProvider = true;
+          console.info(`[EmailSender] E-post sendt via bedriftens egen Resend BYOK-nøkkel (${customEmailConfig.fromEmail}):`, resendId);
+        } else {
+          const errText = await resendRes.text();
+          console.warn('[EmailSender] Bedriftens Resend BYOK feilet, forsøker system-relay fallback:', errText);
+        }
+      } catch (byokErr: any) {
+        console.warn('[EmailSender] Feil ved utsending via bedriftens Resend BYOK:', byokErr.message);
+      }
+    } else if (customEmailConfig.smtpHost && customEmailConfig.smtpUser && customEmailConfig.smtpPassword) {
+      // 🚀 Direkte utsending via bedriftens egen e-postserver (Microsoft 365, Gmail, Domeneshop, One.com, ProISP, Custom SMTP)
+      try {
+        const transporter = nodemailer.createTransport({
+          host: customEmailConfig.smtpHost,
+          port: Number(customEmailConfig.smtpPort || 587),
+          secure: customEmailConfig.smtpSecure ?? (Number(customEmailConfig.smtpPort) === 465),
+          auth: {
+            user: customEmailConfig.smtpUser,
+            pass: customEmailConfig.smtpPassword
+          },
+          tls: {
+            rejectUnauthorized: false
+          },
+          connectionTimeout: 15000,
+          greetingTimeout: 15000,
+          socketTimeout: 20000
+        });
+
+        const fromAddress = `"${customEmailConfig.fromName || companyName}" <${customEmailConfig.fromEmail}>`;
+        const mailOptions = {
+          from: fromAddress,
+          to: sanitizedTo,
+          replyTo: replyTo || customEmailConfig.replyTo || customEmailConfig.fromEmail,
+          subject: sanitizedSubject,
+          text: bodyText,
+          html: bodyHtml,
+          attachments: params.attachments?.map(att => ({
+            filename: att.filename,
+            content: att.content,
+            path: att.path,
+            contentType: att.contentType
+          }))
+        };
+
+        const info = await transporter.sendMail(mailOptions);
+        if (info.messageId) {
+          deliveryStatus = 'sent';
+          resendId = info.messageId;
+          activeFrom = fromAddress;
+          providerUsed = 'smtp';
+          sentViaCustomProvider = true;
+          console.info(`[EmailSender] E-post sendt direkte via bedriftens egen e-postserver (${customEmailConfig.smtpHost}):`, info.messageId);
+        }
+      } catch (smtpErr: any) {
+        console.warn(`[EmailSender] Sending via bedriftens SMTP (${customEmailConfig.smtpHost}) feilet:`, smtpErr.message);
+        sendError = `Egen SMTP-server feilet: ${smtpErr.message}. Forsøkte fallback til felles skyserver.`;
+      }
+    }
+  }
+
+  // 2. Hvis ikke levert via bedriftens eget system, bruk VikingMester Cloud Relay (Resend)
+  if (!sentViaCustomProvider && resendKey) {
     try {
       let resendRes = await fetch('https://api.resend.com/emails', {
         method: 'POST',
@@ -373,11 +478,17 @@ export async function sendSystemEmail(params: SendEmailParams): Promise<SendEmai
 
   // Protokollfør i agent_activities
   if (deliveryStatus === 'sent') {
+    const providerLabel = providerUsed === 'smtp' 
+      ? 'direkte via bedriftens egen e-postserver' 
+      : providerUsed === 'resend_byok' 
+        ? 'via bedriftens egen Resend BYOK-nøkkel' 
+        : 'via VikingMester Cloud Relay';
+
     await saveCollectionItem('agent_activities', {
       type: 'email_sent',
       title: `E-post sendt: ${sanitizedSubject}`,
-      description: `Sendt til ${sanitizedTo.join(', ')} via Resend (ID: ${resendId}). Avsender: ${activeFrom}.`,
-      badge: 'SENDT PÅ E-POST',
+      description: `Sendt til ${sanitizedTo.join(', ')} ${providerLabel} (Meldings-ID: ${resendId}). Avsender: ${activeFrom}.`,
+      badge: providerUsed === 'smtp' ? 'EGET DOMENE (SMTP)' : providerUsed === 'resend_byok' ? 'EGET DOMENE (BYOK)' : 'SENDT PÅ E-POST',
       status: 'completed',
       createdAt: now,
       trade: 'Administrasjon',
@@ -387,8 +498,8 @@ export async function sendSystemEmail(params: SendEmailParams): Promise<SendEmai
     await saveCollectionItem('agent_activities', {
       type: 'email_not_sent',
       title: `E-post ikke sendt: ${sanitizedSubject}`,
-      description: `Utsendelse til ${sanitizedTo.join(', ')} ble avbrutt: RESEND_API_KEY mangler i Railway.`,
-      badge: 'MANGLER API-NØKKEL',
+      description: `Utsendelse til ${sanitizedTo.join(', ')} ble avbrutt: Hverken egen e-postserver eller RESEND_API_KEY er konfigurert.`,
+      badge: 'MANGLER E-POSTOPPSETT',
       status: 'warning',
       createdAt: now,
       trade: 'Administrasjon',
@@ -398,7 +509,7 @@ export async function sendSystemEmail(params: SendEmailParams): Promise<SendEmai
     await saveCollectionItem('agent_activities', {
       type: 'email_failed',
       title: `E-post feilet: ${sanitizedSubject}`,
-      description: `Forsøk på å sende til ${sanitizedTo.join(', ')} feilet via Resend: ${sendError}`,
+      description: `Forsøk på å sende til ${sanitizedTo.join(', ')} feilet: ${sendError}`,
       badge: 'SENDING FEILET',
       status: 'error',
       createdAt: now,
@@ -408,13 +519,20 @@ export async function sendSystemEmail(params: SendEmailParams): Promise<SendEmai
   }
 
   if (deliveryStatus === 'sent') {
+    const deliveryMsg = providerUsed === 'smtp'
+      ? `E-post er levert direkte via bedriftens egen e-postserver (${activeFrom}) til ${sanitizedTo.join(', ')}.`
+      : providerUsed === 'resend_byok'
+        ? `E-post er levert via bedriftens eget domene (${activeFrom}) til ${sanitizedTo.join(', ')}.`
+        : `E-post er levert via VikingMester Sky-avsender til ${sanitizedTo.join(', ')} (Meldings-ID: ${resendId}).`;
+
     return {
       success: true,
       id: emailId,
       resendId,
       status: 'sent',
       fromUsed: activeFrom,
-      message: `E-post er levert via Resend til ${sanitizedTo.join(', ')} (Meldings-ID: ${resendId}).`
+      providerUsed,
+      message: deliveryMsg
     };
   } else if (deliveryStatus === 'missing_api_key') {
     return {
@@ -422,7 +540,8 @@ export async function sendSystemEmail(params: SendEmailParams): Promise<SendEmai
       id: emailId,
       status: 'missing_api_key',
       fromUsed: activeFrom,
-      message: 'RESEND_API_KEY er ikke konfigurert i miljøvariablene (f.eks. Railway). E-posten ble ikke levert.',
+      providerUsed,
+      message: 'Hverken egen e-postleverandør (SMTP) eller RESEND_API_KEY er konfigurert. E-posten ble ikke levert.',
       error: sendError
     };
   } else {
@@ -431,7 +550,8 @@ export async function sendSystemEmail(params: SendEmailParams): Promise<SendEmai
       id: emailId,
       status: 'failed',
       fromUsed: activeFrom,
-      message: `Kunne ikke levere e-post via Resend: ${sendError}`,
+      providerUsed,
+      message: `Kunne ikke levere e-post: ${sendError}`,
       error: sendError
     };
   }
@@ -445,13 +565,14 @@ export async function sendOfferByEmail(params: {
   clientEmail: string;
   clientName?: string;
   companyName?: string;
+  companyId?: string;
   authorName?: string;
   replyTo?: string;
   senderEmail?: string;
   customMessage?: string;
   baseUrl?: string;
 }): Promise<SendEmailResult> {
-  const { offer, clientEmail, clientName, companyName = 'Mester Entreprenør AS', authorName = 'Byggmester', replyTo, senderEmail, customMessage, baseUrl = 'https://vikingmester.no' } = params;
+  const { offer, clientEmail, clientName, companyName = 'Mester Entreprenør AS', companyId, authorName = 'Byggmester', replyTo, senderEmail, customMessage, baseUrl = 'https://vikingmester.no' } = params;
 
   const token = offer.token || offer.id;
   const approvalLink = `${baseUrl}/?offerToken=${token}`;
@@ -577,6 +698,7 @@ export async function sendOfferByEmail(params: {
 
   return await sendSystemEmail({
     to: clientEmail,
+    companyId: companyId || offer.companyId || offer.metadata?.companyId,
     subject: `Pristilbud: ${offer.title || 'Fagarbeid'} – ${companyName}`,
     html: emailHtml,
     text: `Hei ${cName}!\n\nVi har oversendt tilbudet «${offer.title}» på kr ${totalAmount.toLocaleString('no-NO')} inkl. mva.\n\nKlikk her for å se og godkjenne tilbudet: ${approvalLink}\n\nMed vennlig hilsen,\n${authorName}\n${companyName}`,
@@ -585,7 +707,7 @@ export async function sendOfferByEmail(params: {
     type: 'offer',
     companyName,
     authorName,
-    metadata: { offerId: offer.id, token, clientEmail, replyTo: replyTo || senderEmail }
+    metadata: { offerId: offer.id, token, clientEmail, replyTo: replyTo || senderEmail, companyId: companyId || offer.companyId }
   });
 }
 
@@ -597,12 +719,13 @@ export async function sendChangeOrderByEmail(params: {
   clientEmail: string;
   clientName?: string;
   companyName?: string;
+  companyId?: string;
   authorName?: string;
   replyTo?: string;
   senderEmail?: string;
   baseUrl?: string;
 }): Promise<SendEmailResult> {
-  const { changeOrder, clientEmail, clientName, companyName = 'Mester Entreprenør AS', authorName = 'Byggmester', replyTo, senderEmail, baseUrl = 'https://vikingmester.no' } = params;
+  const { changeOrder, clientEmail, clientName, companyName = 'Mester Entreprenør AS', companyId, authorName = 'Byggmester', replyTo, senderEmail, baseUrl = 'https://vikingmester.no' } = params;
 
   const token = changeOrder.token || changeOrder.id;
   const shareUrl = `${baseUrl}/?changeOrderToken=${token}`;
@@ -680,6 +803,7 @@ export async function sendChangeOrderByEmail(params: {
 
   return await sendSystemEmail({
     to: clientEmail,
+    companyId: companyId || changeOrder.companyId || changeOrder.metadata?.companyId,
     subject: `Endringsvarsel #${changeOrder.changeNumber || '1'}: ${changeOrder.title} – ${companyName}`,
     html: emailHtml,
     text: `Hei ${cName}!\n\nDet er registrert et endringsvarsel for ${changeOrder.projectName}:\n${changeOrder.title} (kr ${totalAmount.toLocaleString('no-NO')} inkl. mva).\n\nGodkjenn her: ${shareUrl}\n\nMed vennlig hilsen,\n${authorName}`,
@@ -688,7 +812,7 @@ export async function sendChangeOrderByEmail(params: {
     type: 'change_order',
     companyName,
     authorName,
-    metadata: { changeOrderId: changeOrder.id, token, clientEmail, replyTo: replyTo || senderEmail }
+    metadata: { changeOrderId: changeOrder.id, token, clientEmail, replyTo: replyTo || senderEmail, companyId: companyId || changeOrder.companyId }
   });
 }
 

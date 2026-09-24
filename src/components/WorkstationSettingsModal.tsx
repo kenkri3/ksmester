@@ -21,8 +21,14 @@ import {
   Sparkles,
   Smartphone,
   CheckCircle2,
+  CheckCircle,
   AlertTriangle,
-  Globe
+  Globe,
+  Mail,
+  Send,
+  Info,
+  RefreshCw,
+  PowerOff
 } from 'lucide-react';
 import { cn } from '@/src/lib/utils';
 import { toast } from 'sonner';
@@ -36,7 +42,7 @@ interface WorkstationSettingsModalProps {
   isSuperAdmin?: boolean;
 }
 
-type SettingsTab = 'profile' | 'company' | 'team' | 'modules' | 'integrations' | 'notifications' | 'billing' | 'gdpr';
+type SettingsTab = 'profile' | 'company' | 'email' | 'team' | 'modules' | 'integrations' | 'notifications' | 'billing' | 'gdpr';
 
 export default function WorkstationSettingsModal({
   isOpen,
@@ -61,6 +67,23 @@ export default function WorkstationSettingsModal({
   const [nobbKey, setNobbKey] = useState('');
   const [tripletexToken, setTripletexToken] = useState('');
   const [fikenToken, setFikenToken] = useState('');
+
+  // E-post & Utsendelse (Custom SMTP / Microsoft 365 / Gmail / Domeneshop osv.)
+  const [emailProvider, setEmailProvider] = useState<string>('system_default');
+  const [emailFromAddress, setEmailFromAddress] = useState<string>(user?.email || '');
+  const [emailFromName, setEmailFromName] = useState<string>(user?.company || user?.displayName || '');
+  const [emailReplyTo, setEmailReplyTo] = useState<string>(user?.email || '');
+  const [smtpHost, setSmtpHost] = useState<string>('');
+  const [smtpPort, setSmtpPort] = useState<number>(587);
+  const [smtpSecure, setSmtpSecure] = useState<boolean>(false);
+  const [smtpUser, setSmtpUser] = useState<string>('');
+  const [smtpPassword, setSmtpPassword] = useState<string>('');
+  const [resendApiKey, setResendApiKey] = useState<string>('');
+  const [emailConfigured, setEmailConfigured] = useState<boolean>(false);
+  const [emailVerified, setEmailVerified] = useState<boolean>(false);
+  const [isTestingEmail, setIsTestingEmail] = useState<boolean>(false);
+  const [emailTestStatus, setEmailTestStatus] = useState<{ success: boolean; message: string } | null>(null);
+  const [sendTestEmailCheck, setSendTestEmailCheck] = useState<boolean>(true);
 
   // Notifications
   const [notifEmail, setNotifEmail] = useState(true);
@@ -110,8 +133,150 @@ export default function WorkstationSettingsModal({
           }
         }).catch((err) => console.warn('Could not load user doc:', err));
       }
+
+      // Hent e-postinnstillinger for bedriften (SMTP/Microsoft 365/Gmail/Domeneshop osv.)
+      fetch('/api/settings/email')
+        .then(res => res.json())
+        .then(data => {
+          if (data && data.config) {
+            setEmailProvider(data.config.provider || 'system_default');
+            setEmailFromAddress(data.config.fromEmail || user?.email || '');
+            setEmailFromName(data.config.fromName || user?.company || '');
+            setEmailReplyTo(data.config.replyTo || user?.email || '');
+            setSmtpHost(data.config.smtpHost || '');
+            setSmtpPort(data.config.smtpPort || 587);
+            setSmtpSecure(data.config.smtpSecure ?? false);
+            setSmtpUser(data.config.smtpUser || '');
+            setSmtpPassword(data.config.smtpPasswordMasked || '');
+            setResendApiKey(data.config.resendApiKeyMasked || '');
+            setEmailConfigured(Boolean(data.configured));
+            setEmailVerified(Boolean(data.config.verified));
+          }
+        })
+        .catch(err => console.warn('Could not load email settings:', err));
     }
   }, [isOpen, user]);
+
+  const handleSelectEmailProvider = (providerKey: string) => {
+    setEmailProvider(providerKey);
+    setEmailTestStatus(null);
+    if (providerKey === 'microsoft365') {
+      setSmtpHost('smtp.office365.com');
+      setSmtpPort(587);
+      setSmtpSecure(false);
+      if (!smtpUser && emailFromAddress) setSmtpUser(emailFromAddress);
+    } else if (providerKey === 'gmail') {
+      setSmtpHost('smtp.gmail.com');
+      setSmtpPort(465);
+      setSmtpSecure(true);
+      if (!smtpUser && emailFromAddress) setSmtpUser(emailFromAddress);
+    } else if (providerKey === 'domeneshop') {
+      setSmtpHost('mail.domeneshop.no');
+      setSmtpPort(587);
+      setSmtpSecure(false);
+      if (!smtpUser && emailFromAddress) setSmtpUser(emailFromAddress);
+    } else if (providerKey === 'one_com') {
+      setSmtpHost('send.one.com');
+      setSmtpPort(465);
+      setSmtpSecure(true);
+      if (!smtpUser && emailFromAddress) setSmtpUser(emailFromAddress);
+    } else if (providerKey === 'proisp') {
+      setSmtpHost('mail.dittdomene.no');
+      setSmtpPort(587);
+      setSmtpSecure(false);
+    }
+  };
+
+  const handleTestEmailConnection = async () => {
+    setIsTestingEmail(true);
+    setEmailTestStatus(null);
+    try {
+      const res = await fetch('/api/settings/email/test', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({
+          provider: emailProvider,
+          fromEmail: emailFromAddress,
+          fromName: emailFromName,
+          replyTo: emailReplyTo,
+          smtpHost,
+          smtpPort,
+          smtpSecure,
+          smtpUser,
+          smtpPassword,
+          resendApiKey,
+          sendTestEmail: sendTestEmailCheck,
+          testRecipientEmail: user?.email
+        })
+      });
+      const data = await res.json();
+      if (res.ok && data.success) {
+        setEmailTestStatus({ success: true, message: data.message });
+        setEmailVerified(true);
+        toast.success(data.message);
+      } else {
+        setEmailTestStatus({ success: false, message: data.message || 'Tilkobling feilet' });
+        toast.error(data.message || 'Kunne ikke koble til e-postserver');
+      }
+    } catch (err: any) {
+      setEmailTestStatus({ success: false, message: err.message || 'Nettverksfeil' });
+      toast.error('Nettverksfeil under testing av e-post');
+    } finally {
+      setIsTestingEmail(false);
+    }
+  };
+
+  const handleSaveEmailConfig = async () => {
+    setIsSaving(true);
+    try {
+      const res = await fetch('/api/settings/email', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({
+          provider: emailProvider,
+          enabled: emailProvider !== 'system_default',
+          fromEmail: emailFromAddress,
+          fromName: emailFromName,
+          replyTo: emailReplyTo,
+          smtpHost,
+          smtpPort,
+          smtpSecure,
+          smtpUser,
+          smtpPassword,
+          resendApiKey
+        })
+      });
+      const data = await res.json();
+      if (res.ok && data.success) {
+        setEmailConfigured(emailProvider !== 'system_default');
+        toast.success('E-postinnstillinger er lagret! E-poster sendes nå fra ditt oppsett.');
+      } else {
+        toast.error(data.error || 'Kunne ikke lagre e-postinnstillinger');
+      }
+    } catch (err: any) {
+      toast.error('Kunne ikke lagre: ' + err.message);
+    } finally {
+      setIsSaving(false);
+    }
+  };
+
+  const handleDisconnectEmail = async () => {
+    if (!confirm('Vil du koble fra egen e-postserver og gå tilbake til standard skyavsender?')) return;
+    setIsSaving(true);
+    try {
+      const res = await fetch('/api/settings/email', { method: 'DELETE' });
+      if (res.ok) {
+        setEmailProvider('system_default');
+        setEmailConfigured(false);
+        setEmailVerified(false);
+        toast.info('Egen e-postserver er koblet fra. Systemet benytter nå standard skyavsender.');
+      }
+    } catch (e: any) {
+      toast.error('Feil: ' + e.message);
+    } finally {
+      setIsSaving(false);
+    }
+  };
 
   // Handle escape key to close
   useEffect(() => {
@@ -264,6 +429,7 @@ export default function WorkstationSettingsModal({
           {[
             { id: 'profile', label: t('settings_tab_profile', 'Profil'), icon: User },
             { id: 'company', label: t('settings_tab_company', 'Bedrift & Takster'), icon: Building2 },
+            { id: 'email', label: t('settings_tab_email', 'E-post & Utsendelse'), icon: Mail },
             { id: 'team', label: t('settings_tab_team', 'Team'), icon: Users },
             { id: 'modules', label: t('settings_tab_modules', 'Fagmoduler'), icon: Package },
             { id: 'integrations', label: t('settings_tab_integrations', 'NOBB & Systemer'), icon: Link2 },
@@ -426,6 +592,325 @@ export default function WorkstationSettingsModal({
                   </div>
                 </div>
               </div>
+            </div>
+          )}
+
+          {/* TAB: E-POST & UTSENDELSE (Egen mailserver / SMTP / Microsoft 365 / Gmail / Domeneshop) */}
+          {activeTab === 'email' && (
+            <div className="space-y-4 max-w-2xl">
+              {/* Status Header Banner */}
+              <div className={cn(
+                "p-4 rounded-2xl border transition-all",
+                emailConfigured && emailProvider !== 'system_default'
+                  ? "bg-emerald-950/20 border-emerald-500/40"
+                  : "bg-slate-900 border-slate-800"
+              )}>
+                <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-3">
+                  <div className="flex items-center gap-3">
+                    <div className={cn(
+                      "w-10 h-10 rounded-2xl flex items-center justify-center shrink-0 border",
+                      emailConfigured && emailProvider !== 'system_default'
+                        ? "bg-emerald-500/20 text-emerald-400 border-emerald-500/30"
+                        : "bg-purple-500/10 text-purple-400 border-purple-500/20"
+                    )}>
+                      <Mail size={20} />
+                    </div>
+                    <div>
+                      <div className="flex items-center gap-2">
+                        <h4 className="text-sm font-bold text-white">
+                          {emailConfigured && emailProvider !== 'system_default'
+                            ? 'Egen e-postserver tilkoblet'
+                            : 'VikingMester Sky-avsender (Standard)'}
+                        </h4>
+                        <span className={cn(
+                          "px-2 py-0.5 rounded text-[10px] font-black uppercase tracking-wider",
+                          emailConfigured && emailProvider !== 'system_default'
+                            ? "bg-emerald-500/20 text-emerald-300 border border-emerald-500/40 flex items-center gap-1"
+                            : "bg-slate-800 text-slate-400"
+                        )}>
+                          {emailConfigured && emailProvider !== 'system_default' ? (
+                            <>
+                              <span className="w-1.5 h-1.5 rounded-full bg-emerald-400 animate-pulse" />
+                              Aktiv ({emailProvider === 'microsoft365' ? 'M365' : emailProvider === 'gmail' ? 'Gmail' : emailProvider === 'domeneshop' ? 'Domeneshop' : 'Eget domene'})
+                            </>
+                          ) : 'Standard'}
+                        </span>
+                      </div>
+                      <p className="text-xs text-slate-400 mt-0.5">
+                        {emailConfigured && emailProvider !== 'system_default'
+                          ? `Utsendelser av tilbud, endringsordrer og varsler sendes direkte fra ${emailFromAddress || 'din e-post'} via din egen mailserver.`
+                          : 'Koble til din egen e-postleverandør nedenfor slik at systemet sender alle tilbud og meldinger direkte fra din egen mail.'}
+                      </p>
+                    </div>
+                  </div>
+
+                  {emailConfigured && emailProvider !== 'system_default' && (
+                    <button
+                      type="button"
+                      onClick={handleDisconnectEmail}
+                      className="px-3 py-1.5 rounded-xl bg-rose-500/10 hover:bg-rose-500/20 text-rose-300 border border-rose-500/30 text-xs font-bold transition-colors cursor-pointer shrink-0"
+                    >
+                      Koble fra
+                    </button>
+                  )}
+                </div>
+              </div>
+
+              {/* Leverandør-velger (Hurtigvalg) */}
+              <div className="space-y-2">
+                <label className="text-[11px] font-bold text-slate-400 uppercase tracking-wider block">
+                  Velg din e-postleverandør (Hurtigoppsett)
+                </label>
+                <div className="grid grid-cols-2 sm:grid-cols-4 gap-2">
+                  {[
+                    { id: 'microsoft365', label: 'Microsoft 365', icon: '🏢', sub: 'Outlook / Office' },
+                    { id: 'gmail', label: 'Google Workspace', icon: '🌐', sub: 'Gmail / Google' },
+                    { id: 'domeneshop', label: 'Domeneshop', icon: '🇳🇴', sub: 'mail.domeneshop.no' },
+                    { id: 'one_com', label: 'One.com', icon: '⚡', sub: 'send.one.com' },
+                    { id: 'proisp', label: 'ProISP / Webhotell', icon: '🛠️', sub: 'cPanel / Eget domene' },
+                    { id: 'custom_smtp', label: 'Annen SMTP', icon: '⚙️', sub: 'Egen server/port' },
+                    { id: 'resend_byok', label: 'Resend API', icon: '🔑', sub: 'BYOK API-nøkkel' },
+                    { id: 'system_default', label: 'Sky-avsender', icon: '☁️', sub: 'Systemstandard' },
+                  ].map((prov) => {
+                    const isSelected = emailProvider === prov.id;
+                    return (
+                      <button
+                        key={prov.id}
+                        type="button"
+                        onClick={() => handleSelectEmailProvider(prov.id)}
+                        className={cn(
+                          "p-2.5 rounded-2xl border text-left transition-all cursor-pointer",
+                          isSelected
+                            ? "bg-purple-600/20 border-purple-500 text-white shadow-xs"
+                            : "bg-slate-900/80 border-slate-800 text-slate-400 hover:text-white hover:bg-slate-800/60"
+                        )}
+                      >
+                        <div className="text-base mb-1">{prov.icon}</div>
+                        <div className="text-xs font-bold truncate">{prov.label}</div>
+                        <div className="text-[10px] text-slate-500 truncate">{prov.sub}</div>
+                      </button>
+                    );
+                  })}
+                </div>
+              </div>
+
+              {/* Innstillingsfelter (hvis ikke system_default) */}
+              {emailProvider !== 'system_default' && (
+                <div className="p-4 rounded-2xl bg-slate-900 border border-slate-800 space-y-3.5">
+                  <div className="grid grid-cols-1 sm:grid-cols-2 gap-3">
+                    {/* Avsenderadresse */}
+                    <div>
+                      <label className="text-[11px] font-bold text-slate-400 uppercase tracking-wider block mb-1">
+                        Din e-postadresse (Avsender) *
+                      </label>
+                      <input
+                        type="email"
+                        placeholder="f.eks. post@dittfirma.no"
+                        value={emailFromAddress}
+                        onChange={(e) => {
+                          setEmailFromAddress(e.target.value);
+                          if (!smtpUser) setSmtpUser(e.target.value);
+                        }}
+                        className="w-full px-3 py-2 rounded-xl bg-slate-950 border border-slate-800 text-white text-xs sm:text-sm focus:outline-none focus:border-purple-500 font-mono"
+                      />
+                      <span className="text-[10px] text-slate-500 mt-1 block">Adressen som kundene ser e-posten kommer fra</span>
+                    </div>
+
+                    {/* Visningsnavn */}
+                    <div>
+                      <label className="text-[11px] font-bold text-slate-400 uppercase tracking-wider block mb-1">
+                        Avsendernavn (Firmanavn)
+                      </label>
+                      <input
+                        type="text"
+                        placeholder="f.eks. Mester Entreprenør AS"
+                        value={emailFromName}
+                        onChange={(e) => setEmailFromName(e.target.value)}
+                        className="w-full px-3 py-2 rounded-xl bg-slate-950 border border-slate-800 text-white text-xs sm:text-sm focus:outline-none focus:border-purple-500"
+                      />
+                      <span className="text-[10px] text-slate-500 mt-1 block">Navnet som vises i innboksen til kunden</span>
+                    </div>
+
+                    {/* Svar-til (Reply-To) */}
+                    <div className="sm:col-span-2">
+                      <label className="text-[11px] font-bold text-slate-400 uppercase tracking-wider block mb-1">
+                        Svaradresse (Reply-To)
+                      </label>
+                      <input
+                        type="email"
+                        placeholder={emailFromAddress || "f.eks. kontakt@dittfirma.no"}
+                        value={emailReplyTo}
+                        onChange={(e) => setEmailReplyTo(e.target.value)}
+                        className="w-full px-3 py-2 rounded-xl bg-slate-950 border border-slate-800 text-white text-xs sm:text-sm focus:outline-none focus:border-purple-500 font-mono"
+                      />
+                      <span className="text-[10px] text-slate-500 mt-1 block">Når kunden trykker «Svar», går henvendelsen direkte til denne adressen</span>
+                    </div>
+                  </div>
+
+                  {/* Hvis Resend BYOK */}
+                  {emailProvider === 'resend_byok' ? (
+                    <div>
+                      <label className="text-[11px] font-bold text-slate-400 uppercase tracking-wider block mb-1">
+                        Resend API-nøkkel (re_...) *
+                      </label>
+                      <input
+                        type="password"
+                        placeholder="re_xxxxxxxxxxxxxxxxxxxx"
+                        value={resendApiKey}
+                        onChange={(e) => setResendApiKey(e.target.value)}
+                        className="w-full px-3 py-2 rounded-xl bg-slate-950 border border-slate-800 text-white text-xs sm:text-sm focus:outline-none focus:border-purple-500 font-mono"
+                      />
+                      <p className="text-[10px] text-slate-500 mt-1">
+                        Krever at domenet ditt (f.eks. dittfirma.no) er lagt til og verifisert i kontrollpanelet på resend.com.
+                      </p>
+                    </div>
+                  ) : (
+                    /* SMTP Detaljer */
+                    <div className="space-y-3 pt-2 border-t border-slate-800/80">
+                      <div className="grid grid-cols-1 sm:grid-cols-3 gap-3">
+                        <div className="sm:col-span-2">
+                          <label className="text-[11px] font-bold text-slate-400 uppercase tracking-wider block mb-1">
+                            SMTP Server (Host) *
+                          </label>
+                          <input
+                            type="text"
+                            placeholder="f.eks. smtp.office365.com"
+                            value={smtpHost}
+                            onChange={(e) => setSmtpHost(e.target.value)}
+                            className="w-full px-3 py-2 rounded-xl bg-slate-950 border border-slate-800 text-white text-xs sm:text-sm focus:outline-none focus:border-purple-500 font-mono"
+                          />
+                        </div>
+
+                        <div>
+                          <label className="text-[11px] font-bold text-slate-400 uppercase tracking-wider block mb-1">
+                            Port & Sikkerhet
+                          </label>
+                          <div className="flex items-center gap-2">
+                            <input
+                              type="number"
+                              value={smtpPort}
+                              onChange={(e) => setSmtpPort(Number(e.target.value))}
+                              className="w-20 px-3 py-2 rounded-xl bg-slate-950 border border-slate-800 text-white text-xs sm:text-sm focus:outline-none focus:border-purple-500 font-mono"
+                            />
+                            <button
+                              type="button"
+                              onClick={() => setSmtpSecure(!smtpSecure)}
+                              className={cn(
+                                "px-2.5 py-2 rounded-xl text-xs font-bold border transition-colors cursor-pointer",
+                                smtpSecure 
+                                  ? "bg-purple-600/30 border-purple-500 text-purple-300" 
+                                  : "bg-slate-800 border-slate-700 text-slate-300"
+                              )}
+                              title={smtpSecure ? "SSL/TLS (Port 465)" : "STARTTLS (Port 587)"}
+                            >
+                              {smtpSecure ? 'SSL' : 'STARTTLS'}
+                            </button>
+                          </div>
+                        </div>
+                      </div>
+
+                      <div className="grid grid-cols-1 sm:grid-cols-2 gap-3">
+                        <div>
+                          <label className="text-[11px] font-bold text-slate-400 uppercase tracking-wider block mb-1">
+                            Brukernavn (E-post) *
+                          </label>
+                          <input
+                            type="text"
+                            placeholder="post@dittfirma.no"
+                            value={smtpUser}
+                            onChange={(e) => setSmtpUser(e.target.value)}
+                            className="w-full px-3 py-2 rounded-xl bg-slate-950 border border-slate-800 text-white text-xs sm:text-sm focus:outline-none focus:border-purple-500 font-mono"
+                          />
+                        </div>
+
+                        <div>
+                          <label className="text-[11px] font-bold text-slate-400 uppercase tracking-wider block mb-1">
+                            Passord / App-passord *
+                          </label>
+                          <input
+                            type="password"
+                            placeholder="Ditt e-postpassord eller app-passord..."
+                            value={smtpPassword}
+                            onChange={(e) => setSmtpPassword(e.target.value)}
+                            className="w-full px-3 py-2 rounded-xl bg-slate-950 border border-slate-800 text-white text-xs sm:text-sm focus:outline-none focus:border-purple-500 font-mono"
+                          />
+                        </div>
+                      </div>
+                    </div>
+                  )}
+
+                  {/* Hjelpetekst / Veiledning for valgt leverandør */}
+                  <div className="p-3 rounded-xl bg-slate-950/70 border border-slate-850 flex items-start gap-2.5 text-xs text-slate-400">
+                    <Info size={16} className="text-purple-400 shrink-0 mt-0.5" />
+                    <div>
+                      <strong className="text-slate-200 block mb-0.5">
+                        {emailProvider === 'microsoft365' && '💡 Tips for Microsoft 365 / Outlook:'}
+                        {emailProvider === 'gmail' && '💡 Tips for Google Workspace / Gmail:'}
+                        {emailProvider === 'domeneshop' && '💡 Tips for Domeneshop:'}
+                        {emailProvider === 'one_com' && '💡 Tips for One.com:'}
+                        {emailProvider === 'custom_smtp' && '💡 Tips for egen SMTP:'}
+                      </strong>
+                      <p className="text-[11px] leading-relaxed m-0">
+                        {emailProvider === 'microsoft365' && 'Hvis din organisasjon har totrinnskontroll (MFA) aktivert, må du generere et «App-passord» i Microsoft-sikkerhetsinnstillingene, eller tillate Authenticated SMTP i Exchange Admin.'}
+                        {emailProvider === 'gmail' && 'Google krever et «App-passord» hvis 2-trinns bekreftelse er på: Gå til myaccount.google.com -> Sikkerhet -> 2-trinns bekreftelse -> App-passord -> Opprett nytt passord for VikingMester.'}
+                        {emailProvider === 'domeneshop' && 'Bruk din vanlige e-postadresse og tilhørende e-postpassord satt opp under «E-post» i Domeneshop-kontrollpanelet. Verten mail.domeneshop.no og port 587 er forhåndsutfylt.'}
+                        {emailProvider === 'one_com' && 'Bruk e-postkontoen og passordet fra One.com kontrollpanelet. Verten send.one.com og port 465 er forhåndsutfylt.'}
+                        {emailProvider === 'custom_smtp' && 'Fyll inn servernavn (f.eks. mail.dittdomene.no) og port fra ditt webhotell eller IT-avdeling.'}
+                      </p>
+                    </div>
+                  </div>
+
+                  {/* Test-tilkobling resultatboks */}
+                  {emailTestStatus && (
+                    <div className={cn(
+                      "p-3 rounded-xl border text-xs leading-relaxed flex items-start gap-2",
+                      emailTestStatus.success
+                        ? "bg-emerald-950/30 border-emerald-500/50 text-emerald-300"
+                        : "bg-rose-950/30 border-rose-500/50 text-rose-300"
+                    )}>
+                      {emailTestStatus.success ? <CheckCircle size={16} className="shrink-0 mt-0.5" /> : <AlertTriangle size={16} className="shrink-0 mt-0.5" />}
+                      <div>
+                        <strong>{emailTestStatus.success ? 'Tilkobling vellykket!' : 'Feil under tilkobling:'}</strong>
+                        <p className="mt-0.5 mb-0 text-[11px]">{emailTestStatus.message}</p>
+                      </div>
+                    </div>
+                  )}
+
+                  {/* Handlinger */}
+                  <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-3 pt-2">
+                    <label className="flex items-center gap-2 text-xs text-slate-300 cursor-pointer">
+                      <input
+                        type="checkbox"
+                        checked={sendTestEmailCheck}
+                        onChange={(e) => setSendTestEmailCheck(e.target.checked)}
+                        className="rounded border-slate-700 text-purple-600 focus:ring-purple-500"
+                      />
+                      <span>Send en test-e-post til {user?.email} ved testing</span>
+                    </label>
+
+                    <div className="flex items-center gap-2">
+                      <button
+                        type="button"
+                        disabled={isTestingEmail || isSaving}
+                        onClick={handleTestEmailConnection}
+                        className="px-3.5 py-2 rounded-xl bg-slate-800 hover:bg-slate-750 text-white text-xs font-bold transition-all flex items-center gap-1.5 cursor-pointer disabled:opacity-50"
+                      >
+                        {isTestingEmail ? <RefreshCw size={13} className="animate-spin" /> : <Send size={13} />}
+                        <span>{isTestingEmail ? 'Tester tilkobling...' : 'Test tilkobling'}</span>
+                      </button>
+
+                      <button
+                        type="button"
+                        disabled={isSaving}
+                        onClick={handleSaveEmailConfig}
+                        className="px-4 py-2 rounded-xl bg-purple-600 hover:bg-purple-500 text-white text-xs font-bold transition-all shadow-md shadow-purple-600/30 cursor-pointer disabled:opacity-50"
+                      >
+                        {isSaving ? 'Lagrer...' : 'Lagre e-postoppsett'}
+                      </button>
+                    </div>
+                  </div>
+                </div>
+              )}
             </div>
           )}
 

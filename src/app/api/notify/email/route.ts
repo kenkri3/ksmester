@@ -36,7 +36,8 @@ export async function POST(req: NextRequest) {
       html: bodyHtml,
       text: bodyText,
       type,
-      metadata,
+      metadata: { ...metadata, companyId: user.companyId },
+      companyId: user.companyId,
       companyName: (user as any)?.company || 'VikingMester',
       authorName: user?.displayName || 'Bruker'
     });
