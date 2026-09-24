@@ -514,7 +514,7 @@ Maks 2-4 avsnitt eller punktliste.`;
 
       {/* 1. Header (Clean, minimal, 100% integrert i appen) */}
       <div className="sticky top-0 z-30 flex items-center justify-between px-3 sm:px-6 py-2.5 sm:py-3 bg-[#0A101D]/90 backdrop-blur-md border-b border-white/10 shrink-0">
-        <div className="flex items-center gap-2 sm:gap-3 min-w-0">
+        <div className="flex items-center gap-2 sm:gap-3 min-w-0 flex-1 mr-2">
           {/* Mobil navigasjon: Tilbake til liste eller tilbake til arbeidsstasjon */}
           <button
             type="button"
@@ -553,18 +553,18 @@ Maks 2-4 avsnitt eller punktliste.`;
           </div>
 
           {/* Kanal tittel & metadata */}
-          <div className="min-w-0">
-            <div className="flex items-center gap-2">
-              <h2 className="text-sm sm:text-base font-bold text-white truncate flex items-center gap-1.5">
-                <span>{activeChannel.name}</span>
-                {activeChannel.type === 'project' && (
-                  <span className="hidden sm:inline-flex px-2 py-0.5 rounded-full text-[10px] font-bold bg-emerald-500/15 text-emerald-400 border border-emerald-500/30">
-                    Byggeplass
-                  </span>
-                )}
+          <div className="min-w-0 flex-1">
+            <div className="flex items-center gap-2 min-w-0">
+              <h2 className="text-sm sm:text-base font-bold text-white truncate">
+                {activeChannel.name}
               </h2>
+              {activeChannel.type === 'project' && (
+                <span className="hidden sm:inline-flex shrink-0 px-2 py-0.5 rounded-full text-[10px] font-bold bg-emerald-500/15 text-emerald-400 border border-emerald-500/30">
+                  Byggeplass
+                </span>
+              )}
             </div>
-            <p className="text-[11px] text-slate-400 truncate max-w-[200px] sm:max-w-md">
+            <p className="text-[11px] text-slate-400 truncate">
               {activeChannel.description}
             </p>
           </div>
