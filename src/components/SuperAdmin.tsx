@@ -55,7 +55,8 @@ import {
   EyeOff,
   Bot,
   Lock,
-  ShieldCheck
+  ShieldCheck,
+  Globe
 } from 'lucide-react';
 import { PLANS, PLAN_MODULES, PlanId } from '../config/plans';
 import { generateAiContent } from '../services/aiClient';
@@ -64,6 +65,7 @@ import { useAuth } from '../hooks/useAuth';
 import { cn } from '../lib/utils';
 import { toast } from 'sonner';
 import ProjectDetails from './ProjectDetails';
+import SeoAutopilotHub from './SeoAutopilotHub';
 
 export interface Company {
   id: string;
@@ -176,7 +178,7 @@ export default function SuperAdmin({ onBackToDashboard }: { onBackToDashboard?: 
   const [templates, setTemplates] = useState<any[]>([]);
   const [loading, setLoading] = useState(true);
   const [searchTerm, setSearchTerm] = useState('');
-  const [activeTab, setActiveTab] = useState<'companies' | 'packages' | 'leads' | 'agent' | 'offers' | 'templates' | 'support'>('companies');
+  const [activeTab, setActiveTab] = useState<'companies' | 'packages' | 'leads' | 'agent' | 'offers' | 'templates' | 'support' | 'seo_autopilot'>('companies');
   const [supportSubTab, setSupportSubTab] = useState<'projects' | 'deviations' | 'logs'>('projects');
   const [companyStatusFilter, setCompanyStatusFilter] = useState<'all' | 'active' | 'trial' | 'partner' | 'internal' | 'demo' | 'cancelled'>('all');
   const [tokenCosts, setTokenCosts] = useState<any[]>([]);
@@ -1396,6 +1398,7 @@ Svar KUN med gyldig rå JSON (uten markdown \`\`\`json klammer):
           { id: 'offers', label: 'Sendte SaaS-tilbud', icon: <Send size={16} />, count: offers.length },
           { id: 'templates', label: 'E-postmaler', icon: <FileText size={16} /> },
           { id: 'support', label: 'Support & Kundeprosjekter', icon: <Layers size={16} />, count: allProjects.length },
+          { id: 'seo_autopilot', label: 'SEO & Autoblogg (Norge)', icon: <Globe size={16} />, live: true },
         ].map(tab => (
           <button
             key={tab.id}
@@ -3180,6 +3183,11 @@ Svar KUN med gyldig rå JSON (uten markdown \`\`\`json klammer):
             <span className="font-bold">Opprett ny mal</span>
           </button>
         </div>
+      )}
+
+      {/* SEO Autopilot & PageSpeed Hub */}
+      {activeTab === 'seo_autopilot' && (
+        <SeoAutopilotHub />
       )}
 
       {/* Edit Modules Modal */}

@@ -677,7 +677,7 @@ export default function MesterAIDemoSimulator({
                           className="w-full py-2.5 px-3 bg-emerald-600 hover:bg-emerald-700 text-white rounded-xl text-xs font-bold transition-all flex items-center justify-center gap-1.5 shadow-sm cursor-pointer text-center leading-tight"
                         >
                           <Check size={14} className="shrink-0" />
-                          <span>Simuler at Byggherre godkjenner på mobil</span>
+                          <span>Simuler at Byggherre godkjenner via e-post / Teams</span>
                         </button>
                       ) : (
                         <div className="p-2.5 sm:p-3 bg-emerald-50 border border-emerald-200 rounded-xl text-xs text-emerald-800 font-bold flex items-center gap-2">
