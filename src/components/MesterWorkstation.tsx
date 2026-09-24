@@ -86,6 +86,7 @@ import ApprenticeModal from './ApprenticeModal';
 import HMSModule from './HMSModule';
 import { formatAiMarkdown } from '../lib/formatAiMarkdown';
 import WeatherWidget from './WeatherWidget';
+import MesterAICopilot from './MesterAICopilot';
 
 interface MesterWorkstationProps {
   initialModuleTab?: string | null;
@@ -424,6 +425,7 @@ export default function MesterWorkstation({
     projectId?: string;
     projectName?: string;
     loggedBy?: string;
+    isLiveAdded?: boolean;
   }
 
   const [projectContacts, setProjectContacts] = useState<ProjectContactItem[]>([]);
@@ -891,7 +893,7 @@ export default function MesterWorkstation({
   const [allModulesSearch, setAllModulesSearch] = useState('');
 
   // Bildeopplasting
-  const [attachedImage, setAttachedImage] = useState<{ url: string; preview: string; name?: string } | null>(null);
+  const [attachedImage, setAttachedImage] = useState<{ url: string; preview: string; name?: string; base64?: string } | null>(null);
   const [isUploadingImage, setIsUploadingImage] = useState(false);
   const fileInputRef = useRef<HTMLInputElement>(null);
   const textareaRef = useRef<HTMLTextAreaElement>(null);
@@ -970,6 +972,28 @@ export default function MesterWorkstation({
       window.removeEventListener('mester_chat_sessions_changed', handleSessionChange);
     };
   }, [impersonatedCompanyId, company, projects]);
+
+  // ⚡ Lytt til sanntidsoppdateringer fra MesterAI Copilot overalt i systemet
+  useEffect(() => {
+    const handleLiveAgentUpdate = (e: any) => {
+      const detail = e?.detail;
+      if (!detail) return;
+
+      if (detail.type === 'time_logged' && detail.timeEntry) {
+        setDailyTimeEntries(prev => {
+          const exists = prev.some(item => item.id === detail.timeEntry.id);
+          const updated = exists ? prev : [{ ...detail.timeEntry, isLiveAdded: true }, ...prev];
+          try {
+            localStorage.setItem(logsStorageKey, JSON.stringify(updated));
+          } catch {}
+          return updated;
+        });
+      }
+    };
+
+    window.addEventListener('mester_live_data_updated', handleLiveAgentUpdate);
+    return () => window.removeEventListener('mester_live_data_updated', handleLiveAgentUpdate);
+  }, [logsStorageKey]);
 
   // 📜 Autoscroll til bunnen når nye meldinger ankommer
   useEffect(() => {
@@ -1375,12 +1399,20 @@ export default function MesterWorkstation({
     setIsUploadingImage(true);
     const localPreview = URL.createObjectURL(file);
 
-    // Vis bildet umiddelbart så brukeren slipper ventetid
+    // Vis bildet umiddelbart så brukeren slipper ventetid, og les inn base64 parallelt
     setAttachedImage({
       url: localPreview,
       preview: localPreview,
       name: file.name
     });
+
+    const reader = new FileReader();
+    reader.onload = () => {
+      const b64 = reader.result as string;
+      setAttachedImage(prev => prev ? { ...prev, base64: b64 } : { url: localPreview, preview: localPreview, name: file.name, base64: b64 });
+    };
+    reader.readAsDataURL(file);
+
     toast.info('Behandler bilde...');
 
     try {
@@ -1401,41 +1433,19 @@ export default function MesterWorkstation({
 
       if (res.ok) {
         const data = await res.json();
-        setAttachedImage({
+        setAttachedImage(prev => ({
           url: data.url || localPreview,
           preview: localPreview,
-          name: file.name
-        });
+          name: file.name,
+          base64: prev?.base64
+        }));
         toast.success('Bilde klart for analyse!');
       } else {
-        // Fallback til Base64 dersom serveropplasting feiler eller mangler rettigheter
-        const reader = new FileReader();
-        reader.onload = () => {
-          if (reader.result) {
-            setAttachedImage({
-              url: reader.result as string,
-              preview: localPreview,
-              name: file.name
-            });
-            toast.success('Bilde klart for analyse!');
-          }
-        };
-        reader.readAsDataURL(file);
+        toast.success('Bilde klart for analyse!');
       }
     } catch (err: any) {
       console.warn('Opplasting via server feilet, bruker lokal base64:', err);
-      const reader = new FileReader();
-      reader.onload = () => {
-        if (reader.result) {
-          setAttachedImage({
-            url: reader.result as string,
-            preview: localPreview,
-            name: file.name
-          });
-          toast.success('Bilde klart for analyse!');
-        }
-      };
-      reader.readAsDataURL(file);
+      toast.success('Bilde klart for analyse!');
     } finally {
       setIsUploadingImage(false);
       if (fileInputRef.current) fileInputRef.current.value = '';
@@ -1562,8 +1572,9 @@ export default function MesterWorkstation({
   const handleSendMessage = async (textToSend: string, imageOverride?: string) => {
     const activeImage = imageOverride || attachedImage?.url;
     const previewImage = attachedImage?.preview;
+    const base64Image = attachedImage?.base64 || (imageOverride?.startsWith('data:') ? imageOverride : undefined);
 
-    if ((!textToSend.trim() && !activeImage) || isLoading) return;
+    if ((!textToSend.trim() && !activeImage && !base64Image) || isLoading) return;
 
     setAttachedImage(null);
 
@@ -1687,6 +1698,7 @@ export default function MesterWorkstation({
           userEmail: user?.email || '',
           replyTo: user?.email || '',
           imageUrl: activeImage,
+          imageBase64: base64Image,
           teamMembers: projectContacts
             .filter(c => c.category === 'team')
             .map(c => ({ id: c.id, name: c.name, role: c.role, email: c.email }))
@@ -2254,16 +2266,30 @@ export default function MesterWorkstation({
           {viewMode === 'module' ? (
             /* 📊 MODULE VIEW (When user clicks a module from the left sidebar) */
             <div className="p-4 sm:p-6 max-w-7xl mx-auto w-full space-y-4">
-              {/* Back to chat banner */}
-              <div className="flex items-center justify-between bg-slate-900/90 border border-slate-800 p-3 sm:p-4 rounded-2xl shadow-xs">
-                <button
-                  type="button"
-                  onClick={() => setViewMode('chat')}
-                  className="inline-flex items-center gap-2 px-3.5 py-2 rounded-xl bg-electric-600/20 hover:bg-electric-600/30 text-electric-300 font-bold text-xs sm:text-sm border border-electric-500/30 transition-all cursor-pointer"
-                >
-                  <ArrowLeft size={16} />
-                  <span>← Tilbake til MesterAI Chat</span>
-                </button>
+              {/* Back to chat banner & Copilot quick launcher */}
+              <div className="flex items-center justify-between bg-slate-900/90 border border-slate-800 p-3 sm:p-4 rounded-2xl shadow-xs gap-2">
+                <div className="flex items-center gap-2">
+                  <button
+                    type="button"
+                    onClick={() => setViewMode('chat')}
+                    className="inline-flex items-center gap-2 px-3.5 py-2 rounded-xl bg-slate-800 hover:bg-slate-700 text-slate-300 font-bold text-xs sm:text-sm border border-slate-700 transition-all cursor-pointer"
+                  >
+                    <ArrowLeft size={16} />
+                    <span className="hidden sm:inline">← Tilbake til MesterAI Chat</span>
+                    <span className="sm:hidden">← Chat</span>
+                  </button>
+
+                  <button
+                    type="button"
+                    onClick={() => window.dispatchEvent(new CustomEvent('mesterai:open-copilot'))}
+                    className="inline-flex items-center gap-2 px-3.5 py-2 rounded-xl bg-gradient-to-r from-electric-600 to-indigo-600 hover:from-electric-500 hover:to-indigo-500 text-white font-black text-xs sm:text-sm shadow-md transition-all cursor-pointer border border-electric-400/40"
+                    title="Åpne MesterAI Copilot for denne visningen (Ctrl+M)"
+                  >
+                    <Sparkles size={15} className="text-amber-300 animate-pulse" />
+                    <span>Spør MesterAI om denne visningen</span>
+                    <span className="hidden md:inline text-[10px] font-mono opacity-80 bg-black/30 px-1.5 py-0.5 rounded-md">Ctrl+M</span>
+                  </button>
+                </div>
                 <span className="text-xs text-slate-400 font-medium hidden sm:inline">
                   {activeModuleTab === 'project_details' && (
                     <span>Aktiv byggeplass: <strong className="text-emerald-400">{selectedProject?.name || 'Prosjektoversikt'}</strong></span>
@@ -5443,6 +5469,19 @@ export default function MesterWorkstation({
         }}
         onSave={(updated) => {
           setSelectedOfferForDetail(updated);
+        }}
+      />
+
+      {/* 🤖 Universell MesterAI Copilot (Alltid tilgjengelig overalt i arbeidsstasjonen) */}
+      <MesterAICopilot
+        user={user}
+        currentView="dashboard"
+        activeModuleTab={viewMode === 'module' ? activeModuleTab : null}
+        selectedProject={selectedProject}
+        projects={projects}
+        onOpenModule={(mod) => {
+          setActiveModuleTab(mod);
+          setViewMode('module');
         }}
       />
     </div>

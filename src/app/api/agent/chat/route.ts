@@ -1,3 +1,5 @@
+import path from 'path';
+import fs from 'fs';
 import { NextRequest, NextResponse } from 'next/server';
 import crypto from 'crypto';
 import { getUserFromRequest } from '@/src/lib/server/auth';
@@ -545,7 +547,10 @@ export async function POST(req: NextRequest) {
       replyTo,
       senderEmail,
       companyEmail,
-      imageUrl 
+      imageUrl,
+      imageBase64,
+      image,
+      images
     } = body;
 
     const effectiveSenderEmail = (
@@ -1012,11 +1017,57 @@ export async function POST(req: NextRequest) {
     contextHeader += ` | 🌦️ Sanntidsvær på byggeplassen (${weatherRep.locationName}): ${weatherRep.temp}°C, ${weatherRep.condition}, vind ${weatherRep.windSpeed} m/s (${weatherRep.beaufort}), nedbør ${weatherRep.precipitation} mm. HMS-råd: ${weatherRep.workAdvice}`;
 
     // 🧠 SJEKK OM FORESPØRSELEN KREVER NETTSØK (ARRANGEMENTER, PRISER, TEK17, NYHETER)
+    // 📷 Forbered eventuelt vedlagt bilde for multimodal synsanalyse (Google Gemini Vision)
+    let imageAttachment: { data: string; mimeType: string } | null = null;
+    const rawImage = imageBase64 || image || imageUrl;
+
+    if (rawImage && typeof rawImage === 'string') {
+      try {
+        if (rawImage.startsWith('data:')) {
+          const match = rawImage.match(/^data:(image\/[a-zA-Z0-9.-]+);base64,(.+)$/);
+          if (match) {
+            imageAttachment = {
+              mimeType: match[1],
+              data: match[2]
+            };
+          }
+        } else if (rawImage.startsWith('/api/uploads/') || rawImage.startsWith('/uploads/')) {
+          const uploadsDir = process.env.UPLOADS_PATH || path.join(process.cwd(), 'uploads');
+          const cleanName = rawImage.replace(/^\/api\/uploads\//, '').replace(/^\/uploads\//, '');
+          const filePath = path.join(uploadsDir, cleanName);
+          if (fs.existsSync(filePath)) {
+            const buf = await fs.promises.readFile(filePath);
+            const ext = path.extname(cleanName).toLowerCase().replace('.', '');
+            const mimeType = ext === 'png' ? 'image/png' : ext === 'webp' ? 'image/webp' : 'image/jpeg';
+            imageAttachment = {
+              data: buf.toString('base64'),
+              mimeType
+            };
+          }
+        } else if (rawImage.startsWith('http://') || rawImage.startsWith('https://')) {
+          const fetched = await fetch(rawImage, { signal: AbortSignal.timeout(10000) });
+          if (fetched.ok) {
+            const ab = await fetched.arrayBuffer();
+            const mime = fetched.headers.get('content-type') || 'image/jpeg';
+            imageAttachment = {
+              data: Buffer.from(ab).toString('base64'),
+              mimeType: mime.split(';')[0]
+            };
+          }
+        }
+      } catch (imgErr: any) {
+        console.warn('Kunne ikke laste vedlagt bilde for analyse:', imgErr.message);
+      }
+    }
+
+    const hasImage = Boolean(imageAttachment);
+
+    // 🧠 SJEKK OM FORESPØRSELEN KREVER NETTSØK (ARRANGEMENTER, PRISER, TEK17, NYHETER)
     const wantsWebSearch = detectWebSearchNeed(message);
 
     let enrichedMessage = `${contextHeader}\n${message}`;
-    if (imageUrl) {
-      enrichedMessage += `\n[Vedlagt foto for analyse/dokumentasjon: ${imageUrl}]`;
+    if (hasImage) {
+      enrichedMessage += `\n\n[📷 VEDLAGT BILDE FOR SYNSSJEKK]: Et bilde er lastet opp. Gjennomfør en grundig faglig bildeanalyse av motivet. Beskriv hva du observerer (utførelse, materialer, konstruksjon, tilstand), vurder opp mot gjeldende krav (TEK17 / BVN / HMS), påpek eventuelle feil eller avvik, og gi konkrete råd eller forslag til videre tiltak.`;
     }
 
     // 🛡️ GDPR Privacy Shield: Vask sensitive fødselsnumre, bankkontonumre osv. før utsending til eksterne modeller
@@ -1026,6 +1077,15 @@ export async function POST(req: NextRequest) {
 
 🛡️ 100% WHITE-LABEL:
 Du er MesterAI, utviklet eksklusivt for Vikingmester. Du skal ALDRI nevne eller referere til underliggende AI-modeller, leverandører eller eksterne systemer som DeepSeek, OpenAI, Google, Anthropic eller Botsify. For brukeren er du 100 % MesterAI.
+
+📷 MULTIMODAL BILDEANALYSE & BYGGEPLASSKONTROLL (SYN):
+Når et bilde er lastet opp i samtalen (eller brukeren spør «hva ser du på bildet?», «vurder dette», «er dette godkjent?»):
+- Du SKAL analysere bildet direkte og grundig ved hjelp av synsmodellen.
+- Beskriv konkret hva bildet viser: motiver, konstruksjoner, materialer, fagområde, utførelse og tilstand.
+- Vurder fagmessig utførelse iht. TEK17, Våtromsnormen (BVN), NS-standarder og HMS-forskrifter (f.eks. fallsikring, stillas, fukt, membran, spikring/innfesting, rør-i-rør).
+- Hvis du oppdager feil eller mangler, identifiser det som et potensielt avvik og forklar hva som må utbedres.
+- Foreslå konkrete oppfølgingshandlinger: loggføring i byggedagbok, opprettelse av avvik, eller dokumentasjon for FDV.
+- Du skal ALDRI si at du ikke kan se eller lese bildet når et bilde er lastet opp.
 
 ⚡ HANDLINGSROM (FULL CRUD):
 Du har full tilgang til Vikingmester-systemet og kan:
@@ -1079,16 +1139,21 @@ Avslutt faglige svar med 2-4 relevante lenker fra de offisielle kildene:
     let replyText = '';
     const quickReplies: Array<{ title: string; payload: string }> = [];
 
-    // 🚀 1. PRIMÆRT: Generer svar via VikingMesters interne AI Engine (med full Google Grounding ved nettsøk)
+    const operation = hasImage 
+      ? 'mesterai_vision_chat' 
+      : (wantsWebSearch ? 'mesterai_web_search' : 'mesterai_chat');
+
+    // 🚀 1. PRIMÆRT: Generer svar via VikingMesters interne AI Engine (med full Google Gemini Vision ved bilder eller Grounding ved nettsøk)
     try {
       const aiResult = await generateWithAiEngine({
         prompt: safeEnrichedMessage,
         systemInstruction: MASTER_SYSTEM_PROMPT,
+        images: imageAttachment ? [{ inlineData: imageAttachment }] : undefined,
         webSearch: wantsWebSearch,
         companyId: effectiveCompanyId,
         companyName: effectiveCompany,
         projectId: body.projectId,
-        operation: wantsWebSearch ? 'mesterai_web_search' : 'mesterai_chat'
+        operation
       });
 
       if (aiResult && aiResult.text) {
