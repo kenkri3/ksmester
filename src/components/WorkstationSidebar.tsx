@@ -55,6 +55,7 @@ interface WorkstationSidebarProps {
   selectedProject: Project | null;
   onSelectProject: (project: Project | null) => void;
   onOpenCreateProject: () => void;
+  onOpenCreateOffer?: () => void;
   onOpenModule: (moduleId: string) => void;
   onOpenSmartSearch: () => void;
   onOpenSettings: () => void;
@@ -77,6 +78,7 @@ export default function WorkstationSidebar({
   selectedProject,
   onSelectProject,
   onOpenCreateProject,
+  onOpenCreateOffer,
   onOpenModule,
   onOpenSmartSearch,
   onOpenSettings,
@@ -235,8 +237,8 @@ export default function WorkstationSidebar({
           <button
             type="button"
             onClick={() => {
+              onCloseMobile();
               onNewChat();
-              if (isOpenMobile) onCloseMobile();
             }}
             className={cn(
               "w-full flex items-center gap-3 py-3 px-4 rounded-full font-semibold text-xs sm:text-sm text-white transition-all shadow-sm active:scale-98 cursor-pointer",
@@ -254,8 +256,8 @@ export default function WorkstationSidebar({
             <button
               type="button"
               onClick={() => {
+                onCloseMobile();
                 onOpenSmartSearch();
-                if (isOpenMobile) onCloseMobile();
               }}
               className="w-full flex items-center justify-between px-3.5 py-2 rounded-full text-xs text-slate-300 hover:text-white bg-white/5 hover:bg-white/10 border border-transparent hover:border-white/10 transition-all cursor-pointer"
             >
@@ -284,38 +286,59 @@ export default function WorkstationSidebar({
               const isAllowed = hasModuleAccess ? hasModuleAccess(mod.id) : true;
               const label = t(mod.labelKey, mod.defaultLabel);
               return (
-                <button
+                <div
                   key={mod.id}
-                  type="button"
-                  onClick={() => {
-                    if (!isAllowed) {
-                      toast.info(`Modulen "${label}" er låst i din pakke. Oppgrader for å få full tilgang!`);
-                      return;
-                    }
-                    onOpenModule(mod.id);
-                    if (isOpenMobile) onCloseMobile();
-                  }}
-                  className={cn(
-                    "w-full flex items-center justify-between gap-2 px-2.5 py-1.5 rounded-xl text-xs font-medium transition-colors cursor-pointer text-left group",
-                    isCurrentTab
-                      ? "bg-slate-800 text-white font-bold"
-                      : isAllowed 
-                        ? "text-slate-300 hover:text-white hover:bg-slate-850" 
-                        : "text-slate-500 hover:bg-slate-900/60 opacity-65",
-                    isCollapsedDesktop && "justify-center px-2 py-2"
-                  )}
-                  title={isAllowed ? label : `${label} (Låst i gjeldende pakke)`}
+                  className="relative group/mod flex items-center w-full"
                 >
-                  <div className="flex items-center gap-2.5 min-w-0">
-                    <IconComponent size={16} className={cn(isAllowed ? mod.color : "text-slate-600", "shrink-0 transition-transform group-hover:scale-110")} />
-                    {!isCollapsedDesktop && (
-                      <span className="truncate">{label}</span>
+                  <button
+                    type="button"
+                    onClick={() => {
+                      if (!isAllowed) {
+                        toast.info(`Modulen "${label}" er låst i din pakke. Oppgrader for å få full tilgang!`);
+                        return;
+                      }
+                      onCloseMobile();
+                      onOpenModule(mod.id);
+                    }}
+                    className={cn(
+                      "w-full flex items-center justify-between gap-2 px-2.5 py-1.5 rounded-xl text-xs font-medium transition-colors cursor-pointer text-left group",
+                      isCurrentTab
+                        ? "bg-slate-800 text-white font-bold"
+                        : isAllowed 
+                          ? "text-slate-300 hover:text-white hover:bg-slate-850" 
+                          : "text-slate-500 hover:bg-slate-900/60 opacity-65",
+                      isCollapsedDesktop && "justify-center px-2 py-2"
                     )}
-                  </div>
-                  {!isCollapsedDesktop && !isAllowed && (
-                    <Lock size={12} className="text-slate-500 shrink-0" />
+                    title={isAllowed ? label : `${label} (Låst i gjeldende pakke)`}
+                  >
+                    <div className="flex items-center gap-2.5 min-w-0">
+                      <IconComponent size={16} className={cn(isAllowed ? mod.color : "text-slate-600", "shrink-0 transition-transform group-hover:scale-110")} />
+                      {!isCollapsedDesktop && (
+                        <span className="truncate">{label}</span>
+                      )}
+                    </div>
+                    {!isCollapsedDesktop && !isAllowed && (
+                      <Lock size={12} className="text-slate-500 shrink-0" />
+                    )}
+                  </button>
+
+                  {/* ➕ Hurtigknapp for å opprette tilbud direkte fra modullisten */}
+                  {mod.id === 'offers' && !isCollapsedDesktop && isAllowed && (
+                    <button
+                      type="button"
+                      onClick={(e) => {
+                        e.stopPropagation();
+                        onCloseMobile();
+                        if (onOpenCreateOffer) onOpenCreateOffer();
+                        else onOpenModule('offers');
+                      }}
+                      className="absolute right-1.5 p-1 rounded-lg text-slate-400 hover:text-white hover:bg-slate-700/80 transition-all opacity-80 hover:opacity-100 cursor-pointer"
+                      title={t('ws_create_offer_title', "Opprett nytt tilbud")}
+                    >
+                      <Plus size={13} className="text-purple-400 hover:scale-110 transition-transform" />
+                    </button>
                   )}
-                </button>
+                </div>
               );
             })}
 
@@ -324,9 +347,9 @@ export default function WorkstationSidebar({
               <button
                 type="button"
                 onClick={() => {
+                  onCloseMobile();
                   if (onOpenSuperAdmin) onOpenSuperAdmin();
                   else window.dispatchEvent(new CustomEvent("navigate_view", { detail: { view: "super-admin" } }));
-                  if (isOpenMobile) onCloseMobile();
                 }}
                 className={cn(
                   "w-full flex items-center gap-2.5 px-2.5 py-2 rounded-xl text-xs font-bold transition-all cursor-pointer text-left group mt-1.5",
@@ -350,11 +373,11 @@ export default function WorkstationSidebar({
               <button
                 type="button"
                 onClick={() => {
+                  onCloseMobile();
                   if (setSimulatedPlan) setSimulatedPlan(null);
                   if (stopImpersonation) stopImpersonation();
                   if (onOpenSuperAdmin) onOpenSuperAdmin();
                   else window.dispatchEvent(new CustomEvent("navigate_view", { detail: { view: "super-admin" } }));
-                  if (isOpenMobile) onCloseMobile();
                 }}
                 className={cn(
                   "w-full flex items-center gap-2 px-2.5 py-2 rounded-xl text-xs font-black transition-all cursor-pointer text-left group mt-1.5",
@@ -378,8 +401,8 @@ export default function WorkstationSidebar({
                 <button
                   type="button"
                   onClick={() => {
+                    onCloseMobile();
                     onSelectProject(null);
-                    if (isOpenMobile) onCloseMobile();
                   }}
                   className="flex items-center gap-1.5 hover:text-white transition-colors cursor-pointer text-left group"
                   title={t('ws_all_sites', "Alle byggeplasser")}
@@ -390,8 +413,8 @@ export default function WorkstationSidebar({
                 <button
                   type="button"
                   onClick={() => {
+                    onCloseMobile();
                     onOpenCreateProject();
-                    if (isOpenMobile) onCloseMobile();
                   }}
                   className="p-1 rounded text-slate-400 hover:text-white hover:bg-slate-800 cursor-pointer active:scale-95 transition-transform"
                   title={t('ws_create_project_title', "Opprett nytt prosjekt")}
@@ -406,8 +429,8 @@ export default function WorkstationSidebar({
               <button
                 type="button"
                 onClick={() => {
+                  onCloseMobile();
                   onSelectProject(null);
-                  if (isOpenMobile) onCloseMobile();
                 }}
                 className={cn(
                   "w-full flex items-center gap-2.5 px-2.5 py-1.5 rounded-xl text-xs font-medium transition-colors cursor-pointer text-left",
@@ -431,8 +454,8 @@ export default function WorkstationSidebar({
                     key={proj.id}
                     type="button"
                     onClick={() => {
+                      onCloseMobile();
                       onSelectProject(proj);
-                      if (isOpenMobile) onCloseMobile();
                     }}
                     className={cn(
                       "w-full flex items-center justify-between gap-2 px-2.5 py-1.5 rounded-xl text-xs font-medium transition-colors cursor-pointer text-left group",
@@ -505,8 +528,8 @@ export default function WorkstationSidebar({
                         onStartRename={(e) => handleStartRename(e, session)}
                         onTogglePin={(e) => handleTogglePinSession(e, session.id)}
                         onSelect={() => {
+                          onCloseMobile();
                           onSelectSession(session.id);
-                          if (isOpenMobile) onCloseMobile();
                         }}
                         onDelete={(e) => handleDeleteSession(e, session.id, session.title)}
                       />
@@ -533,8 +556,8 @@ export default function WorkstationSidebar({
                         onStartRename={(e) => handleStartRename(e, session)}
                         onTogglePin={(e) => handleTogglePinSession(e, session.id)}
                         onSelect={() => {
+                          onCloseMobile();
                           onSelectSession(session.id);
-                          if (isOpenMobile) onCloseMobile();
                         }}
                         onDelete={(e) => handleDeleteSession(e, session.id, session.title)}
                       />
@@ -561,8 +584,8 @@ export default function WorkstationSidebar({
                         onStartRename={(e) => handleStartRename(e, session)}
                         onTogglePin={(e) => handleTogglePinSession(e, session.id)}
                         onSelect={() => {
+                          onCloseMobile();
                           onSelectSession(session.id);
-                          if (isOpenMobile) onCloseMobile();
                         }}
                         onDelete={(e) => handleDeleteSession(e, session.id, session.title)}
                       />
@@ -589,8 +612,8 @@ export default function WorkstationSidebar({
                         onStartRename={(e) => handleStartRename(e, session)}
                         onTogglePin={(e) => handleTogglePinSession(e, session.id)}
                         onSelect={() => {
+                          onCloseMobile();
                           onSelectSession(session.id);
-                          if (isOpenMobile) onCloseMobile();
                         }}
                         onDelete={(e) => handleDeleteSession(e, session.id, session.title)}
                       />
@@ -663,9 +686,9 @@ export default function WorkstationSidebar({
                   <button
                     type="button"
                     onClick={() => {
+                      onCloseMobile();
                       if (onOpenSuperAdmin) onOpenSuperAdmin();
                       else window.dispatchEvent(new CustomEvent("navigate_view", { detail: { view: "super-admin" } }));
-                      if (isOpenMobile) onCloseMobile();
                     }}
                     className="p-1.5 rounded-lg text-amber-400 hover:text-white hover:bg-amber-500/20 transition-colors cursor-pointer"
                     title="SuperAdmin Portal"
@@ -676,8 +699,8 @@ export default function WorkstationSidebar({
                 <button
                   type="button"
                   onClick={() => {
+                    onCloseMobile();
                     onOpenSettings();
-                    if (isOpenMobile) onCloseMobile();
                   }}
                   className="p-1.5 rounded-lg text-slate-400 hover:text-white hover:bg-white/10 transition-colors cursor-pointer"
                   title={t('settings', "Innstillinger")}
@@ -687,8 +710,8 @@ export default function WorkstationSidebar({
                 <button
                   type="button"
                   onClick={() => {
+                    onCloseMobile();
                     onLogout();
-                    if (isOpenMobile) onCloseMobile();
                   }}
                   className="p-1.5 rounded-lg text-slate-400 hover:text-rose-400 hover:bg-rose-500/15 transition-colors cursor-pointer"
                   title={t('logout', "Logg ut")}

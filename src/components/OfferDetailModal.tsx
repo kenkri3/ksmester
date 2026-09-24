@@ -21,7 +21,8 @@ import {
   Check,
   Edit3,
   Plus,
-  Save
+  Save,
+  MapPin
 } from 'lucide-react';
 import { toast } from 'sonner';
 import { pdfService } from '../services/pdfService';
@@ -232,6 +233,17 @@ export default function OfferDetailModal({
         description: offer.description || `Pristilbud for utførelse av arbeid på ${projectName}. Omfatter faglige leveranser, materiell og KS-dokumentasjon.`,
         clientName: client,
         clientEmail: offer.clientEmail || '',
+        clientPhone: offer.clientPhone || '',
+        clientType: offer.clientType || (offer.orgNumber ? 'company' : 'private'),
+        orgNumber: offer.orgNumber || '',
+        contactPerson: offer.contactPerson || '',
+        address: offer.address || '',
+        postalCode: offer.postalCode || '',
+        city: offer.city || '',
+        municipality: offer.municipality || '',
+        gnr: offer.gnr || '',
+        bnr: offer.bnr || '',
+        contractStandard: offer.contractStandard || (offer.clientType === 'company' || offer.orgNumber ? 'NS8406' : 'haandverker'),
         createdAt: offer.createdAt || new Date().toISOString(),
         status: currentStatus === 'Akseptert av kunde' ? 'accepted' : 'sent',
         items: items
@@ -256,8 +268,26 @@ export default function OfferDetailModal({
       `• Post ${idx + 1}: ${it.description || 'Fagarbeid'} - ${it.quantity} ${it.unit} á kr ${Number(it.pricePerUnit).toLocaleString('no-NO')},- = kr ${Number(it.total).toLocaleString('no-NO')},-`
     ).join('\n');
 
+    const customerLine = (offer.clientType === 'company' || offer.orgNumber)
+      ? `Oppdragsgiver (Firma): ${client}${offer.orgNumber ? ` (Org.nr: ${offer.orgNumber})` : ''}${offer.contactPerson ? ` - Attn: ${offer.contactPerson}` : ''}`
+      : `Oppdragsgiver (Forbruker): ${client}`;
+
+    const propParts = [
+      offer.address ? `Adresse: ${offer.address}${offer.postalCode ? `, ${offer.postalCode} ${offer.city || ''}` : ''}` : '',
+      (offer.gnr && offer.bnr) ? `Matrikkel: Gnr ${offer.gnr} / Bnr ${offer.bnr}${offer.municipality ? ` (${offer.municipality})` : ''}` : ''
+    ].filter(Boolean);
+
+    const standardText = offer.contractStandard === 'NS8406'
+      ? 'NS 8406 (Forenklet norsk bygge- og anleggskontrakt)'
+      : offer.contractStandard === 'NS8405'
+      ? 'NS 8405 (Norsk bygge- og anleggskontrakt)'
+      : offer.contractStandard === 'bustadoppforing'
+      ? 'Bustadoppføringslova'
+      : 'Håndverkertjenesteloven';
+
     const summary = `📄 PRISTILBUD: ${offer.title || projectName}\n` +
-      `Kunde: ${client}\n` +
+      `${customerLine}\n` +
+      (propParts.length > 0 ? `${propParts.join('\n')}\n` : '') +
       `Prosjekt: ${projectName}\n` +
       `Dato: ${createdDate}\n` +
       `-----------------------------------------\n` +
@@ -267,7 +297,7 @@ export default function OfferDetailModal({
       `MVA (25 %): kr ${mvaAmount.toLocaleString('no-NO')},-\n` +
       `TOTALSUM INKL. MVA: kr ${totalIncMva.toLocaleString('no-NO')},-\n\n` +
       `Gyldighet: 30 dager fra tilbudsdato.\n` +
-      `Avtaleramme: Håndverkertjenesteloven / NS 8406.`;
+      `Avtaleramme: ${standardText}.`;
 
     navigator.clipboard.writeText(summary);
     setIsCopied(true);
@@ -349,6 +379,63 @@ export default function OfferDetailModal({
 
           {/* Modal Body (Scrollable) */}
           <div className="p-5 sm:p-6 space-y-6 overflow-y-auto custom-scrollbar flex-1">
+            {/* Kundetype og Eiendomsidentifikator (Kartverket) */}
+            {(offer.clientType || offer.orgNumber || offer.address || offer.gnr) && (
+              <div className="p-4 rounded-2xl bg-slate-950/90 border border-slate-800 space-y-2.5">
+                <div className="flex items-center justify-between flex-wrap gap-2">
+                  <div className="flex items-center gap-2 flex-wrap">
+                    {offer.clientType === 'company' || offer.orgNumber ? (
+                      <span className="px-2.5 py-1 rounded-lg text-[10px] font-black uppercase tracking-wider bg-blue-500/20 text-blue-300 border border-blue-500/30 flex items-center gap-1.5">
+                        <Building2 size={12} />
+                        <span>Firma (B2B)</span>
+                      </span>
+                    ) : (
+                      <span className="px-2.5 py-1 rounded-lg text-[10px] font-black uppercase tracking-wider bg-emerald-500/20 text-emerald-300 border border-emerald-500/30 flex items-center gap-1.5">
+                        <User size={12} />
+                        <span>Privatperson (Forbruker)</span>
+                      </span>
+                    )}
+
+                    {offer.orgNumber && (
+                      <span className="text-xs text-slate-300 font-mono font-bold">
+                        Org.nr: {offer.orgNumber}
+                      </span>
+                    )}
+                    {offer.contactPerson && (
+                      <span className="text-xs text-slate-400">
+                        • Attn: <strong className="text-slate-200">{offer.contactPerson}</strong>
+                      </span>
+                    )}
+                  </div>
+
+                  <span className="text-[10px] font-bold text-purple-300 bg-purple-500/10 px-2.5 py-1 rounded-lg border border-purple-500/20">
+                    {offer.contractStandard === 'NS8406'
+                      ? 'NS 8406 Forenklet'
+                      : offer.contractStandard === 'NS8405'
+                      ? 'NS 8405 Byggekontrakt'
+                      : offer.contractStandard === 'bustadoppforing'
+                      ? 'Bustadoppføringslova'
+                      : 'Håndverkertjenesteloven'}
+                  </span>
+                </div>
+
+                {(offer.address || offer.gnr) && (
+                  <div className="pt-2 border-t border-slate-800/80 flex items-center justify-between flex-wrap gap-2 text-xs">
+                    <div className="flex items-center gap-1.5 text-slate-300">
+                      <MapPin size={14} className="text-emerald-400 shrink-0" />
+                      <span>{offer.address || 'Prosjektadresse'}{offer.postalCode ? `, ${offer.postalCode} ${offer.city || ''}` : ''}</span>
+                    </div>
+
+                    {(offer.gnr || offer.bnr) && (
+                      <span className="px-2 py-0.5 rounded-md bg-emerald-950/60 border border-emerald-500/30 text-emerald-300 font-mono text-[11px] font-bold">
+                        Gnr: {offer.gnr || '-'} / Bnr: {offer.bnr || '-'}{offer.municipality ? ` (${offer.municipality})` : ''}
+                      </span>
+                    )}
+                  </div>
+                )}
+              </div>
+            )}
+
             {/* Nøkkeltall Oppsummering */}
             <div className="grid grid-cols-1 sm:grid-cols-3 gap-3">
               <div className="p-4 rounded-2xl bg-slate-950/80 border border-slate-800">

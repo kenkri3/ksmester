@@ -1,9 +1,15 @@
 import React, { useState, useEffect } from 'react';
 import { motion, AnimatePresence } from 'motion/react';
-import { X, Plus, Trash2, Calculator, Sparkles, Send, FileText, CheckCircle2, Copy, Building2, Mail } from 'lucide-react';
+import { 
+  X, Plus, Trash2, Calculator, Sparkles, Send, FileText, CheckCircle2, 
+  Copy, Building2, Mail, User, MapPin, Search, Check, ShieldCheck, 
+  Phone, Hash, AlertCircle, Loader2, Info 
+} from 'lucide-react';
 import { Offer, OfferItem, Project } from '../types';
 import { offerAiService } from '../services/offerAiService';
 import { masterAiService } from '../services/masterAiService';
+import { locationService, AddressInfo } from '../services/locationService';
+import { companyService, CompanyInfo } from '../services/companyService';
 import AiTextAssistant from './AiTextAssistant';
 import { db, auth, handleFirestoreError, OperationType, collection, addDoc, getDocs, serverTimestamp, query, orderBy } from '../services/firebase';
 import { useAuth } from '../hooks/useAuth';
@@ -14,12 +20,25 @@ interface OfferModalProps {
   isOpen: boolean;
   onClose: () => void;
   initialData?: {
+    id?: string;
     projectId?: string;
     projectCode?: string;
     title?: string;
     description?: string;
     clientName?: string;
     clientEmail?: string;
+    clientPhone?: string;
+    clientType?: 'private' | 'company';
+    orgNumber?: string;
+    contactPerson?: string;
+    address?: string;
+    postalCode?: string;
+    city?: string;
+    municipality?: string;
+    gnr?: string;
+    bnr?: string;
+    fnr?: string;
+    contractStandard?: string;
     items?: any[];
   };
 }
@@ -27,8 +46,39 @@ interface OfferModalProps {
 const OfferModal: React.FC<OfferModalProps> = ({ isOpen, onClose, initialData }) => {
   const { user, trade } = useAuth();
   const [step, setStep] = useState(1);
+
+  // Kundetype og kontaktinfo
+  const [clientType, setClientType] = useState<'private' | 'company'>('private');
   const [clientName, setClientName] = useState('');
   const [clientEmail, setClientEmail] = useState('');
+  const [clientPhone, setClientPhone] = useState('');
+  const [orgNumber, setOrgNumber] = useState('');
+  const [contactPerson, setContactPerson] = useState('');
+
+  // Eiendom / Matrikkel (Kartverket)
+  const [address, setAddress] = useState('');
+  const [postalCode, setPostalCode] = useState('');
+  const [city, setCity] = useState('');
+  const [municipality, setMunicipality] = useState('');
+  const [gnr, setGnr] = useState('');
+  const [bnr, setBnr] = useState('');
+  const [fnr, setFnr] = useState('');
+  const [contractStandard, setContractStandard] = useState('haandverker');
+
+  // Adressesøk i Kartverket
+  const [addressSearchInput, setAddressSearchInput] = useState('');
+  const [addressSuggestions, setAddressSuggestions] = useState<AddressInfo[]>([]);
+  const [isSearchingAddress, setIsSearchingAddress] = useState(false);
+  const [showAddressSuggestions, setShowAddressSuggestions] = useState(false);
+  const [isAddressVerified, setIsAddressVerified] = useState(false);
+
+  // Firmasøk i Brønnøysundregistrene (Enhetsregisteret)
+  const [companySearchInput, setCompanySearchInput] = useState('');
+  const [companySuggestions, setCompanySuggestions] = useState<CompanyInfo[]>([]);
+  const [isSearchingCompany, setIsSearchingCompany] = useState(false);
+  const [showCompanySuggestions, setShowCompanySuggestions] = useState(false);
+
+  // Prosjekt og tilbud
   const [projectCode, setProjectCode] = useState('');
   const [projectId, setProjectId] = useState('');
   const [title, setTitle] = useState('');
@@ -54,8 +104,32 @@ const OfferModal: React.FC<OfferModalProps> = ({ isOpen, onClose, initialData })
       }).catch(err => console.error("Error loading projects:", err));
 
       if (initialData) {
+        const initialType = initialData.clientType || (initialData.orgNumber ? 'company' : 'private');
+        setClientType(initialType);
         setClientName(initialData.clientName || '');
         setClientEmail(initialData.clientEmail || '');
+        setClientPhone(initialData.clientPhone || '');
+        setOrgNumber(initialData.orgNumber || '');
+        setContactPerson(initialData.contactPerson || '');
+        setAddress(initialData.address || '');
+        setPostalCode(initialData.postalCode || '');
+        setCity(initialData.city || '');
+        setMunicipality(initialData.municipality || '');
+        setGnr(initialData.gnr || '');
+        setBnr(initialData.bnr || '');
+        setFnr(initialData.fnr || '');
+        setContractStandard(initialData.contractStandard || (initialType === 'company' ? 'NS8406' : 'haandverker'));
+        
+        if (initialData.address) {
+          setAddressSearchInput(initialData.address);
+          if (initialData.gnr && initialData.bnr) {
+            setIsAddressVerified(true);
+          }
+        }
+        if (initialData.orgNumber) {
+          setCompanySearchInput(initialData.clientName || '');
+        }
+
         setProjectCode(initialData.projectCode || '');
         setProjectId(initialData.projectId || '');
         setTitle(initialData.title || '');
@@ -76,6 +150,95 @@ const OfferModal: React.FC<OfferModalProps> = ({ isOpen, onClose, initialData })
     }
   }, [isOpen, initialData]);
 
+  // Live address search in Kartverket Geonorge (100% gratis API)
+  useEffect(() => {
+    if (!addressSearchInput || addressSearchInput.trim().length < 2) {
+      setAddressSuggestions([]);
+      setIsSearchingAddress(false);
+      return;
+    }
+
+    const timer = setTimeout(async () => {
+      setIsSearchingAddress(true);
+      try {
+        const results = await locationService.searchAddress(addressSearchInput);
+        setAddressSuggestions(results);
+      } catch (err) {
+        console.error("Address search error:", err);
+      } finally {
+        setIsSearchingAddress(false);
+      }
+    }, 280);
+
+    return () => clearTimeout(timer);
+  }, [addressSearchInput]);
+
+  // Live company search in Brønnøysundregistrene (Enhetsregisteret)
+  useEffect(() => {
+    if (clientType !== 'company' || !companySearchInput || companySearchInput.trim().length < 2) {
+      setCompanySuggestions([]);
+      setIsSearchingCompany(false);
+      return;
+    }
+
+    const timer = setTimeout(async () => {
+      setIsSearchingCompany(true);
+      try {
+        const results = await companyService.searchCompany(companySearchInput);
+        setCompanySuggestions(results);
+      } catch (err) {
+        console.error("Company search error:", err);
+      } finally {
+        setIsSearchingCompany(false);
+      }
+    }, 280);
+
+    return () => clearTimeout(timer);
+  }, [companySearchInput, clientType]);
+
+  const handleSelectAddress = (item: AddressInfo) => {
+    setAddress(item.address);
+    setPostalCode(item.postcode);
+    setCity(item.city);
+    setMunicipality(item.municipality || '');
+    if (item.gnr) setGnr(item.gnr);
+    if (item.bnr) setBnr(item.bnr);
+    if (item.fnr) setFnr(item.fnr);
+    setAddressSearchInput(item.fullAddress);
+    setShowAddressSuggestions(false);
+    setIsAddressVerified(true);
+    toast.success(`Hentet eiendom: ${item.address} (Gnr ${item.gnr || '-'} / Bnr ${item.bnr || '-'})`);
+  };
+
+  const handleSelectCompany = async (comp: CompanyInfo) => {
+    setClientName(comp.name);
+    setOrgNumber(comp.orgnr);
+    setCompanySearchInput(comp.name);
+    setShowCompanySuggestions(false);
+    
+    // Auto-fill address if not already filled
+    if (comp.address) {
+      setAddress(comp.address);
+      setPostalCode(comp.postcode);
+      setCity(comp.city);
+      setMunicipality(comp.municipality || '');
+      setAddressSearchInput(`${comp.address}, ${comp.postcode} ${comp.city}`);
+      
+      // Auto-lookup Gnr/Bnr from Kartverket for the company address
+      try {
+        const addrResults = await locationService.searchAddress(`${comp.address} ${comp.city}`);
+        if (addrResults.length > 0) {
+          const match = addrResults[0];
+          if (match.gnr) setGnr(match.gnr);
+          if (match.bnr) setBnr(match.bnr);
+          if (match.municipality) setMunicipality(match.municipality);
+          setIsAddressVerified(true);
+        }
+      } catch {}
+    }
+    toast.success(`Hentet ${comp.name} (${comp.orgnr}) fra Enhetsregisteret`);
+  };
+
   const handleSelectProject = (projId: string) => {
     setProjectId(projId);
     const selected = projectsList.find(p => p.id === projId);
@@ -83,6 +246,13 @@ const OfferModal: React.FC<OfferModalProps> = ({ isOpen, onClose, initialData })
       setClientName(selected.clientName || '');
       setClientEmail(selected.clientEmail || '');
       setProjectCode(selected.projectCode || '');
+      if (selected.address) {
+        setAddress(selected.address);
+        setAddressSearchInput(selected.address);
+      }
+      if (selected.gnr) setGnr(selected.gnr);
+      if (selected.bnr) setBnr(selected.bnr);
+      if (selected.gnr && selected.bnr) setIsAddressVerified(true);
       if (!title) setTitle(`Tilbud: ${selected.name}`);
       if (!description) setDescription(selected.description || '');
     }
@@ -180,12 +350,24 @@ const OfferModal: React.FC<OfferModalProps> = ({ isOpen, onClose, initialData })
       const token = 'o-' + Date.now().toString(36) + Math.random().toString(36).substring(2, 6);
 
       const offerData = {
-        clientName,
-        clientEmail: clientEmail || '',
-        projectCode: projectCode || '',
+        clientName: clientName.trim(),
+        clientEmail: clientEmail.trim() || '',
+        clientPhone: clientPhone.trim() || '',
+        clientType,
+        orgNumber: orgNumber.trim() || undefined,
+        contactPerson: contactPerson.trim() || undefined,
+        address: address.trim() || undefined,
+        postalCode: postalCode.trim() || undefined,
+        city: city.trim() || undefined,
+        municipality: municipality.trim() || undefined,
+        gnr: gnr.trim() || undefined,
+        bnr: bnr.trim() || undefined,
+        fnr: fnr.trim() || undefined,
+        contractStandard: contractStandard || (clientType === 'company' ? 'NS8406' : 'haandverker'),
+        projectCode: projectCode.trim() || '',
         projectId: projectId || null,
-        title,
-        description: description || '',
+        title: title.trim(),
+        description: description.trim() || '',
         items,
         totalAmount,
         status,
@@ -233,6 +415,16 @@ const OfferModal: React.FC<OfferModalProps> = ({ isOpen, onClose, initialData })
     const link = `${window.location.origin}/?offerToken=${tokenOrId}`;
     setIsSendingEmail(true);
     try {
+      const totalIncMva = Math.round(totalAmount * 1.25);
+      const priceText = clientType === 'private' 
+        ? `kr ${totalIncMva.toLocaleString('no-NO')} inkl. 25% mva` 
+        : `kr ${totalAmount.toLocaleString('no-NO')} eks. mva (kr ${totalIncMva.toLocaleString('no-NO')} inkl. mva)`;
+
+      const propInfo = [
+        address ? `${address}${postalCode ? `, ${postalCode}` : ''}${city ? ` ${city}` : ''}` : '',
+        gnr && bnr ? `Gnr ${gnr} / Bnr ${bnr}` : ''
+      ].filter(Boolean).join(' • ');
+
       const res = await fetch('/api/notify/email', {
         method: 'POST',
         headers: { 'Content-Type': 'application/json' },
@@ -242,7 +434,8 @@ const OfferModal: React.FC<OfferModalProps> = ({ isOpen, onClose, initialData })
           html: `
             <h2>Pristilbud fra ${user?.company || 'Mester Entreprenør AS'}</h2>
             <p>Hei ${clientName},</p>
-            <p>Vi har utarbeidet et tilbud til deg: <strong>${title}</strong> pålydende kr ${totalAmount.toLocaleString('no-NO')} eks. mva.</p>
+            <p>Vi har utarbeidet et tilbud til deg: <strong>${title}</strong> pålydende <strong>${priceText}</strong>.</p>
+            ${propInfo ? `<p><strong>Byggeplass / Eiendom:</strong> ${propInfo}</p>` : ''}
             <p>Klikk på lenken under for å gjennomgå tilbudet og godkjenne det direkte på skjermen:</p>
             <p><a href="${link}" style="background-color: #10b981; color: white; padding: 12px 24px; text-decoration: none; border-radius: 8px; font-weight: bold; display: inline-block;">Gjennomgå og godkjenn tilbud</a></p>
             <p>Med vennlig hilsen,<br>${user?.displayName || 'Byggmester'}</p>
@@ -267,8 +460,25 @@ const OfferModal: React.FC<OfferModalProps> = ({ isOpen, onClose, initialData })
     setStep(1);
     setCreatedOfferId(null);
     setCreatedOfferToken(null);
+    setClientType('private');
     setClientName('');
     setClientEmail('');
+    setClientPhone('');
+    setOrgNumber('');
+    setContactPerson('');
+    setAddress('');
+    setPostalCode('');
+    setCity('');
+    setMunicipality('');
+    setGnr('');
+    setBnr('');
+    setFnr('');
+    setContractStandard('haandverker');
+    setAddressSearchInput('');
+    setAddressSuggestions([]);
+    setIsAddressVerified(false);
+    setCompanySearchInput('');
+    setCompanySuggestions([]);
     setProjectCode('');
     setProjectId('');
     setTitle('');
@@ -365,8 +575,9 @@ const OfferModal: React.FC<OfferModalProps> = ({ isOpen, onClose, initialData })
                 exit={{ opacity: 0, x: -20 }}
                 className="space-y-4 sm:space-y-6"
               >
+                {/* 1. Valgfritt: Knytt til eksisterende prosjekt */}
                 {projectsList.length > 0 && (
-                  <div className="p-4 bg-emerald-50/60 border border-emerald-100 rounded-2xl">
+                  <div className="p-3.5 sm:p-4 bg-emerald-50/60 border border-emerald-100 rounded-2xl">
                     <label className="text-[10px] sm:text-xs font-black uppercase tracking-widest text-emerald-800 flex items-center gap-1.5 mb-1.5">
                       <Building2 size={14} />
                       Knytt til eksisterende prosjekt (Valgfritt)
@@ -389,43 +600,484 @@ const OfferModal: React.FC<OfferModalProps> = ({ isOpen, onClose, initialData })
                   </div>
                 )}
 
+                {/* 2. Kundetype Velger: Privatperson vs. Firma */}
+                <div className="space-y-1.5 sm:space-y-2">
+                  <label className="text-[10px] sm:text-xs font-black uppercase tracking-widest text-neutral-500 ml-1">
+                    Kundetype *
+                  </label>
+                  <div className="grid grid-cols-2 gap-3 p-1.5 bg-neutral-100 rounded-2xl border border-neutral-200">
+                    <button
+                      type="button"
+                      onClick={() => {
+                        setClientType('private');
+                        if (contractStandard === 'NS8406' || contractStandard === 'NS8405') {
+                          setContractStandard('haandverker');
+                        }
+                      }}
+                      className={cn(
+                        "flex items-center justify-center gap-2.5 py-3 px-3 sm:px-4 rounded-xl font-bold text-xs sm:text-sm transition-all cursor-pointer text-left",
+                        clientType === 'private'
+                          ? "bg-white text-emerald-700 shadow-md shadow-neutral-200/60 border border-emerald-200"
+                          : "text-neutral-600 hover:text-neutral-900 hover:bg-neutral-50"
+                      )}
+                    >
+                      <User size={18} className={clientType === 'private' ? "text-emerald-600 shrink-0" : "text-neutral-400 shrink-0"} />
+                      <div>
+                        <div className="font-extrabold leading-tight">Privatperson</div>
+                        <div className="text-[10px] text-neutral-400 font-medium hidden sm:block">Forbruker • Inkl. MVA</div>
+                      </div>
+                    </button>
+
+                    <button
+                      type="button"
+                      onClick={() => {
+                        setClientType('company');
+                        if (contractStandard === 'haandverker') {
+                          setContractStandard('NS8406');
+                        }
+                      }}
+                      className={cn(
+                        "flex items-center justify-center gap-2.5 py-3 px-3 sm:px-4 rounded-xl font-bold text-xs sm:text-sm transition-all cursor-pointer text-left",
+                        clientType === 'company'
+                          ? "bg-white text-emerald-700 shadow-md shadow-neutral-200/60 border border-emerald-200"
+                          : "text-neutral-600 hover:text-neutral-900 hover:bg-neutral-50"
+                      )}
+                    >
+                      <Building2 size={18} className={clientType === 'company' ? "text-emerald-600 shrink-0" : "text-neutral-400 shrink-0"} />
+                      <div>
+                        <div className="font-extrabold leading-tight">Firma / Bedrift</div>
+                        <div className="text-[10px] text-neutral-400 font-medium hidden sm:block">B2B • Org.nr oppslag • NS 8406</div>
+                      </div>
+                    </button>
+                  </div>
+                </div>
+
+                {/* 3. Hvis Firma: Brønnøysundregistrene (Enhetsregisteret) live søk */}
+                {clientType === 'company' && (
+                  <div className="relative p-3.5 sm:p-4 bg-blue-50/70 border border-blue-200/80 rounded-2xl space-y-2">
+                    <div className="flex items-center justify-between">
+                      <label className="text-[10px] sm:text-xs font-black uppercase tracking-widest text-blue-900 flex items-center gap-1.5">
+                        <Building2 size={14} className="text-blue-600" />
+                        Søk i Brønnøysundregistrene (Enhetsregisteret)
+                      </label>
+                      <span className="text-[10px] font-bold text-blue-700 bg-blue-100 px-2 py-0.5 rounded-full">
+                        100% gratis API
+                      </span>
+                    </div>
+
+                    <div className="relative">
+                      <Search size={16} className="absolute left-3.5 top-1/2 -translate-y-1/2 text-blue-600" />
+                      <input
+                        type="text"
+                        value={companySearchInput}
+                        onChange={(e) => {
+                          setCompanySearchInput(e.target.value);
+                          setShowCompanySuggestions(true);
+                        }}
+                        onFocus={() => {
+                          if (companySuggestions.length > 0) setShowCompanySuggestions(true);
+                        }}
+                        placeholder="Tast firmanavn eller 9-sifret org.nr..."
+                        className="w-full pl-10 pr-9 py-2.5 sm:py-3 bg-white border border-blue-200 rounded-xl font-bold text-xs sm:text-sm text-neutral-900 placeholder:text-neutral-400 outline-none focus:ring-2 focus:ring-blue-500 shadow-sm"
+                      />
+                      {isSearchingCompany && (
+                        <div className="absolute right-3 top-1/2 -translate-y-1/2">
+                          <div className="w-4 h-4 border-2 border-blue-600 border-t-transparent rounded-full animate-spin" />
+                        </div>
+                      )}
+                    </div>
+
+                    {/* Dropdown for Brreg results */}
+                    {showCompanySuggestions && companySuggestions.length > 0 && (
+                      <div className="absolute left-0 right-0 top-full mt-1.5 z-40 bg-white border border-neutral-200 rounded-2xl shadow-2xl overflow-hidden max-h-60 overflow-y-auto divide-y divide-neutral-100">
+                        {companySuggestions.map((comp) => (
+                          <button
+                            key={comp.orgnr}
+                            type="button"
+                            onClick={() => handleSelectCompany(comp)}
+                            className="w-full p-3 text-left hover:bg-blue-50/80 transition-colors flex items-start justify-between gap-3 cursor-pointer"
+                          >
+                            <div className="space-y-0.5">
+                              <div className="font-extrabold text-xs sm:text-sm text-neutral-900 flex items-center gap-1.5 flex-wrap">
+                                <span>{comp.name}</span>
+                                <span className="text-[10px] font-extrabold text-blue-700 bg-blue-100 px-1.5 py-0.5 rounded">
+                                  {comp.orgTypeCode}
+                                </span>
+                                {comp.isMvaRegistered && (
+                                  <span className="text-[10px] font-bold text-emerald-700 bg-emerald-100 px-1.5 py-0.5 rounded flex items-center gap-0.5">
+                                    <Check size={10} /> MVA
+                                  </span>
+                                )}
+                              </div>
+                              <div className="text-[11px] text-neutral-500 flex items-center gap-2 flex-wrap">
+                                <span>Org.nr: <strong className="font-mono">{comp.orgnr}</strong></span>
+                                {comp.address && <span>• {comp.address}, {comp.postcode} {comp.city}</span>}
+                              </div>
+                            </div>
+                            <span className="text-xs font-bold text-blue-600 bg-blue-50 border border-blue-200 px-2.5 py-1 rounded-lg shrink-0">
+                              Bruk firma
+                            </span>
+                          </button>
+                        ))}
+                      </div>
+                    )}
+                  </div>
+                )}
+
+                {/* 4. Kunde- og kontaktfelter */}
                 <div className="grid grid-cols-1 md:grid-cols-2 gap-4 sm:gap-6">
                   <div className="space-y-1.5 sm:space-y-2">
-                    <label className="text-[10px] sm:text-xs font-black uppercase tracking-widest text-neutral-500 ml-1">Kundenavn *</label>
+                    <label className="text-[10px] sm:text-xs font-black uppercase tracking-widest text-neutral-500 ml-1">
+                      {clientType === 'company' ? 'Firmanavn / Oppdragsgiver *' : 'Kundenavn (Forbruker) *'}
+                    </label>
                     <input 
                       type="text" 
                       value={clientName}
                       onChange={(e) => setClientName(e.target.value)}
-                      placeholder="F.eks. Ola Nordmann eller Byggpartner AS"
+                      placeholder={clientType === 'company' ? "F.eks. Mesterbygg AS eller Sameiet" : "F.eks. Kari Nordmann"}
                       className="w-full p-2.5 sm:p-4 bg-white border border-neutral-200 rounded-xl sm:rounded-2xl focus:ring-2 focus:ring-emerald-500 outline-none font-bold text-xs sm:text-base text-neutral-900"
                     />
                   </div>
-                  <div className="space-y-1.5 sm:space-y-2">
-                    <label className="text-[10px] sm:text-xs font-black uppercase tracking-widest text-neutral-500 ml-1">E-post for tilbud sendt til kunde</label>
-                    <input 
-                      type="email" 
-                      value={clientEmail}
-                      onChange={(e) => setClientEmail(e.target.value)}
-                      placeholder="ola@eksempel.no"
-                      className="w-full p-2.5 sm:p-4 bg-white border border-neutral-200 rounded-xl sm:rounded-2xl focus:ring-2 focus:ring-emerald-500 outline-none font-bold text-xs sm:text-base text-neutral-900"
-                    />
-                  </div>
+
+                  {clientType === 'company' ? (
+                    <div className="space-y-1.5 sm:space-y-2">
+                      <label className="text-[10px] sm:text-xs font-black uppercase tracking-widest text-neutral-500 ml-1">
+                        Organisasjonsnummer (9 siffer)
+                      </label>
+                      <input 
+                        type="text" 
+                        value={orgNumber}
+                        onChange={(e) => setOrgNumber(e.target.value)}
+                        placeholder="f.eks. 977 467 411"
+                        className="w-full p-2.5 sm:p-4 bg-white border border-neutral-200 rounded-xl sm:rounded-2xl focus:ring-2 focus:ring-emerald-500 outline-none font-bold text-xs sm:text-base text-neutral-900 font-mono"
+                      />
+                    </div>
+                  ) : (
+                    <div className="space-y-1.5 sm:space-y-2">
+                      <label className="text-[10px] sm:text-xs font-black uppercase tracking-widest text-neutral-500 ml-1">
+                        Telefonnummer
+                      </label>
+                      <input 
+                        type="tel" 
+                        value={clientPhone}
+                        onChange={(e) => setClientPhone(e.target.value)}
+                        placeholder="f.eks. 900 00 000"
+                        className="w-full p-2.5 sm:p-4 bg-white border border-neutral-200 rounded-xl sm:rounded-2xl focus:ring-2 focus:ring-emerald-500 outline-none font-bold text-xs sm:text-base text-neutral-900"
+                      />
+                    </div>
+                  )}
                 </div>
 
                 <div className="grid grid-cols-1 md:grid-cols-2 gap-4 sm:gap-6">
                   <div className="space-y-1.5 sm:space-y-2">
-                    <label className="text-[10px] sm:text-xs font-black uppercase tracking-widest text-neutral-500 ml-1">Prosjektkode (Valgfritt)</label>
+                    <label className="text-[10px] sm:text-xs font-black uppercase tracking-widest text-neutral-500 ml-1">
+                      E-post for tilbud sendt til kunde
+                    </label>
                     <input 
-                      type="text" 
-                      value={projectCode}
-                      onChange={(e) => setProjectCode(e.target.value)}
-                      placeholder="f.eks. P2026-001"
+                      type="email" 
+                      value={clientEmail}
+                      onChange={(e) => setClientEmail(e.target.value)}
+                      placeholder="kunde@eksempel.no"
                       className="w-full p-2.5 sm:p-4 bg-white border border-neutral-200 rounded-xl sm:rounded-2xl focus:ring-2 focus:ring-emerald-500 outline-none font-bold text-xs sm:text-base text-neutral-900"
                     />
                   </div>
 
-                  <div className="space-y-1.5 sm:space-y-2">
-                    <label className="text-[10px] sm:text-xs font-black uppercase tracking-widest text-neutral-500 ml-1">Tittel på tilbud *</label>
+                  {clientType === 'company' ? (
+                    <div className="space-y-1.5 sm:space-y-2">
+                      <label className="text-[10px] sm:text-xs font-black uppercase tracking-widest text-neutral-500 ml-1">
+                        Kontaktperson / Attn (vår referanse)
+                      </label>
+                      <input 
+                        type="text" 
+                        value={contactPerson}
+                        onChange={(e) => setContactPerson(e.target.value)}
+                        placeholder="f.eks. Petter Olsen (Prosjektleder)"
+                        className="w-full p-2.5 sm:p-4 bg-white border border-neutral-200 rounded-xl sm:rounded-2xl focus:ring-2 focus:ring-emerald-500 outline-none font-bold text-xs sm:text-base text-neutral-900"
+                      />
+                    </div>
+                  ) : (
+                    <div className="space-y-1.5 sm:space-y-2">
+                      <label className="text-[10px] sm:text-xs font-black uppercase tracking-widest text-neutral-500 ml-1">
+                        Prosjektkode (Valgfritt)
+                      </label>
+                      <input 
+                        type="text" 
+                        value={projectCode}
+                        onChange={(e) => setProjectCode(e.target.value)}
+                        placeholder="f.eks. P2026-001"
+                        className="w-full p-2.5 sm:p-4 bg-white border border-neutral-200 rounded-xl sm:rounded-2xl focus:ring-2 focus:ring-emerald-500 outline-none font-bold text-xs sm:text-base text-neutral-900"
+                      />
+                    </div>
+                  )}
+                </div>
+
+                {/* 5. Eiendom og Byggeplassadresse (Kartverket Matrikkel - 100% gratis API) */}
+                <div className="p-4 sm:p-5 bg-emerald-50/70 border border-emerald-200/80 rounded-2xl sm:rounded-3xl space-y-3.5">
+                  <div className="flex items-center justify-between flex-wrap gap-2">
+                    <div className="flex items-center gap-2.5">
+                      <div className="w-8 h-8 rounded-xl bg-emerald-600 text-white flex items-center justify-center shadow-xs">
+                        <MapPin size={16} />
+                      </div>
+                      <div>
+                        <h4 className="text-xs sm:text-sm font-extrabold text-emerald-950">
+                          Eiendom og Byggeplassadresse
+                        </h4>
+                        <p className="text-[11px] text-emerald-800">
+                          Automatisk henting av adresse, Gnr og Bnr fra Kartverket (100% gratis API)
+                        </p>
+                      </div>
+                    </div>
+                    {isAddressVerified && (
+                      <div className="flex items-center gap-1 px-2.5 py-1 bg-emerald-600 text-white rounded-lg text-[10px] font-black uppercase tracking-wider shadow-xs">
+                        <Check size={12} />
+                        <span>Matrikkel verifisert</span>
+                      </div>
+                    )}
+                  </div>
+
+                  {/* Search input with live autocomplete */}
+                  <div className="relative">
+                    <Search size={16} className="absolute left-3.5 top-1/2 -translate-y-1/2 text-emerald-600" />
+                    <input
+                      type="text"
+                      value={addressSearchInput}
+                      onChange={(e) => {
+                        setAddressSearchInput(e.target.value);
+                        setShowAddressSuggestions(true);
+                        setIsAddressVerified(false);
+                      }}
+                      onFocus={() => {
+                        if (addressSuggestions.length > 0) setShowAddressSuggestions(true);
+                      }}
+                      placeholder="Søk gateadresse eller Gnr/Bnr (f.eks. Vidjeveien 21 eller 146/309)..."
+                      className="w-full pl-10 pr-9 py-2.5 sm:py-3 bg-white border border-emerald-300 rounded-xl font-bold text-xs sm:text-sm text-neutral-900 placeholder:text-neutral-400 outline-none focus:ring-2 focus:ring-emerald-500 shadow-xs"
+                    />
+                    {isSearchingAddress && (
+                      <div className="absolute right-3 top-1/2 -translate-y-1/2">
+                        <div className="w-4 h-4 border-2 border-emerald-600 border-t-transparent rounded-full animate-spin" />
+                      </div>
+                    )}
+
+                    {/* Dropdown suggestions */}
+                    {showAddressSuggestions && addressSuggestions.length > 0 && (
+                      <div className="absolute left-0 right-0 top-full mt-1.5 z-40 bg-white border border-neutral-200 rounded-2xl shadow-2xl overflow-hidden max-h-64 overflow-y-auto divide-y divide-neutral-100">
+                        {addressSuggestions.map((item, idx) => (
+                          <button
+                            key={idx}
+                            type="button"
+                            onClick={() => handleSelectAddress(item)}
+                            className="w-full p-3 text-left hover:bg-emerald-50/80 transition-colors flex items-center justify-between gap-3 cursor-pointer"
+                          >
+                            <div className="space-y-0.5">
+                              <div className="font-extrabold text-xs sm:text-sm text-neutral-900 flex items-center gap-1.5">
+                                <MapPin size={13} className="text-emerald-600 shrink-0" />
+                                <span>{item.address}</span>
+                                <span className="text-neutral-500 font-semibold">• {item.postcode} {item.city}</span>
+                              </div>
+                              <div className="text-[11px] text-neutral-500 flex items-center gap-2 pl-4">
+                                <span className="text-emerald-800 font-semibold">{item.municipality || 'Norge'}</span>
+                                {(item.gnr || item.bnr) && (
+                                  <span className="px-1.5 py-0.5 rounded bg-emerald-100/80 text-emerald-800 font-mono font-bold text-[10px]">
+                                    Gnr: {item.gnr || '-'} / Bnr: {item.bnr || '-'}
+                                  </span>
+                                )}
+                              </div>
+                            </div>
+                            <span className="text-xs font-bold text-emerald-700 bg-emerald-50 border border-emerald-200 px-2.5 py-1 rounded-lg shrink-0">
+                              Bruk adresse
+                            </span>
+                          </button>
+                        ))}
+                      </div>
+                    )}
+                  </div>
+
+                  {/* Detail fields for manual fine-tuning */}
+                  <div className="grid grid-cols-1 sm:grid-cols-3 gap-3 pt-1">
+                    <div className="space-y-1">
+                      <label className="text-[10px] font-black uppercase tracking-widest text-emerald-900 ml-1">Gateadresse</label>
+                      <input
+                        type="text"
+                        value={address}
+                        onChange={(e) => setAddress(e.target.value)}
+                        placeholder="f.eks. Vidjeveien 21"
+                        className="w-full p-2.5 bg-white border border-emerald-200 rounded-xl font-bold text-xs text-neutral-900 outline-none focus:ring-1 focus:ring-emerald-500"
+                      />
+                    </div>
+
+                    <div className="space-y-1">
+                      <label className="text-[10px] font-black uppercase tracking-widest text-emerald-900 ml-1">Postnr & Sted</label>
+                      <div className="grid grid-cols-2 gap-1.5">
+                        <input
+                          type="text"
+                          value={postalCode}
+                          onChange={(e) => setPostalCode(e.target.value)}
+                          placeholder="Postnr"
+                          className="w-full p-2.5 bg-white border border-emerald-200 rounded-xl font-bold text-xs text-neutral-900 outline-none focus:ring-1 focus:ring-emerald-500 font-mono"
+                        />
+                        <input
+                          type="text"
+                          value={city}
+                          onChange={(e) => setCity(e.target.value)}
+                          placeholder="Sted"
+                          className="w-full p-2.5 bg-white border border-emerald-200 rounded-xl font-bold text-xs text-neutral-900 outline-none focus:ring-1 focus:ring-emerald-500"
+                        />
+                      </div>
+                    </div>
+
+                    <div className="space-y-1">
+                      <label className="text-[10px] font-black uppercase tracking-widest text-emerald-900 ml-1 flex items-center justify-between">
+                        <span>Matrikkel (Gnr / Bnr)</span>
+                        {municipality && <span className="text-[10px] font-semibold text-emerald-700">{municipality}</span>}
+                      </label>
+                      <div className="grid grid-cols-2 gap-1.5">
+                        <input
+                          type="text"
+                          value={gnr}
+                          onChange={(e) => setGnr(e.target.value)}
+                          placeholder="Gnr"
+                          className="w-full p-2.5 bg-white border border-emerald-200 rounded-xl font-bold text-xs text-neutral-900 outline-none focus:ring-1 focus:ring-emerald-500 font-mono"
+                        />
+                        <input
+                          type="text"
+                          value={bnr}
+                          onChange={(e) => setBnr(e.target.value)}
+                          placeholder="Bnr"
+                          className="w-full p-2.5 bg-white border border-emerald-200 rounded-xl font-bold text-xs text-neutral-900 outline-none focus:ring-1 focus:ring-emerald-500 font-mono"
+                        />
+                      </div>
+                    </div>
+                  </div>
+
+                  {/* Matrikkel info confirmation chip */}
+                  {(gnr || bnr || address) && (
+                    <div className="p-2.5 bg-white/90 border border-emerald-200 rounded-xl flex items-center justify-between text-xs text-emerald-900 flex-wrap gap-2">
+                      <span className="flex items-center gap-1.5 font-bold">
+                        <ShieldCheck size={15} className="text-emerald-600" />
+                        Offisiell eiendomsidentifikator:
+                        <span className="font-mono text-emerald-800">
+                          {gnr ? `Gnr ${gnr}` : ''} {bnr ? `/ Bnr ${bnr}` : ''} {municipality ? `(${municipality})` : ''}
+                        </span>
+                      </span>
+                      <span className="text-[10px] font-semibold text-neutral-500">
+                        Føres automatisk i kontrakt og byggedagbok
+                      </span>
+                    </div>
+                  )}
+                </div>
+
+                {/* 6. Kontraktsstandard */}
+                <div className="space-y-1.5 sm:space-y-2">
+                  <label className="text-[10px] sm:text-xs font-black uppercase tracking-widest text-neutral-500 ml-1 flex items-center gap-1.5">
+                    <ShieldCheck size={14} className="text-emerald-600" />
+                    Avtale- og kontraktsramme *
+                  </label>
+                  <div className="grid grid-cols-1 sm:grid-cols-2 gap-3">
+                    {clientType === 'private' ? (
+                      <>
+                        <button
+                          type="button"
+                          onClick={() => setContractStandard('haandverker')}
+                          className={cn(
+                            "p-3 rounded-xl border text-left transition-all cursor-pointer",
+                            contractStandard === 'haandverker'
+                              ? "bg-emerald-50/80 border-emerald-500 text-emerald-950 shadow-xs"
+                              : "bg-white border-neutral-200 text-neutral-700 hover:bg-neutral-50"
+                          )}
+                        >
+                          <div className="font-bold text-xs sm:text-sm flex items-center justify-between">
+                            <span>Håndverkertjenesteloven</span>
+                            {contractStandard === 'haandverker' && <Check size={14} className="text-emerald-600" />}
+                          </div>
+                          <p className="text-[10px] text-neutral-500 mt-0.5">
+                            Lov om håndverkertjenester for forbrukere (standard ved renovering/rehab)
+                          </p>
+                        </button>
+
+                        <button
+                          type="button"
+                          onClick={() => setContractStandard('bustadoppforing')}
+                          className={cn(
+                            "p-3 rounded-xl border text-left transition-all cursor-pointer",
+                            contractStandard === 'bustadoppforing'
+                              ? "bg-emerald-50/80 border-emerald-500 text-emerald-950 shadow-xs"
+                              : "bg-white border-neutral-200 text-neutral-700 hover:bg-neutral-50"
+                          )}
+                        >
+                          <div className="font-bold text-xs sm:text-sm flex items-center justify-between">
+                            <span>Bustadoppføringslova</span>
+                            {contractStandard === 'bustadoppforing' && <Check size={14} className="text-emerald-600" />}
+                          </div>
+                          <p className="text-[10px] text-neutral-500 mt-0.5">
+                            Ved oppføring av ny bolig eller fritidsbolig for forbruker
+                          </p>
+                        </button>
+                      </>
+                    ) : (
+                      <>
+                        <button
+                          type="button"
+                          onClick={() => setContractStandard('NS8406')}
+                          className={cn(
+                            "p-3 rounded-xl border text-left transition-all cursor-pointer",
+                            contractStandard === 'NS8406'
+                              ? "bg-emerald-50/80 border-emerald-500 text-emerald-950 shadow-xs"
+                              : "bg-white border-neutral-200 text-neutral-700 hover:bg-neutral-50"
+                          )}
+                        >
+                          <div className="font-bold text-xs sm:text-sm flex items-center justify-between">
+                            <span>NS 8406 (Forenklet kontrakt)</span>
+                            {contractStandard === 'NS8406' && <Check size={14} className="text-emerald-600" />}
+                          </div>
+                          <p className="text-[10px] text-neutral-500 mt-0.5">
+                            Forenklet norsk bygge- og anleggskontrakt for utførelsesentrepriser (B2B standard)
+                          </p>
+                        </button>
+
+                        <button
+                          type="button"
+                          onClick={() => setContractStandard('NS8405')}
+                          className={cn(
+                            "p-3 rounded-xl border text-left transition-all cursor-pointer",
+                            contractStandard === 'NS8405'
+                              ? "bg-emerald-50/80 border-emerald-500 text-emerald-950 shadow-xs"
+                              : "bg-white border-neutral-200 text-neutral-700 hover:bg-neutral-50"
+                          )}
+                        >
+                          <div className="font-bold text-xs sm:text-sm flex items-center justify-between">
+                            <span>NS 8405 (Norsk byggekontrakt)</span>
+                            {contractStandard === 'NS8405' && <Check size={14} className="text-emerald-600" />}
+                          </div>
+                          <p className="text-[10px] text-neutral-500 mt-0.5">
+                            Norsk bygge- og anleggskontrakt med krav til formelle varsler og sikkerhetsstillelse
+                          </p>
+                        </button>
+                      </>
+                    )}
+                  </div>
+                </div>
+
+                {/* 7. Tilbudstittel og Prosjektkode (hvis firma) */}
+                <div className="grid grid-cols-1 md:grid-cols-2 gap-4 sm:gap-6">
+                  {clientType === 'company' && (
+                    <div className="space-y-1.5 sm:space-y-2">
+                      <label className="text-[10px] sm:text-xs font-black uppercase tracking-widest text-neutral-500 ml-1">
+                        Prosjektkode (Valgfritt)
+                      </label>
+                      <input 
+                        type="text" 
+                        value={projectCode}
+                        onChange={(e) => setProjectCode(e.target.value)}
+                        placeholder="f.eks. P2026-001"
+                        className="w-full p-2.5 sm:p-4 bg-white border border-neutral-200 rounded-xl sm:rounded-2xl focus:ring-2 focus:ring-emerald-500 outline-none font-bold text-xs sm:text-base text-neutral-900"
+                      />
+                    </div>
+                  )}
+
+                  <div className={cn("space-y-1.5 sm:space-y-2", clientType !== 'company' ? "md:col-span-2" : "")}>
+                    <label className="text-[10px] sm:text-xs font-black uppercase tracking-widest text-neutral-500 ml-1">
+                      Tittel på tilbud *
+                    </label>
                     <input 
                       type="text" 
                       value={title}
@@ -436,9 +1088,12 @@ const OfferModal: React.FC<OfferModalProps> = ({ isOpen, onClose, initialData })
                   </div>
                 </div>
 
+                {/* 8. Prosjektbeskrivelse og AI-kalkulering */}
                 <div className="space-y-1.5 sm:space-y-2">
                   <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-1.5 sm:gap-2">
-                    <label className="text-[10px] sm:text-xs font-black uppercase tracking-widest text-neutral-500 ml-1">Prosjektbeskrivelse (for AI-kalkulering)</label>
+                    <label className="text-[10px] sm:text-xs font-black uppercase tracking-widest text-neutral-500 ml-1">
+                      Prosjektbeskrivelse (for AI-kalkulering)
+                    </label>
                     <div className="flex items-center gap-2">
                       <AiTextAssistant 
                         currentText={description} 
@@ -446,9 +1101,10 @@ const OfferModal: React.FC<OfferModalProps> = ({ isOpen, onClose, initialData })
                         placeholder="Hva skal gjøres? AI kan utfylle detaljer..."
                       />
                       <button 
+                        type="button"
                         onClick={generateOfferItems}
                         disabled={(!description && !title) || isGenerating}
-                        className="flex items-center gap-1.5 sm:gap-2 px-2.5 sm:px-4 py-1.5 sm:py-2 bg-emerald-600 text-white rounded-lg sm:rounded-xl text-[10px] sm:text-xs font-bold hover:bg-emerald-500 transition-all shadow-sm disabled:opacity-50"
+                        className="flex items-center gap-1.5 sm:gap-2 px-2.5 sm:px-4 py-1.5 sm:py-2 bg-emerald-600 text-white rounded-lg sm:rounded-xl text-[10px] sm:text-xs font-bold hover:bg-emerald-500 transition-all shadow-sm disabled:opacity-50 cursor-pointer"
                       >
                         {isGenerating ? <Sparkles className="animate-spin sm:w-3.5 sm:h-3.5" size={12} /> : <Sparkles size={12} className="sm:w-3.5 sm:h-3.5" />}
                         {isGenerating ? 'Genererer...' : 'Generer AI-poster'}
@@ -466,6 +1122,7 @@ const OfferModal: React.FC<OfferModalProps> = ({ isOpen, onClose, initialData })
 
                 <div className="flex justify-end pt-4 pb-2 border-t border-neutral-200 mt-4 bg-neutral-50">
                   <button 
+                    type="button"
                     onClick={() => {
                       if (!clientName || !title) {
                         toast.error("Vennligst fyll ut kundenavn og tittel for å fortsette.");
@@ -474,7 +1131,7 @@ const OfferModal: React.FC<OfferModalProps> = ({ isOpen, onClose, initialData })
                       setStep(2);
                     }}
                     disabled={!clientName || !title}
-                    className="w-full sm:w-auto px-6 sm:px-8 py-3 sm:py-4 bg-emerald-600 text-white rounded-xl sm:rounded-2xl font-bold hover:bg-emerald-500 transition-all shadow-lg shadow-emerald-100 disabled:opacity-50 text-xs sm:text-base"
+                    className="w-full sm:w-auto px-6 sm:px-8 py-3 sm:py-4 bg-emerald-600 text-white rounded-xl sm:rounded-2xl font-bold hover:bg-emerald-500 transition-all shadow-lg shadow-emerald-100 disabled:opacity-50 text-xs sm:text-base cursor-pointer"
                   >
                     Neste: Spesifiser Poster & Priser →
                   </button>
@@ -571,21 +1228,81 @@ const OfferModal: React.FC<OfferModalProps> = ({ isOpen, onClose, initialData })
                 </div>
 
                 <div className="bg-neutral-900 rounded-xl sm:rounded-3xl p-4 sm:p-8 text-white flex flex-col md:flex-row items-center justify-between gap-4 sm:gap-6 shadow-xl mt-4 sm:mt-6 z-20">
-                  <div className="text-center md:text-left">
-                    <div className="text-neutral-400 text-[10px] sm:text-xs font-black uppercase tracking-widest mb-0.5 sm:mb-1">Total sum eks. mva</div>
-                    <div className="text-xl sm:text-4xl font-black text-emerald-400">{totalAmount.toLocaleString()} kr</div>
+                  <div className="text-center md:text-left space-y-1">
+                    {clientType === 'private' ? (
+                      <>
+                        <div className="flex items-center gap-2 justify-center md:justify-start">
+                          <span className="text-neutral-400 text-[10px] sm:text-xs font-black uppercase tracking-widest">
+                            Totalsum inkl. 25% mva (Forbruker)
+                          </span>
+                          <span className="px-1.5 py-0.5 rounded bg-emerald-500/20 text-emerald-300 text-[10px] font-bold">
+                            Privat
+                          </span>
+                        </div>
+                        <div className="text-2xl sm:text-4xl font-black text-emerald-400 font-mono">
+                          {Math.round(totalAmount * 1.25).toLocaleString('no-NO')} kr
+                        </div>
+                        <div className="text-[11px] text-neutral-400 flex items-center gap-2 justify-center md:justify-start flex-wrap">
+                          <span>Eks. mva: kr {totalAmount.toLocaleString('no-NO')}</span>
+                          <span>•</span>
+                          <span>MVA (25%): kr {Math.round(totalAmount * 0.25).toLocaleString('no-NO')}</span>
+                          {(gnr || bnr || address) && (
+                            <>
+                              <span>•</span>
+                              <span className="text-emerald-300 font-semibold">
+                                {address || ''} {gnr && bnr ? `(Gnr ${gnr}/${bnr})` : ''}
+                              </span>
+                            </>
+                          )}
+                        </div>
+                      </>
+                    ) : (
+                      <>
+                        <div className="flex items-center gap-2 justify-center md:justify-start">
+                          <span className="text-neutral-400 text-[10px] sm:text-xs font-black uppercase tracking-widest">
+                            Total sum eks. mva (B2B)
+                          </span>
+                          <span className="px-1.5 py-0.5 rounded bg-blue-500/20 text-blue-300 text-[10px] font-bold">
+                            NS 8406
+                          </span>
+                        </div>
+                        <div className="text-2xl sm:text-4xl font-black text-emerald-400 font-mono">
+                          {totalAmount.toLocaleString('no-NO')} kr
+                        </div>
+                        <div className="text-[11px] text-neutral-400 flex items-center gap-2 justify-center md:justify-start flex-wrap">
+                          <span>MVA (25%): kr {Math.round(totalAmount * 0.25).toLocaleString('no-NO')}</span>
+                          <span>•</span>
+                          <span>Inkl. mva: kr {Math.round(totalAmount * 1.25).toLocaleString('no-NO')}</span>
+                          {orgNumber && (
+                            <>
+                              <span>•</span>
+                              <span className="text-blue-300 font-mono">Org: {orgNumber}</span>
+                            </>
+                          )}
+                          {(gnr || bnr) && (
+                            <>
+                              <span>•</span>
+                              <span className="text-emerald-300 font-semibold">Gnr {gnr}/Bnr {bnr}</span>
+                            </>
+                          )}
+                        </div>
+                      </>
+                    )}
                   </div>
+
                   <div className="flex flex-wrap md:flex-nowrap gap-2 sm:gap-4 w-full md:w-auto">
                     <button 
+                      type="button"
                       onClick={() => setStep(1)}
-                      className="flex-1 md:flex-none px-3 sm:px-6 py-2.5 sm:py-4 bg-white/10 hover:bg-white/20 rounded-lg sm:rounded-2xl font-bold transition-all text-xs sm:text-sm"
+                      className="flex-1 md:flex-none px-3 sm:px-6 py-2.5 sm:py-4 bg-white/10 hover:bg-white/20 rounded-lg sm:rounded-2xl font-bold transition-all text-xs sm:text-sm cursor-pointer"
                     >
                       ← Tilbake
                     </button>
                     <button 
+                      type="button"
                       onClick={() => handleSave('draft')}
                       disabled={isSaving}
-                      className="flex-1 md:flex-none flex items-center justify-center gap-1.5 sm:gap-2 px-3 sm:px-6 py-2.5 sm:py-4 bg-white/10 hover:bg-white/20 rounded-lg sm:rounded-2xl font-bold transition-all disabled:opacity-50 text-xs sm:text-sm"
+                      className="flex-1 md:flex-none flex items-center justify-center gap-1.5 sm:gap-2 px-3 sm:px-6 py-2.5 sm:py-4 bg-white/10 hover:bg-white/20 rounded-lg sm:rounded-2xl font-bold transition-all disabled:opacity-50 text-xs sm:text-sm cursor-pointer"
                     >
                       {isSaving ? (
                         <div className="w-4 h-4 border-2 border-white/30 border-t-white rounded-full animate-spin" />
@@ -595,9 +1312,10 @@ const OfferModal: React.FC<OfferModalProps> = ({ isOpen, onClose, initialData })
                       {isSaving ? 'Lagrer...' : 'Lagre Utkast'}
                     </button>
                     <button 
+                      type="button"
                       onClick={() => handleSave('sent')}
                       disabled={isSaving}
-                      className="w-full md:w-auto flex items-center justify-center gap-1.5 sm:gap-2 px-5 sm:px-8 py-2.5 sm:py-4 bg-emerald-500 hover:bg-emerald-400 text-neutral-950 rounded-lg sm:rounded-2xl font-bold transition-all shadow-lg shadow-emerald-500/20 disabled:opacity-50 text-xs sm:text-sm"
+                      className="w-full md:w-auto flex items-center justify-center gap-1.5 sm:gap-2 px-5 sm:px-8 py-2.5 sm:py-4 bg-emerald-500 hover:bg-emerald-400 text-neutral-950 rounded-lg sm:rounded-2xl font-bold transition-all shadow-lg shadow-emerald-500/20 disabled:opacity-50 text-xs sm:text-sm cursor-pointer"
                     >
                       {isSaving ? (
                         <div className="w-4 h-4 border-2 border-neutral-950/30 border-t-neutral-950 rounded-full animate-spin" />

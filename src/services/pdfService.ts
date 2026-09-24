@@ -284,23 +284,54 @@ export const pdfService = {
 
     // Customer & Project Info
     doc.setTextColor(0, 0, 0);
-    doc.setFontSize(11);
-    doc.text(`Kunde: ${offer.clientName || '-'}`, 20, 52);
-    doc.text(`E-post: ${offer.clientEmail || '-'}`, 20, 58);
-    doc.text(`Dato: ${new Date(offer.createdAt || Date.now()).toLocaleDateString('no-NO')}`, 140, 52);
-    doc.text(`Status: ${offer.status === 'accepted' ? 'Akseptert' : 'Sendt'}`, 140, 58);
-
-    doc.setFontSize(14);
-    doc.setFont('helvetica', 'bold');
-    doc.text(offer.title || 'Tilbud', 20, 72);
-
-    if (offer.description) {
-      doc.setFontSize(10);
-      doc.setFont('helvetica', 'normal');
-      doc.text(offer.description, 20, 80, { maxWidth: 170 });
+    doc.setFontSize(10);
+    const clientLabel = (offer as any).clientType === 'company' ? 'Oppdragsgiver (Firma):' : 'Oppdragsgiver (Forbruker):';
+    doc.text(`${clientLabel} ${offer.clientName || '-'}`, 20, 50);
+    
+    let currentY = 55;
+    if ((offer as any).orgNumber) {
+      doc.text(`Org.nr: ${(offer as any).orgNumber}${(offer as any).contactPerson ? ` (Attn: ${(offer as any).contactPerson})` : ''}`, 20, currentY);
+      currentY += 5;
+    }
+    if (offer.clientEmail) {
+      doc.text(`E-post: ${offer.clientEmail}`, 20, currentY);
+      currentY += 5;
     }
 
-    const startY = offer.description ? 95 : 82;
+    const propParts = [
+      (offer as any).address ? `${(offer as any).address}${(offer as any).postalCode ? `, ${(offer as any).postalCode} ${(offer as any).city || ''}` : ''}` : '',
+      ((offer as any).gnr && (offer as any).bnr) ? `Gnr ${(offer as any).gnr} / Bnr ${(offer as any).bnr}${(offer as any).municipality ? ` (${(offer as any).municipality})` : ''}` : ''
+    ].filter(Boolean);
+
+    if (propParts.length > 0) {
+      doc.text(`Byggeplass / Eiendom: ${propParts.join(' • ')}`, 20, currentY);
+      currentY += 5;
+    }
+
+    const standardLabel = (offer as any).contractStandard === 'NS8406'
+      ? 'NS 8406 (Forenklet kontrakt)'
+      : (offer as any).contractStandard === 'NS8405'
+      ? 'NS 8405 (Norsk byggekontrakt)'
+      : (offer as any).contractStandard === 'bustadoppforing'
+      ? 'Bustadoppføringslova'
+      : 'Håndverkertjenesteloven';
+    doc.text(`Avtaleramme: ${standardLabel}`, 20, currentY);
+
+    doc.text(`Dato: ${new Date(offer.createdAt || Date.now()).toLocaleDateString('no-NO')}`, 140, 50);
+    doc.text(`Status: ${offer.status === 'accepted' ? 'Akseptert' : 'Sendt'}`, 140, 56);
+
+    const titleY = currentY + 9;
+    doc.setFontSize(13);
+    doc.setFont('helvetica', 'bold');
+    doc.text(offer.title || 'Tilbud', 20, titleY);
+
+    if (offer.description) {
+      doc.setFontSize(9.5);
+      doc.setFont('helvetica', 'normal');
+      doc.text(offer.description, 20, titleY + 6, { maxWidth: 170 });
+    }
+
+    const startY = offer.description ? titleY + 18 : titleY + 9;
 
     const itemsData = (offer.items || []).map((item, idx) => [
       idx + 1,

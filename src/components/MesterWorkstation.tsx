@@ -220,6 +220,27 @@ export default function MesterWorkstation({
     };
   }, [isProjectDropdownOpen]);
 
+  // Lokal tilbuds-modal state som fallback dersom onOpenOfferModal ikke er overordnet håndtert
+  const [isLocalOfferModalOpen, setIsLocalOfferModalOpen] = useState(false);
+  const [localOfferInitialData, setLocalOfferInitialData] = useState<any>(null);
+
+  const handleOpenCreateOffer = (initialData?: any) => {
+    const data = initialData || (selectedProject ? {
+      projectId: selectedProject.id,
+      projectCode: selectedProject.projectCode || selectedProject.id,
+      clientName: selectedProject.clientName || '',
+      clientEmail: selectedProject.clientEmail || '',
+      title: `Tilbud - ${selectedProject.name}`
+    } : { clientName: '', projectId: '' });
+
+    if (onOpenOfferModal) {
+      onOpenOfferModal(data);
+    } else {
+      setLocalOfferInitialData(data);
+      setIsLocalOfferModalOpen(true);
+    }
+  };
+
   // Synkroniser aktiv fane dersom initialModuleTab endrer seg eksternt
   useEffect(() => {
     if (initialModuleTab) {
@@ -1027,6 +1048,7 @@ export default function MesterWorkstation({
     setViewMode('chat');
     setActiveModuleTab(null);
     setActiveForm(null);
+    setIsOpenMobile(false);
     toast.success('Ny samtale startet');
   };
 
@@ -1045,6 +1067,7 @@ export default function MesterWorkstation({
     setViewMode('chat');
     setActiveModuleTab(null);
     setActiveForm(null);
+    setIsOpenMobile(false);
   };
 
   // 🛠️ Åpne modul fra sidemeny - Alt åpnes direkte i arbeidsvinduet!
@@ -1871,6 +1894,10 @@ export default function MesterWorkstation({
           setIsOpenMobile(false);
           toast.info('✨ Opprett ny byggeplass');
         }}
+        onOpenCreateOffer={() => {
+          handleOpenCreateOffer();
+          setIsOpenMobile(false);
+        }}
         onOpenModule={(moduleId) => {
           handleOpenModuleFromSidebar(moduleId);
           setIsOpenMobile(false);
@@ -1896,7 +1923,10 @@ export default function MesterWorkstation({
       {/* 2. Main Workstation Center Stage */}
       <main className="flex-1 flex flex-col h-full overflow-hidden bg-[#0A101D] relative">
         {/* Top Navigation Bar (Gemini & ChatGPT style) */}
-        <header className="relative h-14 px-3 sm:px-5 border-b border-slate-800/80 flex items-center justify-between gap-3 bg-[#0A101D]/90 backdrop-blur-md shrink-0 z-40">
+        <header className={cn(
+          "relative h-14 px-3 sm:px-5 border-b border-slate-800/80 flex items-center justify-between gap-3 bg-[#0A101D]/90 backdrop-blur-md shrink-0",
+          isTopSearchOpen ? "z-50" : "z-40"
+        )}>
           {isTopSearchOpen ? (
             <div className="flex-1 flex items-center gap-2 max-w-3xl mx-auto animate-in fade-in duration-150">
               <div className="relative flex-1 flex items-center">
@@ -2021,8 +2051,19 @@ export default function MesterWorkstation({
                           </button>
                         ))}
 
-                        {/* ➕ Hurtig-oppretting av prosjekt direkte fra mobil-dropdown */}
-                        <div className="pt-1 mt-1 border-t border-white/10">
+                        {/* ➕ Hurtighandlinger direkte fra mobil-dropdown */}
+                        <div className="pt-1 mt-1 border-t border-white/10 space-y-1">
+                          <button
+                            type="button"
+                            onClick={() => {
+                              setIsProjectDropdownOpen(false);
+                              handleOpenCreateOffer();
+                            }}
+                            className="w-full flex items-center gap-2 px-3 py-2 rounded-xl text-xs font-bold text-emerald-300 hover:text-white hover:bg-emerald-500/20 border border-emerald-500/30 transition-all cursor-pointer"
+                          >
+                            <Calculator size={14} className="shrink-0 text-emerald-400" />
+                            <span>+ Nytt tilbud (Kalkyle)</span>
+                          </button>
                           <button
                             type="button"
                             onClick={() => {
@@ -2042,8 +2083,17 @@ export default function MesterWorkstation({
                   )}
                 </div>
 
-                {/* Right: Compose ✏️ + Profile Avatar */}
-                <div className="flex items-center gap-1">
+                {/* Right: Tilbud 📝 + Compose ✏️ + Profile Avatar */}
+                <div className="flex items-center gap-1.5">
+                  <button
+                    type="button"
+                    onClick={() => handleOpenCreateOffer()}
+                    className="p-2 rounded-full text-purple-300 hover:text-white hover:bg-purple-500/20 border border-purple-500/30 transition-colors cursor-pointer"
+                    title={t('ws_create_offer_title', "Opprett nytt tilbud")}
+                  >
+                    <Calculator size={18} />
+                  </button>
+
                   <button
                     type="button"
                     onClick={() => {
@@ -2073,7 +2123,7 @@ export default function MesterWorkstation({
 
               {/* 🖥️ DESKTOP TOP BAR (Full workstation cockpit) */}
               <div className="hidden md:flex items-center justify-between w-full">
-                <div className="flex items-center gap-3 min-w-0">
+                <div className="flex items-center gap-2.5 min-w-0">
                   {/* Workstation Badge & Selected Project Dropdown */}
                   <div ref={projectDropdownRef} className="relative">
                     <button
@@ -2144,8 +2194,19 @@ export default function MesterWorkstation({
                             </button>
                           ))}
 
-                          {/* ➕ Hurtig-oppretting av prosjekt direkte fra desktop-dropdown */}
-                          <div className="pt-1 mt-1 border-t border-slate-800">
+                          {/* ➕ Hurtighandlinger direkte fra desktop-dropdown */}
+                          <div className="pt-1 mt-1 border-t border-slate-800 space-y-1">
+                            <button
+                              type="button"
+                              onClick={() => {
+                                setIsProjectDropdownOpen(false);
+                                handleOpenCreateOffer();
+                              }}
+                              className="w-full flex items-center gap-2 px-3 py-2 rounded-xl text-xs font-bold text-emerald-300 hover:text-white hover:bg-emerald-500/20 border border-emerald-500/30 transition-all cursor-pointer"
+                            >
+                              <Calculator size={14} className="shrink-0 text-emerald-400" />
+                              <span>+ Nytt tilbud (Kalkyle)</span>
+                            </button>
                             <button
                               type="button"
                               onClick={() => {
@@ -2164,6 +2225,17 @@ export default function MesterWorkstation({
                       </>
                     )}
                   </div>
+
+                  {/* ➕ Hurtigknapp for Nytt Tilbud (Desktop) */}
+                  <button
+                    type="button"
+                    onClick={() => handleOpenCreateOffer()}
+                    className="inline-flex items-center gap-1.5 px-3 py-1.5 rounded-xl bg-purple-600/20 hover:bg-purple-600/30 text-purple-300 hover:text-white border border-purple-500/30 text-xs font-bold transition-all shadow-xs cursor-pointer group active:scale-95 shrink-0"
+                    title="Opprett nytt pristilbud eller hurtigkalkyle"
+                  >
+                    <Calculator size={13} className="text-purple-400 group-hover:scale-110 transition-transform" />
+                    <span>+ Nytt tilbud</span>
+                  </button>
 
                   {/* Status: 100% Autonom */}
                   <span className="hidden lg:inline-flex items-center gap-1.5 px-2.5 py-1 rounded-full text-[11px] font-bold bg-emerald-500/10 text-emerald-400 border border-emerald-500/20">
@@ -2247,12 +2319,12 @@ export default function MesterWorkstation({
           )}
         </header>
 
-        {/* Floating Top Search Results Dropdown (Kun i arbeidsvinduet, aldri over menyen) */}
+        {/* Floating Top Search Results Dropdown */}
         <AnimatePresence>
           {isTopSearchOpen && (
             <>
               <div 
-                className="fixed inset-0 z-30" 
+                className="fixed inset-0 z-50 bg-black/60 backdrop-blur-xs" 
                 onClick={() => setIsTopSearchOpen(false)} 
               />
               <motion.div
@@ -2260,7 +2332,7 @@ export default function MesterWorkstation({
                 animate={{ opacity: 1, y: 0, scale: 1 }}
                 exit={{ opacity: 0, y: -8, scale: 0.98 }}
                 transition={{ duration: 0.15 }}
-                className="absolute left-3 right-3 sm:left-6 sm:right-6 top-16 z-40 max-w-2xl mx-auto bg-slate-900/95 backdrop-blur-xl border border-purple-500/40 rounded-2xl shadow-2xl p-3.5 max-h-[72vh] overflow-y-auto custom-scrollbar"
+                className="fixed left-3 right-3 sm:left-6 sm:right-6 top-16 z-50 max-w-2xl mx-auto bg-slate-900/98 backdrop-blur-xl border border-purple-500/40 rounded-2xl shadow-2xl p-3.5 max-h-[75vh] overflow-y-auto custom-scrollbar"
               >
                 {(() => {
                   const queryLower = topSearchQuery.toLowerCase().trim();
@@ -2349,6 +2421,7 @@ export default function MesterWorkstation({
                                   setTopSearchQuery('');
                                   setActiveModuleTab('project_details');
                                   setViewMode('module');
+                                  setIsOpenMobile(false);
                                   toast.info(`Valgt prosjekt: ${p.name}`);
                                 }}
                                 className="w-full p-2 rounded-xl bg-slate-950/60 hover:bg-slate-800 border border-slate-800/80 hover:border-emerald-500/40 text-left transition-colors flex items-center justify-between group cursor-pointer"
@@ -5546,6 +5619,23 @@ export default function MesterWorkstation({
                               <p className="text-[10px] text-slate-400">{t('ws_attach_doc_desc', "PDF, DWG eller Word-dokument")}</p>
                             </div>
                           </label>
+
+                          <button
+                            type="button"
+                            onClick={() => {
+                              setIsAttachmentMenuOpen(false);
+                              handleOpenCreateOffer();
+                            }}
+                            className="w-full flex items-center gap-3 p-2.5 rounded-2xl hover:bg-white/10 text-xs font-semibold text-white transition-colors cursor-pointer text-left group"
+                          >
+                            <div className="w-8 h-8 rounded-full bg-purple-500/20 text-purple-400 border border-purple-500/30 flex items-center justify-center shrink-0 group-hover:scale-105 transition-transform">
+                              <Calculator size={16} />
+                            </div>
+                            <div>
+                              <p className="font-bold text-purple-300 group-hover:text-purple-200">{t('ws_create_offer_action', "Nytt tilbud & kalkyle")}</p>
+                              <p className="text-[10px] text-slate-400">{t('ws_create_offer_desc', "NS 8406, materiell og PDF")}</p>
+                            </div>
+                          </button>
                         </motion.div>
                       </>
                     )}
@@ -5673,11 +5763,23 @@ export default function MesterWorkstation({
           setSelectedOfferForDetail(null);
           if (onOpenOfferModal) {
             onOpenOfferModal(off);
+          } else {
+            handleOpenCreateOffer(off);
           }
         }}
         onSave={(updated) => {
           setSelectedOfferForDetail(updated);
         }}
+      />
+
+      {/* ➕ Opprett / Rediger Pristilbud Modal (Fallback i workstation) */}
+      <OfferModal
+        isOpen={isLocalOfferModalOpen}
+        onClose={() => {
+          setIsLocalOfferModalOpen(false);
+          setLocalOfferInitialData(null);
+        }}
+        initialData={localOfferInitialData}
       />
 
       {/* 🤖 Universell MesterAI Copilot (Kun tilgjengelig i fagmoduler, aldri over chattefeltet) */}
