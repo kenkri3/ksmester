@@ -26,6 +26,7 @@ export const PLAN_MODULES = [
   { id: 'pre_close', label: 'KS & Lukkesperre (TEK17)', category: 'Kvalitet', desc: 'Sjekklister og digital signering før vegger lukkes' },
   { id: 'sja', label: 'SJA & Sikkerhet', category: 'HMS', desc: 'Sikker Jobb Analyse og risikovurdering' },
   { id: 'deviations', label: 'Avvik & RUH', category: 'Kvalitet', desc: 'Avvikshåndtering med TEK17 bildeanalyse' },
+  { id: 'teamchat', label: 'Prosjekt- & Firmachatt', category: 'Kommunikasjon', desc: 'Feltkommunikasjon, hurtigtags, foto og direkte MesterAI-støtte' },
   { id: 'contacts', label: 'Kontakter & Team', category: 'Kjerne', desc: 'Telefonbok for byggeplass og team-administrasjon' },
   { id: 'change_orders', label: 'Endringsordrer (NS 8406)', category: 'Jus & Kontrakt', desc: 'Varsling av tillegg, frister og økonomisk krav' },
   { id: 'archive', label: 'Dokumentarkiv & FDV', category: 'Dokumentasjon', desc: 'Sluttdokumentasjon og Boligmappa PDF-eksport' },
@@ -58,17 +59,21 @@ export const PLANS: Record<PlanId, PlanConfig> = {
       'pre_close',
       'sja',
       'deviations',
+      'teamchat',
       'contacts'
     ],
     features: [
       '1 aktiv bruker (Solo håndverker / Mester)',
       'Inntil 5 aktive prosjekter samtidig',
+      '100% Autonom MesterAI Copilot (Ctrl+M flytende assistent)',
+      'Gemini 3.8 Flash Vision (TEK17 bildeanalyse under 0,2s)',
+      '100% Offline-modus med bakgrunnssynk ved dekning',
+      'Handsfree stemmestyring (timer & byggedagbok fra bilen)',
+      'Pinning og lagring av viktige AI-samtaler & analyser',
       'Autonom byggedagbok & timeføring (AML § 10-7)',
-      'Tale-til-notat fra varebilen (handsfree)',
       'Yr.no automatisk sanntids værlogging',
-      'KS & sjekklister (TEK17) generert automatisk',
-      'Avviksfotografering & TEK17 bildeanalyse',
-      'SJA & Sikker Jobb Analyse på 30 sekunder',
+      'Lovpålagt SJA, avviksfoto & digitalt stoffkartotek offline',
+      '1-Klikks Boligmappa & PDF-sluttrapport',
       '14 dagers gratis prøveperiode (0,- etablering)'
     ]
   },
@@ -83,7 +88,7 @@ export const PLANS: Record<PlanId, PlanConfig> = {
     userLimit: 5,
     userLimitLabel: 'Inntil 5-10 brukere (+199,- per ekstra)',
     projectLimit: 15,
-    projectLimitLabel: 'Inntil 15 aktive prosjekter',
+    projectLimitLabel: 'Inntil 15-20 aktive prosjekter',
     tokenMonthlyQuota: 10_000_000,
     tokenQuotaLabel: '10M tokens/mnd',
     color: 'text-blue-400',
@@ -93,22 +98,25 @@ export const PLANS: Record<PlanId, PlanConfig> = {
       'pre_close',
       'sja',
       'deviations',
+      'teamchat',
       'contacts',
       'change_orders',
       'archive',
       'time_approval'
     ],
     features: [
+      'Alt i Solo inkludert',
+      'NYHET: Prosjekt- & Firmachatt (Feltkommunikasjon med hurtigtags & MesterAI)',
       'Inntil 5-10 aktive fagarbeidere (+199,- per ekstra)',
-      'Inntil 15 aktive byggeprosjekter samtidig',
+      'Inntil 15-20 aktive byggeprosjekter samtidig',
       'Tale-til-Endringsordre & fristvarsel (NS 8406)',
-      'Digital kundesignering på mobil med fingeren',
+      'Digital kundesignering på mobil, e-post og Teams',
       'Tverrfaglig Lukkesperre med soner (TEK17)',
-      'Ledergodkjenning av timer & overtid (50%/100%)',
+      'Ledergodkjenning av timer & overtid (50%/100%) med lønnseksport',
       '1-Klikks FDV-sluttrapport til Boligmappa',
       'Digitalt stoffkartotek offline for hele laget',
-      'Flerspråklig oversettelse for mannskap',
-      '10M AI tokens per måned inkludert'
+      'Flerspråklig oversettelse for mannskap (NO, EN, PL, LT)',
+      '10M AI tokens per måned inkludert (Marginvern)'
     ]
   },
   entreprenor: {
@@ -132,6 +140,7 @@ export const PLANS: Record<PlanId, PlanConfig> = {
       'pre_close',
       'sja',
       'deviations',
+      'teamchat',
       'contacts',
       'change_orders',
       'archive',
@@ -142,15 +151,15 @@ export const PLANS: Record<PlanId, PlanConfig> = {
       'all_modules'
     ],
     features: [
-      'Inntil 25+ brukere (ubegrenset kapasitet)',
-      'Ubegrenset antall byggeprosjekter',
-      'Autonom Tilbud-til-Prosjekt-til-KS flyt',
+      'Alt i Team inkludert',
+      'Underentreprenør-portal (UE-innsyn, sjekklister og signering)',
+      'Ubegrenset antall aktive brukere & byggeprosjekter',
+      'Autonom Tilbud-til-Prosjekt-til-KS flyt (3 sek)',
       'Alle 20+ fagmoduler ulåst',
-      'Underentreprenør-portal (UE-innsyn og signering)',
       'Tripletex, PowerOffice & Fiken API-synk',
-      'Juridisk NS 8405 / NS 8406 motor',
+      'Juridisk NS 8405 / NS 8406 / NS 8407 motor',
       'Tverrfaglig Lukkesperre med tidslås og soner',
-      'Dedikert onboarding & prioritert support',
+      'Dedikert onboarding, revisjonslogger & 99.9% SLA',
       '30M AI tokens per måned inkludert'
     ]
   },

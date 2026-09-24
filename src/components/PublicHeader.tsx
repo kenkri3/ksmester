@@ -20,7 +20,10 @@ import {
   Package,
   FolderKanban,
   Zap,
-  Clock
+  Clock,
+  MessagesSquare,
+  WifiOff,
+  Bot
 } from 'lucide-react';
 
 export function PublicHeader() {
@@ -45,7 +48,10 @@ export function PublicHeader() {
             <span>Få betalt for alle endringer (NS 8406)</span>
           </span>
           <span className="text-electric-300 font-extrabold hidden lg:inline shrink-0">
-            ⚡ 100% Autonom MesterAI
+            ⚡ MesterAI Copilot & Gemini Vision
+          </span>
+          <span className="text-sky-300 font-extrabold hidden xl:inline shrink-0">
+            📶 100% Offline-modus
           </span>
           <span className="text-amber-300 bg-amber-500/20 border border-amber-400/40 px-2 py-0.5 rounded-full text-[9px] font-black uppercase shrink-0">
             14 dager gratis • 0,- etablering
@@ -57,7 +63,7 @@ export function PublicHeader() {
           <div className="flex items-center gap-1.5 min-w-0">
             <Sparkles size={11} className="text-amber-400 shrink-0" />
             <span className="text-slate-200 truncate">
-              Slutt på kveldsarbeid • Få betalt for endringer
+              Slutt på kveldsarbeid • 100% Offline & AI
             </span>
           </div>
           <span className="text-amber-300 font-bold shrink-0 text-[10px]">
@@ -90,120 +96,188 @@ export function PublicHeader() {
                 <span>Autonome Superkrefter</span>
                 <ChevronDown size={14} className="transition-transform group-hover:rotate-180 text-slate-400" />
               </button>
-              <div className="absolute left-0 top-full hidden group-hover:block hover:block w-96 p-2 bg-white rounded-2xl shadow-2xl border border-slate-200 mt-1 space-y-1 z-50">
-                <Link
-                  href="/ks-system"
-                  className="block p-2.5 rounded-xl hover:bg-slate-50 transition-colors group/item"
-                >
-                  <div className="flex items-start gap-2.5">
-                    <div className="w-8 h-8 rounded-lg bg-emerald-100 text-emerald-700 flex items-center justify-center shrink-0 group-hover/item:bg-emerald-600 group-hover/item:text-white transition-colors">
-                      <Zap size={16} />
-                    </div>
-                    <div>
-                      <div className="font-bold text-navy-900 text-xs flex items-center gap-1.5">
-                        <span>Autonom Tilbud-til-KS</span>
-                        <span className="text-[9px] bg-emerald-100 text-emerald-800 font-bold px-1.5 py-0.2 rounded">Magisk</span>
+              <div className="absolute left-0 top-full hidden group-hover:block hover:block w-[620px] p-3 bg-white rounded-2xl shadow-2xl border border-slate-200 mt-1 z-50">
+                <div className="grid grid-cols-2 gap-2">
+                  {/* 1. Prosjekt- & Firmachatt */}
+                  <Link
+                    href="/prosjektstyring"
+                    className="block p-2.5 rounded-xl hover:bg-slate-50 transition-colors group/item"
+                  >
+                    <div className="flex items-start gap-2.5">
+                      <div className="w-8 h-8 rounded-lg bg-blue-100 text-blue-700 flex items-center justify-center shrink-0 group-hover/item:bg-blue-600 group-hover/item:text-white transition-colors">
+                        <MessagesSquare size={16} />
                       </div>
-                      <div className="text-[11px] text-slate-500 leading-tight">
-                        Signert tilbud oppretter kontrakt, prosjekt og sjekklister automatisk på 3 sekunder.
+                      <div>
+                        <div className="font-bold text-navy-900 text-xs flex items-center gap-1.5">
+                          <span>Prosjekt- & Firmachatt</span>
+                          <span className="text-[9px] bg-blue-100 text-blue-800 font-bold px-1.5 py-0.2 rounded">NYHET</span>
+                        </div>
+                        <div className="text-[11px] text-slate-500 leading-tight">
+                          Feltkommunikasjon med hurtigtags, foto og direkte MesterAI i byggetråden.
+                        </div>
                       </div>
                     </div>
-                  </div>
-                </Link>
+                  </Link>
 
-                <Link
-                  href="/prosjektstyring"
-                  className="block p-2.5 rounded-xl hover:bg-slate-50 transition-colors group/item"
-                >
-                  <div className="flex items-start gap-2.5">
-                    <div className="w-8 h-8 rounded-lg bg-rose-100 text-rose-700 flex items-center justify-center shrink-0 group-hover/item:bg-rose-600 group-hover/item:text-white transition-colors">
-                      <FileSignature size={16} />
-                    </div>
-                    <div>
-                      <div className="font-bold text-navy-900 text-xs flex items-center gap-1.5">
-                        <span>Tale-til-Endringsordre (NS 8406)</span>
-                        <span className="text-[9px] bg-rose-100 text-rose-800 font-bold px-1.5 py-0.2 rounded">Få betalt</span>
+                  {/* 2. MesterAI Copilot */}
+                  <Link
+                    href="/ks-system"
+                    className="block p-2.5 rounded-xl hover:bg-slate-50 transition-colors group/item"
+                  >
+                    <div className="flex items-start gap-2.5">
+                      <div className="w-8 h-8 rounded-lg bg-purple-100 text-purple-700 flex items-center justify-center shrink-0 group-hover/item:bg-purple-600 group-hover/item:text-white transition-colors">
+                        <Bot size={16} />
                       </div>
-                      <div className="text-[11px] text-slate-500 leading-tight">
-                        Snakk inn endringen på 15 sek. Kunden godkjenner via e-post eller Teams før arbeidet starter.
+                      <div>
+                        <div className="font-bold text-navy-900 text-xs flex items-center gap-1.5">
+                          <span>MesterAI Copilot (Ctrl+M)</span>
+                          <span className="text-[9px] bg-purple-100 text-purple-800 font-bold px-1.5 py-0.2 rounded">Gemini 3.8</span>
+                        </div>
+                        <div className="text-[11px] text-slate-500 leading-tight">
+                          Flytende assistent i alle moduler. TEK17 bildeanalyse under 0,2s & pinned chats.
+                        </div>
                       </div>
                     </div>
-                  </div>
-                </Link>
+                  </Link>
 
-                <Link
-                  href="/avvikshandtering"
-                  className="block p-2.5 rounded-xl hover:bg-slate-50 transition-colors group/item"
-                >
-                  <div className="flex items-start gap-2.5">
-                    <div className="w-8 h-8 rounded-lg bg-purple-100 text-purple-700 flex items-center justify-center shrink-0 group-hover/item:bg-purple-600 group-hover/item:text-white transition-colors">
-                      <Lock size={16} />
-                    </div>
-                    <div>
-                      <div className="font-bold text-navy-900 text-xs flex items-center gap-1.5">
-                        <span>Tverrfaglig Lukkesperre (TEK17)</span>
-                        <span className="text-[9px] bg-purple-100 text-purple-800 font-bold px-1.5 py-0.2 rounded">Null rivning</span>
+                  {/* 3. 100% Offline-modus */}
+                  <Link
+                    href="/ks-system"
+                    className="block p-2.5 rounded-xl hover:bg-slate-50 transition-colors group/item"
+                  >
+                    <div className="flex items-start gap-2.5">
+                      <div className="w-8 h-8 rounded-lg bg-emerald-100 text-emerald-700 flex items-center justify-center shrink-0 group-hover/item:bg-emerald-600 group-hover/item:text-white transition-colors">
+                        <WifiOff size={16} />
                       </div>
-                      <div className="text-[11px] text-slate-500 leading-tight">
-                        Vegg låses mot plating inntil rør & el er fotokvittert. Full trygghet mot tabber.
+                      <div>
+                        <div className="font-bold text-navy-900 text-xs flex items-center gap-1.5">
+                          <span>100% Offline & Autosynk</span>
+                          <span className="text-[9px] bg-emerald-100 text-emerald-800 font-bold px-1.5 py-0.2 rounded">Kjellersikker</span>
+                        </div>
+                        <div className="text-[11px] text-slate-500 leading-tight">
+                          Før timer, ta bilder og fyll sjekklister uten dekning. Synkes automatisk.
+                        </div>
                       </div>
                     </div>
-                  </div>
-                </Link>
+                  </Link>
 
-                <Link
-                  href="/ks-system#fdv"
-                  className="block p-2.5 rounded-xl hover:bg-slate-50 transition-colors group/item"
-                >
-                  <div className="flex items-start gap-2.5">
-                    <div className="w-8 h-8 rounded-lg bg-blue-100 text-blue-700 flex items-center justify-center shrink-0 group-hover/item:bg-blue-600 group-hover/item:text-white transition-colors">
-                      <FileCheck size={16} />
-                    </div>
-                    <div>
-                      <div className="font-bold text-navy-900 text-xs flex items-center gap-1.5">
-                        <span>1-Klikk Slutt-FDV til Boligmappa</span>
-                        <span className="text-[9px] bg-blue-100 text-blue-800 font-bold px-1.5 py-0.2 rounded">Slutt på permer</span>
+                  {/* 4. Tale-til-Endringsordre */}
+                  <Link
+                    href="/prosjektstyring"
+                    className="block p-2.5 rounded-xl hover:bg-slate-50 transition-colors group/item"
+                  >
+                    <div className="flex items-start gap-2.5">
+                      <div className="w-8 h-8 rounded-lg bg-rose-100 text-rose-700 flex items-center justify-center shrink-0 group-hover/item:bg-rose-600 group-hover/item:text-white transition-colors">
+                        <FileSignature size={16} />
                       </div>
-                      <div className="text-[11px] text-slate-500 leading-tight">
-                        Generer all dokumentasjon og bilder inn i en fiks ferdig rapport med ett tastetrykk.
+                      <div>
+                        <div className="font-bold text-navy-900 text-xs flex items-center gap-1.5">
+                          <span>Tale-til-Endringsordre (NS 8406)</span>
+                          <span className="text-[9px] bg-rose-100 text-rose-800 font-bold px-1.5 py-0.2 rounded">Få betalt</span>
+                        </div>
+                        <div className="text-[11px] text-slate-500 leading-tight">
+                          Snakk inn endring på 15 sek. Kunden godkjenner via mobil før arbeidet starter.
+                        </div>
                       </div>
                     </div>
-                  </div>
-                </Link>
+                  </Link>
 
-                <Link
-                  href="/hms"
-                  className="block p-2.5 rounded-xl hover:bg-slate-50 transition-colors group/item"
-                >
-                  <div className="flex items-start gap-2.5">
-                    <div className="w-8 h-8 rounded-lg bg-amber-100 text-amber-700 flex items-center justify-center shrink-0 group-hover/item:bg-amber-600 group-hover/item:text-white transition-colors">
-                      <ShieldCheck size={16} />
-                    </div>
-                    <div>
-                      <div className="font-bold text-navy-900 text-xs">HMS, SJA & Yr-sanntidsvær</div>
-                      <div className="text-[11px] text-slate-500 leading-tight">
-                        Lovpålagt internkontroll og risikovurdering ferdig dokumentert på sekunder.
+                  {/* 5. Tverrfaglig Lukkesperre */}
+                  <Link
+                    href="/avvikshandtering"
+                    className="block p-2.5 rounded-xl hover:bg-slate-50 transition-colors group/item"
+                  >
+                    <div className="flex items-start gap-2.5">
+                      <div className="w-8 h-8 rounded-lg bg-violet-100 text-violet-700 flex items-center justify-center shrink-0 group-hover/item:bg-violet-600 group-hover/item:text-white transition-colors">
+                        <Lock size={16} />
+                      </div>
+                      <div>
+                        <div className="font-bold text-navy-900 text-xs flex items-center gap-1.5">
+                          <span>Tverrfaglig Lukkesperre (TEK17)</span>
+                          <span className="text-[9px] bg-violet-100 text-violet-800 font-bold px-1.5 py-0.2 rounded">Null tabber</span>
+                        </div>
+                        <div className="text-[11px] text-slate-500 leading-tight">
+                          Vegg låses mot plating inntil rør & el er fotokvittert. Full trygghet.
+                        </div>
                       </div>
                     </div>
-                  </div>
-                </Link>
+                  </Link>
 
-                <Link
-                  href="/stoffkartotek"
-                  className="block p-2.5 rounded-xl hover:bg-slate-50 transition-colors group/item"
-                >
-                  <div className="flex items-start gap-2.5">
-                    <div className="w-8 h-8 rounded-lg bg-teal-100 text-teal-700 flex items-center justify-center shrink-0 group-hover/item:bg-teal-600 group-hover/item:text-white transition-colors">
-                      <Package size={16} />
-                    </div>
-                    <div>
-                      <div className="font-bold text-navy-900 text-xs">Digitalt Stoffkartotek (Offline)</div>
-                      <div className="text-[11px] text-slate-500 leading-tight">
-                        Sikkerhetsdatablader offline på byggeplassen for alle ansatte og lærlinger.
+                  {/* 6. Autonom Tilbud-til-KS */}
+                  <Link
+                    href="/ks-system"
+                    className="block p-2.5 rounded-xl hover:bg-slate-50 transition-colors group/item"
+                  >
+                    <div className="flex items-start gap-2.5">
+                      <div className="w-8 h-8 rounded-lg bg-amber-100 text-amber-700 flex items-center justify-center shrink-0 group-hover/item:bg-amber-600 group-hover/item:text-white transition-colors">
+                        <Zap size={16} />
+                      </div>
+                      <div>
+                        <div className="font-bold text-navy-900 text-xs flex items-center gap-1.5">
+                          <span>Autonom Tilbud-til-KS</span>
+                          <span className="text-[9px] bg-amber-100 text-amber-800 font-bold px-1.5 py-0.2 rounded">Magisk</span>
+                        </div>
+                        <div className="text-[11px] text-slate-500 leading-tight">
+                          Signert tilbud oppretter kontrakt, prosjekt og sjekklister på 3 sekunder.
+                        </div>
                       </div>
                     </div>
-                  </div>
-                </Link>
+                  </Link>
+
+                  {/* 7. 1-Klikk FDV til Boligmappa */}
+                  <Link
+                    href="/ks-system#fdv"
+                    className="block p-2.5 rounded-xl hover:bg-slate-50 transition-colors group/item"
+                  >
+                    <div className="flex items-start gap-2.5">
+                      <div className="w-8 h-8 rounded-lg bg-cyan-100 text-cyan-700 flex items-center justify-center shrink-0 group-hover/item:bg-cyan-600 group-hover/item:text-white transition-colors">
+                        <FileCheck size={16} />
+                      </div>
+                      <div>
+                        <div className="font-bold text-navy-900 text-xs flex items-center gap-1.5">
+                          <span>1-Klikk FDV til Boligmappa</span>
+                          <span className="text-[9px] bg-cyan-100 text-cyan-800 font-bold px-1.5 py-0.2 rounded">Slutt på permer</span>
+                        </div>
+                        <div className="text-[11px] text-slate-500 leading-tight">
+                          Generer komplett dokumentasjon og bilder inn i en fiks ferdig rapport.
+                        </div>
+                      </div>
+                    </div>
+                  </Link>
+
+                  {/* 8. HMS, SJA & Stoffkartotek */}
+                  <Link
+                    href="/hms"
+                    className="block p-2.5 rounded-xl hover:bg-slate-50 transition-colors group/item"
+                  >
+                    <div className="flex items-start gap-2.5">
+                      <div className="w-8 h-8 rounded-lg bg-teal-100 text-teal-700 flex items-center justify-center shrink-0 group-hover/item:bg-teal-600 group-hover/item:text-white transition-colors">
+                        <ShieldCheck size={16} />
+                      </div>
+                      <div>
+                        <div className="font-bold text-navy-900 text-xs flex items-center gap-1.5">
+                          <span>HMS, SJA & Stoffkartotek</span>
+                          <span className="text-[9px] bg-teal-100 text-teal-800 font-bold px-1.5 py-0.2 rounded">Lovpålagt</span>
+                        </div>
+                        <div className="text-[11px] text-slate-500 leading-tight">
+                          Sikker Jobb Analyse, Yr-sanntidsvær og SDS offline for hele laget.
+                        </div>
+                      </div>
+                    </div>
+                  </Link>
+                </div>
+
+                {/* Dropdown footer bar */}
+                <div className="mt-2.5 pt-2.5 border-t border-slate-100 px-2 flex items-center justify-between text-[11px] text-slate-500">
+                  <span className="flex items-center gap-1.5 font-medium">
+                    <kbd className="px-1.5 py-0.5 text-[10px] font-mono font-bold bg-slate-100 text-slate-700 rounded border border-slate-200">Ctrl + M</kbd>
+                    <span>Åpner MesterAI Copilot i alle moduler</span>
+                  </span>
+                  <Link href="/priser" className="font-bold text-electric-600 hover:text-electric-700 flex items-center gap-1">
+                    <span>Se alle pakker & priser</span>
+                    <ArrowRight size={12} />
+                  </Link>
+                </div>
               </div>
             </div>
 
@@ -274,16 +348,33 @@ export function PublicHeader() {
         {mobileMenuOpen && (
           <div className="md:hidden bg-white border-b border-slate-200 px-4 pt-2 pb-6 space-y-3">
             <div className="font-bold text-xs uppercase tracking-wider text-slate-400 pt-2 flex items-center justify-between">
-              <span>Drømmen om frihet</span>
-              <span className="text-emerald-600 font-bold text-[10px]">100% Autonom</span>
+              <span>Autonome Superkrefter</span>
+              <span className="text-emerald-600 font-bold text-[10px]">100% Autonom & Offline</span>
             </div>
             
             <Link
+              href="/prosjektstyring"
+              onClick={() => setMobileMenuOpen(false)}
+              className="flex items-center justify-between text-sm font-semibold text-navy-900 py-1"
+            >
+              <span>💬 Prosjekt- & Firmachatt</span>
+              <span className="text-[10px] font-bold bg-blue-100 text-blue-700 px-1.5 py-0.5 rounded">NYHET</span>
+            </Link>
+            <Link
               href="/ks-system"
               onClick={() => setMobileMenuOpen(false)}
-              className="block text-sm font-semibold text-navy-900 py-1"
+              className="flex items-center justify-between text-sm font-semibold text-navy-900 py-1"
             >
-              ⚡ Autonom Tilbud-til-KS
+              <span>⚡ MesterAI Copilot & Vision</span>
+              <span className="text-[10px] font-bold bg-purple-100 text-purple-700 px-1.5 py-0.5 rounded">Ctrl+M</span>
+            </Link>
+            <Link
+              href="/ks-system"
+              onClick={() => setMobileMenuOpen(false)}
+              className="flex items-center justify-between text-sm font-semibold text-navy-900 py-1"
+            >
+              <span>📶 100% Offline (Kjellersikker)</span>
+              <span className="text-[10px] font-bold bg-emerald-100 text-emerald-700 px-1.5 py-0.5 rounded">Autosynk</span>
             </Link>
             <Link
               href="/prosjektstyring"
@@ -298,6 +389,13 @@ export function PublicHeader() {
               className="block text-sm font-semibold text-navy-900 py-1"
             >
               🔒 Tverrfaglig Lukkesperre (TEK17)
+            </Link>
+            <Link
+              href="/ks-system"
+              onClick={() => setMobileMenuOpen(false)}
+              className="block text-sm font-semibold text-navy-900 py-1"
+            >
+              ⚡ Autonom Tilbud-til-KS
             </Link>
             <Link
               href="/ks-system#fdv"

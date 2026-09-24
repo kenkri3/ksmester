@@ -17,13 +17,13 @@ const baseUrl = process.env.NEXT_PUBLIC_APP_URL || 'https://vikingmester.no';
 
 export const metadata: Metadata = {
   title: 'Priser på KS- og HMS-system | Forutsigbart, ingen binding | VikingMester',
-  description: 'Gjennomsiktige priser på Norges råeste KS- og HMS-system med 100% autonom MesterAI byggeleder. Solo kr 690,- eks mva/mnd (550,- årlig). Team kr 1 490,- eks mva/mnd (1 190,- årlig) for inntil 5-10 brukere. Totalentreprenør Pro kr 2 990,- eks mva/mnd. 14 dagers gratis prøveperiode uten bindingstid.',
+  description: 'Gjennomsiktige priser på Norges råeste KS- og HMS-system med 100% autonom MesterAI byggeleder, Gemini 3.8 Flash Vision, 100% offline-modus og integrert prosjektchatt. Solo kr 690,- eks mva/mnd (550,- årlig). Team kr 1 490,- eks mva/mnd (1 190,- årlig). Totalentreprenør Pro kr 2 990,- eks mva/mnd. 14 dagers gratis prøveperiode uten bindingstid.',
   alternates: {
     canonical: `${baseUrl}/priser`,
   },
   openGraph: {
     title: 'Priser på KS- og HMS-system | VikingMester',
-    description: 'Ingen bindingstid, ingen etableringsgebyrer. Komplett KS, HMS, SJA og byggedagbok tilpasset din håndverksbedrift med 100% autonom MesterAI.',
+    description: 'Ingen bindingstid, ingen etableringsgebyrer. Komplett KS, HMS, SJA, byggedagbok, prosjektchatt og 100% offline-modus med autonom MesterAI.',
     url: `${baseUrl}/priser`,
   },
 };
@@ -38,12 +38,28 @@ const faqs = [
     answer: 'Nei, kr 0,- i etableringsgebyr. Vi hjelper deg i gang gratis, og du kan teste systemet med alle funksjoner i 14 dager uten å legge inn betalingskort.',
   },
   {
+    question: 'Fungerer appen ute på byggeplasser uten 4G/5G-dekning?',
+    answer: 'Ja! VikingMester har 100% offline-modus. Du kan føre timer, ta TEK17-bilder, fylle ut sjekklister og slå opp i stoffkartoteket i dype kjellere eller nybygg. Alt lagres trygt lokalt og synkroniseres automatisk til databasen og skylagringen så fort telefonen får dekning igjen.',
+  },
+  {
+    question: 'Hvordan fungerer MesterAI Copilot og Gemini 3.8 Flash Vision?',
+    answer: 'MesterAI Copilot (Ctrl+M) er din personlige digitale byggeleder, tilgjengelig overalt i systemet. Drevet av Gemini 3.8 Flash Vision analyserer den byggeplassbilder på under 0,2 sekunder for å verifisere TEK17-krav (slukmansjett, klemring, fall, rørgjennomføringer). Du kan også snakke inn timer, stille spørsmål om TEK17 og pinne samtalene for fremtidig referanse.',
+  },
+  {
+    question: 'Hva er Prosjekt- & Firmachatt og hvordan fungerer den på byggeplassen?',
+    answer: 'Prosjektchatten er en integrert feltkommunikasjonskanal for byggeplassen. Håndverkerne kan dele bilder, bruke hurtigtags (📍 På byggeplass, 🚚 Materiell ankommet, 🔍 Klar for sjekk, ⏱️ Ferdig, ⚠️ Avvik) og stille MesterAI spørsmål direkte i tråden. Dette eliminerer rotete SMS-tråder og samler all prosjektkommunikasjon på ett sted.',
+  },
+  {
+    question: 'Kan vi godkjenne timer og eksportere direkte til Tripletex, PowerOffice Go eller Fiken?',
+    answer: 'Ja! Med ett klikk godkjenner lederen timene (oppdelt i normaltid, 50% og 100% overtid iht. Arbeidsmiljøloven § 10-6/10-7) og eksporterer lønns- og fakturagrunnlaget direkte til regnskapssystemet.',
+  },
+  {
     question: 'Hva koster ekstra brukere utover Team-pakken?',
-    answer: 'I Team-pakken er 5-10 aktive fagarbeidere inkludert. Ekstra brukere koster kun kr 249,- eks mva per måned per bruker.',
+    answer: 'I Team-pakken er inntil 5-10 aktive fagarbeidere inkludert. Ekstra brukere koster kun kr 199,- eks mva per måned per bruker.',
   },
   {
     question: 'Hva skjer hvis bedriften bruker opp den inkluderte AI-tokenkvoten?',
-    answer: 'Vårt innebygde Marginvern forhindrer ubehagelige overraskelsesfakturaer. All standard KS, HMS, sjekklister, timeføring og offline-stoffkartotek forblir 100% ubegrenset. Hvis du trenger mer avansert AI-kapasitet (TEK17-visjon, avansert NS 8406-kalkyle), kan du når som helst aktivere en Mester Top-up under Innstillinger (fra kr 490,- for +5M tokens). Vi går aldri i minus, og du får aldri en sjokkregning.',
+    answer: 'Vårt innebygde Marginvern forhindrer ubehagelige overraskelsesfakturaer. All standard KS, HMS, sjekklister, timeføring, prosjektchatt og offline-stoffkartotek forblir 100% ubegrenset. Hvis du trenger mer avansert AI-kapasitet (TEK17-visjon, avansert NS 8406-kalkyle), kan du når som helst aktivere en Mester Top-up under Innstillinger (fra kr 490,- for +5M tokens). Vi går aldri i minus, og du får aldri en sjokkregning.',
   },
   {
     question: 'Får vi fri support inkludert i prisen?',
@@ -68,13 +84,13 @@ export default function PriserPage() {
       <section className="pt-16 pb-20 px-4 sm:px-6 lg:px-8 bg-gradient-to-b from-slate-50 to-white border-b border-slate-100 text-center">
         <div className="max-w-4xl mx-auto">
           <span className="text-xs font-mono font-bold text-electric-600 uppercase tracking-widest bg-electric-50 px-3.5 py-1.5 rounded-full border border-electric-300/40 inline-block mb-6">
-            100% Autonom Byggeleder • Forutsigbare priser
+            100% Autonom Byggeleder • 100% Offline • Forutsigbare priser
           </span>
           <h1 className="text-4xl sm:text-6xl font-black tracking-tight text-navy-900 mb-6">
             Enkle priser. <span className="text-electric-600">14 dagers prøveperiode.</span>
           </h1>
           <p className="text-lg sm:text-xl text-slate-600 max-w-2xl mx-auto mb-10 leading-relaxed">
-            Velg pakken som passer din håndverksbedrift. MesterAI, Zero-Entry AI og alle 20 moduler er tilgjengelige fra dag én.
+            Velg pakken som passer din håndverksbedrift. MesterAI Copilot, Gemini 3.8 Flash Vision, 100% offline-modus, prosjektchatt og alle 20 moduler er tilgjengelige fra dag én.
           </p>
         </div>
       </section>
@@ -100,27 +116,27 @@ export default function PriserPage() {
               <ul className="space-y-3 text-sm text-slate-700 mb-8">
                 <li className="flex items-center gap-2 font-semibold text-navy-900">
                   <Check size={16} className="text-emerald-500 shrink-0" />
-                  <span>100% Autonom MesterAI byggeleder</span>
+                  <span>100% Autonom MesterAI Copilot (Ctrl+M)</span>
+                </li>
+                <li className="flex items-center gap-2 font-semibold text-electric-600">
+                  <Check size={16} className="text-emerald-500 shrink-0" />
+                  <span>Gemini 3.8 Flash Vision (TEK17 bildekontroll)</span>
+                </li>
+                <li className="flex items-center gap-2 font-semibold text-emerald-600">
+                  <Check size={16} className="text-emerald-500 shrink-0" />
+                  <span>100% Offline-modus med bakgrunnssynk</span>
+                </li>
+                <li className="flex items-center gap-2 font-semibold text-electric-600">
+                  <Check size={16} className="text-emerald-500 shrink-0" />
+                  <span>Handsfree stemmestyring (timer & overtid fra bilen)</span>
+                </li>
+                <li className="flex items-center gap-2">
+                  <Check size={16} className="text-emerald-500 shrink-0" />
+                  <span>Pinning & lagring av samtaler og kalkyler</span>
                 </li>
                 <li className="flex items-center gap-2">
                   <Check size={16} className="text-emerald-500 shrink-0" />
                   <span>1 aktiv fagarbeider (opptil 5 prosjekter)</span>
-                </li>
-                <li className="flex items-center gap-2 font-semibold text-electric-600">
-                  <Check size={16} className="text-emerald-500 shrink-0" />
-                  <span>Omnichannel (Feltvarsler til Discord, Slack & Teams)</span>
-                </li>
-                <li className="flex items-center gap-2 font-semibold text-electric-600">
-                  <Check size={16} className="text-emerald-500 shrink-0" />
-                  <span>Zero-Entry AI (Snakk eller ta bilde)</span>
-                </li>
-                <li className="flex items-center gap-2">
-                  <Check size={16} className="text-emerald-500 shrink-0" />
-                  <span>Handsfree stemme-til-byggedagbok fra bilen</span>
-                </li>
-                <li className="flex items-center gap-2">
-                  <Check size={16} className="text-emerald-500 shrink-0" />
-                  <span>TEK17 AI Vision bildekontroll & avvik</span>
                 </li>
                 <li className="flex items-center gap-2">
                   <Check size={16} className="text-emerald-500 shrink-0" />
@@ -128,11 +144,19 @@ export default function PriserPage() {
                 </li>
                 <li className="flex items-center gap-2">
                   <Check size={16} className="text-emerald-500 shrink-0" />
-                  <span>Yr.no automatisk værsynk & timeføring (AML)</span>
+                  <span>Digitalt stoffkartotek offline på byggeplass</span>
                 </li>
                 <li className="flex items-center gap-2">
                   <Check size={16} className="text-emerald-500 shrink-0" />
-                  <span>1-klikks Boligmappa & PDF-sluttrapport</span>
+                  <span>Yr.no automatisk værsynk & byggedagbok (AML)</span>
+                </li>
+                <li className="flex items-center gap-2">
+                  <Check size={16} className="text-emerald-500 shrink-0" />
+                  <span>1-Klikk Boligmappa & PDF-sluttrapport</span>
+                </li>
+                <li className="flex items-center gap-2">
+                  <Check size={16} className="text-emerald-500 shrink-0" />
+                  <span>Omnichannel (Feltvarsler til Discord, Slack & Teams)</span>
                 </li>
               </ul>
             </div>
@@ -163,9 +187,12 @@ export default function PriserPage() {
                 <div className="text-xs text-emerald-600 font-bold mt-1">Kun 1 190 kr/mnd ved årlig avtale</div>
               </div>
               <ul className="space-y-3 text-sm text-slate-700 mb-8">
-                <li className="flex items-center gap-2 font-semibold text-navy-900">
+                <li className="flex items-center gap-2 text-xs font-bold uppercase tracking-wider text-slate-400">
+                  <span>Alt i Solo inkludert, pluss:</span>
+                </li>
+                <li className="flex items-center gap-2 font-bold text-electric-600">
                   <Check size={16} className="text-electric-500 shrink-0" />
-                  <span>100% Autonom MesterAI byggeleder</span>
+                  <span>NYHET: Prosjekt- & Firmachatt (Feltkommunikasjon)</span>
                 </li>
                 <li className="flex items-center gap-2 font-semibold text-navy-900">
                   <Check size={16} className="text-electric-500 shrink-0" />
@@ -179,29 +206,29 @@ export default function PriserPage() {
                   <Check size={16} className="text-electric-500 shrink-0" />
                   <span>Tverrfaglig Lukkesperre (Sone låst før VVS/El-signoff)</span>
                 </li>
-                <li className="flex items-center gap-2">
+                <li className="flex items-center gap-2 font-semibold text-navy-900">
                   <Check size={16} className="text-electric-500 shrink-0" />
-                  <span>Inntil 15 aktive prosjekter samtidig</span>
+                  <span>Ledergodkjenning av timer & overtid (50%/100%) med eksport</span>
                 </li>
                 <li className="flex items-center gap-2">
                   <Check size={16} className="text-electric-500 shrink-0" />
-                  <span>Ledergodkjenning av timer & overtid (50%/100%)</span>
+                  <span>Inntil 15-20 aktive prosjekter samtidig</span>
                 </li>
                 <li className="flex items-center gap-2">
                   <Check size={16} className="text-electric-500 shrink-0" />
-                  <span>1-Klikk Slutt-FDV til Boligmappa</span>
+                  <span>Prosjektøkonomi, timeforbruk vs. tilbud & marginvarsel</span>
                 </li>
                 <li className="flex items-center gap-2">
                   <Check size={16} className="text-electric-500 shrink-0" />
-                  <span>Yr.no sanntids værlogging i byggedagbok</span>
-                </li>
-                <li className="flex items-center gap-2">
-                  <Check size={16} className="text-electric-500 shrink-0" />
-                  <span>Digitalt stoffkartotek offline & 10 GB lagring</span>
+                  <span>1-Klikk Slutt-FDV til Boligmappa & kundeportal</span>
                 </li>
                 <li className="flex items-center gap-2">
                   <Check size={16} className="text-electric-500 shrink-0" />
                   <span>Flerspråklig støtte (Norsk, Engelsk, Polsk, Litauisk)</span>
+                </li>
+                <li className="flex items-center gap-2">
+                  <Check size={16} className="text-electric-500 shrink-0" />
+                  <span>25 GB sikker skylagring for tegninger & FDV</span>
                 </li>
               </ul>
             </div>
@@ -229,17 +256,20 @@ export default function PriserPage() {
                 <div className="text-xs text-emerald-600 font-bold mt-1">Kun 2 390 kr/mnd ved årlig avtale</div>
               </div>
               <ul className="space-y-3 text-sm text-slate-700 mb-8">
+                <li className="flex items-center gap-2 text-xs font-bold uppercase tracking-wider text-slate-400">
+                  <span>Alt i Team inkludert, pluss:</span>
+                </li>
                 <li className="flex items-center gap-2 font-semibold text-navy-900">
                   <Check size={16} className="text-emerald-500 shrink-0" />
-                  <span>Full autonom AI-arkitektur & UE-portal</span>
+                  <span>Underentreprenør-portal (UE-innsyn & KS-rapportering)</span>
                 </li>
                 <li className="flex items-center gap-2 font-semibold text-electric-600">
                   <Check size={16} className="text-emerald-500 shrink-0" />
-                  <span>Autonom Tilbud-til-Prosjekt-til-KS motor</span>
+                  <span>Autonom Tilbud-til-Prosjekt-til-KS motor (3 sek)</span>
                 </li>
                 <li className="flex items-center gap-2 font-semibold text-electric-600">
                   <Check size={16} className="text-emerald-500 shrink-0" />
-                  <span>Juridisk NS 8405 / NS 8406 endringsordremotor</span>
+                  <span>Juridisk NS 8405 / NS 8406 / NS 8407 endringsordremotor</span>
                 </li>
                 <li className="flex items-center gap-2">
                   <Check size={16} className="text-emerald-500 shrink-0" />
@@ -251,15 +281,15 @@ export default function PriserPage() {
                 </li>
                 <li className="flex items-center gap-2 font-semibold text-emerald-600">
                   <Check size={16} className="text-emerald-500 shrink-0" />
-                  <span>Avansert Omnichannel (Discord, Slack, Microsoft Teams, E-post & Webhooks)</span>
-                </li>
-                <li className="flex items-center gap-2">
-                  <Check size={16} className="text-emerald-500 shrink-0" />
-                  <span>NOBB Enterprise API, Boligmappa & ERP-synk</span>
-                </li>
-                <li className="flex items-center gap-2">
-                  <Check size={16} className="text-emerald-500 shrink-0" />
                   <span>Tripletex, PowerOffice Go & Fiken API-bro</span>
+                </li>
+                <li className="flex items-center gap-2">
+                  <Check size={16} className="text-emerald-500 shrink-0" />
+                  <span>NOBB Enterprise API, Boligmappa massedybde-synk</span>
+                </li>
+                <li className="flex items-center gap-2">
+                  <Check size={16} className="text-emerald-500 shrink-0" />
+                  <span>SuperAdmin bedriftsportal, revisjonslogger & 99.9% SLA</span>
                 </li>
                 <li className="flex items-center gap-2">
                   <Check size={16} className="text-emerald-500 shrink-0" />

@@ -1191,27 +1191,31 @@ function TacticalHomeView({
                   <p className="text-electric-600 font-bold font-mono text-xs">AUTONOME FUNKSJONER & RAMMER:</p>
                   <p className="flex items-center gap-2 font-semibold text-navy-900">
                     <span className="text-emerald-600 font-bold">✓</span>
-                    <span>100% Autonom MesterAI byggeleder</span>
-                  </p>
-                  <p className="flex items-center gap-2">
-                    <span className="text-emerald-600 font-bold">✓</span>
-                    <span>1 aktiv bruker (inntil 5 prosjekter)</span>
+                    <span>100% Autonom MesterAI Copilot (Ctrl+M)</span>
                   </p>
                   <p className="flex items-center gap-2 font-semibold text-electric-600">
                     <span className="text-emerald-600 font-bold">✓</span>
-                    <span>Omnichannel (Discord, Slack & Teams i felt)</span>
+                    <span>Gemini 3.8 Flash Vision (bildekontroll)</span>
+                  </p>
+                  <p className="flex items-center gap-2 font-semibold text-emerald-600">
+                    <span className="text-emerald-600 font-bold">✓</span>
+                    <span>100% Offline-modus med bakgrunnssynk</span>
                   </p>
                   <p className="flex items-center gap-2 font-semibold text-electric-600">
                     <span className="text-emerald-600 font-bold">✓</span>
-                    <span>Zero-Entry AI (Snakk eller ta bilde)</span>
+                    <span>Handsfree stemmestyring (timer & overtid)</span>
                   </p>
                   <p className="flex items-center gap-2">
                     <span className="text-emerald-600 font-bold">✓</span>
-                    <span>Yr.no sanntids byggedagbok (automatisk vær)</span>
+                    <span>Pinning & lagring av viktige AI-samtaler</span>
                   </p>
                   <p className="flex items-center gap-2">
                     <span className="text-emerald-600 font-bold">✓</span>
-                    <span>TEK17 AI Vision & avviksfoto</span>
+                    <span>1 aktiv fagarbeider (inntil 5 prosjekter)</span>
+                  </p>
+                  <p className="flex items-center gap-2">
+                    <span className="text-emerald-600 font-bold">✓</span>
+                    <span>Yr.no sanntids byggedagbok (værlogging)</span>
                   </p>
                   <p className="flex items-center gap-2">
                     <span className="text-emerald-600 font-bold">✓</span>
@@ -1219,11 +1223,15 @@ function TacticalHomeView({
                   </p>
                   <p className="flex items-center gap-2">
                     <span className="text-emerald-600 font-bold">✓</span>
-                    <span>NOBB Varebase integrasjon (Egen API-nøkkel)</span>
+                    <span>Digitalt stoffkartotek offline på byggeplass</span>
                   </p>
                   <p className="flex items-center gap-2">
                     <span className="text-emerald-600 font-bold">✓</span>
                     <span>Eksport til Boligmappa PDF på 1 klikk</span>
+                  </p>
+                  <p className="flex items-center gap-2">
+                    <span className="text-emerald-600 font-bold">✓</span>
+                    <span>Omnichannel (Discord, Slack & Teams i felt)</span>
                   </p>
                 </div>
               </div>
@@ -1249,18 +1257,14 @@ function TacticalHomeView({
                   <div className="text-xs text-emerald-600 font-bold mt-1">Kun 1 190,-/mnd ved årlig avtale</div>
                 </div>
                 <div className="space-y-3 text-xs sm:text-sm font-sans text-slate-800 font-medium border-t border-slate-200 pt-4">
-                  <p className="text-electric-600 font-bold font-mono text-xs">AUTONOME FUNKSJONER & RAMMER:</p>
-                  <p className="flex items-center gap-2 font-bold text-navy-900">
-                    <span className="text-emerald-600 font-bold">✓</span>
-                    <span>100% Autonom MesterAI byggeleder</span>
-                  </p>
-                  <p className="flex items-center gap-2">
-                    <span className="text-emerald-600 font-bold">✓</span>
-                    <span>Inntil 5-10 aktive brukere</span>
-                  </p>
+                  <p className="text-xs font-bold uppercase tracking-wider text-slate-400">ALT I SOLO INKLUDERT, PLUSS:</p>
                   <p className="flex items-center gap-2 font-bold text-electric-600">
                     <span className="text-emerald-600 font-bold">✓</span>
-                    <span>Omnichannel feltvarsling (Discord, Slack, Teams)</span>
+                    <span>NYHET: Prosjekt- & Firmachatt (Feltkommunikasjon)</span>
+                  </p>
+                  <p className="flex items-center gap-2 font-bold text-navy-900">
+                    <span className="text-emerald-600 font-bold">✓</span>
+                    <span>Inntil 5-10 aktive fagarbeidere (+199,- per ekstra)</span>
                   </p>
                   <p className="flex items-center gap-2 font-bold text-electric-600">
                     <span className="text-emerald-600 font-bold">✓</span>
@@ -1268,23 +1272,31 @@ function TacticalHomeView({
                   </p>
                   <p className="flex items-center gap-2 font-semibold">
                     <span className="text-emerald-600 font-bold">✓</span>
-                    <span>Tverrfaglig Lukkesperre (Rom & Sone)</span>
+                    <span>Tverrfaglig Lukkesperre (Sone låst før VVS/El)</span>
+                  </p>
+                  <p className="flex items-center gap-2 font-bold text-navy-900">
+                    <span className="text-emerald-600 font-bold">✓</span>
+                    <span>Ledergodkjenning av timer & overtid med lønnseksport</span>
                   </p>
                   <p className="flex items-center gap-2">
                     <span className="text-emerald-600 font-bold">✓</span>
-                    <span>TEK17 AI Vision (sluk, membran, fall)</span>
+                    <span>Inntil 15-20 aktive byggeprosjekter samtidig</span>
                   </p>
                   <p className="flex items-center gap-2">
                     <span className="text-emerald-600 font-bold">✓</span>
-                    <span>NOBB API-støtte (FDV, EPD & grossistpriser)</span>
+                    <span>Prosjektøkonomi & marginvarsling i sanntid</span>
                   </p>
                   <p className="flex items-center gap-2">
                     <span className="text-emerald-600 font-bold">✓</span>
-                    <span>Yr.no sanntids byggedagbok synkronisering</span>
+                    <span>1-Klikk Slutt-FDV til Boligmappa & kundeportal</span>
                   </p>
                   <p className="flex items-center gap-2">
                     <span className="text-emerald-600 font-bold">✓</span>
                     <span>Flerspråklig (Norsk, Engelsk, Polsk, Litauisk)</span>
+                  </p>
+                  <p className="flex items-center gap-2">
+                    <span className="text-emerald-600 font-bold">✓</span>
+                    <span>25 GB sikker skylagring for tegninger & FDV</span>
                   </p>
                 </div>
               </div>
@@ -1307,14 +1319,14 @@ function TacticalHomeView({
                   <div className="text-xs text-emerald-600 font-bold mt-1">Kun 2 390,-/mnd ved årlig avtale</div>
                 </div>
                 <div className="space-y-3 text-xs sm:text-sm font-sans text-slate-700 border-t border-slate-200 pt-4">
-                  <p className="text-electric-600 font-bold font-mono text-xs">AUTONOME FUNKSJONER & RAMMER:</p>
+                  <p className="text-xs font-bold uppercase tracking-wider text-slate-400">ALT I TEAM INKLUDERT, PLUSS:</p>
                   <p className="flex items-center gap-2 font-bold text-navy-900">
                     <span className="text-emerald-600 font-bold">✓</span>
-                    <span>Full autonom AI-arkitektur & UE-portal</span>
+                    <span>Underentreprenør-portal (UE-innsyn & KS)</span>
                   </p>
-                  <p className="flex items-center gap-2">
+                  <p className="flex items-center gap-2 font-bold text-electric-600">
                     <span className="text-emerald-600 font-bold">✓</span>
-                    <span>Ubegrenset antall aktive brukere & prosjekter</span>
+                    <span>Autonom Tilbud-til-Prosjekt-til-KS motor (3 sek)</span>
                   </p>
                   <p className="flex items-center gap-2 font-bold text-electric-600">
                     <span className="text-emerald-600 font-bold">✓</span>
@@ -1322,23 +1334,27 @@ function TacticalHomeView({
                   </p>
                   <p className="flex items-center gap-2">
                     <span className="text-emerald-600 font-bold">✓</span>
+                    <span>Ubegrenset antall aktive brukere & prosjekter</span>
+                  </p>
+                  <p className="flex items-center gap-2">
+                    <span className="text-emerald-600 font-bold">✓</span>
                     <span>Tverrfaglig Lukkesperre med tidslås og soner</span>
                   </p>
                   <p className="flex items-center gap-2 font-semibold text-emerald-600">
                     <span className="text-emerald-600 font-bold">✓</span>
-                    <span>Avansert Omnichannel (Discord, Slack, Microsoft Teams, E-post & Webhooks)</span>
+                    <span>Tripletex, PowerOffice Go & Fiken API-bro</span>
                   </p>
                   <p className="flex items-center gap-2">
                     <span className="text-emerald-600 font-bold">✓</span>
-                    <span>NOBB Enterprise API, Boligmappa & ERP-synk</span>
+                    <span>NOBB Enterprise API, Boligmappa massedybde-synk</span>
                   </p>
                   <p className="flex items-center gap-2">
                     <span className="text-emerald-600 font-bold">✓</span>
-                    <span>Tripletex & PowerOffice API-bro</span>
+                    <span>SuperAdmin bedriftsportal, revisjonslogger & 99.9% SLA</span>
                   </p>
                   <p className="flex items-center gap-2">
                     <span className="text-emerald-600 font-bold">✓</span>
-                    <span>Dedikert onboarding & SLA 99.9%</span>
+                    <span>Dedikert onboarding, opplæring & prioritert support</span>
                   </p>
                 </div>
               </div>
@@ -1368,7 +1384,7 @@ function TacticalHomeView({
               </div>
               <div className="p-3.5 rounded-xl bg-white border border-slate-200/80 shadow-xs flex items-center justify-between">
                 <span className="text-slate-800 font-bold">Ekstra fagarbeider:</span>
-                <span className="text-electric-600 font-mono font-black">249,- /mnd</span>
+                <span className="text-electric-600 font-mono font-black">199,- /mnd</span>
               </div>
               <div className="p-3.5 rounded-xl bg-white border border-slate-200/80 shadow-xs flex items-center justify-between">
                 <span className="text-slate-800 font-bold">+10 Prosjekter:</span>
@@ -1983,9 +1999,18 @@ function TacticalPricingView({ onStartDemo, onBack }: { onStartDemo: () => void,
           FASTE MÅNEDSPRISER • OMNICHANNEL INKLUDERT I ALLE PAKKER
         </h2>
         <p className="text-sm sm:text-base text-slate-600 leading-relaxed font-sans mb-6">
-          Solo: 690 kr/mnd • Team: 1 490 kr/mnd • Totalentreprenør Pro: fra 2 990 kr/mnd. Alle pakker inkluderer 100% autonom MesterAI, Omnichannel (Discord, Slack, Teams) for feltarbeidere, og mulighet for egen NOBB API-nøkkel. Faktura sendes på EHF hver måned. 14 dagers gratis prøveperiode.
+          Solo: 690 kr/mnd (550,- årlig) • Team: 1 490 kr/mnd (1 190,- årlig) • Totalentreprenør Pro: fra 2 990 kr/mnd. Alle pakker inkluderer 100% autonom MesterAI Copilot, Gemini 3.8 Flash Vision, 100% offline-modus, prosjektchatt i felt, og Omnichannel (Discord, Slack, Teams). Faktura sendes på EHF hver måned. 14 dagers gratis prøveperiode.
         </p>
         <div className="flex flex-wrap gap-2 mb-8">
+          <span className="px-3 py-1 bg-purple-50 text-purple-800 border border-purple-200 rounded-full text-xs font-bold">
+            ⚡ MesterAI Copilot (Gemini 3.8)
+          </span>
+          <span className="px-3 py-1 bg-emerald-50 text-emerald-800 border border-emerald-200 rounded-full text-xs font-bold">
+            📶 100% Offline med bakgrunnssynk
+          </span>
+          <span className="px-3 py-1 bg-blue-50 text-blue-800 border border-blue-200 rounded-full text-xs font-bold">
+            💬 Prosjekt- & Firmachatt
+          </span>
           <span className="px-3 py-1 bg-indigo-50 text-indigo-800 border border-indigo-200 rounded-full text-xs font-bold">
             Omnichannel (Discord / Slack / Teams)
           </span>

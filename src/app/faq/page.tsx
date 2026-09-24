@@ -96,6 +96,14 @@ const faqSections = [
         question: 'Hvor trygt lagres bedriftens bilder og data?',
         answer: 'Dataene lagres i sikre europeiske datasentre med full GDPR-etterlevelse, kontinuerlig kryptering under overføring (HTTPS/TLS 1.3) og i ro (AES-256), samt automatiske daglige sikkerhetskopier.',
       },
+      {
+        question: 'Hvordan fungerer MesterAI Copilot og Gemini 3.8 Flash Vision?',
+        answer: 'MesterAI Copilot er tilgjengelig med hurtigtasten Ctrl + M i alle moduler. Den er koblet til Gemini 3.8 Flash Vision, som analyserer byggeplassbilder på under 0,2 sekunder for å avdekke TEK17-avvik (sluk, mansjetter, klemringer, rørgjennomføringer). Den støtter også full norsk stemmestyring for timer og byggedagbok, og lar deg pinne viktige samtaler.',
+      },
+      {
+        question: 'Hva er Prosjekt- & Firmachatt (Feltkommunikasjon)?',
+        answer: 'Prosjektchatten samler all byggeplasskommunikasjon på ett sted. Håndverkere og ledere kan dele bilder, bruke hurtigtags (📍 På byggeplass, 🚚 Materiell ankommet, 🔍 Klar for sjekk, ⏱️ Ferdig, ⚠️ Avvik) og kalle på MesterAI direkte i tråden. Slutt på kaotiske SMS-grupper!',
+      },
     ],
   },
   {
@@ -104,7 +112,7 @@ const faqSections = [
     items: [
       {
         question: 'Hva koster VikingMester etter prøveperioden?',
-        answer: 'VikingMester har faste, lave månedspriser uten skjulte gebyrer: Solo koster kun 690 kr/mnd (550 kr/mnd ved årlig avtale), Team koster 1 490 kr/mnd (1 190 kr/mnd ved årlig avtale) og Totalentreprenør Pro koster fra 2 990 kr/mnd (2 390 kr/mnd ved årlig avtale). Alt av fri norsk support, oppdateringer og omnichannel-varsling er inkludert.',
+        answer: 'VikingMester har faste, lave månedspriser uten skjulte gebyrer: Solo koster kun 690 kr/mnd (550 kr/mnd ved årlig avtale), Team koster 1 490 kr/mnd (1 190 kr/mnd ved årlig avtale) og Totalentreprenør Pro koster fra 2 990 kr/mnd (2 390 kr/mnd ved årlig avtale). Alt av MesterAI Copilot, Prosjektchatt, 100% offline-modus, fri norsk support og omnichannel-varsling er inkludert.',
       },
       {
         question: 'Er det bindingstid hos VikingMester?',
