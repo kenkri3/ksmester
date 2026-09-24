@@ -161,7 +161,7 @@ export default function PriserPage() {
               </ul>
             </div>
             <Link
-              href="/?action=demo&plan=solo"
+              href="/#bestill"
               className="w-full py-3 text-center text-sm font-bold text-navy-900 bg-slate-100 hover:bg-slate-200 rounded-xl transition-colors"
             >
               Start 14 dagers prøve
@@ -200,7 +200,7 @@ export default function PriserPage() {
                 </li>
                 <li className="flex items-center gap-2 font-semibold text-electric-600">
                   <Check size={16} className="text-electric-500 shrink-0" />
-                  <span>Tale-til-Endringsordre (NS 8406) med e-post- og Teams-signering</span>
+                  <span>Tale-til-Endringsordre (NS 8406) med signering og godkjenning via mail</span>
                 </li>
                 <li className="flex items-center gap-2 font-semibold text-electric-600">
                   <Check size={16} className="text-electric-500 shrink-0" />
@@ -233,7 +233,7 @@ export default function PriserPage() {
               </ul>
             </div>
             <Link
-              href="/?action=demo&plan=team"
+              href="/#bestill"
               className="w-full py-3.5 text-center text-sm font-bold text-white bg-electric-500 hover:bg-electric-600 rounded-xl transition-all shadow-md shadow-electric-500/25"
             >
               Start gratis prøveperiode
@@ -298,7 +298,7 @@ export default function PriserPage() {
               </ul>
             </div>
             <Link
-              href="/?action=demo&plan=entreprenor"
+              href="/#bestill"
               className="w-full py-3 text-center text-sm font-bold text-navy-900 bg-slate-100 hover:bg-slate-200 rounded-xl transition-colors"
             >
               Start 14 dagers prøve

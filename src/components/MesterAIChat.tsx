@@ -154,7 +154,7 @@ export const MANAGER_WELCOME_THEMES: WelcomeTheme[] = [
     bullets: [
       { icon: '⚡', label: 'Lynrask kalkyle', text: 'Beskriv jobben i chatten, så beregner jeg materialbehov, timeforbruk og påslag.' },
       { icon: '⚖️', label: 'NS 8406 / NS 8405', text: 'Setter automatisk inn nødvendige standardforbehold så du er juridisk sikret.' },
-      { icon: '📲', label: 'Digital signering', text: 'Kunden mottar tilbudet på e-post, Slack eller Teams og godkjenner direkte på mobilen.' }
+      { icon: '✉️', label: 'Signering via mail', text: 'Kunden mottar tilbudet på mail og godkjenner/signerer direkte.' }
     ],
     callToAction: 'Vil du teste en kalkyle eller opprette et nytt tilbud nå?',
     suggestedActions: [
@@ -176,7 +176,7 @@ export const MANAGER_WELCOME_THEMES: WelcomeTheme[] = [
     bullets: [
       { icon: '⏱️', label: 'Unngå preklusjon', text: 'Varsle i tide så du ikke mister retten til tilleggsvederlag eller fristforlengelse.' },
       { icon: '🎙️', label: 'Dikter i felt', text: 'Snakk inn endringen mens du står på byggeplassen – AI formulerer kravet formelt.' },
-      { icon: '✍️', label: 'Mobilgodkjenning', text: 'Send godkjenningslenke rett til kunden som signerer digitalt på sekunder.' }
+      { icon: '✉️', label: 'Godkjenning via mail', text: 'Send godkjenningslenke rett til kundens mail så de godkjenner og signerer skriftlig.' }
     ],
     callToAction: 'Har det oppstått uforutsette forhold eller endringsønsker på byggeplassen?',
     suggestedActions: [

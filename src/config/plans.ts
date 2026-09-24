@@ -110,7 +110,7 @@ export const PLANS: Record<PlanId, PlanConfig> = {
       'Inntil 5-10 aktive fagarbeidere (+199,- per ekstra)',
       'Inntil 15-20 aktive byggeprosjekter samtidig',
       'Tale-til-Endringsordre & fristvarsel (NS 8406)',
-      'Digital kundesignering på mobil, e-post og Teams',
+      'Digital kundesignering og godkjenning via mail',
       'Tverrfaglig Lukkesperre med soner (TEK17)',
       'Ledergodkjenning av timer & overtid (50%/100%) med lønnseksport',
       '1-Klikks FDV-sluttrapport til Boligmappa',

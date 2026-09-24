@@ -150,10 +150,10 @@ export function PublicFooter() {
             >
               Informasjonskapsler
             </button>
-            <Link href="/om-oss" className="hover:text-slate-400 transition-colors">
+            <Link href="/personvern" className="hover:text-slate-400 transition-colors">
               Personvernerklæring
             </Link>
-            <Link href="/om-oss" className="hover:text-slate-400 transition-colors">
+            <Link href="/vilkar" className="hover:text-slate-400 transition-colors">
               Vilkår for bruk
             </Link>
           </div>

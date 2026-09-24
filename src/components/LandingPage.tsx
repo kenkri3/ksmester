@@ -58,8 +58,8 @@ import {
   Volume2
 } from 'lucide-react';
 import { cn } from '@/src/lib/utils';
+import Image from 'next/image';
 import InstallGuide from './InstallGuide';
-import MesterAIDemoSimulator from './MesterAIDemoSimulator';
 import { toast } from 'sonner';
 import { promptPWAInstall, isPWAInstalled, triggerAppDownloadOrInstall } from '../lib/pwa';
 
@@ -386,6 +386,8 @@ function TacticalHomeView({
   const [leadOrgnr, setLeadOrgnr] = useState('');
   const [leadPhone, setLeadPhone] = useState('');
   const [selectedTrade, setSelectedTrade] = useState('tomrer');
+  const [selectedPlan, setSelectedPlan] = useState<'solo' | 'team' | 'entreprenor'>('team');
+  const [acceptedTerms, setAcceptedTerms] = useState(false);
   const [isSubmittingLead, setIsSubmittingLead] = useState(false);
   const [leadSuccess, setLeadSuccess] = useState(false);
 
@@ -401,6 +403,10 @@ function TacticalHomeView({
       toast.error('Vennligst fyll inn bedriftsnavn og e-post.');
       return;
     }
+    if (!acceptedTerms) {
+      toast.error('Du må bekrefte at du godtar forretningsvilkårene og personvernerklæringen (DPA).');
+      return;
+    }
     setIsSubmittingLead(true);
     try {
       const res = await fetch('/api/lead', {
@@ -412,14 +418,16 @@ function TacticalHomeView({
           email: leadEmail,
           phone: leadPhone,
           trade: selectedTrade,
-          plan: workerCount <= 1 ? 'solo' : workerCount <= 5 ? 'team' : 'entreprenor',
-          workers: workerCount
+          plan: selectedPlan,
+          workers: workerCount,
+          acceptedTerms: true,
+          acceptedTermsAt: new Date().toISOString()
         })
       });
       const data = await res.json();
       if (res.ok && data.success) {
         setLeadSuccess(true);
-        toast.success('Bestilling mottatt! Vi klargjør din bedriftsfaktura og tilgang umiddelbart.');
+        toast.success('Bestilling mottatt! Vi klargjør din 14-dagers gratis prøveperiode umiddelbart.');
       } else {
         toast.error(data.message || 'Kunne ikke sende registrering.');
       }
@@ -702,15 +710,126 @@ function TacticalHomeView({
         </div>
       </section>
 
-      {/* 🚀 Interaktiv MesterAI Simulator (Rollebasert Byggmester, Tømrer & Rørlegger) */}
-      <MesterAIDemoSimulator  
-        id="live-demo"
-        onStartFreeTrial={() => {
-          const el = document.getElementById('bestill');
-          if (el) el.scrollIntoView({ behavior: 'smooth' });
-          else onGoToPricing();
-        }}
-      />
+      {/* 🚀 Ekte Mester Workstation Backend Showcase */}
+      <section id="live-demo" className="py-20 bg-[#070B14] border-y border-slate-800 relative overflow-hidden text-white">
+        {/* Ambient glow effects */}
+        <div className="absolute top-1/4 left-1/2 -translate-x-1/2 w-[700px] h-[350px] bg-gradient-to-tr from-purple-600/15 via-blue-600/15 to-transparent rounded-full blur-3xl pointer-events-none" />
+
+        <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 relative z-10">
+          <div className="text-center max-w-3xl mx-auto mb-12 space-y-4">
+            <span className="inline-flex items-center gap-2 px-3.5 py-1.5 rounded-full bg-purple-500/20 border border-purple-400/40 text-purple-300 text-xs font-black uppercase tracking-widest">
+              <span className="w-2 h-2 rounded-full bg-emerald-400 animate-pulse" />
+              Ekte brukergrensesnitt · Mester Workstation
+            </span>
+            <h2 className="text-3xl sm:text-4xl lg:text-5xl font-black text-white tracking-tight leading-tight">
+              Slik ser VikingMester ut når du logger inn
+            </h2>
+            <p className="text-slate-300 text-base sm:text-lg leading-relaxed font-normal">
+              Ingen falske animasjoner eller kompliserte oppsett. Alt du trenger for å styre byggeplassen, registrere avvik, føre byggedagbok og sikre tilleggsarbeid – samlet i én lynrask, stemmestyrt arbeidsstasjon.
+            </p>
+          </div>
+
+          {/* Screenshot Showcase Container */}
+          <div className="max-w-6xl mx-auto rounded-2xl sm:rounded-3xl border-2 border-slate-700/80 bg-slate-900 shadow-2xl shadow-purple-950/50 overflow-hidden relative group">
+            {/* Top Window Bar */}
+            <div className="flex items-center justify-between px-4 py-3 bg-[#0c1220] border-b border-slate-800 text-xs text-slate-400">
+              <div className="flex items-center gap-2">
+                <span className="w-3 h-3 rounded-full bg-rose-500/80 inline-block" />
+                <span className="w-3 h-3 rounded-full bg-amber-500/80 inline-block" />
+                <span className="w-3 h-3 rounded-full bg-emerald-500/80 inline-block" />
+                <span className="ml-2 font-mono text-[11px] text-slate-300 hidden sm:inline">
+                  vikingmester.no/workstation
+                </span>
+              </div>
+              <div className="flex items-center gap-3">
+                <span className="text-[11px] text-purple-300 bg-purple-950/80 border border-purple-500/30 px-2.5 py-0.5 rounded-full font-bold">
+                  Aktiv byggeplass: Renovering Bad Vidjeveien 21
+                </span>
+                <span className="hidden md:inline-flex items-center gap-1.5 text-xs text-emerald-400 font-bold">
+                  <span className="w-2 h-2 rounded-full bg-emerald-400 animate-pulse" />
+                  100% Autonom Agent
+                </span>
+              </div>
+            </div>
+
+            {/* The Actual Real Backend Image */}
+            <div className="relative w-full aspect-[16/9] sm:aspect-[16/9.2] overflow-hidden bg-[#0A0F1D]">
+              <Image
+                src="/images/vikingmester-workstation-preview.png"
+                alt="VikingMester Workstation Backend - Mikrofonen er din, Ken"
+                fill
+                priority
+                sizes="(max-width: 1200px) 100vw, 1200px"
+                className="object-cover object-top transition-transform duration-500 group-hover:scale-[1.01]"
+              />
+            </div>
+          </div>
+
+          {/* 4 Feature Badges beneath image */}
+          <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-4 mt-8 max-w-6xl mx-auto text-xs">
+            <div className="p-4 rounded-2xl bg-slate-900/90 border border-slate-800 space-y-1.5">
+              <div className="font-bold text-white flex items-center gap-2">
+                <Mic size={16} className="text-purple-400" />
+                <span>100% Stemmestyrt</span>
+              </div>
+              <p className="text-slate-400 text-[11px] leading-relaxed">
+                Snakk inn byggedagboken, avvik og endringer direkte fra stillaset eller varebilen.
+              </p>
+            </div>
+
+            <div className="p-4 rounded-2xl bg-slate-900/90 border border-slate-800 space-y-1.5">
+              <div className="font-bold text-white flex items-center gap-2">
+                <Camera size={16} className="text-rose-400" />
+                <span>TEK17 AI-Bildevisjon</span>
+              </div>
+              <p className="text-slate-400 text-[11px] leading-relaxed">
+                Knips sluk og membran. Systemet stempler GPS, tidspunkt og sjekker mot Våtromsnormen.
+              </p>
+            </div>
+
+            <div className="p-4 rounded-2xl bg-slate-900/90 border border-slate-800 space-y-1.5">
+              <div className="font-bold text-white flex items-center gap-2">
+                <FileCheck size={16} className="text-blue-400" />
+                <span>NS 8406 Endringsordrer</span>
+              </div>
+              <p className="text-slate-400 text-[11px] leading-relaxed">
+                Send formelt varsel på 15 sekunder før tilleggsarbeid starter. Unngå tapte penger.
+              </p>
+            </div>
+
+            <div className="p-4 rounded-2xl bg-slate-900/90 border border-slate-800 space-y-1.5">
+              <div className="font-bold text-white flex items-center gap-2">
+                <Layers size={16} className="text-emerald-400" />
+                <span>20+ Integrerte Moduler</span>
+              </div>
+              <p className="text-slate-400 text-[11px] leading-relaxed">
+                Alt fra SJA og stoffkartotek til timeføring, prosjektchatt og lærlingmodul.
+              </p>
+            </div>
+          </div>
+
+          {/* CTA under screenshot */}
+          <div className="mt-10 text-center flex flex-col sm:flex-row items-center justify-center gap-4">
+            <button
+              onClick={() => {
+                const el = document.getElementById('bestill');
+                if (el) el.scrollIntoView({ behavior: 'smooth' });
+                else onGoToPricing();
+              }}
+              className="w-full sm:w-auto px-8 py-4 rounded-xl bg-gradient-to-r from-purple-600 to-electric-600 hover:from-purple-500 hover:to-electric-500 text-white font-bold text-sm shadow-purple-cta transition-all flex items-center justify-center gap-2 cursor-pointer active:scale-95"
+            >
+              <span>Start 14 dagers gratis prøveperiode</span>
+              <ArrowRight size={16} />
+            </button>
+            <a
+              href="#moduler"
+              className="w-full sm:w-auto px-6 py-4 rounded-xl bg-slate-900 hover:bg-slate-800 text-slate-300 hover:text-white font-bold text-sm border border-slate-800 transition-colors"
+            >
+              Utforsk alle 20 moduler
+            </a>
+          </div>
+        </div>
+      </section>
 
       {/* Direct Comparison: Old Apps vs VikingMester */}
       <section className="py-20 bg-slate-50 border-b border-slate-200">
@@ -1237,6 +1356,7 @@ function TacticalHomeView({
               </div>
               <a 
                 href="#bestill"
+                onClick={() => setSelectedPlan('solo')}
                 className="w-full mt-8 py-3.5 rounded-xl bg-slate-100 hover:bg-slate-200 text-navy-900 font-bold text-xs uppercase tracking-wider text-center border border-slate-200 transition-colors cursor-pointer"
               >
                 Prøv Solo gratis i 14 dager
@@ -1268,7 +1388,7 @@ function TacticalHomeView({
                   </p>
                   <p className="flex items-center gap-2 font-bold text-electric-600">
                     <span className="text-emerald-600 font-bold">✓</span>
-                    <span>Tale-til-endringsordre (NS 8406 autopilot)</span>
+                    <span>Tale-til-endringsordre (NS 8406) med signering via mail</span>
                   </p>
                   <p className="flex items-center gap-2 font-semibold">
                     <span className="text-emerald-600 font-bold">✓</span>
@@ -1302,6 +1422,7 @@ function TacticalHomeView({
               </div>
               <a 
                 href="#bestill"
+                onClick={() => setSelectedPlan('team')}
                 className="w-full mt-8 py-3.5 rounded-xl bg-gradient-to-r from-electric-500 to-electric-400 hover:from-electric-400 hover:to-electric-300 text-white font-bold text-xs uppercase tracking-wider text-center shadow-purple-cta hover:shadow-purple-hover transition-all cursor-pointer"
               >
                 Prøv Team gratis i 14 dager
@@ -1360,9 +1481,10 @@ function TacticalHomeView({
               </div>
               <a 
                 href="#bestill"
+                onClick={() => setSelectedPlan('entreprenor')}
                 className="w-full mt-8 py-3.5 rounded-xl bg-slate-100 hover:bg-slate-200 text-navy-900 font-bold text-xs uppercase tracking-wider text-center border border-slate-200 transition-colors cursor-pointer"
               >
-                Bestill Entreprenør
+                Prøv Entreprenør gratis i 14 dager
               </a>
             </div>
           </div>
@@ -1529,34 +1651,72 @@ function TacticalHomeView({
                       ØNSKET PAKKE
                     </label>
                     <select
-                      className="w-full bg-slate-50 border border-slate-200 rounded-xl px-4 py-3 text-slate-900 focus:bg-white focus:border-electric-500 focus:ring-2 focus:ring-electric-500/20 outline-none text-sm transition-all cursor-pointer"
+                      value={selectedPlan}
+                      onChange={(e) => setSelectedPlan(e.target.value as any)}
+                      className="w-full bg-slate-50 border border-slate-200 rounded-xl px-4 py-3 text-slate-900 focus:bg-white focus:border-electric-500 focus:ring-2 focus:ring-electric-500/20 outline-none text-sm transition-all cursor-pointer font-semibold"
                     >
-                      <option value="team">VikingMester Team (1 490,-/mnd - Mest populær)</option>
-                      <option value="solo">VikingMester Solo (690,-/mnd)</option>
-                      <option value="entreprenor">Totalentreprenør Pro (fra 2 990,-/mnd)</option>
+                      <option value="team">VikingMester Team (1 490,-/mnd - 14 dager gratis prøve)</option>
+                      <option value="solo">VikingMester Solo (690,-/mnd - 14 dager gratis prøve)</option>
+                      <option value="entreprenor">Totalentreprenør Pro (fra 2 990,-/mnd - 14 dager gratis prøve)</option>
                     </select>
                   </div>
                 </div>
 
-                <div className="pt-4">
+                {/* GDPR, Avtalevilkår & DPA Samtykkeboks */}
+                <div className="pt-2 bg-slate-50 p-4 rounded-2xl border border-slate-200 space-y-2">
+                  <label className="flex items-start gap-3 cursor-pointer select-none">
+                    <input
+                      type="checkbox"
+                      required
+                      checked={acceptedTerms}
+                      onChange={(e) => setAcceptedTerms(e.target.checked)}
+                      className="mt-0.5 w-4 h-4 rounded border-slate-300 text-electric-600 focus:ring-electric-500 cursor-pointer shrink-0 accent-electric-600"
+                    />
+                    <span className="text-xs text-slate-700 leading-relaxed font-normal">
+                      Jeg bekrefter at jeg bestiller på vegne av foretaket, og godtar VikingMesters{' '}
+                      <Link
+                        href="/vilkar"
+                        target="_blank"
+                        className="font-bold text-electric-600 hover:text-electric-700 underline"
+                      >
+                        forretningsvilkår
+                      </Link>{' '}
+                      og{' '}
+                      <Link
+                        href="/personvern"
+                        target="_blank"
+                        className="font-bold text-electric-600 hover:text-electric-700 underline"
+                      >
+                        personvernerklæring & databehandleravtale (DPA)
+                      </Link>
+                      . 14 dagers gratis prøveperiode uten bindingstid (0,- kr ved oppstart).
+                    </span>
+                  </label>
+                  <p className="text-[11px] text-slate-400 pl-7 leading-tight">
+                    Full overensstemmelse med GDPR og norsk personopplysningslov. Ingen data deles med tredjepart.
+                  </p>
+                </div>
+
+                <div className="pt-3">
                   <button
                     type="submit"
                     disabled={isSubmittingLead}
-                    className="w-full py-4 rounded-xl bg-gradient-to-r from-electric-500 to-electric-400 hover:from-electric-400 hover:to-electric-300 text-white font-bold text-sm tracking-wide shadow-purple-cta hover:shadow-purple-hover transition-all flex items-center justify-center gap-2 cursor-pointer disabled:opacity-50"
+                    className="w-full py-4 rounded-xl bg-gradient-to-r from-electric-500 to-electric-400 hover:from-electric-400 hover:to-electric-300 text-white font-bold text-sm tracking-wide shadow-purple-cta hover:shadow-purple-hover transition-all flex items-center justify-center gap-2 cursor-pointer disabled:opacity-50 active:scale-[0.99]"
                   >
                     {isSubmittingLead ? (
-                      <span>Sjekker Enhetsregisteret...</span>
+                      <span>Sjekker Enhetsregisteret & klargjør tilgang...</span>
                     ) : (
                       <>
-                        <span>Bestill Nå – Faktura Sendes EHF</span>
+                        <Sparkles size={16} className="text-amber-300" />
+                        <span>Start 14 Dagers Gratis Prøveperiode</span>
                         <ArrowRight size={16} />
                       </>
                     )}
                   </button>
                 </div>
 
-                <p className="text-xs text-slate-500 text-center pt-2">
-                  Ved bestilling aksepteres standard forretningsvilkår og DPA for VikingMester PRO. Ingen bindingstid.
+                <p className="text-[11px] text-slate-500 text-center pt-1.5 leading-relaxed">
+                  ✓ 14 dager 100% gratis • Null kredittkortkrav • Ingen bindingstid • Faktura sendes kun hvis du velger å fortsette etter 14 dager.
                 </p>
               </form>
             )}
@@ -1590,7 +1750,7 @@ function TacticalOffersKsView({ onStartDemo, onBack, onGoToPricing }: { onStartD
           Fra signert tilbud til ferdig KS på 3 sekunder.
         </h1>
         <p className="text-sm sm:text-base text-slate-300 max-w-3xl leading-relaxed mb-8">
-          Slutt på kveldene hvor du må sitte foran PC-en og manuelt opprette prosjektmapper, sjekklister og juridiske kontrakter. I det øyeblikket kunden signerer tilbudet med fingeren på mobilen, overtar MesterAI styringen.
+          Slutt på kveldene hvor du må sitte foran PC-en og manuelt opprette prosjektmapper, sjekklister og juridiske kontrakter. I det øyeblikket kunden godkjenner og signerer tilbudet via mail, overtar MesterAI styringen.
         </p>
 
         <div className="grid grid-cols-1 md:grid-cols-3 gap-4 mb-8">
@@ -1598,7 +1758,7 @@ function TacticalOffersKsView({ onStartDemo, onBack, onGoToPricing }: { onStartD
             <span className="text-emerald-400 font-black text-2xl font-mono">1. Signatur</span>
             <h4 className="text-sm font-bold text-white mt-1 mb-2">Kunde signerer tilbud</h4>
             <p className="text-xs text-slate-400 leading-relaxed">
-              Kunden mottar tilbudet som en mobilvennlig lenke og godkjenner på under 1 minutt.
+              Kunden mottar tilbudet på mail og godkjenner digitalt på under 1 minutt.
             </p>
           </div>
 
@@ -1708,7 +1868,7 @@ function TacticalChangeOrdersView({ onStartDemo, onBack, onGoToPricing }: { onSt
               </li>
               <li className="flex items-start gap-2">
                 <span className="text-emerald-400 font-bold">✓</span>
-                <span>Kunden mottar lenke på e-post, Teams eller Slack og signerer med fingeren på 30 sekunder.</span>
+                <span>Kunden mottar lenke via mail og godkjenner/signerer direkte på 30 sekunder.</span>
               </li>
               <li className="flex items-start gap-2">
                 <span className="text-emerald-400 font-bold">✓</span>

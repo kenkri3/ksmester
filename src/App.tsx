@@ -313,6 +313,17 @@ function AppContent() {
     }
   };
 
+  const handleGoToOrder = () => {
+    setView('landing');
+    setLandingTab('home');
+    setTimeout(() => {
+      const el = document.getElementById('bestill');
+      if (el) {
+        el.scrollIntoView({ behavior: 'smooth' });
+      }
+    }, 120);
+  };
+
   const handleInstallApp = async () => {
     if (isPWAInstalled()) {
       toast.info('VikingMester er allerede installert som app på denne enheten!');
@@ -844,7 +855,7 @@ function AppContent() {
                       {t('nav_login', 'Logg inn')}
                     </button>
                     <button 
-                      onClick={handleStartDemo}
+                      onClick={handleGoToOrder}
                       className="whitespace-nowrap shrink-0 bg-gradient-to-r from-electric-500 to-electric-400 hover:from-electric-400 hover:to-electric-300 text-white px-3.5 lg:px-4 py-2 rounded-xl text-xs font-extrabold transition-all shadow-purple-cta hover:shadow-purple-hover active:scale-95 flex items-center gap-1.5 cursor-pointer"
                     >
                       <Sparkles size={13} className="text-amber-300 animate-pulse shrink-0" />
@@ -1061,7 +1072,7 @@ function AppContent() {
                   ) : (
                     <div className="grid grid-cols-2 gap-2">
                       <button 
-                        onClick={() => { handleStartDemo(); setIsMenuOpen(false); }}
+                        onClick={() => { handleGoToOrder(); setIsMenuOpen(false); }}
                         className="w-full bg-gradient-to-r from-purple-600 to-blue-600 text-white py-3 rounded-full text-xs font-bold shadow-md shadow-purple-600/25 cursor-pointer text-center"
                       >
                         Prøv gratis nå

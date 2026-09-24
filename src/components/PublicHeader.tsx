@@ -176,7 +176,7 @@ export function PublicHeader() {
                           <span className="text-[9px] bg-rose-100 text-rose-800 font-bold px-1.5 py-0.2 rounded">Få betalt</span>
                         </div>
                         <div className="text-[11px] text-slate-500 leading-tight">
-                          Snakk inn endring på 15 sek. Kunden godkjenner via mobil før arbeidet starter.
+                          Snakk inn endring på 15 sek. Kunden godkjenner og signerer via mail før arbeidet starter.
                         </div>
                       </div>
                     </div>
@@ -326,7 +326,16 @@ export function PublicHeader() {
               Logg inn
             </Link>
             <Link
-              href="/?action=demo"
+              href="/#bestill"
+              onClick={(e) => {
+                if (typeof window !== 'undefined' && window.location.pathname === '/') {
+                  const el = document.getElementById('bestill');
+                  if (el) {
+                    e.preventDefault();
+                    el.scrollIntoView({ behavior: 'smooth' });
+                  }
+                }
+              }}
               className="whitespace-nowrap shrink-0 px-4 py-2 text-xs font-extrabold text-white bg-gradient-to-r from-electric-500 to-electric-400 hover:from-electric-400 hover:to-electric-300 rounded-xl transition-all shadow-md shadow-electric-500/25 flex items-center gap-1.5 active:scale-95"
             >
               <Sparkles size={14} className="text-amber-300 animate-pulse shrink-0" />
@@ -460,8 +469,17 @@ export function PublicHeader() {
 
             <div className="pt-3 flex flex-col gap-2">
               <Link
-                href="/?action=demo"
-                onClick={() => setMobileMenuOpen(false)}
+                href="/#bestill"
+                onClick={(e) => {
+                  setMobileMenuOpen(false);
+                  if (typeof window !== 'undefined' && window.location.pathname === '/') {
+                    const el = document.getElementById('bestill');
+                    if (el) {
+                      e.preventDefault();
+                      el.scrollIntoView({ behavior: 'smooth' });
+                    }
+                  }
+                }}
                 className="w-full text-center py-3 text-sm font-bold text-white bg-gradient-to-r from-electric-500 to-electric-400 rounded-xl shadow-md"
               >
                 Start 14 dagers gratis prøve

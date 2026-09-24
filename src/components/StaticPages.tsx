@@ -103,7 +103,7 @@ export const PricingPage = () => {
         'Inntil 5-10 aktive fagarbeidere (+199,- per ekstra)',
         'Inntil 15 aktive prosjekter samtidig',
         'Tale-til-Endringsordre & automatisk fristvarsel (NS 8406)',
-        'Digital kundesignering på mobil med fingeren',
+        'Digital kundesignering og godkjenning via mail',
         'Tverrfaglig Lukkesperre (digital signering før vegger lukkes)',
         'TEK17 AI Vision bildekontroll & avviksrapporter',
         'Yr.no sanntids værlogging i byggedagboken',
