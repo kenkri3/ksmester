@@ -447,12 +447,12 @@ function TacticalHomeView({
 
           {/* Bold Punchy Headline - Selger drømmen til håndverkeren */}
           <div className="text-center max-w-4xl mx-auto mb-8">
-            <h1 className="text-3xl sm:text-5xl lg:text-6xl font-black tracking-tight text-navy-900 leading-[1.12]">
+            <h1 className="text-3xl sm:text-5xl lg:text-6xl font-black tracking-tight text-navy-900 leading-[1.2] pb-1">
               Friheten tilbake. Null kveldsarbeid.
-              <span className="block text-gradient-purple mt-2">Få betalt for hver eneste endringstime.</span>
+              <span className="block text-gradient-purple mt-2 pb-3 pt-1">Få betalt for hver eneste endringstime.</span>
             </h1>
             <p className="mt-6 text-base sm:text-lg text-slate-600 max-w-2xl mx-auto leading-relaxed font-sans">
-              Snakk inn byggedagboken fra varebilen på vei hjem. La MesterAI opprette byggeplass, kontrakter og TEK17-sjekklister automatisk. Få kunden til å signere endringsordrer på SMS på 15 sekunder før du rører hammeren. Du har fri når du kommer hjem til familien.
+              Snakk inn byggedagboken fra varebilen på vei hjem. La MesterAI opprette byggeplass, kontrakter og TEK17-sjekklister automatisk. Få kunden til å godkjenne endringsordrer via e-post, Teams eller Slack på 15 sekunder før du rører hammeren. Du har fri når du kommer hjem til familien.
             </p>
 
             {/* Micro-guarantees */}
@@ -542,7 +542,7 @@ function TacticalHomeView({
                       1. Tale-til-Endring (NS 8406)
                     </span>
                     <span className="text-[10px] font-bold px-2 py-0.5 rounded-full bg-rose-950 text-rose-300 border border-rose-800">
-                      SMS SENDT
+                      E-POST & VARSEL SENDT
                     </span>
                   </div>
 
@@ -562,7 +562,7 @@ function TacticalHomeView({
                     </p>
                     <p className="text-slate-300 flex items-center gap-1.5">
                       <CheckCircle2 size={13} className="text-rose-400 shrink-0" />
-                      <span>Kunde (Ola Nordmann) signerte på SMS</span>
+                      <span>Kunde (Ola Nordmann) godkjente via e-post</span>
                     </p>
                     <p className="text-slate-400 text-[11px]">
                       Juridisk bindende kontrakt arkivert automatisk
@@ -611,7 +611,7 @@ function TacticalHomeView({
                       <span>Trykkprøving VVS: Venter på kvittering</span>
                     </p>
                     <p className="text-purple-300 text-[11px]">
-                      SMS-purring automatisk sendt til rørlegger
+                      Automatisk purring sendt til rørlegger via e-post og Teams
                     </p>
                   </div>
                 </div>
@@ -774,7 +774,7 @@ function TacticalHomeView({
                 </li>
                 <li className="flex items-start gap-2.5">
                   <span className="text-emerald-600 font-black text-base mt-[-2px]">✓</span>
-                  <span>Tale-til-endringsordre (NS 8406) godkjent av byggherre på SMS før arbeidet starter.</span>
+                  <span>Tale-til-endringsordre (NS 8406) godkjent av byggherre via e-post eller Teams før arbeidet starter.</span>
                 </li>
                 <li className="flex items-start gap-2.5">
                   <span className="text-emerald-600 font-black text-base mt-[-2px]">✓</span>
@@ -1062,7 +1062,7 @@ function TacticalHomeView({
                   Prosjektstyring & Endring
                 </h3>
                 <p className="text-sm text-slate-600 leading-relaxed font-sans mb-6">
-                  Få betalt for uvarslet ekstraarbeid. Generer formelle endringsvarsler på 15 sekunder med tale, send direkte til byggherre og få godkjenning på SMS.
+                  Få betalt for uvarslet ekstraarbeid. Generer formelle endringsvarsler på 15 sekunder med tale, send direkte til byggherre og få godkjenning via e-post, Teams eller Slack.
                 </p>
               </div>
               <div className="pt-4 border-t border-slate-100 flex items-center justify-between text-xs font-bold text-electric-600 group-hover:translate-x-1 transition-transform">
@@ -1326,7 +1326,7 @@ function TacticalHomeView({
                   </p>
                   <p className="flex items-center gap-2 font-semibold text-emerald-600">
                     <span className="text-emerald-600 font-bold">✓</span>
-                    <span>Avansert Omnichannel (Discord, Slack, Teams, E-post, SMS & Webhooks)</span>
+                    <span>Avansert Omnichannel (Discord, Slack, Microsoft Teams, E-post & Webhooks)</span>
                   </p>
                   <p className="flex items-center gap-2">
                     <span className="text-emerald-600 font-bold">✓</span>
@@ -1646,7 +1646,7 @@ function TacticalChangeOrdersView({ onStartDemo, onBack, onGoToPricing }: { onSt
           Tale-til-Endringsordre på 15 sekunder.
         </h1>
         <p className="text-sm sm:text-base text-slate-300 max-w-3xl leading-relaxed mb-8">
-          Norske håndverkere taper i snitt 80 000 kr i året på muntlige avtaler og tillegg som aldri blir varslet skriftlig. Med VikingMester snakker du inn endringen fra stillaset med arbeidshanskene på. Kunden signerer på SMS før du starter saga.
+          Norske håndverkere taper i snitt 80 000 kr i året på muntlige avtaler og tillegg som aldri blir varslet skriftlig. Med VikingMester snakker du inn endringen fra stillaset med arbeidshanskene på. Kunden godkjenner via e-post, Teams eller Slack før du starter saga.
         </p>
 
         {/* Realistic Terminal Comparison */}
@@ -1692,7 +1692,7 @@ function TacticalChangeOrdersView({ onStartDemo, onBack, onGoToPricing }: { onSt
               </li>
               <li className="flex items-start gap-2">
                 <span className="text-emerald-400 font-bold">✓</span>
-                <span>Kunden mottar SMS på mobilen og signerer med fingeren på 30 sekunder.</span>
+                <span>Kunden mottar lenke på e-post, Teams eller Slack og signerer med fingeren på 30 sekunder.</span>
               </li>
               <li className="flex items-start gap-2">
                 <span className="text-emerald-400 font-bold">✓</span>
@@ -1759,9 +1759,9 @@ function TacticalLukkesperreView({ onStartDemo, onBack, onGoToPricing }: { onSta
 
           <div className="bg-slate-900/90 border border-purple-500/30 p-5 rounded-2xl">
             <span className="text-purple-400 font-black text-xl font-mono">2. Automatisk Purring</span>
-            <h4 className="text-sm font-bold text-white mt-1 mb-2">SMS til UE</h4>
+            <h4 className="text-sm font-bold text-white mt-1 mb-2">Varsel til UE</h4>
             <p className="text-xs text-slate-400 leading-relaxed">
-              Systemet sender automatisk SMS-påminnelse til rørleggeren om at trykktesten må registreres før plating kan starte.
+              Systemet sender automatisk påminnelse via e-post og Teams til rørleggeren om at trykktesten må registreres før plating kan starte.
             </p>
           </div>
 

@@ -82,13 +82,19 @@ body {
 .text-gradient-purple {
   background: linear-gradient(135deg, #9D00FF 0%, #C775FF 100%);
   -webkit-background-clip: text;
+  background-clip: text;
   -webkit-text-fill-color: transparent;
+  padding-bottom: 0.18em;
+  margin-bottom: -0.18em;
 }
 
 .text-gradient-navy {
   background: linear-gradient(135deg, #0A192F 0%, #1B3A60 100%);
   -webkit-background-clip: text;
+  background-clip: text;
   -webkit-text-fill-color: transparent;
+  padding-bottom: 0.18em;
+  margin-bottom: -0.18em;
 }
 
 .bg-electric-gradient {
