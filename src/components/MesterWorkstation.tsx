@@ -479,6 +479,33 @@ export default function MesterWorkstation({
   const contactsStorageKey = `mester_contacts_${currentTenantScope}_${selectedProject?.id || 'all'}`;
   const logsStorageKey = `mester_timelogs_${currentTenantScope}_${selectedProject?.id || 'all'}`;
 
+  // 🔄 Synkroniser timeføringer på tvers av master-liste og prosjektlister
+  const syncDailyTimeEntryLocally = (entry: DailyTimeItem) => {
+    try {
+      const masterKey = `mester_timelogs_${currentTenantScope}_master`;
+      const masterRaw = localStorage.getItem(masterKey);
+      const masterList: DailyTimeItem[] = masterRaw ? JSON.parse(masterRaw) : [];
+      const updatedMaster = [entry, ...masterList.filter(e => e.id !== entry.id)];
+      localStorage.setItem(masterKey, JSON.stringify(updatedMaster));
+
+      const allKey = `mester_timelogs_${currentTenantScope}_all`;
+      const allRaw = localStorage.getItem(allKey);
+      const allList: DailyTimeItem[] = allRaw ? JSON.parse(allRaw) : [];
+      const updatedAll = [entry, ...allList.filter(e => e.id !== entry.id)];
+      localStorage.setItem(allKey, JSON.stringify(updatedAll));
+
+      if (entry.projectId && entry.projectId !== 'all') {
+        const projKey = `mester_timelogs_${currentTenantScope}_${entry.projectId}`;
+        const projRaw = localStorage.getItem(projKey);
+        const projList: DailyTimeItem[] = projRaw ? JSON.parse(projRaw) : [];
+        const updatedProj = [entry, ...projList.filter(e => e.id !== entry.id)];
+        localStorage.setItem(projKey, JSON.stringify(updatedProj));
+      }
+    } catch (e) {
+      console.warn('Could not sync daily time entry locally:', e);
+    }
+  };
+
   // Last inn telefonbok / kontakter & auto-synkroniser kunder fra prosjekter og kundeportal
   useEffect(() => {
     try {
@@ -543,8 +570,31 @@ export default function MesterWorkstation({
     let currentLogs: DailyTimeItem[] = [];
     try {
       const raw = localStorage.getItem(logsStorageKey);
+      const masterKey = `mester_timelogs_${currentTenantScope}_master`;
+      const masterRaw = localStorage.getItem(masterKey);
+      const masterList: DailyTimeItem[] = masterRaw ? JSON.parse(masterRaw) : [];
+
       if (raw) {
         currentLogs = JSON.parse(raw);
+      }
+
+      if (masterList.length > 0) {
+        const map = new Map<string, DailyTimeItem>();
+        currentLogs.forEach(item => map.set(item.id, item));
+        masterList.forEach(item => {
+          if (
+            !selectedProject?.id || 
+            selectedProject.id === 'all' || 
+            item.projectId === selectedProject.id || 
+            item.projectName === selectedProject.name
+          ) {
+            map.set(item.id, item);
+          }
+        });
+        currentLogs = Array.from(map.values()).sort((a, b) => (b.date || '').localeCompare(a.date || ''));
+      }
+
+      if (currentLogs.length > 0) {
         setDailyTimeEntries(currentLogs);
       } else {
         const todayStr = new Date().toISOString().split('T')[0];
@@ -566,6 +616,7 @@ export default function MesterWorkstation({
         currentLogs = initialLogs;
         setDailyTimeEntries(initialLogs);
         localStorage.setItem(logsStorageKey, JSON.stringify(initialLogs));
+        syncDailyTimeEntryLocally(initialLogs[0]);
       }
     } catch (e) {}
 
@@ -578,7 +629,7 @@ export default function MesterWorkstation({
           if (Array.isArray(serverEntries) && serverEntries.length > 0) {
             const relevant = serverEntries.filter((item: any) => {
               if (!selectedProject?.id || selectedProject.id === 'all') return true;
-              return item.projectId === selectedProject.id;
+              return item.projectId === selectedProject.id || item.projectName === selectedProject.name;
             });
 
             if (relevant.length > 0) {
@@ -586,7 +637,7 @@ export default function MesterWorkstation({
                 const map = new Map<string, DailyTimeItem>();
                 prev.forEach(item => map.set(item.id, item));
                 relevant.forEach((item: any) => {
-                  map.set(item.id, {
+                  const entryObj: DailyTimeItem = {
                     id: item.id,
                     workerName: item.workerName || user?.displayName || 'Fagarbeider',
                     role: item.role || 'Tømrer',
@@ -598,7 +649,9 @@ export default function MesterWorkstation({
                     status: item.status || 'pending',
                     projectId: item.projectId,
                     projectName: item.projectName
-                  });
+                  };
+                  map.set(item.id, entryObj);
+                  syncDailyTimeEntryLocally(entryObj);
                 });
                 const merged = Array.from(map.values()).sort((a, b) => (b.date || '').localeCompare(a.date || ''));
                 try {
@@ -615,7 +668,7 @@ export default function MesterWorkstation({
     };
 
     fetchBackendLogs();
-  }, [logsStorageKey, selectedProject?.id, selectedProject?.name, impersonatedCompanyId]);
+  }, [logsStorageKey, selectedProject?.id, selectedProject?.name, currentTenantScope, impersonatedCompanyId]);
 
   // Arkiver kontakt som tidligere ansatt / historisk kontakt (anbefalt for reklamasjons- og HMS-historikk)
   const handleArchiveContact = (id: string, name: string) => {
@@ -785,6 +838,7 @@ export default function MesterWorkstation({
     setDailyTimeEntries(updated);
     try {
       localStorage.setItem(logsStorageKey, JSON.stringify(updated));
+      syncDailyTimeEntryLocally(newEntry);
     } catch {}
 
     // Lagre også til backend / PostgreSQL
@@ -985,6 +1039,7 @@ export default function MesterWorkstation({
           const updated = exists ? prev : [{ ...detail.timeEntry, isLiveAdded: true }, ...prev];
           try {
             localStorage.setItem(logsStorageKey, JSON.stringify(updated));
+            syncDailyTimeEntryLocally(detail.timeEntry);
           } catch {}
           return updated;
         });
@@ -1732,6 +1787,7 @@ export default function MesterWorkstation({
           const updated = exists ? prev : [data.timeEntry, ...prev];
           try {
             localStorage.setItem(logsStorageKey, JSON.stringify(updated));
+            syncDailyTimeEntryLocally(data.timeEntry);
           } catch {}
           return updated;
         });
@@ -5001,12 +5057,14 @@ export default function MesterWorkstation({
                     <div
                       key={msg.id}
                       className={cn(
-                        "flex flex-col gap-1.5 max-w-[92%] sm:max-w-[85%]",
-                        msg.role === 'user' ? "ml-auto items-end" : "mr-auto items-start w-full"
+                        "flex flex-col gap-1.5",
+                        msg.role === 'user'
+                          ? "max-w-[88%] sm:max-w-[78%] ml-auto items-end"
+                          : "w-full items-start"
                       )}
                     >
                       {msg.role === 'assistant' && (
-                        <div className="flex items-center gap-2 text-xs font-bold text-purple-400 mb-1">
+                        <div className="flex items-center gap-2 text-xs font-bold text-purple-400 mb-1 px-1">
                           <Bot size={15} />
                           <span>MesterAI Pilot</span>
                           <span className="text-[10px] text-slate-500">{msg.timestamp}</span>
@@ -5014,10 +5072,10 @@ export default function MesterWorkstation({
                       )}
 
                       <div className={cn(
-                        "p-4 rounded-3xl text-sm leading-relaxed",
+                        "p-4 sm:p-5 rounded-2xl sm:rounded-3xl text-sm leading-relaxed",
                         msg.role === 'user'
-                          ? "bg-gradient-to-r from-purple-700 to-electric-600 text-white rounded-br-xs shadow-md"
-                          : "bg-slate-900 text-slate-100 border border-slate-800 rounded-bl-xs w-full shadow-md"
+                          ? "bg-gradient-to-r from-purple-700 to-electric-600 text-white rounded-2xl sm:rounded-3xl shadow-md"
+                          : "bg-slate-900 text-slate-100 border border-slate-800 rounded-2xl sm:rounded-3xl w-full shadow-md"
                       )}>
                         {msg.imageUrl && (
                           <div className="mb-3 rounded-2xl overflow-hidden border border-white/20 max-w-xs shadow-md">
@@ -5136,7 +5194,7 @@ export default function MesterWorkstation({
 
                   {/* ✦ Clean & Honest Loading Indicator med levende trinn-for-trinn fremdrift */}
                   {isLoading && (
-                    <div className="mr-auto w-full max-w-md rounded-2xl bg-slate-900/95 border border-purple-500/30 p-4 shadow-2xl backdrop-blur-xl animate-in fade-in duration-200 my-2">
+                    <div className="w-full rounded-2xl bg-slate-900/95 border border-purple-500/30 p-4 shadow-2xl backdrop-blur-xl animate-in fade-in duration-200 my-2">
                       <div className="flex items-center justify-between pb-2.5 border-b border-white/10 mb-3">
                         <div className="flex items-center gap-2.5">
                           <div className="relative flex items-center justify-center">
