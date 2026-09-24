@@ -815,6 +815,67 @@ export async function POST(req: NextRequest) {
       const normalHours = isWeekendEvening ? 0 : Math.min(7.5, totalHours);
       const ot50 = isWeekendEvening ? 0 : Math.max(0, totalHours - 7.5);
       const ot100 = isWeekendEvening ? totalHours : 0;
+
+      // 🔒 Sjekk om det bes om å føre timer på en annen person
+      // Kun administrator eller leder har lov til å føre timer på andre ansatte!
+      const isSenderAdmin = Boolean(
+        body.isAdmin || 
+        body.userRole === 'admin' ||
+        body.userRole === 'leader' ||
+        user?.role === 'admin' || 
+        user?.role === 'leader' || 
+        user?.role === 'superadmin'
+      );
+
+      // Finn om meldingen spesifiserer en annen håndverker
+      let targetWorkerName = effectiveUser;
+      let targetWorkerRole = tradeTitle;
+      let isForOtherPerson = false;
+
+      const teamList = Array.isArray(body.teamMembers) ? body.teamMembers : [];
+      // 1. Sjekk mot registrerte teammedlemmer
+      for (const m of teamList) {
+        if (!m || !m.name) continue;
+        const mNorm = m.name.toLowerCase().trim();
+        const effNorm = effectiveUser.toLowerCase().trim();
+        if (mNorm !== effNorm && cleanLowerMsg.includes(mNorm)) {
+          isForOtherPerson = true;
+          targetWorkerName = m.name;
+          targetWorkerRole = m.role || 'Fagarbeider';
+          break;
+        }
+      }
+
+      // 2. Hvis ikke funnet i teamList, sjekk mønster "for [Navn Navnesen]"
+      if (!isForOtherPerson) {
+        const forMatch = message.match(/(?:for|på vegne av)\s+([A-ZÆØÅ][a-zæøå]+(?:\s+[A-ZÆØÅ][a-zæøå]+)?)/);
+        if (forMatch) {
+          const cand = forMatch[1].trim();
+          const candLower = cand.toLowerCase();
+          const effLower = effectiveUser.toLowerCase();
+          const ignoreWords = ['meg', 'meg selv', 'seg', 'arbeid', 'kveld', 'helg', 'mandag', 'tirsdag', 'onsdag', 'torsdag', 'fredag', 'lørdag', 'søndag'];
+          if (!ignoreWords.includes(candLower) && !candLower.includes(effLower) && !effLower.includes(candLower)) {
+            isForOtherPerson = true;
+            targetWorkerName = cand;
+            targetWorkerRole = 'Fagarbeider';
+          }
+        }
+      }
+
+      // 🛑 HVIS IKKE ADMIN OG PRØVER Å FØRE PÅ ANDRE: NEKT!
+      if (isForOtherPerson && !isSenderAdmin) {
+        return NextResponse.json({
+          success: true,
+          sessionId: fbId,
+          reply: `🔒 **Adgangsbegrensning: Kun administrator eller leder kan føre timer for andre ansatte.**\n\n` +
+            `Du er innlogget som **${effectiveUser}**. Fagarbeidere kan kun føre timer på sin egen profil for å sikre korrekt HMS- og lønnsgrunnlag iht. AML § 10-7.\n\n` +
+            `Vil du at jeg skal registrere disse ${totalHours} timene på **deg selv (${effectiveUser})** på **${finalProjName}** i stedet?`,
+          quickReplies: [
+            { title: `Ja, før på meg (${effectiveUser})`, payload: `Før ${totalHours} timer i dag på ${finalProjName}` },
+            { title: 'Avbryt', payload: 'Avbryt timeføring' }
+          ]
+        });
+      }
       
       let task = message
         .replace(/^(?:hei mesterai|hei|kan du|vennligst)?\s*(?:før|føre|førte|registrer|loggfør|skriv inn|legg inn|har jobbet|jobbet)\s*(?:\d+(?:[.,]\d+)?\s*(?:timer?|t\b))?\s*(?:timer?|t\b)?/i, '')
@@ -824,6 +885,9 @@ export async function POST(req: NextRequest) {
       if (finalProjName) {
         task = task.replace(new RegExp(`(?:på|for|ved)?\\s*${finalProjName}[:\\-–]?`, 'gi'), '');
       }
+      if (isForOtherPerson && targetWorkerName) {
+        task = task.replace(new RegExp(`(?:for|på vegne av|på)\\s*${targetWorkerName}[:\\-–]?`, 'gi'), '');
+      }
       task = task.replace(/^[:\s\-–]+/, '').trim();
       if (!task || task.length < 3) {
         task = 'Fagmessig utførelse og produksjon iht. fremdriftsplan';
@@ -832,8 +896,8 @@ export async function POST(req: NextRequest) {
       const todayStr = new Date().toISOString().split('T')[0];
       const timeEntry = {
         id: `time_${Date.now()}`,
-        workerName: effectiveUser,
-        role: tradeTitle,
+        workerName: targetWorkerName,
+        role: targetWorkerRole,
         date: todayStr,
         hours: normalHours,
         overtime50: ot50,
@@ -842,6 +906,7 @@ export async function POST(req: NextRequest) {
         status: 'pending' as const,
         projectId: finalProjId,
         projectName: finalProjName,
+        loggedBy: isForOtherPerson ? `${effectiveUser} (Leder/Admin)` : undefined,
         createdAt: new Date().toISOString()
       };
 
@@ -852,10 +917,10 @@ export async function POST(req: NextRequest) {
         const allDailyLogs = await getCollectionItems('daily_logs').catch(() => []);
         const existingToday = allDailyLogs.find((l: any) => l.projectId === finalProjId && l.date === todayStr);
         const crewList = existingToday?.crewMembers 
-          ? Array.from(new Set([...existingToday.crewMembers, effectiveUser]))
-          : [effectiveUser];
+          ? Array.from(new Set([...existingToday.crewMembers, targetWorkerName]))
+          : [targetWorkerName];
         const newTotalH = (Number(existingToday?.totalHoursWorked) || 0) + totalHours;
-        const noteLine = `• ${effectiveUser}: ${totalHours}t – ${task}`;
+        const noteLine = `• ${targetWorkerName}: ${totalHours}t – ${task}${isForOtherPerson ? ` (ført av ${effectiveUser})` : ''}`;
         const updatedNotes = existingToday?.generalNotes 
           ? `${existingToday.generalNotes}\n${noteLine}`
           : noteLine;
@@ -881,10 +946,10 @@ export async function POST(req: NextRequest) {
 
       await saveCollectionItem('agent_activities', {
         type: 'time_logged',
-        title: `Timer ført: ${totalHours}t av ${effectiveUser}`,
-        description: `Prosjekt: ${finalProjName}. Oppgave: ${task}.`,
+        title: `Timer ført: ${totalHours}t på ${targetWorkerName}`,
+        description: `Prosjekt: ${finalProjName}. Oppgave: ${task}.${isForOtherPerson ? ` Registrert av leder: ${effectiveUser}.` : ''}`,
         trade: userTrade || 'general',
-        tradeName: effectiveUser,
+        tradeName: targetWorkerName,
         status: 'verified',
         badge: `${totalHours} TIMER`,
         projectId: finalProjId,
@@ -892,20 +957,24 @@ export async function POST(req: NextRequest) {
         createdAt: new Date().toISOString()
       });
 
+      const workerSubtitle = isForOtherPerson 
+        ? `**${targetWorkerName}** (${targetWorkerRole} • Registrert av leder ${effectiveUser})`
+        : `**${effectiveUser}** (${tradeTitle} • Din brukerkonto)`;
+
       return NextResponse.json({
         success: true,
         sessionId: fbId,
         timeEntry,
         reply: `⏱️ **${totalHours.toFixed(1)} timer er ført i byggedagboken!**\n\n` +
           `• **Prosjekt:** **${finalProjName}**\n` +
-          `• **Håndverker:** **${effectiveUser}** (${tradeTitle})\n` +
+          `• **Håndverker:** ${workerSubtitle}\n` +
           `• **Dato:** ${todayStr}\n` +
           `• **Normaltid:** ${normalHours} t\n` +
           (ot50 > 0 ? `• **50% Overtid:** +${ot50} t (AML § 10-6)\n` : '') +
           (ot100 > 0 ? `• **100% Overtid:** +${ot100} t\n` : '') +
           `• **Arbeidsoppgave:** ${task}\n` +
           `• **Status:** Lagt til for ledergodkjenning (AML § 10-7)\n\n` +
-          `Timene er bokført på prosjektet og vises i sanntid under **«Byggedagbok & Timer» -> «Ledergodkjenning»**.`,
+          `Timene er bokført på prosjektet og vises i sanntid under **«Byggedagbok & Timer» -> «Ledergodkjenning»**. Leder kan godkjenne timene enkeltvis eller samlet.`,
         quickReplies: [
           { title: 'Åpne Ledergodkjenning', payload: 'Vis timegodkjenning for leder' },
           { title: 'Før flere timer', payload: `Før timer på ${finalProjName}` },

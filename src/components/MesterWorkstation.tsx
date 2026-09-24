@@ -408,6 +408,7 @@ export default function MesterWorkstation({
     projectId?: string;
     category?: 'team' | 'subcontractor' | 'client' | 'former';
     isFormer?: boolean;
+    accessibleProjects?: string[]; // IDs for tildelte byggeplasser eller ['all']
   }
 
   interface DailyTimeItem {
@@ -422,6 +423,7 @@ export default function MesterWorkstation({
     status: 'pending' | 'approved';
     projectId?: string;
     projectName?: string;
+    loggedBy?: string;
   }
 
   const [projectContacts, setProjectContacts] = useState<ProjectContactItem[]>([]);
@@ -434,6 +436,7 @@ export default function MesterWorkstation({
   const [newContactPhone, setNewContactPhone] = useState('');
   const [newContactEmail, setNewContactEmail] = useState('');
   const [newContactCompany, setNewContactCompany] = useState('');
+  const [newContactProjects, setNewContactProjects] = useState<string[]>(['all']);
 
   // ✏️ Rediger kontakt state (Kun Admin)
   const [editingContact, setEditingContact] = useState<ProjectContactItem | null>(null);
@@ -443,6 +446,7 @@ export default function MesterWorkstation({
   const [editContactEmail, setEditContactEmail] = useState('');
   const [editContactCompany, setEditContactCompany] = useState('');
   const [editContactCategory, setEditContactCategory] = useState<'team' | 'subcontractor' | 'client' | 'former'>('team');
+  const [editContactProjects, setEditContactProjects] = useState<string[]>(['all']);
 
   // ⏱️ Byggedagbok & Timeføring state (AML § 10-7 og ledergodkjenning)
   const [dailyTimeEntries, setDailyTimeEntries] = useState<DailyTimeItem[]>([]);
@@ -450,6 +454,24 @@ export default function MesterWorkstation({
   const [logHours, setLogHours] = useState('7.5');
   const [logDescription, setLogDescription] = useState('Lekting av yttervegg og klargjøring for kledning');
   const [logIsWeekendEvening, setLogIsWeekendEvening] = useState(false);
+  const [logWorkerSelection, setLogWorkerSelection] = useState<string>('self');
+
+  // 🔒 Håndheving av prosjekttilganger: Admin ser alle byggeplasser, fagarbeidere ser kun tildelte byggeplasser
+  const userAccessibleProjects = useMemo(() => {
+    if (isAdmin) return projects;
+    const myEmail = (user?.email || '').trim().toLowerCase();
+    const myName = (user?.displayName || '').trim().toLowerCase();
+    const myContact = projectContacts.find(c => 
+      (myEmail && c.email && c.email.trim().toLowerCase() === myEmail) ||
+      (myName && c.name && c.name.trim().toLowerCase() === myName)
+    );
+    const allowed = (user as any)?.accessibleProjects || myContact?.accessibleProjects;
+    if (allowed && Array.isArray(allowed)) {
+      if (allowed.includes('all')) return projects;
+      return projects.filter(p => allowed.includes(p.id));
+    }
+    return projects;
+  }, [projects, isAdmin, user?.email, user?.displayName, (user as any)?.accessibleProjects, projectContacts]);
 
   const currentTenantScope = impersonatedCompanyId || (user?.company ? user.company.replace(/[^a-zA-Z0-9]/g, '_').toLowerCase() : 'tenant_default');
   const contactsStorageKey = `mester_contacts_${currentTenantScope}_${selectedProject?.id || 'all'}`;
@@ -626,6 +648,7 @@ export default function MesterWorkstation({
     setEditContactEmail(contact.email || '');
     setEditContactCompany(contact.companyName || '');
     setEditContactCategory(contact.category || 'team');
+    setEditContactProjects(contact.accessibleProjects || ['all']);
   };
 
   // 💾 Lagre endret kontakt (Kun Admin)
@@ -650,7 +673,8 @@ export default function MesterWorkstation({
           email: editContactEmail.trim(),
           companyName: editContactCompany.trim(),
           category: editContactCategory,
-          isFormer: editContactCategory === 'former'
+          isFormer: editContactCategory === 'former',
+          accessibleProjects: editContactCategory === 'team' ? editContactProjects : c.accessibleProjects
         };
       }
       return c;
@@ -662,7 +686,7 @@ export default function MesterWorkstation({
     } catch {}
 
     setEditingContact(null);
-    toast.success(`Kontakt "${editContactName.trim()}" er oppdatert!`);
+    toast.success(`Kontakt "${editContactName.trim()}" er oppdatert med tildelte byggeplasser!`);
   };
 
   const handleDeleteContact = (id: string, name: string, phone: string, category?: string) => {
@@ -706,7 +730,8 @@ export default function MesterWorkstation({
       companyName: newContactCompany.trim() || (user?.company || 'Bedrift'),
       projectId: selectedProject?.id,
       category: newContactCategory,
-      isFormer: newContactCategory === 'former'
+      isFormer: newContactCategory === 'former',
+      accessibleProjects: newContactCategory === 'team' ? newContactProjects : ['all']
     };
     const updated = [newC, ...projectContacts];
     setProjectContacts(updated);
@@ -718,8 +743,9 @@ export default function MesterWorkstation({
     setNewContactEmail('');
     setNewContactCompany('');
     setNewContactCategory('subcontractor');
+    setNewContactProjects(['all']);
     setIsAddContactModalOpen(false);
-    toast.success(`Kontakt "${newC.name}" lagt til i telefonboken!`);
+    toast.success(`Kontakt "${newC.name}" lagt til i telefonboken med prosjekttilgang!`);
   };
 
   const handleSaveDailyLog = async () => {
@@ -728,10 +754,21 @@ export default function MesterWorkstation({
     const ot50 = logIsWeekendEvening ? 0 : Math.max(0, parsedH - 7.5);
     const ot100 = logIsWeekendEvening ? parsedH : 0;
 
+    let targetWorkerName = user?.displayName || 'Fagarbeider';
+    let targetWorkerRole = user?.trade || 'Tømrer';
+
+    if (isAdmin && logWorkerSelection && logWorkerSelection !== 'self') {
+      const found = projectContacts.find(c => c.id === logWorkerSelection);
+      if (found) {
+        targetWorkerName = found.name;
+        targetWorkerRole = found.role;
+      }
+    }
+
     const newEntry: DailyTimeItem = {
       id: `time_${Date.now()}`,
-      workerName: user?.displayName || 'Fagarbeider',
-      role: user?.trade || 'Tømrer',
+      workerName: targetWorkerName,
+      role: targetWorkerRole,
       date: new Date().toISOString().split('T')[0],
       hours: normalH,
       overtime50: ot50,
@@ -739,7 +776,8 @@ export default function MesterWorkstation({
       task: logDescription || 'Arbeid på byggeplass',
       status: 'pending',
       projectId: selectedProject?.id,
-      projectName: selectedProject?.name
+      projectName: selectedProject?.name,
+      loggedBy: (isAdmin && targetWorkerName !== user?.displayName) ? `${user?.displayName || 'Admin'} (Leder)` : undefined
     };
     const updated = [newEntry, ...dailyTimeEntries];
     setDailyTimeEntries(updated);
@@ -758,7 +796,7 @@ export default function MesterWorkstation({
       console.warn('Kunne ikke synkronisere timeføring til backend:', e);
     }
 
-    toast.success(`Ført ${parsedH} timer (${ot50 > 0 ? `+${ot50}t 50% overtid` : ot100 > 0 ? `+${ot100}t 100% overtid` : 'normaltid'})`);
+    toast.success(`Ført ${parsedH} timer på ${targetWorkerName} (${ot50 > 0 ? `+${ot50}t 50% overtid` : ot100 > 0 ? `+${ot100}t 100% overtid` : 'normaltid'})`);
   };
 
   const handleApproveAllLogs = async () => {
@@ -798,6 +836,43 @@ export default function MesterWorkstation({
     } catch (e) {}
 
     toast.success('Timeføring godkjent av leder iht. AML § 10-7.');
+  };
+
+  const handleToggleSingleLogStatus = async (id: string) => {
+    const target = dailyTimeEntries.find(e => e.id === id);
+    if (!target) return;
+    const newStatus = target.status === 'approved' ? ('pending' as const) : ('approved' as const);
+    const updated = dailyTimeEntries.map(entry => entry.id === id ? { ...entry, status: newStatus } : entry);
+    setDailyTimeEntries(updated);
+    try {
+      localStorage.setItem(logsStorageKey, JSON.stringify(updated));
+    } catch {}
+
+    try {
+      await fetch(`/api/data/time_entries/${id}`, {
+        method: 'PATCH',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ status: newStatus })
+      });
+    } catch (e) {}
+
+    toast.success(newStatus === 'approved' ? 'Timeføring godkjent av leder iht. AML § 10-7.' : 'Timeføring satt tilbake til venter.');
+  };
+
+  const handleDeleteSingleLog = async (id: string) => {
+    const updated = dailyTimeEntries.filter(entry => entry.id !== id);
+    setDailyTimeEntries(updated);
+    try {
+      localStorage.setItem(logsStorageKey, JSON.stringify(updated));
+    } catch {}
+
+    try {
+      await fetch(`/api/data/time_entries/${id}`, {
+        method: 'DELETE'
+      });
+    } catch (e) {}
+
+    toast.success('Timeføring slettet.');
   };
 
   // 🏗️ Nytt prosjekt inline state
@@ -1596,7 +1671,7 @@ export default function MesterWorkstation({
           sessionId: activeSessionId,
           projectName: activeProjName,
           projectId: activeProjId,
-          availableProjects: projects.map(p => ({
+          availableProjects: userAccessibleProjects.map(p => ({
             id: p.id,
             name: p.name,
             code: p.code,
@@ -1604,12 +1679,17 @@ export default function MesterWorkstation({
           })),
           userName: effectiveUserName,
           userTrade: trade || user?.trade || 'carpenter',
+          userRole: role || user?.role || 'worker',
+          isAdmin: isAdmin,
           companyName: effectiveCompanyName,
           companyId: effectiveCompanyId,
           userId: impersonated === 'comp-demo-fjellheim' ? 'u-demo-lars-fjellheim' : (user?.uid || user?.id),
           userEmail: user?.email || '',
           replyTo: user?.email || '',
-          imageUrl: activeImage
+          imageUrl: activeImage,
+          teamMembers: projectContacts
+            .filter(c => c.category === 'team')
+            .map(c => ({ id: c.id, name: c.name, role: c.role, email: c.email }))
         })
       });
 
@@ -1825,7 +1905,7 @@ export default function MesterWorkstation({
                         </div>
                       </button>
 
-                      {projects.map((proj) => (
+                      {userAccessibleProjects.map((proj) => (
                         <button
                           key={proj.id}
                           type="button"
@@ -1925,7 +2005,7 @@ export default function MesterWorkstation({
                           </div>
                         </button>
 
-                        {projects.map((proj) => (
+                        {userAccessibleProjects.map((proj) => (
                           <button
                             key={proj.id}
                             type="button"
@@ -2037,8 +2117,8 @@ export default function MesterWorkstation({
                     : allSessions.slice(0, 4);
 
                   const filteredProjects = queryLower
-                    ? projects.filter(p => p.name.toLowerCase().includes(queryLower) || p.clientName?.toLowerCase().includes(queryLower))
-                    : projects.slice(0, 3);
+                    ? userAccessibleProjects.filter(p => p.name.toLowerCase().includes(queryLower) || p.clientName?.toLowerCase().includes(queryLower))
+                    : userAccessibleProjects.slice(0, 3);
 
                   const moduleList = [
                     { id: 'offers', name: '📝 Tilbud & Hurtigkalkyle', desc: 'Prising, timepriser, materiell og påslag' },
@@ -2498,23 +2578,27 @@ export default function MesterWorkstation({
                       <div>
                         <h3 className="text-lg font-black text-white flex items-center gap-2">
                           <HardHat className="text-amber-400" size={20} />
-                          <span>Alle Byggeplasser ({projects.length})</span>
+                          <span>{isAdmin ? 'Alle Byggeplasser' : 'Mine Byggeplasser'} ({userAccessibleProjects.length})</span>
                         </h3>
                         <p className="text-xs text-slate-400 mt-0.5">
-                          Oversikt over alle aktive, planlagte og fullførte byggeprosjekter.
+                          {isAdmin 
+                            ? 'Oversikt over alle aktive, planlagte og fullførte byggeprosjekter i bedriften.' 
+                            : 'Oversikt over byggeplasser du er tildelt tilgang til av prosjektleder/admin.'}
                         </p>
                       </div>
-                      <button
-                        type="button"
-                        onClick={() => {
-                          setActiveModuleTab('create_project');
-                          setViewMode('module');
-                        }}
-                        className="inline-flex items-center gap-2 px-4 py-2.5 rounded-xl bg-emerald-600 hover:bg-emerald-500 text-white text-xs font-bold transition-all shadow-md cursor-pointer shrink-0"
-                      >
-                        <Plus size={15} />
-                        <span>Opprett nytt prosjekt</span>
-                      </button>
+                      {isAdmin && (
+                        <button
+                          type="button"
+                          onClick={() => {
+                            setActiveModuleTab('create_project');
+                            setViewMode('module');
+                          }}
+                          className="inline-flex items-center gap-2 px-4 py-2.5 rounded-xl bg-emerald-600 hover:bg-emerald-500 text-white text-xs font-bold transition-all shadow-md cursor-pointer shrink-0"
+                        >
+                          <Plus size={15} />
+                          <span>Opprett nytt prosjekt</span>
+                        </button>
+                      )}
                     </div>
 
                     {/* Søkefilter */}
@@ -2533,13 +2617,13 @@ export default function MesterWorkstation({
                     {(() => {
                       const q = projectSearchQuery.toLowerCase().trim();
                       const filtered = q
-                        ? projects.filter(p =>
+                        ? userAccessibleProjects.filter(p =>
                             p.name.toLowerCase().includes(q) ||
                             p.code?.toLowerCase().includes(q) ||
                             p.clientName?.toLowerCase().includes(q) ||
                             p.address?.toLowerCase().includes(q)
                           )
-                        : projects;
+                        : userAccessibleProjects;
 
                       if (filtered.length === 0) {
                         return (
@@ -3197,9 +3281,35 @@ export default function MesterWorkstation({
 
                       {/* Hurtigføring av timer */}
                       <div className="p-4 rounded-2xl bg-slate-950 border border-slate-800 space-y-3">
-                        <h4 className="text-xs font-bold text-white flex items-center gap-1.5">
-                          <Plus size={14} className="text-amber-400" /> Før timer i byggedagboken
-                        </h4>
+                        <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-2">
+                          <h4 className="text-xs font-bold text-white flex items-center gap-1.5">
+                            <Plus size={14} className="text-amber-400" /> Før timer i byggedagboken
+                          </h4>
+                          {isAdmin ? (
+                            <div className="flex items-center gap-2">
+                              <span className="text-[11px] font-bold text-slate-400">Før timer for:</span>
+                              <select
+                                value={logWorkerSelection}
+                                onChange={(e) => setLogWorkerSelection(e.target.value)}
+                                className="px-2.5 py-1 rounded-xl bg-slate-900 border border-slate-750 text-xs text-white focus:outline-none focus:border-amber-500 font-semibold cursor-pointer"
+                              >
+                                <option value="self">Meg selv ({user?.displayName || 'Admin'})</option>
+                                {projectContacts
+                                  .filter(c => c.category === 'team' && c.name !== user?.displayName)
+                                  .map(m => (
+                                    <option key={m.id} value={m.id}>{m.name} ({m.role})</option>
+                                  ))}
+                              </select>
+                            </div>
+                          ) : (
+                            <div className="flex items-center gap-1.5 text-[11px] text-slate-400">
+                              <span>Føres automatisk på din konto:</span>
+                              <strong className="text-white font-semibold px-2 py-0.5 rounded-lg bg-slate-900 border border-slate-750">
+                                {user?.displayName || 'Innlogget fagarbeider'}
+                              </strong>
+                            </div>
+                          )}
+                        </div>
                         <div className="flex flex-col sm:flex-row gap-2">
                           <input
                             type="text"
@@ -3326,6 +3436,7 @@ export default function MesterWorkstation({
                               <th className="p-3">100% Overtid</th>
                               <th className="p-3">Oppgave</th>
                               <th className="p-3">Status</th>
+                              <th className="p-3 text-right">Handling</th>
                             </tr>
                           </thead>
                           <tbody className="divide-y divide-slate-800/60 bg-slate-900">
@@ -3336,6 +3447,9 @@ export default function MesterWorkstation({
                                   {e.projectName && (
                                     <div className="text-[10px] text-slate-400 font-normal">{e.projectName}</div>
                                   )}
+                                  {e.loggedBy && (
+                                    <div className="text-[9px] text-purple-400 font-normal">Ført av: {e.loggedBy}</div>
+                                  )}
                                 </td>
                                 <td className="p-3 text-slate-400 font-mono">{e.date}</td>
                                 <td className="p-3 text-slate-200 font-bold">{e.hours} t</td>
@@ -3343,20 +3457,45 @@ export default function MesterWorkstation({
                                 <td className="p-3 text-rose-400 font-bold">{e.overtime100 > 0 ? `+${e.overtime100} t` : '-'}</td>
                                 <td className="p-3 text-slate-300 max-w-xs truncate">{e.task}</td>
                                 <td className="p-3">
-                                  <div className="flex items-center gap-2">
-                                    <span className={cn("px-2 py-0.5 rounded-full text-[10px] font-black uppercase", e.status === 'approved' ? "bg-emerald-500/20 text-emerald-400" : "bg-amber-500/20 text-amber-300")}>
-                                      {e.status === 'approved' ? 'Godkjent' : 'Venter'}
-                                    </span>
-                                    {isAdmin && e.status === 'pending' && (
+                                  <span className={cn(
+                                    "px-2.5 py-1 rounded-full text-[10px] font-black uppercase tracking-wider inline-block",
+                                    e.status === 'approved' 
+                                      ? "bg-emerald-500/20 text-emerald-400 border border-emerald-500/30" 
+                                      : "bg-amber-500/20 text-amber-300 border border-amber-500/30"
+                                  )}>
+                                    {e.status === 'approved' ? '✓ Godkjent' : '⏳ Venter'}
+                                  </span>
+                                </td>
+                                <td className="p-3 text-right">
+                                  <div className="flex items-center justify-end gap-1.5">
+                                    {e.status === 'pending' ? (
                                       <button
                                         type="button"
                                         onClick={() => handleApproveSingleLog(e.id)}
-                                        className="px-2 py-0.5 rounded-lg bg-emerald-600/30 hover:bg-emerald-600/50 text-emerald-300 text-[10px] font-bold border border-emerald-500/30 cursor-pointer"
-                                        title="Godkjenn denne føringen"
+                                        className="px-3 py-1.5 rounded-xl bg-emerald-600 hover:bg-emerald-500 text-white text-xs font-bold transition-all shadow-xs cursor-pointer flex items-center gap-1 shrink-0"
+                                        title="Godkjenn denne timeføringen (AML § 10-7)"
                                       >
-                                        Godkjenn
+                                        <Check size={13} />
+                                        <span>Godkjenn</span>
+                                      </button>
+                                    ) : (
+                                      <button
+                                        type="button"
+                                        onClick={() => handleToggleSingleLogStatus(e.id)}
+                                        className="px-2.5 py-1 rounded-xl bg-slate-800 hover:bg-slate-700 text-slate-300 text-[11px] font-semibold transition-all border border-slate-700 cursor-pointer shrink-0"
+                                        title="Angre godkjenning (sett tilbake til venter)"
+                                      >
+                                        Angre
                                       </button>
                                     )}
+                                    <button
+                                      type="button"
+                                      onClick={() => handleDeleteSingleLog(e.id)}
+                                      className="p-1.5 rounded-lg text-slate-500 hover:text-rose-400 hover:bg-rose-500/10 transition-colors cursor-pointer"
+                                      title="Slett timeføring"
+                                    >
+                                      <Trash2 size={14} />
+                                    </button>
                                   </div>
                                 </td>
                               </tr>
@@ -3825,6 +3964,29 @@ export default function MesterWorkstation({
                             {c.companyName && (
                               <p className="text-[10px] text-slate-500 truncate mt-0.5">{c.companyName}</p>
                             )}
+                            {c.category === 'team' && (
+                              <div className="flex items-center gap-1.5 flex-wrap mt-1.5 pt-1 border-t border-slate-800/60">
+                                <span className="text-[10px] font-bold text-slate-400">Byggeplasser:</span>
+                                {(!c.accessibleProjects || c.accessibleProjects.includes('all')) ? (
+                                  <span className="px-1.5 py-0.5 rounded text-[10px] font-bold bg-emerald-500/10 text-emerald-300 border border-emerald-500/20">
+                                    🌐 Alle byggeplasser
+                                  </span>
+                                ) : c.accessibleProjects.length === 0 ? (
+                                  <span className="px-1.5 py-0.5 rounded text-[10px] font-bold bg-rose-500/10 text-rose-300 border border-rose-500/20">
+                                    Ingen tildelte
+                                  </span>
+                                ) : (
+                                  c.accessibleProjects.map(projId => {
+                                    const p = projects.find(proj => proj.id === projId);
+                                    return (
+                                      <span key={projId} className="px-1.5 py-0.5 rounded text-[10px] font-bold bg-amber-500/10 text-amber-300 border border-amber-500/20 truncate max-w-[140px]">
+                                        🏗️ {p?.name || projId}
+                                      </span>
+                                    );
+                                  })
+                                )}
+                              </div>
+                            )}
                           </div>
                           <div className="flex items-center gap-1.5 shrink-0">
                             <a
@@ -3966,6 +4128,70 @@ export default function MesterWorkstation({
                             />
                           </div>
 
+                          {/* 🏗️ Prosjekttilgang for egne ansatte / håndverkere */}
+                          {newContactCategory === 'team' && (
+                            <div className="p-3 rounded-2xl bg-slate-950 border border-slate-800 space-y-2.5">
+                              <div className="flex items-center justify-between">
+                                <label className="text-[11px] font-bold text-white flex items-center gap-1.5">
+                                  <Building2 size={13} className="text-amber-400" />
+                                  <span>Tildel byggeplasser / prosjekter</span>
+                                </label>
+                                <span className="text-[10px] text-amber-400 font-bold">Admin-styrt</span>
+                              </div>
+                              <p className="text-[10px] text-slate-400">
+                                Velg hvilke byggeplasser håndverkeren skal ha tilgang til, føre timer på og se sjekklister for.
+                              </p>
+                              
+                              <label className="flex items-center gap-2 p-2 rounded-xl bg-slate-900 border border-slate-750 cursor-pointer hover:border-slate-650 transition-colors">
+                                <input
+                                  type="checkbox"
+                                  checked={newContactProjects.includes('all')}
+                                  onChange={(e) => {
+                                    if (e.target.checked) {
+                                      setNewContactProjects(['all']);
+                                    } else {
+                                      setNewContactProjects(projects.map(p => p.id));
+                                    }
+                                  }}
+                                  className="rounded text-amber-500 focus:ring-amber-500 cursor-pointer"
+                                />
+                                <span className="text-xs font-bold text-white">🌐 Tilgang til alle byggeplasser</span>
+                              </label>
+
+                              {!newContactProjects.includes('all') && (
+                                <div className="space-y-1.5 pt-1 max-h-36 overflow-y-auto pr-1 custom-scrollbar">
+                                  <p className="text-[10px] font-bold text-slate-400">Avmerk tillatte prosjekter:</p>
+                                  {projects.map((p) => {
+                                    const isChecked = newContactProjects.includes(p.id);
+                                    return (
+                                      <label
+                                        key={p.id}
+                                        className={cn(
+                                          "flex items-center gap-2 p-2 rounded-xl border cursor-pointer text-xs transition-colors",
+                                          isChecked ? "bg-amber-500/10 border-amber-500/30 text-white" : "bg-slate-900 border-slate-800 text-slate-300 hover:border-slate-700"
+                                        )}
+                                      >
+                                        <input
+                                          type="checkbox"
+                                          checked={isChecked}
+                                          onChange={(e) => {
+                                            if (e.target.checked) {
+                                              setNewContactProjects(prev => [...prev.filter(id => id !== 'all'), p.id]);
+                                            } else {
+                                              setNewContactProjects(prev => prev.filter(id => id !== p.id));
+                                            }
+                                          }}
+                                          className="rounded text-amber-500 focus:ring-amber-500 cursor-pointer"
+                                        />
+                                        <span className="truncate font-semibold">{p.name}</span>
+                                      </label>
+                                    );
+                                  })}
+                                </div>
+                              )}
+                            </div>
+                          )}
+
                           <div className="flex items-center justify-end gap-2 pt-3">
                             <button
                               type="button"
@@ -4087,6 +4313,70 @@ export default function MesterWorkstation({
                               className="w-full px-3 py-2 rounded-xl bg-slate-950 border border-slate-800 text-xs text-white placeholder:text-slate-500 focus:outline-none focus:border-purple-500"
                             />
                           </div>
+
+                          {/* 🏗️ Prosjekttilgang for egne ansatte / håndverkere */}
+                          {editContactCategory === 'team' && (
+                            <div className="p-3 rounded-2xl bg-slate-950 border border-slate-800 space-y-2.5">
+                              <div className="flex items-center justify-between">
+                                <label className="text-[11px] font-bold text-white flex items-center gap-1.5">
+                                  <Building2 size={13} className="text-purple-400" />
+                                  <span>Tildel byggeplasser / prosjekter</span>
+                                </label>
+                                <span className="text-[10px] text-purple-400 font-bold">Admin-styrt</span>
+                              </div>
+                              <p className="text-[10px] text-slate-400">
+                                Velg hvilke byggeplasser denne håndverkeren har tilgang til, kan føre timer på og se sjekklister for.
+                              </p>
+                              
+                              <label className="flex items-center gap-2 p-2 rounded-xl bg-slate-900 border border-slate-750 cursor-pointer hover:border-slate-650 transition-colors">
+                                <input
+                                  type="checkbox"
+                                  checked={editContactProjects.includes('all')}
+                                  onChange={(e) => {
+                                    if (e.target.checked) {
+                                      setEditContactProjects(['all']);
+                                    } else {
+                                      setEditContactProjects(projects.map(p => p.id));
+                                    }
+                                  }}
+                                  className="rounded text-purple-500 focus:ring-purple-500 cursor-pointer"
+                                />
+                                <span className="text-xs font-bold text-white">🌐 Tilgang til alle byggeplasser</span>
+                              </label>
+
+                              {!editContactProjects.includes('all') && (
+                                <div className="space-y-1.5 pt-1 max-h-36 overflow-y-auto pr-1 custom-scrollbar">
+                                  <p className="text-[10px] font-bold text-slate-400">Avmerk tillatte prosjekter:</p>
+                                  {projects.map((p) => {
+                                    const isChecked = editContactProjects.includes(p.id);
+                                    return (
+                                      <label
+                                        key={p.id}
+                                        className={cn(
+                                          "flex items-center gap-2 p-2 rounded-xl border cursor-pointer text-xs transition-colors",
+                                          isChecked ? "bg-purple-500/10 border-purple-500/30 text-white" : "bg-slate-900 border-slate-800 text-slate-300 hover:border-slate-700"
+                                        )}
+                                      >
+                                        <input
+                                          type="checkbox"
+                                          checked={isChecked}
+                                          onChange={(e) => {
+                                            if (e.target.checked) {
+                                              setEditContactProjects(prev => [...prev.filter(id => id !== 'all'), p.id]);
+                                            } else {
+                                              setEditContactProjects(prev => prev.filter(id => id !== p.id));
+                                            }
+                                          }}
+                                          className="rounded text-purple-500 focus:ring-purple-500 cursor-pointer"
+                                        />
+                                        <span className="truncate font-semibold">{p.name}</span>
+                                      </label>
+                                    );
+                                  })}
+                                </div>
+                              )}
+                            </div>
+                          )}
 
                           <div className="flex items-center justify-end gap-2 pt-3">
                             <button
