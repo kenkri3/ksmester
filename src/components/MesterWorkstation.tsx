@@ -1658,6 +1658,22 @@ export default function MesterWorkstation({
           content: m.content
         }));
 
+      let previousSessionContext = '';
+      try {
+        const allSessions = chatSessionService.getSessions();
+        const otherSessions = allSessions.filter(s => s.id !== activeSessionId && s.messages && s.messages.length > 0);
+        if (otherSessions.length > 0) {
+          const lastSession = otherSessions[0];
+          const lastMsgs = lastSession.messages
+            .filter(m => m.id !== 'welcome')
+            .slice(-4);
+          if (lastMsgs.length > 0) {
+            previousSessionContext = `Tittel: «${lastSession.title}» (${lastSession.projectName || 'Generelt'}). Siste temaer:\n` +
+              lastMsgs.map(m => `${m.role === 'assistant' ? 'MesterAI' : 'Håndverker'}: ${m.content.slice(0, 300)}`).join('\n');
+          }
+        }
+      } catch {}
+
       const res = await fetch('/api/agent/chat', {
         method: 'POST',
         headers: { 
@@ -1667,6 +1683,7 @@ export default function MesterWorkstation({
         body: JSON.stringify({
           message: textToSend.trim() || userMessage.content,
           history: historyPayload,
+          previousSessionContext: previousSessionContext || undefined,
           sessionId: activeSessionId,
           projectName: activeProjName,
           projectId: activeProjId,
@@ -5278,6 +5295,7 @@ export default function MesterWorkstation({
             </div>
           )}
         </div>
+      )}
 
         {/* 4. Floating Rounded-Full Input Box (1:1 Google Gemini App - Screenshot 2 & 3) */}
         {viewMode === 'chat' && (

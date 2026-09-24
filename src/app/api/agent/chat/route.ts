@@ -537,6 +537,7 @@ export async function POST(req: NextRequest) {
     const { 
       message, 
       history,
+      previousSessionContext,
       sessionId, 
       projectName, 
       availableProjects, 
@@ -1178,6 +1179,11 @@ export async function POST(req: NextRequest) {
       }
     }
 
+    // 📜 Kontekst fra forrige samtaletråd (hvis brukeren åpner en ny tråd og refererer til "i forrige samtale")
+    if (previousSessionContext && typeof previousSessionContext === 'string' && previousSessionContext.trim()) {
+      enrichedMessage += `[KONTEKST FRA BRUKERENS FORRIGE SAMTALETRÅD]:\n${previousSessionContext.trim()}\n[SLUTT PÅ FORRIGE TRÅD]\n\n`;
+    }
+
     enrichedMessage += message;
 
     if (hasImage) {
@@ -1207,7 +1213,8 @@ ${langDirective}
 - Du har tilgang til tidligere meldinger i denne samtaletråden ovenfor under [TIDLIGERE SAMTALEHISTORIKK I DENNE TRÅDEN].
 - Du HUSKER hva dere nettopp snakket om, tidligere beregninger, oppgitte mål, materialer og tilbudsposter.
 - Når brukeren svarer kort eller refererer til forrige svar (f.eks: «ja», «50 kvm», «legg til vinduer også», «hva koster det?», «send det på e-post nå», «endre timeprisen til 950»), skal du forstå konteksten umiddelbart og bygge videre på det dere har diskutert.
-- Du skal ALDRI glemme tidligere oppgitte detaljer eller stille de samme spørsmålene på nytt i samme tråd. Hold samtalen flytende, naturlig, samarbeidende og handlingsorientert!
+- Du skal ALDRI glemme tidligere oppgitte detaljer eller stille de samme spørsmålene på nytt i samme tråd.
+- Hvis brukeren refererer til «i forrige samtale», «forrige tråd» eller «hva snakket vi om sist?», har du konteksten fra forrige tråd tilgjengelig under [KONTEKST FRA BRUKERENS FORRIGE SAMTALETRÅD]. Referer til det og fortsett arbeidet sømløst i stedet for å si at du ikke har innholdet tilgjengelig! Hold samtalen flytende, naturlig, samarbeidende og handlingsorientert!
 
 🛡️ 100% WHITE-LABEL:
 Du er MesterAI, utviklet eksklusivt for Vikingmester. Du skal ALDRI nevne eller referere til underliggende AI-modeller, leverandører eller eksterne systemer som DeepSeek, OpenAI, Google, Anthropic eller Botsify. For brukeren er du 100 % MesterAI.
