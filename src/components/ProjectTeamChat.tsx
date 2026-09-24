@@ -31,7 +31,8 @@ import {
   MapPin,
   Eye,
   Paperclip,
-  Maximize2
+  Maximize2,
+  Trash2
 } from 'lucide-react';
 import { toast } from 'sonner';
 import { Project } from '@/src/types';
@@ -93,6 +94,13 @@ const QUICK_TAGS = [
 
 const POPULAR_EMOJIS = ['👍', '🔨', '✅', '⚠️', '👏', '💪'];
 
+const AI_SUGGESTIONS = [
+  { label: '📋 Sjekkliste lukkesjekk', prompt: '@MesterAI Lag en sjekkliste for tømrer før lukking av yttervegg iht. TEK17' },
+  { label: '💧 Våtromskrav membran', prompt: '@MesterAI Hvilke krav gjelder til slukmansjett og smøremembran iht. Våtromsnormen?' },
+  { label: '🛡️ SJA stillasarbeid', prompt: '@MesterAI Trenger en rask SJA for stillas og fallsikring i 2. etasje' },
+  { label: '📄 NS 8406 endringsvarsel', prompt: '@MesterAI Formuler et formelt varsel om endringsordre og fristforlengelse iht. NS 8406' }
+];
+
 export default function ProjectTeamChat({
   projects,
   selectedProject,
@@ -123,7 +131,9 @@ export default function ProjectTeamChat({
   const [isSearchOpen, setIsSearchOpen] = useState(false);
   const [isMembersModalOpen, setIsMembersModalOpen] = useState(false);
   const [previewImage, setPreviewImage] = useState<string | null>(null);
-  const [selectedContactForCard, setSelectedContactForCard] = useState<any | null>(null);
+  const [selectedContactForCard, setSelectedContactForCard] = useState<TeamChatMessage | null>(null);
+  const [showAiSuggestions, setShowAiSuggestions] = useState(false);
+  const [activeEmojiPickerForMsgId, setActiveEmojiPickerForMsgId] = useState<string | null>(null);
 
   // Tale-diktering state
   const [isRecording, setIsRecording] = useState(false);
@@ -134,6 +144,7 @@ export default function ProjectTeamChat({
 
   const messagesEndRef = useRef<HTMLDivElement>(null);
   const fileInputRef = useRef<HTMLInputElement>(null);
+  const inputRef = useRef<HTMLInputElement>(null);
 
   // Bytt kanal automatisk hvis bruker velger nytt prosjekt i toppen
   useEffect(() => {
@@ -173,7 +184,6 @@ export default function ProjectTeamChat({
     // Legg til direktemeldingskanaler fra prosjektkontakter
     projectContacts
       .filter(c => !c.isFormer && c.name && c.name !== user?.displayName)
-      .slice(0, 8)
       .forEach(c => {
         list.push({
           id: `dm_${c.id}`,
@@ -212,6 +222,24 @@ export default function ProjectTeamChat({
     }
   }, [storageKey, activeChannelId]);
 
+  // Lytt etter oppdateringer fra andre vinduer/faner
+  useEffect(() => {
+    const handleUpdate = () => {
+      try {
+        const raw = localStorage.getItem(storageKey);
+        if (raw) setMessages(JSON.parse(raw));
+      } catch (e) {
+        console.warn('Feil ved synk av chatmeldinger:', e);
+      }
+    };
+    window.addEventListener('mester_teamchat_updated', handleUpdate);
+    window.addEventListener('storage', handleUpdate);
+    return () => {
+      window.removeEventListener('mester_teamchat_updated', handleUpdate);
+      window.removeEventListener('storage', handleUpdate);
+    };
+  }, [storageKey]);
+
   // Autoscroll til bunnen når nye meldinger kommer
   useEffect(() => {
     messagesEndRef.current?.scrollIntoView({ behavior: 'smooth' });
@@ -244,7 +272,7 @@ export default function ProjectTeamChat({
       senderRole: user?.role === 'admin' ? 'Prosjektleder / Admin' : 'Håndverker',
       senderCompany: user?.company || 'Viking Bygg AS',
       senderCategory: user?.role === 'admin' ? 'admin' : 'team',
-      content: content,
+      content: content || (attachedImage ? '📷 Bilde delt fra byggeplassen' : ''),
       imageUrl: attachedImage || undefined,
       timestamp: now.toISOString(),
       formattedTime: formattedTime,
@@ -255,6 +283,7 @@ export default function ProjectTeamChat({
     saveMessages(updated);
     setInputVal('');
     setAttachedImage(null);
+    setShowAiSuggestions(false);
 
     // Hvis meldingen inneholder @MesterAI eller brukeren kaller på AI, trigger autonomt svar
     if (content.toLowerCase().includes('@mesterai') || content.toLowerCase().includes('@ai')) {
@@ -268,7 +297,7 @@ export default function ProjectTeamChat({
     try {
       const cleanPrompt = userPrompt.replace(/@mesterai/gi, '').replace(/@ai/gi, '').trim();
       const channelContext = `Du er MesterAI, en erfaren norsk byggmester, prosjektleder og fagrådgiver.
-Du svarer nå direkte inn i team-chatten for byggeprosjektet "${activeChannel.name}".
+Du svarer nå direkte inn i team-chatten for kanalen "${activeChannel.name}".
 Deltakere i chatten er tømrere, prosjektledere, underentreprenører og bas.
 Hold svaret konsist, praktisk, faglig presist i henhold til TEK17 / NS 8406 / Våtromsnormen, og i en vennlig, profesjonell håndverkertone.
 Maks 2-4 avsnitt eller punktliste.`;
@@ -306,10 +335,11 @@ Maks 2-4 avsnitt eller punktliste.`;
 
   // Hurtigknapp for å spørre MesterAI
   const handleAskMesterAiDirectly = () => {
-    const prompt = window.prompt('Hva vil du spørre MesterAI om for dette prosjektet? (Svaret deles med hele teamet):');
-    if (prompt && prompt.trim()) {
-      handleSendMessage(`@MesterAI ${prompt.trim()}`);
-    }
+    setShowAiSuggestions(prev => !prev);
+    setInputVal(prev => (prev.startsWith('@MesterAI') ? prev : `@MesterAI ${prev}`.trimStart()));
+    setTimeout(() => {
+      inputRef.current?.focus();
+    }, 100);
   };
 
   // Reaksjon på melding
@@ -343,6 +373,13 @@ Maks 2-4 avsnitt eller punktliste.`;
       return m;
     });
     saveMessages(updated);
+  };
+
+  // Slett melding (for egen melding eller admin)
+  const handleDeleteMessage = (msgId: string) => {
+    const updated = messages.filter(m => m.id !== msgId);
+    saveMessages(updated);
+    toast.success('Melding slettet');
   };
 
   // Bildeopplasting
@@ -430,16 +467,47 @@ Maks 2-4 avsnitt eller punktliste.`;
     return messages.filter(m => m.isPinned);
   }, [messages]);
 
+  // Kontaktkort for klikket avsender
+  const contactDetails = useMemo(() => {
+    if (!selectedContactForCard) return null;
+    const match = projectContacts.find(c =>
+      c.name?.toLowerCase() === selectedContactForCard.senderName?.toLowerCase() ||
+      c.id === selectedContactForCard.senderId
+    );
+    return {
+      name: selectedContactForCard.senderName,
+      role: selectedContactForCard.senderRole || match?.role || 'Kollega',
+      company: selectedContactForCard.senderCompany || match?.companyName || user?.company || 'Firma',
+      phone: match?.phone,
+      email: match?.email,
+      id: match?.id || selectedContactForCard.senderId,
+      category: selectedContactForCard.senderCategory || match?.category || 'team'
+    };
+  }, [selectedContactForCard, projectContacts, user?.company]);
+
   return (
     <div className="flex flex-col h-[calc(100vh-80px)] sm:h-[calc(100vh-100px)] max-w-7xl mx-auto w-full bg-slate-950 border border-slate-800 rounded-3xl overflow-hidden shadow-2xl">
       {/* 1. Topp-fane / Prosjekthode */}
-      <div className="flex items-center justify-between px-4 py-3 bg-slate-900 border-b border-slate-800 shrink-0">
-        <div className="flex items-center gap-2.5">
+      <div className="flex items-center justify-between px-3 sm:px-4 py-3 bg-slate-900 border-b border-slate-800 shrink-0">
+        <div className="flex items-center gap-2 sm:gap-2.5 min-w-0">
+          {/* Valgfri tilbakeknapp til arbeidsstasjon */}
+          {onBackToWorkstation && (
+            <button
+              type="button"
+              onClick={onBackToWorkstation}
+              className="p-2 rounded-xl bg-slate-800 hover:bg-slate-750 text-slate-300 hover:text-white border border-slate-750 text-xs font-bold transition-colors cursor-pointer flex items-center gap-1 shrink-0"
+              title="Gå tilbake til arbeidsstasjonen"
+            >
+              <ChevronLeft size={16} />
+              <span className="hidden sm:inline">Tilbake</span>
+            </button>
+          )}
+
           {/* Mobil tilbake til kanalliste-knapp */}
           <button
             type="button"
             onClick={() => setMobileTab(mobileTab === 'chat' ? 'list' : 'chat')}
-            className="md:hidden p-2 rounded-xl bg-slate-800 text-slate-300 hover:text-white"
+            className="md:hidden p-2 rounded-xl bg-slate-800 text-slate-300 hover:text-white shrink-0"
             title={mobileTab === 'chat' ? 'Vis alle kanaler' : 'Vis samtale'}
           >
             {mobileTab === 'chat' ? <Users size={16} /> : <ChevronLeft size={16} />}
@@ -461,6 +529,11 @@ Maks 2-4 avsnitt eller punktliste.`;
                     Byggeplass
                   </span>
                 )}
+                {activeChannel.type === 'dm' && (
+                  <span className="hidden sm:inline-flex px-2 py-0.5 rounded-full text-[10px] font-bold bg-purple-500/10 text-purple-400 border border-purple-500/30">
+                    Direkte
+                  </span>
+                )}
               </h2>
             </div>
             <p className="text-[11px] text-slate-400 truncate max-w-xs sm:max-w-md">
@@ -470,16 +543,17 @@ Maks 2-4 avsnitt eller punktliste.`;
         </div>
 
         {/* Høyre toppkontroller */}
-        <div className="flex items-center gap-1.5">
+        <div className="flex items-center gap-1.5 shrink-0">
           {/* Spør MesterAI i samtalen */}
           <button
             type="button"
             onClick={handleAskMesterAiDirectly}
-            className="hidden sm:flex items-center gap-1.5 px-3 py-1.5 rounded-xl bg-gradient-to-r from-purple-600 to-electric-600 hover:from-purple-500 hover:to-electric-500 text-white text-xs font-bold shadow-xs transition-all cursor-pointer border border-purple-400/40"
-            title="Kall på MesterAI for å gi råd i chatten"
+            className="flex items-center gap-1.5 px-2.5 sm:px-3 py-1.5 rounded-xl bg-gradient-to-r from-purple-600 to-electric-600 hover:from-purple-500 hover:to-electric-500 text-white text-xs font-bold shadow-xs transition-all cursor-pointer border border-purple-400/40"
+            title="Kall på MesterAI for å gi fagråd i chatten"
           >
-            <Sparkles size={14} className="text-amber-300 animate-pulse" />
-            <span>@MesterAI i chatten</span>
+            <Sparkles size={14} className="text-amber-300 animate-pulse shrink-0" />
+            <span className="hidden sm:inline">@MesterAI i chatten</span>
+            <span className="sm:hidden font-mono text-[11px]">@AI</span>
           </button>
 
           {/* Søk i meldinger */}
@@ -500,7 +574,7 @@ Maks 2-4 avsnitt eller punktliste.`;
             type="button"
             onClick={() => setIsMembersModalOpen(true)}
             className="flex items-center gap-1.5 px-2.5 py-2 rounded-xl bg-slate-800 hover:bg-slate-750 text-slate-300 hover:text-white border border-slate-750 text-xs font-bold transition-colors cursor-pointer"
-            title="Se hvem som er med i kanalen og ring direkte"
+            title="Se hvem som er med i kanalen, ring eller start 1-til-1 samtale"
           >
             <Users size={15} className="text-cyan-400" />
             <span className="hidden sm:inline">Deltakere</span>
@@ -603,7 +677,7 @@ Maks 2-4 avsnitt eller punktliste.`;
           <div className="p-3 flex-1">
             <div className="px-2 py-1 text-[11px] font-black text-slate-400 uppercase tracking-wider flex items-center justify-between">
               <span>Direktemeldinger (1-til-1)</span>
-              <span className="text-emerald-400 text-[10px]">{projectContacts.length} kontakter</span>
+              <span className="text-emerald-400 text-[10px]">{channels.filter(c => c.type === 'dm').length} kontakter</span>
             </div>
             <div className="space-y-1 mt-1.5">
               {channels.filter(c => c.type === 'dm').map(dm => {
@@ -664,7 +738,7 @@ Maks 2-4 avsnitt eller punktliste.`;
               </div>
             ) : (
               filteredMessages.map((msg, idx) => {
-                const isMe = msg.senderId === user?.id || msg.senderCategory === 'admin' && user?.role === 'admin';
+                const isMe = msg.senderId === user?.id || (msg.senderCategory === 'admin' && user?.role === 'admin');
                 const isAi = msg.isAiGenerated || msg.senderCategory === 'ai';
 
                 return (
@@ -690,6 +764,7 @@ Maks 2-4 avsnitt eller punktliste.`;
                           type="button"
                           onClick={() => setSelectedContactForCard(msg)}
                           className="font-bold text-slate-200 hover:text-purple-300 transition-colors cursor-pointer flex items-center gap-1.5"
+                          title="Klikk for å se kontaktkort og ringe/sende melding"
                         >
                           <span>{msg.senderName}</span>
                           {msg.senderRole && (
@@ -776,10 +851,11 @@ Maks 2-4 avsnitt eller punktliste.`;
                         </div>
                       )}
 
-                      {/* Hurtigverktøy ved hover på melding (Fest og reaksjon) */}
+                      {/* Hurtigverktøy for melding (Fest, reaksjon, slett) */}
                       <div className={cn(
-                        "absolute top-2 opacity-0 group-hover:opacity-100 transition-opacity flex items-center gap-1 bg-slate-800 border border-slate-700 rounded-xl px-1.5 py-1 shadow-lg z-10",
-                        isMe ? "-left-20" : "-right-20"
+                        "absolute -top-3 z-10 flex items-center gap-1 bg-slate-800/95 border border-slate-700 rounded-xl px-1.5 py-0.5 shadow-lg transition-opacity",
+                        isMe ? "right-2" : "left-2",
+                        "opacity-0 group-hover:opacity-100 focus-within:opacity-100"
                       )}>
                         <button
                           type="button"
@@ -789,23 +865,68 @@ Maks 2-4 avsnitt eller punktliste.`;
                         >
                           <Pin size={12} className={msg.isPinned ? "fill-amber-400 text-amber-400" : ""} />
                         </button>
+
+                        <button
+                          type="button"
+                          onClick={() => setActiveEmojiPickerForMsgId(activeEmojiPickerForMsgId === msg.id ? null : msg.id)}
+                          className="p-1 text-slate-400 hover:text-white rounded-md transition-colors cursor-pointer"
+                          title="Velg reaksjon"
+                        >
+                          <Smile size={12} />
+                        </button>
+
                         <button
                           type="button"
                           onClick={() => handleToggleReaction(msg.id, '👍')}
                           className="p-1 text-slate-400 hover:text-white rounded-md transition-colors cursor-pointer text-xs"
-                          title="Gi tommel opp"
+                          title="Tommel opp"
                         >
                           👍
                         </button>
+
                         <button
                           type="button"
                           onClick={() => handleToggleReaction(msg.id, '🔨')}
                           className="p-1 text-slate-400 hover:text-white rounded-md transition-colors cursor-pointer text-xs"
-                          title="Bygge-reaksjon"
+                          title="Bygge-hammer"
                         >
                           🔨
                         </button>
+
+                        {/* Slett-knapp for egne meldinger eller admin */}
+                        {(isMe || user?.role === 'admin') && !isAi && (
+                          <button
+                            type="button"
+                            onClick={() => handleDeleteMessage(msg.id)}
+                            className="p-1 text-slate-400 hover:text-rose-400 rounded-md transition-colors cursor-pointer"
+                            title="Slett melding"
+                          >
+                            <Trash2 size={12} />
+                          </button>
+                        )}
                       </div>
+
+                      {/* Utvidet emojivelger ved klikk på smile-ikon */}
+                      {activeEmojiPickerForMsgId === msg.id && (
+                        <div className={cn(
+                          "absolute -top-10 z-20 flex items-center gap-1 p-1 bg-slate-900 border border-slate-700 rounded-xl shadow-xl animate-in zoom-in-95",
+                          isMe ? "right-2" : "left-2"
+                        )}>
+                          {POPULAR_EMOJIS.map(emoji => (
+                            <button
+                              key={emoji}
+                              type="button"
+                              onClick={() => {
+                                handleToggleReaction(msg.id, emoji);
+                                setActiveEmojiPickerForMsgId(null);
+                              }}
+                              className="p-1 hover:bg-slate-800 rounded-lg text-sm transition-transform hover:scale-125 cursor-pointer"
+                            >
+                              {emoji}
+                            </button>
+                          ))}
+                        </div>
+                      )}
                     </div>
                   </div>
                 );
@@ -823,7 +944,26 @@ Maks 2-4 avsnitt eller punktliste.`;
             <div ref={messagesEndRef} />
           </div>
 
-          {/* 5. Felt-hurtigknapper (1-klikk feltknapper for byggeplassen) */}
+          {/* 5. MesterAI Hurtigforslag (hvis åpnet) */}
+          {showAiSuggestions && (
+            <div className="px-3 pt-2 bg-purple-950/40 border-t border-purple-900/50 flex flex-wrap items-center gap-1.5 pb-2 shrink-0 animate-in fade-in">
+              <span className="text-[10px] font-bold text-amber-300 uppercase tracking-wider shrink-0 flex items-center gap-1">
+                <Sparkles size={11} /> Spør AI om:
+              </span>
+              {AI_SUGGESTIONS.map((item, idx) => (
+                <button
+                  key={idx}
+                  type="button"
+                  onClick={() => handleSendMessage(item.prompt)}
+                  className="inline-flex items-center gap-1 px-2.5 py-1 rounded-xl bg-purple-900/60 hover:bg-purple-800 text-purple-200 hover:text-white border border-purple-700/60 text-[11px] font-medium transition-all active:scale-95 cursor-pointer"
+                >
+                  <span>{item.label}</span>
+                </button>
+              ))}
+            </div>
+          )}
+
+          {/* 6. Felt-hurtigknapper (1-klikk feltknapper for byggeplassen) */}
           <div className="px-3 pt-2 bg-slate-900/90 border-t border-slate-850 overflow-x-auto custom-scrollbar flex items-center gap-1.5 pb-1 shrink-0">
             <span className="text-[10px] font-bold text-slate-400 uppercase tracking-wider shrink-0 pl-1">
               Felt:
@@ -844,7 +984,7 @@ Maks 2-4 avsnitt eller punktliste.`;
             })}
           </div>
 
-          {/* 6. Inntastingsfelt for melding */}
+          {/* 7. Inntastingsfelt for melding */}
           <div className="p-3 bg-slate-900 border-t border-slate-800 shrink-0 space-y-2">
             {/* Forhåndsvisning av vedlagt bilde */}
             {attachedImage && (
@@ -904,6 +1044,7 @@ Maks 2-4 avsnitt eller punktliste.`;
 
               {/* Tekstfelt */}
               <input
+                ref={inputRef}
                 type="text"
                 placeholder={isRecording ? "Lytter... snakk nå..." : `Skriv melding til ${activeChannel.name}...`}
                 value={inputVal}
@@ -930,7 +1071,7 @@ Maks 2-4 avsnitt eller punktliste.`;
         </div>
       </div>
 
-      {/* 7. Modal: Deltakere / Telefonbok i aktiv kanal */}
+      {/* 8. Modal: Deltakere / Telefonbok i aktiv kanal */}
       {isMembersModalOpen && (
         <div className="fixed inset-0 z-50 flex items-center justify-center p-4 bg-black/80 backdrop-blur-xs">
           <div className="bg-slate-900 border border-slate-800 rounded-3xl p-6 max-w-md w-full shadow-2xl space-y-4">
@@ -969,6 +1110,22 @@ Maks 2-4 avsnitt eller punktliste.`;
                       <p className="text-[10px] text-slate-400 truncate">{c.role} • {c.companyName || 'Internt'}</p>
                     </div>
                     <div className="flex items-center gap-1.5 shrink-0">
+                      {/* Direktemelding */}
+                      <button
+                        type="button"
+                        onClick={() => {
+                          setActiveChannelId(`dm_${c.id}`);
+                          setIsMembersModalOpen(false);
+                          setMobileTab('chat');
+                          toast.success(`Åpnet 1-til-1 samtale med ${c.name}`);
+                        }}
+                        className="p-1.5 rounded-lg bg-purple-500/20 text-purple-300 hover:bg-purple-500/30 transition-colors cursor-pointer"
+                        title={`Send direktemelding til ${c.name}`}
+                      >
+                        <MessageSquare size={13} />
+                      </button>
+
+                      {/* Telefon */}
                       {c.phone && (
                         <a
                           href={`tel:${c.phone}`}
@@ -978,6 +1135,8 @@ Maks 2-4 avsnitt eller punktliste.`;
                           <Phone size={13} />
                         </a>
                       )}
+
+                      {/* E-post */}
                       {c.email && (
                         <a
                           href={`mailto:${c.email}`}
@@ -996,7 +1155,91 @@ Maks 2-4 avsnitt eller punktliste.`;
         </div>
       )}
 
-      {/* 8. Lightbox for bildevisning i fullskjerm */}
+      {/* 9. Modal: Kontaktprofilkort ved klikk på avsender */}
+      {selectedContactForCard && contactDetails && (
+        <div className="fixed inset-0 z-50 flex items-center justify-center p-4 bg-black/80 backdrop-blur-xs animate-in fade-in">
+          <div className="bg-slate-900 border border-slate-800 rounded-3xl p-6 max-w-sm w-full shadow-2xl space-y-4">
+            <div className="flex items-center justify-between pb-3 border-b border-slate-800">
+              <div className="flex items-center gap-3">
+                <div className="w-12 h-12 rounded-2xl bg-gradient-to-tr from-purple-600 to-indigo-600 text-white font-black text-lg flex items-center justify-center shadow-lg shadow-purple-500/20">
+                  {contactDetails.name.charAt(0).toUpperCase()}
+                </div>
+                <div>
+                  <h4 className="text-base font-black text-white">{contactDetails.name}</h4>
+                  <p className="text-xs text-purple-400 font-semibold">{contactDetails.role}</p>
+                  <p className="text-[11px] text-slate-400">{contactDetails.company}</p>
+                </div>
+              </div>
+              <button
+                type="button"
+                onClick={() => setSelectedContactForCard(null)}
+                className="p-1.5 rounded-lg text-slate-400 hover:text-white hover:bg-slate-800"
+              >
+                <X size={16} />
+              </button>
+            </div>
+
+            <div className="space-y-2 pt-1">
+              {contactDetails.phone ? (
+                <a
+                  href={`tel:${contactDetails.phone}`}
+                  className="flex items-center justify-between p-3 rounded-xl bg-slate-950 border border-slate-800 hover:border-emerald-500/50 hover:bg-emerald-500/5 transition-colors group"
+                >
+                  <div className="flex items-center gap-2.5">
+                    <div className="p-2 rounded-lg bg-emerald-500/10 text-emerald-400 group-hover:bg-emerald-500/20">
+                      <Phone size={16} />
+                    </div>
+                    <div>
+                      <p className="text-[10px] text-slate-400 uppercase tracking-wider font-bold">Telefon</p>
+                      <p className="text-xs font-mono font-bold text-white">{contactDetails.phone}</p>
+                    </div>
+                  </div>
+                  <span className="text-xs text-emerald-400 font-bold">Ring nå →</span>
+                </a>
+              ) : (
+                <div className="p-3 rounded-xl bg-slate-950 border border-slate-800 text-xs text-slate-400 flex items-center gap-2">
+                  <Phone size={14} className="text-slate-500" />
+                  <span>Telefonnummer ikke registrert</span>
+                </div>
+              )}
+
+              {contactDetails.email && (
+                <a
+                  href={`mailto:${contactDetails.email}`}
+                  className="flex items-center justify-between p-3 rounded-xl bg-slate-950 border border-slate-800 hover:border-blue-500/50 hover:bg-blue-500/5 transition-colors group"
+                >
+                  <div className="flex items-center gap-2.5">
+                    <div className="p-2 rounded-lg bg-blue-500/10 text-blue-400 group-hover:bg-blue-500/20">
+                      <Mail size={16} />
+                    </div>
+                    <div className="min-w-0">
+                      <p className="text-[10px] text-slate-400 uppercase tracking-wider font-bold">E-post</p>
+                      <p className="text-xs font-medium text-white truncate">{contactDetails.email}</p>
+                    </div>
+                  </div>
+                  <span className="text-xs text-blue-400 font-bold shrink-0">Send →</span>
+                </a>
+              )}
+
+              <button
+                type="button"
+                onClick={() => {
+                  setActiveChannelId(`dm_${contactDetails.id}`);
+                  setSelectedContactForCard(null);
+                  setMobileTab('chat');
+                  toast.success(`Åpnet 1-til-1 samtale med ${contactDetails.name}`);
+                }}
+                className="w-full flex items-center justify-center gap-2 p-3 rounded-xl bg-purple-600 hover:bg-purple-500 text-white font-bold text-xs shadow-md transition-all cursor-pointer mt-3"
+              >
+                <MessageSquare size={16} />
+                <span>Åpne direktemelding (1-til-1)</span>
+              </button>
+            </div>
+          </div>
+        </div>
+      )}
+
+      {/* 10. Lightbox for bildevisning i fullskjerm */}
       {previewImage && (
         <div
           onClick={() => setPreviewImage(null)}
@@ -1040,6 +1283,24 @@ function generateInitialSeedMessages(channel: ChatChannel, user: any, project: P
         formattedTime: formatT(120),
         isPinned: true,
         reactions: { '👍': ['Ola Tømrer', 'Kari Byggmester'] }
+      }
+    ];
+  }
+
+  if (channel.type === 'dm') {
+    return [
+      {
+        id: `seed_dm_${channel.id}`,
+        channelId: channel.id,
+        senderId: channel.dmParticipant?.id || 'other_user',
+        senderName: channel.name,
+        senderRole: channel.dmParticipant?.role || 'Kollega',
+        senderCompany: channel.dmParticipant?.companyName || user?.company || 'Firma',
+        senderCategory: 'team',
+        content: `Hei ${user?.displayName || 'kollega'}! Dette er en direkte meldingstråd mellom oss to for raske avklaringer på byggeplassen.`,
+        timestamp: new Date(now.getTime() - 45 * 60000).toISOString(),
+        formattedTime: formatT(45),
+        reactions: { '👍': [user?.displayName || 'Meg'] }
       }
     ];
   }
