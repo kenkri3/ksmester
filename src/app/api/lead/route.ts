@@ -112,6 +112,8 @@ export async function POST(req: NextRequest) {
       workers,
       message,
       brregInfo,
+      acceptedTerms: Boolean(body.acceptedTerms),
+      acceptedTermsAt: body.acceptedTermsAt || new Date().toISOString(),
       status: 'active_lead',
       source: 'VikingMester.no',
       createdAt: new Date().toISOString()
