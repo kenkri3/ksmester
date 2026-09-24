@@ -38,6 +38,7 @@ import {
 import { toast } from 'sonner';
 import { Project } from '@/src/types';
 import { generateAiContent } from '@/src/services/aiClient';
+import { customerMessageService } from '@/src/services/customerMessageService';
 import { cn } from '@/src/lib/utils';
 import ReactMarkdown from 'react-markdown';
 import remarkGfm from 'remark-gfm';
@@ -59,6 +60,12 @@ export interface TeamChatMessage {
   isPinned?: boolean;
   isAiGenerated?: boolean;
   quickTag?: 'onsite' | 'delivery' | 'inspection' | 'urgent' | 'finished';
+  isCustomerMessage?: boolean;
+  customerName?: string;
+  clientEmail?: string;
+  aiSuggestedReply?: string;
+  aiDraftStatus?: 'pending_approval' | 'approved' | 'rejected';
+  isCustomerFacing?: boolean;
 }
 
 export interface ChatChannel {
@@ -246,6 +253,22 @@ export default function ProjectTeamChat({
     };
   }, [storageKey]);
 
+  // Lytt etter åpning av en bestemt kanal/prosjektchat fra varselbjella
+  useEffect(() => {
+    const handleOpenChat = (e: any) => {
+      const { channelId, projectId } = e.detail || {};
+      if (channelId) {
+        setActiveChannelId(channelId);
+        setMobileTab('chat');
+      } else if (projectId) {
+        setActiveChannelId(`proj_${projectId}`);
+        setMobileTab('chat');
+      }
+    };
+    window.addEventListener('open_project_chat', handleOpenChat as EventListener);
+    return () => window.removeEventListener('open_project_chat', handleOpenChat as EventListener);
+  }, []);
+
   // Autoscroll til bunnen når nye meldinger kommer
   useEffect(() => {
     messagesEndRef.current?.scrollIntoView({ behavior: 'smooth' });
@@ -347,6 +370,61 @@ Maks 2-4 avsnitt eller punktliste.`;
     setTimeout(() => {
       inputRef.current?.focus();
     }, 100);
+  };
+
+  // Godkjenn MesterAI-svar til kunde (Kunden ser svaret først når dette godkjennes)
+  const handleApproveAiReply = async (msg: TeamChatMessage) => {
+    if (!msg.aiSuggestedReply) return;
+    const replyText = msg.aiSuggestedReply;
+    const now = new Date();
+    const formattedTime = now.toLocaleTimeString('no-NO', { hour: '2-digit', minute: '2-digit' });
+
+    // 1. Merk meldingen som godkjent i den lokale chatten
+    const updated = messages.map(m => m.id === msg.id ? { ...m, aiDraftStatus: 'approved' as const } : m);
+
+    // 2. Legg til offisielt bedriftssvar i chat-tråden
+    const replyMsg: TeamChatMessage = {
+      id: `reply_${Date.now()}_${Math.random().toString(36).substring(2, 6)}`,
+      channelId: msg.channelId,
+      senderId: user?.id || 'admin',
+      senderName: `${user?.displayName || 'Byggmester'} (${user?.company || 'Firma'})`,
+      senderRole: 'Prosjektleder / Admin',
+      senderCategory: 'admin',
+      content: replyText,
+      timestamp: now.toISOString(),
+      formattedTime,
+      isCustomerFacing: true
+    };
+
+    const withReply = [...updated, replyMsg];
+    saveMessages(withReply);
+
+    // 3. Oppdater i backend/Firestore via customerMessageService
+    const projectId = activeChannel.projectId || (msg.channelId.startsWith('proj_') ? msg.channelId.replace('proj_', '') : '');
+    if (projectId) {
+      await customerMessageService.approveAndSendReply(projectId, msg.id, replyText, user);
+    }
+
+    toast.success('Svaret ble godkjent og sendt til kunden i kundeportalen!');
+  };
+
+  // Rediger før sending
+  const handleEditAiReply = (msg: TeamChatMessage) => {
+    if (!msg.aiSuggestedReply) return;
+    setInputVal(msg.aiSuggestedReply);
+    const updated = messages.map(m => m.id === msg.id ? { ...m, aiDraftStatus: 'approved' as const } : m);
+    saveMessages(updated);
+    setTimeout(() => {
+      inputRef.current?.focus();
+    }, 100);
+    toast.info('Utkast lagt i meldingsfeltet. Gjør eventuelle endringer og trykk Send.');
+  };
+
+  // Avvis MesterAI-forslag
+  const handleRejectAiReply = (msg: TeamChatMessage) => {
+    const updated = messages.map(m => m.id === msg.id ? { ...m, aiDraftStatus: 'rejected' as const } : m);
+    saveMessages(updated);
+    toast.info('Forslag avvist.');
   };
 
   // Reaksjon på melding
@@ -777,7 +855,8 @@ Maks 2-4 avsnitt eller punktliste.`;
               </div>
             ) : (
               filteredMessages.map((msg, idx) => {
-                const isMe = msg.senderId === user?.id || (msg.senderCategory === 'admin' && user?.role === 'admin');
+                const isClient = msg.senderCategory === 'client' || msg.isCustomerMessage;
+                const isMe = !isClient && (msg.senderId === user?.id || (msg.senderCategory === 'admin' && user?.role === 'admin'));
                 const isAi = msg.isAiGenerated || msg.senderCategory === 'ai';
 
                 // Unngå duplikat rollevisning som "Kenneth (Prosjektleder) (Prosjektleder)"
@@ -796,7 +875,15 @@ Maks 2-4 avsnitt eller punktliste.`;
                   >
                     {/* Avsenderheader */}
                     <div className="flex items-center gap-2 px-1 text-[11px] text-slate-400">
-                      {isAi ? (
+                      {isClient ? (
+                        <span className="font-bold text-teal-400 flex items-center gap-1.5">
+                          <User size={13} className="text-teal-400" />
+                          <span>{displayName}</span>
+                          <span className="px-1.5 py-0.2 rounded-md bg-teal-500/20 text-teal-300 text-[9px] font-black border border-teal-500/30">
+                            KUNDEPORTAL
+                          </span>
+                        </span>
+                      ) : isAi ? (
                         <span className="font-bold text-purple-400 flex items-center gap-1">
                           <Bot size={13} />
                           <span>{msg.senderName}</span>
@@ -832,7 +919,9 @@ Maks 2-4 avsnitt eller punktliste.`;
                     <div
                       className={cn(
                         "p-3.5 sm:p-4 rounded-2xl text-xs sm:text-sm leading-relaxed max-w-[88%] sm:max-w-[80%] shadow-lg relative group",
-                        isAi
+                        isClient
+                          ? "bg-[#0c1f1b] border-2 border-teal-500/40 text-teal-50 rounded-tl-xs shadow-teal-950/30"
+                          : isAi
                           ? "bg-[#131b2e] border border-purple-500/30 text-slate-100 rounded-tl-xs"
                           : isMe
                           ? "bg-gradient-to-r from-purple-600 to-electric-600 text-white rounded-tr-xs"
@@ -1041,6 +1130,71 @@ Maks 2-4 avsnitt eller punktliste.`;
                         </div>
                       )}
                     </div>
+
+                    {/* MesterAI Forslag til svar (Krever godkjenning av byggeleder før det sendes til kunde) */}
+                    {isClient && msg.aiSuggestedReply && msg.aiDraftStatus === 'pending_approval' && (
+                      <div className="w-full max-w-xl mt-1.5 p-3.5 sm:p-4 rounded-2xl bg-gradient-to-br from-purple-950/90 via-slate-900 to-indigo-950/90 border-2 border-purple-500/40 shadow-xl space-y-3 animate-in fade-in">
+                        <div className="flex items-center justify-between gap-2 border-b border-purple-500/20 pb-2">
+                          <div className="flex items-center gap-2">
+                            <div className="w-7 h-7 rounded-lg bg-purple-500/20 text-purple-300 flex items-center justify-center shrink-0">
+                              <Sparkles size={14} className="text-amber-300 animate-pulse" />
+                            </div>
+                            <div>
+                              <div className="flex items-center gap-2">
+                                <span className="text-xs font-black text-purple-200">MesterAI Forslag til svar</span>
+                                <span className="px-2 py-0.5 rounded-full text-[9px] font-black uppercase tracking-wider bg-amber-500/20 text-amber-300 border border-amber-500/30">
+                                  Venter på din godkjenning
+                                </span>
+                              </div>
+                              <p className="text-[10px] text-slate-400">
+                                Svaret er IKKE sendt til kunden. Du må godkjenne eller redigere før kunden ser det.
+                              </p>
+                            </div>
+                          </div>
+                        </div>
+
+                        <div className="p-3 bg-black/40 rounded-xl border border-white/10 text-xs sm:text-sm text-slate-200 leading-relaxed font-sans select-text">
+                          {msg.aiSuggestedReply}
+                        </div>
+
+                        <div className="flex flex-wrap items-center gap-2 pt-1">
+                          <button
+                            type="button"
+                            onClick={() => handleApproveAiReply(msg)}
+                            className="px-3.5 py-2 rounded-xl bg-emerald-600 hover:bg-emerald-500 text-white font-bold text-xs flex items-center gap-1.5 shadow-md shadow-emerald-950/50 transition-all cursor-pointer active:scale-95"
+                          >
+                            <CheckCircle2 size={14} />
+                            <span>Godkjenn & Send til kunde</span>
+                          </button>
+
+                          <button
+                            type="button"
+                            onClick={() => handleEditAiReply(msg)}
+                            className="px-3.5 py-2 rounded-xl bg-slate-800 hover:bg-slate-700 text-slate-200 font-bold text-xs flex items-center gap-1.5 border border-white/10 transition-all cursor-pointer active:scale-95"
+                          >
+                            <ExternalLink size={14} />
+                            <span>Rediger før sending</span>
+                          </button>
+
+                          <button
+                            type="button"
+                            onClick={() => handleRejectAiReply(msg)}
+                            className="px-3 py-2 rounded-xl bg-rose-500/10 hover:bg-rose-500/20 text-rose-300 font-bold text-xs flex items-center gap-1.5 border border-rose-500/20 transition-all cursor-pointer"
+                          >
+                            <X size={14} />
+                            <span>Avvis</span>
+                          </button>
+                        </div>
+                      </div>
+                    )}
+
+                    {/* Hvis forslag allerede er godkjent */}
+                    {isClient && msg.aiDraftStatus === 'approved' && (
+                      <div className="mt-1 text-[11px] text-emerald-400 font-bold flex items-center gap-1.5 pl-1">
+                        <CheckCircle2 size={13} className="text-emerald-400" />
+                        <span>Godkjent svar levert til kunden i kundeportalen</span>
+                      </div>
+                    )}
                   </div>
                 );
               })

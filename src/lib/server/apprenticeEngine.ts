@@ -184,16 +184,321 @@ export const OFFICIAL_CURRICULUM_GOALS: Record<string, CurriculumGoal[]> = {
       description: 'Gjennomføre kontinuitetstest, isolasjonsmåling og utarbeide 5 sikre og samsvarserklæring i systemet.',
       requiredHoursEstimate: 60
     }
+  ],
+  mason: [
+    {
+      id: 'mas-01',
+      trade: 'mason',
+      category: 'HMS & Grunnleggende',
+      title: 'HMS, stillas og støvvern ved kapping',
+      description: 'Risikovurdering ved kapping av stein/tegl, bruk av P3-støvmaske og godkjent stillasbruk.',
+      requiredHoursEstimate: 40
+    },
+    {
+      id: 'mas-02',
+      trade: 'mason',
+      category: 'Muring',
+      title: 'Muring av tegl og lettklinkerblokker',
+      description: 'Muring med snor, lodd og vater. Riktig fugebredde og armering av skift.',
+      requiredHoursEstimate: 120
+    },
+    {
+      id: 'mas-03',
+      trade: 'mason',
+      category: 'Pussarbeid',
+      title: 'Grunnpuss, sluttpuss og sokkelbehandling',
+      description: 'Påføring av fiberpuss med armeringsnett og overflatebehandling mot fukt.',
+      requiredHoursEstimate: 90
+    },
+    {
+      id: 'mas-04',
+      trade: 'mason',
+      category: 'Våtrom & Flis',
+      title: 'Underlag for våtrom, smøremembran og flislegging',
+      description: 'Påføring av membran med mansjetter og legging av fliser med fall mot sluk iht. BVN.',
+      requiredHoursEstimate: 100
+    }
+  ],
+  painter: [
+    {
+      id: 'paint-01',
+      trade: 'painter',
+      category: 'HMS',
+      title: 'HMS, kjemikaliehåndtering og verneutstyr',
+      description: 'Bruk av stoffkartotek, åndedrettsvern ved sprøytemaling og avfallshåndtering.',
+      requiredHoursEstimate: 40
+    },
+    {
+      id: 'paint-02',
+      trade: 'painter',
+      category: 'Forarbeid',
+      title: 'Sparkling, armeringsduk og sliping',
+      description: 'Sparkling av gipsskjøter med papirremse til overflatekvalitet Q3/Q4.',
+      requiredHoursEstimate: 110
+    },
+    {
+      id: 'paint-03',
+      trade: 'painter',
+      category: 'Innvendig overflate',
+      title: 'Maling av vegger, himling og listverk',
+      description: 'Rulle- og penselarbeid med jevn dekk, presise beskjæringer og listing.',
+      requiredHoursEstimate: 100
+    },
+    {
+      id: 'paint-04',
+      trade: 'painter',
+      category: 'Utvendig behandling',
+      title: 'Fasadebehandling og sopp/algekontroll',
+      description: 'Fuktmåling av treverk, vasking, grunning og to strøk dekkbeis/maling.',
+      requiredHoursEstimate: 80
+    }
   ]
 };
 
 /**
- * Henter bedriftens lærlinger
+ * Oppretter standard lærlingprofiler med autentisk læreplandata
+ */
+export function createDefaultApprenticeProfiles(companyId: string): ApprenticeProfileRecord[] {
+  const now = new Date();
+  const jonasGoals: ApprenticeGoalRecord[] = OFFICIAL_CURRICULUM_GOALS.carpenter.map(g => {
+    if (g.id === 'carp-01') {
+      return {
+        goalId: g.id,
+        title: g.title,
+        category: g.category,
+        description: g.description,
+        requiredHours: g.requiredHoursEstimate,
+        hoursLogged: 40,
+        progress: 100,
+        status: 'completed',
+        approvedBy: 'Ken (Admin)',
+        approvedAt: new Date(Date.now() - 60 * 86400000).toISOString(),
+        evidenceNotes: [
+          'SJA gjennomført for stillasarbeid Vidjeveien 21 (8t)',
+          'Verifisert bruk av godkjent fallsikringssele og hjelm'
+        ]
+      };
+    }
+    if (g.id === 'carp-02') {
+      return {
+        goalId: g.id,
+        title: g.title,
+        category: g.category,
+        description: g.description,
+        requiredHours: g.requiredHoursEstimate,
+        hoursLogged: 50,
+        progress: 100,
+        status: 'completed',
+        approvedBy: 'Ken (Admin)',
+        approvedAt: new Date(Date.now() - 30 * 86400000).toISOString(),
+        evidenceNotes: [
+          'Nivellering av grunnmursviller med rotasjonslaser (16t)',
+          'Kontroll av 3-4-5 rette vinkler utført med bas'
+        ]
+      };
+    }
+    if (g.id === 'carp-03') {
+      return {
+        goalId: g.id,
+        title: g.title,
+        category: g.category,
+        description: g.description,
+        requiredHours: g.requiredHoursEstimate,
+        hoursLogged: 88,
+        progress: 73,
+        status: 'in_progress',
+        evidenceNotes: [
+          'Reist stenderverk c/c 600 mm Vidjeveien 21 (24t)',
+          'Montert bjelkelag og kubbing for stivhet (18t)'
+        ]
+      };
+    }
+    if (g.id === 'carp-04') {
+      return {
+        goalId: g.id,
+        title: g.title,
+        category: g.category,
+        description: g.description,
+        requiredHours: g.requiredHoursEstimate,
+        hoursLogged: 84,
+        progress: 93,
+        status: 'ready_for_review',
+        evidenceNotes: [
+          'Montert diffusjonsåpen vindsperre med klemte lekter (28t)',
+          'Lagt 200mm mineralull uten kuldebroer (32t)',
+          'Klar for godkjenning av faglig leder'
+        ]
+      };
+    }
+    if (g.id === 'carp-05') {
+      return {
+        goalId: g.id,
+        title: g.title,
+        category: g.category,
+        description: g.description,
+        requiredHours: g.requiredHoursEstimate,
+        hoursLogged: 60,
+        progress: 60,
+        status: 'in_progress',
+        evidenceNotes: [
+          'Montert musebånd og luftelekter (12t)',
+          'Dobbeltfalset liggende kledning montert (34t)'
+        ]
+      };
+    }
+    if (g.id === 'carp-06') {
+      return {
+        goalId: g.id,
+        title: g.title,
+        category: g.category,
+        description: g.description,
+        requiredHours: g.requiredHoursEstimate,
+        hoursLogged: 36,
+        progress: 45,
+        status: 'in_progress',
+        evidenceNotes: [
+          'Satt inn 3-lags lavenergivinduer med bunnfyllingslist (16t)'
+        ]
+      };
+    }
+    if (g.id === 'carp-07') {
+      return {
+        goalId: g.id,
+        title: g.title,
+        category: g.category,
+        description: g.description,
+        requiredHours: g.requiredHoursEstimate,
+        hoursLogged: 22,
+        progress: 24,
+        status: 'in_progress',
+        evidenceNotes: [
+          'Montert rupanel og Litex underlag for våtrom (14t)'
+        ]
+      };
+    }
+    return {
+      goalId: g.id,
+      title: g.title,
+      category: g.category,
+      description: g.description,
+      requiredHours: g.requiredHoursEstimate,
+      hoursLogged: 20,
+      progress: 50,
+      status: 'in_progress',
+      evidenceNotes: [
+        'Egenkontrollskjema utfylt i VikingMester før lukking av vegger'
+      ]
+    };
+  });
+
+  const tobiasGoals: ApprenticeGoalRecord[] = OFFICIAL_CURRICULUM_GOALS.carpenter.map(g => {
+    if (g.id === 'carp-01') {
+      return {
+        goalId: g.id,
+        title: g.title,
+        category: g.category,
+        description: g.description,
+        requiredHours: g.requiredHoursEstimate,
+        hoursLogged: 40,
+        progress: 100,
+        status: 'completed',
+        approvedBy: 'Ken (Admin)',
+        approvedAt: new Date(Date.now() - 40 * 86400000).toISOString(),
+        evidenceNotes: [
+          'Gjennomført HMS-kurs og verktøyinstruks for kapp- og gjærsag'
+        ]
+      };
+    }
+    if (g.id === 'carp-02') {
+      return {
+        goalId: g.id,
+        title: g.title,
+        category: g.category,
+        description: g.description,
+        requiredHours: g.requiredHoursEstimate,
+        hoursLogged: 25,
+        progress: 50,
+        status: 'in_progress',
+        evidenceNotes: [
+          'Assistert bas med nivellering og tommestokkmåling (12t)'
+        ]
+      };
+    }
+    return {
+      goalId: g.id,
+      title: g.title,
+      category: g.category,
+      description: g.description,
+      requiredHours: g.requiredHoursEstimate,
+      hoursLogged: 0,
+      progress: 0,
+      status: 'not_started',
+      evidenceNotes: []
+    };
+  });
+
+  return [
+    {
+      id: `apprentice-jonas-vik-${companyId}`,
+      name: 'Jonas Vik',
+      email: 'jonas@mester.no',
+      phone: '412 34 567',
+      trade: 'carpenter',
+      tradeName: 'Tømrerfaget',
+      tradeYear: 2,
+      startDate: '2024-08-15',
+      contractEndDate: '2026-08-14',
+      mentorName: 'Ken (Byggmester)',
+      mentorId: 'u-admin-123',
+      companyId,
+      totalHoursWorked: 1420,
+      goals: jonasGoals,
+      lastAssessmentDate: new Date(Date.now() - 90 * 86400000).toISOString().split('T')[0],
+      nextAssessmentDate: new Date(Date.now() + 45 * 86400000).toISOString().split('T')[0],
+      aiRecommendation: 'Jonas er i rute mot svenneprøve høst 2026. Målet «Vindsperre, diffusjonssperre og etterisolering» er klart for godkjenning av faglig leder (93% fullført). Prioriter våtromsarbeider og tverrfaglig lukkesperre i neste periode.',
+      createdAt: new Date(Date.now() - 365 * 86400000).toISOString(),
+      updatedAt: now.toISOString()
+    },
+    {
+      id: `apprentice-tobias-hansen-${companyId}`,
+      name: 'Tobias Hansen',
+      email: 'tobias@mester.no',
+      phone: '987 65 432',
+      trade: 'carpenter',
+      tradeName: 'Tømrerfaget',
+      tradeYear: 1,
+      startDate: '2025-08-15',
+      contractEndDate: '2027-08-14',
+      mentorName: 'Ken (Byggmester)',
+      mentorId: 'u-admin-123',
+      companyId,
+      totalHoursWorked: 480,
+      goals: tobiasGoals,
+      nextAssessmentDate: new Date(Date.now() + 90 * 86400000).toISOString().split('T')[0],
+      aiRecommendation: 'Førsteårs lærling med god progresjon. Har bestått HMS og sikkerhet. Fokusere på oppmåling, kapp- og bærekonstruksjoner under veiledning.',
+      createdAt: new Date(Date.now() - 120 * 86400000).toISOString(),
+      updatedAt: now.toISOString()
+    }
+  ];
+}
+
+/**
+ * Henter bedriftens lærlinger (med automatisk oppretting av forhåndskonfigurerte profiler ved tomt arkiv)
  */
 export async function getApprenticeProfiles(companyId?: string): Promise<ApprenticeProfileRecord[]> {
   try {
     const all = await getCollectionItems('apprentice_profiles');
-    const list = companyId ? all.filter((a: any) => !a.companyId || a.companyId === companyId) : all;
+    const targetCompany = companyId || 'comp-001';
+    let list = all.filter((a: any) => !a.companyId || a.companyId === targetCompany);
+
+    if (list.length === 0) {
+      const defaults = createDefaultApprenticeProfiles(targetCompany);
+      for (const appr of defaults) {
+        await saveCollectionItem('apprentice_profiles', appr);
+      }
+      list = defaults;
+    }
+
     return list;
   } catch (e: any) {
     console.warn('[ApprenticeEngine] Feil ved lesing av profiler:', e.message);

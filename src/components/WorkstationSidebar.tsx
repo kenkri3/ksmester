@@ -403,6 +403,7 @@ export default function WorkstationSidebar({
                   onClick={() => {
                     onCloseMobile();
                     onSelectProject(null);
+                    onOpenModule('all_projects');
                   }}
                   className="flex items-center gap-1.5 hover:text-white transition-colors cursor-pointer text-left group"
                   title={t('ws_all_sites', "Alle byggeplasser")}
@@ -431,17 +432,18 @@ export default function WorkstationSidebar({
                 onClick={() => {
                   onCloseMobile();
                   onSelectProject(null);
+                  onOpenModule('all_projects');
                 }}
                 className={cn(
                   "w-full flex items-center gap-2.5 px-2.5 py-1.5 rounded-xl text-xs font-medium transition-colors cursor-pointer text-left",
-                  !selectedProject
+                  (!selectedProject && currentActiveTab === 'all_projects')
                     ? "bg-slate-800 text-white font-bold"
                     : "text-slate-300 hover:text-white hover:bg-slate-850",
                   isCollapsedDesktop && "justify-center px-2 py-2"
                 )}
                 title={t('ws_all_sites', "Alle byggeplasser")}
               >
-                <HardHat size={15} className={!selectedProject ? "text-amber-400 shrink-0" : "text-slate-400 shrink-0"} />
+                <HardHat size={15} className={(!selectedProject && currentActiveTab === 'all_projects') ? "text-amber-400 shrink-0" : "text-slate-400 shrink-0"} />
                 {!isCollapsedDesktop && (
                   <span className="truncate">{t('ws_all_sites', "Alle byggeplasser")}</span>
                 )}
@@ -456,6 +458,7 @@ export default function WorkstationSidebar({
                     onClick={() => {
                       onCloseMobile();
                       onSelectProject(proj);
+                      onOpenModule('project_details');
                     }}
                     className={cn(
                       "w-full flex items-center justify-between gap-2 px-2.5 py-1.5 rounded-xl text-xs font-medium transition-colors cursor-pointer text-left group",

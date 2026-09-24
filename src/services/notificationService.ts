@@ -23,7 +23,7 @@ export const notificationService = {
   subscribeToNotifications(userId: string, callback: (notifications: AppNotification[]) => void) {
     const q = query(
       collection(db, NOTIFICATIONS_COLLECTION),
-      where('userId', '==', userId),
+      where('userId', 'in', [userId, 'all', 'admin', 'broadcast']),
       orderBy('createdAt', 'desc')
     );
 

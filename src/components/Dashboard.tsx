@@ -142,11 +142,18 @@ export default function Dashboard({
   // Selected project for details view
   const [selectedProject, setSelectedProject] = useState<Project | null>(null);
   const [isViewingProjectDetails, setIsViewingProjectDetails] = useState(false);
+  const hasAutoSelectedRef = useRef(false);
 
   // 🔄 Hold selectedProject synkronisert med tilgjengelige prosjekter for aktiv kunde (ingen lekkasje mellom bedrifter)
   useEffect(() => {
     if (projects && projects.length > 0) {
-      if (!selectedProject || !projects.some(p => p.id === selectedProject.id)) {
+      if (!hasAutoSelectedRef.current) {
+        hasAutoSelectedRef.current = true;
+        if (!selectedProject) {
+          setSelectedProject(projects[0]);
+        }
+      } else if (selectedProject && !projects.some(p => p.id === selectedProject.id)) {
+        // Valgt prosjekt finnes ikke lenger (f.eks. slettet eller byttet bedrift)
         setSelectedProject(projects[0]);
       }
     } else if (projects && projects.length === 0) {
@@ -1326,13 +1333,13 @@ export default function Dashboard({
 
       {/* 🌟 MesterAI Control Center Workstation (Gemini / ChatGPT / Antigravity AI-First Layout) */}
       <AnimatePresence mode="wait">
-        {selectedProject && isViewingProjectDetails ? (
-          <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 pt-6 pb-24">
+        {Boolean(selectedProject && isViewingProjectDetails) ? (
+          <div key="project_details_container" className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 pt-6 pb-24">
             <ProjectDetails 
               key="project_details"
-              project={selectedProject} 
+              project={selectedProject!} 
               onBack={() => setIsViewingProjectDetails(false)} 
-              onShare={() => onOpenPortal?.(selectedProject)}
+              onShare={() => onOpenPortal?.(selectedProject!)}
               onStartChecklist={(projectId) => {
                 setChecklistProjectId(projectId);
                 setIsChecklistModalOpen(true);
@@ -1345,6 +1352,7 @@ export default function Dashboard({
           </div>
         ) : (
           <MesterWorkstation
+            key="mester_workstation_root"
             initialModuleTab={initialWorkstationTab}
             projects={projects}
             selectedProject={selectedProject}

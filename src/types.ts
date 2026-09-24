@@ -342,6 +342,11 @@ export interface Vehicle {
   type: 'EL' | 'Diesel' | 'Bensin' | 'Hybrid';
   status: 'Aktiv' | 'Lager' | 'Service';
   km: number;
+  nextServiceKm?: number;
+  nextEuControl?: string;
+  assignedDriver?: string;
+  year?: number;
+  notes?: string;
 }
 
 export interface VehicleEntry {
@@ -355,6 +360,9 @@ export interface VehicleEntry {
   endKm: number;
   purpose: string;
   projectId?: string;
+  projectName?: string;
+  tollFee?: number;
+  isAutoTracked?: boolean;
 }
 
 export interface CrewMember {
@@ -406,10 +414,15 @@ export interface AppNotification {
   title: string;
   message: string;
   type: 'info' | 'warning' | 'error' | 'success';
-  category: 'hms' | 'project' | 'deviation' | 'system';
+  category: 'hms' | 'project' | 'deviation' | 'system' | 'chat';
   read: boolean;
   link?: string;
   createdAt: string;
+  projectId?: string;
+  projectName?: string;
+  clientName?: string;
+  channelId?: string;
+  hasAiDraft?: boolean;
 }
 
 // --- Dynamic & Editable Checklist System ---

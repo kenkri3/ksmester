@@ -271,6 +271,23 @@ export default function MesterWorkstation({
     return () => window.removeEventListener('navigate_view', handleNavigate);
   }, []);
 
+  // Lytt etter hendelse fra varselbjella om å åpne en spesifikk prosjektchat
+  useEffect(() => {
+    const handleOpenProjectChat = (e: any) => {
+      const { projectId, channelId } = e.detail || {};
+      if (projectId) {
+        const found = projects.find(p => p.id === projectId);
+        if (found) {
+          onSelectProject(found);
+        }
+      }
+      setActiveModuleTab('teamchat');
+      setViewMode('module');
+    };
+    window.addEventListener('open_project_chat', handleOpenProjectChat as EventListener);
+    return () => window.removeEventListener('open_project_chat', handleOpenProjectChat as EventListener);
+  }, [projects, onSelectProject]);
+
   const handleOpenSuperAdmin = () => {
     setActiveModuleTab('superadmin');
     setViewMode('module');

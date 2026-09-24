@@ -41,6 +41,7 @@ import { pdfService } from '../services/pdfService';
 import { changeOrderService } from '../services/changeOrderService';
 import { finalSettlementService } from '../services/finalSettlementService';
 import { warrantyInspectionService } from '../services/warrantyInspectionService';
+import { customerMessageService, CustomerPortalMessage } from '../services/customerMessageService';
 import { toast } from 'sonner';
 
 interface CustomerPortalProps {
@@ -69,6 +70,7 @@ const CustomerPortal: React.FC<CustomerPortalProps> = ({ project, onClose, isCon
   const [showMessageModal, setShowMessageModal] = useState(false);
   const [customerMessage, setCustomerMessage] = useState('');
   const [isSendingMessage, setIsSendingMessage] = useState(false);
+  const [portalMessages, setPortalMessages] = useState<CustomerPortalMessage[]>([]);
 
   // AI Summary State
   const [aiSummary, setAiSummary] = useState<string | null>(null);
@@ -120,6 +122,17 @@ const CustomerPortal: React.FC<CustomerPortalProps> = ({ project, onClose, isCon
     };
 
     fetchData();
+  }, [project.id]);
+
+  // Sanntidsabonnement på kundemeldinger og godkjente svar fra byggeleder
+  useEffect(() => {
+    if (!project.id) return;
+    const unsubscribe = customerMessageService.subscribeToProjectMessages(project.id, (msgs) => {
+      setPortalMessages(msgs);
+    });
+    return () => {
+      if (typeof unsubscribe === 'function') unsubscribe();
+    };
   }, [project.id]);
 
   // Fetch real project photos (from project_photos, deviations with images, and project attributes)
@@ -359,22 +372,14 @@ const CustomerPortal: React.FC<CustomerPortalProps> = ({ project, onClose, isCon
     setIsSendingMessage(true);
     const toastId = toast.loading('Sender henvendelse til byggeleder...');
     try {
-      await addDoc(collection(db, 'agent_activities'), {
-        type: 'customer_message',
-        title: `Melding fra kunde (${project.clientName || 'Kunde'}): ${project.name}`,
-        description: customerMessage.trim(),
-        projectId: project.id,
-        projectName: project.name,
-        clientName: project.clientName || 'Kunde',
-        clientEmail: project.clientEmail || '',
-        status: 'pending',
-        badge: 'KUNDEHENVENDELSE',
-        createdAt: new Date().toISOString()
-      });
+      await customerMessageService.sendCustomerMessage(
+        project,
+        customerMessage.trim(),
+        { name: project.clientName, email: project.clientEmail }
+      );
 
-      toast.success('Henvendelsen er sendt til byggeleder!', { id: toastId });
+      toast.success('Henvendelsen er sendt til byggeleder! Du vil motta svar her.', { id: toastId });
       setCustomerMessage('');
-      setShowMessageModal(false);
     } catch (err: any) {
       toast.error('Kunne ikke sende melding: ' + err.message, { id: toastId });
     } finally {
@@ -762,19 +767,16 @@ const CustomerPortal: React.FC<CustomerPortalProps> = ({ project, onClose, isCon
               </motion.div>
             )}
 
-            {/* AI Summary Banner */}
+            {/* Statusoppdatering Banner */}
             <div className="bg-neutral-900 rounded-3xl sm:rounded-[2.5rem] p-5 sm:p-7 md:p-8 text-white relative overflow-hidden shadow-sm">
-              <div className="absolute top-0 right-0 p-8 opacity-10 pointer-events-none">
-                <Sparkles size={120} />
-              </div>
               <div className="relative z-10">
                 <div className="flex items-center gap-2 mb-2.5">
-                  <div className="p-1.5 rounded-lg bg-white/10 text-rose-400">
-                    <Sparkles size={16} />
+                  <div className="p-1.5 rounded-lg bg-emerald-500/20 text-emerald-400">
+                    <CheckCircle2 size={16} />
                   </div>
-                  <h3 className="font-bold text-sm sm:text-base">AI Statusoppdatering</h3>
+                  <h3 className="font-bold text-sm sm:text-base">Gjeldende prosjektstatus</h3>
                   <span className="text-[10px] uppercase font-bold tracking-wider px-2 py-0.5 rounded bg-emerald-500/20 text-emerald-300 border border-emerald-500/30 ml-auto">
-                    Sanntid
+                    Kvalitetssikret
                   </span>
                 </div>
                 <p className="text-neutral-300 text-xs sm:text-sm leading-relaxed italic">
@@ -951,10 +953,17 @@ const CustomerPortal: React.FC<CustomerPortalProps> = ({ project, onClose, isCon
                 <button
                   type="button"
                   onClick={() => setShowMessageModal(true)}
-                  className="w-full flex items-center justify-center gap-2 p-3 sm:p-3.5 bg-indigo-50 hover:bg-indigo-100 text-indigo-950 rounded-xl text-xs font-bold border border-indigo-200/80 transition-all shadow-2xs cursor-pointer active:scale-95"
+                  className="w-full flex items-center justify-between p-3 sm:p-3.5 bg-indigo-50 hover:bg-indigo-100 text-indigo-950 rounded-xl text-xs font-bold border border-indigo-200/80 transition-all shadow-2xs cursor-pointer active:scale-95"
                 >
-                  <MessageSquare size={14} className="text-indigo-600 shrink-0" />
-                  <span>Send melding direkte i portalen</span>
+                  <div className="flex items-center gap-2 min-w-0">
+                    <MessageSquare size={15} className="text-indigo-600 shrink-0" />
+                    <span className="truncate">Dialog med byggeleder</span>
+                  </div>
+                  {portalMessages.length > 0 && (
+                    <span className="px-2 py-0.5 rounded-full text-[10px] font-black bg-indigo-200 text-indigo-800 shrink-0">
+                      {portalMessages.length} {portalMessages.length === 1 ? 'melding' : 'meldinger'}
+                    </span>
+                  )}
                 </button>
               </div>
             </div>
@@ -1271,7 +1280,7 @@ const CustomerPortal: React.FC<CustomerPortalProps> = ({ project, onClose, isCon
         )}
       </AnimatePresence>
 
-      {/* SEND DIRECT MESSAGE TO MANAGER MODAL */}
+      {/* DIALOG MED BYGGELEDER MODAL */}
       <AnimatePresence>
         {showMessageModal && (
           <div className="fixed inset-0 z-50 flex items-center justify-center p-2 sm:p-6 bg-black/60 backdrop-blur-sm">
@@ -1279,12 +1288,19 @@ const CustomerPortal: React.FC<CustomerPortalProps> = ({ project, onClose, isCon
               initial={{ opacity: 0, scale: 0.95 }}
               animate={{ opacity: 1, scale: 1 }}
               exit={{ opacity: 0, scale: 0.95 }}
-              className="bg-white w-full max-w-lg rounded-2xl sm:rounded-3xl overflow-hidden shadow-2xl border border-neutral-200 flex flex-col"
+              className="bg-white w-full max-w-xl rounded-2xl sm:rounded-3xl overflow-hidden shadow-2xl border border-neutral-200 flex flex-col max-h-[90vh]"
             >
-              <div className="p-4 sm:p-6 border-b border-neutral-100 flex items-center justify-between">
-                <div>
-                  <h3 className="font-black text-lg sm:text-xl text-neutral-900">Send melding til byggeleder</h3>
-                  <p className="text-xs text-neutral-500">Mottaker: {pmName} ({project.name})</p>
+              <div className="p-4 sm:p-5 border-b border-neutral-100 flex items-center justify-between bg-neutral-50/70">
+                <div className="flex items-center gap-3">
+                  <div className="w-10 h-10 rounded-xl bg-indigo-100 text-indigo-700 flex items-center justify-center font-bold">
+                    <MessageSquare size={18} />
+                  </div>
+                  <div>
+                    <h3 className="font-black text-base sm:text-lg text-neutral-900">Dialog med byggeleder</h3>
+                    <p className="text-xs text-neutral-500">
+                      {pmName} • {project.name}
+                    </p>
+                  </div>
                 </div>
                 <button
                   type="button"
@@ -1295,47 +1311,108 @@ const CustomerPortal: React.FC<CustomerPortalProps> = ({ project, onClose, isCon
                 </button>
               </div>
 
-              <form onSubmit={handleSendMessageToManager} className="p-4 sm:p-6 space-y-4">
-                <div>
-                  <label className="block text-xs font-bold text-neutral-700 uppercase tracking-wider mb-2">
-                    Din henvendelse / spørsmål
-                  </label>
-                  <textarea
-                    rows={4}
-                    value={customerMessage}
-                    onChange={(e) => setCustomerMessage(e.target.value)}
-                    placeholder="Skriv din melding her... F.eks. spørsmål om fremdrift, materialvalg eller befaring."
-                    required
-                    className="w-full p-3.5 sm:p-4 text-xs sm:text-sm bg-neutral-50 border border-neutral-200 rounded-xl sm:rounded-2xl focus:bg-white focus:ring-2 focus:ring-emerald-500 focus:outline-none transition-all"
-                  />
-                </div>
+              {/* Samtalelogg & meldinger */}
+              <div className="p-4 sm:p-6 overflow-y-auto space-y-4 flex-1">
+                {portalMessages.length === 0 ? (
+                  <div className="p-6 text-center bg-neutral-50 rounded-2xl border border-dashed border-neutral-200">
+                    <div className="w-10 h-10 rounded-xl bg-white border border-neutral-200 text-neutral-400 flex items-center justify-center mx-auto mb-2 shadow-2xs">
+                      <MessageSquare size={18} className="text-indigo-600" />
+                    </div>
+                    <p className="text-xs font-bold text-neutral-700">Ingen meldinger sendt ennå</p>
+                    <p className="text-[11px] text-neutral-500 mt-0.5">
+                      Send et spørsmål om fremdrift, materialer eller avklaringer nedenfor.
+                    </p>
+                  </div>
+                ) : (
+                  <div className="space-y-3.5">
+                    <div className="text-[10px] font-bold text-neutral-400 uppercase tracking-wider mb-1">
+                      Samtalehistorikk ({portalMessages.length})
+                    </div>
+                    {portalMessages.map((msg) => (
+                      <div key={msg.id} className="space-y-2">
+                        {/* Kundens henvendelse */}
+                        <div className="bg-neutral-50 p-3 sm:p-3.5 rounded-2xl border border-neutral-200 text-neutral-900">
+                          <div className="flex items-center justify-between text-[10px] text-neutral-400 mb-1.5">
+                            <span className="font-bold text-neutral-700 flex items-center gap-1">
+                              <User size={11} className="text-neutral-500" />
+                              Deg ({msg.clientName || 'Kunde'})
+                            </span>
+                            <span>
+                              {msg.createdAt ? new Date(msg.createdAt).toLocaleDateString('no-NO', { day: 'numeric', month: 'short', hour: '2-digit', minute: '2-digit' }) : 'Sendt'}
+                            </span>
+                          </div>
+                          <p className="text-xs sm:text-sm text-neutral-800 leading-relaxed whitespace-pre-wrap">{msg.content}</p>
+                        </div>
 
-                <div className="p-3 bg-neutral-50 rounded-xl border border-neutral-200 text-[11px] sm:text-xs text-neutral-500">
-                  Byggeleder blir varslet umiddelbart og henvendelsen loggføres trygt på prosjektet.
-                </div>
+                        {/* Byggelederens svar hvis besvart og godkjent */}
+                        {msg.replyContent ? (
+                          <div className="ml-4 sm:ml-6 bg-emerald-50/80 p-3 sm:p-3.5 rounded-2xl border border-emerald-200 text-emerald-950">
+                            <div className="flex items-center justify-between text-[10px] text-emerald-800 font-bold mb-1.5">
+                              <span className="flex items-center gap-1.5">
+                                <CheckCircle2 size={13} className="text-emerald-600" />
+                                <span>{msg.repliedBy || pmName} (Byggeleder)</span>
+                              </span>
+                              <span className="font-normal text-emerald-700">
+                                {msg.repliedAt ? new Date(msg.repliedAt).toLocaleDateString('no-NO', { day: 'numeric', month: 'short', hour: '2-digit', minute: '2-digit' }) : 'Besvart'}
+                              </span>
+                            </div>
+                            <p className="text-xs sm:text-sm text-neutral-900 leading-relaxed whitespace-pre-wrap">{msg.replyContent}</p>
+                          </div>
+                        ) : (
+                          <div className="ml-4 sm:ml-6 flex items-center gap-1.5 text-[11px] text-amber-800 bg-amber-50 px-3 py-2 rounded-xl border border-amber-200/80">
+                            <Clock size={13} className="text-amber-600 shrink-0" />
+                            <span>Mottatt av byggeleder — varsel sendt. Svar legges ut her så snart det er gjennomgått.</span>
+                          </div>
+                        )}
+                      </div>
+                    ))}
+                  </div>
+                )}
 
-                <div className="flex items-center justify-end gap-2 pt-2">
-                  <button
-                    type="button"
-                    onClick={() => setShowMessageModal(false)}
-                    className="px-3.5 sm:px-4 py-2 sm:py-2.5 bg-neutral-100 hover:bg-neutral-200 text-neutral-700 text-xs font-bold rounded-xl transition-colors cursor-pointer"
-                  >
-                    Avbryt
-                  </button>
-                  <button
-                    type="submit"
-                    disabled={isSendingMessage || !customerMessage.trim()}
-                    className="px-4 sm:px-5 py-2 sm:py-2.5 bg-emerald-600 hover:bg-emerald-500 text-white text-xs font-bold rounded-xl transition-all shadow-xs flex items-center gap-2 cursor-pointer disabled:opacity-50"
-                  >
-                    {isSendingMessage ? (
-                      <div className="w-4 h-4 border-2 border-white/30 border-t-white rounded-full animate-spin" />
-                    ) : (
-                      <Send size={14} />
-                    )}
-                    <span>Send henvendelse</span>
-                  </button>
-                </div>
-              </form>
+                {/* Skriv ny melding form */}
+                <form onSubmit={handleSendMessageToManager} className="pt-2 border-t border-neutral-100 space-y-3">
+                  <div>
+                    <label className="block text-xs font-bold text-neutral-700 uppercase tracking-wider mb-1.5">
+                      Ny henvendelse / spørsmål
+                    </label>
+                    <textarea
+                      rows={3}
+                      value={customerMessage}
+                      onChange={(e) => setCustomerMessage(e.target.value)}
+                      placeholder="Skriv din henvendelse her... F.eks. spørsmål om fremdrift, materialvalg eller tidspunkter."
+                      required
+                      className="w-full p-3 text-xs sm:text-sm bg-neutral-50 border border-neutral-200 rounded-xl sm:rounded-2xl focus:bg-white focus:ring-2 focus:ring-emerald-500 focus:outline-none transition-all"
+                    />
+                  </div>
+
+                  <div className="flex items-center justify-between gap-2">
+                    <p className="text-[11px] text-neutral-400">
+                      Byggeleder varsles umiddelbart på vakt.
+                    </p>
+                    <div className="flex items-center gap-2">
+                      <button
+                        type="button"
+                        onClick={() => setShowMessageModal(false)}
+                        className="px-3 py-2 bg-neutral-100 hover:bg-neutral-200 text-neutral-700 text-xs font-bold rounded-xl transition-colors cursor-pointer"
+                      >
+                        Lukk
+                      </button>
+                      <button
+                        type="submit"
+                        disabled={isSendingMessage || !customerMessage.trim()}
+                        className="px-4 py-2 bg-emerald-600 hover:bg-emerald-500 text-white text-xs font-bold rounded-xl transition-all shadow-xs flex items-center gap-1.5 cursor-pointer disabled:opacity-50"
+                      >
+                        {isSendingMessage ? (
+                          <div className="w-4 h-4 border-2 border-white/30 border-t-white rounded-full animate-spin" />
+                        ) : (
+                          <Send size={13} />
+                        )}
+                        <span>Send henvendelse</span>
+                      </button>
+                    </div>
+                  </div>
+                </form>
+              </div>
             </motion.div>
           </div>
         )}
