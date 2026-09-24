@@ -725,16 +725,43 @@ Når brukeren ber deg sende en eller flere e-poster (tilbud, endring, varsel, FD
 - ALDRI svar med en eneste sammenklemt tekstblokk.
 
 🔗 KLIKKBARE KILDELENKER & DOKUMENTASJON (OBLIGATORISK):
-Når du gir faglige råd, oppgir priser, svarer på nettsøk eller henviser til lover, TEK17, forskrifter og leverandører:
-Skal du ALLTID legge ved klikkbare kildelenker i markdown-format: [Kildens tittel](https://adresse.no).
-Avslutt svaret med en dedikert seksjon:
+Når du gir faglige råd, henviser til lover, TEK17, HMS-forskrifter, veiledere eller leverandører, skal du ALLTID avslutte svaret ditt med en dedikert kildeseksjon med klikkbare markdown-lenker valgt fra de offisielle kildene du er koblet til:
+
 ### 🌐 Kilder & Dokumentasjon
-- [DiBK Byggteknisk forskrift (TEK17)](https://dibk.no/byggereglene/tek17/) - Forskrift om tekniske krav til byggverk
-- [Lovdata - Byggherreforskriften](https://lovdata.no/dokument/SF/forskrift/2009-08-03-1028) - Krav til sikkerhet, helse og arbeidsmiljø (SHA)
-- [SINTEF Byggforsk Kunnskapssystemer](https://www.byggforsk.no) - Anbefalte løsninger og våtromsnormen
-- [Arbeidstilsynet](https://www.arbeidstilsynet.no) - HMS, stillas og personlig verneutstyr
-- [Standard Norge (NS 8406)](https://standard.no) - Forenklet norsk bygge- og anleggskontrakt
-- Reelle lenker fra nettsøk til leverandører (f.eks. Optimera, Maxbo) eller lokale arrangementssider ved dagsaktuelle oppslag.`;
+Velg de relevante lenkene som passer til temaet du svarer på:
+- **TEK17 & Byggeregler:**
+  - [DiBK Byggteknisk forskrift (TEK17)](https://www.dibk.no/regelverk/byggteknisk-forskrift-tek17)
+  - [DiBK Byggesaksforskriften (SAK10)](https://www.dibk.no/regelverk/sak/)
+  - [DiBK Bygg uten å søke: Garasje](https://www.dibk.no/verktoy-og-veivisere/bygg-uten-a-soke-garasje)
+  - [DiBK Bygg uten å søke: Tilbygg](https://www.dibk.no/verktoy-og-veivisere/bygg-uten-a-soke-tilbygg)
+  - [DiBK Veiviser: Nabovarsel](https://www.dibk.no/nabovarsel)
+  - [DiBK Hvor stort kan du bygge (BYA-beregning)](https://www.dibk.no/verktoy-og-veivisere/hvor-stort-kan-du-bygge)
+- **Lover & Kontrakter (Lovdata):**
+  - [Lovdata - Håndverkertjenesteloven](https://lovdata.no/dokument/NL/lov/1989-06-16-63)
+  - [Lovdata - Bustadoppføringslova](https://lovdata.no/dokument/NL/lov/1997-06-13-43)
+  - [Lovdata - Arbeidsmiljøloven](https://lovdata.no/dokument/NL/lov/2005-06-17-62)
+  - [Lovdata - Plan- og bygningsloven](https://lovdata.no/dokument/NL/lov/2008-06-27-71)
+  - [Lovdata - Byggherreforskriften](https://lovdata.no/dokument/SF/forskrift/2009-08-03-1028)
+  - [Lovdata - Internkontrollforskriften](https://lovdata.no/dokument/SF/forskrift/1996-12-06-1127)
+  - [Lovdata - Forskrift om utførelse av arbeid](https://lovdata.no/dokument/SF/forskrift/2011-12-06-1357)
+- **HMS & Arbeidstilsynet:**
+  - [Arbeidstilsynet - Arbeid i høyden & stillas](https://www.arbeidstilsynet.no/risikofylt-arbeid/arbeid-i-hoyden/)
+  - [Arbeidstilsynet - Risikovurdering & SJA](https://www.arbeidstilsynet.no/hms/risikovurdering/)
+  - [Arbeidstilsynet - Internkontroll](https://www.arbeidstilsynet.no/hms/internkontroll/)
+  - [Arbeidstilsynet - Asbest](https://www.arbeidstilsynet.no/risikofylt-arbeid/kjemikalier/asbest/)
+  - [Arbeidstilsynet - Kjemikalier & stoffkartotek](https://www.arbeidstilsynet.no/risikofylt-arbeid/kjemikalier/)
+  - [Arbeidstilsynet - HMS-kort](https://www.arbeidstilsynet.no/hms/hms-kort/)
+- **Våtromsnormen (FFV):**
+  - [Fagrådet for våtrom - Våtromsnormen (BVN)](https://ffv.no/vatromsnormen/)
+  - [Fagrådet for våtrom - Lover og regler](https://ffv.no/lover-og-regler/)
+  - [Fagrådet for våtrom - Sluttdokumentasjon](https://ffv.no/sluttdokumentasjon/)
+  - [Fagrådet for våtrom - Godkjente produkter](https://ffv.no/anbefalte-produkter/)
+- **Leverandører & Isolasjon:**
+  - [Glava Isolasjon](https://www.glava.no/)
+  - [Rockwool Brann- og lydisolering](https://www.rockwool.no/)
+  - [Gyproc Gipsplater & systemvegger](https://www.gyproc.no/)
+  - [Vikingmester KS- og HMS-system](https://vikingmester.no/)
+- Reelle lenker fra nettsøk til leverandører (f.eks. Optimera, Maxbo) ved dagsaktuelle oppslag.`;
 
     let replyText = '';
     const quickReplies: Array<{ title: string; payload: string }> = [];
