@@ -19,7 +19,9 @@ import {
   Calculator,
   ShieldCheck,
   Check,
-  Edit3
+  Edit3,
+  Plus,
+  Save
 } from 'lucide-react';
 import { toast } from 'sonner';
 import { pdfService } from '../services/pdfService';
@@ -37,6 +39,14 @@ interface OfferDetailModalProps {
   onSave?: (updatedOffer: any) => void;
 }
 
+export interface OfferDetailItem {
+  description: string;
+  quantity: number;
+  unit: string;
+  pricePerUnit: number;
+  total?: number;
+}
+
 export default function OfferDetailModal({
   isOpen,
   onClose,
@@ -50,16 +60,102 @@ export default function OfferDetailModal({
   const [isGeneratingPdf, setIsGeneratingPdf] = useState(false);
   const [isAccepting, setIsAccepting] = useState(false);
   const [currentStatus, setCurrentStatus] = useState<string>(offer?.status || 'Sendt til kunde');
+  const [isEditingItems, setIsEditingItems] = useState(false);
+  const [isSavingItems, setIsSavingItems] = useState(false);
+
+  // Initialiser poster fra tilbudet eller opprett basert på arbeidstimer og materiell
+  const [items, setItems] = useState<OfferDetailItem[]>(() => {
+    if (Array.isArray(offer?.items) && offer.items.length > 0) {
+      return offer.items.map((it: any) => ({
+        description: it.description || '',
+        quantity: Number(it.quantity) || 1,
+        unit: it.unit || 'timer',
+        pricePerUnit: Number(it.pricePerUnit) || 0,
+        total: Number(it.total) || Math.round((Number(it.quantity) || 1) * (Number(it.pricePerUnit) || 0))
+      }));
+    }
+    const h = Number(offer?.hours) || 0;
+    const m = Number(offer?.materials) || 0;
+    const fallbackList: OfferDetailItem[] = [];
+    if (h > 0) {
+      fallbackList.push({
+        description: `Tømrer- og fagmessig byggearbeid`,
+        quantity: h,
+        unit: 'timer',
+        pricePerUnit: 890,
+        total: h * 890
+      });
+    }
+    if (m > 0) {
+      fallbackList.push({
+        description: 'Byggematerialer og forbruksmateriell m/påslag',
+        quantity: 1,
+        unit: 'stk',
+        pricePerUnit: m,
+        total: m
+      });
+    }
+    if (fallbackList.length === 0) {
+      const fallbackAmount = Number(offer?.totalPrice || offer?.amount || offer?.totalAmount || 0);
+      fallbackList.push({
+        description: offer?.title || 'Fagmessig utførelse iht. avtale',
+        quantity: 1,
+        unit: 'stk',
+        pricePerUnit: fallbackAmount || 15000,
+        total: fallbackAmount || 15000
+      });
+    }
+    return fallbackList;
+  });
+
+  // Synkroniser når tilbudsobjektet endrer seg
+  React.useEffect(() => {
+    if (Array.isArray(offer?.items) && offer.items.length > 0) {
+      setItems(offer.items.map((it: any) => ({
+        description: it.description || '',
+        quantity: Number(it.quantity) || 1,
+        unit: it.unit || 'timer',
+        pricePerUnit: Number(it.pricePerUnit) || 0,
+        total: Number(it.total) || Math.round((Number(it.quantity) || 1) * (Number(it.pricePerUnit) || 0))
+      })));
+    }
+  }, [offer?.id, offer?.items]);
 
   if (!isOpen || !offer) return null;
 
-  // Beregninger
-  const hours = Number(offer.hours) || 0;
-  const standardHourlyRate = 890;
-  const laborAmount = hours > 0 ? hours * standardHourlyRate : 0;
-  const materialsAmount = Number(offer.materials) || 0;
+  // Håndter tilføyelse, sletting og redigering av poster
+  const handleAddItem = () => {
+    setItems(prev => [
+      ...prev,
+      { description: 'Ny tilbudspost / arbeid', quantity: 1, unit: 'timer', pricePerUnit: 890, total: 890 }
+    ]);
+    setIsEditingItems(true);
+  };
 
-  const totalExMva = Number(offer.totalPrice || offer.amount || offer.totalAmount || (laborAmount + materialsAmount) || 0);
+  const handleRemoveItem = (index: number) => {
+    if (items.length <= 1) {
+      toast.warning('Tilbudet må inneholde minst én kalkylepost.');
+      return;
+    }
+    setItems(prev => prev.filter((_, i) => i !== index));
+  };
+
+  const handleUpdateItem = (index: number, field: keyof OfferDetailItem, value: any) => {
+    setItems(prev => {
+      const copy = [...prev];
+      const target = { ...copy[index], [field]: value };
+      if (field === 'quantity' || field === 'pricePerUnit') {
+        const q = field === 'quantity' ? (Number(value) || 0) : (Number(target.quantity) || 0);
+        const p = field === 'pricePerUnit' ? (Number(value) || 0) : (Number(target.pricePerUnit) || 0);
+        target.total = Math.round(q * p);
+      }
+      copy[index] = target;
+      return copy;
+    });
+  };
+
+  // Dynamiske beregninger
+  const totalExMva = items.reduce((sum, it) => sum + (Number(it.total) || (Number(it.quantity) * Number(it.pricePerUnit)) || 0), 0);
   const mvaAmount = Math.round(totalExMva * 0.25);
   const totalIncMva = totalExMva + mvaAmount;
 
@@ -68,6 +164,62 @@ export default function OfferDetailModal({
   const createdDate = offer.createdAt 
     ? new Date(offer.createdAt).toLocaleDateString('no-NO', { day: '2-digit', month: 'long', year: 'numeric' })
     : new Date().toLocaleDateString('no-NO', { day: '2-digit', month: 'long', year: 'numeric' });
+
+  // Lagre endrede poster tilbake til databasen
+  const handleSaveItems = async () => {
+    setIsSavingItems(true);
+    const updatedOffer = {
+      ...offer,
+      items,
+      amount: totalExMva,
+      totalPrice: totalExMva,
+      totalAmount: totalExMva,
+      updatedAt: new Date().toISOString()
+    };
+
+    try {
+      if (offer.id) {
+        await updateDoc(doc(db, 'offers', offer.id), {
+          items,
+          amount: totalExMva,
+          totalPrice: totalExMva,
+          totalAmount: totalExMva,
+          updatedAt: new Date().toISOString()
+        });
+      }
+    } catch (e) {
+      console.warn('Kunne ikke oppdatere tilbud i Firestore:', e);
+    }
+
+    try {
+      if (offer.id) {
+        const token = typeof window !== 'undefined' ? localStorage.getItem('token') : null;
+        await fetch(`/api/data/offers/${offer.id}`, {
+          method: 'PATCH',
+          headers: {
+            'Content-Type': 'application/json',
+            ...(token ? { 'Authorization': 'Bearer ' + token } : {})
+          },
+          body: JSON.stringify({
+            items,
+            amount: totalExMva,
+            totalPrice: totalExMva,
+            totalAmount: totalExMva
+          })
+        });
+      }
+    } catch (e) {
+      console.warn('Kunne ikke oppdatere tilbud på server:', e);
+    }
+
+    if (onSave) {
+      onSave(updatedOffer);
+    }
+
+    setIsSavingItems(false);
+    setIsEditingItems(false);
+    toast.success(`Tilbudsposter er lagret! Totalsum: kr ${totalExMva.toLocaleString('no-NO')} eks. mva`);
+  };
 
   // PDF-generering
   const handleDownloadPDF = async () => {
@@ -82,12 +234,7 @@ export default function OfferDetailModal({
         clientEmail: offer.clientEmail || '',
         createdAt: offer.createdAt || new Date().toISOString(),
         status: currentStatus === 'Akseptert av kunde' ? 'accepted' : 'sent',
-        items: Array.isArray(offer.items) && offer.items.length > 0
-          ? offer.items
-          : [
-              ...(hours > 0 ? [{ description: `Tømrer- og byggearbeid (${hours} timer)`, quantity: hours, unit: 'timer', pricePerUnit: standardHourlyRate, total: laborAmount }] : []),
-              ...(materialsAmount > 0 ? [{ description: 'Byggematerialer og forbruksmateriell m/påslag', quantity: 1, unit: 'stk', pricePerUnit: materialsAmount, total: materialsAmount }] : [])
-            ]
+        items: items
       };
 
       await pdfService.generateOfferPDF(offerForPdf, {
@@ -105,13 +252,16 @@ export default function OfferDetailModal({
 
   // Kopier sammendrag
   const handleCopySummary = () => {
+    const itemsText = items.map((it, idx) => 
+      `• Post ${idx + 1}: ${it.description || 'Fagarbeid'} - ${it.quantity} ${it.unit} á kr ${Number(it.pricePerUnit).toLocaleString('no-NO')},- = kr ${Number(it.total).toLocaleString('no-NO')},-`
+    ).join('\n');
+
     const summary = `📄 PRISTILBUD: ${offer.title || projectName}\n` +
       `Kunde: ${client}\n` +
       `Prosjekt: ${projectName}\n` +
       `Dato: ${createdDate}\n` +
       `-----------------------------------------\n` +
-      (hours > 0 ? `• Arbeid: ${hours} timer @ kr ${standardHourlyRate},- = kr ${laborAmount.toLocaleString('no-NO')},-\n` : '') +
-      (materialsAmount > 0 ? `• Materiell: kr ${materialsAmount.toLocaleString('no-NO')},-\n` : '') +
+      `${itemsText}\n` +
       `-----------------------------------------\n` +
       `Sum eks. mva: kr ${totalExMva.toLocaleString('no-NO')},-\n` +
       `MVA (25 %): kr ${mvaAmount.toLocaleString('no-NO')},-\n` +
@@ -138,7 +288,7 @@ export default function OfferDetailModal({
 
       setCurrentStatus('Akseptert av kunde');
       if (onSave) {
-        onSave({ ...offer, status: 'Akseptert av kunde' });
+        onSave({ ...offer, status: 'Akseptert av kunde', items });
       }
       toast.success('✓ Tilbud markert som Akseptert! Prosjektet og KS-sjekkliste aktiveres.');
     } catch (err: any) {
@@ -156,7 +306,7 @@ export default function OfferDetailModal({
           animate={{ opacity: 1, scale: 1, y: 0 }}
           exit={{ opacity: 0, scale: 0.95, y: 15 }}
           transition={{ duration: 0.2 }}
-          className="bg-slate-900 border border-slate-800 rounded-3xl w-full max-w-2xl shadow-2xl overflow-hidden my-auto flex flex-col max-h-[90vh]"
+          className="bg-slate-900 border border-slate-800 rounded-3xl w-full max-w-3xl shadow-2xl overflow-hidden my-auto flex flex-col max-h-[92vh]"
         >
           {/* Header */}
           <div className="p-5 sm:p-6 border-b border-slate-800 flex items-start justify-between gap-4 bg-slate-950/50 shrink-0">
@@ -231,66 +381,151 @@ export default function OfferDetailModal({
 
             {/* Spesifiserte poster / Kalkylegrunnlag */}
             <div className="space-y-3">
-              <h4 className="text-xs font-bold uppercase tracking-wider text-slate-400 flex items-center gap-1.5">
-                <Calculator size={14} className="text-purple-400" />
-                <span>Kalkyle og leveringsomfang</span>
-              </h4>
+              <div className="flex flex-wrap items-center justify-between gap-2">
+                <h4 className="text-xs font-bold uppercase tracking-wider text-slate-400 flex items-center gap-1.5">
+                  <Calculator size={14} className="text-purple-400" />
+                  <span>Kalkyle og tilbudsposter ({items.length})</span>
+                </h4>
+                <div className="flex items-center gap-2">
+                  <button
+                    type="button"
+                    onClick={() => setIsEditingItems(!isEditingItems)}
+                    className={cn(
+                      "px-3 py-1.5 rounded-xl text-xs font-bold transition-all flex items-center gap-1.5 cursor-pointer border",
+                      isEditingItems 
+                        ? "bg-purple-600 text-white border-purple-500 shadow-xs" 
+                        : "bg-slate-800 text-slate-300 hover:text-white border-slate-700"
+                    )}
+                  >
+                    <Edit3 size={12} />
+                    <span>{isEditingItems ? 'Avslutt redigering' : 'Rediger poster'}</span>
+                  </button>
+                  <button
+                    type="button"
+                    onClick={handleAddItem}
+                    className="px-3 py-1.5 rounded-xl text-xs font-bold bg-purple-500/20 hover:bg-purple-500 text-purple-300 hover:text-white border border-purple-500/30 transition-all flex items-center gap-1.5 cursor-pointer"
+                  >
+                    <Plus size={13} />
+                    <span>Legg til post</span>
+                  </button>
+                </div>
+              </div>
 
+              {/* Interaktiv tabell over tilbudsposter */}
               <div className="rounded-2xl bg-slate-950 border border-slate-800 overflow-hidden divide-y divide-slate-800/80">
-                {Array.isArray(offer.items) && offer.items.length > 0 ? (
-                  offer.items.map((it: any, idx: number) => (
-                    <div key={idx} className="p-3.5 flex items-center justify-between gap-3 text-xs">
-                      <div>
-                        <p className="font-bold text-white">{it.description || `Post ${idx + 1}`}</p>
+                {isEditingItems ? (
+                  /* Redigeringsmodus */
+                  <div className="p-3 space-y-3">
+                    {items.map((it, idx) => (
+                      <div key={idx} className="p-3 bg-slate-900/90 rounded-xl border border-slate-800 space-y-2.5">
+                        <div className="flex items-center justify-between gap-2">
+                          <span className="text-[10px] font-bold uppercase tracking-wider text-purple-400">
+                            Post {idx + 1}
+                          </span>
+                          <button
+                            type="button"
+                            onClick={() => handleRemoveItem(idx)}
+                            className="text-slate-500 hover:text-rose-400 transition-colors p-1 rounded-lg hover:bg-rose-500/10 cursor-pointer"
+                            title="Slett post"
+                          >
+                            <Trash2 size={14} />
+                          </button>
+                        </div>
+                        <input
+                          type="text"
+                          value={it.description}
+                          onChange={(e) => handleUpdateItem(idx, 'description', e.target.value)}
+                          placeholder="Beskrivelse av arbeidet eller materialer..."
+                          className="w-full px-3 py-2 rounded-lg bg-slate-950 border border-slate-800 text-xs text-white placeholder:text-slate-500 focus:outline-none focus:border-purple-500"
+                        />
+                        <div className="grid grid-cols-3 gap-2">
+                          <div>
+                            <label className="text-[10px] text-slate-400 font-bold block mb-1">Antall</label>
+                            <input
+                              type="number"
+                              min="0"
+                              step="any"
+                              value={it.quantity}
+                              onChange={(e) => handleUpdateItem(idx, 'quantity', e.target.value)}
+                              className="w-full px-2.5 py-1.5 rounded-lg bg-slate-950 border border-slate-800 text-xs text-white focus:outline-none focus:border-purple-500 font-mono"
+                            />
+                          </div>
+                          <div>
+                            <label className="text-[10px] text-slate-400 font-bold block mb-1">Enhet</label>
+                            <select
+                              value={it.unit}
+                              onChange={(e) => handleUpdateItem(idx, 'unit', e.target.value)}
+                              className="w-full px-2 py-1.5 rounded-lg bg-slate-950 border border-slate-800 text-xs text-white focus:outline-none focus:border-purple-500"
+                            >
+                              <option value="timer">timer</option>
+                              <option value="stk">stk</option>
+                              <option value="m2">m²</option>
+                              <option value="lm">lm</option>
+                              <option value="kg">kg</option>
+                              <option value="pakke">pk</option>
+                              <option value="sett">sett</option>
+                            </select>
+                          </div>
+                          <div>
+                            <label className="text-[10px] text-slate-400 font-bold block mb-1">Pris / enhet</label>
+                            <input
+                              type="number"
+                              min="0"
+                              step="any"
+                              value={it.pricePerUnit}
+                              onChange={(e) => handleUpdateItem(idx, 'pricePerUnit', e.target.value)}
+                              className="w-full px-2.5 py-1.5 rounded-lg bg-slate-950 border border-slate-800 text-xs text-white focus:outline-none focus:border-purple-500 font-mono"
+                            />
+                          </div>
+                        </div>
+                        <div className="flex justify-between items-center text-xs pt-1 border-t border-slate-800/60">
+                          <span className="text-slate-400 text-[11px]">Delsum eks. mva:</span>
+                          <span className="font-bold text-white font-mono">kr {Number(it.total || 0).toLocaleString('no-NO')}</span>
+                        </div>
+                      </div>
+                    ))}
+
+                    <div className="flex items-center justify-between gap-3 pt-2">
+                      <button
+                        type="button"
+                        onClick={handleAddItem}
+                        className="px-3 py-2 rounded-xl text-xs font-bold text-purple-300 hover:text-white bg-purple-500/10 hover:bg-purple-500/20 border border-purple-500/30 flex items-center gap-1.5 cursor-pointer"
+                      >
+                        <Plus size={14} />
+                        <span>Legg til en post til</span>
+                      </button>
+
+                      <button
+                        type="button"
+                        disabled={isSavingItems}
+                        onClick={handleSaveItems}
+                        className="px-4 py-2 rounded-xl text-xs font-bold text-white bg-purple-600 hover:bg-purple-500 shadow-md flex items-center gap-1.5 cursor-pointer transition-all disabled:opacity-50"
+                      >
+                        <Save size={14} />
+                        <span>{isSavingItems ? 'Lagrer...' : 'Lagre endringer i tilbud'}</span>
+                      </button>
+                    </div>
+                  </div>
+                ) : (
+                  /* Visningsmodus */
+                  items.map((it, idx) => (
+                    <div key={idx} className="p-3.5 flex items-center justify-between gap-3 text-xs hover:bg-slate-900/40 transition-colors">
+                      <div className="space-y-0.5">
+                        <div className="flex items-center gap-2">
+                          <span className="text-[10px] font-bold text-purple-400">Post {idx + 1}:</span>
+                          <p className="font-bold text-white">{it.description || `Tilbudspost ${idx + 1}`}</p>
+                        </div>
                         <p className="text-[11px] text-slate-400">
-                          {it.quantity} {it.unit || 'stk'} á kr {Number(it.pricePerUnit || 0).toLocaleString('no-NO')}
+                          {it.quantity} {it.unit} á kr {Number(it.pricePerUnit || 0).toLocaleString('no-NO')} eks. mva
                         </p>
                       </div>
-                      <span className="font-black text-slate-200">
-                        kr {Number(it.total || 0).toLocaleString('no-NO')}
-                      </span>
+                      <div className="text-right">
+                        <span className="font-black text-slate-200 block font-mono">
+                          kr {Number(it.total || (it.quantity * it.pricePerUnit)).toLocaleString('no-NO')}
+                        </span>
+                      </div>
                     </div>
                   ))
-                ) : (
-                  <>
-                    {hours > 0 && (
-                      <div className="p-3.5 flex items-center justify-between gap-3 text-xs">
-                        <div>
-                          <p className="font-bold text-white">Fagmessig utførelse & tømrerarbeid</p>
-                          <p className="text-[11px] text-slate-400">
-                            {hours} arbeidstimer á kr {standardHourlyRate},- eks. mva
-                          </p>
-                        </div>
-                        <span className="font-black text-slate-200">
-                          kr {laborAmount.toLocaleString('no-NO')}
-                        </span>
-                      </div>
-                    )}
-                    {materialsAmount > 0 && (
-                      <div className="p-3.5 flex items-center justify-between gap-3 text-xs">
-                        <div>
-                          <p className="font-bold text-white">Materiell og festemidler</p>
-                          <p className="text-[11px] text-slate-400">
-                            Innkjøp hos grossist inkl. standard påslag og svinn
-                          </p>
-                        </div>
-                        <span className="font-black text-slate-200">
-                          kr {materialsAmount.toLocaleString('no-NO')}
-                        </span>
-                      </div>
-                    )}
-                    {hours === 0 && materialsAmount === 0 && (
-                      <div className="p-3.5 flex items-center justify-between gap-3 text-xs">
-                        <div>
-                          <p className="font-bold text-white">Avtalt fastprisleveranse</p>
-                          <p className="text-[11px] text-slate-400">Komplett leveranse iht. tilbudsbeskrivelse</p>
-                        </div>
-                        <span className="font-black text-slate-200">
-                          kr {totalExMva.toLocaleString('no-NO')}
-                        </span>
-                      </div>
-                    )}
-                  </>
                 )}
               </div>
             </div>

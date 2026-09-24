@@ -15,6 +15,7 @@ import {
   Building2,
   HardHat,
   Trash2,
+  Edit2,
   RefreshCw,
   Clock,
   FileSignature,
@@ -153,7 +154,15 @@ export default function MesterWorkstation({
   onOpenSettings,
   onOpenSuperAdmin
 }: MesterWorkstationProps) {
-  const { user, isSuperAdmin, isPlatformOwner, simulatedPlan, setSimulatedPlan, logout, trade, company, impersonatedCompanyId, stopImpersonation } = useAuth();
+  const { user, isSuperAdmin, isPlatformOwner, role, simulatedPlan, setSimulatedPlan, logout, trade, company, impersonatedCompanyId, stopImpersonation } = useAuth();
+  const isAdmin = Boolean(
+    isSuperAdmin || 
+    isPlatformOwner || 
+    role === 'admin' || 
+    role === 'leader' || 
+    user?.role === 'admin' || 
+    user?.role === 'leader'
+  );
 
   // 📐 Layout State
   const [isOpenMobile, setIsOpenMobile] = useState(false);
@@ -411,6 +420,8 @@ export default function MesterWorkstation({
     overtime100: number;
     task: string;
     status: 'pending' | 'approved';
+    projectId?: string;
+    projectName?: string;
   }
 
   const [projectContacts, setProjectContacts] = useState<ProjectContactItem[]>([]);
@@ -423,6 +434,15 @@ export default function MesterWorkstation({
   const [newContactPhone, setNewContactPhone] = useState('');
   const [newContactEmail, setNewContactEmail] = useState('');
   const [newContactCompany, setNewContactCompany] = useState('');
+
+  // ✏️ Rediger kontakt state (Kun Admin)
+  const [editingContact, setEditingContact] = useState<ProjectContactItem | null>(null);
+  const [editContactName, setEditContactName] = useState('');
+  const [editContactRole, setEditContactRole] = useState('');
+  const [editContactPhone, setEditContactPhone] = useState('');
+  const [editContactEmail, setEditContactEmail] = useState('');
+  const [editContactCompany, setEditContactCompany] = useState('');
+  const [editContactCategory, setEditContactCategory] = useState<'team' | 'subcontractor' | 'client' | 'former'>('team');
 
   // ⏱️ Byggedagbok & Timeføring state (AML § 10-7 og ledergodkjenning)
   const [dailyTimeEntries, setDailyTimeEntries] = useState<DailyTimeItem[]>([]);
@@ -494,12 +514,14 @@ export default function MesterWorkstation({
     }
   }, [contactsStorageKey, projects, user, impersonatedCompanyId]);
 
-  // Last inn timeføringer
+  // Last inn timeføringer og synkroniser mot backend
   useEffect(() => {
+    let currentLogs: DailyTimeItem[] = [];
     try {
       const raw = localStorage.getItem(logsStorageKey);
       if (raw) {
-        setDailyTimeEntries(JSON.parse(raw));
+        currentLogs = JSON.parse(raw);
+        setDailyTimeEntries(currentLogs);
       } else {
         const todayStr = new Date().toISOString().split('T')[0];
         const initialLogs: DailyTimeItem[] = [
@@ -512,14 +534,64 @@ export default function MesterWorkstation({
             overtime50: 0,
             overtime100: 0,
             task: 'Oppstart byggeplass og kontroll av underlag',
-            status: 'approved'
+            status: 'approved',
+            projectId: selectedProject?.id,
+            projectName: selectedProject?.name
           }
         ];
+        currentLogs = initialLogs;
         setDailyTimeEntries(initialLogs);
         localStorage.setItem(logsStorageKey, JSON.stringify(initialLogs));
       }
     } catch (e) {}
-  }, [logsStorageKey, selectedProject?.id, impersonatedCompanyId]);
+
+    // Hent også lagrede timeføringer fra PostgreSQL / backend
+    const fetchBackendLogs = async () => {
+      try {
+        const res = await fetch('/api/data/time_entries');
+        if (res.ok) {
+          const serverEntries = await res.json();
+          if (Array.isArray(serverEntries) && serverEntries.length > 0) {
+            const relevant = serverEntries.filter((item: any) => {
+              if (!selectedProject?.id || selectedProject.id === 'all') return true;
+              return item.projectId === selectedProject.id;
+            });
+
+            if (relevant.length > 0) {
+              setDailyTimeEntries(prev => {
+                const map = new Map<string, DailyTimeItem>();
+                prev.forEach(item => map.set(item.id, item));
+                relevant.forEach((item: any) => {
+                  map.set(item.id, {
+                    id: item.id,
+                    workerName: item.workerName || user?.displayName || 'Fagarbeider',
+                    role: item.role || 'Tømrer',
+                    date: item.date || new Date().toISOString().split('T')[0],
+                    hours: Number(item.hours) || 0,
+                    overtime50: Number(item.overtime50) || 0,
+                    overtime100: Number(item.overtime100) || 0,
+                    task: item.task || 'Arbeid på byggeplass',
+                    status: item.status || 'pending',
+                    projectId: item.projectId,
+                    projectName: item.projectName
+                  });
+                });
+                const merged = Array.from(map.values()).sort((a, b) => (b.date || '').localeCompare(a.date || ''));
+                try {
+                  localStorage.setItem(logsStorageKey, JSON.stringify(merged));
+                } catch {}
+                return merged;
+              });
+            }
+          }
+        }
+      } catch (err) {
+        console.warn('Kunne ikke hente time_entries fra backend:', err);
+      }
+    };
+
+    fetchBackendLogs();
+  }, [logsStorageKey, selectedProject?.id, selectedProject?.name, impersonatedCompanyId]);
 
   // Arkiver kontakt som tidligere ansatt / historisk kontakt (anbefalt for reklamasjons- og HMS-historikk)
   const handleArchiveContact = (id: string, name: string) => {
@@ -541,7 +613,64 @@ export default function MesterWorkstation({
     toast.success(`"${name}" er gjenopprettet i aktivt team.`);
   };
 
+  // ✏️ Åpne redigeringsmodal (Kun Admin)
+  const handleOpenEditContact = (contact: ProjectContactItem) => {
+    if (!isAdmin) {
+      toast.error('Kun administrator har tilgang til å redigere kontakter.');
+      return;
+    }
+    setEditingContact(contact);
+    setEditContactName(contact.name || '');
+    setEditContactRole(contact.role || '');
+    setEditContactPhone(contact.phone || '');
+    setEditContactEmail(contact.email || '');
+    setEditContactCompany(contact.companyName || '');
+    setEditContactCategory(contact.category || 'team');
+  };
+
+  // 💾 Lagre endret kontakt (Kun Admin)
+  const handleSaveEditedContact = (e: React.FormEvent) => {
+    e.preventDefault();
+    if (!isAdmin) {
+      toast.error('Kun administrator har tilgang til å redigere kontakter.');
+      return;
+    }
+    if (!editingContact || !editContactName.trim()) {
+      toast.error('Vennligst oppgi navn på kontakten');
+      return;
+    }
+
+    const updated = projectContacts.map(c => {
+      if (c.id === editingContact.id) {
+        return {
+          ...c,
+          name: editContactName.trim(),
+          role: editContactRole.trim(),
+          phone: editContactPhone.trim(),
+          email: editContactEmail.trim(),
+          companyName: editContactCompany.trim(),
+          category: editContactCategory,
+          isFormer: editContactCategory === 'former'
+        };
+      }
+      return c;
+    });
+
+    setProjectContacts(updated);
+    try {
+      localStorage.setItem(contactsStorageKey, JSON.stringify(updated));
+    } catch {}
+
+    setEditingContact(null);
+    toast.success(`Kontakt "${editContactName.trim()}" er oppdatert!`);
+  };
+
   const handleDeleteContact = (id: string, name: string, phone: string, category?: string) => {
+    if (!isAdmin) {
+      toast.error('Kun administrator har tilgang til å slette eller arkivere kontakter.');
+      return;
+    }
+
     if (category === 'team') {
       const shouldArchive = window.confirm(
         `Tips for reklamasjon og HMS:\nVil du arkivere ${name} som «Tidligere ansatt» slik at telefon og e-post beholdes dersom det oppstår spørsmål om tidligere utført arbeid?\n\n- Trykk OK for å ARKIVERE som tidligere ansatt (anbefalt)\n- Trykk AVBRYT for å slette permanent i neste trinn.`
@@ -593,7 +722,7 @@ export default function MesterWorkstation({
     toast.success(`Kontakt "${newC.name}" lagt til i telefonboken!`);
   };
 
-  const handleSaveDailyLog = () => {
+  const handleSaveDailyLog = async () => {
     const parsedH = parseFloat(logHours.replace(',', '.')) || 7.5;
     const normalH = Math.min(7.5, parsedH);
     const ot50 = logIsWeekendEvening ? 0 : Math.max(0, parsedH - 7.5);
@@ -608,23 +737,67 @@ export default function MesterWorkstation({
       overtime50: ot50,
       overtime100: ot100,
       task: logDescription || 'Arbeid på byggeplass',
-      status: 'pending'
+      status: 'pending',
+      projectId: selectedProject?.id,
+      projectName: selectedProject?.name
     };
     const updated = [newEntry, ...dailyTimeEntries];
     setDailyTimeEntries(updated);
     try {
       localStorage.setItem(logsStorageKey, JSON.stringify(updated));
     } catch {}
+
+    // Lagre også til backend / PostgreSQL
+    try {
+      await fetch('/api/data/time_entries', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify(newEntry)
+      });
+    } catch (e) {
+      console.warn('Kunne ikke synkronisere timeføring til backend:', e);
+    }
+
     toast.success(`Ført ${parsedH} timer (${ot50 > 0 ? `+${ot50}t 50% overtid` : ot100 > 0 ? `+${ot100}t 100% overtid` : 'normaltid'})`);
   };
 
-  const handleApproveAllLogs = () => {
+  const handleApproveAllLogs = async () => {
     const updated = dailyTimeEntries.map(entry => ({ ...entry, status: 'approved' as const }));
     setDailyTimeEntries(updated);
     try {
       localStorage.setItem(logsStorageKey, JSON.stringify(updated));
     } catch {}
+
+    // Oppdater i backend også
+    try {
+      for (const entry of updated) {
+        await fetch(`/api/data/time_entries/${entry.id}`, {
+          method: 'PATCH',
+          headers: { 'Content-Type': 'application/json' },
+          body: JSON.stringify({ status: 'approved' })
+        }).catch(() => null);
+      }
+    } catch (e) {}
+
     toast.success('Alle førte timer og overtid er godkjent av leder iht. AML § 10-7.');
+  };
+
+  const handleApproveSingleLog = async (id: string) => {
+    const updated = dailyTimeEntries.map(entry => entry.id === id ? { ...entry, status: 'approved' as const } : entry);
+    setDailyTimeEntries(updated);
+    try {
+      localStorage.setItem(logsStorageKey, JSON.stringify(updated));
+    } catch {}
+
+    try {
+      await fetch(`/api/data/time_entries/${id}`, {
+        method: 'PATCH',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ status: 'approved' })
+      });
+    } catch (e) {}
+
+    toast.success('Timeføring godkjent av leder iht. AML § 10-7.');
   };
 
   // 🏗️ Nytt prosjekt inline state
@@ -932,6 +1105,22 @@ export default function MesterWorkstation({
     const labor = calcHours * calcHourlyRate;
     const mats = Math.round(calcMaterials * (1 + calcMarkup / 100));
     const total = labor + mats;
+    const items = [
+      {
+        description: `Tømrer- og fagmessig byggearbeid (${calcHours} timer)`,
+        quantity: calcHours,
+        unit: 'timer',
+        pricePerUnit: calcHourlyRate,
+        total: labor
+      },
+      {
+        description: `Byggematerialer og forbruksmateriell (inkl. ${calcMarkup}% påslag og svinn)`,
+        quantity: 1,
+        unit: 'stk',
+        pricePerUnit: mats,
+        total: mats
+      }
+    ];
     const newOffer = {
       title: `Tilbud: ${selectedProject?.name || 'Byggeoppdrag'}`,
       projectName: selectedProject?.name || 'Geitekleiva 12',
@@ -939,14 +1128,16 @@ export default function MesterWorkstation({
       clientName: selectedProject?.clientName || 'Privatkunde',
       amount: total,
       totalPrice: total,
+      totalAmount: total,
       hours: calcHours,
       materials: mats,
+      items,
       status: 'Sendt til kunde',
       createdAt: new Date().toISOString().split('T')[0]
     };
     try {
       await addDoc(collection(db, 'offers'), newOffer);
-      toast.success(`Opprettet pristilbud på kr ${total.toLocaleString('no-NO')} eks. mva!`);
+      toast.success(`Opprettet pristilbud på kr ${total.toLocaleString('no-NO')} eks. mva med ${items.length} spesifiserte tilbudsposter!`);
     } catch (e) {
       toast.info(`Tilbud på kr ${total.toLocaleString('no-NO')} er klart i kalkylen!`);
     }
@@ -1317,6 +1508,29 @@ export default function MesterWorkstation({
     let currentProj = selectedProject;
     const lowerText = (textToSend || userMessage.content).toLowerCase().trim();
 
+    // ⚡ Direktenavigasjon på quick replies / kommandoer
+    if (
+      lowerText === 'vis timegodkjenning for leder' || 
+      lowerText === 'åpne ledergodkjenning' || 
+      lowerText === 'gå til ledergodkjenning' ||
+      lowerText === 'se ledergodkjenning'
+    ) {
+      setActiveModuleTab('dailylog');
+      setIsTimeApprovalView(true);
+      setViewMode('module');
+      toast.info('Åpner ledergodkjenning for førte timer og overtid.');
+      return;
+    }
+    if (
+      lowerText === 'vis byggedagbok' || 
+      lowerText === 'åpne byggedagbok'
+    ) {
+      setActiveModuleTab('dailylog');
+      setIsTimeApprovalView(false);
+      setViewMode('module');
+      return;
+    }
+
     if (projects && projects.length > 0) {
       const matched = projects.find(p => {
         const pName = (p.name || '').toLowerCase().trim();
@@ -1418,6 +1632,20 @@ export default function MesterWorkstation({
 
       const finalMessages = [...updatedWithUser, assistantMessage];
       setMessages(finalMessages);
+
+      // ⏱️ Fang opp direkte timeføring fra MesterAI og oppdater Byggedagbok & Timer i sanntid
+      if (data.timeEntry) {
+        setDailyTimeEntries(prev => {
+          const exists = prev.some(e => e.id === data.timeEntry.id);
+          const updated = exists ? prev : [data.timeEntry, ...prev];
+          try {
+            localStorage.setItem(logsStorageKey, JSON.stringify(updated));
+          } catch {}
+          return updated;
+        });
+        const totalLogged = (Number(data.timeEntry.hours) || 0) + (Number(data.timeEntry.overtime50) || 0) + (Number(data.timeEntry.overtime100) || 0);
+        toast.success(`⏱️ ${totalLogged.toFixed(1)}t registrert i byggedagboken for ${data.timeEntry.projectName || 'prosjektet'}!`);
+      }
 
       // 🎙️ Live Voice mode: les opp svar automatisk
       if (isLiveVoiceActive && assistantMessage.content) {
@@ -3103,16 +3331,33 @@ export default function MesterWorkstation({
                           <tbody className="divide-y divide-slate-800/60 bg-slate-900">
                             {dailyTimeEntries.map((e) => (
                               <tr key={e.id} className="hover:bg-slate-850/50 transition-colors">
-                                <td className="p-3 font-bold text-white">{e.workerName} ({e.role})</td>
+                                <td className="p-3 font-bold text-white">
+                                  <div>{e.workerName} ({e.role})</div>
+                                  {e.projectName && (
+                                    <div className="text-[10px] text-slate-400 font-normal">{e.projectName}</div>
+                                  )}
+                                </td>
                                 <td className="p-3 text-slate-400 font-mono">{e.date}</td>
                                 <td className="p-3 text-slate-200 font-bold">{e.hours} t</td>
                                 <td className="p-3 text-amber-400 font-bold">{e.overtime50 > 0 ? `+${e.overtime50} t` : '-'}</td>
                                 <td className="p-3 text-rose-400 font-bold">{e.overtime100 > 0 ? `+${e.overtime100} t` : '-'}</td>
                                 <td className="p-3 text-slate-300 max-w-xs truncate">{e.task}</td>
                                 <td className="p-3">
-                                  <span className={cn("px-2 py-0.5 rounded-full text-[10px] font-black uppercase", e.status === 'approved' ? "bg-emerald-500/20 text-emerald-400" : "bg-amber-500/20 text-amber-300")}>
-                                    {e.status === 'approved' ? 'Godkjent' : 'Venter'}
-                                  </span>
+                                  <div className="flex items-center gap-2">
+                                    <span className={cn("px-2 py-0.5 rounded-full text-[10px] font-black uppercase", e.status === 'approved' ? "bg-emerald-500/20 text-emerald-400" : "bg-amber-500/20 text-amber-300")}>
+                                      {e.status === 'approved' ? 'Godkjent' : 'Venter'}
+                                    </span>
+                                    {isAdmin && e.status === 'pending' && (
+                                      <button
+                                        type="button"
+                                        onClick={() => handleApproveSingleLog(e.id)}
+                                        className="px-2 py-0.5 rounded-lg bg-emerald-600/30 hover:bg-emerald-600/50 text-emerald-300 text-[10px] font-bold border border-emerald-500/30 cursor-pointer"
+                                        title="Godkjenn denne føringen"
+                                      >
+                                        Godkjenn
+                                      </button>
+                                    )}
+                                  </div>
                                 </td>
                               </tr>
                             ))}
@@ -3596,15 +3841,29 @@ export default function MesterWorkstation({
                             >
                               <Mail size={14} />
                             </a>
-                            {/* 🗑️ Slett eller arkiver kontakt */}
-                            <button
-                              type="button"
-                              onClick={() => handleDeleteContact(c.id, c.name, c.phone, c.category)}
-                              className="p-2 rounded-xl bg-slate-900 hover:bg-rose-500/20 text-slate-400 hover:text-rose-400 border border-slate-750 transition-colors cursor-pointer"
-                              title={`Slett eller arkiver ${c.name}`}
-                            >
-                              <Trash2 size={14} />
-                            </button>
+                            {/* ✏️ Rediger kontakt (Kun Admin) */}
+                            {isAdmin && (
+                              <button
+                                type="button"
+                                onClick={() => handleOpenEditContact(c)}
+                                className="p-2 rounded-xl bg-slate-900 hover:bg-purple-500/20 text-slate-400 hover:text-purple-300 border border-slate-750 transition-colors cursor-pointer"
+                                title={`Rediger ${c.name} (Admin)`}
+                              >
+                                <Edit2 size={14} />
+                              </button>
+                            )}
+
+                            {/* 🗑️ Slett eller arkiver kontakt (Kun Admin) */}
+                            {isAdmin && (
+                              <button
+                                type="button"
+                                onClick={() => handleDeleteContact(c.id, c.name, c.phone, c.category)}
+                                className="p-2 rounded-xl bg-slate-900 hover:bg-rose-500/20 text-slate-400 hover:text-rose-400 border border-slate-750 transition-colors cursor-pointer"
+                                title={`Slett eller arkiver ${c.name} (Admin)`}
+                              >
+                                <Trash2 size={14} />
+                              </button>
+                            )}
                           </div>
                         </div>
                       ))}
@@ -3720,6 +3979,129 @@ export default function MesterWorkstation({
                               className="px-4 py-2 rounded-xl bg-emerald-600 hover:bg-emerald-500 text-white text-xs font-bold transition-all shadow-xs cursor-pointer"
                             >
                               Lagre kontakt
+                            </button>
+                          </div>
+                        </form>
+                      </div>
+                    </div>
+                  )}
+
+                  {/* Modal for å redigere eksisterende kontakt (Kun Admin) */}
+                  {editingContact && (
+                    <div className="fixed inset-0 z-50 flex items-center justify-center p-4 bg-black/80 backdrop-blur-xs">
+                      <div className="bg-slate-900 border border-slate-800 rounded-3xl p-6 max-w-md w-full shadow-2xl space-y-4">
+                        <div className="flex items-center justify-between pb-3 border-b border-slate-800">
+                          <div className="flex items-center gap-2">
+                            <div className="w-8 h-8 rounded-xl bg-purple-500/20 text-purple-400 border border-purple-500/30 flex items-center justify-center">
+                              <Edit2 size={16} />
+                            </div>
+                            <div>
+                              <h4 className="text-sm font-black text-white flex items-center gap-2">
+                                <span>Rediger kontakt</span>
+                                <span className="px-2 py-0.5 rounded-full text-[10px] font-bold bg-amber-500/20 text-amber-300 border border-amber-500/30">
+                                  Admin
+                                </span>
+                              </h4>
+                              <p className="text-[11px] text-slate-400 mt-0.5">Endre detaljer for {editingContact.name}</p>
+                            </div>
+                          </div>
+                          <button
+                            type="button"
+                            onClick={() => setEditingContact(null)}
+                            className="p-1.5 rounded-lg text-slate-400 hover:text-white hover:bg-slate-800 cursor-pointer"
+                          >
+                            <X size={16} />
+                          </button>
+                        </div>
+
+                        <form onSubmit={handleSaveEditedContact} className="space-y-3">
+                          <div>
+                            <label className="block text-[11px] font-bold text-slate-300 mb-1">Fullt navn *</label>
+                            <input
+                              type="text"
+                              required
+                              placeholder="F.eks. Ola Hansen"
+                              value={editContactName}
+                              onChange={(e) => setEditContactName(e.target.value)}
+                              className="w-full px-3 py-2 rounded-xl bg-slate-950 border border-slate-800 text-xs text-white placeholder:text-slate-500 focus:outline-none focus:border-purple-500"
+                            />
+                          </div>
+
+                          <div>
+                            <label className="block text-[11px] font-bold text-slate-300 mb-1">Kategori / Tilhørighet *</label>
+                            <select
+                              value={editContactCategory}
+                              onChange={(e) => setEditContactCategory(e.target.value as any)}
+                              className="w-full px-3 py-2 rounded-xl bg-slate-950 border border-slate-800 text-xs text-white focus:outline-none focus:border-purple-500"
+                            >
+                              <option value="client">🏡 Kunde (Byggherre / Kundeportal)</option>
+                              <option value="team">👥 Ansatt / Eget team & håndverkere</option>
+                              <option value="subcontractor">🔨 Underentreprenør / Samarbeidspartner</option>
+                              <option value="former">📁 Tidligere ansatt (Historisk arkiv)</option>
+                            </select>
+                          </div>
+
+                          <div className="grid grid-cols-2 gap-3">
+                            <div>
+                              <label className="block text-[11px] font-bold text-slate-300 mb-1">Rolle / Fag *</label>
+                              <input
+                                type="text"
+                                required
+                                placeholder="F.eks. Bas Tømrer / Byggherre"
+                                value={editContactRole}
+                                onChange={(e) => setEditContactRole(e.target.value)}
+                                className="w-full px-3 py-2 rounded-xl bg-slate-950 border border-slate-800 text-xs text-white placeholder:text-slate-500 focus:outline-none focus:border-purple-500"
+                              />
+                            </div>
+                            <div>
+                              <label className="block text-[11px] font-bold text-slate-300 mb-1">Firma</label>
+                              <input
+                                type="text"
+                                placeholder="F.eks. Hansen Bygg AS"
+                                value={editContactCompany}
+                                onChange={(e) => setEditContactCompany(e.target.value)}
+                                className="w-full px-3 py-2 rounded-xl bg-slate-950 border border-slate-800 text-xs text-white placeholder:text-slate-500 focus:outline-none focus:border-purple-500"
+                              />
+                            </div>
+                          </div>
+
+                          <div>
+                            <label className="block text-[11px] font-bold text-slate-300 mb-1">Telefonnummer *</label>
+                            <input
+                              type="tel"
+                              required
+                              placeholder="+47 900 00 000"
+                              value={editContactPhone}
+                              onChange={(e) => setEditContactPhone(e.target.value)}
+                              className="w-full px-3 py-2 rounded-xl bg-slate-950 border border-slate-800 text-xs text-white placeholder:text-slate-500 focus:outline-none focus:border-purple-500 font-mono"
+                            />
+                          </div>
+
+                          <div>
+                            <label className="block text-[11px] font-bold text-slate-300 mb-1">E-postadresse</label>
+                            <input
+                              type="email"
+                              placeholder="kontakt@bedrift.no"
+                              value={editContactEmail}
+                              onChange={(e) => setEditContactEmail(e.target.value)}
+                              className="w-full px-3 py-2 rounded-xl bg-slate-950 border border-slate-800 text-xs text-white placeholder:text-slate-500 focus:outline-none focus:border-purple-500"
+                            />
+                          </div>
+
+                          <div className="flex items-center justify-end gap-2 pt-3">
+                            <button
+                              type="button"
+                              onClick={() => setEditingContact(null)}
+                              className="px-4 py-2 rounded-xl bg-slate-800 hover:bg-slate-750 text-slate-300 text-xs font-bold transition-all cursor-pointer"
+                            >
+                              Avbryt
+                            </button>
+                            <button
+                              type="submit"
+                              className="px-4 py-2 rounded-xl bg-purple-600 hover:bg-purple-500 text-white text-xs font-bold transition-all shadow-xs cursor-pointer flex items-center gap-1.5"
+                            >
+                              <Check size={14} />
+                              <span>Lagre endringer</span>
                             </button>
                           </div>
                         </form>
@@ -4342,7 +4724,7 @@ export default function MesterWorkstation({
                                   <h4 className="text-sm font-black text-purple-300 mt-4 mb-2 flex items-center gap-2 border-b border-purple-500/20 pb-1.5" {...props} />
                                 ),
                                 h3: ({ node, ...props }) => (
-                                  <h5 className="text-xs sm:text-sm font-bold text-teal-300 mt-4 mb-2 flex items-center gap-1.5 uppercase tracking-wider bg-slate-950/60 w-fit px-2.5 py-1 rounded-lg border border-teal-500/20 shadow-xs" {...props} />
+                                  <h5 className="text-xs sm:text-sm font-bold text-teal-300 mt-4 mb-2 flex items-center gap-1.5 uppercase tracking-wider" {...props} />
                                 ),
                                 p: ({ node, ...props }) => (
                                   <p className="text-xs sm:text-sm text-slate-200 leading-relaxed mb-3 last:mb-0" {...props} />
@@ -4360,7 +4742,7 @@ export default function MesterWorkstation({
                                   </li>
                                 ),
                                 strong: ({ node, ...props }) => (
-                                  <strong className="font-extrabold text-white bg-slate-800/80 px-1.5 py-0.5 rounded text-[12px] sm:text-[13px] border border-slate-700/60" {...props} />
+                                  <strong className="font-bold text-white" {...props} />
                                 ),
                                 blockquote: ({ node, ...props }) => (
                                   <blockquote className="my-3.5 p-3.5 bg-gradient-to-r from-purple-950/40 to-slate-900 border-l-4 border-purple-500 rounded-r-2xl text-xs sm:text-sm text-purple-200 shadow-sm" {...props} />

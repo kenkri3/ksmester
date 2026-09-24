@@ -630,6 +630,290 @@ export async function POST(req: NextRequest) {
       contextHeader += ` | FORMATERING & LESBARHET: Håndverkere leser dette i felt på byggeplass. Svaret MÅ være oversiktlig og luftig: Bruk alltid doble linjeskift mellom avsnitt, bruk punktlister med bindestrek (-) for opplistinger og krav, bruk fete overskrifter (f.eks. ### 🛡️ Krav: eller **Krav:**) for å skille temaer, og fremhev tall og paragrafer. ALDRI svar med en eneste sammenklemt tekstblokk! | E-POST VIA RESEND: Systemet sender ekte e-poster direkte via Resend på vegne av håndverkeren (${effectiveUser} / ${effectiveCompany}). Når brukeren ber deg sende en eller flere e-poster (tilbud, endring, varsel, FDV eller melding) og du har mottakers e-postadresse: 1) Bekreft kort at du klargjør sendingen. 2) Inkluder nøyaktig koden <<<SEND_EMAIL: to="mottaker@epost.no" subject="Emnetittel" body="Selve meldingsteksten">>> eller strukturer utkastet med «### ✉️ E-post 1», «- Til: mottaker@epost.no», «- Emne: Emnetittel», «- Innhold: Selve meldingen til kunden». 3) PERSONVERN: Kunder må ALDRI motta interne notater, chat-dialog med håndverkeren, eller rå markdown hashtags (#). Skriv KUN den rene, profesjonelle beskjeden under «Innhold»/body. 4) Svar fra kunden rutes automatisk direkte til håndverkerens egen e-post (${effectiveSenderEmail || 'jobb-e-post'}). | SIKKERHET: GDPR & Databehandleravtale (DPA) er aktiv. Alle data er strengt konfidensielle for denne bedriften.]`;
     }
 
+    // 🔍 Identifiser om meldingen refererer til et bestemt prosjekt
+    let resolvedProjectId = (body.projectId && body.projectId !== 'all' && body.projectId !== 'gen') ? body.projectId : null;
+    let resolvedProjectName = (projectName && projectName !== 'Alle byggeplasser') ? projectName : null;
+
+    if (Array.isArray(availableProjects) && availableProjects.length > 0) {
+      const lowerMsg = message.toLowerCase().trim();
+      for (const p of availableProjects) {
+        const pName = (p.name || '').toLowerCase().trim();
+        const pCode = (p.code || '').toLowerCase().trim();
+        const pAddr = (p.address || '').toLowerCase().trim();
+
+        if (pName && (lowerMsg === pName || lowerMsg.includes(pName))) {
+          resolvedProjectId = p.id;
+          resolvedProjectName = p.name;
+          break;
+        }
+        if (pAddr && lowerMsg.includes(pAddr)) {
+          resolvedProjectId = p.id;
+          resolvedProjectName = p.name;
+          break;
+        }
+        if (pCode && pCode.length >= 3 && lowerMsg.includes(pCode)) {
+          resolvedProjectId = p.id;
+          resolvedProjectName = p.name;
+          break;
+        }
+        const words = pName.split(/[\s,.-]+/).filter((w: string) => 
+          w.length >= 4 && !['renovering', 'bad', 'enebolig', 'bygg', 'prosjekt', 'tilbygg', 'nybygg', 'hytte'].includes(w)
+        );
+        if (words.some((w: string) => lowerMsg.includes(w))) {
+          resolvedProjectId = p.id;
+          resolvedProjectName = p.name;
+          break;
+        }
+      }
+    }
+
+    const cleanLowerMsg = message.trim().toLowerCase().replace(/[.!?]/g, '');
+
+    // 🎯 1. BARE TRIGGER: "endringsordre"
+    const isBareEO = [
+      'endringsordre', 'endringsmelding', 'endringsvarsel', 'eo', 'opprett endringsordre', 'lag endringsordre', 'lag en endringsordre', 'opprett endring'
+    ].includes(cleanLowerMsg);
+
+    if (isBareEO) {
+      if (resolvedProjectName && resolvedProjectName !== 'Alle byggeplasser') {
+        return NextResponse.json({
+          success: true,
+          sessionId: fbId,
+          reply: `📋 **Opprette endringsordre (NS 8406)**\n*Gjelder byggeplass: **${resolvedProjectName}***\n\nHva er tilleggsarbeidet eller endringen som er bestilt eller oppstått på plassen?\n\nBeskriv kort hva som skal utføres (f.eks: *«Kunden ønsker 5 ekstra downlights»*, *«Omlegging av avløp pga. bjelkelag»* eller *«Montering av innfelt nisje i dusjsonen»*), så setter jeg opp kalkylen med timeantall, materiell, påslag og eventuell fristforlengelse!\n\n💡 *Når utkastet settes opp, kan du fritt redigere, slette eller legge til flere poster før ordren sendes til godkjenning.*`,
+          quickReplies: [
+            { title: 'Tilleggsarbeid bestilt av kunde', payload: `Endringsordre på ${resolvedProjectName}: Tilleggsarbeid bestilt av kunde` },
+            { title: 'Uforutsette forhold på plassen', payload: `Endringsordre på ${resolvedProjectName}: Uforutsette bygningsmessige hindringer` },
+            { title: 'Endret materialvalg', payload: `Endringsordre på ${resolvedProjectName}: Oppgradering og endret materialvalg` }
+          ]
+        });
+      } else {
+        const projOptions = (availableProjects || []).slice(0, 5).map((p: any) => ({
+          title: p.name,
+          payload: `Endringsordre på ${p.name}: `
+        }));
+        return NextResponse.json({
+          success: true,
+          sessionId: fbId,
+          reply: `📋 **Opprette endringsordre (NS 8406)**\n\nHvilket prosjekt gjelder endringsordren, og hva er arbeidet som skal utføres?\n\nVelg en av dine aktive byggeplasser under, eller oppgi prosjektnavnet og en kort beskrivelse:`,
+          quickReplies: projOptions
+        });
+      }
+    }
+
+    // 🎯 2. BARE TRIGGER: "tilbud"
+    const isBareOffer = [
+      'tilbud', 'pristilbud', 'kalkyle', 'lag tilbud', 'lag et tilbud', 'opprett tilbud', 'skriv tilbud', 'sett opp tilbud'
+    ].includes(cleanLowerMsg);
+
+    if (isBareOffer) {
+      if (resolvedProjectName && resolvedProjectName !== 'Alle byggeplasser') {
+        return NextResponse.json({
+          success: true,
+          sessionId: fbId,
+          reply: `📝 **Pristilbud & Kalkyle**\n*Gjelder: **${resolvedProjectName}***\n\nHva skal tilbudet omfatte? Beskriv kort arbeidet (f.eks: *«Totalrehabilitering av bad 6 m²»*, *«Oppføring av terrasse 25 m²»* eller *«Maling og sparkling av stue»*), så setter jeg opp kalkylen med spesifiserte tilbudsposter, timepriser, materiell og MVA.\n\n💡 *Du kan redigere, slette eller legge til flere poster i kalkylen før tilbudet sendes til kunden.*`,
+          quickReplies: [
+            { title: 'Totalrehabilitering bad', payload: `Pristilbud på ${resolvedProjectName}: Totalrenovering av bad 6 m2 iht BVN` },
+            { title: 'Oppføring av terrasse', payload: `Pristilbud på ${resolvedProjectName}: Bygging av terrasse 25 m2 med rekkverk` },
+            { title: 'Innvendig oppussing', payload: `Pristilbud på ${resolvedProjectName}: Sparkling, maling og listverk` }
+          ]
+        });
+      } else {
+        const projOptions = [
+          { title: '+ Ny kunde / ny henvendelse', payload: 'Sett opp pristilbud for ny kunde: ' },
+          ...(availableProjects || []).slice(0, 4).map((p: any) => ({
+            title: p.name,
+            payload: `Tilbud på ${p.name}: `
+          }))
+        ];
+        return NextResponse.json({
+          success: true,
+          sessionId: fbId,
+          reply: `📝 **Pristilbud & Kalkyle**\n\nGjelder tilbudet en **ny henvendelse / ny kunde**, eller et av dine eksisterende prosjekter?\n\nBeskriv gjerne kort hva som skal prises, så setter jeg opp en fullstendig kalkyle med spesifiserte tilbudsposter:`,
+          quickReplies: projOptions
+        });
+      }
+    }
+
+    // 🎯 3. BARE TRIGGER: "sja"
+    const isBareSja = [
+      'sja', 'sikker jobb analyse', 'opprett sja', 'lag sja', 'lag en sja'
+    ].includes(cleanLowerMsg);
+
+    if (isBareSja) {
+      const targetProj = resolvedProjectName || 'aktiv byggeplass';
+      return NextResponse.json({
+        success: true,
+        sessionId: fbId,
+        reply: `🛡️ **Opprette Sikker Jobb Analyse (SJA)**\n*Gjelder byggeplass: **${targetProj}***\n\nHvilket risikofylt arbeid skal dere utføre?\n\nBeskriv oppgaven (f.eks: *«Arbeid i stillas og fasadekledning»*, *«Takarbeid i høyden»*, *«Riving av bærevegg»* eller *«Arbeid i grøft dypere enn 2 meter»*), så setter jeg opp et stramt og godkjent SJA-sammendrag med nødvendige vernetiltak og værsjekk!`,
+        quickReplies: [
+          { title: 'Arbeid i stillas & fasade', payload: `Opprett en SJA for arbeid i stillas og fasadekledning på ${targetProj}` },
+          { title: 'Takarbeid i høyden', payload: `Opprett en SJA for takarbeid og tekking på ${targetProj}` },
+          { title: 'Riving & støv/asbest', payload: `Opprett en SJA for riving og støvende arbeid på ${targetProj}` }
+        ]
+      });
+    }
+
+    // 🎯 4. BARE TRIGGER: "før timer"
+    const isBareTime = [
+      'før timer', 'føre timer', 'timeregistrering', 'timeføring', 'før time'
+    ].includes(cleanLowerMsg);
+
+    if (isBareTime) {
+      if (resolvedProjectName && resolvedProjectName !== 'Alle byggeplasser') {
+        return NextResponse.json({
+          success: true,
+          sessionId: fbId,
+          reply: `⏱️ **Timeføring i byggedagboken**\n*Gjelder byggeplass: **${resolvedProjectName}***\n\nHvor mange timer har du jobbet, og hva ble utført i dag?\n\n*Eksempel: «Før 7.5 timer i dag på ${resolvedProjectName}: Lekting av yttervegg og klargjøring for kledning».*`,
+          quickReplies: [
+            { title: '7.5t Normaltid', payload: `Før 7.5 timer i dag på ${resolvedProjectName}: Produksjon iht fremdriftsplan` },
+            { title: '7.5t + 2t overtid (50%)', payload: `Før 9.5 timer i dag på ${resolvedProjectName}: Produksjon og overtid` },
+            { title: 'Helg/kveld (100%)', payload: `Før 5 timer kveldsarbeid på ${resolvedProjectName}` }
+          ]
+        });
+      } else {
+        const projOptions = (availableProjects || []).slice(0, 5).map((p: any) => ({
+          title: p.name,
+          payload: `Før 7.5 timer i dag på ${p.name}: `
+        }));
+        return NextResponse.json({
+          success: true,
+          sessionId: fbId,
+          reply: `⏱️ **Timeføring i byggedagboken**\n\nHvilket prosjekt tilhører disse timene? Velg en byggeplass under og oppgi timeantall og oppgave:`,
+          quickReplies: projOptions
+        });
+      }
+    }
+
+    // ⏱️ 5. REELL TIMEREGISTRERING VIA CHAT
+    const isLoggingTime = (
+      (cleanLowerMsg.includes('før') || cleanLowerMsg.includes('føre') || cleanLowerMsg.includes('førte') || cleanLowerMsg.includes('registrer') || cleanLowerMsg.includes('loggfør') || cleanLowerMsg.includes('jobbet') || cleanLowerMsg.includes('arbeidet')) &&
+      (/(\d+(?:[.,]\d+)?)\s*(?:timer?|t\b)/i.test(cleanLowerMsg))
+    );
+
+    if (isLoggingTime) {
+      if (!resolvedProjectId && (!projectName || projectName === 'Alle byggeplasser')) {
+        const projOptions = (availableProjects || []).slice(0, 5).map((p: any) => ({
+          title: p.name,
+          payload: `${message} på ${p.name}`
+        }));
+        return NextResponse.json({
+          success: true,
+          sessionId: fbId,
+          reply: `⏱️ **Timeføring i byggedagboken**\n\nHvilket prosjekt tilhører disse timene? Velg byggeplassen under:`,
+          quickReplies: projOptions
+        });
+      }
+
+      const finalProjId = resolvedProjectId || (availableProjects?.[0]?.id) || 'proj-default';
+      const finalProjName = resolvedProjectName || (availableProjects?.[0]?.name) || 'Aktivt prosjekt';
+
+      const hoursMatch = message.match(/(\d+(?:[.,]\d+)?)\s*(?:timer?|t\b)/i);
+      const totalHours = hoursMatch ? parseFloat(hoursMatch[1].replace(',', '.')) : 7.5;
+      
+      const isWeekendEvening = cleanLowerMsg.includes('kveld') || cleanLowerMsg.includes('helg') || cleanLowerMsg.includes('søndag') || cleanLowerMsg.includes('lørdag') || cleanLowerMsg.includes('100%');
+      
+      const normalHours = isWeekendEvening ? 0 : Math.min(7.5, totalHours);
+      const ot50 = isWeekendEvening ? 0 : Math.max(0, totalHours - 7.5);
+      const ot100 = isWeekendEvening ? totalHours : 0;
+      
+      let task = message
+        .replace(/^(?:hei mesterai|hei|kan du|vennligst)?\s*(?:før|føre|førte|registrer|loggfør|skriv inn|legg inn|har jobbet|jobbet)\s*(?:\d+(?:[.,]\d+)?\s*(?:timer?|t\b))?\s*(?:timer?|t\b)?/i, '')
+        .replace(/(?:i dag|idag|på mandag|på tirsdag|på onsdag|på torsdag|på fredag)/gi, '')
+        .trim();
+        
+      if (finalProjName) {
+        task = task.replace(new RegExp(`(?:på|for|ved)?\\s*${finalProjName}[:\\-–]?`, 'gi'), '');
+      }
+      task = task.replace(/^[:\s\-–]+/, '').trim();
+      if (!task || task.length < 3) {
+        task = 'Fagmessig utførelse og produksjon iht. fremdriftsplan';
+      }
+
+      const todayStr = new Date().toISOString().split('T')[0];
+      const timeEntry = {
+        id: `time_${Date.now()}`,
+        workerName: effectiveUser,
+        role: tradeTitle,
+        date: todayStr,
+        hours: normalHours,
+        overtime50: ot50,
+        overtime100: ot100,
+        task,
+        status: 'pending' as const,
+        projectId: finalProjId,
+        projectName: finalProjName,
+        createdAt: new Date().toISOString()
+      };
+
+      await saveCollectionItem('time_entries', timeEntry);
+
+      // Oppdater prosjektets byggedagbok for i dag
+      try {
+        const allDailyLogs = await getCollectionItems('daily_logs').catch(() => []);
+        const existingToday = allDailyLogs.find((l: any) => l.projectId === finalProjId && l.date === todayStr);
+        const crewList = existingToday?.crewMembers 
+          ? Array.from(new Set([...existingToday.crewMembers, effectiveUser]))
+          : [effectiveUser];
+        const newTotalH = (Number(existingToday?.totalHoursWorked) || 0) + totalHours;
+        const noteLine = `• ${effectiveUser}: ${totalHours}t – ${task}`;
+        const updatedNotes = existingToday?.generalNotes 
+          ? `${existingToday.generalNotes}\n${noteLine}`
+          : noteLine;
+
+        await saveCollectionItem('daily_logs', {
+          id: existingToday?.id || `log_${finalProjId}_${todayStr}`,
+          projectId: finalProjId,
+          projectName: finalProjName,
+          date: todayStr,
+          crewCount: crewList.length,
+          crewMembers: crewList,
+          totalHoursWorked: newTotalH,
+          generalNotes: updatedNotes,
+          weatherCondition: existingToday?.weatherCondition || 'Opphold',
+          inspectedBy: effectiveUser,
+          autoGenerated: true,
+          updatedAt: new Date().toISOString(),
+          createdAt: existingToday?.createdAt || new Date().toISOString()
+        });
+      } catch (e) {
+        console.warn('Feil ved synk til daily_logs:', e);
+      }
+
+      await saveCollectionItem('agent_activities', {
+        type: 'time_logged',
+        title: `Timer ført: ${totalHours}t av ${effectiveUser}`,
+        description: `Prosjekt: ${finalProjName}. Oppgave: ${task}.`,
+        trade: userTrade || 'general',
+        tradeName: effectiveUser,
+        status: 'verified',
+        badge: `${totalHours} TIMER`,
+        projectId: finalProjId,
+        projectName: finalProjName,
+        createdAt: new Date().toISOString()
+      });
+
+      return NextResponse.json({
+        success: true,
+        sessionId: fbId,
+        timeEntry,
+        reply: `⏱️ **${totalHours.toFixed(1)} timer er ført i byggedagboken!**\n\n` +
+          `• **Prosjekt:** **${finalProjName}**\n` +
+          `• **Håndverker:** **${effectiveUser}** (${tradeTitle})\n` +
+          `• **Dato:** ${todayStr}\n` +
+          `• **Normaltid:** ${normalHours} t\n` +
+          (ot50 > 0 ? `• **50% Overtid:** +${ot50} t (AML § 10-6)\n` : '') +
+          (ot100 > 0 ? `• **100% Overtid:** +${ot100} t\n` : '') +
+          `• **Arbeidsoppgave:** ${task}\n` +
+          `• **Status:** Lagt til for ledergodkjenning (AML § 10-7)\n\n` +
+          `Timene er bokført på prosjektet og vises i sanntid under **«Byggedagbok & Timer» -> «Ledergodkjenning»**.`,
+        quickReplies: [
+          { title: 'Åpne Ledergodkjenning', payload: 'Vis timegodkjenning for leder' },
+          { title: 'Før flere timer', payload: `Før timer på ${finalProjName}` },
+          { title: 'Opprett SJA', payload: `Opprett en SJA for arbeid på ${finalProjName}` }
+        ]
+      });
+    }
+
     // 🌦️ LYN-RASK SANNTIDS VÆR- OG HMS-RESPONS (< 0.2s)
     const isWeather = isWeatherQuery(message);
     const activeLocationQuery = (effectiveCompanyId === 'comp-demo-fjellheim') 
@@ -669,7 +953,7 @@ export async function POST(req: NextRequest) {
     // 🛡️ GDPR Privacy Shield: Vask sensitive fødselsnumre, bankkontonumre osv. før utsending til eksterne modeller
     const safeEnrichedMessage = maskPII(enrichedMessage);
 
-    const MASTER_SYSTEM_PROMPT = `Du er MesterAI, en helautonom prosjektpilot og byggmester-assistent i backendsystemet til Vikingmester. Du opererer selvstendig, tenker som en erfaren byggmester/prosjektleder, og utfører oppgaver direkte uten å be om bekreftelse for hvert steg.
+    const MASTER_SYSTEM_PROMPT = `Du er MesterAI, en helautonom prosjektpilot og byggmester-assistent i backendsystemet til Vikingmester. Du opererer selvstendig, tenker som en erfaren byggmester/prosjektleder, og utfører oppgaver direkte uten unødige forhør.
 
 🛡️ 100% WHITE-LABEL:
 Du er MesterAI, utviklet eksklusivt for Vikingmester. Du skal ALDRI nevne eller referere til underliggende AI-modeller, leverandører eller eksterne systemer som DeepSeek, OpenAI, Google, Anthropic eller Botsify. For brukeren er du 100 % MesterAI.
@@ -678,90 +962,50 @@ Du er MesterAI, utviklet eksklusivt for Vikingmester. Du skal ALDRI nevne eller 
 Du har full tilgang til Vikingmester-systemet og kan:
 - Opprette, lese, oppdatere og slette data i prosjekter, oppgaver, timer, byggedagbok, avvik, SJA, endringsordrer og tilbud.
 - Utføre oppgaver på tvers av moduler og holde prosjekter 100 % oppdatert i sanntid.
-- Velge den mest effektive måten å nå målet på innenfor systemets rammer.
-- Når du utarbeider en SJA, endringsordre, tilbud eller timeføring, presenter det komplett og strukturert slik at det lagres direkte.
+- Når du utarbeider en SJA, endringsordre eller tilbud, presenter det strukturert, profesjonelt og lettlest.
 
-🌐 SPRÅK & FLERSPRÅKLIGHET (VIKTIG FOR BYGGEPLASSEN):
-- Kommunikasjon med brukeren: Svar alltid på det samme språket som brukeren snakker eller skriver til deg på (f.eks. norsk, engelsk, polsk, ukrainsk, tysk eller spansk). Tilpass deg håndverkeren umiddelbart.
-- Dokumentasjon i backend: Uansett hvilket språk brukeren snakker, skal all info som logges, lagres eller opprettes i systemet (timer, avvik, byggedagbok, SJA, endringsordrer, tilbud) alltid skrives på formelt og profesjonelt norsk (bokmål) for å sikre samsvar med norske byggherrekrav og standarder.
+🌐 SPRÅK & FLERSPRÅKLIGHET:
+- Kommunikasjon med brukeren: Svar alltid på det samme språket som brukeren snakker eller skriver til deg på (norsk, engelsk, polsk, ukrainsk, tysk, spansk).
+- Dokumentasjon i backend: All info som logges, lagres eller opprettes i systemet (timer, avvik, byggedagbok, SJA, endringsordrer, tilbud) skal alltid skrives på formelt og profesjonelt norsk (bokmål).
 
-🚫 "INGEN INTERVJUER"-REGEL (VIKTIGST AV ALT):
-- ALDRI still oppfølgingsspørsmål om ting du kan finne ut selv, anta rimelig eller hente fra historikken.
-- ALDRI lag punktlister med spørsmål til brukeren (f.eks. «Kan du oppgi: 1. Hva skal gjøres? 2. Hvor mange timer? 3. Hvilket materiell?»).
-- Fyll ut manglende felter med bransjestandard verdier (f.eks. standard timepris for faget, vanlige materialer for oppgaven).
-- Gjør jobben ferdig i ÉN operasjon. Hvis brukeren gir en ufullstendig instruks, fyller du inn hullene med beste byggfaglige skjønn og presenterer det ferdige resultatet.
-- Hvis brukeren vil endre noe, gjør de det etterpå. Gjør først, juster eventuelt etterpå.
+🎯 OPPDRAGSHÅNDTERING & PROSJEKTTILKNYTNING:
+- DU SKAL ALDRI finne på fiktive byggeplasser eller dikte opp vilkårlige oppgaver som aldri har skjedd!
+- Hvis brukeren kun oppgir et stikkord («endringsordre», «tilbud», «SJA»), spør høflig og direkte hvilket prosjekt og hva arbeidet gjelder.
+- Når arbeidet er oppgitt, gjør kalkylen/vurderingen ferdig i én operasjon med beste byggfaglige skjønn.
+
+📱 KONSIS CHAT-FORMATERING (IKKE OVERVELD BRUKEREN MED 2000 ORD):
+- Brukeren leser svarene på byggeplass, ofte på mobil. Svarene i chatten må ALDRI være uendelige vegger av tekst!
+- Hold chat-svar konsise, oversiktlige og stramme (rundt 150-350 ord).
+- For SJA: Presenter et ryddig SJA-sammendrag i chatten (tittel, prosjekt, dagens vær, de 3-4 VIKTIGSTE farene med konkrete vernetiltak, og påkrevd PVU). ALDRI list opp 12-15 underfarer og 100 underpunkter i chatten!
+- For Tilbud & Endringsordrer:
+  1. Del alltid kalkylen inn i konkrete tilbudsposter (Post 1, Post 2, osv.) med Beskrivelse, Antall, Enhet (timer, stk, m2, lm), Enhetspris og Sum, samt MVA (25%).
+  2. OBLIGATORISK SPØRSMÅL TIL BRUKEREN: Avslutt alltid med å spørre proaktivt:
+     «Vil du justere noen av postene, endre timepris/materiell, eller legge til flere poster før tilbudet/endringsordren godkjennes og sendes til kunden?»
 
 🌐 NETTSØK OG ALLSIDIGHET:
-Du er ikke bare en byggassistent – du er et fullverdig arbeidsverktøy for bedriften.
-Bruk nettsøk aktivt og selvstendig når brukeren spør om noe som krever oppdatert eller ekstern informasjon:
-- Priser og tilgjengelighet på materialer fra leverandører (f.eks. Optimera, Maxbo, Monter, Ahlsell, Elektroskandia, Byggmakker).
-- Tekniske datablad, monteringsanvisninger og SINTEF Byggforsk-godkjenninger.
-- Værmeldinger og lokale forhold som påvirker arbeidet.
-- Lokale arrangementer, helgeaktiviteter, nyheter, helligdager eller trafikk som kan påvirke logistikk og byggeplass.
-- Relevante lover, forskrifter, TEK17, HMS-krav eller standarder (NS 8406, NS 3420).
-- Generelle spørsmål brukeren stiller i løpet av arbeidsdagen – enten det gjelder et arrangement i helgen, en restaurant for lunsjmøte, eller valutakurs for importvarer.
-- ALDRI avvis et spørsmål med «dette er utenfor mitt fagområde» eller «jeg kan bare hjelpe med byggedokumentasjon». Søk på nettet, finn svaret, og lever et nyttig og presist svar.
+Bruk nettsøk aktivt og selvstendig når brukeren spør om noe som krever oppdatert informasjon (priser fra leverandører, tekniske datablad, SINTEF, TEK17, lokale arrangementer osv.).
 
 📚 BYGGFAGLIG KUNNSKAPSBASE:
-Alltid forankre faglige vurderinger i gjeldende norske standarder og forskrifter:
-- TEK17 (Byggteknisk forskrift) – brannkrav, ventilasjon, isolasjon, universell utforming, fuktsikring.
-- Våtromsnormen (BVN) – membran, fall mot sluk, tettesjikt, rør-i-rør.
-- NS 8406 / NS 8405 / NS 8407 – standard kontraktsbestemmelser for bygg og anlegg, spesielt varsling av endringer, fristforlengelse og vederlagsjustering.
-- Byggherreforskriften & Internkontrollforskriften – HMS, SJA, vernerunder, avvikshåndtering.
-- DiBK (Direktoratet for byggkvalitet) – veiledninger og godkjenningsordninger.
-- Arbeidstilsynet – stillas, stige, asbest, støv, personlig verneutstyr (PVU).
+Forankre faglige vurderinger i gjeldende norske standarder:
+- TEK17 (Byggteknisk forskrift)
+- Våtromsnormen (BVN)
+- NS 8406 / NS 8405 / NS 8407
+- Byggherreforskriften & Internkontrollforskriften
+- Arbeidstilsynet (stillas, fallsikring, asbest, PVU)
 
 ✉️ E-POST VIA RESEND:
-Når brukeren ber deg sende en eller flere e-poster (tilbud, endring, varsel, FDV eller melding) og du har mottakers e-postadresse:
-1. Bekreft kort og handlekraftig at e-posten sendes.
-2. Inkluder nøyaktig koden <<<SEND_EMAIL: to="mottaker@epost.no" subject="Emnetittel" body="Selve meldingsteksten">>>.
-3. Kunder må ALDRI motta interne notater eller chat-dialog. Skriv KUN den rene, profesjonelle beskjeden under body.
+Når brukeren ber deg sende en e-post og du har mottakers adresse:
+1. Bekreft kort at e-posten sendes.
+2. Inkluder koden <<<SEND_EMAIL: to="mottaker@epost.no" subject="Emne" body="Melding">>>.
+3. Kunden må ALDRI motta interne notater. Skriv kun ren, profesjonell melding under body.
 
-📱 MOBILVENNLIG FORMATERING FOR BYGGEPLASS:
-- Bruk alltid doble linjeskift mellom avsnitt for god luftighet.
-- Bruk punktlister med bindestrek (-) for opplistinger og krav.
-- Bruk fete overskrifter (f.eks. **Krav:** eller ### 🛡️ HMS-tiltak) for å skille temaer.
-- ALDRI svar med en eneste sammenklemt tekstblokk.
-
-🔗 KLIKKBARE KILDELENKER & DOKUMENTASJON (OBLIGATORISK):
-Når du gir faglige råd, henviser til lover, TEK17, HMS-forskrifter, veiledere eller leverandører, skal du ALLTID avslutte svaret ditt med en dedikert kildeseksjon med klikkbare markdown-lenker valgt fra de offisielle kildene du er koblet til:
-
-### 🌐 Kilder & Dokumentasjon
-Velg de relevante lenkene som passer til temaet du svarer på:
-- **TEK17 & Byggeregler:**
-  - [DiBK Byggteknisk forskrift (TEK17)](https://www.dibk.no/regelverk/byggteknisk-forskrift-tek17)
-  - [DiBK Byggesaksforskriften (SAK10)](https://www.dibk.no/regelverk/sak/)
-  - [DiBK Bygg uten å søke: Garasje](https://www.dibk.no/verktoy-og-veivisere/bygg-uten-a-soke-garasje)
-  - [DiBK Bygg uten å søke: Tilbygg](https://www.dibk.no/verktoy-og-veivisere/bygg-uten-a-soke-tilbygg)
-  - [DiBK Veiviser: Nabovarsel](https://www.dibk.no/nabovarsel)
-  - [DiBK Hvor stort kan du bygge (BYA-beregning)](https://www.dibk.no/verktoy-og-veivisere/hvor-stort-kan-du-bygge)
-- **Lover & Kontrakter (Lovdata):**
-  - [Lovdata - Håndverkertjenesteloven](https://lovdata.no/dokument/NL/lov/1989-06-16-63)
-  - [Lovdata - Bustadoppføringslova](https://lovdata.no/dokument/NL/lov/1997-06-13-43)
-  - [Lovdata - Arbeidsmiljøloven](https://lovdata.no/dokument/NL/lov/2005-06-17-62)
-  - [Lovdata - Plan- og bygningsloven](https://lovdata.no/dokument/NL/lov/2008-06-27-71)
-  - [Lovdata - Byggherreforskriften](https://lovdata.no/dokument/SF/forskrift/2009-08-03-1028)
-  - [Lovdata - Internkontrollforskriften](https://lovdata.no/dokument/SF/forskrift/1996-12-06-1127)
-  - [Lovdata - Forskrift om utførelse av arbeid](https://lovdata.no/dokument/SF/forskrift/2011-12-06-1357)
-- **HMS & Arbeidstilsynet:**
-  - [Arbeidstilsynet - Arbeid i høyden & stillas](https://www.arbeidstilsynet.no/risikofylt-arbeid/arbeid-i-hoyden/)
-  - [Arbeidstilsynet - Risikovurdering & SJA](https://www.arbeidstilsynet.no/hms/risikovurdering/)
-  - [Arbeidstilsynet - Internkontroll](https://www.arbeidstilsynet.no/hms/internkontroll/)
-  - [Arbeidstilsynet - Asbest](https://www.arbeidstilsynet.no/risikofylt-arbeid/kjemikalier/asbest/)
-  - [Arbeidstilsynet - Kjemikalier & stoffkartotek](https://www.arbeidstilsynet.no/risikofylt-arbeid/kjemikalier/)
-  - [Arbeidstilsynet - HMS-kort](https://www.arbeidstilsynet.no/hms/hms-kort/)
-- **Våtromsnormen (FFV):**
-  - [Fagrådet for våtrom - Våtromsnormen (BVN)](https://ffv.no/vatromsnormen/)
-  - [Fagrådet for våtrom - Lover og regler](https://ffv.no/lover-og-regler/)
-  - [Fagrådet for våtrom - Sluttdokumentasjon](https://ffv.no/sluttdokumentasjon/)
-  - [Fagrådet for våtrom - Godkjente produkter](https://ffv.no/anbefalte-produkter/)
-- **Leverandører & Isolasjon:**
-  - [Glava Isolasjon](https://www.glava.no/)
-  - [Rockwool Brann- og lydisolering](https://www.rockwool.no/)
-  - [Gyproc Gipsplater & systemvegger](https://www.gyproc.no/)
-  - [Vikingmester KS- og HMS-system](https://vikingmester.no/)
-- Reelle lenker fra nettsøk til leverandører (f.eks. Optimera, Maxbo) ved dagsaktuelle oppslag.`;
+🔗 KLIKKBARE KILDELENKER:
+Avslutt faglige svar med 2-4 relevante lenker fra de offisielle kildene:
+- [DiBK Byggteknisk forskrift (TEK17)](https://www.dibk.no/regelverk/byggteknisk-forskrift-tek17)
+- [Lovdata - Arbeidsmiljøloven](https://lovdata.no/dokument/NL/lov/2005-06-17-62)
+- [Arbeidstilsynet - Arbeid i høyden & stillas](https://www.arbeidstilsynet.no/risikofylt-arbeid/arbeid-i-hoyden/)
+- [Fagrådet for våtrom - Våtromsnormen (BVN)](https://ffv.no/vatromsnormen/)
+- [Vikingmester KS- og HMS-system](https://vikingmester.no/)`;
 
     let replyText = '';
     const quickReplies: Array<{ title: string; payload: string }> = [];

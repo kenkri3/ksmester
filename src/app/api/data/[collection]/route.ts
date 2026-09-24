@@ -9,7 +9,7 @@ const ALLOWED_COLLECTIONS = [
   'crew', 'safety_inspections', 'checklists', 'hms_documents', 'hms_signatures',
   'inventory', 'apprentice_goals', 'apprentice_profiles', 'building_applications',
   'materials', 'project_documents', 'project_photos', 'notifications',
-  'time_registrations', 'vehicles', 'agent_activities',
+  'time_registrations', 'time_entries', 'vehicles', 'agent_activities',
   'companies', 'leads', 'daily_logs', 'templates',
   'project_materials', 'project_checklists', 'contact_messages'
 ];
