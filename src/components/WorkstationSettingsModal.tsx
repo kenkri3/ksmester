@@ -245,7 +245,7 @@ export default function WorkstationSettingsModal({
               <Building2 size={16} />
             </div>
             <div>
-              <h2 className="text-sm sm:text-base font-black text-white">System- & Bedriftsinnstillinger</h2>
+              <h2 className="text-sm sm:text-base font-black text-white">{t('settings_system_title', "System- & Bedriftsinnstillinger")}</h2>
               <p className="text-[11px] text-slate-400">{companyName} • Hovedsentral</p>
             </div>
           </div>
@@ -253,7 +253,7 @@ export default function WorkstationSettingsModal({
             type="button"
             onClick={onClose}
             className="p-1.5 rounded-xl text-slate-400 hover:text-white hover:bg-slate-800 transition-colors cursor-pointer"
-            title="Lukk (Esc)"
+            title={t('ws_close_esc', "Lukk (Esc)")}
           >
             <X size={18} />
           </button>
@@ -262,14 +262,14 @@ export default function WorkstationSettingsModal({
         {/* Tab Navigation */}
         <div className="flex items-center gap-1 px-4 py-2 bg-slate-950/60 border-b border-slate-800/80 overflow-x-auto custom-scrollbar shrink-0 text-xs font-semibold">
           {[
-            { id: 'profile', label: 'Profil', icon: User },
-            { id: 'company', label: 'Bedrift & Takster', icon: Building2 },
-            { id: 'team', label: 'Team', icon: Users },
-            { id: 'modules', label: 'Fagmoduler', icon: Package },
-            { id: 'integrations', label: 'NOBB & Systemer', icon: Link2 },
-            { id: 'notifications', label: 'Varslinger', icon: Bell },
-            { id: 'billing', label: 'Abonnement & Kvote', icon: CreditCard },
-            { id: 'gdpr', label: 'Personvern', icon: ShieldCheck }
+            { id: 'profile', label: t('settings_tab_profile', 'Profil'), icon: User },
+            { id: 'company', label: t('settings_tab_company', 'Bedrift & Takster'), icon: Building2 },
+            { id: 'team', label: t('settings_tab_team', 'Team'), icon: Users },
+            { id: 'modules', label: t('settings_tab_modules', 'Fagmoduler'), icon: Package },
+            { id: 'integrations', label: t('settings_tab_integrations', 'NOBB & Systemer'), icon: Link2 },
+            { id: 'notifications', label: t('settings_tab_notifications', 'Varslinger'), icon: Bell },
+            { id: 'billing', label: t('settings_tab_billing', 'Abonnement & Kvote'), icon: CreditCard },
+            { id: 'gdpr', label: t('settings_tab_gdpr', 'Personvern'), icon: ShieldCheck }
           ].map((tab) => {
             const Icon = tab.icon;
             const isActive = activeTab === tab.id;
@@ -709,7 +709,7 @@ export default function WorkstationSettingsModal({
             onClick={onClose}
             className="px-4 py-2 rounded-xl bg-slate-800 hover:bg-slate-700 text-slate-300 text-xs font-bold transition-all cursor-pointer"
           >
-            Lukk
+            {t('ws_close_esc', "Lukk")}
           </button>
 
           <button
@@ -721,12 +721,12 @@ export default function WorkstationSettingsModal({
             {isSaving ? (
               <>
                 <div className="w-3.5 h-3.5 border-2 border-white border-t-transparent rounded-full animate-spin" />
-                <span>Lagrer...</span>
+                <span>{t('settings_saving', "Lagrer...")}</span>
               </>
             ) : (
               <>
                 <Save size={14} />
-                <span>Lagre endringer</span>
+                <span>{t('settings_save_btn', "Lagre endringer")}</span>
               </>
             )}
           </button>

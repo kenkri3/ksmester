@@ -550,7 +550,8 @@ export async function POST(req: NextRequest) {
       imageUrl,
       imageBase64,
       image,
-      images
+      images,
+      language = 'no'
     } = body;
 
     const effectiveSenderEmail = (
@@ -1159,8 +1160,22 @@ export async function POST(req: NextRequest) {
     // 🛡️ GDPR Privacy Shield: Vask sensitive fødselsnumre, bankkontonumre osv. før utsending til eksterne modeller
     const safeEnrichedMessage = maskPII(enrichedMessage);
 
-    const MASTER_SYSTEM_PROMPT = `Du er MesterAI, en helautonom prosjektpilot og byggmester-assistent i backendsystemet til Vikingmester. Du opererer selvstendig, tenker som en erfaren byggmester/prosjektleder, og utfører oppgaver direkte uten unødige forhør.
+    const userLang = (language || 'no').toLowerCase();
+    const langDirective = (() => {
+      if (userLang.startsWith('en')) {
+        return `\n🌐 AKTIVT BRUKERSPRÅK: ENGELSK (en)\nBrukerens grensesnitt er aktivt satt til engelsk. Du SKAL svare på engelsk (English). Forklar, rådgiv og veiled flytende på engelsk, samtidig som du refererer korrekt til norske standarder og lover (TEK17, NS 8406, Arbeidstilsynet osv.).\n`;
+      }
+      if (userLang.startsWith('pl')) {
+        return `\n🌐 AKTIVT BRUKERSPRÅK: POLSK (pl)\nBrukerens grensesnitt er aktivt satt til polsk. Du SKAL svare på polsk (język polski). Forklar, rådgiv og veiled flytende på polsk, samtidig som du refererer korrekt til norske standarder og lover (TEK17, NS 8406, Arbeidstilsynet osv.).\n`;
+      }
+      if (userLang.startsWith('lt')) {
+        return `\n🌐 AKTIVT BRUKERSPRÅK: LITAUISK (lt)\nBrukerens grensesnitt er aktivt satt til litauisk. Du SKAL svare på litauisk (lietuvių kalba). Forklar, rådgiv og veiled flytende på litauisk, samtidig som du refererer korrekt til norske standarder og lover (TEK17, NS 8406, Arbeidstilsynet osv.).\n`;
+      }
+      return '';
+    })();
 
+    const MASTER_SYSTEM_PROMPT = `Du er MesterAI, en helautonom prosjektpilot og byggmester-assistent i backendsystemet til Vikingmester. Du opererer selvstendig, tenker som en erfaren byggmester/prosjektleder, og utfører oppgaver direkte uten unødige forhør.
+${langDirective}
 🛡️ 100% WHITE-LABEL:
 Du er MesterAI, utviklet eksklusivt for Vikingmester. Du skal ALDRI nevne eller referere til underliggende AI-modeller, leverandører eller eksterne systemer som DeepSeek, OpenAI, Google, Anthropic eller Botsify. For brukeren er du 100 % MesterAI.
 
@@ -1180,7 +1195,7 @@ Du har full tilgang til Vikingmester-systemet og kan:
 - Når du utarbeider en SJA, endringsordre eller tilbud, presenter det strukturert, profesjonelt og lettlest.
 
 🌐 SPRÅK & FLERSPRÅKLIGHET:
-- Kommunikasjon med brukeren: Svar alltid på det samme språket som brukeren snakker eller skriver til deg på (norsk, engelsk, polsk, ukrainsk, tysk, spansk).
+- Kommunikasjon med brukeren: Svar alltid på det samme språket som brukeren snakker eller skriver til deg på, eller brukerens valgte språkinnstilling (norsk, engelsk, polsk, litauisk osv.).
 - Dokumentasjon i backend: All info som logges, lagres eller opprettes i systemet (timer, avvik, byggedagbok, SJA, endringsordrer, tilbud) skal alltid skrives på formelt og profesjonelt norsk (bokmål).
 
 🎯 OPPDRAGSHÅNDTERING & PROSJEKTTILKNYTNING:

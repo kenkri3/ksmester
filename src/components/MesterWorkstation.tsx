@@ -69,6 +69,7 @@ import {
 } from 'lucide-react';
 import { cn } from '@/src/lib/utils';
 import { toast } from 'sonner';
+import { useTranslation } from 'react-i18next';
 import { useAuth } from '../hooks/useAuth';
 import { Project, Deviation } from '../types';
 import { chatSessionService, ChatSession, ChatMessageItem } from '../services/chatSessionService';
@@ -157,6 +158,7 @@ export default function MesterWorkstation({
   onOpenSuperAdmin
 }: MesterWorkstationProps) {
   const { user, isSuperAdmin, isPlatformOwner, role, simulatedPlan, setSimulatedPlan, logout, trade, company, impersonatedCompanyId, stopImpersonation } = useAuth();
+  const { t, i18n } = useTranslation();
   const isAdmin = Boolean(
     isSuperAdmin || 
     isPlatformOwner || 
@@ -1746,6 +1748,7 @@ export default function MesterWorkstation({
           sessionId: activeSessionId,
           projectName: activeProjName,
           projectId: activeProjId,
+          language: i18n?.language || 'no',
           availableProjects: userAccessibleProjects.map(p => ({
             id: p.id,
             name: p.name,
@@ -1893,7 +1896,7 @@ export default function MesterWorkstation({
                 <input
                   ref={topSearchInputRef}
                   type="text"
-                  placeholder="Søk i byggeplasser, avvik, sjekklister, NOBB-materiell eller NS 8406..."
+                  placeholder={t('ws_search_all_placeholder', "Søk i byggeplasser, avvik, sjekklister, NOBB-materiell eller NS 8406...")}
                   value={topSearchQuery}
                   onChange={(e) => setTopSearchQuery(e.target.value)}
                   onKeyDown={(e) => {
@@ -1923,7 +1926,7 @@ export default function MesterWorkstation({
                 }}
                 className="px-3 py-2 rounded-xl bg-slate-800 hover:bg-slate-750 text-slate-300 text-xs font-bold transition-all cursor-pointer shrink-0"
               >
-                Lukk (Esc)
+                {t('ws_close_esc', "Lukk (Esc)")}
               </button>
             </div>
           ) : (
@@ -1935,7 +1938,7 @@ export default function MesterWorkstation({
                   type="button"
                   onClick={() => setIsOpenMobile(true)}
                   className="p-2 -ml-1 rounded-full text-slate-300 hover:text-white hover:bg-white/10 transition-colors cursor-pointer"
-                  title="Åpne meny"
+                  title={t('ws_open_menu', "Åpne meny")}
                 >
                   <Menu size={22} />
                 </button>
@@ -1958,7 +1961,7 @@ export default function MesterWorkstation({
                   {isProjectDropdownOpen && (
                     <div className="absolute left-1/2 -translate-x-1/2 top-full mt-2 w-72 max-h-80 overflow-y-auto bg-[#131314] border border-white/15 rounded-2xl shadow-2xl p-2 z-50 animate-in fade-in zoom-in-95 duration-100">
                       <div className="px-3 py-2 text-[10px] font-black uppercase tracking-wider text-slate-400 border-b border-white/10 flex items-center justify-between">
-                        <span>Velg aktiv byggeplass</span>
+                        <span>{t('ws_select_active_site', "Velg aktiv byggeplass")}</span>
                         <span className="text-emerald-400 font-mono">{projects.length} prosjekter</span>
                       </div>
 
@@ -1977,8 +1980,8 @@ export default function MesterWorkstation({
                       >
                         <Building2 size={15} className="shrink-0 text-slate-400" />
                         <div className="min-w-0">
-                          <p className="truncate font-bold">Alle byggeplasser</p>
-                          <p className="text-[10px] text-slate-400">Totaloversikt over oppdrag</p>
+                          <p className="truncate font-bold">{t('ws_all_sites', "Alle byggeplasser")}</p>
+                          <p className="text-[10px] text-slate-400">{t('ws_total_overview', "Totaloversikt over oppdrag")}</p>
                         </div>
                       </button>
 
@@ -2017,7 +2020,7 @@ export default function MesterWorkstation({
                       setViewMode('chat');
                     }}
                     className="p-2 rounded-full text-slate-300 hover:text-white hover:bg-white/10 transition-colors cursor-pointer"
-                    title="Start ny samtale"
+                    title={t('ws_new_chat', "Start ny samtale")}
                   >
                     <SquarePen size={19} />
                   </button>
@@ -2026,7 +2029,7 @@ export default function MesterWorkstation({
                     type="button"
                     onClick={() => setIsSettingsModalOpen(true)}
                     className="w-8 h-8 rounded-full border border-white/20 overflow-hidden flex items-center justify-center bg-gradient-to-tr from-purple-600 to-blue-500 text-white font-bold text-xs shrink-0 active:scale-95 transition-transform"
-                    title="Innstillinger & Profil"
+                    title={t('ws_settings_profile', "Innstillinger & Profil")}
                   >
                     {user?.photoURL ? (
                       <img src={user.photoURL} alt="Profil" className="w-full h-full object-cover" />
@@ -2049,7 +2052,7 @@ export default function MesterWorkstation({
                     >
                       <span className="w-2 h-2 rounded-full bg-emerald-400 animate-pulse shrink-0" />
                       <span className="truncate max-w-[220px]">
-                        {selectedProject ? selectedProject.name : 'Alle Byggeplasser'}
+                        {selectedProject ? selectedProject.name : t('ws_all_sites', 'Alle Byggeplasser')}
                       </span>
                       <ChevronDown size={14} className="text-slate-400 group-hover:text-white transition-colors shrink-0" />
                     </button>
@@ -2058,7 +2061,7 @@ export default function MesterWorkstation({
                     {isProjectDropdownOpen && (
                       <div className="absolute left-0 top-full mt-1.5 w-72 max-h-80 overflow-y-auto bg-slate-900 border border-slate-800 rounded-2xl shadow-2xl p-2 z-50 animate-in fade-in zoom-in-95 duration-100">
                         <div className="px-3 py-2 text-[10px] font-black uppercase tracking-wider text-slate-400 border-b border-slate-800 flex items-center justify-between">
-                          <span>Velg aktiv byggeplass</span>
+                          <span>{t('ws_select_active_site', "Velg aktiv byggeplass")}</span>
                           <span className="text-emerald-400">{projects.length} prosjekter</span>
                         </div>
 
@@ -2077,8 +2080,8 @@ export default function MesterWorkstation({
                         >
                           <Building2 size={14} className="shrink-0 text-slate-400" />
                           <div className="min-w-0">
-                            <p className="truncate font-bold">Alle byggeplasser</p>
-                            <p className="text-[10px] text-slate-500">Oversikt over alle oppdrag</p>
+                            <p className="truncate font-bold">{t('ws_all_sites', "Alle byggeplasser")}</p>
+                            <p className="text-[10px] text-slate-500">{t('ws_total_overview', "Totaloversikt over oppdrag")}</p>
                           </div>
                         </button>
 
@@ -2111,7 +2114,7 @@ export default function MesterWorkstation({
                   {/* Status: 100% Autonom */}
                   <span className="hidden lg:inline-flex items-center gap-1.5 px-2.5 py-1 rounded-full text-[11px] font-bold bg-emerald-500/10 text-emerald-400 border border-emerald-500/20">
                     <span className="w-1.5 h-1.5 rounded-full bg-emerald-400" />
-                    100% Autonom Agent
+                    {t('ws_autonomous_agent', "100% Autonom Agent")}
                   </span>
                 </div>
 
@@ -2125,7 +2128,7 @@ export default function MesterWorkstation({
                       title="Åpne SuperAdmin Portal (Brukere, Lisenser, Logger)"
                     >
                       <Crown size={14} className="text-amber-400" />
-                      <span>SuperAdmin</span>
+                      <span>{t('ws_superadmin_portal', "SuperAdmin")}</span>
                     </button>
                   )}
 
@@ -2141,7 +2144,7 @@ export default function MesterWorkstation({
                       title="Avslutt visningsmodus og returner til SuperAdmin"
                     >
                       <ArrowLeft size={13} />
-                      <span>← Til SuperAdmin</span>
+                      <span>{t('ws_back_to_superadmin', "← Til SuperAdmin")}</span>
                     </button>
                   )}
                   {onOpenOmnichannelModal && (
@@ -2159,7 +2162,7 @@ export default function MesterWorkstation({
                     type="button"
                     onClick={() => setIsTopSearchOpen(true)}
                     className="p-2 rounded-xl text-slate-400 hover:text-white hover:bg-slate-800/80 transition-colors cursor-pointer"
-                    title="Søk i samtaler, prosjekter og moduler (⌘K)"
+                    title={t('ws_search_placeholder', "Søk i samtaler, prosjekter og moduler (⌘K)")}
                   >
                     <Search size={16} />
                   </button>
@@ -5070,10 +5073,10 @@ export default function MesterWorkstation({
                     return (
                       <div className="space-y-1.5 max-w-xl mx-auto px-4">
                         <h2 className="text-2xl sm:text-4xl font-semibold tracking-tight text-white">
-                          Mikrofonen er din, {firstName}
+                          {t('ws_mic_is_yours', 'Mikrofonen er din, {{name}}', { name: firstName })}
                         </h2>
                         <p className="text-xs sm:text-sm text-slate-400 font-normal">
-                          Aktiv byggeplass: <strong className="text-slate-200">{selectedProject?.name || 'Alle byggeplasser'}</strong>
+                          {t('ws_active_site_prefix', 'Aktiv byggeplass:')} <strong className="text-slate-200">{selectedProject?.name || t('ws_all_sites', 'Alle byggeplasser')}</strong>
                         </p>
                       </div>
                     );
@@ -5083,20 +5086,20 @@ export default function MesterWorkstation({
                   <div className="space-y-2 max-w-xl mx-auto w-full px-2 pt-2">
                     {[
                       { 
-                        text: "Opprett endringsordre for ekstraarbeid (NS 8406)", 
-                        action: "Varsle endringsordre iht. NS 8406 for ekstraarbeid" 
+                        text: t('ws_quick_change_order', "Opprett endringsordre for ekstraarbeid (NS 8406)"), 
+                        action: t('ws_quick_change_order_action', "Varsle endringsordre iht. NS 8406 for ekstraarbeid") 
                       },
                       { 
-                        text: "Ta TEK17 bildekontroll av sluk og membran", 
-                        action: "Hva er TEK17-kravene til sluk, klemring og membran på bad?" 
+                        text: t('ws_quick_tek17_check', "Ta TEK17 bildekontroll av sluk og membran"), 
+                        action: t('ws_quick_tek17_action', "Hva er TEK17-kravene til sluk, klemring og membran på bad?") 
                       },
                       { 
-                        text: "Snakk inn byggedagbok med Yr-sanntidsvær", 
-                        action: "Før dagens byggedagbok med mannskapsliste og Yr-sanntidsvær" 
+                        text: t('ws_quick_daily_log', "Snakk inn byggedagbok med Yr-sanntidsvær"), 
+                        action: t('ws_quick_daily_log_action', "Før dagens byggedagbok med mannskapsliste og Yr-sanntidsvær") 
                       },
                       { 
-                        text: "Sjekk om sone bad er klar for lukking", 
-                        action: "Sjekk sjekkliste og lukkesperre for bad før plating" 
+                        text: t('ws_quick_lukkesperre', "Sjekk om sone bad er klar for lukking"), 
+                        action: t('ws_quick_lukkesperre_action', "Sjekk sjekkliste og lukkesperre for bad før plating") 
                       }
                     ].map((item, idx) => (
                       <button
@@ -5127,7 +5130,7 @@ export default function MesterWorkstation({
                       {msg.role === 'assistant' && (
                         <div className="flex items-center gap-2 text-xs font-bold text-purple-400 mb-1 px-1">
                           <Bot size={15} />
-                          <span>MesterAI Pilot</span>
+                          <span>{t('ws_mesterai_pilot', 'MesterAI Pilot')}</span>
                           <span className="text-[10px] text-slate-500">{msg.timestamp}</span>
                         </div>
                       )}
@@ -5236,7 +5239,7 @@ export default function MesterWorkstation({
                             type="button"
                             onClick={() => handleCopy(msg.id, msg.content)}
                             className="p-1 hover:text-white transition-colors cursor-pointer"
-                            title="Kopier svar"
+                            title={t('ws_copy_reply', "Kopier svar")}
                           >
                             {copiedId === msg.id ? <Check size={13} className="text-emerald-400" /> : <Copy size={13} />}
                           </button>
@@ -5244,7 +5247,7 @@ export default function MesterWorkstation({
                             type="button"
                             onClick={() => handleSpeakText(msg.content)}
                             className="p-1 hover:text-white transition-colors cursor-pointer"
-                            title="Les opp svar"
+                            title={t('ws_listen_reply', "Les opp svar")}
                           >
                             {isSpeaking ? <VolumeX size={13} className="text-amber-400" /> : <Volume2 size={13} />}
                           </button>
@@ -5425,8 +5428,8 @@ export default function MesterWorkstation({
                               <Camera size={16} />
                             </div>
                             <div>
-                              <p className="font-bold">Ta bilde med kamera</p>
-                              <p className="text-[10px] text-slate-400">TEK17 våtrom & slukkontroll</p>
+                              <p className="font-bold">{t('ws_attach_camera', "Ta bilde med kamera")}</p>
+                              <p className="text-[10px] text-slate-400">{t('ws_attach_camera_desc', "TEK17 våtrom & slukkontroll")}</p>
                             </div>
                           </label>
 
@@ -5439,8 +5442,8 @@ export default function MesterWorkstation({
                               <ImageIcon size={16} />
                             </div>
                             <div>
-                              <p className="font-bold">Bildegalleri</p>
-                              <p className="text-[10px] text-slate-400">Last opp eksisterende bilder</p>
+                              <p className="font-bold">{t('ws_attach_photo', "Bildegalleri")}</p>
+                              <p className="text-[10px] text-slate-400">{t('ws_attach_photo_desc', "Last opp eksisterende bilder")}</p>
                             </div>
                           </label>
 
@@ -5453,8 +5456,8 @@ export default function MesterWorkstation({
                               <Paperclip size={16} />
                             </div>
                             <div>
-                              <p className="font-bold">Tegning & FDV</p>
-                              <p className="text-[10px] text-slate-400">PDF, DWG eller Word-dokument</p>
+                              <p className="font-bold">{t('ws_attach_doc', "Tegning & FDV")}</p>
+                              <p className="text-[10px] text-slate-400">{t('ws_attach_doc_desc', "PDF, DWG eller Word-dokument")}</p>
                             </div>
                           </label>
                         </motion.div>
@@ -5477,7 +5480,7 @@ export default function MesterWorkstation({
                       }
                     }
                   }}
-                  placeholder="Spør MesterAI..."
+                  placeholder={t('ws_ask_mesterai', "Spør MesterAI...")}
                   disabled={isLoading}
                   className="flex-1 bg-transparent px-3 py-2 text-sm text-white placeholder:text-slate-400 focus:outline-none resize-none max-h-32 min-h-[38px] leading-relaxed no-scrollbar overflow-y-auto"
                 />
@@ -5494,7 +5497,7 @@ export default function MesterWorkstation({
                         ? "bg-rose-500 text-white animate-pulse"
                         : "text-slate-400 hover:text-white hover:bg-white/10"
                     )}
-                    title={isListeningMic ? "Lytter... Trykk for å stoppe" : "Snakk inn instruks"}
+                    title={isListeningMic ? t('ws_mic_listening', "Lytter... Trykk for å stoppe") : t('ws_mic_speak', "Snakk inn instruks")}
                   >
                     {isListeningMic ? <MicOff size={19} /> : <Mic size={19} />}
                   </button>
@@ -5505,7 +5508,7 @@ export default function MesterWorkstation({
                       type="submit"
                       disabled={isLoading}
                       className="w-9 h-9 sm:w-10 sm:h-10 rounded-full bg-gradient-to-tr from-purple-600 to-blue-600 hover:from-purple-500 hover:to-blue-500 text-white flex items-center justify-center shrink-0 cursor-pointer shadow-md shadow-purple-600/30 active:scale-95 transition-all"
-                      title="Send"
+                      title={t('ws_send', "Send")}
                     >
                       <Send size={15} className="translate-x-0.5" />
                     </button>
@@ -5517,10 +5520,10 @@ export default function MesterWorkstation({
                         const next = !isLiveVoiceActive;
                         setIsLiveVoiceActive(next);
                         if (next) {
-                          toast.info('🎙️ Live Voice samtale aktivert. Snakk fritt!');
+                          toast.info(t('ws_live_voice_enabled', '🎙️ Live Voice samtale aktivert. Snakk fritt!'));
                           if (!isListeningMic) toggleMic();
                         } else {
-                          toast.info('Live Voice deaktivert.');
+                          toast.info(t('ws_live_voice_disabled', 'Live Voice deaktivert.'));
                           if (isListeningMic) toggleMic();
                         }
                       }}
@@ -5530,7 +5533,7 @@ export default function MesterWorkstation({
                           ? "bg-gradient-to-tr from-blue-600 via-indigo-600 to-purple-600 ring-2 ring-blue-400/50 shadow-blue-500/40 animate-pulse"
                           : "bg-[#1a73e8] hover:bg-[#1557b0] shadow-blue-500/25"
                       )}
-                      title={isLiveVoiceActive ? "Avslutt Live Voice samtale" : "Start Live Voice samtale (handsfree)"}
+                      title={isLiveVoiceActive ? t('ws_live_voice_active', "Avslutt Live Voice samtale") : t('ws_live_voice_start', "Start Live Voice samtale (handsfree)")}
                     >
                       <div className="flex items-center gap-[2.5px] h-4">
                         <span className={cn("w-[2.5px] rounded-full bg-white transition-all duration-200", isLiveVoiceActive || isListeningMic ? "h-4 animate-bounce" : "h-2")} />
@@ -5545,7 +5548,7 @@ export default function MesterWorkstation({
 
               {/* Disclaimer footer */}
               <p className="text-[11px] text-slate-500 text-center">
-                MesterAI v2.6 kan gjøre feil. Kontroller viktige mål og NS 8406 endringsvarsler.
+                {t('ws_disclaimer', "MesterAI v2.6 kan gjøre feil. Kontroller viktige mål og NS 8406 endringsvarsler.")}
               </p>
             </div>
           </div>

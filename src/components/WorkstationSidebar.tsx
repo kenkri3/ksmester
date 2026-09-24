@@ -114,14 +114,14 @@ export default function WorkstationSidebar({
   const handleTogglePinSession = (e: React.MouseEvent, id: string) => {
     e.stopPropagation();
     const isNowPinned = chatSessionService.togglePinSession(id);
-    toast.success(isNowPinned ? '📌 Samtale festet øverst' : 'Samtale løsnet');
+    toast.success(isNowPinned ? t('ws_chat_pinned', '📌 Samtale festet øverst') : t('ws_chat_unpinned', 'Samtale løsnet'));
   };
 
   const handleDeleteSession = (e: React.MouseEvent, id: string, title: string) => {
     e.stopPropagation();
-    if (window.confirm(`Vil du slette samtalen "${title}"?`)) {
+    if (window.confirm(`${t('ws_confirm_delete_chat', 'Vil du slette samtalen')} "${title}"?`)) {
       chatSessionService.deleteSession(id);
-      toast.success('Samtale slettet');
+      toast.success(t('ws_chat_deleted', 'Samtale slettet'));
     }
   };
 
@@ -134,7 +134,7 @@ export default function WorkstationSidebar({
   const handleSaveRename = (id: string) => {
     if (editingTitle.trim()) {
       chatSessionService.renameSession(id, editingTitle.trim());
-      toast.success('Samtales tittel oppdatert');
+      toast.success(t('ws_chat_renamed', 'Samtales tittel oppdatert'));
     }
     setEditingSessionId(null);
   };
@@ -143,23 +143,24 @@ export default function WorkstationSidebar({
     try {
       await i18n.changeLanguage(lng);
       localStorage.setItem('i18nextLng', lng);
-      toast.success(lng === 'no' ? 'Norsk aktivert' : `Språk: ${lng.toUpperCase()}`);
+      window.dispatchEvent(new CustomEvent('language_changed', { detail: { language: lng } }));
+      toast.success(lng === 'no' ? 'Norsk aktivert' : `Language: ${lng.toUpperCase()}`);
     } catch (e) {
       console.error(e);
     }
   };
 
   const MODULES = [
-    { id: 'dailylog', label: 'Byggedagbok & Timer', icon: Clock, color: 'text-amber-400' },
-    { id: 'change_orders', label: 'Endringsordrer (NS 8406)', icon: FileSignature, color: 'text-purple-400' },
-    { id: 'pre_close', label: 'KS & Lukkesperre (TEK17)', icon: ClipboardCheck, color: 'text-emerald-400' },
-    { id: 'deviations', label: 'Avvik & RUH', icon: AlertTriangle, color: 'text-rose-400' },
-    { id: 'sja', label: 'SJA & Sikkerhet', icon: HardHat, color: 'text-blue-400' },
-    { id: 'offers', label: 'Tilbud & Kalkyle', icon: Calculator, color: 'text-indigo-400' },
-    { id: 'archive', label: 'Dokumentarkiv & FDV', icon: Archive, color: 'text-teal-400' },
-    { id: 'contacts', label: 'Kontakter & Team', icon: Users, color: 'text-cyan-400' },
-    { id: 'teamchat', label: 'Prosjekt- & Firmachatt', icon: MessageSquare, color: 'text-violet-400' },
-    { id: 'all_modules', label: 'Alle 20+ moduler', icon: Layers, color: 'text-slate-300' }
+    { id: 'dailylog', labelKey: 'ws_dailylog', defaultLabel: 'Byggedagbok & Timer', icon: Clock, color: 'text-amber-400' },
+    { id: 'change_orders', labelKey: 'ws_change_orders', defaultLabel: 'Endringsordrer (NS 8406)', icon: FileSignature, color: 'text-purple-400' },
+    { id: 'pre_close', labelKey: 'ws_pre_close', defaultLabel: 'KS & Lukkesperre (TEK17)', icon: ClipboardCheck, color: 'text-emerald-400' },
+    { id: 'deviations', labelKey: 'ws_deviations', defaultLabel: 'Avvik & RUH', icon: AlertTriangle, color: 'text-rose-400' },
+    { id: 'sja', labelKey: 'ws_sja', defaultLabel: 'SJA & Sikkerhet', icon: HardHat, color: 'text-blue-400' },
+    { id: 'offers', labelKey: 'ws_offers', defaultLabel: 'Tilbud & Kalkyle', icon: Calculator, color: 'text-indigo-400' },
+    { id: 'archive', labelKey: 'ws_archive', defaultLabel: 'Dokumentarkiv & FDV', icon: Archive, color: 'text-teal-400' },
+    { id: 'contacts', labelKey: 'ws_contacts', defaultLabel: 'Kontakter & Team', icon: Users, color: 'text-cyan-400' },
+    { id: 'teamchat', labelKey: 'ws_teamchat', defaultLabel: 'Prosjekt- & Firmachatt', icon: MessageSquare, color: 'text-violet-400' },
+    { id: 'all_modules', labelKey: 'ws_all_modules', defaultLabel: 'Alle 20+ moduler', icon: Layers, color: 'text-slate-300' }
   ];
 
   return (
@@ -242,10 +243,10 @@ export default function WorkstationSidebar({
               "bg-[#1e1f20] hover:bg-[#282a2d] border border-white/10 hover:border-white/20",
               isCollapsedDesktop && "md:p-2.5 md:justify-center md:rounded-xl"
             )}
-            title="Start en ny samtale eller oppgave"
+            title={t('ws_start_new_chat_title', "Start en ny samtale eller oppgave")}
           >
             <Plus size={18} className="text-white shrink-0" />
-            {!isCollapsedDesktop && <span className="truncate">Ny samtale</span>}
+            {!isCollapsedDesktop && <span className="truncate">{t('ws_new_chat', "Ny samtale")}</span>}
           </button>
 
           {/* 🔍 Søk i samtaler (Gemini pill style) */}
@@ -257,7 +258,7 @@ export default function WorkstationSidebar({
             >
               <div className="flex items-center gap-2.5 min-w-0">
                 <Search size={14} className="text-slate-400 shrink-0" />
-                <span className="truncate">Søk i samtaler & prosjekter</span>
+                <span className="truncate">{t('ws_search_placeholder', "Søk i samtaler & prosjekter")}</span>
               </div>
               <kbd className="px-1.5 py-0.5 rounded bg-white/10 text-[10px] text-slate-400 font-mono shrink-0">⌘K</kbd>
             </button>
@@ -270,7 +271,7 @@ export default function WorkstationSidebar({
           <div className="space-y-0.5">
             {!isCollapsedDesktop && (
               <div className="px-2.5 py-1 text-[11px] font-bold text-slate-400 flex items-center justify-between">
-                <span>Moduler & Fagsystem</span>
+                <span>{t('ws_modules_heading', "Moduler & Fagsystem")}</span>
               </div>
             )}
 
@@ -278,13 +279,14 @@ export default function WorkstationSidebar({
               const IconComponent = mod.icon;
               const isCurrentTab = currentActiveTab === mod.id;
               const isAllowed = hasModuleAccess ? hasModuleAccess(mod.id) : true;
+              const label = t(mod.labelKey, mod.defaultLabel);
               return (
                 <button
                   key={mod.id}
                   type="button"
                   onClick={() => {
                     if (!isAllowed) {
-                      toast.info(`Modulen "${mod.label}" er låst i din pakke. Oppgrader for å få full tilgang!`);
+                      toast.info(`Modulen "${label}" er låst i din pakke. Oppgrader for å få full tilgang!`);
                       return;
                     }
                     onOpenModule(mod.id);
@@ -299,12 +301,12 @@ export default function WorkstationSidebar({
                         : "text-slate-500 hover:bg-slate-900/60 opacity-65",
                     isCollapsedDesktop && "justify-center px-2 py-2"
                   )}
-                  title={isAllowed ? mod.label : `${mod.label} (Låst i gjeldende pakke)`}
+                  title={isAllowed ? label : `${label} (Låst i gjeldende pakke)`}
                 >
                   <div className="flex items-center gap-2.5 min-w-0">
                     <IconComponent size={16} className={cn(isAllowed ? mod.color : "text-slate-600", "shrink-0 transition-transform group-hover:scale-110")} />
                     {!isCollapsedDesktop && (
-                      <span className="truncate">{mod.label}</span>
+                      <span className="truncate">{label}</span>
                     )}
                   </div>
                   {!isCollapsedDesktop && !isAllowed && (
@@ -328,12 +330,12 @@ export default function WorkstationSidebar({
                   "bg-gradient-to-r from-amber-500/15 via-yellow-500/10 to-amber-600/15 border border-amber-500/40 text-amber-300 hover:text-white hover:bg-amber-500/25 hover:border-amber-400 shadow-xs",
                   isCollapsedDesktop && "justify-center px-2 py-2"
                 )}
-                title="SuperAdmin Portal - Brukere, lisenser og systemovervåkning"
+                title={t('ws_superadmin_portal', "SuperAdmin Portal")}
               >
                 <Crown size={16} className="text-amber-400 shrink-0 group-hover:scale-110 group-hover:rotate-6 transition-transform" />
                 {!isCollapsedDesktop && (
                   <div className="flex items-center justify-between w-full min-w-0">
-                    <span className="truncate">SuperAdmin Portal</span>
+                    <span className="truncate">{t('ws_superadmin_portal', "SuperAdmin Portal")}</span>
                     <span className="text-[9px] px-1.5 py-0.5 rounded-full bg-amber-400/20 text-amber-200 font-mono font-black border border-amber-400/30">SYS</span>
                   </div>
                 )}
@@ -356,11 +358,11 @@ export default function WorkstationSidebar({
                   "bg-amber-500 text-neutral-950 hover:bg-amber-400 shadow-md",
                   isCollapsedDesktop && "justify-center px-2 py-2"
                 )}
-                title="Returner til SuperAdmin Portal"
+                title={t('ws_back_to_superadmin', "← Tilbake til SuperAdmin")}
               >
                 <ArrowLeft size={14} className="shrink-0" />
                 {!isCollapsedDesktop && (
-                  <span className="truncate">← Tilbake til SuperAdmin</span>
+                  <span className="truncate">{t('ws_back_to_superadmin', "← Tilbake til SuperAdmin")}</span>
                 )}
               </button>
             )}
@@ -371,13 +373,13 @@ export default function WorkstationSidebar({
             {!isCollapsedDesktop && (
               <div className="px-2.5 py-1 flex items-center justify-between text-[11px] font-bold text-slate-400">
                 <span className="flex items-center gap-1.5">
-                  <Building2 size={13} className="text-electric-400" /> Prosjekter
+                  <Building2 size={13} className="text-electric-400" /> {t('ws_projects_heading', "Prosjekter")}
                 </span>
                 <button
                   type="button"
                   onClick={onOpenCreateProject}
                   className="p-1 rounded text-slate-400 hover:text-white hover:bg-slate-800 cursor-pointer"
-                  title="Opprett nytt prosjekt"
+                  title={t('ws_create_project_title', "Opprett nytt prosjekt")}
                 >
                   <Plus size={13} />
                 </button>
@@ -399,11 +401,11 @@ export default function WorkstationSidebar({
                     : "text-slate-300 hover:text-white hover:bg-slate-850",
                   isCollapsedDesktop && "justify-center px-2 py-2"
                 )}
-                title="Alle byggeplasser"
+                title={t('ws_all_sites', "Alle byggeplasser")}
               >
                 <HardHat size={15} className={!selectedProject ? "text-amber-400 shrink-0" : "text-slate-400 shrink-0"} />
                 {!isCollapsedDesktop && (
-                  <span className="truncate">Alle byggeplasser</span>
+                  <span className="truncate">{t('ws_all_sites', "Alle byggeplasser")}</span>
                 )}
               </button>
 
@@ -450,7 +452,7 @@ export default function WorkstationSidebar({
           <div className="space-y-1 pt-2 border-t border-slate-800/80">
             {!isCollapsedDesktop && (
               <div className="px-2.5 py-1 text-[11px] font-bold text-slate-400 flex items-center justify-between">
-                <span>Nylige samtaler</span>
+                <span>{t('ws_recent_chats', "Nylige samtaler")}</span>
                 <span className="text-[10px] text-slate-500 font-bold">{sessions.length}</span>
               </div>
             )}
@@ -458,7 +460,7 @@ export default function WorkstationSidebar({
             {sessions.length === 0 ? (
               !isCollapsedDesktop && (
                 <p className="px-2.5 py-2 text-xs text-slate-500 italic">
-                  Ingen tidligere samtaler ennå.
+                  {t('ws_no_chats', "Ingen tidligere samtaler ennå.")}
                 </p>
               )
             ) : (
@@ -468,7 +470,7 @@ export default function WorkstationSidebar({
                     {!isCollapsedDesktop && (
                       <p className="px-2.5 pt-1 pb-0.5 text-[10px] font-bold text-amber-400 flex items-center gap-1.5 uppercase tracking-wider">
                         <Pin size={10} className="fill-amber-400" />
-                        <span>Festede samtaler</span>
+                        <span>{t('ws_pinned_chats', "Festede samtaler")}</span>
                         <span className="text-[9px] px-1.5 py-0.2 rounded-full bg-amber-400/20 text-amber-300 font-mono ml-auto">
                           {pinned.length}
                         </span>
@@ -500,7 +502,7 @@ export default function WorkstationSidebar({
                 {today.length > 0 && (
                   <>
                     {!isCollapsedDesktop && (
-                      <p className="px-2.5 pt-1 pb-0.5 text-[10px] font-bold text-slate-500">I dag</p>
+                      <p className="px-2.5 pt-1 pb-0.5 text-[10px] font-bold text-slate-500">{t('ws_today', "I dag")}</p>
                     )}
                     {today.map(session => (
                       <SessionItem
@@ -528,7 +530,7 @@ export default function WorkstationSidebar({
                 {last7Days.length > 0 && (
                   <>
                     {!isCollapsedDesktop && (
-                      <p className="px-2.5 pt-2 pb-0.5 text-[10px] font-bold text-slate-500">Siste 7 dager</p>
+                      <p className="px-2.5 pt-2 pb-0.5 text-[10px] font-bold text-slate-500">{t('ws_last_7_days', "Siste 7 dager")}</p>
                     )}
                     {last7Days.map(session => (
                       <SessionItem
@@ -556,7 +558,7 @@ export default function WorkstationSidebar({
                 {older.length > 0 && (
                   <>
                     {!isCollapsedDesktop && (
-                      <p className="px-2.5 pt-2 pb-0.5 text-[10px] font-bold text-slate-500">Tidligere</p>
+                      <p className="px-2.5 pt-2 pb-0.5 text-[10px] font-bold text-slate-500">{t('ws_older', "Tidligere")}</p>
                     )}
                     {older.map(session => (
                       <SessionItem
@@ -659,7 +661,7 @@ export default function WorkstationSidebar({
                   type="button"
                   onClick={onOpenSettings}
                   className="p-1.5 rounded-lg text-slate-400 hover:text-white hover:bg-white/10 transition-colors cursor-pointer"
-                  title="Innstillinger"
+                  title={t('settings', "Innstillinger")}
                 >
                   <Settings size={15} />
                 </button>
@@ -667,7 +669,7 @@ export default function WorkstationSidebar({
                   type="button"
                   onClick={onLogout}
                   className="p-1.5 rounded-lg text-slate-400 hover:text-rose-400 hover:bg-rose-500/15 transition-colors cursor-pointer"
-                  title="Logg ut"
+                  title={t('logout', "Logg ut")}
                 >
                   <LogOut size={15} />
                 </button>
@@ -679,7 +681,7 @@ export default function WorkstationSidebar({
             <div className="pt-1 flex items-center justify-between text-[10px] text-slate-500 border-t border-slate-850">
               <span className="flex items-center gap-1 truncate">
                 <MapPin size={11} className="text-slate-500 shrink-0" />
-                <span className="truncate">Tønsberg, Norge</span>
+                <span className="truncate">{t('ws_location_display', "Tønsberg, Norge")}</span>
               </span>
               <div className="flex items-center gap-1">
                 <Globe size={11} className="text-slate-500" />

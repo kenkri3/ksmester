@@ -34,6 +34,7 @@ import ReactMarkdown from 'react-markdown';
 import remarkGfm from 'remark-gfm';
 import { cn } from '@/src/lib/utils';
 import { toast } from 'sonner';
+import { useTranslation } from 'react-i18next';
 import { formatAiMarkdown } from '../lib/formatAiMarkdown';
 import { formatUserMessage } from './MesterAIAgentFrame';
 
@@ -64,6 +65,7 @@ export default function MesterAICopilot({
   projects = [],
   onOpenModule
 }: MesterAICopilotProps) {
+  const { t, i18n } = useTranslation();
   const [isOpen, setIsOpen] = useState(false);
   const [isMinimized, setIsMinimized] = useState(false);
   const [isFullscreen, setIsFullscreen] = useState(false);
@@ -259,6 +261,15 @@ export default function MesterAICopilot({
     return () => window.removeEventListener('mesterai:open-copilot', handleOpenTrigger);
   }, [selectedProject, activeModuleTab]);
 
+  // Auto-juster høyde på tekstfeltet basert på innhold (slik som i MesterWorkstation)
+  useEffect(() => {
+    if (textareaRef.current) {
+      textareaRef.current.style.height = 'auto';
+      const scrollH = textareaRef.current.scrollHeight;
+      textareaRef.current.style.height = `${Math.min(Math.max(scrollH, 38), 140)}px`;
+    }
+  }, [inputVal]);
+
   // Bildeopplasting
   const handleImageSelect = async (e: React.ChangeEvent<HTMLInputElement>) => {
     const file = e.target.files?.[0];
@@ -355,7 +366,7 @@ export default function MesterAICopilot({
 
     setMessages(prev => [...prev, userMsg]);
     setInputVal('');
-    if (textareaRef.current) textareaRef.current.style.height = '42px';
+    if (textareaRef.current) textareaRef.current.style.height = '38px';
 
     // 📶 Sjekk om enheten er offline
     if (typeof navigator !== 'undefined' && !navigator.onLine) {
@@ -411,6 +422,7 @@ export default function MesterAICopilot({
           userTrade,
           companyName,
           userId: user?.id,
+          language: i18n?.language || 'no',
           imageUrl: activeImage
         })
       });
@@ -761,7 +773,7 @@ export default function MesterAICopilot({
                 </div>
               )}
 
-              <div className="flex items-end gap-1.5 bg-slate-950 border border-slate-800 focus-within:border-electric-500/60 rounded-2xl p-1.5 shadow-inner">
+              <div className="flex items-center gap-1.5 bg-[#1e1f20] border border-white/10 focus-within:border-white/20 focus-within:ring-2 focus-within:ring-purple-500/20 rounded-full p-1.5 shadow-2xl transition-all">
                 {/* Kamera / Bildeopplasting */}
                 <input 
                   type="file" 
@@ -775,24 +787,24 @@ export default function MesterAICopilot({
                   title="Ta bilde eller last opp foto for TEK17-visjon"
                   disabled={isUploadingImage || isLoading}
                   onClick={() => fileInputRef.current?.click()}
-                  className="p-2 text-slate-400 hover:text-electric-300 hover:bg-slate-800/80 rounded-xl transition-all disabled:opacity-50 cursor-pointer"
+                  className="w-8 h-8 rounded-full bg-white/5 hover:bg-white/10 text-slate-400 hover:text-white flex items-center justify-center shrink-0 cursor-pointer transition-colors active:scale-95 disabled:opacity-50"
                 >
-                  <Camera size={17} />
+                  <Camera size={16} />
                 </button>
 
                 {/* Mikrofon (Speech-to-text) */}
                 <button
                   type="button"
-                  title="Snakk inn oppgaven (Mikrofon)"
+                  title={isListeningMic ? "Lytter... Trykk for å stoppe" : "Snakk inn oppgaven (Mikrofon)"}
                   onClick={toggleMic}
                   className={cn(
-                    "p-2 rounded-xl transition-all cursor-pointer",
+                    "w-8 h-8 rounded-full flex items-center justify-center shrink-0 cursor-pointer transition-all active:scale-95",
                     isListeningMic 
-                      ? "bg-rose-500/30 text-rose-400 animate-pulse border border-rose-500/50" 
-                      : "text-slate-400 hover:text-amber-300 hover:bg-slate-800/80"
+                      ? "bg-rose-500 text-white animate-pulse" 
+                      : "bg-white/5 hover:bg-white/10 text-slate-400 hover:text-white"
                   )}
                 >
-                  {isListeningMic ? <MicOff size={17} /> : <Mic size={17} />}
+                  {isListeningMic ? <MicOff size={16} /> : <Mic size={16} />}
                 </button>
 
                 {/* Tekstfelt */}
@@ -802,8 +814,10 @@ export default function MesterAICopilot({
                   onChange={(e) => setInputVal(e.target.value)}
                   onKeyDown={(e) => {
                     if (e.key === 'Enter' && !e.shiftKey) {
-                      e.preventDefault();
-                      handleSendMessage(inputVal);
+                      if (typeof window !== 'undefined' && window.innerWidth >= 768) {
+                        e.preventDefault();
+                        handleSendMessage(inputVal);
+                      }
                     }
                   }}
                   placeholder={
@@ -813,11 +827,15 @@ export default function MesterAICopilot({
                         ? "Beskriv avvik eller spør om TEK17..."
                         : activeModuleTab === 'sja'
                           ? "F.eks: 'Lag SJA for stillas i regn'..."
-                          : "Be MesterAI om hva som helst..."
+                          : t('ws_ask_mesterai', "Spør MesterAI...")
                   }
                   rows={1}
                   disabled={isLoading}
-                  className="flex-1 bg-transparent text-white text-xs sm:text-sm placeholder-slate-500 resize-none outline-none py-1.5 px-1 max-h-32 min-h-[36px]"
+                  className="flex-1 bg-transparent px-2.5 py-1.5 text-xs sm:text-sm text-white placeholder:text-slate-400 focus:outline-none resize-none max-h-32 min-h-[38px] leading-relaxed no-scrollbar overflow-y-auto"
+                  style={{
+                    scrollbarWidth: 'none',
+                    msOverflowStyle: 'none'
+                  }}
                 />
 
                 {/* Send-knapp */}
@@ -825,9 +843,10 @@ export default function MesterAICopilot({
                   type="button"
                   disabled={(!inputVal.trim() && !attachedImage) || isLoading}
                   onClick={() => handleSendMessage(inputVal)}
-                  className="p-2 bg-electric-600 hover:bg-electric-500 disabled:bg-slate-800 text-white disabled:text-slate-600 rounded-xl transition-all shadow-md cursor-pointer shrink-0"
+                  className="w-8 h-8 sm:w-9 sm:h-9 rounded-full bg-gradient-to-tr from-purple-600 to-blue-600 hover:from-purple-500 hover:to-blue-500 disabled:from-slate-800 disabled:to-slate-800 text-white disabled:text-slate-600 flex items-center justify-center shrink-0 cursor-pointer shadow-md shadow-purple-600/30 active:scale-95 transition-all disabled:opacity-40 disabled:shadow-none"
+                  title={t('ws_send', "Send")}
                 >
-                  <Send size={16} />
+                  <Send size={14} className="translate-x-0.5" />
                 </button>
               </div>
 

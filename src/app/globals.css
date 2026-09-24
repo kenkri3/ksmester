@@ -78,6 +78,19 @@ body {
   background: #9D00FF;
 }
 
+/* Suppress scrollbars on textareas and .no-scrollbar elements */
+textarea,
+.no-scrollbar {
+  -ms-overflow-style: none !important;
+  scrollbar-width: none !important;
+}
+textarea::-webkit-scrollbar,
+.no-scrollbar::-webkit-scrollbar {
+  display: none !important;
+  width: 0 !important;
+  height: 0 !important;
+}
+
 /* Gradient Utilities matching vikingnet.no */
 .text-gradient-purple {
   background: linear-gradient(135deg, #9D00FF 0%, #C775FF 100%);
