@@ -32,7 +32,8 @@ import {
   MapPin,
   Check,
   Lock,
-  ArrowLeft
+  ArrowLeft,
+  Pin
 } from 'lucide-react';
 import { cn } from '@/src/lib/utils';
 import { chatSessionService, ChatSession } from '../services/chatSessionService';
@@ -108,7 +109,13 @@ export default function WorkstationSidebar({
     return () => unsub();
   }, [impersonatedCompanyId]);
 
-  const { today, last7Days, older } = chatSessionService.groupSessions(sessions);
+  const { pinned, today, last7Days, older } = chatSessionService.groupSessions(sessions);
+
+  const handleTogglePinSession = (e: React.MouseEvent, id: string) => {
+    e.stopPropagation();
+    const isNowPinned = chatSessionService.togglePinSession(id);
+    toast.success(isNowPinned ? '📌 Samtale festet øverst' : 'Samtale løsnet');
+  };
 
   const handleDeleteSession = (e: React.MouseEvent, id: string, title: string) => {
     e.stopPropagation();
@@ -455,6 +462,40 @@ export default function WorkstationSidebar({
               )
             ) : (
               <div className="space-y-0.5">
+                {pinned.length > 0 && (
+                  <div className="space-y-0.5 pb-1 mb-1 border-b border-white/5">
+                    {!isCollapsedDesktop && (
+                      <p className="px-2.5 pt-1 pb-0.5 text-[10px] font-bold text-amber-400 flex items-center gap-1.5 uppercase tracking-wider">
+                        <Pin size={10} className="fill-amber-400" />
+                        <span>Festede samtaler</span>
+                        <span className="text-[9px] px-1.5 py-0.2 rounded-full bg-amber-400/20 text-amber-300 font-mono ml-auto">
+                          {pinned.length}
+                        </span>
+                      </p>
+                    )}
+                    {pinned.map(session => (
+                      <SessionItem
+                        key={session.id}
+                        session={session}
+                        isActive={activeSessionId === session.id}
+                        isCollapsed={isCollapsedDesktop}
+                        isEditing={editingSessionId === session.id}
+                        editingTitle={editingTitle}
+                        onSetEditingTitle={setEditingTitle}
+                        onSaveRename={() => handleSaveRename(session.id)}
+                        onCancelRename={() => setEditingSessionId(null)}
+                        onStartRename={(e) => handleStartRename(e, session)}
+                        onTogglePin={(e) => handleTogglePinSession(e, session.id)}
+                        onSelect={() => {
+                          onSelectSession(session.id);
+                          if (isOpenMobile) onCloseMobile();
+                        }}
+                        onDelete={(e) => handleDeleteSession(e, session.id, session.title)}
+                      />
+                    ))}
+                  </div>
+                )}
+
                 {today.length > 0 && (
                   <>
                     {!isCollapsedDesktop && (
@@ -472,6 +513,7 @@ export default function WorkstationSidebar({
                         onSaveRename={() => handleSaveRename(session.id)}
                         onCancelRename={() => setEditingSessionId(null)}
                         onStartRename={(e) => handleStartRename(e, session)}
+                        onTogglePin={(e) => handleTogglePinSession(e, session.id)}
                         onSelect={() => {
                           onSelectSession(session.id);
                           if (isOpenMobile) onCloseMobile();
@@ -499,6 +541,7 @@ export default function WorkstationSidebar({
                         onSaveRename={() => handleSaveRename(session.id)}
                         onCancelRename={() => setEditingSessionId(null)}
                         onStartRename={(e) => handleStartRename(e, session)}
+                        onTogglePin={(e) => handleTogglePinSession(e, session.id)}
                         onSelect={() => {
                           onSelectSession(session.id);
                           if (isOpenMobile) onCloseMobile();
@@ -526,6 +569,7 @@ export default function WorkstationSidebar({
                         onSaveRename={() => handleSaveRename(session.id)}
                         onCancelRename={() => setEditingSessionId(null)}
                         onStartRename={(e) => handleStartRename(e, session)}
+                        onTogglePin={(e) => handleTogglePinSession(e, session.id)}
                         onSelect={() => {
                           onSelectSession(session.id);
                           if (isOpenMobile) onCloseMobile();
@@ -667,6 +711,7 @@ function SessionItem({
   onSaveRename,
   onCancelRename,
   onStartRename,
+  onTogglePin,
   onSelect,
   onDelete
 }: {
@@ -679,6 +724,7 @@ function SessionItem({
   onSaveRename: () => void;
   onCancelRename: () => void;
   onStartRename: (e: React.MouseEvent) => void;
+  onTogglePin: (e: React.MouseEvent) => void;
   onSelect: () => void;
   onDelete: (e: React.MouseEvent) => void;
 }) {
@@ -710,39 +756,60 @@ function SessionItem({
         isActive
           ? "bg-slate-800 text-white font-bold shadow-xs"
           : "text-slate-400 hover:text-slate-200 hover:bg-slate-850",
+        session.isPinned && !isActive && "border-l-2 border-amber-400/80 bg-slate-900/40",
         isCollapsed && "justify-center px-2 py-2"
       )}
-      title={session.title}
+      title={session.isPinned ? `📌 (Festet) ${session.title}` : session.title}
     >
       <div className="flex items-center gap-2 min-w-0">
-        <MessageSquare size={13} className={isActive ? "text-purple-400 shrink-0" : "text-slate-500 shrink-0"} />
+        <MessageSquare size={13} className={isActive ? "text-purple-400 shrink-0" : session.isPinned ? "text-amber-400 shrink-0" : "text-slate-500 shrink-0"} />
         {!isCollapsed && (
           <span className="truncate">{session.title}</span>
         )}
       </div>
 
       {!isCollapsed && (
-        <div className="hidden group-hover:flex items-center gap-1 shrink-0">
-          <span
-            role="button"
-            tabIndex={0}
-            onClick={onStartRename}
-            onKeyDown={(e) => e.key === 'Enter' && onStartRename(e as any)}
-            className="p-1 text-slate-400 hover:text-white hover:bg-slate-700 rounded cursor-pointer"
-            title="Endre tittel"
-          >
-            <Edit2 size={11} />
-          </span>
-          <span
-            role="button"
-            tabIndex={0}
-            onClick={onDelete}
-            onKeyDown={(e) => e.key === 'Enter' && onDelete(e as any)}
-            className="p-1 text-slate-400 hover:text-red-400 hover:bg-red-500/20 rounded cursor-pointer"
-            title="Slett samtale"
-          >
-            <Trash2 size={11} />
-          </span>
+        <div className="flex items-center gap-1 shrink-0">
+          {session.isPinned && (
+            <Pin size={11} className="text-amber-400 fill-amber-400 shrink-0 group-hover:hidden" />
+          )}
+          <div className="hidden group-hover:flex items-center gap-1">
+            <span
+              role="button"
+              tabIndex={0}
+              onClick={onTogglePin}
+              onKeyDown={(e) => e.key === 'Enter' && onTogglePin(e as any)}
+              className={cn(
+                "p-1 rounded cursor-pointer transition-colors",
+                session.isPinned
+                  ? "text-amber-400 hover:text-amber-300 hover:bg-amber-500/20"
+                  : "text-slate-400 hover:text-white hover:bg-slate-700"
+              )}
+              title={session.isPinned ? "Løsne samtale" : "Fest samtale øverst"}
+            >
+              <Pin size={11} className={session.isPinned ? "fill-amber-400" : ""} />
+            </span>
+            <span
+              role="button"
+              tabIndex={0}
+              onClick={onStartRename}
+              onKeyDown={(e) => e.key === 'Enter' && onStartRename(e as any)}
+              className="p-1 text-slate-400 hover:text-white hover:bg-slate-700 rounded cursor-pointer"
+              title="Endre tittel"
+            >
+              <Edit2 size={11} />
+            </span>
+            <span
+              role="button"
+              tabIndex={0}
+              onClick={onDelete}
+              onKeyDown={(e) => e.key === 'Enter' && onDelete(e as any)}
+              className="p-1 text-slate-400 hover:text-red-400 hover:bg-red-500/20 rounded cursor-pointer"
+              title="Slett samtale"
+            >
+              <Trash2 size={11} />
+            </span>
+          </div>
         </div>
       )}
     </button>

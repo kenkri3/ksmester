@@ -758,75 +758,141 @@ export async function POST(req: NextRequest) {
       });
     }
 
+    // ⏱️ HELPER: Tolk timer fra tale eller tekst (f.eks. "7.5", "7,5", "8", "sju og en halv", "syv timer", "åtte timer")
+    const parseSpokenHours = (text: string): number | null => {
+      const clean = text.toLowerCase().trim();
+
+      // 1. Desimaler og tall (f.eks: 7.5, 7,5, 8, 7)
+      const digitMatch = clean.match(/(\d+(?:[.,]\d+)?)\s*(?:timer?|time|t\b)/i);
+      if (digitMatch) {
+        const val = parseFloat(digitMatch[1].replace(',', '.'));
+        if (!isNaN(val) && val > 0 && val <= 24) return val;
+      }
+
+      // 2. Timer og minutter (f.eks: "7 timer og 30 minutter" eller "7t 30m")
+      const hourMinMatch = clean.match(/(\d+)\s*(?:timer?|time|t)\s*(?:og\s*)?(\d+)\s*(?:minutter?|min|m\b)/i);
+      if (hourMinMatch) {
+        const h = parseInt(hourMinMatch[1], 10);
+        const m = parseInt(hourMinMatch[2], 10);
+        return Math.round((h + m / 60) * 10) / 10;
+      }
+
+      // 3. Muntlige norske tall og brøker
+      if (/s[jy]v\s+og\s+en\s+halv/i.test(clean) || /s[jy]v\s+komma\s+fem/i.test(clean)) return 7.5;
+      if (/[aå]tte\s+og\s+en\s+halv/i.test(clean)) return 8.5;
+      if (/\b(?:en\s+halv|halv)\s+time/i.test(clean)) return 0.5;
+      if (/\bhalvannen\s+time/i.test(clean)) return 1.5;
+      if (/\bto\s+og\s+en\s+halv/i.test(clean)) return 2.5;
+      if (/\btre\s+og\s+en\s+halv/i.test(clean)) return 3.5;
+      if (/\bfire\s+og\s+en\s+halv/i.test(clean)) return 4.5;
+      if (/\bfem\s+og\s+en\s+halv/i.test(clean)) return 5.5;
+      if (/\bseks\s+og\s+en\s+halv/i.test(clean)) return 6.5;
+
+      if (/\b(?:en|ett|1)\s+time\b/i.test(clean)) return 1.0;
+      if (/\bto\s+timer?\b/i.test(clean)) return 2.0;
+      if (/\btre\s+timer?\b/i.test(clean)) return 3.0;
+      if (/\bfire\s+timer?\b/i.test(clean)) return 4.0;
+      if (/\bfem\s+timer?\b/i.test(clean)) return 5.0;
+      if (/\bseks\s+timer?\b/i.test(clean)) return 6.0;
+      if (/\bs[jy]v\s+timer?\b/i.test(clean)) return 7.0;
+      if (/\b[aå]tte\s+timer?\b/i.test(clean)) return 8.0;
+      if (/\bni\s+timer?\b/i.test(clean)) return 9.0;
+      if (/\bti\s+timer?\b/i.test(clean)) return 10.0;
+      if (/\belleve\s+timer?\b/i.test(clean)) return 11.0;
+      if (/\btolv\s+timer?\b/i.test(clean)) return 12.0;
+
+      // 4. Tall i starten av teksten: "7.5 lekting av vegg"
+      const startMatch = clean.match(/^(\d+(?:[.,]\d+)?)\s*(?:timer?|time|t\b)?\s+/i);
+      if (startMatch) {
+        const val = parseFloat(startMatch[1].replace(',', '.'));
+        if (!isNaN(val) && val > 0 && val <= 24) return val;
+      }
+
+      return null;
+    };
+
     // 🎯 4. BARE TRIGGER: "før timer"
     const isBareTime = [
-      'før timer', 'føre timer', 'timeregistrering', 'timeføring', 'før time'
+      'før timer', 'føre timer', 'timeregistrering', 'timeføring', 'før time', 'registrer timer', 'logg timer'
     ].includes(cleanLowerMsg);
 
     if (isBareTime) {
-      if (resolvedProjectName && resolvedProjectName !== 'Alle byggeplasser') {
-        return NextResponse.json({
-          success: true,
-          sessionId: fbId,
-          reply: `⏱️ **Timeføring i byggedagboken**\n*Gjelder byggeplass: **${resolvedProjectName}***\n\nHvor mange timer har du jobbet, og hva ble utført i dag?\n\n*Eksempel: «Før 7.5 timer i dag på ${resolvedProjectName}: Lekting av yttervegg og klargjøring for kledning».*`,
-          quickReplies: [
-            { title: '7.5t Normaltid', payload: `Før 7.5 timer i dag på ${resolvedProjectName}: Produksjon iht fremdriftsplan` },
-            { title: '7.5t + 2t overtid (50%)', payload: `Før 9.5 timer i dag på ${resolvedProjectName}: Produksjon og overtid` },
-            { title: 'Helg/kveld (100%)', payload: `Før 5 timer kveldsarbeid på ${resolvedProjectName}` }
-          ]
-        });
-      } else {
-        const projOptions = (availableProjects || []).slice(0, 5).map((p: any) => ({
-          title: p.name,
-          payload: `Før 7.5 timer i dag på ${p.name}: `
-        }));
-        return NextResponse.json({
-          success: true,
-          sessionId: fbId,
-          reply: `⏱️ **Timeføring i byggedagboken**\n\nHvilket prosjekt tilhører disse timene? Velg en byggeplass under og oppgi timeantall og oppgave:`,
-          quickReplies: projOptions
-        });
-      }
+      const activePName = resolvedProjectName && resolvedProjectName !== 'Alle byggeplasser' 
+        ? resolvedProjectName 
+        : (effectiveCompanyId === 'comp-demo-fjellheim' ? 'Hytte Sjusjøen - Nybygg' : (availableProjects?.[0]?.name || 'aktiv byggeplass'));
+
+      return NextResponse.json({
+        success: true,
+        sessionId: fbId,
+        reply: `⏱️ **Timeføring i byggedagboken**\n*Gjelder byggeplass: **${activePName}***\n\nHvor mange timer har du jobbet, og hva ble utført i dag?\n\n*Eksempel: «Før 7.5 timer i dag på ${activePName}: Lekting av yttervegg og klargjøring for kledning».*`,
+        quickReplies: [
+          { title: '7.5t Normaltid', payload: `Før 7.5 timer i dag på ${activePName}: Produksjon iht fremdriftsplan` },
+          { title: '7.5t + 2t overtid (50%)', payload: `Før 9.5 timer i dag på ${activePName}: Produksjon og overtid` },
+          { title: 'Helg/kveld (100%)', payload: `Før 5 timer kveldsarbeid på ${activePName}` }
+        ]
+      });
     }
 
-    // ⏱️ 5. REELL TIMEREGISTRERING VIA CHAT
-    const isLoggingTime = (
-      (cleanLowerMsg.includes('før') || cleanLowerMsg.includes('føre') || cleanLowerMsg.includes('førte') || cleanLowerMsg.includes('registrer') || cleanLowerMsg.includes('loggfør') || cleanLowerMsg.includes('jobbet') || cleanLowerMsg.includes('arbeidet')) &&
-      (/(\d+(?:[.,]\d+)?)\s*(?:timer?|t\b)/i.test(cleanLowerMsg))
+    // ⏱️ 5. REELL TIMEREGISTRERING VIA TALE ELLER TEKST I CHAT
+    const detectedHours = parseSpokenHours(cleanLowerMsg);
+    const hasTimeLoggingKeyword = (
+      cleanLowerMsg.includes('før') ||
+      cleanLowerMsg.includes('føre') ||
+      cleanLowerMsg.includes('førte') ||
+      cleanLowerMsg.includes('registrer') ||
+      cleanLowerMsg.includes('logg') ||
+      cleanLowerMsg.includes('jobbet') ||
+      cleanLowerMsg.includes('jobba') ||
+      cleanLowerMsg.includes('arbeidet') ||
+      cleanLowerMsg.includes('arbeida') ||
+      cleanLowerMsg.includes('snekret') ||
+      cleanLowerMsg.includes('montert') ||
+      cleanLowerMsg.includes('hatt') ||
+      cleanLowerMsg.includes('skriv inn') ||
+      cleanLowerMsg.includes('legg inn') ||
+      cleanLowerMsg.includes('timeliste') ||
+      cleanLowerMsg.includes('byggedagbok') ||
+      cleanLowerMsg.includes('time') ||
+      cleanLowerMsg.includes('timer')
+    );
+
+    const isLoggingTime = detectedHours !== null && (
+      hasTimeLoggingKeyword || 
+      /^(\d+(?:[.,]\d+)?)\s*(?:timer?|time|t\b)/i.test(cleanLowerMsg)
     );
 
     if (isLoggingTime) {
-      if (!resolvedProjectId && (!projectName || projectName === 'Alle byggeplasser')) {
-        const projOptions = (availableProjects || []).slice(0, 5).map((p: any) => ({
-          title: p.name,
-          payload: `${message} på ${p.name}`
-        }));
-        return NextResponse.json({
-          success: true,
-          sessionId: fbId,
-          reply: `⏱️ **Timeføring i byggedagboken**\n\nHvilket prosjekt tilhører disse timene? Velg byggeplassen under:`,
-          quickReplies: projOptions
-        });
+      // 📍 Finn prosjekt - ingen avvisning eller blokkering av håndverkeren!
+      let finalProjId = resolvedProjectId;
+      let finalProjName = resolvedProjectName;
+
+      if (!finalProjId || !finalProjName || finalProjName === 'Alle byggeplasser') {
+        if (effectiveCompanyId === 'comp-demo-fjellheim') {
+          finalProjId = 'proj-demo-sjusjoen';
+          finalProjName = 'Hytte Sjusjøen - Nybygg';
+        } else if (Array.isArray(availableProjects) && availableProjects.length > 0) {
+          finalProjId = availableProjects[0].id;
+          finalProjName = availableProjects[0].name;
+        } else {
+          finalProjId = 'proj-default';
+          finalProjName = 'Aktiv byggeplass';
+        }
       }
 
-      const finalProjId = resolvedProjectId || (availableProjects?.[0]?.id) || 'proj-default';
-      const finalProjName = resolvedProjectName || (availableProjects?.[0]?.name) || 'Aktivt prosjekt';
-
-      const hoursMatch = message.match(/(\d+(?:[.,]\d+)?)\s*(?:timer?|t\b)/i);
-      const totalHours = hoursMatch ? parseFloat(hoursMatch[1].replace(',', '.')) : 7.5;
+      const totalHours = detectedHours ?? 7.5;
       
       const isWeekendEvening = cleanLowerMsg.includes('kveld') || cleanLowerMsg.includes('helg') || cleanLowerMsg.includes('søndag') || cleanLowerMsg.includes('lørdag') || cleanLowerMsg.includes('100%');
       
       const normalHours = isWeekendEvening ? 0 : Math.min(7.5, totalHours);
-      const ot50 = isWeekendEvening ? 0 : Math.max(0, totalHours - 7.5);
+      const ot50 = isWeekendEvening ? 0 : Math.max(0, Math.round((totalHours - 7.5) * 10) / 10);
       const ot100 = isWeekendEvening ? totalHours : 0;
 
       // 🔒 Sjekk om det bes om å føre timer på en annen person
-      // Kun administrator eller leder har lov til å føre timer på andre ansatte!
+      // Kun administrator eller leder har lov til å føre timer på andre ansatte iht. AML § 10-7
       const isSenderAdmin = Boolean(
         body.isAdmin || 
-        body.userRole === 'admin' ||
-        body.userRole === 'leader' ||
+        body.userRole === 'admin' || 
+        body.userRole === 'leader' || 
         user?.role === 'admin' || 
         user?.role === 'leader' || 
         user?.role === 'superadmin'
@@ -883,7 +949,7 @@ export async function POST(req: NextRequest) {
       }
       
       let task = message
-        .replace(/^(?:hei mesterai|hei|kan du|vennligst)?\s*(?:før|føre|førte|registrer|loggfør|skriv inn|legg inn|har jobbet|jobbet)\s*(?:\d+(?:[.,]\d+)?\s*(?:timer?|t\b))?\s*(?:timer?|t\b)?/i, '')
+        .replace(/^(?:hei mesterai|hei|kan du|vennligst)?\s*(?:før|føre|førte|registrer|logg|logget|loggfør|skriv inn|legg inn|har jobbet|jobbet|jobba|arbeidet|arbeida|snekret|montert)\s*(?:\d+(?:[.,]\d+)?\s*(?:timer?|time|t\b))?\s*(?:timer?|time|t\b)?/i, '')
         .replace(/(?:i dag|idag|på mandag|på tirsdag|på onsdag|på torsdag|på fredag)/gi, '')
         .trim();
         
@@ -895,7 +961,7 @@ export async function POST(req: NextRequest) {
       }
       task = task.replace(/^[:\s\-–]+/, '').trim();
       if (!task || task.length < 3) {
-        task = 'Fagmessig utførelse og produksjon iht. fremdriftsplan';
+        task = 'Fagmessig produksjon og utførelse iht. fremdriftsplan';
       }
 
       const todayStr = new Date().toISOString().split('T')[0];
@@ -911,6 +977,9 @@ export async function POST(req: NextRequest) {
         status: 'pending' as const,
         projectId: finalProjId,
         projectName: finalProjName,
+        companyId: effectiveCompanyId,
+        company: effectiveCompany,
+        userId: body.userId || user?.id || (effectiveCompanyId === 'comp-demo-fjellheim' ? 'u-demo-lars-fjellheim' : 'user-me'),
         loggedBy: isForOtherPerson ? `${effectiveUser} (Leder/Admin)` : undefined,
         createdAt: new Date().toISOString()
       };
@@ -934,6 +1003,9 @@ export async function POST(req: NextRequest) {
           id: existingToday?.id || `log_${finalProjId}_${todayStr}`,
           projectId: finalProjId,
           projectName: finalProjName,
+          companyId: effectiveCompanyId,
+          company: effectiveCompany,
+          userId: body.userId || user?.id,
           date: todayStr,
           crewCount: crewList.length,
           crewMembers: crewList,
@@ -959,12 +1031,25 @@ export async function POST(req: NextRequest) {
         badge: `${totalHours} TIMER`,
         projectId: finalProjId,
         projectName: finalProjName,
+        companyId: effectiveCompanyId,
+        company: effectiveCompany,
         createdAt: new Date().toISOString()
       });
 
       const workerSubtitle = isForOtherPerson 
         ? `**${targetWorkerName}** (${targetWorkerRole} • Registrert av leder ${effectiveUser})`
         : `**${effectiveUser}** (${tradeTitle} • Din brukerkonto)`;
+
+      // Hurtigvalg for bytte av prosjekt hvis flere prosjekter finnes
+      const switchProjectReplies = (Array.isArray(availableProjects) && availableProjects.length > 1)
+        ? availableProjects
+            .filter((p: any) => p.id !== finalProjId)
+            .slice(0, 2)
+            .map((p: any) => ({
+              title: `Flytt til ${p.name}`,
+              payload: `Før ${totalHours} timer i dag på ${p.name}: ${task}`
+            }))
+        : [];
 
       return NextResponse.json({
         success: true,
@@ -979,11 +1064,12 @@ export async function POST(req: NextRequest) {
           (ot100 > 0 ? `• **100% Overtid:** +${ot100} t\n` : '') +
           `• **Arbeidsoppgave:** ${task}\n` +
           `• **Status:** Lagt til for ledergodkjenning (AML § 10-7)\n\n` +
-          `Timene er bokført på prosjektet og vises i sanntid under **«Byggedagbok & Timer» -> «Ledergodkjenning»**. Leder kan godkjenne timene enkeltvis eller samlet.`,
+          `Timene er bokført på prosjektet og vises i sanntid under **«Byggedagbok & Timer» -> «Siste oppføringer»** og **«Ledergodkjenning»**.`,
         quickReplies: [
+          { title: 'Åpne Byggedagbok & Timer', payload: 'Vis byggedagbok' },
           { title: 'Åpne Ledergodkjenning', payload: 'Vis timegodkjenning for leder' },
-          { title: 'Før flere timer', payload: `Før timer på ${finalProjName}` },
-          { title: 'Opprett SJA', payload: `Opprett en SJA for arbeid på ${finalProjName}` }
+          ...switchProjectReplies,
+          { title: 'Før flere timer', payload: `Før timer på ${finalProjName}` }
         ]
       });
     }
@@ -1149,6 +1235,7 @@ Avslutt faglige svar med 2-4 relevante lenker fra de offisielle kildene:
         prompt: safeEnrichedMessage,
         systemInstruction: MASTER_SYSTEM_PROMPT,
         images: imageAttachment ? [{ inlineData: imageAttachment }] : undefined,
+        model: hasImage ? 'gemini-3.8-flash' : undefined,
         webSearch: wantsWebSearch,
         companyId: effectiveCompanyId,
         companyName: effectiveCompany,

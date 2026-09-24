@@ -30,6 +30,7 @@ export interface ChatSession {
   projectId?: string;
   projectName?: string;
   messages: ChatMessageItem[];
+  isPinned?: boolean;
 }
 
 export function getActiveTenantScope(): string {
@@ -333,6 +334,27 @@ class ChatSessionService {
     }
   }
 
+  public togglePinSession(sessionId: string, explicitScope?: string): boolean {
+    if (typeof window === 'undefined' || !sessionId) return false;
+    const scope = explicitScope || getActiveTenantScope();
+    const storageKey = getStorageKey(scope);
+    const sessions = this.getSessions(scope);
+    const index = sessions.findIndex(s => s.id === sessionId);
+    if (index === -1) return false;
+
+    const nextPinned = !sessions[index].isPinned;
+    sessions[index].isPinned = nextPinned;
+    sessions[index].updatedAt = new Date().toISOString();
+
+    try {
+      localStorage.setItem(storageKey, JSON.stringify(sessions));
+      this.notify();
+    } catch (e) {
+      console.warn('Could not toggle pin on session:', e);
+    }
+    return nextPinned;
+  }
+
   public deriveSmartTitle(messages: ChatMessageItem[], projectName?: string): string {
     const firstUserMsg = messages.find(m => m.role === 'user');
     if (!firstUserMsg || !firstUserMsg.content) {
@@ -355,6 +377,7 @@ class ChatSessionService {
   }
 
   public groupSessions(sessions: ChatSession[]): {
+    pinned: ChatSession[];
     today: ChatSession[];
     last7Days: ChatSession[];
     older: ChatSession[];
@@ -363,11 +386,16 @@ class ChatSessionService {
     const startOfToday = new Date(now.getFullYear(), now.getMonth(), now.getDate()).getTime();
     const sevenDaysAgo = startOfToday - 7 * 24 * 60 * 60 * 1000;
 
+    const pinned: ChatSession[] = [];
     const today: ChatSession[] = [];
     const last7Days: ChatSession[] = [];
     const older: ChatSession[] = [];
 
     sessions.forEach(s => {
+      if (s.isPinned) {
+        pinned.push(s);
+        return;
+      }
       const time = new Date(s.updatedAt || s.createdAt).getTime();
       if (time >= startOfToday) {
         today.push(s);
@@ -378,7 +406,7 @@ class ChatSessionService {
       }
     });
 
-    return { today, last7Days, older };
+    return { pinned, today, last7Days, older };
   }
 }
 

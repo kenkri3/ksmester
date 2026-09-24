@@ -508,18 +508,18 @@ async function callGeminiBackup(
   const currentMonth = new Intl.DateTimeFormat('no-NO', { month: 'long', timeZone: 'Europe/Oslo' }).format(now);
   const dateContext = `Dagens reelle dato er ${dateStr} (kl. ${timeStr}, ${currentYear}). Måneden er ${currentMonth} (${currentYear}, høst), IKKE mai eller 17. mai.`;
 
-  // Kun gyldige Gemini-modeller (prioriter aktive produksjonsmodeller gemini-2.5-flash / gemini-2.0-flash)
+  // Prioriter Gemini 3.8 Flash som primær modell for bildeanalyse og lynrask multimodal inferens
   const candidateModels = [
     model && model.startsWith('gemini') ? model : null,
     process.env.GEMINI_MODEL,
+    'gemini-3.8-flash',
+    'gemini-3.5-flash',
+    'gemini-3.1-pro-preview',
     'gemini-2.5-flash',
     'gemini-2.0-flash',
     'gemini-1.5-flash',
     'gemini-2.5-pro',
-    'gemini-1.5-pro',
-    'gemini-3.8-flash',
-    'gemini-3.5-flash',
-    'gemini-3.1-pro-preview'
+    'gemini-1.5-pro'
   ].filter(Boolean) as string[];
 
   const uniqueModels = Array.from(new Set(candidateModels));
