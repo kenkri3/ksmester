@@ -1029,6 +1029,7 @@ export default function MesterWorkstation({
   const handleOpenModuleFromSidebar = (moduleId: string) => {
     setActiveModuleTab(moduleId);
     setViewMode('module');
+    setIsOpenMobile(false);
   };
 
   // 🚀 Aktiver modul fra "Alle moduler"-oversikten
@@ -1798,6 +1799,7 @@ export default function MesterWorkstation({
         selectedProject={selectedProject}
         onSelectProject={(p) => {
           onSelectProject(p);
+          setIsOpenMobile(false);
           if (p) {
             if (activeModuleTab === 'all_projects' || !activeModuleTab) {
               setActiveModuleTab('project_details');
@@ -1815,11 +1817,25 @@ export default function MesterWorkstation({
         onOpenCreateProject={() => {
           setActiveModuleTab('create_project');
           setViewMode('module');
+          setIsOpenMobile(false);
+          toast.info('✨ Opprett ny byggeplass');
         }}
-        onOpenModule={handleOpenModuleFromSidebar}
-        onOpenSmartSearch={() => setIsTopSearchOpen(true)}
-        onOpenSettings={() => setIsSettingsModalOpen(true)}
-        onOpenSuperAdmin={handleOpenSuperAdmin}
+        onOpenModule={(moduleId) => {
+          handleOpenModuleFromSidebar(moduleId);
+          setIsOpenMobile(false);
+        }}
+        onOpenSmartSearch={() => {
+          setIsTopSearchOpen(true);
+          setIsOpenMobile(false);
+        }}
+        onOpenSettings={() => {
+          setIsSettingsModalOpen(true);
+          setIsOpenMobile(false);
+        }}
+        onOpenSuperAdmin={() => {
+          handleOpenSuperAdmin();
+          setIsOpenMobile(false);
+        }}
         user={user}
         isSuperAdmin={isSuperAdmin}
         onLogout={logout}
@@ -1948,6 +1964,23 @@ export default function MesterWorkstation({
                           </div>
                         </button>
                       ))}
+
+                      {/* ➕ Hurtig-oppretting av prosjekt direkte fra mobil-dropdown */}
+                      <div className="pt-1 mt-1 border-t border-white/10">
+                        <button
+                          type="button"
+                          onClick={() => {
+                            setIsProjectDropdownOpen(false);
+                            setActiveModuleTab('create_project');
+                            setViewMode('module');
+                            toast.info('✨ Opprett ny byggeplass');
+                          }}
+                          className="w-full flex items-center gap-2 px-3 py-2 rounded-xl text-xs font-bold text-purple-300 hover:text-white hover:bg-purple-500/20 border border-purple-500/30 transition-all cursor-pointer"
+                        >
+                          <Plus size={14} className="shrink-0 text-purple-400" />
+                          <span>{t('ws_create_project_title', "Opprett nytt prosjekt")}</span>
+                        </button>
+                      </div>
                     </div>
                   )}
                 </div>
@@ -4115,7 +4148,7 @@ export default function MesterWorkstation({
 
                   {/* Modal for å legge til ny kontakt */}
                   {isAddContactModalOpen && (
-                    <div className="fixed inset-0 z-50 flex items-center justify-center p-4 bg-black/80 backdrop-blur-xs">
+                    <div className="fixed inset-0 z-[100] flex items-center justify-center p-4 bg-black/80 backdrop-blur-xs">
                       <div className="bg-slate-900 border border-slate-800 rounded-3xl p-6 max-w-md w-full shadow-2xl space-y-4">
                         <div className="flex items-center justify-between pb-3 border-b border-slate-800">
                           <h4 className="text-sm font-black text-white flex items-center gap-2">
@@ -4291,7 +4324,7 @@ export default function MesterWorkstation({
 
                   {/* Modal for å redigere eksisterende kontakt (Kun Admin) */}
                   {editingContact && (
-                    <div className="fixed inset-0 z-50 flex items-center justify-center p-4 bg-black/80 backdrop-blur-xs">
+                    <div className="fixed inset-0 z-[100] flex items-center justify-center p-4 bg-black/80 backdrop-blur-xs">
                       <div className="bg-slate-900 border border-slate-800 rounded-3xl p-6 max-w-md w-full shadow-2xl space-y-4">
                         <div className="flex items-center justify-between pb-3 border-b border-slate-800">
                           <div className="flex items-center gap-2">

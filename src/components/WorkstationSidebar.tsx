@@ -253,7 +253,10 @@ export default function WorkstationSidebar({
           {!isCollapsedDesktop && (
             <button
               type="button"
-              onClick={onOpenSmartSearch}
+              onClick={() => {
+                onOpenSmartSearch();
+                if (isOpenMobile) onCloseMobile();
+              }}
               className="w-full flex items-center justify-between px-3.5 py-2 rounded-full text-xs text-slate-300 hover:text-white bg-white/5 hover:bg-white/10 border border-transparent hover:border-white/10 transition-all cursor-pointer"
             >
               <div className="flex items-center gap-2.5 min-w-0">
@@ -377,8 +380,11 @@ export default function WorkstationSidebar({
                 </span>
                 <button
                   type="button"
-                  onClick={onOpenCreateProject}
-                  className="p-1 rounded text-slate-400 hover:text-white hover:bg-slate-800 cursor-pointer"
+                  onClick={() => {
+                    onOpenCreateProject();
+                    if (isOpenMobile) onCloseMobile();
+                  }}
+                  className="p-1 rounded text-slate-400 hover:text-white hover:bg-slate-800 cursor-pointer active:scale-95 transition-transform"
                   title={t('ws_create_project_title', "Opprett nytt prosjekt")}
                 >
                   <Plus size={13} />
@@ -650,6 +656,7 @@ export default function WorkstationSidebar({
                     onClick={() => {
                       if (onOpenSuperAdmin) onOpenSuperAdmin();
                       else window.dispatchEvent(new CustomEvent("navigate_view", { detail: { view: "super-admin" } }));
+                      if (isOpenMobile) onCloseMobile();
                     }}
                     className="p-1.5 rounded-lg text-amber-400 hover:text-white hover:bg-amber-500/20 transition-colors cursor-pointer"
                     title="SuperAdmin Portal"
@@ -659,7 +666,10 @@ export default function WorkstationSidebar({
                 )}
                 <button
                   type="button"
-                  onClick={onOpenSettings}
+                  onClick={() => {
+                    onOpenSettings();
+                    if (isOpenMobile) onCloseMobile();
+                  }}
                   className="p-1.5 rounded-lg text-slate-400 hover:text-white hover:bg-white/10 transition-colors cursor-pointer"
                   title={t('settings', "Innstillinger")}
                 >
@@ -667,7 +677,10 @@ export default function WorkstationSidebar({
                 </button>
                 <button
                   type="button"
-                  onClick={onLogout}
+                  onClick={() => {
+                    onLogout();
+                    if (isOpenMobile) onCloseMobile();
+                  }}
                   className="p-1.5 rounded-lg text-slate-400 hover:text-rose-400 hover:bg-rose-500/15 transition-colors cursor-pointer"
                   title={t('logout', "Logg ut")}
                 >
