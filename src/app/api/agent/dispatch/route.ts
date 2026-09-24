@@ -1190,7 +1190,10 @@ Returner KUN et gyldig JSON-objekt:
           status: 'open',
           reportedBy: (user as any)?.displayName || user?.email || authorName || 'Byggeleder',
           action: devInfo.suggestedAction,
+          correctiveAction: devInfo.suggestedAction,
           codeReference: devInfo.codeRef,
+          company: (user as any)?.company || 'Mester Entreprenør AS',
+          companyId: companyId || 'comp-001',
           createdAt: new Date().toISOString(),
           timestamp: new Date().toISOString()
         };
@@ -1207,6 +1210,8 @@ Returner KUN et gyldig JSON-objekt:
           badge: devInfo.severity === 'critical' ? 'KRITISK AVVIK' : 'AVVIK REGISTRERT',
           projectId: resolvedProjectId,
           projectName: resolvedProjectName,
+          companyId: companyId || 'comp-001',
+          company: (user as any)?.company || 'Mester Entreprenør AS',
           createdAt: new Date().toISOString()
         });
 
@@ -1222,6 +1227,7 @@ Returner KUN et gyldig JSON-objekt:
             `- **Gjeldende status:** ⏳ **Åpen for utbedring**\n\n` +
             `Avviket er lagret i prosjektets kvalitetssikringslogg og sperrer for overlevering inntil lukking er bekreftet.`,
           data: { ...devDoc, id: savedDev.id },
+          deviation: { ...devDoc, id: savedDev.id },
           suggestedActions: [
             {
               id: 'open_deviation',

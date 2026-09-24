@@ -81,7 +81,7 @@ import InChatWorkspace, { InChatFormType } from './InChatWorkspace';
 import DocumentationArchive from './DocumentationArchive';
 import WorkstationSettingsModal from './WorkstationSettingsModal';
 import ChangeOrderDetailModal from './ChangeOrderDetailModal';
-import { db, collection, addDoc } from '../services/firebase';
+import { db, collection, addDoc, updateDoc, deleteDoc, doc, serverTimestamp } from '../services/firebase';
 import SuperAdmin from './SuperAdmin';
 import OfferModal from './OfferModal';
 import OfferDetailModal from './OfferDetailModal';
@@ -91,6 +91,7 @@ import { formatAiMarkdown } from '../lib/formatAiMarkdown';
 import WeatherWidget from './WeatherWidget';
 import MesterAICopilot from './MesterAICopilot';
 import ProjectTeamChat from './ProjectTeamChat';
+import { VehicleFleetManager } from './VehicleFleetManager';
 
 interface MesterWorkstationProps {
   initialModuleTab?: string | null;
@@ -241,6 +242,69 @@ export default function MesterWorkstation({
     }
   };
 
+  // 🚨 Håndtering av avvik & RUH (både fra database og lokale oppføringer meldt til agenten)
+  const [localDeviations, setLocalDeviations] = useState<Deviation[]>(() => {
+    try {
+      const cached = localStorage.getItem('cached_deviations');
+      return cached ? JSON.parse(cached) : [];
+    } catch {
+      return [];
+    }
+  });
+
+  const [deviationFilterStatus, setDeviationFilterStatus] = useState<'all' | 'open' | 'closed'>('all');
+  const [deviationFilterProject, setDeviationFilterProject] = useState<string>('all');
+
+  // Slå sammen avvik fra prop og lokalt opprettede avvik
+  const allDeviations = useMemo(() => {
+    const map = new Map<string, Deviation>();
+    (deviations || []).forEach(d => map.set(d.id, d));
+    (localDeviations || []).forEach(d => map.set(d.id, d));
+    return Array.from(map.values()).sort((a, b) => {
+      const tA = new Date(a.createdAt || a.timestamp || 0).getTime();
+      const tB = new Date(b.createdAt || b.timestamp || 0).getTime();
+      return tB - tA;
+    });
+  }, [deviations, localDeviations]);
+
+  // Håndter oppdatering av avviksstatus (lukke/gjenåpne)
+  const handleToggleDeviationStatus = async (dev: Deviation) => {
+    const newStatus = dev.status === 'closed' ? 'open' : 'closed';
+    const updatedDev = { ...dev, status: newStatus as any, updatedAt: new Date().toISOString() };
+
+    setLocalDeviations(prev => {
+      const updated = prev.map(d => d.id === dev.id ? updatedDev : d);
+      try { localStorage.setItem('cached_deviations', JSON.stringify(updated)); } catch {}
+      return updated;
+    });
+
+    try {
+      if (dev.id && !dev.id.startsWith('dev_rec_')) {
+        await updateDoc(doc(db, 'deviations', dev.id), { status: newStatus, updatedAt: serverTimestamp() });
+      }
+    } catch (e) {
+      console.warn('Firestore status-oppdatering:', e);
+    }
+
+    toast.success(newStatus === 'closed' ? '✅ Avvik merket som utbedret og lukket!' : '⏳ Avvik gjenåpnet for oppfølging.');
+  };
+
+  // Håndter sletting av avvik
+  const handleDeleteDeviation = async (devId: string) => {
+    if (!confirm('Er du sikker på at du vil slette dette avviket?')) return;
+    setLocalDeviations(prev => {
+      const updated = prev.filter(d => d.id !== devId);
+      try { localStorage.setItem('cached_deviations', JSON.stringify(updated)); } catch {}
+      return updated;
+    });
+    try {
+      await deleteDoc(doc(db, 'deviations', devId));
+    } catch (e) {
+      console.warn('Firestore sletting:', e);
+    }
+    toast.info('Avvik slettet.');
+  };
+
   // Synkroniser aktiv fane dersom initialModuleTab endrer seg eksternt
   useEffect(() => {
     if (initialModuleTab) {
@@ -265,10 +329,26 @@ export default function MesterWorkstation({
       } else if (targetView === 'teamchat' || targetView === 'prosjektchat' || targetView === 'chat-module') {
         setActiveModuleTab('teamchat');
         setViewMode('module');
+      } else if (targetView === 'vehicle' || targetView === 'bilpark' || targetView === 'kjørebok') {
+        setActiveModuleTab('vehicle');
+        setViewMode('module');
       }
     };
     window.addEventListener('navigate_view', handleNavigate);
     return () => window.removeEventListener('navigate_view', handleNavigate);
+  }, []);
+
+  // Lytt etter dashboard-handlinger for bilpark og kjørebok
+  useEffect(() => {
+    const handleDashboardAction = (e: any) => {
+      const actionId = e.detail?.actionId;
+      if (actionId === 'vehicle' || actionId === 'bilpark' || actionId === 'kjørebok') {
+        setActiveModuleTab('vehicle');
+        setViewMode('module');
+      }
+    };
+    window.addEventListener('trigger_dashboard_action', handleDashboardAction as EventListener);
+    return () => window.removeEventListener('trigger_dashboard_action', handleDashboardAction as EventListener);
   }, []);
 
   // Lytt etter hendelse fra varselbjella om å åpne en spesifikk prosjektchat
@@ -305,6 +385,98 @@ export default function MesterWorkstation({
     }
     return [];
   });
+
+  // 🔄 Skann samtaletråden for å fange opp avvik brukeren har skrevet til agenten
+  useEffect(() => {
+    if (!messages || messages.length === 0) return;
+    messages.forEach(m => {
+      if (m.role === 'user' && m.content) {
+        const text = m.content.toLowerCase();
+        const hasAvvikWord = text.includes('avvik') || text.includes('ruh') || text.includes('mangel');
+        const hasActionOrDefect = (
+          text.includes('registrer') || 
+          text.includes('meld') || 
+          text.includes('opprett') || 
+          text.includes('loggfør') || 
+          text.includes('det er') || 
+          text.includes('vi har') || 
+          text.includes('oppdaget') || 
+          text.includes('mangler') || 
+          text.includes('feil') || 
+          text.includes('lekkasje') || 
+          text.includes('skade')
+        );
+
+        if (hasAvvikWord && hasActionOrDefect && !text.startsWith('hva er') && !text.startsWith('vis avvik') && !text.startsWith('hent avvik')) {
+          const isAlreadySaved = allDeviations.some(d => 
+            (d.description && d.description.includes(m.content)) || 
+            (d.title && m.content.toLowerCase().includes(d.title.toLowerCase()))
+          );
+
+          if (!isAlreadySaved) {
+            const clean = m.content
+              .replace(/^(?:hei mesterai|hei|kan du|vennligst)?\s*(?:registrer|meld|opprett|loggfør|legg inn|før)?\s*(?:et\s+)?avvik\s*(?:på|for|om|i|angående)?\s*/i, '')
+              .replace(/^(?:avvik|ruh)[:\-–]?\s*/i, '')
+              .trim();
+
+            const title = clean.length > 3 ? (clean.charAt(0).toUpperCase() + clean.slice(1, 80)) : 'Kvalitetsavvik meldt i chat';
+            const targetProj = selectedProject || projects[0];
+
+            let category = 'quality';
+            let codeRef = 'TEK17 & Internkontrollforskriften § 5';
+            let suggestedAction = 'Utbedre avviket i henhold til prosjektert løsning og dokumentere med foto.';
+            let severity: 'low' | 'medium' | 'high' | 'critical' = 'high';
+
+            if (text.includes('membran') || text.includes('sluk') || text.includes('våtrom') || text.includes('klemring')) {
+              category = 'membran';
+              codeRef = 'TEK17 § 13-15 (Våtrom og fall mot sluk) & BVN';
+              suggestedAction = 'Montere godkjent klemring/mansjett og verifisere vanntetthet.';
+            } else if (text.includes('isolasjon') || text.includes('dampsperre')) {
+              category = 'isolasjon';
+              codeRef = 'TEK17 § 14-2 (Energieffektivitet) & Byggforsk';
+              suggestedAction = 'Tette dampsperre med klemte skjøter før kledning monteres.';
+            } else if (text.includes('brann')) {
+              category = 'brann';
+              codeRef = 'TEK17 § 11-10 (Brannceller og seksjonering)';
+              suggestedAction = 'Branntette gjennomføringer med godkjent masse.';
+              severity = 'critical';
+            }
+
+            const recoveredDev: Deviation = {
+              id: `dev_rec_${m.id || Date.now()}`,
+              projectId: targetProj?.id || 'proj-default',
+              project: targetProj?.name || 'Aktiv byggeplass',
+              projectName: targetProj?.name || 'Aktiv byggeplass',
+              title,
+              description: `Avvik meldt inn til agenten: ${m.content}`,
+              category: category as any,
+              severity: severity as any,
+              status: 'open' as const,
+              reportedBy: user?.displayName || 'Byggeleder',
+              action: suggestedAction,
+              codeReference: codeRef,
+              createdAt: new Date().toISOString(),
+              timestamp: new Date().toISOString()
+            } as any;
+
+            setLocalDeviations(prev => {
+              if (prev.some(d => d.id === recoveredDev.id || d.title === recoveredDev.title)) return prev;
+              const updated = [recoveredDev, ...prev];
+              try { localStorage.setItem('cached_deviations', JSON.stringify(updated)); } catch {}
+              return updated;
+            });
+
+            try {
+              addDoc(collection(db, 'deviations'), {
+                ...recoveredDev,
+                timestamp: serverTimestamp()
+              }).catch(() => {});
+            } catch {}
+          }
+        }
+      }
+    });
+  }, [messages, selectedProject, projects, allDeviations, user?.displayName]);
 
   const [inputVal, setInputVal] = useState('');
   const [isLoading, setIsLoading] = useState(false);
@@ -1163,7 +1335,10 @@ export default function MesterWorkstation({
         window.dispatchEvent(new CustomEvent('trigger_dashboard_action', { detail: { actionId: 'handover' } }));
         break;
       case 'vehicle':
-        window.dispatchEvent(new CustomEvent('trigger_dashboard_action', { detail: { actionId: 'vehicle' } }));
+      case 'bilpark':
+      case 'kjørebok':
+        setActiveModuleTab('vehicle');
+        setViewMode('module');
         break;
       case 'inventory':
         window.dispatchEvent(new CustomEvent('trigger_dashboard_action', { detail: { actionId: 'inventory' } }));
@@ -1840,6 +2015,29 @@ export default function MesterWorkstation({
         });
         const totalLogged = (Number(data.timeEntry.hours) || 0) + (Number(data.timeEntry.overtime50) || 0) + (Number(data.timeEntry.overtime100) || 0);
         toast.success(`⏱️ ${totalLogged.toFixed(1)}t registrert i byggedagboken for ${data.timeEntry.projectName || 'prosjektet'}!`);
+      }
+
+      // ⚠️ Fang opp direkte avviksregistrering fra MesterAI og oppdater Avvik & RUH i sanntid
+      if (data.deviation) {
+        setLocalDeviations(prev => {
+          const exists = prev.some(d => d.id === data.deviation.id);
+          const updated = exists ? prev : [data.deviation, ...prev];
+          try {
+            localStorage.setItem('cached_deviations', JSON.stringify(updated));
+          } catch {}
+          return updated;
+        });
+
+        try {
+          addDoc(collection(db, 'deviations'), {
+            ...data.deviation,
+            timestamp: serverTimestamp()
+          }).catch(e => console.warn('Firestore synkroniseringsfeil:', e));
+        } catch (e) {
+          console.warn('Firestore direkte feil:', e);
+        }
+
+        toast.success(`⚠️ Avvik «${data.deviation.title}» registrert under ${data.deviation.projectName || 'prosjektet'}!`);
       }
 
       // 🎙️ Live Voice mode: les opp svar automatisk
@@ -2569,7 +2767,10 @@ export default function MesterWorkstation({
                   {activeModuleTab === 'teamchat' && (
                     <span>Internkommunikasjon: <strong className="text-violet-400">💬 Prosjekt- & Firmachatt</strong></span>
                   )}
-                  {!['project_details', 'all_projects', 'create_project', 'superadmin', 'offers', 'contacts', 'apprentice', 'hms', 'teamchat'].includes(activeModuleTab || '') && (
+                  {activeModuleTab === 'vehicle' && (
+                    <span>Bilpark & Kjørebok: <strong className="text-amber-400">🚗 Elektronisk Kjørebok & Flåtestyring</strong></span>
+                  )}
+                  {!['project_details', 'all_projects', 'create_project', 'superadmin', 'offers', 'contacts', 'apprentice', 'hms', 'teamchat', 'vehicle'].includes(activeModuleTab || '') && (
                     <span>Viser fagsystem: <strong className="text-white capitalize">{activeModuleTab}</strong></span>
                   )}
                 </span>
@@ -2711,7 +2912,7 @@ export default function MesterWorkstation({
                               <AlertTriangle size={15} className="text-rose-400 group-hover:scale-110 transition-transform" />
                             </div>
                             <div className="text-xl font-black text-white mt-1">
-                              {deviations.filter(d => !selectedProject || d.projectId === selectedProject.id).length} åpne
+                              {allDeviations.filter(d => (!selectedProject || d.projectId === selectedProject.id) && d.status !== 'closed').length} åpne
                             </div>
                             <span className="text-[10px] text-rose-400 block mt-1">HMS & RUH-rapportering →</span>
                           </div>
@@ -3119,7 +3320,7 @@ export default function MesterWorkstation({
                             value={newProjName}
                             onChange={(e) => setNewProjName(e.target.value)}
                             placeholder="F.eks: Totalrenovering Bad - Vidjeveien 21"
-                            className="w-full px-3.5 py-2.5 rounded-xl bg-slate-950 border border-slate-750 text-white font-medium text-xs sm:text-sm focus:outline-none focus:border-emerald-500"
+                            className="w-full px-3.5 py-2.5 rounded-xl bg-slate-950 border border-slate-800 text-white font-medium text-xs sm:text-sm focus:outline-none focus:border-emerald-500"
                           />
                         </div>
 
@@ -3132,7 +3333,7 @@ export default function MesterWorkstation({
                             value={newProjCode}
                             onChange={(e) => setNewProjCode(e.target.value)}
                             placeholder="F.eks: PROJ-105"
-                            className="w-full px-3.5 py-2.5 rounded-xl bg-slate-950 border border-slate-750 text-white font-mono text-xs sm:text-sm focus:outline-none focus:border-emerald-500"
+                            className="w-full px-3.5 py-2.5 rounded-xl bg-slate-950 border border-slate-800 text-white font-mono text-xs sm:text-sm focus:outline-none focus:border-emerald-500"
                           />
                         </div>
 
@@ -3143,7 +3344,7 @@ export default function MesterWorkstation({
                           <select
                             value={newProjStage}
                             onChange={(e: any) => setNewProjStage(e.target.value)}
-                            className="w-full px-3.5 py-2.5 rounded-xl bg-slate-950 border border-slate-750 text-white text-xs sm:text-sm focus:outline-none focus:border-emerald-500"
+                            className="w-full px-3.5 py-2.5 rounded-xl bg-slate-950 border border-slate-800 text-white text-xs sm:text-sm focus:outline-none focus:border-emerald-500"
                           >
                             <option value="Planlegging">Planlegging</option>
                             <option value="Oppstart">Oppstart</option>
@@ -3161,7 +3362,7 @@ export default function MesterWorkstation({
                             value={newProjClient}
                             onChange={(e) => setNewProjClient(e.target.value)}
                             placeholder="F.eks: Ola & Kari Nordmann"
-                            className="w-full px-3.5 py-2.5 rounded-xl bg-slate-950 border border-slate-750 text-white text-xs sm:text-sm focus:outline-none focus:border-emerald-500"
+                            className="w-full px-3.5 py-2.5 rounded-xl bg-slate-950 border border-slate-800 text-white text-xs sm:text-sm focus:outline-none focus:border-emerald-500"
                           />
                         </div>
 
@@ -3174,7 +3375,7 @@ export default function MesterWorkstation({
                             value={newProjAddress}
                             onChange={(e) => setNewProjAddress(e.target.value)}
                             placeholder="F.eks: Vidjeveien 21, 0484 Oslo"
-                            className="w-full px-3.5 py-2.5 rounded-xl bg-slate-950 border border-slate-750 text-white text-xs sm:text-sm focus:outline-none focus:border-emerald-500"
+                            className="w-full px-3.5 py-2.5 rounded-xl bg-slate-950 border border-slate-800 text-white text-xs sm:text-sm focus:outline-none focus:border-emerald-500"
                           />
                         </div>
 
@@ -3187,7 +3388,7 @@ export default function MesterWorkstation({
                             value={newProjDesc}
                             onChange={(e) => setNewProjDesc(e.target.value)}
                             placeholder="Beskriv arbeidets omfang, eventuelle underleverandører eller spesielle krav..."
-                            className="w-full px-3.5 py-2.5 rounded-xl bg-slate-950 border border-slate-750 text-white text-xs sm:text-sm focus:outline-none focus:border-emerald-500 resize-none"
+                            className="w-full px-3.5 py-2.5 rounded-xl bg-slate-950 border border-slate-800 text-white text-xs sm:text-sm focus:outline-none focus:border-emerald-500 resize-none"
                           />
                         </div>
                       </div>
@@ -3203,7 +3404,7 @@ export default function MesterWorkstation({
                               setActiveModuleTab('all_projects');
                             }
                           }}
-                          className="w-full sm:w-auto px-4 py-2.5 rounded-xl bg-slate-800 hover:bg-slate-750 text-slate-300 font-bold text-xs transition-colors cursor-pointer"
+                          className="w-full sm:w-auto px-4 py-2.5 rounded-xl bg-slate-800 hover:bg-slate-700 text-slate-300 font-bold text-xs transition-colors cursor-pointer"
                         >
                           Avbryt
                         </button>
@@ -3232,12 +3433,12 @@ export default function MesterWorkstation({
 
               {/* 1. 📝 TILBUD & HURTIGKALKYLE */}
               {activeModuleTab === 'offers' && (
-                <div className="space-y-4">
-                  <div className="bg-slate-900 border border-slate-800 rounded-3xl p-5 sm:p-6 space-y-5 shadow-xl">
+                <div className="space-y-4 pb-24 sm:pb-8">
+                  <div className="bg-slate-900 border border-slate-800 rounded-3xl p-4 sm:p-6 space-y-4 sm:space-y-5 shadow-xl">
                     <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-3 pb-4 border-b border-slate-800">
                       <div>
-                        <h3 className="text-lg font-black text-white flex items-center gap-2">
-                          <Calculator className="text-purple-400" size={20} />
+                        <h3 className="text-base sm:text-lg font-black text-white flex items-center gap-2">
+                          <Calculator className="text-purple-400 shrink-0" size={20} />
                           <span>Tilbud & Hurtigkalkyle</span>
                         </h3>
                         <p className="text-xs text-slate-400 mt-0.5">
@@ -3249,24 +3450,24 @@ export default function MesterWorkstation({
                           <button
                             type="button"
                             onClick={() => onOpenOfferModal({ clientName: '', projectId: '' })}
-                            className="inline-flex items-center gap-2 px-3.5 py-2 rounded-xl bg-slate-800 hover:bg-slate-750 text-white text-xs font-bold transition-all border border-slate-700 cursor-pointer shrink-0"
+                            className="inline-flex items-center gap-1.5 px-3 py-2 rounded-xl bg-slate-800 hover:bg-slate-700 text-white text-xs font-bold transition-all border border-slate-700 cursor-pointer shrink-0"
                           >
-                            <Plus size={15} /> + Nytt tilbud (Frittstående)
+                            <Plus size={14} /> Nytt tilbud
                           </button>
                         )}
                         <button
                           type="button"
                           onClick={handleCreateOfferFromCalc}
-                          className="inline-flex items-center gap-2 px-4 py-2 rounded-xl bg-purple-600 hover:bg-purple-500 text-white text-xs font-bold transition-all shadow-md cursor-pointer shrink-0"
+                          className="inline-flex items-center gap-1.5 px-3.5 py-2 rounded-xl bg-purple-600 hover:bg-purple-500 text-white text-xs font-bold transition-all shadow-md cursor-pointer shrink-0"
                         >
-                          <Plus size={15} /> Opprett tilbud fra kalkyle
+                          <Plus size={14} /> Opprett tilbud fra kalkyle
                         </button>
                       </div>
                     </div>
 
                     {/* 💡 Autonom tilbudsflyt banner */}
-                    <div className="p-4 rounded-2xl bg-purple-950/40 border border-purple-500/30 text-xs text-purple-200 flex items-start gap-3 shadow-xs">
-                      <span className="text-xl shrink-0">✨</span>
+                    <div className="p-3.5 sm:p-4 rounded-2xl bg-purple-950/40 border border-purple-500/30 text-[11px] sm:text-xs text-purple-200 flex items-start gap-2.5 sm:gap-3 shadow-xs">
+                      <span className="text-base sm:text-xl shrink-0 mt-0.5">✨</span>
                       <div className="space-y-1">
                         <strong className="text-white block font-bold">100% Autonom Kontrakt- og Prosjektoppstart</strong>
                         <p className="text-purple-300 leading-relaxed">
@@ -3279,97 +3480,124 @@ export default function MesterWorkstation({
                     </div>
 
                     {/* 3 Nøkkeltall for tilbud */}
-                    <div className="grid grid-cols-1 sm:grid-cols-3 gap-3">
-                      <div className="p-4 rounded-2xl bg-slate-950 border border-slate-800/80">
-                        <span className="text-[10px] font-bold uppercase tracking-wider text-slate-400 block">
-                          Samlet tilbudsverdi
+                    <div className="grid grid-cols-3 gap-2 sm:gap-3">
+                      <div className="p-2.5 sm:p-4 rounded-xl sm:rounded-2xl bg-slate-950 border border-slate-800/80">
+                        <span className="text-[9px] sm:text-[10px] font-bold uppercase tracking-wider text-slate-400 block truncate">
+                          Tilbudsverdi
                         </span>
-                        <div className="text-xl font-black text-white mt-1">
+                        <div className="text-xs sm:text-lg font-black text-white mt-1 truncate">
                           kr {offers.reduce((acc, curr) => acc + (Number(curr.totalPrice || curr.amount) || 0), 0).toLocaleString('no-NO')}
                         </div>
-                        <span className="text-[10px] text-purple-400 font-medium mt-0.5 block">Eks. mva</span>
+                        <span className="text-[9px] sm:text-[10px] text-purple-400 font-medium mt-0.5 block truncate">Eks. mva</span>
                       </div>
 
-                      <div className="p-4 rounded-2xl bg-slate-950 border border-slate-800/80">
-                        <span className="text-[10px] font-bold uppercase tracking-wider text-slate-400 block">
+                      <div className="p-2.5 sm:p-4 rounded-xl sm:rounded-2xl bg-slate-950 border border-slate-800/80">
+                        <span className="text-[9px] sm:text-[10px] font-bold uppercase tracking-wider text-slate-400 block truncate">
                           Aktive tilbud
                         </span>
-                        <div className="text-xl font-black text-white mt-1">
+                        <div className="text-xs sm:text-lg font-black text-white mt-1">
                           {offers.length} stk
                         </div>
-                        <span className="text-[10px] text-emerald-400 font-medium mt-0.5 block">Registrert i systemet</span>
+                        <span className="text-[9px] sm:text-[10px] text-emerald-400 font-medium mt-0.5 block truncate">I systemet</span>
                       </div>
 
-                      <div className="p-4 rounded-2xl bg-slate-950 border border-slate-800/80">
-                        <span className="text-[10px] font-bold uppercase tracking-wider text-slate-400 block">
+                      <div className="p-2.5 sm:p-4 rounded-xl sm:rounded-2xl bg-slate-950 border border-slate-800/80">
+                        <span className="text-[9px] sm:text-[10px] font-bold uppercase tracking-wider text-slate-400 block truncate">
                           Standard timepris
                         </span>
-                        <div className="text-xl font-black text-purple-300 mt-1">
-                          kr {calcHourlyRate},- / time
+                        <div className="text-xs sm:text-lg font-black text-purple-300 mt-1 truncate">
+                          kr {calcHourlyRate},-
                         </div>
-                        <span className="text-[10px] text-slate-400 font-medium mt-0.5 block">Mester Entreprenør AS</span>
+                        <span className="text-[9px] sm:text-[10px] text-slate-400 font-medium mt-0.5 block truncate">Pr. time</span>
                       </div>
                     </div>
 
                     {/* MesterAI Hurtigkalkulator */}
-                    <div className="p-5 rounded-2xl bg-gradient-to-br from-slate-950 via-slate-900 to-slate-950 border border-purple-500/30 space-y-4">
-                      <div className="flex items-center justify-between">
-                        <h4 className="text-sm font-bold text-white flex items-center gap-2">
-                          <Sparkles size={16} className="text-purple-400" />
-                          <span>MesterAI Hurtigkalkulator (Live estimat)</span>
-                        </h4>
-                        <span className="text-[10px] font-bold text-slate-400 uppercase tracking-wider">
-                          Interaktiv beregning
+                    <div className="p-4 sm:p-5 rounded-2xl bg-gradient-to-br from-slate-950 via-slate-900 to-slate-950 border border-purple-500/30 shadow-lg space-y-3.5 sm:space-y-4">
+                      <div className="flex items-center justify-between gap-2">
+                        <div className="flex items-center gap-2.5 min-w-0">
+                          <div className="w-8 h-8 rounded-xl bg-purple-500/10 border border-purple-500/25 flex items-center justify-center shrink-0 text-purple-400">
+                            <Calculator size={16} />
+                          </div>
+                          <div className="min-w-0">
+                            <div className="flex items-center gap-2">
+                              <h4 className="text-xs sm:text-sm font-bold text-white truncate">
+                                MesterAI Hurtigkalkulator
+                              </h4>
+                              <span className="inline-flex items-center gap-1 px-1.5 py-0.5 rounded-full text-[9px] sm:text-[10px] font-bold bg-purple-500/15 text-purple-300 border border-purple-500/25 shrink-0">
+                                <span className="w-1.5 h-1.5 rounded-full bg-emerald-400 animate-pulse" />
+                                Live
+                              </span>
+                            </div>
+                            <p className="text-[10px] sm:text-[11px] text-slate-400 truncate">
+                              Sanntids pris- og tilbudsestimat
+                            </p>
+                          </div>
+                        </div>
+                        <span className="text-[10px] font-bold text-slate-500 tracking-wider uppercase hidden sm:block shrink-0">
+                          Interaktiv
                         </span>
                       </div>
 
-                      <div className="grid grid-cols-2 sm:grid-cols-4 gap-3">
-                        <div>
-                          <label className="text-[11px] font-bold text-slate-400 block mb-1">
+                      <div className="grid grid-cols-2 sm:grid-cols-4 gap-2 sm:gap-3">
+                        <div className="bg-slate-900/90 border border-slate-800 focus-within:border-purple-500/80 focus-within:ring-1 focus-within:ring-purple-500/30 rounded-xl p-2.5 transition-all">
+                          <span className="text-[10px] font-bold uppercase tracking-wider text-slate-400 block mb-1">
                             Arbeidstimer
-                          </label>
-                          <input
-                            type="number"
-                            value={calcHours}
-                            onChange={(e) => setCalcHours(Math.max(0, Number(e.target.value)))}
-                            className="w-full px-3 py-2 rounded-xl bg-slate-900 border border-slate-750 text-white font-bold text-xs sm:text-sm focus:outline-none focus:border-purple-500"
-                          />
+                          </span>
+                          <div className="flex items-center justify-between gap-1">
+                            <input
+                              type="number"
+                              value={calcHours}
+                              onChange={(e) => setCalcHours(Math.max(0, Number(e.target.value)))}
+                              className="w-full bg-transparent text-white font-black text-sm sm:text-base focus:outline-none"
+                            />
+                            <span className="text-[11px] text-slate-500 font-semibold shrink-0">t</span>
+                          </div>
                         </div>
 
-                        <div>
-                          <label className="text-[11px] font-bold text-slate-400 block mb-1">
-                            Timepris (kr eks. mva)
-                          </label>
-                          <input
-                            type="number"
-                            value={calcHourlyRate}
-                            onChange={(e) => setCalcHourlyRate(Math.max(0, Number(e.target.value)))}
-                            className="w-full px-3 py-2 rounded-xl bg-slate-900 border border-slate-750 text-white font-bold text-xs sm:text-sm focus:outline-none focus:border-purple-500"
-                          />
+                        <div className="bg-slate-900/90 border border-slate-800 focus-within:border-purple-500/80 focus-within:ring-1 focus-within:ring-purple-500/30 rounded-xl p-2.5 transition-all">
+                          <span className="text-[10px] font-bold uppercase tracking-wider text-slate-400 block mb-1">
+                            Timepris
+                          </span>
+                          <div className="flex items-center justify-between gap-1">
+                            <input
+                              type="number"
+                              value={calcHourlyRate}
+                              onChange={(e) => setCalcHourlyRate(Math.max(0, Number(e.target.value)))}
+                              className="w-full bg-transparent text-white font-black text-sm sm:text-base focus:outline-none"
+                            />
+                            <span className="text-[11px] text-slate-500 font-semibold shrink-0">kr/t</span>
+                          </div>
                         </div>
 
-                        <div>
-                          <label className="text-[11px] font-bold text-slate-400 block mb-1">
-                            Materiellkost (kr)
-                          </label>
-                          <input
-                            type="number"
-                            value={calcMaterials}
-                            onChange={(e) => setCalcMaterials(Math.max(0, Number(e.target.value)))}
-                            className="w-full px-3 py-2 rounded-xl bg-slate-900 border border-slate-750 text-white font-bold text-xs sm:text-sm focus:outline-none focus:border-purple-500"
-                          />
+                        <div className="bg-slate-900/90 border border-slate-800 focus-within:border-purple-500/80 focus-within:ring-1 focus-within:ring-purple-500/30 rounded-xl p-2.5 transition-all">
+                          <span className="text-[10px] font-bold uppercase tracking-wider text-slate-400 block mb-1">
+                            Materiellkost
+                          </span>
+                          <div className="flex items-center justify-between gap-1">
+                            <input
+                              type="number"
+                              value={calcMaterials}
+                              onChange={(e) => setCalcMaterials(Math.max(0, Number(e.target.value)))}
+                              className="w-full bg-transparent text-white font-black text-sm sm:text-base focus:outline-none"
+                            />
+                            <span className="text-[11px] text-slate-500 font-semibold shrink-0">kr</span>
+                          </div>
                         </div>
 
-                        <div>
-                          <label className="text-[11px] font-bold text-slate-400 block mb-1">
-                            Påslag materiell (%)
-                          </label>
-                          <input
-                            type="number"
-                            value={calcMarkup}
-                            onChange={(e) => setCalcMarkup(Math.max(0, Number(e.target.value)))}
-                            className="w-full px-3 py-2 rounded-xl bg-slate-900 border border-slate-750 text-white font-bold text-xs sm:text-sm focus:outline-none focus:border-purple-500"
-                          />
+                        <div className="bg-slate-900/90 border border-slate-800 focus-within:border-purple-500/80 focus-within:ring-1 focus-within:ring-purple-500/30 rounded-xl p-2.5 transition-all">
+                          <span className="text-[10px] font-bold uppercase tracking-wider text-slate-400 block mb-1">
+                            Påslag materiell
+                          </span>
+                          <div className="flex items-center justify-between gap-1">
+                            <input
+                              type="number"
+                              value={calcMarkup}
+                              onChange={(e) => setCalcMarkup(Math.max(0, Number(e.target.value)))}
+                              className="w-full bg-transparent text-white font-black text-sm sm:text-base focus:outline-none"
+                            />
+                            <span className="text-[11px] text-slate-500 font-semibold shrink-0">%</span>
+                          </div>
                         </div>
                       </div>
 
@@ -3382,35 +3610,59 @@ export default function MesterWorkstation({
                         const totalIncMva = totalExMva + mva;
 
                         return (
-                          <div className="p-4 rounded-xl bg-slate-900/90 border border-slate-800 flex flex-col sm:flex-row sm:items-center justify-between gap-4">
-                            <div className="flex flex-wrap items-center gap-4 text-xs text-slate-300">
-                              <div>
-                                <span className="text-slate-500 block text-[10px]">Arbeid:</span>
-                                <strong className="text-white">kr {labor.toLocaleString('no-NO')}</strong>
+                          <div className="p-3.5 sm:p-4 rounded-xl bg-slate-950/80 border border-slate-800/90 space-y-3.5">
+                            {/* 2 Del-summer: Arbeid og Materiell */}
+                            <div className="grid grid-cols-2 gap-2 text-xs">
+                              <div className="p-2.5 rounded-lg bg-slate-900/60 border border-slate-800/60">
+                                <span className="text-[10px] font-semibold text-slate-400 block uppercase tracking-wider">
+                                  Arbeid ({calcHours}t × {calcHourlyRate} kr)
+                                </span>
+                                <strong className="text-xs sm:text-sm font-bold text-white mt-0.5 block truncate">
+                                  kr {labor.toLocaleString('no-NO')}
+                                </strong>
                               </div>
-                              <span className="text-slate-600">+</span>
-                              <div>
-                                <span className="text-slate-500 block text-[10px]">Materiell m/påslag:</span>
-                                <strong className="text-white">kr {mats.toLocaleString('no-NO')}</strong>
-                              </div>
-                              <span className="text-slate-600">=</span>
-                              <div>
-                                <span className="text-purple-400 block text-[10px] font-bold">Sum eks. mva:</span>
-                                <strong className="text-base text-purple-300 font-black">kr {totalExMva.toLocaleString('no-NO')}</strong>
-                              </div>
-                              <div className="border-l border-slate-800 pl-4">
-                                <span className="text-slate-500 block text-[10px]">Inkl. 25% mva:</span>
-                                <strong className="text-xs text-slate-200">kr {totalIncMva.toLocaleString('no-NO')}</strong>
+                              <div className="p-2.5 rounded-lg bg-slate-900/60 border border-slate-800/60">
+                                <span className="text-[10px] font-semibold text-slate-400 block uppercase tracking-wider truncate">
+                                  Materiell (+{calcMarkup}%)
+                                </span>
+                                <strong className="text-xs sm:text-sm font-bold text-white mt-0.5 block truncate">
+                                  kr {mats.toLocaleString('no-NO')}
+                                </strong>
                               </div>
                             </div>
 
-                            <button
-                              type="button"
-                              onClick={handleCreateOfferFromCalc}
-                              className="px-4 py-2 rounded-xl bg-emerald-600 hover:bg-emerald-500 text-white text-xs font-bold transition-all shadow-md cursor-pointer shrink-0"
-                            >
-                              ✓ Lagre tilbud
-                            </button>
+                            <div className="h-px bg-slate-800/80" />
+
+                            {/* Totalsum og Opprett Tilbud-knapp */}
+                            <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-3">
+                              <div className="flex items-center justify-between sm:justify-start sm:gap-5">
+                                <div>
+                                  <span className="text-[10px] font-bold uppercase tracking-wider text-purple-400 block">
+                                    Sum eks. mva
+                                  </span>
+                                  <span className="text-xl sm:text-2xl font-black text-white">
+                                    kr {totalExMva.toLocaleString('no-NO')}
+                                  </span>
+                                </div>
+                                <div className="text-right sm:text-left sm:pl-4 sm:border-l sm:border-slate-800">
+                                  <span className="text-[10px] font-medium text-slate-400 block">
+                                    Inkl. 25% mva
+                                  </span>
+                                  <span className="text-xs sm:text-sm font-semibold text-slate-300">
+                                    kr {totalIncMva.toLocaleString('no-NO')}
+                                  </span>
+                                </div>
+                              </div>
+
+                              <button
+                                type="button"
+                                onClick={handleCreateOfferFromCalc}
+                                className="w-full sm:w-auto px-5 py-2.5 rounded-xl bg-gradient-to-r from-emerald-600 to-teal-600 hover:from-emerald-500 hover:to-teal-500 active:scale-[0.98] text-white text-xs font-bold transition-all shadow-md shadow-emerald-950/40 cursor-pointer flex items-center justify-center gap-1.5"
+                              >
+                                <Check size={14} className="text-white" />
+                                <span>Opprett tilbud fra kalkyle</span>
+                              </button>
+                            </div>
                           </div>
                         );
                       })()}
@@ -4011,35 +4263,245 @@ export default function MesterWorkstation({
               )}
 
               {/* 5. 🚨 AVVIK & RUH */}
-              {activeModuleTab === 'deviations' && (
-                <div className="bg-slate-900 border border-slate-800 rounded-3xl p-5 sm:p-6 space-y-4 shadow-xl">
-                  <div className="flex items-center justify-between pb-4 border-b border-slate-800">
-                    <h3 className="text-lg font-black text-white">Avvik & RUH ({deviations.length})</h3>
-                  </div>
-                  {deviations.length === 0 ? (
-                    <div className="py-12 text-center text-slate-400 text-sm">
-                      Ingen åpne avvik. Alt er i henhold til KS og TEK17!
-                    </div>
-                  ) : (
-                    <div className="grid gap-3">
-                      {deviations.map((dev) => (
-                        <div key={dev.id} className="p-4 rounded-2xl bg-slate-950 border border-slate-800 flex items-center justify-between gap-3">
-                          <div>
-                            <p className="text-sm font-bold text-white">{dev.title}</p>
-                            <p className="text-xs text-slate-400 mt-0.5">{dev.description}</p>
+              {activeModuleTab === 'deviations' && (() => {
+                const filteredDeviations = allDeviations.filter(d => {
+                  const matchesProject = deviationFilterProject === 'all' || d.projectId === deviationFilterProject;
+                  const matchesStatus = deviationFilterStatus === 'all' 
+                    ? true 
+                    : deviationFilterStatus === 'open' 
+                      ? d.status !== 'closed' 
+                      : d.status === 'closed';
+                  return matchesProject && matchesStatus;
+                });
+                const openCount = allDeviations.filter(d => d.status !== 'closed').length;
+                const closedCount = allDeviations.filter(d => d.status === 'closed').length;
+
+                return (
+                  <div className="bg-slate-900 border border-slate-800 rounded-3xl p-4 sm:p-6 space-y-5 shadow-xl">
+                    {/* Header bar */}
+                    <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-4 pb-4 border-b border-slate-800">
+                      <div>
+                        <div className="flex items-center gap-2.5">
+                          <div className="w-10 h-10 rounded-xl bg-gradient-to-tr from-rose-500/20 to-orange-500/20 text-rose-400 border border-rose-500/30 flex items-center justify-center shrink-0">
+                            <AlertTriangle size={20} />
                           </div>
-                          <span className={cn(
-                            "px-2.5 py-1 rounded-full text-xs font-bold uppercase",
-                            dev.status === 'closed' ? "bg-emerald-500/20 text-emerald-400" : "bg-rose-500/20 text-rose-400"
-                          )}>
-                            {dev.status}
-                          </span>
+                          <div>
+                            <div className="flex items-center gap-2">
+                              <h3 className="text-lg sm:text-xl font-black text-white">Avvik & RUH ({allDeviations.length})</h3>
+                              <span className="text-[10px] font-bold px-2 py-0.5 rounded-full bg-rose-500/20 text-rose-300 border border-rose-500/30">
+                                {openCount} åpne
+                              </span>
+                            </div>
+                            <p className="text-xs text-slate-400 mt-0.5">
+                              Kvalitetsavvik, mangler og uønskede hendelser (TEK17 & Internkontrollforskriften § 5)
+                            </p>
+                          </div>
                         </div>
-                      ))}
+                      </div>
+
+                      {/* Handlingsknapper */}
+                      <div className="flex flex-wrap items-center gap-2">
+                        <button
+                          type="button"
+                          onClick={() => {
+                            setViewMode('chat');
+                            const targetP = projects.find(p => p.id === deviationFilterProject) || selectedProject || projects[0];
+                            setInputVal(`Meld avvik på ${targetP?.name || 'prosjektet'}: `);
+                            setTimeout(() => {
+                              if (textareaRef.current) textareaRef.current.focus();
+                            }, 100);
+                          }}
+                          className="px-3.5 py-2 rounded-xl bg-gradient-to-r from-purple-600 to-indigo-600 hover:from-purple-500 hover:to-indigo-500 text-white font-bold text-xs sm:text-sm flex items-center gap-2 shadow-md transition-all cursor-pointer"
+                        >
+                          <Sparkles size={15} />
+                          <span>Meld med MesterAI</span>
+                        </button>
+
+                        <button
+                          type="button"
+                          onClick={() => {
+                            window.dispatchEvent(new CustomEvent('trigger_dashboard_action', { detail: { actionId: 'log_deviation' } }));
+                          }}
+                          className="px-3.5 py-2 rounded-xl bg-rose-600 hover:bg-rose-500 text-white font-bold text-xs sm:text-sm flex items-center gap-2 shadow-md transition-all cursor-pointer"
+                        >
+                          <Plus size={15} />
+                          <span>Loggfør avvik manuelt</span>
+                        </button>
+                      </div>
                     </div>
-                  )}
-                </div>
-              )}
+
+                    {/* Filterbar */}
+                    <div className="flex flex-col sm:flex-row items-stretch sm:items-center justify-between gap-3 p-3 bg-slate-950 rounded-2xl border border-slate-800">
+                      {/* Status-faner */}
+                      <div className="flex items-center gap-1.5 p-1 bg-slate-900 rounded-xl border border-slate-800 shrink-0 text-xs">
+                        <button
+                          type="button"
+                          onClick={() => setDeviationFilterStatus('all')}
+                          className={cn(
+                            "px-3 py-1.5 rounded-lg font-bold transition-colors cursor-pointer",
+                            deviationFilterStatus === 'all' ? "bg-slate-800 text-white shadow-xs" : "text-slate-400 hover:text-white"
+                          )}
+                        >
+                          Alle ({allDeviations.length})
+                        </button>
+                        <button
+                          type="button"
+                          onClick={() => setDeviationFilterStatus('open')}
+                          className={cn(
+                            "px-3 py-1.5 rounded-lg font-bold transition-colors cursor-pointer flex items-center gap-1.5",
+                            deviationFilterStatus === 'open' ? "bg-rose-500/20 text-rose-300 border border-rose-500/30" : "text-slate-400 hover:text-white"
+                          )}
+                        >
+                          <span>Åpne</span>
+                          <span className="w-1.5 h-1.5 rounded-full bg-rose-400 animate-pulse" />
+                          <span>({openCount})</span>
+                        </button>
+                        <button
+                          type="button"
+                          onClick={() => setDeviationFilterStatus('closed')}
+                          className={cn(
+                            "px-3 py-1.5 rounded-lg font-bold transition-colors cursor-pointer",
+                            deviationFilterStatus === 'closed' ? "bg-emerald-500/20 text-emerald-300 border border-emerald-500/30" : "text-slate-400 hover:text-white"
+                          )}
+                        >
+                          Utbedret ({closedCount})
+                        </button>
+                      </div>
+
+                      {/* Prosjekt-velger */}
+                      <div className="flex items-center gap-2 text-xs">
+                        <span className="text-slate-400 font-medium hidden md:inline">Byggeplass:</span>
+                        <select
+                          value={deviationFilterProject}
+                          onChange={(e) => setDeviationFilterProject(e.target.value)}
+                          className="w-full sm:w-auto px-3 py-1.5 bg-slate-900 border border-slate-800 rounded-xl text-white outline-none focus:border-rose-500 transition-colors text-xs font-semibold cursor-pointer"
+                        >
+                          <option value="all">Alle byggeplasser ({allDeviations.length})</option>
+                          {projects.map(p => (
+                            <option key={p.id} value={p.id}>{p.name}</option>
+                          ))}
+                        </select>
+                      </div>
+                    </div>
+
+                    {/* Avviksliste */}
+                    {filteredDeviations.length === 0 ? (
+                      <div className="py-12 px-4 text-center rounded-2xl bg-slate-950/60 border border-slate-800/80 space-y-3">
+                        <div className="w-12 h-12 rounded-2xl bg-slate-900 border border-slate-800 flex items-center justify-center mx-auto text-emerald-400">
+                          <CheckCircle2 size={24} />
+                        </div>
+                        <h4 className="font-black text-white text-base">
+                          {deviationFilterStatus === 'open' 
+                            ? 'Ingen åpne avvik registrert!' 
+                            : 'Ingen avvik matcher dette filteret'}
+                        </h4>
+                        <p className="text-xs text-slate-400 max-w-md mx-auto leading-relaxed">
+                          Byggeplassen har full kontroll iht. kvalitetsplanen, TEK17 og HMS-kravene. Meld inn feil eller mangler direkte i chatten for øyeblikkelig registrering.
+                        </p>
+                      </div>
+                    ) : (
+                      <div className="grid gap-3">
+                        {filteredDeviations.map((dev) => {
+                          const isClosed = dev.status === 'closed';
+                          const isCrit = dev.severity === 'critical';
+                          const isHigh = dev.severity === 'high';
+                          const sevLabel = isCrit ? '🔴 Kritisk avvik' : isHigh ? '🟠 Høy alvorlighet' : '🟡 Middels avvik';
+                          const sevClass = isCrit 
+                            ? "bg-rose-500/20 text-rose-300 border-rose-500/30" 
+                            : isHigh 
+                              ? "bg-orange-500/20 text-orange-300 border-orange-500/30" 
+                              : "bg-amber-500/20 text-amber-300 border-amber-500/30";
+
+                          return (
+                            <div 
+                              key={dev.id} 
+                              className={cn(
+                                "p-4 sm:p-5 rounded-2xl bg-slate-950 border transition-all space-y-3",
+                                isClosed ? "border-slate-800/60 opacity-80" : isCrit ? "border-rose-500/50 shadow-sm shadow-rose-950/30" : "border-slate-800 hover:border-slate-700"
+                              )}
+                            >
+                              <div className="flex flex-col sm:flex-row sm:items-start justify-between gap-3">
+                                <div className="space-y-1.5 flex-1 min-w-0">
+                                  <div className="flex flex-wrap items-center gap-2">
+                                    <span className={cn("text-[10px] font-black uppercase px-2.5 py-0.5 rounded-full border", sevClass)}>
+                                      {sevLabel}
+                                    </span>
+                                    <span className={cn(
+                                      "text-[10px] font-bold px-2.5 py-0.5 rounded-full border",
+                                      isClosed 
+                                        ? "bg-emerald-500/20 text-emerald-300 border-emerald-500/30" 
+                                        : "bg-slate-900 text-slate-300 border-slate-800"
+                                    )}>
+                                      {isClosed ? '✅ Utbedret / Lukket' : '⏳ Åpent avvik'}
+                                    </span>
+                                    {((dev as any).projectName || (dev as any).project) && (
+                                      <span className="text-[10px] text-slate-400 flex items-center gap-1 font-semibold">
+                                        <Building2 size={12} className="text-slate-500" />
+                                        <span>{(dev as any).projectName || (dev as any).project}</span>
+                                      </span>
+                                    )}
+                                    {dev.createdAt && (
+                                      <span className="text-[10px] text-slate-500 font-mono">
+                                        {new Date(dev.createdAt).toLocaleDateString('no-NO')}
+                                      </span>
+                                    )}
+                                  </div>
+
+                                  <h4 className={cn("text-base font-black tracking-tight", isClosed ? "text-slate-300 line-through" : "text-white")}>
+                                    {dev.title}
+                                  </h4>
+                                  
+                                  <p className="text-xs text-slate-300 leading-relaxed">
+                                    {dev.description}
+                                  </p>
+
+                                  {(dev as any).codeReference && (
+                                    <div className="text-[11px] font-medium text-amber-300 bg-amber-500/10 border border-amber-500/20 rounded-lg px-2.5 py-1 inline-block mt-1">
+                                      📐 Forskriftskrav: {(dev as any).codeReference}
+                                    </div>
+                                  )}
+
+                                  {((dev as any).correctiveAction || (dev as any).action) && (
+                                    <p className="text-xs text-slate-400 mt-1">
+                                      <strong className="text-slate-300">Påkrevd tiltak:</strong> {(dev as any).correctiveAction || (dev as any).action}
+                                    </p>
+                                  )}
+                                </div>
+
+                                {/* Handlingsknapper på kortet */}
+                                <div className="flex items-center gap-2 shrink-0 self-end sm:self-start">
+                                  <button
+                                    type="button"
+                                    onClick={() => handleToggleDeviationStatus(dev)}
+                                    className={cn(
+                                      "px-3 py-1.5 rounded-xl font-bold text-xs flex items-center gap-1.5 transition-all cursor-pointer",
+                                      isClosed
+                                        ? "bg-slate-800 hover:bg-slate-700 text-slate-200 border border-slate-700"
+                                        : "bg-emerald-600 hover:bg-emerald-500 text-white shadow-xs"
+                                    )}
+                                  >
+                                    <CheckCircle2 size={13} />
+                                    <span>{isClosed ? 'Gjenåpne' : 'Merk som utbedret'}</span>
+                                  </button>
+
+                                  <button
+                                    type="button"
+                                    onClick={() => handleDeleteDeviation(dev.id)}
+                                    className="p-1.5 rounded-xl text-slate-500 hover:text-rose-400 hover:bg-rose-500/10 transition-colors cursor-pointer"
+                                    title="Slett avvik"
+                                  >
+                                    <Trash2 size={15} />
+                                  </button>
+                                </div>
+                              </div>
+                            </div>
+                          );
+                        })}
+                      </div>
+                    )}
+                  </div>
+                );
+              })()}
 
               {/* 6. 🦺 SIKKER JOBB ANALYSE (SJA) */}
               {activeModuleTab === 'sja' && (
@@ -4696,6 +5158,13 @@ export default function MesterWorkstation({
               {activeModuleTab === 'hms' && (
                 <div className="space-y-4">
                   <HMSModule projects={projects} />
+                </div>
+              )}
+
+              {/* 8D. 🚗 BILPARK & KJØREBOK (INLINE) */}
+              {activeModuleTab === 'vehicle' && (
+                <div className="space-y-4">
+                  <VehicleFleetManager projects={projects} />
                 </div>
               )}
 

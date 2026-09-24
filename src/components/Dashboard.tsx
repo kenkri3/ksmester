@@ -456,7 +456,10 @@ export default function Dashboard({
           setIsTimeModalOpen(true);
           break;
         case 'vehicle':
-          setIsVehicleModalOpen(true);
+        case 'bilpark':
+        case 'kjørebok':
+          setIsViewingProjectDetails(false);
+          window.dispatchEvent(new CustomEvent('navigate_view', { detail: { view: 'vehicle' } }));
           break;
         case 'inventory':
           setIsInventoryModalOpen(true);
@@ -735,7 +738,9 @@ export default function Dashboard({
 
       case 'vehicle':
       case 'bilpark':
-        setIsVehicleModalOpen(true);
+      case 'kjørebok':
+        setIsViewingProjectDetails(false);
+        window.dispatchEvent(new CustomEvent('navigate_view', { detail: { view: 'vehicle' } }));
         break;
 
       case 'building_app':

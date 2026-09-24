@@ -957,6 +957,184 @@ export async function POST(req: NextRequest) {
       }
     }
 
+    // 🎯 0A. BARE TRIGGER: "registrer avvik" / "meld avvik" (uten beskrivelse)
+    const isBareAvvik = [
+      'registrer avvik', 'meld avvik', 'opprett avvik', 'loggfør avvik', 'legg inn avvik', 'før avvik', 'nytt avvik', 'avviksmelding', 'meld ruh', 'registrer ruh'
+    ].includes(cleanLowerMsg);
+
+    if (isBareAvvik) {
+      const activePName = resolvedProjectName && resolvedProjectName !== 'Alle byggeplasser' 
+        ? resolvedProjectName 
+        : (effectiveCompanyId === 'comp-demo-fjellheim' ? 'Hytte Sjusjøen - Nybygg' : (availableProjects?.[0]?.name || 'aktiv byggeplass'));
+
+      return NextResponse.json({
+        success: true,
+        sessionId: fbId,
+        reply: `⚠️ **Meld avvik / RUH (Kvalitetskontroll iht. TEK17)**\n*Gjelder byggeplass: **${activePName}***\n\nHva er feilen, mangelen eller den uønskede hendelsen som er oppdaget?\n\nBeskriv avviket kort (f.eks: *«Mangler klemring på sluk i dusjsonen»*, *«Feil isolasjonstykkelse i yttervegg»* eller *«Manglende fallsikring på stillas»*), så loggfører jeg avviket med alvorlighetsgrad, forskriftskrav og påkrevd utbedringstiltak!`,
+        quickReplies: [
+          { title: 'Våtrom & Membran', payload: `Registrer avvik på ${activePName}: Mangler klemring på sluk i dusjsonen` },
+          { title: 'Isolasjon & Tetting', payload: `Registrer avvik på ${activePName}: Skade på dampsperre før kledning` },
+          { title: 'HMS & Sikkerhet', payload: `Registrer avvik på ${activePName}: Manglende rekkverk på stillas` }
+        ]
+      });
+    }
+
+    // 🎯 0B. REELL REGISTRERING AV AVVIK / RUH (AUTONOMT I KS-SYSTEMET)
+    const isDeviationRegistration = !isFetchDeviations && !isBareAvvik && (
+      cleanLowerMsg.startsWith('registrer avvik') ||
+      cleanLowerMsg.startsWith('meld avvik') ||
+      cleanLowerMsg.startsWith('opprett avvik') ||
+      cleanLowerMsg.startsWith('loggfør avvik') ||
+      cleanLowerMsg.startsWith('legg inn avvik') ||
+      cleanLowerMsg.startsWith('før avvik') ||
+      cleanLowerMsg.startsWith('avvik:') ||
+      cleanLowerMsg.startsWith('avvik på') ||
+      cleanLowerMsg.startsWith('avvik i') ||
+      cleanLowerMsg.startsWith('avvik –') ||
+      cleanLowerMsg.startsWith('avvik -') ||
+      cleanLowerMsg.startsWith('ruh:') ||
+      cleanLowerMsg.startsWith('ruh på') ||
+      cleanLowerMsg.includes('avviksmelding') ||
+      (cleanLowerMsg.includes('avvik') && (
+        cleanLowerMsg.includes('mangler') ||
+        cleanLowerMsg.includes('feil') ||
+        cleanLowerMsg.includes('oppdaget') ||
+        cleanLowerMsg.includes('lekkasje') ||
+        cleanLowerMsg.includes('skade') ||
+        cleanLowerMsg.includes('sprekker') ||
+        cleanLowerMsg.includes('ikke godkjent') ||
+        cleanLowerMsg.includes('svikt') ||
+        cleanLowerMsg.includes('montert feil')
+      ))
+    );
+
+    if (isDeviationRegistration) {
+      let finalProjId = resolvedProjectId;
+      let finalProjName = resolvedProjectName;
+
+      if (!finalProjId || !finalProjName || finalProjName === 'Alle byggeplasser') {
+        if (effectiveCompanyId === 'comp-demo-fjellheim') {
+          finalProjId = 'proj-demo-sjusjoen';
+          finalProjName = 'Hytte Sjusjøen - Nybygg';
+        } else if (Array.isArray(availableProjects) && availableProjects.length > 0) {
+          finalProjId = availableProjects[0].id;
+          finalProjName = availableProjects[0].name;
+        } else {
+          finalProjId = 'proj-default';
+          finalProjName = 'Aktiv byggeplass';
+        }
+      }
+
+      let cleaned = message
+        .replace(/^(?:hei mesterai|hei|kan du|vennligst)?\s*(?:registrer|meld|opprett|loggfør|legg inn|før)?\s*(?:et\s+)?avvik\s*(?:på|for|om|i|angående)?\s*/i, '')
+        .replace(/^(?:avvik|ruh)[:\-–]?\s*/i, '')
+        .trim();
+
+      if (finalProjName) {
+        cleaned = cleaned.replace(new RegExp(`^${finalProjName}[:\\-–]?\\s*`, 'i'), '').trim();
+      }
+
+      let title = cleaned.length > 3 ? (cleaned.charAt(0).toUpperCase() + cleaned.slice(1)) : 'Kvalitetsavvik og mangel';
+      if (title.length > 80) {
+        title = title.slice(0, 80) + '...';
+      }
+
+      let category = 'quality';
+      let codeRef = 'TEK17 & Internkontrollforskriften § 5';
+      let suggestedAction = 'Utbedre avviket i henhold til prosjektert løsning og dokumentere med før-/etter-foto.';
+      let severity: 'low' | 'medium' | 'high' | 'critical' = 'high';
+
+      const lower = cleanLowerMsg;
+      if (lower.includes('isolasjon') || lower.includes('kuldebro') || lower.includes('trekk') || lower.includes('glava') || lower.includes('rockwool') || lower.includes('dampsperre')) {
+        category = 'isolasjon';
+        codeRef = 'TEK17 § 14-2 (Energieffektivitet) & Byggforsk 523.255';
+        suggestedAction = 'Montere mineralull med forskriftsmessig klemming mot stenderverk. Kontrollere kontinuerlig dampsperre med klemte skjøter før lukking.';
+        severity = 'high';
+      } else if (lower.includes('fall') || lower.includes('sluk') || lower.includes('membran') || lower.includes('våtrom') || lower.includes('lekkasje') || lower.includes('klemring')) {
+        category = 'membran';
+        codeRef = 'TEK17 § 13-15 (Våtrom og fall mot sluk) & BVN blad 31.205';
+        suggestedAction = 'Utbedre fall mot sluk (minst 1:50 i dusjsone) og etablere godkjent mansjett/klemring før videre tildekking.';
+        severity = 'high';
+      } else if (lower.includes('brann') || lower.includes('gjennomføring') || lower.includes('mansjett') || lower.includes('røyk')) {
+        category = 'brann';
+        codeRef = 'TEK17 § 11-10 (Brannceller og seksjonering) & NS 3901';
+        suggestedAction = 'Branntette gjennomføringer med godkjent brannakryl/mansjett tilpasset kravklasse EI 60.';
+        severity = 'critical';
+      } else if (lower.includes('bjelke') || lower.includes('spenn') || lower.includes('bæring') || lower.includes('svikt') || lower.includes('sprekk') || lower.includes('bærevegg')) {
+        category = 'bæresystem';
+        codeRef = 'TEK17 § 10-1 (Bæreevne og stabilitet) & Eurokode 5';
+        suggestedAction = 'Forsterke bjelkelag/understøttelse og få rådgivende ingeniør (RIB) til å verifisere nedbøyningskrav.';
+        severity = 'critical';
+      } else if (lower.includes('rør') || lower.includes('avløp') || lower.includes('vann') || lower.includes('lekkasje')) {
+        category = 'vvs';
+        codeRef = 'TEK17 § 15-5 (Innvendige vanninstallasjoner) & Byggforsk 553.115';
+        suggestedAction = 'Montere rør-i-rør system med forskriftsmessig avrenning til sluk og klamring per 0,6 m.';
+        severity = 'high';
+      } else if (lower.includes('el') || lower.includes('kabel') || lower.includes('sikring') || lower.includes('kurs') || lower.includes('stikk')) {
+        category = 'elektro';
+        codeRef = 'NEK 400 (Elektriske lavspenningsinstallasjoner) & DLE-krav';
+        suggestedAction = 'Klamre trekkerør, sikre strekkavlastning og utstede samsvarserklæring før tildekking.';
+        severity = 'high';
+      }
+
+      const devDoc = {
+        id: `dev_${Date.now()}_${Math.random().toString(36).substring(2, 6)}`,
+        projectId: finalProjId,
+        project: finalProjName,
+        projectName: finalProjName,
+        title,
+        description: `Avvik meldt inn via MesterAI: ${message}`,
+        category,
+        severity,
+        status: 'open' as const,
+        reportedBy: effectiveUser,
+        authorId: body.userId || user?.id || (effectiveCompanyId === 'comp-demo-fjellheim' ? 'u-demo-lars-fjellheim' : 'user-me'),
+        action: suggestedAction,
+        correctiveAction: suggestedAction,
+        codeReference: codeRef,
+        company: effectiveCompany,
+        companyId: effectiveCompanyId,
+        createdAt: new Date().toISOString(),
+        timestamp: new Date().toISOString()
+      };
+
+      await saveCollectionItem('deviations', devDoc);
+
+      await saveCollectionItem('agent_activities', {
+        type: 'deviation_created',
+        title: `Avvik registrert: ${title}`,
+        description: `Prosjekt: ${finalProjName}. ${codeRef}.`,
+        trade: userTrade || 'general',
+        tradeName: effectiveUser,
+        status: 'open',
+        badge: severity === 'critical' ? 'KRITISK AVVIK' : 'AVVIK REGISTRERT',
+        projectId: finalProjId,
+        projectName: finalProjName,
+        companyId: effectiveCompanyId,
+        company: effectiveCompany,
+        createdAt: new Date().toISOString()
+      });
+
+      return NextResponse.json({
+        success: true,
+        sessionId: fbId,
+        deviation: devDoc,
+        reply: `⚠️ **Avvik registrert i kvalitetssystemet (KS & TEK17)!**\n\n` +
+          `- **Avvik:** **«${title}»**\n` +
+          `- **Byggeplass:** **${finalProjName}**\n` +
+          `- **Alvorlighetsgrad:** ${severity === 'critical' ? '🔴 **KRITISK** (Sperrer for ferdigattest)' : severity === 'high' ? '🟠 **HØY**' : '🟡 **MIDDELS**'}\n` +
+          `- **Forskriftskrav:** ${codeRef}\n` +
+          `- **Påkrevd tiltak:** ${suggestedAction}\n` +
+          `- **Gjeldende status:** ⏳ **Åpent (Aktiv lukkesperre for sonen)**\n\n` +
+          `Avviket er lagret i prosjektets kvalitetssikringslogg og vises nå under **Avvik & RUH**.`,
+        quickReplies: [
+          { title: 'Vis alle avvik', payload: `Vis avvik på ${finalProjName}` },
+          { title: 'Tildel oppgave for utbedring', payload: `Opprett oppgave: Utbedre ${title} på ${finalProjName}` },
+          { title: 'Før dagens timer', payload: `Før timer på ${finalProjName}` }
+        ]
+      });
+    }
+
     // 🎯 1. BARE TRIGGER: "endringsordre"
     const isBareEO = [
       'endringsordre', 'endringsmelding', 'endringsvarsel', 'eo', 'opprett endringsordre', 'lag endringsordre', 'lag en endringsordre', 'opprett endring'

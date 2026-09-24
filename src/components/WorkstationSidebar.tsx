@@ -33,7 +33,8 @@ import {
   Check,
   Lock,
   ArrowLeft,
-  Pin
+  Pin,
+  Car
 } from 'lucide-react';
 import { cn } from '@/src/lib/utils';
 import { chatSessionService, ChatSession } from '../services/chatSessionService';
@@ -162,6 +163,7 @@ export default function WorkstationSidebar({
     { id: 'archive', labelKey: 'ws_archive', defaultLabel: 'Dokumentarkiv & FDV', icon: Archive, color: 'text-teal-400' },
     { id: 'contacts', labelKey: 'ws_contacts', defaultLabel: 'Kontakter & Team', icon: Users, color: 'text-cyan-400' },
     { id: 'teamchat', labelKey: 'ws_teamchat', defaultLabel: 'Prosjekt- & Firmachatt', icon: MessageSquare, color: 'text-violet-400' },
+    { id: 'vehicle', labelKey: 'ws_vehicle', defaultLabel: 'Kjørebok & Bilpark', icon: Car, color: 'text-amber-400' },
     { id: 'all_modules', labelKey: 'ws_all_modules', defaultLabel: 'Alle 20+ moduler', icon: Layers, color: 'text-slate-300' }
   ];
 

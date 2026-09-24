@@ -2,6 +2,7 @@ import { useState, useEffect, useMemo } from 'react';
 import { db, collection, query, orderBy, onSnapshot, where, OperationType, handleFirestoreError } from '../services/firebase';
 import { Project, Deviation } from '../types';
 import { useAuth } from './useAuth';
+import { api } from '../services/api';
 
 export function useDashboardData() {
   const [projects, setProjects] = useState<Project[]>([]);
@@ -71,11 +72,11 @@ export function useDashboardData() {
       handleFirestoreError(error, OperationType.LIST, projectsPath);
     });
 
-    let deviationsQuery = query(collection(db, deviationsPath), orderBy('timestamp', 'desc'));
+    let deviationsQuery = query(collection(db, deviationsPath));
     
     // Filter by company if present for non-admins (or when admin impersonates)
     if (effectiveCompany) {
-      deviationsQuery = query(collection(db, deviationsPath), where('company', '==', effectiveCompany), orderBy('timestamp', 'desc'));
+      deviationsQuery = query(collection(db, deviationsPath), where('company', '==', effectiveCompany));
     } else if (!isGlobalAdmin) {
       setLoading(false);
       return;
@@ -89,10 +90,41 @@ export function useDashboardData() {
           timestamp: data.timestamp?.toDate?.()?.toLocaleString() || String(data.timestamp || 'Nylig')
         };
       }) as Deviation[];
+      // Sorter kronologisk nyeste først uten krav til sammensatt Firestore-indeks
+      deviationsData.sort((a, b) => {
+        const tA = new Date(a.createdAt || a.timestamp || 0).getTime();
+        const tB = new Date(b.createdAt || b.timestamp || 0).getTime();
+        return tB - tA;
+      });
       setDeviations(deviationsData);
     }, (error) => {
       handleFirestoreError(error, OperationType.LIST, deviationsPath);
+      // Fallback til API hvis Firestore nekter eller mangler indeks
+      api.getCollection('deviations').then((serverDevs: any[]) => {
+        if (Array.isArray(serverDevs) && serverDevs.length > 0) {
+          setDeviations(serverDevs);
+        }
+      }).catch(() => {});
     });
+
+    // Sikre at eventuelle avvik lagret i database-lageret også fanges opp
+    api.getCollection('deviations').then((serverDevs: any[]) => {
+      if (Array.isArray(serverDevs) && serverDevs.length > 0) {
+        setDeviations(prev => {
+          if (prev.length === 0) return serverDevs;
+          const map = new Map<string, Deviation>();
+          prev.forEach(d => map.set(d.id, d));
+          serverDevs.forEach(d => {
+            if (!map.has(d.id)) map.set(d.id, d);
+          });
+          return Array.from(map.values()).sort((a, b) => {
+            const tA = new Date(a.createdAt || a.timestamp || 0).getTime();
+            const tB = new Date(b.createdAt || b.timestamp || 0).getTime();
+            return tB - tA;
+          });
+        });
+      }
+    }).catch(() => {});
 
     return () => {
       unsubscribeProjects();

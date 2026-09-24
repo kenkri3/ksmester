@@ -123,17 +123,26 @@ export interface Deviation {
   title: string;
   projectId: string;
   project?: string;
+  projectName?: string;
   description: string;
   severity: 'low' | 'medium' | 'high' | 'critical';
   status: 'open' | 'closed' | 'in-progress';
   timestamp: string;
   location?: string;
+  category?: string;
+  codeReference?: string;
+  correctiveAction?: string;
   gnr?: string;
   bnr?: string;
   reportedBy?: string;
+  authorId?: string;
   action?: string;
   imageUrl?: string;
+  photoUrl?: string;
+  company?: string;
+  companyId?: string;
   createdAt: string;
+  updatedAt?: string;
 }
 
 export interface ImageAnalysisResult {
