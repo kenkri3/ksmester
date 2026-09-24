@@ -4,6 +4,7 @@ import { getUserFromRequest } from '@/src/lib/server/auth';
 import { sendSystemEmail, sendOfferByEmail, sendChangeOrderByEmail, cleanMarkdownForEmail } from '@/src/lib/server/emailSender';
 import { getCollectionItems, saveCollectionItem } from '@/src/lib/server/db';
 import { generateWithAiEngine } from '@/src/lib/server/aiEngine';
+import { maskPII } from '@/src/lib/server/privacyShield';
 
 /**
  * 🤖 MesterAI Headless Agent Proxy
@@ -665,6 +666,9 @@ export async function POST(req: NextRequest) {
       enrichedMessage += `\n[Vedlagt foto for analyse/dokumentasjon: ${imageUrl}]`;
     }
 
+    // 🛡️ GDPR Privacy Shield: Vask sensitive fødselsnumre, bankkontonumre osv. før utsending til eksterne modeller
+    const safeEnrichedMessage = maskPII(enrichedMessage);
+
     const MASTER_SYSTEM_PROMPT = `Du er MesterAI, en helautonom prosjektpilot og byggmester-assistent i backendsystemet til Vikingmester. Du opererer selvstendig, tenker som en erfaren byggmester/prosjektleder, og utfører oppgaver direkte uten å be om bekreftelse for hvert steg.
 
 🛡️ 100% WHITE-LABEL:
@@ -738,7 +742,7 @@ Avslutt svaret med en dedikert seksjon:
     // 🚀 1. PRIMÆRT: Generer svar via VikingMesters interne AI Engine (med full Google Grounding ved nettsøk)
     try {
       const aiResult = await generateWithAiEngine({
-        prompt: enrichedMessage,
+        prompt: safeEnrichedMessage,
         systemInstruction: MASTER_SYSTEM_PROMPT,
         webSearch: wantsWebSearch,
         companyId: effectiveCompanyId,
@@ -761,9 +765,9 @@ Avslutt svaret med en dedikert seksjon:
           type: 'message',
           fbId: fbId,
           bot_key: BOT_API_KEY,
-          text: enrichedMessage,
-          message: enrichedMessage,
-          current_messages: enrichedMessage,
+          text: safeEnrichedMessage,
+          message: safeEnrichedMessage,
+          current_messages: safeEnrichedMessage,
           url: 'https://vikingmester.no',
           user_name: userName || 'Byggmester',
           messages: []

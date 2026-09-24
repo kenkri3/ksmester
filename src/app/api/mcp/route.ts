@@ -1,5 +1,18 @@
 import { NextRequest, NextResponse } from 'next/server';
 import { getCollectionItems, saveCollectionItem, updateCollectionItem, deleteCollectionItem } from '@/src/lib/server/db';
+import {
+  maskPII,
+  sanitizeProjectForAgent,
+  sanitizeLeadForAgent,
+  sanitizeTimeEntryForAgent,
+  sanitizeDailyLogForAgent,
+  sanitizeDeviationForAgent,
+  sanitizeSjaForAgent,
+  anonymizeAddress,
+  anonymizePersonName,
+  isCorporateEntity,
+  applyPrivacyShield
+} from '@/src/lib/server/privacyShield';
 
 /**
  * 🛠️ VikingMester Remote MCP Server (Model Context Protocol)
@@ -497,14 +510,8 @@ async function executeToolCall(toolName: string, args: any) {
         return str.toLowerCase().trim();
       }
 
-      const summary = filtered.slice(0, 10).map((p: any) => ({
-        id: p.id,
-        kode: p.projectCode || '-',
-        navn: p.name,
-        adresse: p.location || 'Ikke oppgitt',
-        status: p.stage || p.status || 'Aktiv',
-        leder: p.projectManager || 'Byggeleder'
-      }));
+      // 🛡️ GDPR-sikret: Returnerer kun anonymiserte prosjekter uten private kontaktpunkter
+      const summary = filtered.slice(0, 10).map((p: any) => sanitizeProjectForAgent(p));
 
       return JSON.stringify(summary, null, 2);
     }
@@ -522,13 +529,18 @@ async function executeToolCall(toolName: string, args: any) {
       const projectLogs = allLogs.filter((l: any) => l.projectId === proj.id);
 
       const totalHours = projectTimes.reduce((sum: number, t: any) => sum + (Number(t.hours) || 0), 0);
+      const isCorp = isCorporateEntity(proj.clientName);
 
+      // 🛡️ GDPR-sikret: Private adresser, e-post og telefon holdes tilbake fra ekstern AI
       return JSON.stringify({
         prosjektId: proj.id,
-        prosjektNavn: proj.name,
-        adresse: proj.location || 'Norge',
-        leder: proj.projectManager || 'Byggeleder',
-        status: proj.stage || 'Aktiv',
+        prosjektKode: proj.projectCode || '-',
+        prosjektNavn: maskPII(proj.name || 'Byggeprosjekt'),
+        adresse: anonymizeAddress(proj.location || proj.address),
+        leder: proj.projectManager ? `${proj.projectManager.split(' ')[0]} (Byggeleder)` : 'Byggeleder',
+        kundetype: isCorp ? 'Bedrift / Offentlig' : 'Privatkunde',
+        kunde: isCorp ? proj.clientName : anonymizePersonName(proj.clientName, 'Privat oppdragsgiver'),
+        status: proj.stage || proj.status || 'Aktiv',
         totaleTimer: totalHours,
         antallTimeforinger: projectTimes.length,
         aktiveAvvik: projectDevs.filter((d: any) => d.status !== 'closed').length,
@@ -601,9 +613,9 @@ async function executeToolCall(toolName: string, args: any) {
 
       return JSON.stringify(tasks.slice(0, 15).map((t: any) => ({
         id: t.id,
-        tittel: t.title,
-        prosjekt: t.projectName,
-        tildelt: t.assignedTo,
+        tittel: maskPII(t.title),
+        prosjekt: maskPII(t.projectName),
+        tildelt: t.assignedTo ? `${t.assignedTo.split(' ')[0]} (Medarbeider)` : 'Ikke tildelt',
         frist: t.dueDate,
         status: t.status,
         prioritet: t.priority
@@ -627,8 +639,8 @@ async function executeToolCall(toolName: string, args: any) {
       return `🏗️ Nytt prosjekt registrert i VikingMester!\n` +
         `• Prosjektnavn: ${newProj.name}\n` +
         `• Prosjektkode: ${newProj.projectCode}\n` +
-        `• Byggeleder: ${newProj.projectManager}\n` +
-        `• Adresse: ${newProj.location}\n` +
+        `• Byggeleder: ${newProj.projectManager.split(' ')[0]}\n` +
+        `• Lokasjon: ${anonymizeAddress(newProj.location)}\n` +
         `• Status: Aktiv`;
     }
 
@@ -660,15 +672,8 @@ async function executeToolCall(toolName: string, args: any) {
       if (recent.length === 0) {
         return 'Ingen henvendelser funnet i databasen.';
       }
-      return JSON.stringify(recent.map((l: any) => ({
-        id: l.id,
-        navn: l.name || l.contactPerson || 'Ukjent',
-        bedrift: l.company || 'Privat',
-        epost: l.email || 'Ingen',
-        telefon: l.phone || 'Ingen',
-        behov: l.needs || l.message || 'Henvendelse fra nettside',
-        dato: l.createdAt || l.date || 'Nylig'
-      })), null, 2);
+      // 🛡️ GDPR-sikret: Private e-poster og telefonnumre maskeres før ekstern agent mottar data
+      return JSON.stringify(recent.map((l: any) => sanitizeLeadForAgent(l)), null, 2);
     }
 
     case 'hent_okonomi_status': {
@@ -694,8 +699,8 @@ async function executeToolCall(toolName: string, args: any) {
       const baseContract = projectOffers[0] ? (Number(projectOffers[0].totalAmount) || Number(projectOffers[0].amount) || 0) : 0;
 
       return JSON.stringify({
-        prosjektNavn: proj.name,
-        prosjektLeder: proj.projectManager || 'Byggeleder',
+        prosjektNavn: maskPII(proj.name || 'Byggeplass'),
+        prosjektLeder: proj.projectManager ? `${proj.projectManager.split(' ')[0]} (Byggeleder)` : 'Byggeleder',
         status: proj.stage || 'Aktiv',
         grunnkontraktEksMva: baseContract,
         godkjenteEndringsordrerSum: approvedChangesSum,
@@ -717,14 +722,8 @@ async function executeToolCall(toolName: string, args: any) {
         .slice(0, limit);
 
       if (logs.length === 0) return `Ingen byggedagboknotater funnet for «${proj.name}».`;
-      return JSON.stringify(logs.map((l: any) => ({
-        id: l.id,
-        dato: l.date,
-        vaer: l.weatherCondition,
-        bemanning: l.crewMembers || [],
-        timer: l.totalHoursWorked || 0,
-        notat: l.generalNotes
-      })), null, 2);
+      // 🛡️ GDPR-sikret: Håndverkere anonymiseres til roller/antall og notater vaskes for PII
+      return JSON.stringify(logs.map((l: any) => sanitizeDailyLogForAgent(l)), null, 2);
     }
 
     case 'hent_avvik': {
@@ -738,15 +737,8 @@ async function executeToolCall(toolName: string, args: any) {
         deviations = deviations.filter((d: any) => (statusFilter === 'closed' ? d.status === 'closed' : d.status !== 'closed'));
       }
       if (deviations.length === 0) return 'Ingen avvik funnet som matcher kriteriene.';
-      return JSON.stringify(deviations.slice(0, 15).map((d: any) => ({
-        id: d.id,
-        prosjekt: d.projectName,
-        tittel: d.title,
-        alvorlighetsgrad: d.severity,
-        status: d.status || 'open',
-        dato: d.createdAt,
-        strakstiltak: d.immediateAction
-      })), null, 2);
+      // 🛡️ GDPR-sikret: Helseopplysninger og personkonflikter vaskes bort
+      return JSON.stringify(deviations.slice(0, 15).map((d: any) => sanitizeDeviationForAgent(d)), null, 2);
     }
 
     case 'hent_sja_analyser': {
@@ -757,15 +749,8 @@ async function executeToolCall(toolName: string, args: any) {
       }
       const limit = Number(args.antall) || 5;
       if (sjas.length === 0) return 'Ingen SJA-analyser funnet.';
-      return JSON.stringify(sjas.slice(0, limit).map((s: any) => ({
-        id: s.id,
-        prosjekt: s.projectName,
-        tittel: s.title,
-        oppgave: s.task || s.description,
-        farer: s.risikoer || [],
-        tiltak: s.tiltak || [],
-        dato: s.createdAt
-      })), null, 2);
+      // 🛡️ GDPR-sikret: SJA-data vaskes for personnavn
+      return JSON.stringify(sjas.slice(0, limit).map((s: any) => sanitizeSjaForAgent(s)), null, 2);
     }
 
     case 'hent_endringsordrer': {
@@ -908,7 +893,11 @@ async function processRpcMessage(body: any): Promise<any> {
     const toolArgs = body.params?.arguments || {};
 
     try {
-      const textResult = await executeToolCall(toolName, toolArgs);
+      const rawResult = await executeToolCall(toolName, toolArgs);
+      // 🛡️ GDPR Privacy Shield: Totalfiltrering av PII før data forlater systemet
+      const shieldedResult = applyPrivacyShield(rawResult);
+      const safeText = typeof shieldedResult === 'string' ? shieldedResult : JSON.stringify(shieldedResult, null, 2);
+
       return {
         jsonrpc: '2.0',
         id: reqId,
@@ -916,7 +905,7 @@ async function processRpcMessage(body: any): Promise<any> {
           content: [
             {
               type: 'text',
-              text: typeof textResult === 'string' ? textResult : JSON.stringify(textResult, null, 2)
+              text: safeText
             }
           ],
           isError: false
@@ -930,7 +919,7 @@ async function processRpcMessage(body: any): Promise<any> {
           content: [
             {
               type: 'text',
-              text: `Feil ved utførelse av ${toolName}: ${err.message}`
+              text: maskPII(`Feil ved utførelse av ${toolName}: ${err.message}`)
             }
           ],
           isError: true
