@@ -517,6 +517,7 @@ export default function WorkstationSettingsModal({
                   { key: 'offers', title: '📝 Tilbud & Kalkyle', desc: 'Hurtigkalkyle og formaliserte tilbud' },
                   { key: 'archive', title: '📁 Dokumentarkiv & FDV', desc: 'NOBB BYOK, monteringsanvisninger og FDV' },
                   { key: 'contacts', title: '👥 Prosjektteam & Kontakter', desc: 'Byggherre, bas og underentreprenører' },
+                  { key: 'teamchat', title: '💬 Prosjekt- & Firmachatt', desc: 'Feltkommunikasjon for byggeplassen og bedriften' },
                   { key: 'laerling', title: '🎓 Lærlingoppfølging', desc: 'Kompetansemål og signering' }
                 ].map((mod) => (
                   <label

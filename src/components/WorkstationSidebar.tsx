@@ -158,6 +158,7 @@ export default function WorkstationSidebar({
     { id: 'offers', label: 'Tilbud & Kalkyle', icon: Calculator, color: 'text-indigo-400' },
     { id: 'archive', label: 'Dokumentarkiv & FDV', icon: Archive, color: 'text-teal-400' },
     { id: 'contacts', label: 'Kontakter & Team', icon: Users, color: 'text-cyan-400' },
+    { id: 'teamchat', label: 'Prosjekt- & Firmachatt', icon: MessageSquare, color: 'text-violet-400' },
     { id: 'all_modules', label: 'Alle 20+ moduler', icon: Layers, color: 'text-slate-300' }
   ];
 

@@ -68,7 +68,7 @@ body {
   height: 7px;
 }
 ::-webkit-scrollbar-track {
-  background: #f8fafc;
+  background: transparent;
 }
 ::-webkit-scrollbar-thumb {
   background: #cbd5e1;

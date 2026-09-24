@@ -903,7 +903,7 @@ export default function MesterAIAgentFrame({
               onKeyDown={handleKeyDown}
               placeholder="Skriv instruks eller svar til agenten..."
               disabled={isLoading}
-              className="w-full pl-3.5 pr-20 py-2.5 bg-transparent text-[13.5px] sm:text-sm font-medium text-slate-900 placeholder:text-slate-400 focus:outline-none resize-none max-h-34 min-h-[42px] leading-relaxed custom-scrollbar"
+              className="w-full pl-3.5 pr-20 py-2.5 bg-transparent text-[13.5px] sm:text-sm font-medium text-slate-900 placeholder:text-slate-400 focus:outline-none resize-none max-h-34 min-h-[42px] leading-relaxed no-scrollbar overflow-y-auto"
             />
 
             {/* Knapper for kamera og mikrofon inne i feltet */}

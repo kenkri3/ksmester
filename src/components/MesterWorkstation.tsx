@@ -87,6 +87,7 @@ import HMSModule from './HMSModule';
 import { formatAiMarkdown } from '../lib/formatAiMarkdown';
 import WeatherWidget from './WeatherWidget';
 import MesterAICopilot from './MesterAICopilot';
+import ProjectTeamChat from './ProjectTeamChat';
 
 interface MesterWorkstationProps {
   initialModuleTab?: string | null;
@@ -213,6 +214,9 @@ export default function MesterWorkstation({
         setViewMode('module');
       } else if (targetView === 'contacts' || targetView === 'telefonbok') {
         setActiveModuleTab('contacts');
+        setViewMode('module');
+      } else if (targetView === 'teamchat' || targetView === 'prosjektchat' || targetView === 'chat-module') {
+        setActiveModuleTab('teamchat');
         setViewMode('module');
       }
     };
@@ -1191,6 +1195,11 @@ export default function MesterWorkstation({
         setActiveModuleTab('contacts');
         setViewMode('module');
         break;
+      case 'teamchat':
+      case 'prosjektchat':
+        setActiveModuleTab('teamchat');
+        setViewMode('module');
+        break;
       case 'apprentice':
         setActiveModuleTab('apprentice');
         setViewMode('module');
@@ -2155,6 +2164,25 @@ export default function MesterWorkstation({
                     <Search size={16} />
                   </button>
 
+                  {/* 💬 Prosjekt- & Firmachatt Hurtigknapp */}
+                  <button
+                    type="button"
+                    onClick={() => {
+                      setActiveModuleTab('teamchat');
+                      setViewMode('module');
+                    }}
+                    className={cn(
+                      "p-2 rounded-xl transition-all cursor-pointer relative",
+                      activeModuleTab === 'teamchat' && viewMode === 'module'
+                        ? "bg-violet-600/30 text-violet-300 border border-violet-500/50"
+                        : "text-slate-400 hover:text-white hover:bg-slate-800/80"
+                    )}
+                    title="Åpne Prosjekt- & Firmachatt (Internkommunikasjon)"
+                  >
+                    <MessageSquare size={16} className="text-violet-400" />
+                    <span className="absolute top-1.5 right-1.5 w-2 h-2 rounded-full bg-violet-400 animate-pulse" />
+                  </button>
+
                   <NotificationBell darkMode={true} />
                 </div>
               </div>
@@ -2371,7 +2399,10 @@ export default function MesterWorkstation({
                   {activeModuleTab === 'hms' && (
                     <span>HMS & Internkontroll: <strong className="text-teal-400">🛡️ HMS, Stoffkartotek & Vernerunder</strong></span>
                   )}
-                  {!['project_details', 'all_projects', 'create_project', 'superadmin', 'offers', 'contacts', 'apprentice', 'hms'].includes(activeModuleTab || '') && (
+                  {activeModuleTab === 'teamchat' && (
+                    <span>Internkommunikasjon: <strong className="text-violet-400">💬 Prosjekt- & Firmachatt</strong></span>
+                  )}
+                  {!['project_details', 'all_projects', 'create_project', 'superadmin', 'offers', 'contacts', 'apprentice', 'hms', 'teamchat'].includes(activeModuleTab || '') && (
                     <span>Viser fagsystem: <strong className="text-white capitalize">{activeModuleTab}</strong></span>
                   )}
                 </span>
@@ -4501,6 +4532,24 @@ export default function MesterWorkstation({
                 </div>
               )}
 
+              {/* 8D. 💬 PROSJEKT- & FIRMACHATT (INTERNKOMMUNIKASJON) */}
+              {activeModuleTab === 'teamchat' && (
+                <div className="w-full">
+                  <ProjectTeamChat
+                    projects={projects}
+                    selectedProject={selectedProject}
+                    onSelectProject={onSelectProject}
+                    user={user}
+                    projectContacts={projectContacts}
+                    onOpenCopilot={(prompt) => {
+                      if (prompt) handleSendMessage(prompt);
+                      else window.dispatchEvent(new CustomEvent('mesterai:open-copilot'));
+                    }}
+                    onBackToWorkstation={() => setViewMode('chat')}
+                  />
+                </div>
+              )}
+
               {/* 9. ⋯ ALLE FAGMODULER */}
               {activeModuleTab === 'all_modules' && (() => {
                 const ALL_MODULES_CATALOG = [
@@ -4750,6 +4799,18 @@ export default function MesterWorkstation({
                     bgGlow: 'hover:border-cyan-500/50',
                     desc: 'Telefonliste for byggeplassen: byggherre, prosjektleder, bas og underentreprenører.',
                     actionId: 'contacts'
+                  },
+                  {
+                    id: 'teamchat',
+                    title: 'Prosjekt- & Firmachatt',
+                    category: 'ressurser' as const,
+                    categoryLabel: 'Kommunikasjon',
+                    badge: 'Sanntid',
+                    icon: MessageSquare,
+                    color: 'text-violet-400',
+                    bgGlow: 'hover:border-violet-500/50',
+                    desc: 'Internkommunikasjon og feltchatt for byggeplassen og bedriften. Del bilder, beskjeder, statusoppdateringer og talemeldinger i sanntid.',
+                    actionId: 'teamchat'
                   },
                   {
                     id: 'apprentice',
@@ -5416,9 +5477,9 @@ export default function MesterWorkstation({
                       }
                     }
                   }}
-                  placeholder="Spør MesterAI eller dikter oppgave..."
+                  placeholder="Spør MesterAI..."
                   disabled={isLoading}
-                  className="flex-1 bg-transparent px-3 py-2 text-sm text-white placeholder:text-slate-400 focus:outline-none resize-none max-h-32 min-h-[38px] leading-relaxed custom-scrollbar"
+                  className="flex-1 bg-transparent px-3 py-2 text-sm text-white placeholder:text-slate-400 focus:outline-none resize-none max-h-32 min-h-[38px] leading-relaxed no-scrollbar overflow-y-auto"
                 />
 
                 {/* Right controls: Mic & Live Voice Button */}

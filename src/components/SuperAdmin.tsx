@@ -142,6 +142,7 @@ export const allModules = [
   { id: 'vehicle', name: 'Kjørebok & Bil', icon: <Car size={16} /> },
   { id: 'time', name: 'Timeføring & Byggedagbok', icon: <Timer size={16} /> },
   { id: 'contacts', name: 'Kontakter & Team', icon: <Users size={16} /> },
+  { id: 'teamchat', name: 'Prosjekt- & Firmachatt', icon: <MessageSquare size={16} /> },
   { id: 'apprentice', name: 'Lærlingmodul', icon: <GraduationCap size={16} /> },
   { id: 'building_app', name: 'Byggesøknad', icon: <Building2 size={16} /> },
   { id: 'all_modules', name: 'Alle 20+ fagmoduler (Full pakke)', icon: <Layers size={16} /> }
