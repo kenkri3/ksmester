@@ -4,7 +4,7 @@ import { getUserFromRequest, isUserAdmin, isUserSuperAdmin } from '@/src/lib/ser
 import { recalculateProjectProgress } from '@/src/lib/server/progressEngine';
 
 const ALLOWED_COLLECTIONS = [
-  'users', 'projects', 'deviations', 'sja_reports',
+  'users', 'projects', 'tasks', 'deviations', 'sja_reports',
   'offers', 'system_offers', 'invites', 'invitations', 'contracts', 'change_orders',
   'crew', 'safety_inspections', 'checklists', 'hms_documents', 'hms_signatures',
   'inventory', 'apprentice_goals', 'apprentice_profiles', 'building_applications',

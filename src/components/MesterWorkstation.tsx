@@ -197,6 +197,28 @@ export default function MesterWorkstation({
   const [activeModuleTab, setActiveModuleTab] = useState<string | null>(initialModuleTab || null);
   const [activeForm, setActiveForm] = useState<{ type: InChatFormType; data?: any } | null>(null);
   const [isProjectDropdownOpen, setIsProjectDropdownOpen] = useState(false);
+  const projectDropdownRef = useRef<HTMLDivElement>(null);
+  const mobileProjectDropdownRef = useRef<HTMLDivElement>(null);
+
+  // Lukk prosjekt-nedtrekksmenyen ved klikk på utsiden
+  useEffect(() => {
+    if (!isProjectDropdownOpen) return;
+    const handleClickOutside = (e: MouseEvent | TouchEvent) => {
+      const target = e.target as Node;
+      if (
+        projectDropdownRef.current && !projectDropdownRef.current.contains(target) &&
+        mobileProjectDropdownRef.current && !mobileProjectDropdownRef.current.contains(target)
+      ) {
+        setIsProjectDropdownOpen(false);
+      }
+    };
+    document.addEventListener('mousedown', handleClickOutside);
+    document.addEventListener('touchstart', handleClickOutside);
+    return () => {
+      document.removeEventListener('mousedown', handleClickOutside);
+      document.removeEventListener('touchstart', handleClickOutside);
+    };
+  }, [isProjectDropdownOpen]);
 
   // Synkroniser aktiv fane dersom initialModuleTab endrer seg eksternt
   useEffect(() => {
@@ -1708,7 +1730,40 @@ export default function MesterWorkstation({
           imageBase64: base64Image,
           teamMembers: projectContacts
             .filter(c => c.category === 'team')
-            .map(c => ({ id: c.id, name: c.name, role: c.role, email: c.email }))
+            .map(c => ({ id: c.id, name: c.name, role: c.role, email: c.email })),
+          tasks: (tasks || []).map((t: any) => ({
+            id: t.id,
+            title: t.title,
+            projectId: t.projectId,
+            projectName: t.projectName,
+            assignedTo: t.assignedTo,
+            dueDate: t.dueDate,
+            status: t.status,
+            priority: t.priority,
+            description: t.description
+          })),
+          timeEntries: (dailyTimeEntries || []).map((t: any) => ({
+            id: t.id,
+            projectId: t.projectId,
+            projectName: t.projectName,
+            userName: t.workerName || t.userName,
+            workerName: t.workerName || t.userName,
+            date: t.date,
+            hours: t.hours,
+            task: t.task || t.description,
+            status: t.status
+          })),
+          deviations: (deviations || []).map((d: any) => ({
+            id: d.id,
+            projectId: d.projectId,
+            projectName: d.projectName,
+            title: d.title,
+            severity: d.severity,
+            status: d.status,
+            trade: d.trade,
+            description: d.description,
+            correctiveAction: d.correctiveAction
+          }))
         })
       });
 
@@ -1801,16 +1856,12 @@ export default function MesterWorkstation({
           onSelectProject(p);
           setIsOpenMobile(false);
           if (p) {
-            if (activeModuleTab === 'all_projects' || !activeModuleTab) {
-              setActiveModuleTab('project_details');
-              setViewMode('module');
-            }
+            setActiveModuleTab('project_details');
+            setViewMode('module');
             toast.info(`Aktivt prosjekt: ${p.name}`);
           } else {
-            if (activeModuleTab === 'project_details') {
-              setActiveModuleTab('all_projects');
-              setViewMode('module');
-            }
+            setActiveModuleTab('all_projects');
+            setViewMode('module');
             toast.info('Viser alle byggeplasser');
           }
         }}
@@ -1845,7 +1896,7 @@ export default function MesterWorkstation({
       {/* 2. Main Workstation Center Stage */}
       <main className="flex-1 flex flex-col h-full overflow-hidden bg-[#0A101D] relative">
         {/* Top Navigation Bar (Gemini & ChatGPT style) */}
-        <header className="h-14 px-3 sm:px-5 border-b border-slate-800/80 flex items-center justify-between gap-3 bg-[#0A101D]/90 backdrop-blur-md shrink-0 z-30">
+        <header className="relative h-14 px-3 sm:px-5 border-b border-slate-800/80 flex items-center justify-between gap-3 bg-[#0A101D]/90 backdrop-blur-md shrink-0 z-40">
           {isTopSearchOpen ? (
             <div className="flex-1 flex items-center gap-2 max-w-3xl mx-auto animate-in fade-in duration-150">
               <div className="relative flex-1 flex items-center">
@@ -1901,7 +1952,7 @@ export default function MesterWorkstation({
                 </button>
 
                 {/* Center: Model / Project Switcher Pill */}
-                <div className="relative">
+                <div ref={mobileProjectDropdownRef} className="relative">
                   <button
                     type="button"
                     onClick={() => setIsProjectDropdownOpen(!isProjectDropdownOpen)}
@@ -1916,72 +1967,78 @@ export default function MesterWorkstation({
 
                   {/* Project Switcher Dropdown on Mobile */}
                   {isProjectDropdownOpen && (
-                    <div className="absolute left-1/2 -translate-x-1/2 top-full mt-2 w-72 max-h-80 overflow-y-auto bg-[#131314] border border-white/15 rounded-2xl shadow-2xl p-2 z-50 animate-in fade-in zoom-in-95 duration-100">
-                      <div className="px-3 py-2 text-[10px] font-black uppercase tracking-wider text-slate-400 border-b border-white/10 flex items-center justify-between">
-                        <span>{t('ws_select_active_site', "Velg aktiv byggeplass")}</span>
-                        <span className="text-emerald-400 font-mono">{projects.length} prosjekter</span>
-                      </div>
-
-                      <button
-                        type="button"
-                        onClick={() => {
-                          onSelectProject(null);
-                          setIsProjectDropdownOpen(false);
-                          setActiveModuleTab('all_projects');
-                          setViewMode('module');
-                        }}
-                        className={cn(
-                          "w-full flex items-center gap-2.5 px-3 py-2.5 rounded-xl text-xs font-bold text-left transition-colors cursor-pointer mt-1",
-                          !selectedProject ? "bg-white/10 text-white border border-white/20" : "text-slate-300 hover:bg-white/5 hover:text-white"
-                        )}
-                      >
-                        <Building2 size={15} className="shrink-0 text-slate-400" />
-                        <div className="min-w-0">
-                          <p className="truncate font-bold">{t('ws_all_sites', "Alle byggeplasser")}</p>
-                          <p className="text-[10px] text-slate-400">{t('ws_total_overview', "Totaloversikt over oppdrag")}</p>
+                    <>
+                      <div 
+                        className="fixed inset-0 z-40 cursor-default" 
+                        onClick={() => setIsProjectDropdownOpen(false)} 
+                      />
+                      <div className="absolute left-1/2 -translate-x-1/2 top-full mt-2 w-72 max-h-80 overflow-y-auto bg-[#131314] border border-white/15 rounded-2xl shadow-2xl p-2 z-50 animate-in fade-in zoom-in-95 duration-100">
+                        <div className="px-3 py-2 text-[10px] font-black uppercase tracking-wider text-slate-400 border-b border-white/10 flex items-center justify-between">
+                          <span>{t('ws_select_active_site', "Velg aktiv byggeplass")}</span>
+                          <span className="text-emerald-400 font-mono">{projects.length} prosjekter</span>
                         </div>
-                      </button>
 
-                      {userAccessibleProjects.map((proj) => (
                         <button
-                          key={proj.id}
                           type="button"
                           onClick={() => {
-                            onSelectProject(proj);
+                            onSelectProject(null);
                             setIsProjectDropdownOpen(false);
-                            setActiveModuleTab('project_details');
+                            setActiveModuleTab('all_projects');
                             setViewMode('module');
                           }}
                           className={cn(
-                            "w-full flex items-center gap-2.5 px-3 py-2 rounded-xl text-xs font-bold text-left transition-colors cursor-pointer mt-0.5",
-                            selectedProject?.id === proj.id ? "bg-emerald-500/20 text-emerald-300 border border-emerald-500/30" : "text-slate-300 hover:bg-white/5 hover:text-white"
+                            "w-full flex items-center gap-2.5 px-3 py-2.5 rounded-xl text-xs font-bold text-left transition-colors cursor-pointer mt-1",
+                            !selectedProject ? "bg-white/10 text-white border border-white/20" : "text-slate-300 hover:bg-white/5 hover:text-white"
                           )}
                         >
-                          <HardHat size={14} className="shrink-0 text-emerald-400" />
+                          <Building2 size={15} className="shrink-0 text-slate-400" />
                           <div className="min-w-0">
-                            <p className="truncate font-bold">{proj.name}</p>
-                            <p className="text-[10px] text-slate-400 truncate">{proj.clientName || 'Privat oppdragsgiver'}</p>
+                            <p className="truncate font-bold">{t('ws_all_sites', "Alle byggeplasser")}</p>
+                            <p className="text-[10px] text-slate-400">{t('ws_total_overview', "Totaloversikt over oppdrag")}</p>
                           </div>
                         </button>
-                      ))}
 
-                      {/* ➕ Hurtig-oppretting av prosjekt direkte fra mobil-dropdown */}
-                      <div className="pt-1 mt-1 border-t border-white/10">
-                        <button
-                          type="button"
-                          onClick={() => {
-                            setIsProjectDropdownOpen(false);
-                            setActiveModuleTab('create_project');
-                            setViewMode('module');
-                            toast.info('✨ Opprett ny byggeplass');
-                          }}
-                          className="w-full flex items-center gap-2 px-3 py-2 rounded-xl text-xs font-bold text-purple-300 hover:text-white hover:bg-purple-500/20 border border-purple-500/30 transition-all cursor-pointer"
-                        >
-                          <Plus size={14} className="shrink-0 text-purple-400" />
-                          <span>{t('ws_create_project_title', "Opprett nytt prosjekt")}</span>
-                        </button>
+                        {userAccessibleProjects.map((proj) => (
+                          <button
+                            key={proj.id}
+                            type="button"
+                            onClick={() => {
+                              onSelectProject(proj);
+                              setIsProjectDropdownOpen(false);
+                              setActiveModuleTab('project_details');
+                              setViewMode('module');
+                            }}
+                            className={cn(
+                              "w-full flex items-center gap-2.5 px-3 py-2 rounded-xl text-xs font-bold text-left transition-colors cursor-pointer mt-0.5",
+                              selectedProject?.id === proj.id ? "bg-emerald-500/20 text-emerald-300 border border-emerald-500/30" : "text-slate-300 hover:bg-white/5 hover:text-white"
+                            )}
+                          >
+                            <HardHat size={14} className="shrink-0 text-emerald-400" />
+                            <div className="min-w-0">
+                              <p className="truncate font-bold">{proj.name}</p>
+                              <p className="text-[10px] text-slate-400 truncate">{proj.clientName || 'Privat oppdragsgiver'}</p>
+                            </div>
+                          </button>
+                        ))}
+
+                        {/* ➕ Hurtig-oppretting av prosjekt direkte fra mobil-dropdown */}
+                        <div className="pt-1 mt-1 border-t border-white/10">
+                          <button
+                            type="button"
+                            onClick={() => {
+                              setIsProjectDropdownOpen(false);
+                              setActiveModuleTab('create_project');
+                              setViewMode('module');
+                              toast.info('✨ Opprett ny byggeplass');
+                            }}
+                            className="w-full flex items-center gap-2 px-3 py-2 rounded-xl text-xs font-bold text-purple-300 hover:text-white hover:bg-purple-500/20 border border-purple-500/30 transition-all cursor-pointer"
+                          >
+                            <Plus size={14} className="shrink-0 text-purple-400" />
+                            <span>{t('ws_create_project_title', "Opprett nytt prosjekt")}</span>
+                          </button>
+                        </div>
                       </div>
-                    </div>
+                    </>
                   )}
                 </div>
 
@@ -2018,7 +2075,7 @@ export default function MesterWorkstation({
               <div className="hidden md:flex items-center justify-between w-full">
                 <div className="flex items-center gap-3 min-w-0">
                   {/* Workstation Badge & Selected Project Dropdown */}
-                  <div className="relative">
+                  <div ref={projectDropdownRef} className="relative">
                     <button
                       type="button"
                       onClick={() => setIsProjectDropdownOpen(!isProjectDropdownOpen)}
@@ -2033,55 +2090,78 @@ export default function MesterWorkstation({
 
                     {/* Project Switcher Dropdown */}
                     {isProjectDropdownOpen && (
-                      <div className="absolute left-0 top-full mt-1.5 w-72 max-h-80 overflow-y-auto bg-slate-900 border border-slate-800 rounded-2xl shadow-2xl p-2 z-50 animate-in fade-in zoom-in-95 duration-100">
-                        <div className="px-3 py-2 text-[10px] font-black uppercase tracking-wider text-slate-400 border-b border-slate-800 flex items-center justify-between">
-                          <span>{t('ws_select_active_site', "Velg aktiv byggeplass")}</span>
-                          <span className="text-emerald-400">{projects.length} prosjekter</span>
-                        </div>
-
-                        <button
-                          type="button"
-                          onClick={() => {
-                            onSelectProject(null);
-                            setIsProjectDropdownOpen(false);
-                            setActiveModuleTab('all_projects');
-                            setViewMode('module');
-                          }}
-                          className={cn(
-                            "w-full flex items-center gap-2.5 px-3 py-2 rounded-xl text-xs font-bold text-left transition-colors cursor-pointer mt-1",
-                            !selectedProject ? "bg-emerald-500/20 text-emerald-300 border border-emerald-500/30" : "text-slate-300 hover:bg-slate-850 hover:text-white"
-                          )}
-                        >
-                          <Building2 size={14} className="shrink-0 text-slate-400" />
-                          <div className="min-w-0">
-                            <p className="truncate font-bold">{t('ws_all_sites', "Alle byggeplasser")}</p>
-                            <p className="text-[10px] text-slate-500">{t('ws_total_overview', "Totaloversikt over oppdrag")}</p>
+                      <>
+                        <div 
+                          className="fixed inset-0 z-40 cursor-default" 
+                          onClick={() => setIsProjectDropdownOpen(false)} 
+                        />
+                        <div className="absolute left-0 top-full mt-1.5 w-72 max-h-80 overflow-y-auto bg-slate-900 border border-slate-800 rounded-2xl shadow-2xl p-2 z-50 animate-in fade-in zoom-in-95 duration-100">
+                          <div className="px-3 py-2 text-[10px] font-black uppercase tracking-wider text-slate-400 border-b border-slate-800 flex items-center justify-between">
+                            <span>{t('ws_select_active_site', "Velg aktiv byggeplass")}</span>
+                            <span className="text-emerald-400">{projects.length} prosjekter</span>
                           </div>
-                        </button>
 
-                        {userAccessibleProjects.map((proj) => (
                           <button
-                            key={proj.id}
                             type="button"
                             onClick={() => {
-                              onSelectProject(proj);
+                              onSelectProject(null);
                               setIsProjectDropdownOpen(false);
-                              setActiveModuleTab('project_details');
+                              setActiveModuleTab('all_projects');
                               setViewMode('module');
                             }}
                             className={cn(
-                              "w-full flex items-center gap-2.5 px-3 py-2 rounded-xl text-xs font-bold text-left transition-colors cursor-pointer mt-0.5",
-                              selectedProject?.id === proj.id ? "bg-emerald-500/20 text-emerald-300 border border-emerald-500/30" : "text-slate-300 hover:bg-slate-850 hover:text-white"
+                              "w-full flex items-center gap-2.5 px-3 py-2 rounded-xl text-xs font-bold text-left transition-colors cursor-pointer mt-1",
+                              !selectedProject ? "bg-emerald-500/20 text-emerald-300 border border-emerald-500/30" : "text-slate-300 hover:bg-slate-850 hover:text-white"
                             )}
                           >
-                            <HardHat size={14} className="shrink-0 text-emerald-400" />
+                            <Building2 size={14} className="shrink-0 text-slate-400" />
                             <div className="min-w-0">
-                              <p className="truncate font-bold">{proj.name}</p>
-                              <p className="text-[10px] text-slate-400 truncate">{proj.clientName || 'Privat oppdragsgiver'}</p>
+                              <p className="truncate font-bold">{t('ws_all_sites', "Alle byggeplasser")}</p>
+                              <p className="text-[10px] text-slate-500">{t('ws_total_overview', "Totaloversikt over oppdrag")}</p>
                             </div>
                           </button>
-                        ))}
-                      </div>
+
+                          {userAccessibleProjects.map((proj) => (
+                            <button
+                              key={proj.id}
+                              type="button"
+                              onClick={() => {
+                                onSelectProject(proj);
+                                setIsProjectDropdownOpen(false);
+                                setActiveModuleTab('project_details');
+                                setViewMode('module');
+                              }}
+                              className={cn(
+                                "w-full flex items-center gap-2.5 px-3 py-2 rounded-xl text-xs font-bold text-left transition-colors cursor-pointer mt-0.5",
+                                selectedProject?.id === proj.id ? "bg-emerald-500/20 text-emerald-300 border border-emerald-500/30" : "text-slate-300 hover:bg-slate-850 hover:text-white"
+                              )}
+                            >
+                              <HardHat size={14} className="shrink-0 text-emerald-400" />
+                              <div className="min-w-0">
+                                <p className="truncate font-bold">{proj.name}</p>
+                                <p className="text-[10px] text-slate-400 truncate">{proj.clientName || 'Privat oppdragsgiver'}</p>
+                              </div>
+                            </button>
+                          ))}
+
+                          {/* ➕ Hurtig-oppretting av prosjekt direkte fra desktop-dropdown */}
+                          <div className="pt-1 mt-1 border-t border-slate-800">
+                            <button
+                              type="button"
+                              onClick={() => {
+                                setIsProjectDropdownOpen(false);
+                                setActiveModuleTab('create_project');
+                                setViewMode('module');
+                                toast.info('✨ Opprett ny byggeplass');
+                              }}
+                              className="w-full flex items-center gap-2 px-3 py-2 rounded-xl text-xs font-bold text-purple-300 hover:text-white hover:bg-purple-500/20 border border-purple-500/30 transition-all cursor-pointer"
+                            >
+                              <Plus size={14} className="shrink-0 text-purple-400" />
+                              <span>{t('ws_create_project_title', "Opprett nytt prosjekt")}</span>
+                            </button>
+                          </div>
+                        </div>
+                      </>
                     )}
                   </div>
 

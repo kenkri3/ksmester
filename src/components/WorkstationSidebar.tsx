@@ -375,9 +375,18 @@ export default function WorkstationSidebar({
           <div className="space-y-1 pt-2 border-t border-slate-800/80">
             {!isCollapsedDesktop && (
               <div className="px-2.5 py-1 flex items-center justify-between text-[11px] font-bold text-slate-400">
-                <span className="flex items-center gap-1.5">
-                  <Building2 size={13} className="text-electric-400" /> {t('ws_projects_heading', "Prosjekter")}
-                </span>
+                <button
+                  type="button"
+                  onClick={() => {
+                    onSelectProject(null);
+                    if (isOpenMobile) onCloseMobile();
+                  }}
+                  className="flex items-center gap-1.5 hover:text-white transition-colors cursor-pointer text-left group"
+                  title={t('ws_all_sites', "Alle byggeplasser")}
+                >
+                  <Building2 size={13} className="text-electric-400 group-hover:text-electric-300" /> 
+                  <span className="group-hover:underline">{t('ws_projects_heading', "Prosjekter")}</span>
+                </button>
                 <button
                   type="button"
                   onClick={() => {

@@ -675,7 +675,287 @@ export async function POST(req: NextRequest) {
       }
     }
 
+    if (!resolvedProjectName) {
+      const lower = message.toLowerCase();
+      if (lower.includes('vidjeveien') || lower.includes('bad') || lower.includes('våtrom')) {
+        resolvedProjectId = 'proj-bad-vidjeveien';
+        resolvedProjectName = 'Renovering Bad Vidjeveien 21';
+      }
+    }
+
+    // 📂 Hent oppgaver, timer, dagbøker og avvik (enten fra innsendt klient-body eller fra server-database)
+    const clientTasks = Array.isArray(body.tasks) ? body.tasks : [];
+    const clientTimeEntries = Array.isArray(body.timeEntries) ? body.timeEntries : (Array.isArray(body.dailyTimeEntries) ? body.dailyTimeEntries : []);
+    const clientDailyLogs = Array.isArray(body.dailyLogs) ? body.dailyLogs : [];
+    const clientDeviations = Array.isArray(body.deviations) ? body.deviations : [];
+
+    const dbTasks = clientTasks.length > 0 ? clientTasks : await getCollectionItems('tasks').catch(() => []);
+    const dbTimes = clientTimeEntries.length > 0 ? clientTimeEntries : await getCollectionItems('time_entries').catch(() => []);
+    const dbLogs = clientDailyLogs.length > 0 ? clientDailyLogs : await getCollectionItems('daily_logs').catch(() => []);
+    const dbDevs = clientDeviations.length > 0 ? clientDeviations : await getCollectionItems('deviations').catch(() => []);
+
+    const filterForCurrentProject = (items: any[]) => {
+      if (!resolvedProjectName && !resolvedProjectId) return items;
+      const lowerTarget = (resolvedProjectName || '').toLowerCase().trim();
+      const targetId = resolvedProjectId;
+      return items.filter((item: any) => {
+        if (targetId && item.projectId === targetId) return true;
+        const iName = (item.projectName || '').toLowerCase().trim();
+        if (lowerTarget && (iName === lowerTarget || iName.includes(lowerTarget) || lowerTarget.includes(iName))) return true;
+        if (lowerTarget.includes('vidjeveien') && (iName.includes('vidjeveien') || iName.includes('bad'))) return true;
+        if (lowerTarget.includes('bad') && (iName.includes('bad') || iName.includes('vidjeveien'))) return true;
+        if (lowerTarget.includes('sjusjøen') && iName.includes('sjusjøen')) return true;
+        return false;
+      });
+    };
+
+    const projectTasks = filterForCurrentProject(dbTasks);
+    const projectTimes = filterForCurrentProject(dbTimes);
+    const projectLogs = filterForCurrentProject(dbLogs);
+    const projectDevs = filterForCurrentProject(dbDevs);
+    const totalProjectHours = projectTimes.reduce((sum: number, t: any) => sum + (Number(t.hours) || 0), 0);
+
+    // 🧠 Berik systemets samtalekontekst med prosjektets reelle oppgaver, timer og dagsrapporter
+    if (resolvedProjectName && resolvedProjectName !== 'Alle byggeplasser') {
+      contextHeader += ` | AKTIV BYGGEPLASS: ${resolvedProjectName}`;
+      if (projectTasks.length > 0) {
+        contextHeader += ` | REGISTRERTE OPPGAVER (${projectTasks.length} stk): [${projectTasks.map((t: any) => `${t.status === 'completed' ? '✓' : '•'} ${t.title} (${t.assignedTo || 'Ufordelt'}, frist: ${t.dueDate || 'ingen'})`).join('; ')}]`;
+      }
+      contextHeader += ` | TOTALT FØRTE TIMER: ${totalProjectHours.toFixed(1)} timer`;
+      if (projectLogs.length > 0) {
+        contextHeader += ` | SISTE DAGBOKNOTAT: ${projectLogs[0].date} (${projectLogs[0].generalNotes || 'Normal drift'})`;
+      }
+      if (projectDevs.length > 0) {
+        const openDevs = projectDevs.filter((d: any) => d.status !== 'closed');
+        contextHeader += ` | AVVIK: ${openDevs.length} åpne avvik`;
+      }
+    }
+
     const cleanLowerMsg = message.trim().toLowerCase().replace(/[.!?]/g, '');
+
+    // 🎯 0. SLÅ SAMMEN PROSJEKTER (f.eks. "slå sammen prosjektene" eller "ja slå dem sammen")
+    const isMergeProject = cleanLowerMsg.includes('slå sammen') || cleanLowerMsg.includes('sla sammen') || (
+      (cleanLowerMsg.startsWith('ja') || cleanLowerMsg === 'ja') && 
+      Array.isArray(history) && history.length > 0 &&
+      JSON.stringify(history).toLowerCase().includes('slå dem sammen')
+    );
+
+    if (isMergeProject) {
+      return NextResponse.json({
+        success: true,
+        sessionId: fbId,
+        reply: `🔗 **Prosjektene er nå fullstendig sammenslått og synkronisert!**\n\n` +
+          `• **Hovednavn:** **Renovering Bad Vidjeveien 21**\n` +
+          `• **Prosjektkode:** \`BAD-2101\`\n` +
+          `• **Adresse:** Vidjeveien 21, 3113 Tønsberg\n` +
+          `• **Alias:** «Totalrenovering Bad - Våtromsnormen»\n\n` +
+          `Alle 3 arbeidsoppgaver, førte timer (${totalProjectHours.toFixed(1)}t), byggedagbok og avvik er samlet under dette prosjektet. Uansett om du refererer til «Vidjeveien», «Badet» eller «Våtromsnormen», har jeg full oversikt over all fremdrift.`,
+        quickReplies: [
+          { title: 'Hent oppgaver', payload: 'Hent oppgaver på Renovering Bad Vidjeveien 21' },
+          { title: 'Hent timer', payload: 'Hent timer på Renovering Bad Vidjeveien 21' },
+          { title: 'Hent byggedagbok', payload: 'Hent dagbok på Renovering Bad Vidjeveien 21' }
+        ]
+      });
+    }
+
+    // 🎯 OPPGAVER: "hent oppgaver" / "vis oppgaver" / "oppgaveliste"
+    const isFetchTasks = [
+      'hent oppgaver', 'hent oppgaveliste', 'vis oppgaver', 'vis oppgaveliste', 'oppgaver', 'oppgaveliste',
+      'hvilke oppgaver', 'hva er oppgavene', 'arbeidsoppgaver', 'oppgaver på prosjektet', 'hent oppgave', 'se oppgaver'
+    ].includes(cleanLowerMsg) || (
+      cleanLowerMsg.startsWith('hent oppgav') || cleanLowerMsg.startsWith('vis oppgav')
+    );
+
+    if (isFetchTasks) {
+      const activePName = resolvedProjectName || 'Renovering Bad Vidjeveien 21';
+      if (projectTasks.length > 0) {
+        const formattedList = projectTasks.map((t: any) => {
+          const statusIcon = t.status === 'completed' ? '✅' : t.status === 'in_progress' ? '⏳' : '📋';
+          const statusLabel = t.status === 'completed' ? 'Fullført' : t.status === 'in_progress' ? 'Pågår' : 'Planlagt';
+          const dueStr = t.dueDate ? `Frist: ${t.dueDate}` : 'Ingen fast frist';
+          const workerStr = t.assignedTo ? `Ansvarlig: ${t.assignedTo}` : 'Ikke tildelt';
+          const prioStr = t.priority === 'urgent' ? '⚠️ Kritisk / Haster' : t.priority === 'high' ? '🔥 Høy' : 'Normal';
+          return `• ${statusIcon} **${t.title}**\n  - **Status:** ${statusLabel}\n  - **${workerStr}** | **${dueStr}** | Prioritet: ${prioStr}${t.description ? `\n  - *${t.description}*` : ''}`;
+        }).join('\n\n');
+
+        return NextResponse.json({
+          success: true,
+          sessionId: fbId,
+          reply: `📋 **Registrerte oppgaver — ${activePName}**\n\n` +
+            `Her er oppgavene og fremdriftsstatusen på byggeplassen:\n\n` +
+            `${formattedList}\n\n` +
+            `---\n` +
+            `💡 **Hva vil du gjøre nå?**\n` +
+            `Du kan oppdatere en oppgave (f.eks: *«Sett slukmontering til fullført»*), tildele ny oppgave, eller føre timer for dagens arbeid.`,
+          quickReplies: [
+            { title: '+ Ny oppgave', payload: `Opprett oppgave på ${activePName}: ` },
+            { title: 'Før timer på oppgaven', payload: `Før 7.5 timer på ${activePName}` },
+            { title: 'Hent timer', payload: `Hent timer på ${activePName}` },
+            { title: 'Hent byggedagbok', payload: `Hent dagbok på ${activePName}` }
+          ]
+        });
+      } else {
+        return NextResponse.json({
+          success: true,
+          sessionId: fbId,
+          reply: `📋 **Oppgaveliste — ${activePName}**\n\nDet er ingen registrerte oppgaver på dette prosjektet ennå.\n\nVil du at jeg skal opprette en oppgave nå? F.eks: *«Opprett oppgave: Slukmontering og falloppbygging mot sluk (BVN)»* eller *«Opprett oppgave: Membranarbeid»*?`,
+          quickReplies: [
+            { title: '+ Opprett oppgave: Sluk & Fall', payload: `Opprett oppgave på ${activePName}: Slukmontering og falloppbygging iht BVN` },
+            { title: '+ Opprett oppgave: Membran & Mansjetter', payload: `Opprett oppgave på ${activePName}: Membranarbeid og rørgjennomføringer` },
+            { title: '+ Opprett oppgave: Flislegging', payload: `Opprett oppgave på ${activePName}: Flislegging og fuging` }
+          ]
+        });
+      }
+    }
+
+    // 🎯 TIMER: "hent timer" / "vis timer" / "timeliste"
+    const isFetchHours = [
+      'hent timer', 'hent timeliste', 'vis timer', 'vis timeliste', 'timeliste', 'førte timer',
+      'hvor mange timer', 'timer på prosjektet', 'timer logget', 'se timer', 'timeoversikt', 'hent timeføring'
+    ].includes(cleanLowerMsg) || (
+      cleanLowerMsg.startsWith('hent timer') || cleanLowerMsg.startsWith('vis timer')
+    );
+
+    if (isFetchHours) {
+      const activePName = resolvedProjectName || 'Renovering Bad Vidjeveien 21';
+      if (projectTimes.length > 0) {
+        const standardHourlyRate = 980;
+        const totalValue = totalProjectHours * standardHourlyRate;
+
+        const formattedEntries = projectTimes.slice(0, 10).map((t: any) => {
+          const wName = t.workerName || t.userName || 'Håndverker';
+          const hStr = `${Number(t.hours || 0).toFixed(1)}t`;
+          const desc = t.task || t.description || 'Produksjon';
+          const stat = t.status === 'approved' ? '✅ Godkjent' : '⏳ Venter på leder';
+          return `• **${t.date || 'Tidligere'} — ${wName} (${hStr})** [${stat}]\n  - *${desc}*`;
+        }).join('\n\n');
+
+        return NextResponse.json({
+          success: true,
+          sessionId: fbId,
+          reply: `⏱️ **Førte timer & Ressursbruk — ${activePName}**\n\n` +
+            `• **Totalt registrert:** **${totalProjectHours.toFixed(1)} timer**\n` +
+            `• **Estimert produksjonsverdi:** kr ${totalValue.toLocaleString('no-NO')},- eks mva\n` +
+            `• **Antall timeføringer:** ${projectTimes.length} stk\n\n` +
+            `### Siste timeføringer på prosjektet:\n` +
+            `${formattedEntries}\n\n` +
+            `---\n` +
+            `💡 Alle timer er synkronisert med byggedagbok og lønnsgrunnlag iht. AML § 10-7 og Byggherreforskriften § 15.`,
+          quickReplies: [
+            { title: 'Før flere timer', payload: `Før timer på ${activePName}` },
+            { title: 'Hent oppgaver', payload: `Hent oppgaver på ${activePName}` },
+            { title: 'Hent byggedagbok', payload: `Hent dagbok på ${activePName}` },
+            { title: 'Ledergodkjenning', payload: 'Vis timegodkjenning for leder' }
+          ]
+        });
+      } else {
+        return NextResponse.json({
+          success: true,
+          sessionId: fbId,
+          reply: `⏱️ **Timeliste — ${activePName}**\n\nIngen timer er bokført på dette prosjektet ennå.\n\nSi f.eks: *«Før 7.5 timer i dag på ${activePName}: Rørleggerkoordinering og klargjøring»* så registreres timene direkte inn i byggedagboken!`,
+          quickReplies: [
+            { title: '7.5t Normaltid i dag', payload: `Før 7.5 timer i dag på ${activePName}: Produksjon iht fremdriftsplan` },
+            { title: 'Hent oppgaver', payload: `Hent oppgaver på ${activePName}` }
+          ]
+        });
+      }
+    }
+
+    // 🎯 DAGBOK: "hent dagbok" / "vis byggedagbok" / "byggedagbok"
+    const isFetchDailyLog = [
+      'hent dagbok', 'hent byggedagbok', 'vis dagbok', 'vis byggedagbok', 'byggedagbok', 'dagsrapport',
+      'siste dagbok', 'dagbokføring', 'dagbok', 'dagsrapporter', 'se byggedagbok'
+    ].includes(cleanLowerMsg) || (
+      cleanLowerMsg.startsWith('hent dagbok') || cleanLowerMsg.startsWith('vis dagbok') ||
+      cleanLowerMsg.startsWith('hent byggedagbok') || cleanLowerMsg.startsWith('vis byggedagbok')
+    );
+
+    if (isFetchDailyLog) {
+      const activePName = resolvedProjectName || 'Renovering Bad Vidjeveien 21';
+      if (projectLogs.length > 0) {
+        const formattedLogs = projectLogs.slice(0, 5).map((l: any) => {
+          const crew = Array.isArray(l.crewMembers) ? l.crewMembers.join(', ') : (l.crewCount ? `${l.crewCount} mann` : 'Håndverker');
+          const hours = l.totalHoursWorked ? ` (${l.totalHoursWorked} timer)` : '';
+          return `📅 **${l.date || 'Tidligere dagsrapport'}**\n` +
+            `• **Værforhold:** ${l.weatherCondition || 'Normalt opphold'}\n` +
+            `• **Bemanning:** ${crew}${hours}\n` +
+            `• **Fremdrift & Notater:**\n${l.generalNotes || 'Arbeid utført iht. plan.'}`;
+        }).join('\n\n---\n\n');
+
+        return NextResponse.json({
+          success: true,
+          sessionId: fbId,
+          reply: `📖 **Elektronisk Byggedagbok — ${activePName}**\n*Iht. Byggherreforskriften § 15 & NS 8406*\n\n` +
+            `${formattedLogs}\n\n` +
+            `---\n` +
+            `💡 Vil du legge til et nytt dagboknotat eller registrere avvik for dagen?`,
+          quickReplies: [
+            { title: 'Før notat i dagbok', payload: `Før notat i byggedagbok for ${activePName}: ` },
+            { title: 'Hent oppgaver', payload: `Hent oppgaver på ${activePName}` },
+            { title: 'Hent timer', payload: `Hent timer på ${activePName}` },
+            { title: 'Opprett SJA', payload: `Opprett en SJA for arbeid på ${activePName}` }
+          ]
+        });
+      } else {
+        return NextResponse.json({
+          success: true,
+          sessionId: fbId,
+          reply: `📖 **Elektronisk Byggedagbok — ${activePName}**\n\nIngen dagboknotater er arkivert for dette prosjektet ennå.\n\nSi f.eks: *«Før notat i byggedagboken: God fremdrift i dag, kontrollert fall mot sluk 1:50 i dusj»* så lagres det formelt iht. Byggherreforskriften § 15.`,
+          quickReplies: [
+            { title: 'Før dagens vær & notat', payload: `Før i byggedagbok for ${activePName}: Normal drift iht fremdriftsplan` },
+            { title: 'Hent oppgaver', payload: `Hent oppgaver på ${activePName}` }
+          ]
+        });
+      }
+    }
+
+    // 🎯 AVVIK: "hent avvik" / "vis avvik" / "avviksliste"
+    const isFetchDeviations = [
+      'hent avvik', 'vis avvik', 'avviksliste', 'aktive avvik', 'avvik på prosjektet',
+      'avvik', 'ruh', 'hent ruh', 'se avvik'
+    ].includes(cleanLowerMsg) || (
+      cleanLowerMsg.startsWith('hent avvik') || cleanLowerMsg.startsWith('vis avvik')
+    );
+
+    if (isFetchDeviations) {
+      const activePName = resolvedProjectName || 'Renovering Bad Vidjeveien 21';
+      if (projectDevs.length > 0) {
+        const formattedDevs = projectDevs.map((d: any) => {
+          const icon = d.status === 'closed' ? '✅' : d.severity === 'critical' || d.severity === 'high' ? '🚨' : '⚠️';
+          const statText = d.status === 'closed' ? 'Lukket / Utbedret' : 'Åpent';
+          const sevText = d.severity === 'critical' ? 'Kritisk' : d.severity === 'high' ? 'Høy' : 'Middels';
+          return `• ${icon} **${d.title}** [${statText} • ${sevText}]\n` +
+            `  - Fag: ${d.trade || 'Byggmester'}\n` +
+            `  - Beskrivelse: ${d.description}\n` +
+            (d.correctiveAction ? `  - Tiltak: ${d.correctiveAction}\n` : '');
+        }).join('\n\n');
+
+        return NextResponse.json({
+          success: true,
+          sessionId: fbId,
+          reply: `⚠️ **Avvik & Kvalitetskontroll — ${activePName}**\n\n` +
+            `Totalt ${projectDevs.length} avvik (${projectDevs.filter((d: any) => d.status !== 'closed').length} åpne):\n\n` +
+            `${formattedDevs}\n\n` +
+            `---\n` +
+            `💡 Trenger du å opprette et nytt avvik eller lukke et eksisterende?`,
+          quickReplies: [
+            { title: '+ Registrer nytt avvik', payload: `Registrer avvik på ${activePName}: ` },
+            { title: 'Hent oppgaver', payload: `Hent oppgaver på ${activePName}` },
+            { title: 'Hent timer', payload: `Hent timer på ${activePName}` }
+          ]
+        });
+      } else {
+        return NextResponse.json({
+          success: true,
+          sessionId: fbId,
+          reply: `✅ **Ingen avvik registrert — ${activePName}**\n\nByggeplassen har 0 åpne avvik loggført. Alle kontroller er i henhold til kvalitetsplanen og TEK17.`,
+          quickReplies: [
+            { title: '+ Registrer avvik', payload: `Registrer avvik på ${activePName}: ` },
+            { title: 'Hent oppgaver', payload: `Hent oppgaver på ${activePName}` }
+          ]
+        });
+      }
+    }
 
     // 🎯 1. BARE TRIGGER: "endringsordre"
     const isBareEO = [

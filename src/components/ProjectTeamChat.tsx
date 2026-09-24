@@ -513,7 +513,7 @@ Maks 2-4 avsnitt eller punktliste.`;
       />
 
       {/* 1. Header (Clean, minimal, 100% integrert i appen) */}
-      <div className="sticky top-0 z-30 flex items-center justify-between px-3 sm:px-6 py-2.5 sm:py-3 bg-[#0A101D]/90 backdrop-blur-md border-b border-white/10 shrink-0">
+      <div className="sticky top-0 z-10 flex items-center justify-between px-3 sm:px-6 py-2.5 sm:py-3 bg-[#0A101D]/90 backdrop-blur-md border-b border-white/10 shrink-0">
         <div className="flex items-center gap-2 sm:gap-3 min-w-0 flex-1 mr-2">
           {/* Mobil navigasjon: Tilbake til liste eller tilbake til arbeidsstasjon */}
           <button

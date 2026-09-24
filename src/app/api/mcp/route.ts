@@ -183,6 +183,18 @@ const MCP_TOOLS = [
     }
   },
   {
+    name: 'hent_timer',
+    description: 'Henter førte timer og timelister for et byggeprosjekt eller en spesifikk håndverker iht. Byggherreforskriften § 15.',
+    inputSchema: {
+      type: 'object',
+      properties: {
+        prosjektId: { type: 'string', description: 'Valgfritt prosjekt-ID eller navn' },
+        handverkerNavn: { type: 'string', description: 'Valgfritt navn på håndverker' },
+        fraDato: { type: 'string', description: 'Valgfri startdato (YYYY-MM-DD)' }
+      }
+    }
+  },
+  {
     name: 'opprett_prosjekt',
     description: 'Oppretter et nytt byggeprosjekt i VikingMester med prosjektkode, adresse, kunde og byggeleder.',
     inputSchema: {
@@ -336,7 +348,7 @@ const MCP_TOOLS = [
   }
 ];
 
-// ⚙️ Hjelpefunksjon for å finne prosjekt basert på ID eller navn
+// ⚙️ Hjelpefunksjon for å finne prosjekt basert på ID, navn, aliaser eller lokasjon
 async function resolveProject(projectIdOrName?: string) {
   const projects = await getCollectionItems('projects');
   if (!projectIdOrName || !projectIdOrName.trim()) {
@@ -346,7 +358,11 @@ async function resolveProject(projectIdOrName?: string) {
   const match = projects.find((p: any) => 
     p.id === projectIdOrName || 
     (p.name && p.name.toLowerCase().includes(cleanQuery)) ||
-    (p.projectCode && p.projectCode.toLowerCase() === cleanQuery)
+    (p.name && cleanQuery.includes(p.name.toLowerCase())) ||
+    (p.projectCode && p.projectCode.toLowerCase() === cleanQuery) ||
+    (Array.isArray(p.aliases) && p.aliases.some((a: string) => a.toLowerCase().includes(cleanQuery) || cleanQuery.includes(a.toLowerCase()))) ||
+    (cleanQuery.includes('vidjeveien') && (p.name?.toLowerCase().includes('vidjeveien') || p.location?.toLowerCase().includes('vidjeveien') || p.address?.toLowerCase().includes('vidjeveien'))) ||
+    (cleanQuery.includes('sjusjøen') && (p.name?.toLowerCase().includes('sjusjøen') || p.location?.toLowerCase().includes('sjusjøen')))
   );
   return match || projects[0] || { id: projectIdOrName, name: projectIdOrName };
 }
@@ -620,6 +636,39 @@ async function executeToolCall(toolName: string, args: any) {
         status: t.status,
         prioritet: t.priority
       })), null, 2);
+    }
+
+    case 'hent_timer': {
+      const proj = await resolveProject(args.prosjektId);
+      const allTimes = await getCollectionItems('time_entries');
+      let projectTimes = allTimes.filter((t: any) => 
+        t.projectId === proj.id || 
+        t.projectName === proj.name ||
+        (proj.aliases && proj.aliases.some((a: string) => t.projectName === a || t.projectId === a)) ||
+        (proj.name && t.projectName && t.projectName.toLowerCase().includes(proj.name.toLowerCase()))
+      );
+      if (args.handverkerNavn) {
+        const hName = args.handverkerNavn.toLowerCase();
+        projectTimes = projectTimes.filter((t: any) => 
+          (t.workerName && t.workerName.toLowerCase().includes(hName)) ||
+          (t.userName && t.userName.toLowerCase().includes(hName))
+        );
+      }
+      if (args.fraDato) {
+        projectTimes = projectTimes.filter((t: any) => t.date >= args.fraDato);
+      }
+
+      if (projectTimes.length === 0) {
+        return `Ingen førte timer registrert på «${proj.name}» ennå.`;
+      }
+
+      const totalHours = projectTimes.reduce((sum: number, t: any) => sum + (Number(t.hours) || 0), 0);
+      return JSON.stringify({
+        prosjekt: proj.name,
+        totaleTimer: totalHours,
+        antallOppforinger: projectTimes.length,
+        timeforinger: projectTimes.slice(0, 15).map((t: any) => sanitizeTimeEntryForAgent(t))
+      }, null, 2);
     }
 
     case 'opprett_prosjekt': {

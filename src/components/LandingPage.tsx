@@ -60,6 +60,7 @@ import {
 import { cn } from '@/src/lib/utils';
 import Image from 'next/image';
 import InstallGuide from './InstallGuide';
+import WorkstationShowcase from './WorkstationShowcase';
 import { toast } from 'sonner';
 import { promptPWAInstall, isPWAInstalled, triggerAppDownloadOrInstall } from '../lib/pwa';
 
@@ -729,38 +730,38 @@ function TacticalHomeView({
             </p>
           </div>
 
-          {/* Screenshot Showcase Container */}
-          <div className="max-w-6xl mx-auto rounded-2xl sm:rounded-3xl border-2 border-slate-700/80 bg-slate-900 shadow-2xl shadow-purple-950/50 overflow-hidden relative group">
-            {/* Top Window Bar */}
-            <div className="flex items-center justify-between px-4 py-3 bg-[#0c1220] border-b border-slate-800 text-xs text-slate-400">
+          {/* Screenshot Showcase Container (Krystallklar, ekte Workstation) */}
+          <div className="max-w-6xl mx-auto rounded-2xl sm:rounded-3xl border border-white/15 bg-[#0c1220] shadow-2xl shadow-purple-950/60 overflow-hidden relative group">
+            {/* Top Window Bar (Ekte nettleserramme) */}
+            <div className="flex items-center justify-between px-4 py-3 bg-[#0c1220] border-b border-white/10 text-xs text-slate-400">
               <div className="flex items-center gap-2">
-                <span className="w-3 h-3 rounded-full bg-rose-500/80 inline-block" />
-                <span className="w-3 h-3 rounded-full bg-amber-500/80 inline-block" />
-                <span className="w-3 h-3 rounded-full bg-emerald-500/80 inline-block" />
-                <span className="ml-2 font-mono text-[11px] text-slate-300 hidden sm:inline">
-                  vikingmester.no/workstation
-                </span>
+                <span className="w-3 h-3 rounded-full bg-rose-500/80 inline-block shadow-sm" />
+                <span className="w-3 h-3 rounded-full bg-amber-500/80 inline-block shadow-sm" />
+                <span className="w-3 h-3 rounded-full bg-emerald-500/80 inline-block shadow-sm" />
+                <div className="ml-3 px-3 py-1 rounded-lg bg-black/40 border border-white/5 font-mono text-[11px] text-slate-300 flex items-center gap-2">
+                  <Lock size={11} className="text-emerald-400" />
+                  <span>vikingmester.no/workstation</span>
+                </div>
               </div>
-              <div className="flex items-center gap-3">
-                <span className="text-[11px] text-purple-300 bg-purple-950/80 border border-purple-500/30 px-2.5 py-0.5 rounded-full font-bold">
-                  Aktiv byggeplass: Renovering Bad Vidjeveien 21
-                </span>
-                <span className="hidden md:inline-flex items-center gap-1.5 text-xs text-emerald-400 font-bold">
+              <div className="flex items-center gap-2">
+                <span className="px-2.5 py-0.5 rounded-full text-[11px] font-bold bg-emerald-500/10 text-emerald-400 border border-emerald-500/25 flex items-center gap-1.5">
                   <span className="w-2 h-2 rounded-full bg-emerald-400 animate-pulse" />
-                  100% Autonom Agent
+                  Live Arbeidsstasjon
                 </span>
               </div>
             </div>
 
-            {/* The Actual Real Backend Image */}
-            <div className="relative w-full aspect-[16/9] sm:aspect-[16/9.2] overflow-hidden bg-[#0A0F1D]">
-              <Image
-                src="/images/vikingmester-workstation-preview.png"
-                alt="VikingMester Workstation Backend - Mikrofonen er din, Ken"
-                fill
-                priority
-                sizes="(max-width: 1200px) 100vw, 1200px"
-                className="object-cover object-top transition-transform duration-500 group-hover:scale-[1.01]"
+            {/* Ekte krystallklar Workstation UI i sin helhet */}
+            <div className="relative w-full overflow-hidden bg-[#0A101D]">
+              <WorkstationShowcase
+                onInteract={(action) => {
+                  if (action) {
+                    toast.info(`Demonstrasjon: ${action}`);
+                  }
+                  const el = document.getElementById('bestill');
+                  if (el) el.scrollIntoView({ behavior: 'smooth' });
+                  else onGoToPricing();
+                }}
               />
             </div>
           </div>

@@ -118,6 +118,24 @@ export const inMemoryStore: Record<string, any[]> = {
   ],
   projects: [
     {
+      id: 'proj-bad-vidjeveien',
+      companyId: 'comp-001',
+      company: 'Mester Entreprenør AS',
+      name: 'Renovering Bad Vidjeveien 21',
+      aliases: ['Totalrenovering Bad - Våtromsnormen', 'Vidjeveien 21', 'Renovering Bad Vidjeveien 21', 'BAD-2101'],
+      projectCode: 'BAD-2101',
+      address: 'Vidjeveien 21, 3113 Tønsberg',
+      location: 'Vidjeveien 21, 3113 Tønsberg',
+      clientName: 'Privatkunde',
+      clientEmail: 'kunde.vidjeveien@gmail.com',
+      clientPhone: '912 34 567',
+      status: 'active',
+      stage: 'Pågående',
+      category: 'Bad / Våtrom BVN',
+      progress: 45,
+      createdAt: new Date().toISOString()
+    },
+    {
       id: 'proj-demo-sjusjoen',
       companyId: 'comp-demo-fjellheim',
       company: 'comp-demo-fjellheim',
@@ -136,6 +154,22 @@ export const inMemoryStore: Record<string, any[]> = {
     }
   ],
   deviations: [
+    {
+      id: 'dev-bad-vidjeveien-1',
+      companyId: 'comp-001',
+      company: 'Mester Entreprenør AS',
+      projectId: 'proj-bad-vidjeveien',
+      projectName: 'Renovering Bad Vidjeveien 21',
+      title: 'Mangler mansjett ved rør-i-rør fordelerskap',
+      description: 'Under kontroll før plating ble det avdekket at tetningsmansjett rundt varerør manglet forskriftsmessig klemming iht. BVN 42.100.',
+      severity: 'medium',
+      trade: 'Rørlegger',
+      status: 'open',
+      category: 'Kvalitet / Våtrom',
+      correctiveAction: 'Montere godkjent butylmansjett og forsegle med smøremembran før lukking.',
+      reportedBy: 'Ken (Admin)',
+      createdAt: new Date(Date.now() - 86400000).toISOString()
+    },
     {
       id: 'dev-demo-sjusjoen-1',
       companyId: 'comp-demo-fjellheim',
@@ -188,6 +222,97 @@ export const inMemoryStore: Record<string, any[]> = {
         'Vindmåling før løft (maks 10 m/s)'
       ],
       createdAt: new Date(Date.now() - 86400000).toISOString()
+    }
+  ],
+  tasks: [
+    {
+      id: 'task-v21-1',
+      projectId: 'proj-bad-vidjeveien',
+      projectName: 'Renovering Bad Vidjeveien 21',
+      companyId: 'comp-001',
+      title: 'Slukmontering og falloppbygging mot sluk (BVN)',
+      description: 'Støping av fall 1:50 i dusjsone og 1:100 i rommet, samt montering av klemring.',
+      assignedTo: 'Ken (Byggmester)',
+      dueDate: '2026-09-28',
+      priority: 'high',
+      status: 'in_progress',
+      createdAt: new Date().toISOString()
+    },
+    {
+      id: 'task-v21-2',
+      projectId: 'proj-bad-vidjeveien',
+      projectName: 'Renovering Bad Vidjeveien 21',
+      companyId: 'comp-001',
+      title: 'Membranarbeid og mansjetter ved rørgjennomføringer',
+      description: 'Påføring av smøremembran med armeringsduk i hjørner og tettesjikt iht. TEK17 § 13-15.',
+      assignedTo: 'Ken (Byggmester)',
+      dueDate: '2026-09-30',
+      priority: 'urgent',
+      status: 'pending',
+      createdAt: new Date().toISOString()
+    },
+    {
+      id: 'task-v21-3',
+      projectId: 'proj-bad-vidjeveien',
+      projectName: 'Renovering Bad Vidjeveien 21',
+      companyId: 'comp-001',
+      title: 'Riving og sanering av eksisterende fliser og baderomsinnredning',
+      description: 'Fjerning av gammelt belegg, transport til godkjent avfallsmottak med deklarering.',
+      assignedTo: 'Lærling / Håndverker',
+      dueDate: '2026-09-22',
+      priority: 'medium',
+      status: 'completed',
+      createdAt: new Date().toISOString()
+    }
+  ],
+  time_entries: [
+    {
+      id: 'time-v21-1',
+      projectId: 'proj-bad-vidjeveien',
+      projectName: 'Renovering Bad Vidjeveien 21',
+      companyId: 'comp-001',
+      userId: 'u-admin-123',
+      userName: 'Ken (Admin)',
+      workerName: 'Ken (Admin)',
+      date: '2026-09-24',
+      hours: 7.5,
+      task: 'Rørleggerkoordinering, fallstøp og klargjøring for membran',
+      description: 'Rørleggerkoordinering, fallstøp og klargjøring for membran',
+      category: 'arbeid',
+      status: 'approved',
+      createdAt: new Date().toISOString()
+    },
+    {
+      id: 'time-v21-2',
+      projectId: 'proj-bad-vidjeveien',
+      projectName: 'Renovering Bad Vidjeveien 21',
+      companyId: 'comp-001',
+      userId: 'u-admin-123',
+      userName: 'Ken (Admin)',
+      workerName: 'Ken (Admin)',
+      date: '2026-09-23',
+      hours: 8.0,
+      task: 'Pigging, riving av gammelt gulv og utlekting for rør-i-rør skap',
+      description: 'Pigging, riving av gammelt gulv og utlekting for rør-i-rør skap',
+      category: 'arbeid',
+      status: 'approved',
+      createdAt: new Date().toISOString()
+    }
+  ],
+  daily_logs: [
+    {
+      id: 'log-v21-1',
+      projectId: 'proj-bad-vidjeveien',
+      projectName: 'Renovering Bad Vidjeveien 21',
+      companyId: 'comp-001',
+      date: '2026-09-24',
+      crewCount: 1,
+      crewMembers: ['Ken (Admin)'],
+      totalHoursWorked: 7.5,
+      generalNotes: '• Ken: 7.5t – Rørleggerkoordinering, fallstøp og klargjøring for membran. Fall mot sluk kontrollert med vater iht. BVN.',
+      weatherCondition: 'Overskyet, 16°C, vind 3,3 m/s, 0 mm nedbør',
+      inspectedBy: 'Ken (Admin)',
+      createdAt: new Date().toISOString()
     }
   ],
   offers: [],
