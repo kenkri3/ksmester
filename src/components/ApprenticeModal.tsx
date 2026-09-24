@@ -16,7 +16,8 @@ import {
   Printer,
   ChevronRight,
   ShieldCheck,
-  Calendar
+  Calendar,
+  Plus
 } from 'lucide-react';
 import { toast } from 'sonner';
 import { cn } from '@/src/lib/utils';
@@ -67,6 +68,23 @@ const ApprenticeModal: React.FC<ApprenticeModalProps> = ({ isOpen, onClose, init
   const [generatedReport, setGeneratedReport] = useState<any | null>(null);
   const [feedbackInput, setFeedbackInput] = useState<{ [goalId: string]: string }>({});
 
+  const [isCreateModalOpen, setIsCreateModalOpen] = useState<boolean>(false);
+  const [newApprenticeName, setNewApprenticeName] = useState('');
+  const [newApprenticeEmail, setNewApprenticeEmail] = useState('');
+  const [newApprenticePhone, setNewApprenticePhone] = useState('');
+  const [newApprenticeTrade, setNewApprenticeTrade] = useState('carpenter');
+  const [newApprenticeYear, setNewApprenticeYear] = useState<number>(1);
+  const [newApprenticeMentor, setNewApprenticeMentor] = useState('');
+  const [isCreating, setIsCreating] = useState(false);
+
+  const tradeLabels: Record<string, string> = {
+    carpenter: 'Tømrerfaget',
+    plumber: 'Rørleggerfaget',
+    electrician: 'Elektrikerfaget',
+    mason: 'Murerfaget',
+    painter: 'Malerfaget'
+  };
+
   const loadApprentices = async () => {
     setIsLoading(true);
     try {
@@ -83,15 +101,73 @@ const ApprenticeModal: React.FC<ApprenticeModalProps> = ({ isOpen, onClose, init
         const data = await res.json();
         if (data.apprentices && data.apprentices.length > 0) {
           setApprentices(data.apprentices);
-          if (!selectedApprenticeId) {
-            setSelectedApprenticeId(data.apprentices[0].id);
-          }
+          setSelectedApprenticeId(prev => {
+            if (prev && data.apprentices.some((a: any) => a.id === prev)) return prev;
+            return data.apprentices[0].id;
+          });
+        } else {
+          setApprentices([]);
+          setSelectedApprenticeId(null);
         }
       }
     } catch (err) {
       console.warn('Kunne ikke laste lærlinger:', err);
     } finally {
       setIsLoading(false);
+    }
+  };
+
+  const handleCreateApprentice = async (e: React.FormEvent) => {
+    e.preventDefault();
+    if (!newApprenticeName.trim()) {
+      toast.error('Vennligst oppgi lærlingens fulle navn');
+      return;
+    }
+
+    setIsCreating(true);
+    try {
+      const token = typeof window !== 'undefined' ? (localStorage.getItem('token') || localStorage.getItem('auth_token')) : null;
+      const res = await fetch('/api/apprentice', {
+        method: 'POST',
+        headers: {
+          'Content-Type': 'application/json',
+          ...(token ? { 'Authorization': `Bearer ${token}` } : {})
+        },
+        credentials: 'include',
+        body: JSON.stringify({
+          action: 'create_apprentice',
+          name: newApprenticeName.trim(),
+          email: newApprenticeEmail.trim() || `${newApprenticeName.toLowerCase().replace(/\s+/g, '.')}@mester.no`,
+          phone: newApprenticePhone.trim(),
+          trade: newApprenticeTrade,
+          tradeName: tradeLabels[newApprenticeTrade] || 'Tømrerfaget',
+          tradeYear: newApprenticeYear,
+          mentorName: newApprenticeMentor.trim() || 'Faglig leder'
+        })
+      });
+
+      if (res.ok) {
+        const data = await res.json();
+        toast.success(`Lærling ${newApprenticeName} er registrert med offisiell læreplan!`);
+        setIsCreateModalOpen(false);
+        setNewApprenticeName('');
+        setNewApprenticeEmail('');
+        setNewApprenticePhone('');
+        setNewApprenticeTrade('carpenter');
+        setNewApprenticeYear(1);
+        setNewApprenticeMentor('');
+        await loadApprentices();
+        if (data.apprentice?.id) {
+          setSelectedApprenticeId(data.apprentice.id);
+        }
+      } else {
+        const err = await res.json().catch(() => ({}));
+        toast.error(err.error || 'Kunne ikke opprette lærling');
+      }
+    } catch (e) {
+      toast.error('Nettverksfeil ved registrering av lærling.');
+    } finally {
+      setIsCreating(false);
     }
   };
 
@@ -166,7 +242,10 @@ const ApprenticeModal: React.FC<ApprenticeModalProps> = ({ isOpen, onClose, init
   };
 
   const handleGenerateReport = async () => {
-    if (!selectedApprentice) return;
+    if (!selectedApprentice) {
+      toast.error('Velg eller opprett en lærling først for å generere halvårsrapport.');
+      return;
+    }
     setIsLoading(true);
     try {
       const token = typeof window !== 'undefined' ? (localStorage.getItem('token') || localStorage.getItem('auth_token')) : null;
@@ -243,17 +322,26 @@ const ApprenticeModal: React.FC<ApprenticeModalProps> = ({ isOpen, onClose, init
           <div className="flex items-center gap-2">
             <button 
               onClick={handleSyncTimeEntries}
-              disabled={isSyncing}
+              disabled={isSyncing || !selectedApprentice}
               className="hidden sm:flex items-center gap-1.5 px-3 py-2 bg-neutral-100 hover:bg-neutral-200 text-neutral-700 rounded-xl text-xs font-bold transition-all disabled:opacity-50 cursor-pointer"
               title="Matcher automatisk timelister mot kompetansemål"
             >
               <RefreshCw size={14} className={isSyncing ? 'animate-spin' : ''} />
               <span>{isSyncing ? 'Synker timer...' : 'Autonom Time-Synk'}</span>
             </button>
+            <button
+              onClick={() => setIsCreateModalOpen(true)}
+              className="flex items-center gap-1.5 px-3 py-2 bg-indigo-600 hover:bg-indigo-700 text-white rounded-xl text-xs font-bold transition-all shadow-xs cursor-pointer active:scale-95"
+              title="Registrer ny lærling"
+            >
+              <Plus size={14} />
+              <span className="hidden sm:inline">Ny Lærling</span>
+              <span className="sm:hidden">Ny</span>
+            </button>
             <button 
               onClick={onClose} 
               aria-label="Lukk" 
-              className="p-2 hover:bg-neutral-100 rounded-xl transition-colors shrink-0 text-neutral-400 hover:text-neutral-600"
+              className="p-2 hover:bg-neutral-100 rounded-xl transition-colors shrink-0 text-neutral-400 hover:text-neutral-600 cursor-pointer"
             >
               <X size={20} />
             </button>
@@ -300,9 +388,18 @@ const ApprenticeModal: React.FC<ApprenticeModalProps> = ({ isOpen, onClose, init
               <h3 className="text-xs font-black uppercase tracking-widest text-neutral-400">
                 Bedriftens Lærlinger
               </h3>
-              <span className="text-[10px] font-bold px-1.5 py-0.5 bg-indigo-50 text-indigo-700 rounded-md">
-                {apprentices.length} aktiv
-              </span>
+              <div className="flex items-center gap-1.5">
+                <span className="text-[10px] font-bold px-1.5 py-0.5 bg-indigo-50 text-indigo-700 rounded-md">
+                  {apprentices.length} aktiv
+                </span>
+                <button
+                  onClick={() => setIsCreateModalOpen(true)}
+                  className="p-1 hover:bg-indigo-50 text-indigo-600 rounded-md transition-colors cursor-pointer"
+                  title="Registrer ny lærling"
+                >
+                  <Plus size={14} />
+                </button>
+              </div>
             </div>
 
             <div className="space-y-2">
@@ -345,7 +442,14 @@ const ApprenticeModal: React.FC<ApprenticeModalProps> = ({ isOpen, onClose, init
             </div>
 
             {/* Quick Action for Admin */}
-            <div className="pt-3 border-t border-neutral-100">
+            <div className="pt-3 border-t border-neutral-100 space-y-2">
+              <button
+                onClick={() => setIsCreateModalOpen(true)}
+                className="w-full py-2 px-3 bg-neutral-900 hover:bg-neutral-800 text-white rounded-xl text-xs font-bold transition-all flex items-center justify-center gap-1.5 cursor-pointer shadow-xs"
+              >
+                <Plus size={14} />
+                <span>+ Registrer ny lærling</span>
+              </button>
               <button
                 onClick={handleGenerateReport}
                 className="w-full py-2 px-3 bg-indigo-50 hover:bg-indigo-100 text-indigo-700 rounded-xl text-xs font-bold transition-all flex items-center justify-center gap-1.5 cursor-pointer"
@@ -555,14 +659,155 @@ const ApprenticeModal: React.FC<ApprenticeModalProps> = ({ isOpen, onClose, init
                 </div>
               )
             ) : (
-              <div className="p-12 text-center text-neutral-400">
-                <User size={36} className="mx-auto mb-2 opacity-50" />
-                <p>Ingen lærling funnet.</p>
+              <div className="h-full min-h-[400px] flex flex-col items-center justify-center text-center p-8 bg-white rounded-3xl border border-neutral-200">
+                <div className="w-16 h-16 rounded-2xl bg-indigo-50 text-indigo-600 flex items-center justify-center mb-4">
+                  <GraduationCap size={32} />
+                </div>
+                <h3 className="text-base font-bold text-neutral-900 mb-1">Ingen lærling valgt eller funnet</h3>
+                <p className="text-xs text-neutral-500 max-w-md mb-6 leading-relaxed">
+                  Lærlingmodulen følger automatisk opp læreplanmål iht. Udir, kobler timer fra byggedagboken og genererer godkjente halvårsrapporter for opplæringskontoret.
+                </p>
+                <button
+                  onClick={() => setIsCreateModalOpen(true)}
+                  className="px-4 py-2.5 bg-indigo-600 hover:bg-indigo-700 text-white rounded-xl text-xs font-bold flex items-center gap-2 shadow-md shadow-indigo-100 transition-all cursor-pointer"
+                >
+                  <Plus size={15} />
+                  <span>+ Registrer bedriftens lærling</span>
+                </button>
               </div>
             )}
           </div>
         </div>
-    </div>
+
+        {/* Registrer ny lærling Modal */}
+        <AnimatePresence>
+          {isCreateModalOpen && (
+            <div className="fixed inset-0 z-[60] flex items-center justify-center p-4 bg-black/60 backdrop-blur-sm">
+              <motion.div
+                initial={{ opacity: 0, scale: 0.95 }}
+                animate={{ opacity: 1, scale: 1 }}
+                exit={{ opacity: 0, scale: 0.95 }}
+                className="w-full max-w-md bg-white rounded-3xl p-6 shadow-2xl border border-neutral-200"
+              >
+                <div className="flex items-center justify-between pb-3 border-b border-neutral-100 mb-4">
+                  <div className="flex items-center gap-2.5">
+                    <div className="w-8 h-8 rounded-xl bg-indigo-100 text-indigo-700 flex items-center justify-center">
+                      <GraduationCap size={18} />
+                    </div>
+                    <div>
+                      <h3 className="text-sm font-bold text-neutral-900">Registrer ny lærling</h3>
+                      <p className="text-[11px] text-neutral-500">Offisielle Udir-læreplanmål kobles automatisk</p>
+                    </div>
+                  </div>
+                  <button
+                    onClick={() => setIsCreateModalOpen(false)}
+                    className="p-1 text-neutral-400 hover:text-neutral-600 rounded-lg hover:bg-neutral-100 cursor-pointer"
+                  >
+                    <X size={18} />
+                  </button>
+                </div>
+
+                <form onSubmit={handleCreateApprentice} className="space-y-3.5">
+                  <div>
+                    <label className="block text-xs font-bold text-neutral-700 mb-1">Fullt navn *</label>
+                    <input
+                      type="text"
+                      required
+                      placeholder="F.eks. Jonas Berg"
+                      value={newApprenticeName}
+                      onChange={(e) => setNewApprenticeName(e.target.value)}
+                      className="w-full px-3 py-2 bg-neutral-50 border border-neutral-200 rounded-xl text-xs text-neutral-900 placeholder:text-neutral-400 outline-none focus:border-indigo-500 focus:bg-white"
+                    />
+                  </div>
+
+                  <div className="grid grid-cols-2 gap-3">
+                    <div>
+                      <label className="block text-xs font-bold text-neutral-700 mb-1">Fagområde</label>
+                      <select
+                        value={newApprenticeTrade}
+                        onChange={(e) => setNewApprenticeTrade(e.target.value)}
+                        className="w-full px-3 py-2 bg-neutral-50 border border-neutral-200 rounded-xl text-xs text-neutral-900 outline-none focus:border-indigo-500 focus:bg-white"
+                      >
+                        <option value="carpenter">Tømrerfaget</option>
+                        <option value="plumber">Rørleggerfaget</option>
+                        <option value="electrician">Elektrikerfaget</option>
+                        <option value="mason">Murerfaget</option>
+                        <option value="painter">Malerfaget</option>
+                      </select>
+                    </div>
+
+                    <div>
+                      <label className="block text-xs font-bold text-neutral-700 mb-1">Læreår</label>
+                      <select
+                        value={newApprenticeYear}
+                        onChange={(e) => setNewApprenticeYear(Number(e.target.value))}
+                        className="w-full px-3 py-2 bg-neutral-50 border border-neutral-200 rounded-xl text-xs text-neutral-900 outline-none focus:border-indigo-500 focus:bg-white"
+                      >
+                        <option value={1}>1. års lærling</option>
+                        <option value={2}>2. års lærling</option>
+                        <option value={3}>3. års lærling</option>
+                        <option value={4}>4. års lærling</option>
+                      </select>
+                    </div>
+                  </div>
+
+                  <div className="grid grid-cols-2 gap-3">
+                    <div>
+                      <label className="block text-xs font-bold text-neutral-700 mb-1">E-post</label>
+                      <input
+                        type="email"
+                        placeholder="laerling@bedrift.no"
+                        value={newApprenticeEmail}
+                        onChange={(e) => setNewApprenticeEmail(e.target.value)}
+                        className="w-full px-3 py-2 bg-neutral-50 border border-neutral-200 rounded-xl text-xs text-neutral-900 placeholder:text-neutral-400 outline-none focus:border-indigo-500 focus:bg-white"
+                      />
+                    </div>
+                    <div>
+                      <label className="block text-xs font-bold text-neutral-700 mb-1">Telefon</label>
+                      <input
+                        type="tel"
+                        placeholder="987 65 432"
+                        value={newApprenticePhone}
+                        onChange={(e) => setNewApprenticePhone(e.target.value)}
+                        className="w-full px-3 py-2 bg-neutral-50 border border-neutral-200 rounded-xl text-xs text-neutral-900 placeholder:text-neutral-400 outline-none focus:border-indigo-500 focus:bg-white"
+                      />
+                    </div>
+                  </div>
+
+                  <div>
+                    <label className="block text-xs font-bold text-neutral-700 mb-1">Faglig leder / Mentor</label>
+                    <input
+                      type="text"
+                      placeholder="F.eks. Ken (Byggmester)"
+                      value={newApprenticeMentor}
+                      onChange={(e) => setNewApprenticeMentor(e.target.value)}
+                      className="w-full px-3 py-2 bg-neutral-50 border border-neutral-200 rounded-xl text-xs text-neutral-900 placeholder:text-neutral-400 outline-none focus:border-indigo-500 focus:bg-white"
+                    />
+                  </div>
+
+                  <div className="pt-3 flex items-center justify-end gap-2 border-t border-neutral-100">
+                    <button
+                      type="button"
+                      onClick={() => setIsCreateModalOpen(false)}
+                      className="px-3.5 py-2 rounded-xl text-xs font-bold text-neutral-600 hover:bg-neutral-100 transition-colors cursor-pointer"
+                    >
+                      Avbryt
+                    </button>
+                    <button
+                      type="submit"
+                      disabled={isCreating}
+                      className="px-4 py-2 bg-indigo-600 hover:bg-indigo-700 disabled:opacity-50 text-white rounded-xl text-xs font-bold transition-all shadow-sm cursor-pointer flex items-center gap-1.5"
+                    >
+                      {isCreating ? <RefreshCw size={13} className="animate-spin" /> : <Plus size={13} />}
+                      <span>{isCreating ? 'Oppretter...' : 'Registrer lærling'}</span>
+                    </button>
+                  </div>
+                </form>
+              </motion.div>
+            </div>
+          )}
+        </AnimatePresence>
+      </div>
   );
 
   if (inline) {
