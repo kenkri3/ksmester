@@ -29,7 +29,7 @@ export async function generateSJAAction(taskDescription: string, weatherContext?
 
   // 2. Check server-side cache (0 tokens)
   const prompt = `Generer SJA for: ${taskDescription}. Vær: ${weatherContext || 'Normalt'}.`;
-  const cacheKey = hashAiRequest(prompt, 'sja_generator', 'gemini-2.5-flash');
+  const cacheKey = hashAiRequest(prompt, 'sja_generator', 'deepseek-flash');
   const cached = await getCachedAiResponse(cacheKey);
   if (cached) {
     try {
@@ -41,7 +41,7 @@ export async function generateSJAAction(taskDescription: string, weatherContext?
     } catch {}
   }
 
-  // 3. AI Generation via 1_MIN_AI (hovedmotor) med automatisk Gemini backup
+  // 3. AI Generation via DeepSeek / Gemini / 1min.AI
   const result = await generateWithAiEngine({
     prompt: `Generer et SJA-utkast som JSON for følgende oppgave: ${taskDescription}. Værforhold: ${weatherContext || 'Normalt innendørs/utendørs'}.`,
     systemInstruction: 'Du er en ekspert på Sikker Jobb Analyse (SJA) i Norge. Returner KUN et gyldig JSON-objekt med feltene: title, task, risikoer (liste med aktivitet, risiko, tiltak), utstyr (liste), tek17Reference, weatherImpact.',

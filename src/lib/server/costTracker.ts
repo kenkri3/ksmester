@@ -21,26 +21,37 @@ export interface CostLogRecord {
 // Valutakurs USD -> NOK
 export const NOK_USD_RATE = 10.80;
 
-// Offisielle Gemini 2.5 Flash priser per 1M tokens
+// Offisielle Gemini 3.8 Flash / 2.5 Flash priser per 1M tokens
 // Input: $0.15 / 1M tokens (~1.62 NOK)
 // Output: $0.60 / 1M tokens (~6.48 NOK)
-// Gemini 2.5 Flash-Lite: $0.075 input / $0.30 output
 export const GEMINI_PROMPT_PER_M = 0.15;
 export const GEMINI_COMPLETION_PER_M = 0.60;
 export const GEMINI_LITE_PROMPT_PER_M = 0.075;
 export const GEMINI_LITE_COMPLETION_PER_M = 0.30;
+export const GEMINI_PRO_PROMPT_PER_M = 1.25;
+export const GEMINI_PRO_COMPLETION_PER_M = 5.00;
 
-// 1min.ai og GPT-4o-mini priser
+// 1min.ai og GPT-4o priser
+export const GPT4O_PROMPT_PER_M = 2.50;
+export const GPT4O_COMPLETION_PER_M = 10.00;
 export const GPT4O_MINI_PROMPT_PER_M = 0.15;
 export const GPT4O_MINI_COMPLETION_PER_M = 0.60;
 
-// Claude 3.5 Sonnet priser (høypresisjon juridisk / NS 8406)
+// Claude 3.7 Sonnet / Claude 3.5 Sonnet priser (høypresisjon juridisk / NS 8406)
 export const CLAUDE_SONNET_PROMPT_PER_M = 3.00;
 export const CLAUDE_SONNET_COMPLETION_PER_M = 15.00;
 
-// DeepSeek V3 chat priser
+// DeepSeek Flash / DeepSeek V3 chat priser
 export const DEEPSEEK_PROMPT_PER_M = 0.14;
 export const DEEPSEEK_COMPLETION_PER_M = 0.28;
+
+// DeepSeek V4 Pro / DeepSeek R1 reasoner priser
+export const DEEPSEEK_R1_PROMPT_PER_M = 0.55;
+export const DEEPSEEK_R1_COMPLETION_PER_M = 2.19;
+
+// OpenAI o3-mini priser
+export const O3_MINI_PROMPT_PER_M = 1.10;
+export const O3_MINI_COMPLETION_PER_M = 4.40;
 
 // Inkluderte månedlige token- og bildekvoter per pakke for 100% marginvern
 export const PLAN_LIMITS: Record<string, { tokens: number; images: number; monthlyPrice: number }> = {

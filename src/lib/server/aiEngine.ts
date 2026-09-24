@@ -154,12 +154,13 @@ export function getOpenRouterKey(): string | null {
 
 /**
  * Intelligent modellruter (Kvalitet vs. Tokenkostnad).
- * Ruter oppgaver automatisk til den mest kostnadseffektive modellen uten kvalitetstap:
- * - Nettsøk: Gemini med Google Grounding / gpt-4o-mini
- * - Tekst / Rådgivning / Kalkyle / KS: DeepSeek-V3 (deepseek-chat)
- * - Kompleks resonnering / NS 8406 tvist: DeepSeek-R1 (deepseek-reasoner)
- * - SJA: DeepSeek-V3 / Gemini 2.5 Flash
- * - Vision / Bildeanalyse: Gemini 2.5 Flash
+ * Ruter oppgaver automatisk til de nyeste 2026-flaggskipmodellene:
+ * - Nettsøk: Gemini 3.8 Flash (med Google Search Grounding) / gpt-4o
+ * - Tekst / Rådgivning / Kalkyle / KS: DeepSeek-Flash (deepseek-flash / deepseek-chat)
+ * - Kompleks resonnering / NS 8406 tvist: DeepSeek-V4 Pro (deepseek-v4-pro / deepseek-reasoner) / Claude 3.7 Sonnet / o3-mini
+ * - SEO & E-E-A-T fagartikler: Claude 3.7 Sonnet (claude-3-7-sonnet) / DeepSeek-Flash
+ * - SJA: DeepSeek-Flash / Gemini 3.8 Flash
+ * - Vision / Bildeanalyse: Gemini 3.8 Flash (med fallback til gemini-3.5-flash / gemini-2.5-flash)
  */
 export function resolveOptimalModel(
   operation?: string,
@@ -171,88 +172,93 @@ export function resolveOptimalModel(
   // Hvis webSearch er aktivert:
   if (webSearch) {
     return {
-      oneMinModel: process.env.ONE_MIN_AI_SEARCH_MODEL || 'gpt-4o-mini',
-      geminiModel: 'gemini-2.5-flash',
-      deepseekModel: 'deepseek-chat'
+      oneMinModel: process.env.ONE_MIN_AI_SEARCH_MODEL || 'gpt-4o',
+      geminiModel: process.env.GEMINI_MODEL || 'gemini-3.8-flash',
+      deepseekModel: 'deepseek-flash'
     };
   }
 
   // Hvis eksplisitt modell er bedt om:
   if (requestedModel) {
     const reqLower = requestedModel.toLowerCase();
-    if (reqLower.includes('reasoner') || reqLower.includes('r1')) {
+    if (reqLower.includes('reasoner') || reqLower.includes('r1') || reqLower.includes('pro')) {
       return {
-        oneMinModel: requestedModel,
-        geminiModel: 'gemini-2.5-flash',
-        deepseekModel: 'deepseek-reasoner'
+        oneMinModel: 'claude-3-7-sonnet',
+        geminiModel: 'gemini-3.1-pro-preview',
+        deepseekModel: 'deepseek-v4-pro'
       };
     }
     if (reqLower.includes('deepseek')) {
       return {
-        oneMinModel: 'gpt-4o-mini',
-        geminiModel: 'gemini-2.5-flash',
-        deepseekModel: 'deepseek-chat'
+        oneMinModel: 'gpt-4o',
+        geminiModel: 'gemini-3.8-flash',
+        deepseekModel: 'deepseek-flash'
       };
     }
-    if (!reqLower.startsWith('gemini')) {
+    if (reqLower.startsWith('gemini')) {
       return {
-        oneMinModel: requestedModel,
-        geminiModel: 'gemini-2.5-flash',
-        deepseekModel: 'deepseek-chat'
+        oneMinModel: 'gpt-4o',
+        geminiModel: requestedModel,
+        deepseekModel: 'deepseek-flash'
       };
     }
+    return {
+      oneMinModel: requestedModel,
+      geminiModel: 'gemini-3.8-flash',
+      deepseekModel: 'deepseek-flash'
+    };
   }
 
-  // 1. MesterAI Samtalepartner, Rådgivning, Tilbud & Kalkyle -> DeepSeek-V3 (deepseek-chat)
+  // 1. MesterAI Samtalepartner, Rådgivning, Tilbud & Kalkyle -> DeepSeek-Flash (med Claude 3.7 Sonnet / Gemini 3.8 Flash)
   if (op.includes('conversation') || op.includes('advisor') || op.includes('consultation') || op.includes('chat') || op.includes('offer') || op.includes('tilbud') || op.includes('kalkyle')) {
     return {
-      oneMinModel: process.env.ONE_MIN_AI_CHAT_MODEL || 'gpt-4o-mini',
-      geminiModel: 'gemini-2.5-flash',
-      deepseekModel: 'deepseek-chat'
+      oneMinModel: process.env.ONE_MIN_AI_CHAT_MODEL || 'claude-3-7-sonnet',
+      geminiModel: 'gemini-3.8-flash',
+      deepseekModel: 'deepseek-flash'
     };
   }
 
-  // 2. Juridisk, NS 8406, Endringsordrer, Kontrakt -> DeepSeek-chat / deepseek-reasoner
-  if (op.includes('change_order') || op.includes('contract') || op.includes('legal') || op.includes('ns8406') || op.includes('varsel')) {
+  // 2. Juridisk, NS 8406, Tvister, Endringsordrer, Kontrakt -> DeepSeek-V4-Pro / Claude 3.7 Sonnet / Gemini 3.1 Pro
+  if (op.includes('change_order') || op.includes('contract') || op.includes('legal') || op.includes('ns8406') || op.includes('varsel') || op.includes('tvist') || op.includes('dispute')) {
     return {
-      oneMinModel: process.env.ONE_MIN_AI_LEGAL_MODEL || 'gpt-4o-mini',
-      geminiModel: 'gemini-2.5-flash',
-      deepseekModel: 'deepseek-chat'
+      oneMinModel: process.env.ONE_MIN_AI_LEGAL_MODEL || 'claude-3-7-sonnet',
+      geminiModel: 'gemini-3.1-pro-preview',
+      deepseekModel: 'deepseek-v4-pro'
     };
   }
 
-  // 3. SEO & Faglige artikler -> Claude 3.5 Sonnet / DeepSeek
+  // 3. SEO & Faglige artikler -> Claude 3.7 Sonnet / DeepSeek-Flash
   if (op.includes('seo') || op.includes('article')) {
     return {
-      oneMinModel: process.env.ONE_MIN_AI_SEO_MODEL || 'claude-3-5-sonnet',
-      geminiModel: 'gemini-2.5-flash',
-      deepseekModel: 'deepseek-chat'
+      oneMinModel: process.env.ONE_MIN_AI_SEO_MODEL || 'claude-3-7-sonnet',
+      geminiModel: 'gemini-3.8-flash',
+      deepseekModel: 'deepseek-flash'
     };
   }
 
-  // 4. SJA (Sikker Jobb Analyse) -> DeepSeek-chat / Gemini 2.5 Flash
+  // 4. SJA (Sikker Jobb Analyse) -> DeepSeek-Flash / Gemini 3.8 Flash
   if (op.includes('sja')) {
     return {
-      oneMinModel: process.env.ONE_MIN_AI_SJA_MODEL || 'gemini-2.5-flash',
-      geminiModel: 'gemini-2.5-flash',
-      deepseekModel: 'deepseek-chat'
+      oneMinModel: process.env.ONE_MIN_AI_SJA_MODEL || 'gemini-3.8-flash',
+      geminiModel: 'gemini-3.8-flash',
+      deepseekModel: 'deepseek-flash'
     };
   }
 
-  // 5. Bildeanalyse / TEK17 Vision -> Gemini 2.5 Flash
+  // 5. Bildeanalyse / TEK17 Vision / Skanning -> Gemini 3.8 Flash
   if (op.includes('vision') || op.includes('image') || op.includes('bilde') || op.includes('foto') || op.includes('scan')) {
     return {
-      oneMinModel: process.env.ONE_MIN_AI_VISION_MODEL || 'gemini-2.5-flash',
-      geminiModel: 'gemini-2.5-flash',
-      deepseekModel: 'deepseek-chat'
+      oneMinModel: process.env.ONE_MIN_AI_VISION_MODEL || 'gemini-3.8-flash',
+      geminiModel: process.env.GEMINI_MODEL || 'gemini-3.8-flash',
+      deepseekModel: 'deepseek-flash'
     };
   }
 
-  // 6. Standard / Byggedagbok / Oversettelse / Generelt -> DeepSeek-chat
+  // 6. Standard / Byggedagbok / Oversettelse / Generelt -> DeepSeek-Flash / Gemini 3.8 Flash
   return {
-    oneMinModel: process.env.ONE_MIN_AI_DEFAULT_MODEL || 'gpt-4o-mini',
-    geminiModel: process.env.GEMINI_MODEL || 'gemini-2.5-flash',
-    deepseekModel: 'deepseek-chat'
+    oneMinModel: process.env.ONE_MIN_AI_DEFAULT_MODEL || 'claude-3-7-sonnet',
+    geminiModel: process.env.GEMINI_MODEL || 'gemini-3.8-flash',
+    deepseekModel: 'deepseek-flash'
   };
 }
 
@@ -367,8 +373,11 @@ async function call1MinAi(
 
   const candidateModels = [
     effectiveModel,
-    'gpt-4o-mini',
-    'gpt-4o'
+    'claude-3-7-sonnet',
+    'gemini-3.8-flash',
+    'o3-mini',
+    'gpt-4o',
+    'gpt-4o-mini'
   ].filter(Boolean);
   const uniqueCandidateModels = Array.from(new Set(candidateModels));
 
@@ -499,14 +508,15 @@ async function callGeminiBackup(
   const currentMonth = new Intl.DateTimeFormat('no-NO', { month: 'long', timeZone: 'Europe/Oslo' }).format(now);
   const dateContext = `Dagens reelle dato er ${dateStr} (kl. ${timeStr}, ${currentYear}). Måneden er ${currentMonth} (${currentYear}, høst), IKKE mai eller 17. mai.`;
 
-  // Kun gyldige Gemini-modeller (unngå at 'claude-*' eller andre modellnavn forårsaker feil)
+  // Kun gyldige Gemini-modeller (prioriter nyeste Gemini 3.8 / 3.5 / 3.1 Pro)
   const candidateModels = [
-    model.startsWith('gemini') ? model : null,
+    model && model.startsWith('gemini') ? model : null,
     process.env.GEMINI_MODEL,
     'gemini-3.8-flash',
-    'gemini-3.7-flash',
-    'gemini-3.6-flash',
+    'gemini-3.5-flash',
+    'gemini-3.1-pro-preview',
     'gemini-2.5-flash',
+    'gemini-2.5-pro',
     'gemini-2.5-flash-lite',
     'gemini-2.0-flash',
     'gemini-1.5-flash'
@@ -617,7 +627,7 @@ async function callGeminiBackup(
 }
 
 /**
- * Direkte anrop til DeepSeek API (deepseek-chat / deepseek-reasoner).
+ * Direkte anrop til DeepSeek API (deepseek-flash / deepseek-v4-pro med fallback til deepseek-chat / deepseek-reasoner).
  */
 async function callDeepSeekDirect(
   deepseekKey: string,
@@ -625,7 +635,7 @@ async function callDeepSeekDirect(
   prompt: string,
   systemInstruction?: string,
   forceJson = false
-): Promise<{ text: string; promptTokens: number; completionTokens: number }> {
+): Promise<{ text: string; promptTokens: number; completionTokens: number; executedModel: string }> {
   const now = new Date();
   const dateStr = new Intl.DateTimeFormat('no-NO', {
     weekday: 'long',
@@ -651,44 +661,78 @@ async function callDeepSeekDirect(
   messages.push({ role: 'system', content: fullSystemInstruction });
   messages.push({ role: 'user', content: prompt });
 
-  // Hvis JSON er påkrevd, MÅ vi bruke deepseek-chat fordi deepseek-reasoner ikke støtter response_format
-  const effectiveModel = (forceJson || (!model?.includes('reasoner') && !model?.includes('r1')))
-    ? 'deepseek-chat'
-    : 'deepseek-reasoner';
+  const isReasoner = !forceJson && (model?.includes('reasoner') || model?.includes('r1') || model?.includes('pro'));
 
-  const body: any = {
-    model: effectiveModel,
-    messages
-  };
+  const candidateModels = isReasoner
+    ? ['deepseek-v4-pro', 'deepseek-reasoner', 'deepseek-flash', 'deepseek-chat']
+    : ['deepseek-flash', 'deepseek-chat', 'deepseek-v4-pro'];
 
-  if (effectiveModel !== 'deepseek-reasoner') {
-    body.temperature = 0.3;
-    if (forceJson) {
-      body.response_format = { type: 'json_object' };
+  let lastError: any = null;
+  for (const cand of candidateModels) {
+    try {
+      const isCandReasoner = cand.includes('reasoner') || cand.includes('pro');
+      const body: any = {
+        model: cand,
+        messages
+      };
+
+      if (!isCandReasoner) {
+        body.temperature = 0.3;
+        if (forceJson) {
+          body.response_format = { type: 'json_object' };
+        }
+      } else {
+        body.thinking = { type: 'enabled' };
+      }
+
+      const res = await fetch('https://api.deepseek.com/chat/completions', {
+        method: 'POST',
+        headers: {
+          'Content-Type': 'application/json',
+          'Authorization': `Bearer ${deepseekKey}`
+        },
+        body: JSON.stringify(body),
+        signal: AbortSignal.timeout(60000)
+      });
+
+      if (!res.ok) {
+        // Hvis thinking-parameter ikke ble akseptert av en eldre gateway, prøv uten
+        if (body.thinking) {
+          delete body.thinking;
+          const retryRes = await fetch('https://api.deepseek.com/chat/completions', {
+            method: 'POST',
+            headers: {
+              'Content-Type': 'application/json',
+              'Authorization': `Bearer ${deepseekKey}`
+            },
+            body: JSON.stringify(body),
+            signal: AbortSignal.timeout(60000)
+          });
+          if (retryRes.ok) {
+            const data = await retryRes.json();
+            const text = data.choices?.[0]?.message?.content || data.choices?.[0]?.message?.reasoning_content || '';
+            const promptTokens = data.usage?.prompt_tokens || Math.round(prompt.length / 4);
+            const completionTokens = data.usage?.completion_tokens || Math.round(text.length / 4);
+            return { text, promptTokens, completionTokens, executedModel: cand };
+          }
+        }
+        const errText = await res.text().catch(() => '');
+        lastError = new Error(`DeepSeek (${cand}) feilet med HTTP ${res.status}: ${errText.slice(0, 200)}`);
+        continue;
+      }
+
+      const data = await res.json();
+      const text = data.choices?.[0]?.message?.content || data.choices?.[0]?.message?.reasoning_content || '';
+      const promptTokens = data.usage?.prompt_tokens || Math.round(prompt.length / 4);
+      const completionTokens = data.usage?.completion_tokens || Math.round(text.length / 4);
+
+      return { text, promptTokens, completionTokens, executedModel: cand };
+    } catch (candErr: any) {
+      lastError = candErr;
     }
   }
 
-  const res = await fetch('https://api.deepseek.com/chat/completions', {
-    method: 'POST',
-    headers: {
-      'Content-Type': 'application/json',
-      'Authorization': `Bearer ${deepseekKey}`
-    },
-    body: JSON.stringify(body),
-    signal: AbortSignal.timeout(60000)
-  });
-
-  if (!res.ok) {
-    const errText = await res.text().catch(() => '');
-    throw new Error(`DeepSeek feilet med HTTP ${res.status}: ${errText.slice(0, 200)}`);
-  }
-
-  const data = await res.json();
-  const text = data.choices?.[0]?.message?.content || data.choices?.[0]?.message?.reasoning_content || '';
-  const promptTokens = data.usage?.prompt_tokens || Math.round(prompt.length / 4);
-  const completionTokens = data.usage?.completion_tokens || Math.round(text.length / 4);
-
-  return { text, promptTokens, completionTokens };
+  throw lastError || new Error('DeepSeek API feilet for alle modell-kandidater.');
 }
 
 /**
@@ -1006,22 +1050,23 @@ export async function generateWithAiEngine(options: GenerateAiOptions): Promise<
       );
 
       if (res.text && res.text.trim().length > 0) {
+        const usedModel = res.executedModel || deepseekModel;
         trackTokenCost({
-          model: deepseekModel,
+          model: usedModel,
           promptTokens: res.promptTokens,
           completionTokens: res.completionTokens,
           operation: options.operation || 'ai_generate_deepseek_primary',
           companyId: options.companyId,
           companyName: options.companyName,
           projectId: options.projectId,
-          notes: options.notes || `DeepSeek Primary (${deepseekModel})`,
+          notes: options.notes || `DeepSeek Primary (${usedModel})`,
           service: 'deepseek'
         }).catch(() => {});
 
         return {
           text: res.text,
           source: 'deepseek_direct',
-          model: deepseekModel,
+          model: usedModel,
           usage: {
             promptTokens: res.promptTokens,
             completionTokens: res.completionTokens,

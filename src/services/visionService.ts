@@ -40,7 +40,7 @@ export const visionService = {
 
     try {
       const response = await generateAiContent({
-        model: "gemini-2.5-flash", 
+        model: "gemini-3.8-flash", 
         prompt: prompt,
         operation: "vision_analysis",
         images: [

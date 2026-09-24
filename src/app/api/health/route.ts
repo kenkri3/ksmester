@@ -47,9 +47,8 @@ export async function GET() {
     nativeScraper: true,
     oneMinAiConfigured,
     geminiConfigured,
-    deepseekConfigured,
-    aiEngine: deepseekConfigured ? 'DeepSeek (Primary)' : (oneMinAiConfigured ? '1min.ai (Primary)' : (geminiConfigured ? 'Gemini (Backup)' : 'none')),
-    aiModel: deepseekConfigured ? 'deepseek-chat (Text/Chat) + gemini-2.5-flash (Vision)' : (oneMinAiConfigured ? 'Multi-Model (gpt-4o-mini / claude-3-5-sonnet / gemini-2.5-flash)' : (geminiConfigured ? (process.env.GEMINI_MODEL || 'gemini-2.5-flash') : 'none')),
+    aiEngine: deepseekConfigured ? 'DeepSeek (Primary)' : (oneMinAiConfigured ? '1min.ai (Primary)' : (geminiConfigured ? 'Gemini 3.8 Flash (Backup)' : 'none')),
+    aiModel: deepseekConfigured ? 'deepseek-flash / deepseek-v4-pro (Tekst) + gemini-3.8-flash (Vision)' : (oneMinAiConfigured ? 'Multi-Model (claude-3-7-sonnet / gemini-3.8-flash / o3-mini)' : (geminiConfigured ? (process.env.GEMINI_MODEL || 'gemini-3.8-flash') : 'none')),
     timestamp: new Date().toISOString()
   }, { status: isHealthy ? 200 : 503 });
 }

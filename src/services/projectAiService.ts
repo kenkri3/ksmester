@@ -88,7 +88,6 @@ export const projectAiService = {
       const response = await generateAiContent({
         prompt,
         operation: 'project_health_analysis',
-        model: 'gemini-2.5-flash',
         responseMimeType: "application/json",
         responseSchema: {
           type: "OBJECT",
