@@ -50,8 +50,8 @@ export async function GET(req: NextRequest) {
     const inDialogue = partnerLeads.filter((l: any) => l.status === 'dialogue').length;
     const inTrial = partnerLeads.filter((l: any) => l.status === 'trial').length;
     const won = partnerLeads.filter((l: any) => l.status === 'won').length;
-    const totalEstimatedMrc = partnerLeads.reduce((sum: number, l: any) => sum + (Number(l.monthlyPrice) || 3490), 0);
-    const wonMrc = partnerLeads.filter((l: any) => l.status === 'won').reduce((sum: number, l: any) => sum + (Number(l.monthlyPrice) || 3490), 0);
+    const totalEstimatedMrc = partnerLeads.reduce((sum: number, l: any) => sum + (Number(l.monthlyPrice) || 1490), 0);
+    const wonMrc = partnerLeads.filter((l: any) => l.status === 'won').reduce((sum: number, l: any) => sum + (Number(l.monthlyPrice) || 1490), 0);
 
     return NextResponse.json({
       success: true,
@@ -168,22 +168,22 @@ export async function POST(req: NextRequest) {
 
     // 2. Beregn pakke og pris
     let planTitle = 'VikingMester Team';
-    let monthlyPrice = 3490;
+    let monthlyPrice = 1490;
 
     if (leadType === 'order') {
       if (planChoice.includes('solo') || workers === 1) {
         planTitle = 'VikingMester Solo';
-        monthlyPrice = 1490;
+        monthlyPrice = 690;
       } else if (planChoice.includes('entreprenor') || workers > 5) {
         planTitle = 'VikingMester Totalentreprenør';
-        monthlyPrice = 6900;
+        monthlyPrice = 2990;
       }
     } else if (leadType === 'trial') {
       planTitle = 'VikingMester Team (14 dagers prøveperiode)';
-      monthlyPrice = 3490;
+      monthlyPrice = 1490;
     } else {
       planTitle = 'VikingMester Team (Informasjon & introduksjon)';
-      monthlyPrice = 3490;
+      monthlyPrice = 1490;
     }
 
     // 3. Opprett lead-record med tidslinje for forhandlinger

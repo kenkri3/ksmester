@@ -34,13 +34,13 @@ export async function POST(req: NextRequest) {
 
     // Normaliser pakkenavn
     let plan: 'solo' | 'team' | 'entreprenor' = 'team';
-    let monthlyPrice = 3490;
+    let monthlyPrice = 1490;
     if (planRaw.includes('solo') || planRaw === 'solo') {
       plan = 'solo';
-      monthlyPrice = 1490;
+      monthlyPrice = 690;
     } else if (planRaw.includes('entrepren') || planRaw === 'entreprenor') {
       plan = 'entreprenor';
-      monthlyPrice = 6900;
+      monthlyPrice = 2990;
     }
 
     const now = new Date();

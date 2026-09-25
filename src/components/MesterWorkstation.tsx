@@ -1102,6 +1102,11 @@ export default function MesterWorkstation({
   const fileInputRef = useRef<HTMLInputElement>(null);
   const textareaRef = useRef<HTMLTextAreaElement>(null);
   const messagesEndRef = useRef<HTMLDivElement>(null);
+  const latestMessageTopRef = useRef<HTMLDivElement>(null);
+  const thinkingRef = useRef<HTMLDivElement>(null);
+  const chatScrollContainerRef = useRef<HTMLDivElement>(null);
+  const prevMessagesLengthRef = useRef(messages.length);
+  const prevIsLoadingRef = useRef(isLoading);
   const recognitionRef = useRef<any>(null);
   const audioPlayerRef = useRef<HTMLAudioElement | null>(null);
   const loadingTimerRef = useRef<any>(null);
@@ -1200,11 +1205,28 @@ export default function MesterWorkstation({
     return () => window.removeEventListener('mester_live_data_updated', handleLiveAgentUpdate);
   }, [logsStorageKey]);
 
-  // 📜 Autoscroll til bunnen når nye meldinger ankommer
+  // 📜 Gemini-stil smart scroll:
+  // Når et nytt svar ankommer, ruller visningen alltid til TOPPEN av svaret
+  // slik at brukeren kan begynne å lese ovenfra og ned (aldri starte nederst og måtte rulle opp!)
   useEffect(() => {
-    if (viewMode === 'chat') {
-      messagesEndRef.current?.scrollIntoView({ behavior: 'smooth' });
-    }
+    if (viewMode !== 'chat') return;
+
+    const hadNewMessage = messages.length > prevMessagesLengthRef.current;
+    const justStoppedLoading = prevIsLoadingRef.current && !isLoading;
+    const justStartedLoading = !prevIsLoadingRef.current && isLoading;
+
+    prevMessagesLengthRef.current = messages.length;
+    prevIsLoadingRef.current = isLoading;
+
+    const timer = setTimeout(() => {
+      if (justStartedLoading && thinkingRef.current) {
+        thinkingRef.current.scrollIntoView({ behavior: 'smooth', block: 'start' });
+      } else if ((hadNewMessage || justStoppedLoading) && latestMessageTopRef.current) {
+        latestMessageTopRef.current.scrollIntoView({ behavior: 'smooth', block: 'start' });
+      }
+    }, 70);
+
+    return () => clearTimeout(timer);
   }, [messages, isLoading, viewMode]);
 
   // 📐 Auto-grow textarea
@@ -2711,7 +2733,7 @@ export default function MesterWorkstation({
             />
           </div>
         ) : (
-          <div className="flex-1 overflow-y-auto overscroll-y-contain custom-scrollbar flex flex-col relative [touch-action:pan-y]">
+          <div ref={chatScrollContainerRef} className="flex-1 overflow-y-auto overscroll-y-contain custom-scrollbar flex flex-col relative [touch-action:pan-y]">
             {viewMode === 'module' ? (
               /* 📊 MODULE VIEW (When user clicks a module from the left sidebar) */
               <div className="p-4 sm:p-6 max-w-7xl mx-auto w-full space-y-4">

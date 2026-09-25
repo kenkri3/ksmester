@@ -274,6 +274,7 @@ export const changeOrderService = {
         method: 'POST',
         headers: { 'Content-Type': 'application/json' },
         body: JSON.stringify({
+          token: order.token,
           subject: `✅ GODKJENT: Endringsordre #${order.changeNumber} signert av ${signerName || 'kunde'}`,
           content: `
             Hei!

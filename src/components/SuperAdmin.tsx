@@ -809,7 +809,7 @@ Svar KUN med gyldig rå JSON (uten markdown \`\`\`json klammer):
         } else {
           updateData.isPartner = false;
           updateData.isInternal = false;
-          updateData.monthlyPrice = plan === 'solo' ? 1490 : plan === 'entreprenor' ? 6900 : 3490;
+          updateData.monthlyPrice = plan === 'solo' ? 690 : plan === 'entreprenor' ? 2990 : 1490;
         }
       }
       await updateDoc(doc(db, 'companies', companyId), updateData);
@@ -841,7 +841,7 @@ Svar KUN med gyldig rå JSON (uten markdown \`\`\`json klammer):
       } else {
         updateData.isPartner = false;
         updateData.isInternal = false;
-        updateData.monthlyPrice = newPlan === 'solo' ? 1490 : newPlan === 'entreprenor' ? 6900 : 3490;
+        updateData.monthlyPrice = newPlan === 'solo' ? 690 : newPlan === 'entreprenor' ? 2990 : 1490;
       }
       await updateDoc(doc(db, 'companies', companyId), updateData);
       setCompanies(prev => prev.map(c => c.id === companyId ? { ...c, ...updateData } : c));
@@ -1000,20 +1000,22 @@ Svar KUN med gyldig rå JSON (uten markdown \`\`\`json klammer):
   // Samarbeidspartnere og kollegaer (0 kr) regnes ALDRI inn i inntekten!
   const activeMrr = useMemo(() => {
     return payingActiveCompanies.reduce((sum, c) => {
+      if (c?.monthlyPrice !== undefined && c.monthlyPrice !== null) return sum + Number(c.monthlyPrice);
       const plan = (c?.plan || 'solo').toLowerCase();
-      if (plan.includes('entrepren')) return sum + 6900;
-      if (plan.includes('team')) return sum + 3490;
-      return sum + 1490;
+      if (plan.includes('entrepren')) return sum + 2990;
+      if (plan.includes('team')) return sum + 1490;
+      return sum + 690;
     }, 0);
   }, [payingActiveCompanies]);
 
   // Potensiell MRR i salgspipeline (fra aktive prøveperioder, ekskluderer gratis/partner):
   const pipelineMrr = useMemo(() => {
     return trialCompanies.filter(c => c && !isCompanyFreeTier(c)).reduce((sum, c) => {
+      if (c?.monthlyPrice !== undefined && c.monthlyPrice !== null) return sum + Number(c.monthlyPrice);
       const plan = (c?.plan || 'team').toLowerCase();
-      if (plan.includes('entrepren')) return sum + 6900;
-      if (plan.includes('team')) return sum + 3490;
-      return sum + 1490;
+      if (plan.includes('entrepren')) return sum + 2990;
+      if (plan.includes('team')) return sum + 1490;
+      return sum + 690;
     }, 0);
   }, [trialCompanies]);
 
@@ -4833,7 +4835,7 @@ function CreateCompanyModal({ onClose, onSuccess }: { onClose: () => void, onSuc
         plan,
         isPartner,
         isInternal,
-        monthlyPrice: (isPartner || isInternal) ? 0 : (plan === 'solo' ? 1490 : plan === 'entreprenor' ? 6900 : 3490),
+        monthlyPrice: (isPartner || isInternal) ? 0 : (plan === 'solo' ? 690 : plan === 'entreprenor' ? 2990 : 1490),
         modules: ['projects', 'checklists', 'deviations', 'ai', 'economy', 'fdv', 'inventory', 'vehicle', 'time', 'apprentice', 'building_app'], // All default modules enabled
         createdAt: serverTimestamp(),
         updatedAt: serverTimestamp(),

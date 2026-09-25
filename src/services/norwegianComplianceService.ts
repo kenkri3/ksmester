@@ -111,12 +111,13 @@ export const norwegianComplianceService = {
    * Henter alle prosjektets data for lovpålagt sluttdokumentasjon
    */
   async getCompliancePackageData(projectId: string): Promise<CompliancePackageData> {
-    const [projects, checklists, deviations, materials, wasteRecords] = await Promise.all([
+    const [projects, checklists, deviations, materials, wasteRecords, companies] = await Promise.all([
       api.getCollection('projects'),
       api.getCollection('project_checklists'),
       api.getCollection('deviations'),
       api.getCollection('project_materials'),
-      api.getCollection('waste_records')
+      api.getCollection('waste_records'),
+      api.getCollection('companies').catch(() => [])
     ]);
 
     const project = projects.find((p: any) => p.id === projectId) || {
@@ -142,13 +143,28 @@ export const norwegianComplianceService = {
       projectWaste
     );
 
+    let authUser: any = null;
+    if (typeof window !== 'undefined') {
+      try {
+        const stored = localStorage.getItem('auth_user') || localStorage.getItem('ks_current_user');
+        if (stored) authUser = JSON.parse(stored);
+      } catch {}
+    }
+
+    const matchedCompany = companies.find((c: any) => 
+      (project.companyId && c.id === project.companyId) || 
+      (project.company && (c.id === project.company || c.name === project.company)) ||
+      (authUser?.companyId && c.id === authUser.companyId) ||
+      (project.companyName && c.name?.toLowerCase() === project.companyName?.toLowerCase())
+    );
+
     const companyInfo = {
-      name: project.companyName || 'Mester Entreprenør AS',
-      orgNumber: '998 877 665 MVA',
-      address: 'Byggmesterveien 1, 0150 Oslo',
-      contactPerson: project.projectManager || 'Ola Nordmann (Faglig Leder)',
-      phone: '+47 900 00 000',
-      email: 'post@mesterentreprenor.no'
+      name: project.companyName || matchedCompany?.name || authUser?.company || 'Byggmester Bedrift AS',
+      orgNumber: project.companyOrgnr || matchedCompany?.orgnr || authUser?.orgnr || '933 607 779 MVA',
+      address: project.companyAddress || matchedCompany?.address || authUser?.address || 'Norge',
+      contactPerson: project.projectManager || matchedCompany?.contactName || authUser?.displayName || authUser?.name || 'Faglig Leder',
+      phone: project.companyPhone || matchedCompany?.phone || authUser?.phone || '',
+      email: project.companyEmail || matchedCompany?.email || authUser?.email || ''
     };
 
     return {

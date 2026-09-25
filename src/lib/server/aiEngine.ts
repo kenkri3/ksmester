@@ -1,5 +1,5 @@
 import { GoogleGenAI } from '@google/genai';
-import { trackTokenCost } from './costTracker';
+import { trackTokenCost, checkCompanyQuota } from './costTracker';
 
 export interface AiImageAttachment {
   data?: string; // base64
@@ -815,6 +815,24 @@ export async function generateWithAiEngine(options: GenerateAiOptions): Promise<
 
   if (!oneMinKey && !geminiKey && !deepseekKey && !openrouterKey) {
     throw new Error('Ingen AI-nøkkel (verken DEEPSEEK_API_KEY, 1_MIN_AI, GEMINI_API_KEY eller OPENROUTER_API_KEY) er konfigurert på serveren eller i innstillingene.');
+  }
+
+  // 🛡️ UNIVERSALT MARGINVERN: Sjekk bedriftens token- og abonnementsstatus før ethvert AI-kall utføres
+  if (options.companyId) {
+    const isInternalCompany = 
+      options.companyId.toLowerCase().includes('comp-001') ||
+      options.companyId.toLowerCase().includes('internal') ||
+      options.companyId.toLowerCase().includes('aichat norge') ||
+      options.companyId.toLowerCase().includes('vikingmester');
+
+    if (!isInternalCompany) {
+      const quota = await checkCompanyQuota(options.companyId);
+      if (!quota.allowed || quota.needsTopUp) {
+        const errorMsg = (quota as any).error || 
+          `Månedlig inkludert AI-kvote (${quota.plan?.toUpperCase()} - ${(quota.limitTokens / 1_000_000).toFixed(1)}M tokens) er nådd. Kjøp en Mester Top-up pakke under Innstillinger → Fakturering for å fortsette uten avbrudd.`;
+        throw new Error(errorMsg);
+      }
+    }
   }
 
   const promptText = typeof options.prompt === 'string'

@@ -27,6 +27,7 @@ self.addEventListener('activate', (event) => {
   );
 });
 
+self.addEventListener('fetch', (event) => {
   // Pass through non-GET, API calls, Next.js internal chunks, and hot reload directly
   if (
     event.request.method !== 'GET' || 

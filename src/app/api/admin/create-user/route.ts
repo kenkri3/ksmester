@@ -97,7 +97,7 @@ export async function POST(req: NextRequest) {
       }
 
       const plan = isInternal ? 'internal' : isPartner ? 'partner' : (body.plan || 'team');
-      const monthlyPrice = (isPartner || isInternal) ? 0 : (plan === 'solo' ? 1490 : plan === 'entreprenor' ? 6900 : 3490);
+      const monthlyPrice = (isPartner || isInternal) ? 0 : (plan === 'solo' ? 690 : plan === 'entreprenor' ? 2990 : 1490);
 
       finalCompany = {
         id: companyId,

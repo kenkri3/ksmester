@@ -1,6 +1,7 @@
 import { NextRequest, NextResponse } from 'next/server';
 import { sendSystemEmail } from '@/src/lib/server/emailSender';
 import { getUserFromRequest } from '@/src/lib/server/auth';
+import { getCollectionItems } from '@/src/lib/server/db';
 import { checkRateLimit, getClientIp } from '@/src/lib/server/rateLimit';
 
 export async function POST(req: NextRequest) {
@@ -15,31 +16,65 @@ export async function POST(req: NextRequest) {
       );
     }
 
-    // 🛡️ SECURITY FIX: Added authentication check to prevent unauthorized email sending (Spam/Phishing Relay)
-    const user = getUserFromRequest(req);
-    if (!user) {
-      return NextResponse.json({ error: 'Uautorisert' }, { status: 401 });
-    }
-
     const body = await req.json();
-    const { to, subject, html, text, content, type = 'general', metadata = {} } = body;
+    const { to, subject, html, text, content, type = 'general', metadata = {}, token: tokenParam, changeOrderToken } = body;
     const bodyText = text || content || '';
     const bodyHtml = html || (bodyText ? `<div style="font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, sans-serif; white-space: pre-wrap; line-height: 1.6; color: #1e293b;">${bodyText}</div>` : '');
 
-    if (!to || (!subject && !bodyText && !bodyHtml)) {
+    const user = getUserFromRequest(req);
+    let companyId = user?.companyId || 'comp-001';
+    let companyName = (user as any)?.company || 'VikingMester';
+    let authorName = user?.displayName || 'Bruker';
+    let recipientEmail = to;
+
+    // If unauthenticated, allow only if valid capability token is provided (e.g. customer signed change order or accepted offer)
+    if (!user) {
+      const activeToken = tokenParam || changeOrderToken || metadata?.token || metadata?.changeOrderToken;
+      if (!activeToken) {
+        return NextResponse.json({ error: 'Uautorisert tilgang.' }, { status: 401 });
+      }
+
+      const [changeOrders, offers] = await Promise.all([
+        getCollectionItems('change_orders').catch(() => []),
+        getCollectionItems('offers').catch(() => [])
+      ]);
+
+      const foundOrder = changeOrders.find((o: any) => o.token === activeToken || o.id === activeToken);
+      const foundOffer = !foundOrder ? offers.find((o: any) => o.token === activeToken || o.id === activeToken) : null;
+
+      if (foundOrder) {
+        companyId = foundOrder.companyId || 'comp-001';
+        companyName = foundOrder.company || 'VikingMester';
+        authorName = foundOrder.clientName || 'Kunde';
+        if (!recipientEmail) {
+          recipientEmail = foundOrder.authorEmail || foundOrder.companyEmail || process.env.ADMIN_EMAIL || 'post@vikingent.no';
+        }
+      } else if (foundOffer) {
+        companyId = foundOffer.companyId || 'comp-001';
+        companyName = foundOffer.company || 'VikingMester';
+        authorName = foundOffer.clientName || 'Kunde';
+        if (!recipientEmail) {
+          recipientEmail = foundOffer.authorEmail || foundOffer.companyEmail || process.env.ADMIN_EMAIL || 'post@vikingent.no';
+        }
+      } else {
+        return NextResponse.json({ error: 'Ugyldig eller utløpt sikkerhetstoken.' }, { status: 403 });
+      }
+    }
+
+    if (!recipientEmail || (!subject && !bodyText && !bodyHtml)) {
       return NextResponse.json({ error: 'Mottaker (to) og innhold (subject/body) er påkrevd.' }, { status: 400 });
     }
 
     const sendRes = await sendSystemEmail({
-      to,
+      to: recipientEmail,
       subject,
       html: bodyHtml,
       text: bodyText,
       type,
-      metadata: { ...metadata, companyId: user.companyId },
-      companyId: user.companyId,
-      companyName: (user as any)?.company || 'VikingMester',
-      authorName: user?.displayName || 'Bruker'
+      metadata: { ...metadata, companyId },
+      companyId,
+      companyName,
+      authorName
     });
 
     const isSent = sendRes.success && sendRes.status === 'sent';

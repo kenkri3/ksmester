@@ -55,20 +55,25 @@ export const O3_MINI_COMPLETION_PER_M = 4.40;
 
 // Inkluderte månedlige token- og bildekvoter per pakke for 100% marginvern
 export const PLAN_LIMITS: Record<string, { tokens: number; images: number; monthlyPrice: number }> = {
+  trial: {
+    tokens: 500_000,   // 500 000 tokens i 14 dagers prøveperiode (Vår tokenkostnad: ca. 1.80 kr - umulig å tape penger)
+    images: 50,        // Inntil 50 TEK17 bildeanalyser under prøveperioden
+    monthlyPrice: 0    // Gratis prøveperiode
+  },
   solo: {
-    tokens: 2_500_000, // 2.5 mill tokens/mnd (Vår tokenkostnad: ca. 8-15 kr)
+    tokens: 2_500_000, // 2.5 mill tokens/mnd (Vår tokenkostnad: ca. 8-10 kr)
     images: 250,       // 250 TEK17 bildeanalyser
-    monthlyPrice: 690  // 690 kr/mnd -> 98% bruttomargin
+    monthlyPrice: 690  // 690 kr/mnd -> 98.5% bruttomargin
   },
   team: {
-    tokens: 10_000_000, // 10 mill tokens/mnd (Vår tokenkostnad: ca. 35-60 kr)
+    tokens: 10_000_000, // 10 mill tokens/mnd (Vår tokenkostnad: ca. 35-40 kr)
     images: 1000,
-    monthlyPrice: 1490  // 1 490 kr/mnd -> 97% bruttomargin
+    monthlyPrice: 1490  // 1 490 kr/mnd -> 97.3% bruttomargin
   },
   entreprenor: {
-    tokens: 30_000_000, // 30 mill tokens/mnd (Vår tokenkostnad: ca. 120-180 kr)
+    tokens: 30_000_000, // 30 mill tokens/mnd (Vår tokenkostnad: ca. 110-120 kr)
     images: 3000,
-    monthlyPrice: 2990  // 2 990 kr/mnd -> 95% bruttomargin
+    monthlyPrice: 2990  // 2 990 kr/mnd -> 96.0% bruttomargin
   },
   partner: {
     tokens: 15_000_000, // 15 mill tokens/mnd (Samarbeidspartnere & Interne kollegaer)
@@ -192,30 +197,36 @@ export async function checkCompanyQuota(companyId?: string, planKey?: string) {
   if (!companyId) return { allowed: true, percentUsed: 0, isWarning: false, needsTopUp: false, plan: 'unrestricted' };
 
   let resolvedPlanKey = planKey?.toLowerCase().trim();
+  let resolvedStatus: string | undefined = undefined;
 
   // Hvis planKey ikke er spesifisert, slår vi opp bedriften direkte i databasen
   if (!resolvedPlanKey) {
     try {
       // 1. Sjekk companies-samlingen
       const company = await getCollectionItemById('companies', companyId);
-      if (company?.plan) {
-        resolvedPlanKey = String(company.plan).toLowerCase();
+      if (company) {
+        if (company.plan) resolvedPlanKey = String(company.plan).toLowerCase();
+        if (company.subscriptionStatus) resolvedStatus = String(company.subscriptionStatus).toLowerCase();
       } else {
         // 2. Sjekk alle bedrifter (hvis companyId matcher navn eller orgnr)
         const allCompanies = await getCollectionItems('companies');
         const matchedCompany = allCompanies.find((c: any) => 
           c.id === companyId || c.name === companyId || c.orgNumber === companyId || c.orgnr === companyId
         );
-        if (matchedCompany?.plan) {
-          resolvedPlanKey = String(matchedCompany.plan).toLowerCase();
+        if (matchedCompany) {
+          if (matchedCompany.plan) resolvedPlanKey = String(matchedCompany.plan).toLowerCase();
+          if (matchedCompany.subscriptionStatus) resolvedStatus = String(matchedCompany.subscriptionStatus).toLowerCase();
         } else {
           // 3. Sjekk leads-samlingen
           const allLeads = await getCollectionItems('leads');
           const matchedLead = allLeads.find((l: any) => 
             l.companyId === companyId || l.company === companyId || l.orgnr === companyId
           );
-          if (matchedLead?.plan) {
-            resolvedPlanKey = String(matchedLead.plan).toLowerCase();
+          if (matchedLead) {
+            if (matchedLead.plan) resolvedPlanKey = String(matchedLead.plan).toLowerCase();
+            if (matchedLead.subscriptionStatus || matchedLead.status) {
+              resolvedStatus = String(matchedLead.subscriptionStatus || matchedLead.status).toLowerCase();
+            }
           }
         }
       }
@@ -233,10 +244,35 @@ export async function checkCompanyQuota(companyId?: string, planKey?: string) {
     companyId.toLowerCase().includes('vikingnet') ||
     companyId.toLowerCase().includes('vikingmester');
 
+  // 🛡️ 1. MARGINVERN: Hvis bedriftens abonnement er utløpt eller kansellert, blokker AI umiddelbart
+  if (!isInternal && (resolvedStatus === 'expired' || resolvedStatus === 'cancelled')) {
+    return {
+      allowed: false,
+      usedTokens: 0,
+      limitTokens: 0,
+      baseTokens: 0,
+      topupTokens: 0,
+      topupImages: 0,
+      remainingTokens: 0,
+      percentUsed: 100,
+      isWarning: true,
+      needsTopUp: true,
+      isExpired: true,
+      plan: resolvedPlanKey || 'expired',
+      planMonthlyPrice: 0,
+      baseImages: 0,
+      totalImages: 0,
+      error: 'Abonnementet er utløpt eller avsluttet. Vennligst reaktiver under Innstillinger → Fakturering for å fortsette.'
+    };
+  }
+
   if (isInternal) {
     resolvedPlanKey = 'internal';
   } else if (resolvedPlanKey?.includes('partner')) {
     resolvedPlanKey = 'partner';
+  } else if (resolvedStatus === 'trial' || resolvedPlanKey?.includes('trial')) {
+    // 🛡️ 2. PRØVEPERIODE-VERN: Maks 500k tokens i prøveperioden (kostnad for oss: under 2 kr)
+    resolvedPlanKey = 'trial';
   } else if (resolvedPlanKey?.includes('entrepren')) {
     resolvedPlanKey = 'entreprenor';
   } else if (resolvedPlanKey?.includes('team')) {
@@ -247,7 +283,7 @@ export async function checkCompanyQuota(companyId?: string, planKey?: string) {
 
   // 🛡️ Marginvern: Hvis bedriftens plan er ukjent eller udefinert,
   // faller vi ALLTID tilbake på 'solo' (2.5M tokens), aldri 'team' (10M tokens).
-  // Dette forhindrer 4x utilsiktet overforbruk og beskytter 98% bruttomargin.
+  // Dette forhindrer utilsiktet overforbruk og beskytter 98.5% bruttomargin.
   if (!resolvedPlanKey || !PLAN_LIMITS[resolvedPlanKey]) {
     resolvedPlanKey = 'solo';
   }
@@ -339,9 +375,9 @@ export async function getPartnershipAccountingSummary(periodMonth?: string) {
     const isFreeTier = plan.includes('partner') || plan.includes('intern') || Boolean(lead.isPartner) || Boolean(lead.isInternal) || lead.monthlyPrice === 0;
     const monthlyPrice = isFreeTier ? 0 : (
       lead.monthlyPrice !== undefined ? Number(lead.monthlyPrice) : (
-        plan.includes('solo') ? 1490 :
-        plan.includes('team') ? 3490 :
-        plan.includes('entreprenor') ? 6900 : 3490
+        plan.includes('solo') ? 690 :
+        plan.includes('team') ? 1490 :
+        plan.includes('entreprenor') ? 2990 : 1490
       )
     );
     totalSubscriptionRevenueNok += monthlyPrice;

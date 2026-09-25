@@ -4,14 +4,17 @@ import { getUserFromRequest, isUserAdmin, isUserSuperAdmin } from '@/src/lib/ser
 import { recalculateProjectProgress } from '@/src/lib/server/progressEngine';
 
 const ALLOWED_COLLECTIONS = [
-  'users', 'projects', 'tasks', 'deviations', 'sja_reports',
+  'users', 'projects', 'tasks', 'deviations', 'sja_reports', 'sja_documents',
   'offers', 'system_offers', 'invites', 'invitations', 'contracts', 'change_orders',
   'crew', 'safety_inspections', 'checklists', 'hms_documents', 'hms_signatures',
   'inventory', 'apprentice_goals', 'apprentice_profiles', 'building_applications',
   'materials', 'project_documents', 'project_photos', 'notifications',
   'time_registrations', 'time_entries', 'vehicles', 'agent_activities',
   'companies', 'leads', 'daily_logs', 'templates',
-  'project_materials', 'project_checklists', 'contact_messages'
+  'project_materials', 'project_checklists', 'contact_messages',
+  'safety_data_sheets', 'final_settlements', 'waste_records',
+  'time_extension_claims', 'warranty_inspections', 'project_health_reports',
+  'translations', 'token_costs', 'token_topups'
 ];
 
 export async function GET(

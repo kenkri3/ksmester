@@ -4,6 +4,7 @@ import { checkCompanyQuota } from '@/src/lib/server/costTracker';
 import { getCachedAiResponse, setCachedAiResponse } from '@/src/lib/server/aiCache';
 import { tryResolveDeterministicSja } from '@/src/lib/server/ruleEngine';
 import { generateWithAiEngine, get1MinAiKey, getGeminiKey, getDeepSeekKey } from '@/src/lib/server/aiEngine';
+import { maskPII } from '@/src/lib/server/privacyShield';
 import { createHash } from 'crypto';
 
 function computeCacheKey(promptOrContents: any, systemInstruction?: string, model = 'default', images?: any[], inlineData?: any): string {
@@ -90,6 +91,28 @@ export async function POST(req: NextRequest) {
           cached: false
         });
       }
+    }
+
+    // 🛡️ GDPR Privacy Shield: Mask PII (fødselsnummer, kontonummer, telefoner, personskader) før eksterne AI-kall
+    if (typeof prompt === 'string') {
+      prompt = maskPII(prompt);
+    }
+    if (typeof contents === 'string') {
+      contents = maskPII(contents);
+    } else if (Array.isArray(contents)) {
+      contents = contents.map(item => {
+        if (typeof item === 'string') return maskPII(item);
+        if (item && typeof item === 'object') {
+          if (typeof item.text === 'string') return { ...item, text: maskPII(item.text) };
+          if (Array.isArray(item.parts)) {
+            return {
+              ...item,
+              parts: item.parts.map((p: any) => typeof p?.text === 'string' ? { ...p, text: maskPII(p.text) } : p)
+            };
+          }
+        }
+        return item;
+      });
     }
 
     // ⚡ 2. Server-side AI Cache (0 kr for gjentatte oppgaver, bilder og oversettelser)

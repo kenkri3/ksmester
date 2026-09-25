@@ -87,13 +87,13 @@ export async function POST(req: NextRequest) {
 
     // Plan & Pricing calculation
     let planTitle = 'VikingMester Team';
-    let monthlyPrice = 3490;
+    let monthlyPrice = 1490;
     if (planRaw.includes('solo') || workers === 1) {
       planTitle = 'VikingMester Solo';
-      monthlyPrice = 1490;
+      monthlyPrice = 690;
     } else if (planRaw.includes('entreprenor') || workers > 5) {
       planTitle = 'VikingMester Totalentreprenør';
-      monthlyPrice = 6900;
+      monthlyPrice = 2990;
     }
 
     // 2. Lagre lead i databasen
