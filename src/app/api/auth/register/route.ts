@@ -37,38 +37,46 @@ export async function POST(req: NextRequest) {
 
     const hashedPassword = await bcrypt.hash(password, 10);
 
-    // Dersom en SuperAdmin (f.eks. fredrik@aichatnorge.no) oppretter eller oppdaterer passordet sitt
+    // Sikkerhet: Hvis bruker allerede eksisterer, tillat kun aktivering dersom det foreligger en gyldig invitasjon
     if (existingUser) {
-      if (isSuperAdminEmail) {
+
+      // Sjekk om brukeren har en aktiv invitasjon (håndverker, leder, etc.)
+      const inviteRows = await dbQuery(
+        `SELECT * FROM items_store WHERE collection_name = 'invitations' AND LOWER(data->>'inviteeEmail') = $1 AND data->>'status' = 'pending'`,
+        [emailLower]
+      ).catch(() => []);
+      const hasInvite = (inviteRows && inviteRows.length > 0) || (inMemoryStore.invitations || []).some(
+        inv => inv && inv.inviteeEmail?.toLowerCase() === emailLower && inv.status === 'pending'
+      );
+
+      if (hasInvite) {
         await dbQuery(
-          `UPDATE users SET password = $1, role = 'superadmin', company = 'AIChat Norge AS / Vikingnet', company_id = 'comp-001', subscription_status = 'active' WHERE LOWER(email) = $2`,
-          [hashedPassword, emailLower]
+          `UPDATE users SET password = $1, display_name = COALESCE($2, display_name), subscription_status = 'active', updated_at = NOW() WHERE LOWER(email) = $3`,
+          [hashedPassword, name?.trim() || null, emailLower]
         ).catch(() => {});
         if (inMemoryStore.users) {
           const mem = inMemoryStore.users.find(u => u.email.toLowerCase() === emailLower);
           if (mem) {
             mem.password = hashedPassword;
-            mem.role = 'superadmin';
-            mem.company = 'AIChat Norge AS / Vikingnet';
-            mem.companyId = 'comp-001';
             mem.subscriptionStatus = 'active';
+            if (name?.trim()) mem.displayName = name.trim();
           }
         }
         const updatedUser = {
           id: existingUser.id,
           uid: existingUser.id,
           email: emailLower,
-          displayName: name?.trim() || existingUser.display_name || existingUser.displayName || (emailLower.includes('fredrik') ? 'Fredrik R. Ellingsen' : 'Kenneth Kristiansen'),
-          role: 'superadmin',
-          trade: 'Byggmester',
-          company: 'AIChat Norge AS / Vikingnet',
-          companyId: 'comp-001',
+          displayName: name?.trim() || existingUser.display_name || existingUser.displayName || emailLower.split('@')[0],
+          role: existingUser.role || 'worker',
+          company: existingUser.company || company,
+          companyId: existingUser.company_id || existingUser.companyId || 'comp-001',
           subscriptionStatus: 'active'
         };
-        const token = signToken({ id: updatedUser.id, email: updatedUser.email, role: 'superadmin', companyId: 'comp-001', company: updatedUser.company });
-        return NextResponse.json({ token, user: updatedUser, message: 'SuperAdmin-konto aktivert med full tilgang!' });
+        const token = signToken({ id: updatedUser.id, email: updatedUser.email, role: updatedUser.role, companyId: updatedUser.companyId, company: updatedUser.company });
+        return NextResponse.json({ token, user: updatedUser, message: 'Konto aktivert med ditt personlige passord!' });
       }
-      return NextResponse.json({ error: 'En bruker med denne e-posten er allerede registrert. Logg inn i stedet.' }, { status: 409 });
+
+      return NextResponse.json({ error: 'En bruker med denne e-posten er allerede registrert. Logg inn eller benytt Glemt passord.' }, { status: 409 });
     }
 
     const userId = isSuperAdminEmail && emailLower.includes('fredrik') ? 'u-admin-fredrik' : ('u-' + Date.now().toString(36) + '-' + Math.random().toString(36).substring(2, 7));

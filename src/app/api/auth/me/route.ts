@@ -17,16 +17,17 @@ export async function GET(req: NextRequest) {
       userRecord = inMemoryStore.users?.find(u => u.id === userPayload.id || u.email?.toLowerCase() === userPayload.email?.toLowerCase());
     }
 
+    const emailLower = (userRecord?.email || userPayload.email || '').toLowerCase().trim();
+    const defaultAdmin = (process.env.ADMIN_EMAIL || 'kenkri3@gmail.com').toLowerCase();
+    const isSuper = userRecord?.role === 'superadmin' || 
+      [defaultAdmin, 'kenkri3@gmail.com', 'aichatnorge@gmail.com', 'kenneth@aichatnorge.no', 'fredrik.r.ellingsen@gmail.com', 'fredrik@aichatnorge.no', 'admin@vikingmester.no', 'post@vikingent.no'].includes(emailLower);
+
     if (!userRecord) {
-      const emailToCheck = (userPayload.email || '').toLowerCase();
-      const isSuperFallback = userPayload.role === 'admin' || userPayload.role === 'superadmin' || emailToCheck.includes('admin') || 
-        ['kenkri3@gmail.com', 'aichatnorge@gmail.com', 'kenneth@aichatnorge.no', 'fredrik.r.ellingsen@gmail.com', 'fredrik@aichatnorge.no', 'admin@vikingmester.no', 'post@vikingent.no'].includes(emailToCheck);
-      
-      if (isSuperFallback) {
+      if (isSuper) {
         userRecord = {
           id: userPayload.id,
           email: userPayload.email,
-          displayName: emailToCheck.includes('fredrik') ? 'Fredrik R. Ellingsen' : 'Ken (Admin)',
+          displayName: emailLower.includes('fredrik') ? 'Fredrik R. Ellingsen' : 'Ken (Admin)',
           role: 'superadmin',
           trade: 'Byggmester',
           company: 'AIChat Norge AS / Vikingnet',
@@ -37,11 +38,6 @@ export async function GET(req: NextRequest) {
         return NextResponse.json({ error: 'User not found' }, { status: 404 });
       }
     }
-
-    const emailLower = (userRecord.email || '').toLowerCase().trim();
-    const isSuper = userRecord.role === 'admin' || userRecord.role === 'superadmin' || 
-      ['kenkri3@gmail.com', 'aichatnorge@gmail.com', 'kenneth@aichatnorge.no', 'fredrik.r.ellingsen@gmail.com', 'fredrik@aichatnorge.no', 'admin@vikingmester.no', 'post@vikingent.no'].includes(emailLower) ||
-      (userRecord.display_name || userRecord.displayName || '').toLowerCase().includes('ken');
 
     let currentStatus = isSuper ? 'active' : (userRecord.subscription_status || userRecord.subscriptionStatus || 'trial');
     let trialDaysLeft: number | null = null;
@@ -68,11 +64,11 @@ export async function GET(req: NextRequest) {
       id: userRecord.id,
       uid: userRecord.id,
       email: userRecord.email,
-      displayName: userRecord.display_name || userRecord.displayName || (emailLower.includes('fredrik') ? 'Fredrik R. Ellingsen' : 'Kenneth Kristiansen'),
-      role: isSuper ? 'superadmin' : userRecord.role,
+      displayName: userRecord.display_name || userRecord.displayName || (emailLower.includes('fredrik') ? 'Fredrik R. Ellingsen' : userRecord.email.split('@')[0]),
+      role: isSuper ? 'superadmin' : (userRecord.role || 'worker'),
       trade: userRecord.trade || 'Byggmester',
       company: isSuper ? 'AIChat Norge AS / Vikingnet' : (userRecord.company || 'Min Bedrift'),
-      companyId: isSuper ? 'comp-001' : (userRecord.company_id || userRecord.companyId),
+      companyId: isSuper ? 'comp-001' : (userRecord.company_id || userRecord.companyId || 'comp-default'),
       subscriptionStatus: currentStatus,
       trialDaysLeft
     };

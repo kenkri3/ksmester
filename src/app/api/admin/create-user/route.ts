@@ -207,11 +207,24 @@ export async function POST(req: NextRequest) {
       password: hashedPassword
     });
 
-    // 4. Send eventuell velkomst-epost via Resend
+    // 4. Opprett alltid en sikker aktiveringslenke der brukeren kan velge sitt eget passord
+    const resetToken = 'rst-' + Date.now() + '-' + Math.random().toString(36).substring(2, 12);
+    const origin = req.headers.get('origin') || process.env.NEXTAUTH_URL || 'https://vikingmester.no';
+    const setPasswordUrl = `${origin}/auth/reset-password?token=${resetToken}&email=${encodeURIComponent(emailLower)}`;
+
+    await saveCollectionItem('password_resets', {
+      email: emailLower,
+      token: resetToken,
+      expiresAt: new Date(Date.now() + 7 * 24 * 60 * 60 * 1000).toISOString(), // 7 dagers gyldighet for invitasjonsaktivering
+      createdAt: now.toISOString(),
+      status: 'pending'
+    });
+
     let emailSent = false;
     let emailMessage = '';
     if (sendWelcomeEmail) {
       try {
+
         const subject = isSuperAdminAccount
           ? `👑 Velkommen som SuperAdmin & Systemeier i VikingMester`
           : isInternal 
@@ -219,10 +232,10 @@ export async function POST(req: NextRequest) {
           : `Velkommen som samarbeidspartner i VikingMester`;
 
         const greetingText = customMessage || (isSuperAdminAccount
-          ? `Hei ${name || 'Fredrik'}!\n\nDu har blitt opprettet som SuperAdmin og Systemeier for VikingMester (AIChat Norge AS / Vikingnet).\n\nDu har 100% full plattformeiertilgang med nøyaktig samme rettigheter som Kenneth Kristiansen (SuperAdmin-portal, ubegrenset kalkyle, impersonering og full systemkontroll).\n\nBruk innloggingsopplysningene nedenfor for å logge inn.`
+          ? `Hei ${name || 'Fredrik'}!\n\nDu har blitt opprettet som SuperAdmin og Systemeier for VikingMester (AIChat Norge AS / Vikingnet).\n\nDu har 100% full plattformeiertilgang med nøyaktig samme rettigheter som Kenneth Kristiansen (SuperAdmin-portal, ubegrenset kalkyle, impersonering og full systemkontroll).\n\nDu kan velge ditt eget personlige passord med en gang ved å klikke på knappen under.`
           : isInternal
-          ? `Hei ${name || 'kollega'}!\n\nDet er opprettet en intern brukerkonto for deg i VikingMester for ${companyName}.\n\nBruk innloggingsopplysningene nedenfor for å logge inn.`
-          : `Hei ${name || 'samarbeidspartner'}!\n\nVi har gleden av å ønske deg velkommen til VikingMester. Du har fått tildelt en partnerkonto med full tilgang til plattformen.\n\nBruk innloggingsopplysningene nedenfor for å logge inn.`);
+          ? `Hei ${name || 'kollega'}!\n\nDet er opprettet en intern brukerkonto for deg i VikingMester for ${companyName}.\n\nKlikk på knappen under for å velge ditt personlige passord og aktivere kontoen.`
+          : `Hei ${name || 'samarbeidspartner'}!\n\nVi har gleden av å ønske deg velkommen til VikingMester. Du har fått tildelt en partnerkonto med full tilgang til plattformen.\n\nKlikk på knappen under for å velge ditt personlige passord og aktivere kontoen.`);
 
         const emailHtml = `
           <div style="font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, sans-serif; max-width: 600px; margin: 0 auto; padding: 24px; color: #1e293b; background: #ffffff;">
@@ -236,19 +249,23 @@ export async function POST(req: NextRequest) {
             <div style="background: #f8fafc; border: 1px solid ${isSuperAdminAccount ? '#fde68a' : '#e2e8f0'}; border-radius: 16px; padding: 20px; margin-bottom: 24px;">
               <p style="font-size: 15px; line-height: 1.6; margin-top: 0;">${greetingText.replace(/\n/g, '<br/>')}</p>
               
+              <div style="text-align: center; margin: 24px 0 20px 0;">
+                <a href="${setPasswordUrl}" style="display: inline-block; background: ${isSuperAdminAccount ? 'linear-gradient(135deg, #d97706 0%, #f59e0b 100%)' : 'linear-gradient(135deg, #4f46e5 0%, #6366f1 100%)'}; color: #ffffff; text-decoration: none; font-weight: 800; font-size: 15px; padding: 14px 32px; border-radius: 12px; box-shadow: 0 4px 14px rgba(217, 119, 6, 0.3);">
+                  ${isSuperAdminAccount ? '👑 Velg ditt passord og aktiver SuperAdmin nå →' : 'Velg ditt personlige passord & logg inn →'}
+                </a>
+              </div>
+
               <div style="background: #ffffff; border: 1px solid #cbd5e1; border-radius: 12px; padding: 16px; margin: 20px 0;">
-                <p style="margin: 0 0 8px 0; font-size: 12px; font-weight: bold; text-transform: uppercase; color: #64748b;">Dine innloggingsopplysninger:</p>
+                <p style="margin: 0 0 8px 0; font-size: 12px; font-weight: bold; text-transform: uppercase; color: #64748b;">Kontoopplysninger:</p>
                 <p style="margin: 4px 0; font-size: 14px;"><strong>Brukernavn (E-post):</strong> <span style="color: #4f46e5; font-weight: bold;">${emailLower}</span></p>
-                <p style="margin: 4px 0; font-size: 14px;"><strong>Passord:</strong> <code style="background: #f1f5f9; padding: 2px 6px; border-radius: 4px; font-weight: bold; color: #0f172a;">${password}</code></p>
+                <p style="margin: 4px 0; font-size: 14px;"><strong>Midlertidig passord:</strong> <code style="background: #f1f5f9; padding: 2px 6px; border-radius: 4px; font-weight: bold; color: #0f172a;">${password}</code></p>
                 <p style="margin: 4px 0; font-size: 14px;"><strong>Firma / Organisasjon:</strong> ${userObj.company}</p>
                 <p style="margin: 4px 0; font-size: 14px;"><strong>Rolle:</strong> <span style="font-weight: bold; color: ${isSuperAdminAccount ? '#d97706' : '#1e293b'};">${isSuperAdminAccount ? '👑 SuperAdmin / Systemeier' : role === 'admin' ? 'Administrator' : role === 'manager' ? 'Prosjektleder' : 'Håndverker'}</span></p>
               </div>
 
-              <div style="text-align: center; margin: 24px 0 12px 0;">
-                <a href="https://vikingmester.no" style="display: inline-block; background: ${isSuperAdminAccount ? '#d97706' : '#4f46e5'}; color: #ffffff; text-decoration: none; font-weight: bold; font-size: 14px; padding: 12px 28px; border-radius: 10px; box-shadow: 0 4px 12px rgba(217, 119, 6, 0.25);">
-                  Logg inn på VikingMester →
-                </a>
-              </div>
+              <p style="font-size: 12px; color: #64748b; line-height: 1.5; text-align: center; margin-bottom: 0;">
+                Du kan når som helst endre passordet ditt ved å klikke på knappen over eller ved å logge inn på <a href="https://vikingmester.no" style="color: #4f46e5; font-weight: bold;">vikingmester.no</a>.
+              </p>
             </div>
 
             <p style="font-size: 12px; color: #94a3b8; text-align: center; margin: 0;">
@@ -261,7 +278,7 @@ export async function POST(req: NextRequest) {
           to: emailLower,
           subject,
           html: emailHtml,
-          text: `${greetingText}\n\nBrukernavn: ${emailLower}\nPassord: ${password}\nFirma: ${userObj.company}\nInnlogging: https://vikingmester.no`,
+          text: `${greetingText}\n\nVelg eget passord: ${setPasswordUrl}\n\nBrukernavn: ${emailLower}\nMidlertidig passord: ${password}\nFirma: ${userObj.company}\nInnlogging: https://vikingmester.no`,
           companyName: userObj.company || 'VikingMester',
           authorName: 'VikingMester SuperAdmin'
         });
@@ -294,6 +311,7 @@ export async function POST(req: NextRequest) {
         password: password,
         loginUrl: 'https://vikingmester.no'
       },
+      inviteLink: setPasswordUrl,
       emailSent
     });
   } catch (err: any) {

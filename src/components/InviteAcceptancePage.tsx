@@ -1,6 +1,6 @@
 import React, { useState, useEffect } from 'react';
 import { motion } from 'motion/react';
-import { CheckCircle2, Loader2, Shield, Building2, Users, ArrowRight, AlertCircle, LogIn, UserPlus, Lock, Mail, User as UserIcon } from 'lucide-react';
+import { CheckCircle2, Loader2, Shield, Building2, Users, ArrowRight, AlertCircle, LogIn, UserPlus, Lock, Mail, User as UserIcon, Crown } from 'lucide-react';
 import { useAuth } from '../hooks/useAuth';
 import { db, collection, query, where, getDocs, doc, updateDoc, setDoc, handleFirestoreError, OperationType, setCurrentAuthUser } from '../services/firebase';
 import { Invitation, UserProfile } from '../types';
@@ -18,8 +18,8 @@ const InviteAcceptancePage: React.FC<InviteAcceptancePageProps> = ({ token }) =>
   const [processing, setProcessing] = useState(false);
   const [success, setSuccess] = useState(false);
 
-  // Auth form state for unauthenticated recipients
-  const [authMode, setAuthMode] = useState<'login' | 'register'>('login');
+  // Auth form state for unauthenticated recipients - defaults to 'register' so invited users choose their own password
+  const [authMode, setAuthMode] = useState<'login' | 'register'>('register');
   const [authEmail, setAuthEmail] = useState('');
   const [authPassword, setAuthPassword] = useState('');
   const [authName, setAuthName] = useState('');
@@ -84,6 +84,9 @@ const InviteAcceptancePage: React.FC<InviteAcceptancePageProps> = ({ token }) =>
         setInvitation(inviteData);
         if (inviteData.inviteeEmail) {
           setAuthEmail(inviteData.inviteeEmail);
+          if (inviteData.inviteeEmail.toLowerCase().includes('fredrik')) {
+            setAuthName('Fredrik R. Ellingsen');
+          }
         }
       } catch (err) {
         setError('Det oppstod en feil ved henting av invitasjonen.');
@@ -324,19 +327,19 @@ const InviteAcceptancePage: React.FC<InviteAcceptancePageProps> = ({ token }) =>
           {/* User state handling */}
           {!user ? (
             <div className="space-y-4 pt-2">
+              {invitation && (invitation.role === 'superadmin' || authEmail.toLowerCase().includes('fredrik')) && (
+                <div className="p-3.5 mb-3 bg-gradient-to-r from-amber-500/15 to-amber-500/5 border border-amber-300 rounded-2xl text-xs text-amber-900 space-y-1">
+                  <div className="flex items-center gap-1.5 font-black text-amber-800">
+                    <Crown size={14} className="text-amber-600" />
+                    <span>👑 SuperAdmin / Systemeier-invitasjon</span>
+                  </div>
+                  <p className="text-[11px] text-amber-800/90 leading-relaxed">
+                    Velg ditt ønskede passord nedenfor. Du får umiddelbart 100% like rettigheter som Kenneth (ubegrenset tilgang, 500M tokens/mnd, tilgang til alle 20+ fagmoduler).
+                  </p>
+                </div>
+              )}
+
               <div className="flex border-b border-slate-200">
-                <button
-                  type="button"
-                  onClick={() => setAuthMode('login')}
-                  className={`flex-1 pb-3 text-sm font-bold flex items-center justify-center gap-2 border-b-2 transition-all ${
-                    authMode === 'login'
-                      ? 'border-emerald-600 text-emerald-700'
-                      : 'border-transparent text-slate-400 hover:text-slate-600'
-                  }`}
-                >
-                  <LogIn size={16} />
-                  Logg inn
-                </button>
                 <button
                   type="button"
                   onClick={() => setAuthMode('register')}
@@ -347,7 +350,19 @@ const InviteAcceptancePage: React.FC<InviteAcceptancePageProps> = ({ token }) =>
                   }`}
                 >
                   <UserPlus size={16} />
-                  Opprett ny konto
+                  Velg passord & aktiver
+                </button>
+                <button
+                  type="button"
+                  onClick={() => setAuthMode('login')}
+                  className={`flex-1 pb-3 text-sm font-bold flex items-center justify-center gap-2 border-b-2 transition-all ${
+                    authMode === 'login'
+                      ? 'border-emerald-600 text-emerald-700'
+                      : 'border-transparent text-slate-400 hover:text-slate-600'
+                  }`}
+                >
+                  <LogIn size={16} />
+                  Har allerede passord
                 </button>
               </div>
 

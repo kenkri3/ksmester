@@ -4100,6 +4100,20 @@ Rolle: SuperAdmin (Full plattformeiertilgang, 500M tokens/mnd, alle moduler)`;
                 <span>{copiedCreds ? 'Kopiert til utklippstavle!' : 'Kopier innloggingsopplysninger'}</span>
               </button>
 
+              {createdData.inviteLink && (
+                <button
+                  type="button"
+                  onClick={() => {
+                    navigator.clipboard.writeText(createdData.inviteLink);
+                    toast.success('Direktelenke for å velge eget passord kopiert!');
+                  }}
+                  className="w-full py-3 bg-slate-900 hover:bg-slate-800 text-amber-300 border border-amber-500/40 rounded-2xl font-bold text-xs flex items-center justify-center gap-2 cursor-pointer transition-all"
+                >
+                  <ExternalLink size={14} />
+                  <span>Kopier lenke for å velge eget passord</span>
+                </button>
+              )}
+
               <button
                 type="button"
                 onClick={() => {
@@ -4176,33 +4190,33 @@ Rolle: SuperAdmin (Full plattformeiertilgang, 500M tokens/mnd, alle moduler)`;
           {/* Brukerdetaljer */}
           <div className="grid grid-cols-1 sm:grid-cols-2 gap-3">
             <div className="space-y-1">
-              <label className="text-xs font-bold uppercase text-neutral-500 ml-1">Fullt navn *</label>
+              <label className="text-xs font-bold uppercase text-slate-700 ml-1">Fullt navn *</label>
               <input
                 required
                 type="text"
                 value={name}
                 onChange={(e) => setName(e.target.value)}
                 placeholder="F.eks. Fredrik Ellingsen"
-                className="w-full px-3.5 py-2.5 bg-neutral-50 border border-neutral-200 rounded-xl text-xs font-semibold outline-none focus:ring-2 focus:ring-amber-500"
+                className="w-full px-3.5 py-2.5 bg-white border border-slate-300 rounded-xl text-xs font-semibold text-slate-900 placeholder:text-slate-400 outline-none focus:ring-2 focus:ring-amber-500/20 focus:border-amber-500 transition-all shadow-2xs"
               />
             </div>
 
             <div className="space-y-1">
-              <label className="text-xs font-bold uppercase text-neutral-500 ml-1">E-postadresse (innlogging) *</label>
+              <label className="text-xs font-bold uppercase text-slate-700 ml-1">E-postadresse (innlogging) *</label>
               <input
                 required
                 type="email"
                 value={email}
                 onChange={(e) => setEmail(e.target.value)}
                 placeholder="fredrik@aichatnorge.no"
-                className="w-full px-3.5 py-2.5 bg-neutral-50 border border-neutral-200 rounded-xl text-xs font-semibold outline-none focus:ring-2 focus:ring-amber-500"
+                className="w-full px-3.5 py-2.5 bg-white border border-slate-300 rounded-xl text-xs font-semibold text-slate-900 placeholder:text-slate-400 outline-none focus:ring-2 focus:ring-amber-500/20 focus:border-amber-500 transition-all shadow-2xs"
               />
             </div>
           </div>
 
           <div className="space-y-1">
             <div className="flex justify-between items-center">
-              <label className="text-xs font-bold uppercase text-neutral-500 ml-1">Passord *</label>
+              <label className="text-xs font-bold uppercase text-slate-700 ml-1">Passord *</label>
               <button
                 type="button"
                 onClick={generatePassword}
@@ -4217,7 +4231,8 @@ Rolle: SuperAdmin (Full plattformeiertilgang, 500M tokens/mnd, alle moduler)`;
                 type={showPassword ? 'text' : 'password'}
                 value={password}
                 onChange={(e) => setPassword(e.target.value)}
-                className="w-full px-3.5 py-2.5 bg-neutral-50 border border-neutral-200 rounded-xl text-xs font-mono font-bold outline-none focus:ring-2 focus:ring-amber-500 pr-10"
+                placeholder="Passord"
+                className="w-full px-3.5 py-2.5 bg-white border border-slate-300 rounded-xl text-xs font-mono font-bold text-slate-900 placeholder:text-slate-400 outline-none focus:ring-2 focus:ring-amber-500/20 focus:border-amber-500 pr-10 transition-all shadow-2xs"
               />
               <button
                 type="button"
@@ -4459,13 +4474,13 @@ Rolle: ${createdData.user.role === 'admin' ? 'Administrator' : createdData.user.
   }
 
   return (
-    <div className="fixed inset-0 z-[100] flex items-center justify-center p-4 bg-neutral-900/60 backdrop-blur-sm overflow-y-auto">
+    <div className="fixed inset-0 z-[100] flex items-center justify-center p-3 sm:p-6 bg-black/80 backdrop-blur-md overflow-hidden">
       <motion.div 
         initial={{ opacity: 0, scale: 0.95 }}
         animate={{ opacity: 1, scale: 1 }}
-        className="bg-white rounded-[2.5rem] shadow-2xl w-full max-w-xl overflow-hidden my-8"
+        className="bg-white rounded-[2rem] sm:rounded-[2.5rem] shadow-2xl w-full max-w-xl max-h-[92vh] sm:max-h-[88vh] flex flex-col overflow-hidden my-auto"
       >
-        <div className="p-6 sm:p-8 border-b border-neutral-100 flex justify-between items-center bg-purple-50/40">
+        <div className="p-5 sm:p-6 border-b border-neutral-100 flex justify-between items-center bg-purple-50/40 shrink-0">
           <div className="flex items-center gap-3">
             <div className="w-12 h-12 rounded-2xl bg-purple-100 text-purple-700 flex items-center justify-center shrink-0 shadow-2xs">
               <UserCheck size={24} />
@@ -4482,10 +4497,10 @@ Rolle: ${createdData.user.role === 'admin' ? 'Administrator' : createdData.user.
           </button>
         </div>
 
-        <form onSubmit={handleSubmit} className="p-6 sm:p-8 space-y-5">
+        <form onSubmit={handleSubmit} className="p-5 sm:p-8 space-y-5 overflow-y-auto flex-1 min-h-0">
           {/* Kontotype velger */}
           <div className="space-y-1.5">
-            <label className="text-xs font-black uppercase tracking-wider text-neutral-400 ml-1">Type konto</label>
+            <label className="text-xs font-bold uppercase tracking-wider text-slate-700 ml-1">Type konto</label>
             <div className="grid grid-cols-2 gap-2">
               <button
                 type="button"
@@ -4494,7 +4509,7 @@ Rolle: ${createdData.user.role === 'admin' ? 'Administrator' : createdData.user.
                   "py-3 px-4 rounded-2xl font-bold text-xs flex items-center justify-center gap-2 transition-all cursor-pointer border-2",
                   partnerType === 'partner'
                     ? "bg-purple-100 text-purple-900 border-purple-300 shadow-2xs"
-                    : "bg-neutral-50 text-neutral-500 border-transparent hover:bg-neutral-100"
+                    : "bg-neutral-50 text-neutral-600 border-neutral-200 hover:bg-neutral-100"
                 )}
               >
                 <span>🤝 Samarbeidspartner</span>
@@ -4506,7 +4521,7 @@ Rolle: ${createdData.user.role === 'admin' ? 'Administrator' : createdData.user.
                   "py-3 px-4 rounded-2xl font-bold text-xs flex items-center justify-center gap-2 transition-all cursor-pointer border-2",
                   partnerType === 'internal'
                     ? "bg-purple-100 text-purple-900 border-purple-300 shadow-2xs"
-                    : "bg-neutral-50 text-neutral-500 border-transparent hover:bg-neutral-100"
+                    : "bg-neutral-50 text-neutral-600 border-neutral-200 hover:bg-neutral-100"
                 )}
               >
                 <span>💼 Kollega / Internt</span>
@@ -4515,21 +4530,21 @@ Rolle: ${createdData.user.role === 'admin' ? 'Administrator' : createdData.user.
           </div>
 
           {/* Selskapstilknytning */}
-          <div className="space-y-2 p-4 bg-neutral-50 rounded-2xl border border-neutral-200/70">
+          <div className="space-y-2.5 p-4 bg-slate-50 rounded-2xl border border-slate-200">
             <div className="flex items-center justify-between">
-              <label className="text-xs font-black uppercase tracking-wider text-neutral-500">Bedrift / Organisasjon</label>
-              <div className="flex gap-1 bg-white p-0.5 rounded-lg border border-neutral-200 text-[11px] font-bold">
+              <label className="text-xs font-bold uppercase tracking-wider text-slate-700">Bedrift / Organisasjon</label>
+              <div className="flex gap-1 bg-white p-0.5 rounded-lg border border-slate-200 text-[11px] font-bold">
                 <button
                   type="button"
                   onClick={() => setCompanyMode('new')}
-                  className={cn("px-2.5 py-1 rounded-md transition-all cursor-pointer", companyMode === 'new' ? "bg-purple-600 text-white" : "text-neutral-500")}
+                  className={cn("px-2.5 py-1 rounded-md transition-all cursor-pointer", companyMode === 'new' ? "bg-purple-600 text-white" : "text-neutral-500 hover:text-neutral-900")}
                 >
                   Ny bedrift
                 </button>
                 <button
                   type="button"
                   onClick={() => setCompanyMode('existing')}
-                  className={cn("px-2.5 py-1 rounded-md transition-all cursor-pointer", companyMode === 'existing' ? "bg-purple-600 text-white" : "text-neutral-500")}
+                  className={cn("px-2.5 py-1 rounded-md transition-all cursor-pointer", companyMode === 'existing' ? "bg-purple-600 text-white" : "text-neutral-500 hover:text-neutral-900")}
                 >
                   Eksisterende
                 </button>
@@ -4539,35 +4554,35 @@ Rolle: ${createdData.user.role === 'admin' ? 'Administrator' : createdData.user.
             {companyMode === 'new' ? (
               <div className="grid grid-cols-1 sm:grid-cols-2 gap-2.5 pt-1">
                 <div className="space-y-1">
-                  <label className="text-[10px] font-bold uppercase text-neutral-500">Firmanavn / Organisasjon *</label>
+                  <label className="text-[11px] font-bold uppercase text-slate-700">Firmanavn / Organisasjon *</label>
                   <input
                     required
                     type="text"
                     value={companyName}
                     onChange={(e) => setCompanyName(e.target.value)}
                     placeholder={partnerType === 'internal' ? 'VikingMester Internt' : 'F.eks. Rørleggermester Hansen'}
-                    className="w-full px-3.5 py-2.5 bg-white border border-neutral-200 rounded-xl text-xs font-semibold outline-none focus:ring-2 focus:ring-purple-500"
+                    className="w-full px-3.5 py-2.5 bg-white border border-slate-300 rounded-xl text-xs font-semibold text-slate-900 placeholder:text-slate-400 outline-none focus:ring-2 focus:ring-purple-500/20 focus:border-purple-600 transition-all shadow-2xs"
                   />
                 </div>
                 <div className="space-y-1">
-                  <label className="text-[10px] font-bold uppercase text-neutral-500">Org.nummer (valgfritt)</label>
+                  <label className="text-[11px] font-bold uppercase text-slate-700">Org.nummer (valgfritt)</label>
                   <input
                     type="text"
                     value={orgNumber}
                     onChange={(e) => setOrgNumber(e.target.value)}
-                    placeholder="9 siffer"
-                    className="w-full px-3.5 py-2.5 bg-white border border-neutral-200 rounded-xl text-xs outline-none focus:ring-2 focus:ring-purple-500"
+                    placeholder="9 siffer (valgfritt)"
+                    className="w-full px-3.5 py-2.5 bg-white border border-slate-300 rounded-xl text-xs font-semibold text-slate-900 placeholder:text-slate-400 outline-none focus:ring-2 focus:ring-purple-500/20 focus:border-purple-600 transition-all shadow-2xs"
                   />
                 </div>
               </div>
             ) : (
               <div className="pt-1">
-                <label className="text-[10px] font-bold uppercase text-neutral-500 block mb-1">Velg bedrift</label>
+                <label className="text-[11px] font-bold uppercase text-slate-700 block mb-1">Velg bedrift</label>
                 <select
                   required
                   value={selectedCompanyId}
                   onChange={(e) => setSelectedCompanyId(e.target.value)}
-                  className="w-full px-3.5 py-2.5 bg-white border border-neutral-200 rounded-xl text-xs font-semibold outline-none focus:ring-2 focus:ring-purple-500"
+                  className="w-full px-3.5 py-2.5 bg-white border border-slate-300 rounded-xl text-xs font-semibold text-slate-900 outline-none focus:ring-2 focus:ring-purple-500/20 focus:border-purple-600 cursor-pointer shadow-2xs"
                 >
                   <option value="">-- Velg eksisterende bedrift --</option>
                   {companies.map(c => (
@@ -4583,26 +4598,26 @@ Rolle: ${createdData.user.role === 'admin' ? 'Administrator' : createdData.user.
           {/* Brukerdetaljer */}
           <div className="grid grid-cols-1 sm:grid-cols-2 gap-3">
             <div className="space-y-1">
-              <label className="text-xs font-bold uppercase text-neutral-500 ml-1">Fullt navn *</label>
+              <label className="text-xs font-bold uppercase text-slate-700 ml-1">Fullt navn *</label>
               <input
                 required
                 type="text"
                 value={name}
                 onChange={(e) => setName(e.target.value)}
                 placeholder="F.eks. Petter Partner"
-                className="w-full px-3.5 py-2.5 bg-neutral-50 border border-neutral-200 rounded-xl text-xs font-semibold outline-none focus:ring-2 focus:ring-purple-500"
+                className="w-full px-3.5 py-2.5 bg-white border border-slate-300 rounded-xl text-xs font-semibold text-slate-900 placeholder:text-slate-400 outline-none focus:ring-2 focus:ring-purple-500/20 focus:border-purple-600 transition-all shadow-2xs"
               />
             </div>
 
             <div className="space-y-1">
-              <label className="text-xs font-bold uppercase text-neutral-500 ml-1">E-postadresse (innlogging) *</label>
+              <label className="text-xs font-bold uppercase text-slate-700 ml-1">E-postadresse (innlogging) *</label>
               <input
                 required
                 type="email"
                 value={email}
                 onChange={(e) => setEmail(e.target.value)}
                 placeholder="petter@partner.no"
-                className="w-full px-3.5 py-2.5 bg-neutral-50 border border-neutral-200 rounded-xl text-xs font-semibold outline-none focus:ring-2 focus:ring-purple-500"
+                className="w-full px-3.5 py-2.5 bg-white border border-slate-300 rounded-xl text-xs font-semibold text-slate-900 placeholder:text-slate-400 outline-none focus:ring-2 focus:ring-purple-500/20 focus:border-purple-600 transition-all shadow-2xs"
               />
             </div>
           </div>
@@ -4610,7 +4625,7 @@ Rolle: ${createdData.user.role === 'admin' ? 'Administrator' : createdData.user.
           <div className="grid grid-cols-1 sm:grid-cols-2 gap-3">
             <div className="space-y-1">
               <div className="flex justify-between items-center">
-                <label className="text-xs font-bold uppercase text-neutral-500 ml-1">Passord *</label>
+                <label className="text-xs font-bold uppercase text-slate-700 ml-1">Passord *</label>
                 <button
                   type="button"
                   onClick={generatePassword}
@@ -4625,7 +4640,8 @@ Rolle: ${createdData.user.role === 'admin' ? 'Administrator' : createdData.user.
                   type={showPassword ? 'text' : 'password'}
                   value={password}
                   onChange={(e) => setPassword(e.target.value)}
-                  className="w-full px-3.5 py-2.5 bg-neutral-50 border border-neutral-200 rounded-xl text-xs font-mono font-bold outline-none focus:ring-2 focus:ring-purple-500 pr-10"
+                  placeholder="Minst 8 tegn"
+                  className="w-full px-3.5 py-2.5 bg-white border border-slate-300 rounded-xl text-xs font-mono font-bold text-slate-900 placeholder:text-slate-400 outline-none focus:ring-2 focus:ring-purple-500/20 focus:border-purple-600 pr-10 transition-all shadow-2xs"
                 />
                 <button
                   type="button"
@@ -4638,11 +4654,11 @@ Rolle: ${createdData.user.role === 'admin' ? 'Administrator' : createdData.user.
             </div>
 
             <div className="space-y-1">
-              <label className="text-xs font-bold uppercase text-neutral-500 ml-1">Rolle</label>
+              <label className="text-xs font-bold uppercase text-slate-700 ml-1">Rolle</label>
               <select
                 value={role}
                 onChange={(e) => setRole(e.target.value as any)}
-                className="w-full px-3.5 py-2.5 bg-neutral-50 border border-neutral-200 rounded-xl text-xs font-bold outline-none focus:ring-2 focus:ring-purple-500"
+                className="w-full px-3.5 py-2.5 bg-white border border-slate-300 rounded-xl text-xs font-bold text-slate-900 outline-none focus:ring-2 focus:ring-purple-500/20 focus:border-purple-600 cursor-pointer shadow-2xs"
               >
                 <option value="admin">Administrator (Full tilgang)</option>
                 <option value="manager">Prosjektleder</option>
@@ -4670,7 +4686,7 @@ Rolle: ${createdData.user.role === 'admin' ? 'Administrator' : createdData.user.
               onChange={(e) => setSendWelcomeEmail(e.target.checked)}
               className="w-4 h-4 rounded text-purple-600 focus:ring-purple-500 cursor-pointer"
             />
-            <span className="text-xs font-bold text-neutral-700">
+            <span className="text-xs font-bold text-slate-700">
               Send automatisk velkomst-e-post med innloggingsopplysninger
             </span>
           </label>

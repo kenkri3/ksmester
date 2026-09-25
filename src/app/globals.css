@@ -62,6 +62,14 @@ body {
   color: #6B00B3;
 }
 
+/* Accessible High-Contrast Placeholders across all browsers */
+input::placeholder,
+textarea::placeholder,
+::placeholder {
+  color: #64748b !important;
+  opacity: 1 !important;
+}
+
 /* Custom Scrollbar */
 ::-webkit-scrollbar {
   width: 7px;

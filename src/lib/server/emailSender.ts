@@ -1118,3 +1118,768 @@ export async function sendHandoverDocumentationEmail(params: {
   });
 }
 
+// ============================================================================
+// 🌟 TILLEGG AV E-POSTMALER FOR ALLE BRUKER- OG PROSJEKTSITUASJONER MED ASSISTANSE
+// ============================================================================
+
+/**
+ * 1. MULIGE KUNDER: Bekreftelse på mottatt henvendelse / tilbudsforespørsel med assistanse
+ */
+export async function sendLeadInquiryReceivedEmail(params: {
+  leadEmail: string;
+  leadName?: string;
+  projectDescription?: string;
+  companyName?: string;
+  authorName?: string;
+  contactPhone?: string;
+  contactEmail?: string;
+  baseUrl?: string;
+}): Promise<SendEmailResult> {
+  const {
+    leadEmail,
+    leadName = 'Kjære kunde',
+    projectDescription = 'Ditt forespurte bygge- eller oppussingsprosjekt',
+    companyName = 'Mester Entreprenør AS',
+    authorName = 'Kundeservice & Befaring',
+    contactPhone,
+    contactEmail,
+    baseUrl = 'https://vikingmester.no'
+  } = params;
+
+  const emailHtml = `
+    <!DOCTYPE html>
+    <html lang="no">
+    <head>
+      <meta charset="utf-8">
+      <style>
+        body { font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, sans-serif; background: #f8fafc; margin: 0; padding: 20px; color: #1e293b; }
+        .card { max-width: 600px; margin: 0 auto; background: #ffffff; border-radius: 16px; border: 1px solid #e2e8f0; overflow: hidden; box-shadow: 0 4px 6px -1px rgba(0,0,0,0.05); }
+        .header { background: #0f172a; padding: 26px 20px; color: #ffffff; text-align: left; }
+        .content { padding: 24px 20px; line-height: 1.6; color: #334155; }
+        .step-box { background: #f8fafc; border: 1px solid #e2e8f0; border-radius: 12px; padding: 16px; margin: 20px 0; }
+        .contact-box { background: #f0fdf4; border: 1px solid #bbf7d0; border-radius: 10px; padding: 14px; margin-top: 20px; }
+      </style>
+    </head>
+    <body>
+      <div class="card">
+        <div class="header">
+          <span style="background: #10b981; color: white; padding: 3px 8px; border-radius: 999px; font-size: 11px; font-weight: bold; text-transform: uppercase;">Forespørsel mottatt</span>
+          <h2 style="margin: 8px 0 0 0; font-size: 20px;">Takk for din henvendelse til ${companyName}</h2>
+        </div>
+        <div class="content">
+          <p style="margin-top: 0; font-size: 15px;">Hei <strong>${leadName}</strong>,</p>
+          <p>Vi bekrefter med dette at vi har mottatt din henvendelse vedrørende:</p>
+          <blockquote style="margin: 12px 0; padding: 10px 14px; background: #f1f5f9; border-left: 4px solid #0284c7; font-size: 13px; color: #475569; font-style: italic;">
+            ${projectDescription}
+          </blockquote>
+          
+          <div class="step-box">
+            <h4 style="margin: 0 0 10px 0; color: #0f172a; font-size: 14px;">Hva skjer nå?</h4>
+            <ol style="margin: 0; padding-left: 20px; font-size: 13px; color: #475569; line-height: 1.6;">
+              <li><strong>Gjennomgang:</strong> Vår fagansvarlige går gjennom omfang og tilgjengelige tegninger.</li>
+              <li><strong>Befaring / Avklaring:</strong> Vi kontakter deg normalt innen 1–2 virkedager for å avtale befaring eller hente supplerende detaljer.</li>
+              <li><strong>Pristilbud:</strong> Du mottar et uforpliktende og spesifisert pristilbud med 1-klikks digital godkjenning.</li>
+            </ol>
+          </div>
+
+          ${(contactPhone || contactEmail) ? `
+          <div class="contact-box">
+            <p style="margin: 0; font-size: 13px; color: #166534;">
+              <strong>Trenger du rask avklaring?</strong><br>
+              ${contactPhone ? `📞 Telefon: <strong>${contactPhone}</strong><br>` : ''}
+              ${contactEmail ? `✉️ E-post: <strong>${contactEmail}</strong>` : ''}
+            </p>
+          </div>
+          ` : ''}
+
+          <p style="margin-top: 24px; margin-bottom: 0; font-size: 14px;">
+            Med vennlig hilsen,<br>
+            <strong>${authorName}</strong><br>
+            ${companyName}
+          </p>
+        </div>
+      </div>
+    </body>
+    </html>
+  `;
+
+  return await sendSystemEmail({
+    to: leadEmail,
+    subject: `Bekreftelse på mottatt henvendelse: ${companyName}`,
+    html: emailHtml,
+    text: `Hei ${leadName}!\n\nTakk for din henvendelse til ${companyName}. Vi har mottatt din forespørsel og går gjennom detaljene nå. Vi tar kontakt innen 1–2 virkedager.\n\nMed vennlig hilsen,\n${authorName}\n${companyName}`,
+    companyName,
+    authorName,
+    type: 'general',
+    metadata: { leadEmail, type: 'lead_inquiry' }
+  });
+}
+
+/**
+ * 2. KUNDE: Vennlig påminnelse og assistanse for ubesvart pristilbud
+ */
+export async function sendOfferReminderEmail(params: {
+  offer: any;
+  clientEmail: string;
+  clientName?: string;
+  companyName?: string;
+  authorName?: string;
+  replyTo?: string;
+  baseUrl?: string;
+}): Promise<SendEmailResult> {
+  const {
+    offer,
+    clientEmail,
+    clientName,
+    companyName = 'Mester Entreprenør AS',
+    authorName = 'Byggmester',
+    replyTo,
+    baseUrl = 'https://vikingmester.no'
+  } = params;
+
+  const token = offer.token || offer.id;
+  const approvalLink = `${baseUrl}/?offerToken=${token}`;
+  const cName = clientName || offer.clientName || 'Kjære kunde';
+  const totalAmount = Number(offer.totalAmount || offer.total || 0);
+
+  const emailHtml = `
+    <!DOCTYPE html>
+    <html lang="no">
+    <head>
+      <meta charset="utf-8">
+      <style>
+        body { font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, sans-serif; background: #f8fafc; margin: 0; padding: 20px; color: #1e293b; }
+        .card { max-width: 600px; margin: 0 auto; background: #ffffff; border-radius: 16px; border: 1px solid #e2e8f0; overflow: hidden; }
+        .header { background: #0284c7; padding: 24px 20px; color: #ffffff; }
+        .content { padding: 24px 20px; line-height: 1.6; color: #334155; }
+        .btn { background-color: #059669; color: #ffffff !important; font-weight: 700; padding: 14px 26px; border-radius: 10px; text-decoration: none; display: inline-block; }
+      </style>
+    </head>
+    <body>
+      <div class="card">
+        <div class="header">
+          <h2 style="margin: 0; font-size: 20px;">Lurer du på noe rundt tilbudet ditt?</h2>
+          <p style="margin: 4px 0 0 0; opacity: 0.9; font-size: 13px;">${companyName} følger opp «${offer.title || 'Pristilbud'}»</p>
+        </div>
+        <div class="content">
+          <p style="margin-top: 0;">Hei <strong>${cName}</strong>,</p>
+          <p>
+            Vi sendte deg nylig et spesifisert pristilbud på <strong>${offer.title || 'avtalt arbeid'}</strong> 
+            med totalsum <strong>kr ${totalAmount.toLocaleString('no-NO')} inkl. mva</strong>.
+          </p>
+          <p>
+            Vi ønsker bare å høre om du har hatt anledning til å se over det, eller om det er spørsmål, tilpasninger eller detaljer du gjerne vil gå gjennom med oss.
+          </p>
+          <div style="text-align: center; margin: 28px 0;">
+            <a href="${approvalLink}" class="btn" target="_blank">👉 Se tilbudet og godkjenn her</a>
+          </div>
+          <p style="font-size: 13px; color: #64748b;">
+            Dersom du ønsker justeringer i materialvalg, tidsplan eller omfang, er det bare å svare direkte på denne e-posten, så hjelper vi deg med det samme!
+          </p>
+          <p style="margin-bottom: 0;">Med vennlig hilsen,<br><strong>${authorName}</strong><br>${companyName}</p>
+        </div>
+      </div>
+    </body>
+    </html>
+  `;
+
+  return await sendSystemEmail({
+    to: clientEmail,
+    subject: `Oppfølging: Pristilbud på ${offer.title || 'arbeid'} – ${companyName}`,
+    html: emailHtml,
+    text: `Hei ${cName}!\n\nVi følger opp tilbudet på ${offer.title} (kr ${totalAmount.toLocaleString('no-NO')} inkl. mva). Lurer du på noe eller ønsker justeringer?\n\nSe tilbudet her: ${approvalLink}\n\nMed vennlig hilsen,\n${authorName}\n${companyName}`,
+    companyName,
+    authorName,
+    replyTo,
+    type: 'offer',
+    metadata: { offerId: offer.id, type: 'offer_reminder' }
+  });
+}
+
+/**
+ * 3. KUNDE: Informasjon om avvik / uforutsette forhold på byggeplass med assistanse og tiltak
+ */
+export async function sendCustomerDeviationNoticeEmail(params: {
+  clientEmail: string;
+  clientName?: string;
+  projectName: string;
+  deviationTitle: string;
+  deviationDescription: string;
+  proposedAction: string;
+  impactOnTimelineOrCost?: string;
+  companyName?: string;
+  authorName?: string;
+  replyTo?: string;
+  portalUrl?: string;
+}): Promise<SendEmailResult> {
+  const {
+    clientEmail,
+    clientName = 'Kjære kunde',
+    projectName,
+    deviationTitle,
+    deviationDescription,
+    proposedAction,
+    impactOnTimelineOrCost,
+    companyName = 'Mester Entreprenør AS',
+    authorName = 'Prosjektleder',
+    replyTo,
+    portalUrl
+  } = params;
+
+  const emailHtml = `
+    <!DOCTYPE html>
+    <html lang="no">
+    <head>
+      <meta charset="utf-8">
+      <style>
+        body { font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, sans-serif; background: #f8fafc; margin: 0; padding: 20px; color: #1e293b; }
+        .card { max-width: 600px; margin: 0 auto; background: #ffffff; border-radius: 16px; border: 1px solid #e2e8f0; overflow: hidden; }
+        .header { background: #d97706; padding: 24px 20px; color: #ffffff; }
+        .content { padding: 24px 20px; line-height: 1.6; color: #334155; }
+        .info-box { background: #fffbeb; border: 1px solid #fef3c7; border-left: 4px solid #f59e0b; padding: 14px; border-radius: 8px; margin: 18px 0; }
+        .action-box { background: #f0fdf4; border: 1px solid #bbf7d0; border-left: 4px solid #10b981; padding: 14px; border-radius: 8px; margin: 18px 0; }
+      </style>
+    </head>
+    <body>
+      <div class="card">
+        <div class="header">
+          <span style="background: rgba(255,255,255,0.25); color: white; padding: 3px 8px; border-radius: 999px; font-size: 11px; font-weight: bold; text-transform: uppercase;">Statusoppdatering Byggeplass</span>
+          <h2 style="margin: 8px 0 0 0; font-size: 20px;">Uforutsett forhold avdekket på ${projectName}</h2>
+        </div>
+        <div class="content">
+          <p style="margin-top: 0;">Hei <strong>${clientName}</strong>,</p>
+          <p>
+            Som ledd i vår løpende kvalitetssikring og åpne dialog under byggeprosjektet, vil vi informere om at vi har registrert et forhold som krever tiltak:
+          </p>
+
+          <div class="info-box">
+            <strong style="color: #92400e; font-size: 14px;">${deviationTitle}</strong>
+            <p style="margin: 6px 0 0 0; font-size: 13px; color: #78350f;">${deviationDescription}</p>
+          </div>
+
+          <div class="action-box">
+            <strong style="color: #166534; font-size: 14px;">🛠️ Vår anbefalte løsning / strakstiltak:</strong>
+            <p style="margin: 6px 0 0 0; font-size: 13px; color: #14532d;">${proposedAction}</p>
+          </div>
+
+          ${impactOnTimelineOrCost ? `
+          <p style="font-size: 13px; background: #f8fafc; padding: 10px 14px; border-radius: 8px; border: 1px solid #e2e8f0;">
+            ⏱️ <strong>Konsekvens for fremdrift/budsjett:</strong> ${impactOnTimelineOrCost}
+          </p>
+          ` : ''}
+
+          ${portalUrl ? `
+          <div style="text-align: center; margin: 24px 0;">
+            <a href="${portalUrl}" style="background: #0f172a; color: white; padding: 12px 24px; border-radius: 8px; text-decoration: none; font-weight: bold; font-size: 14px;">📸 Se bilder og detaljer i Byggherreportalen</a>
+          </div>
+          ` : ''}
+
+          <p style="font-size: 13px; color: #64748b;">
+            Våre håndverkere sørger for at alt dokumenteres i tråd med TEK17 og NS 8406. Svar gjerne på denne e-posten dersom du har spørsmål.
+          </p>
+          <p style="margin-bottom: 0;">Med vennlig hilsen,<br><strong>${authorName}</strong><br>${companyName}</p>
+        </div>
+      </div>
+    </body>
+    </html>
+  `;
+
+  return await sendSystemEmail({
+    to: clientEmail,
+    subject: `Statusoppdatering & Avvik: ${deviationTitle} – ${projectName}`,
+    html: emailHtml,
+    text: `Hei ${clientName}!\n\nVi har registrert et uforutsett forhold på ${projectName}: ${deviationTitle}.\n\nTiltak: ${proposedAction}\n\nMed vennlig hilsen,\n${authorName}\n${companyName}`,
+    companyName,
+    authorName,
+    replyTo,
+    type: 'notice',
+    metadata: { projectName, deviationTitle, type: 'deviation_notice' }
+  });
+}
+
+/**
+ * 4. ADMIN: Varsel om at kunde har signert byggekontrakt
+ */
+export async function sendAdminContractSignedAlertEmail(params: {
+  adminEmail: string;
+  adminName?: string;
+  clientName: string;
+  projectName: string;
+  totalAmount: number;
+  projectId: string;
+  companyName?: string;
+  baseUrl?: string;
+}): Promise<SendEmailResult> {
+  const {
+    adminEmail,
+    adminName = 'Leder',
+    clientName,
+    projectName,
+    totalAmount,
+    projectId,
+    companyName = 'VikingMester',
+    baseUrl = 'https://vikingmester.no'
+  } = params;
+
+  const projectUrl = `${baseUrl}/?project=${projectId}`;
+
+  const emailHtml = `
+    <!DOCTYPE html>
+    <html lang="no">
+    <head>
+      <meta charset="utf-8">
+      <style>
+        body { font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, sans-serif; background: #f8fafc; margin: 0; padding: 20px; color: #1e293b; }
+        .card { max-width: 600px; margin: 0 auto; background: #ffffff; border-radius: 16px; border: 1px solid #e2e8f0; overflow: hidden; }
+        .header { background: #059669; padding: 24px 20px; color: #ffffff; }
+        .content { padding: 24px 20px; line-height: 1.6; color: #334155; }
+        .btn { background: #0f172a; color: white !important; font-weight: 700; padding: 14px 24px; border-radius: 10px; text-decoration: none; display: inline-block; }
+      </style>
+    </head>
+    <body>
+      <div class="card">
+        <div class="header">
+          <span style="background: rgba(255,255,255,0.25); color: white; padding: 3px 8px; border-radius: 999px; font-size: 11px; font-weight: bold; text-transform: uppercase;">Kontrakt I Boks</span>
+          <h2 style="margin: 8px 0 0 0; font-size: 20px;">🎉 Kontrakt signert for ${projectName}!</h2>
+        </div>
+        <div class="content">
+          <p style="margin-top: 0;">Hei <strong>${adminName}</strong>,</p>
+          <p>
+            Gode nyheter! <strong>${clientName}</strong> har nettopp signert byggekontrakten for <strong>${projectName}</strong> digitalt.
+          </p>
+          <div style="background: #f8fafc; border: 1px solid #cbd5e1; border-radius: 10px; padding: 14px; margin: 18px 0; font-size: 14px;">
+            <div>Avtalt kontraktssum: <strong style="color: #059669; font-size: 16px;">kr ${totalAmount.toLocaleString('no-NO')} inkl. mva</strong></div>
+            <div style="color: #64748b; font-size: 12px; margin-top: 4px;">Juridisk bindende signatur med tidsstempel og IP-logg er arkivert.</div>
+          </div>
+          <div style="text-align: center; margin: 26px 0;">
+            <a href="${projectUrl}" class="btn" target="_blank">🚀 Åpne prosjekt & Tildel håndverkere</a>
+          </div>
+          <p style="font-size: 13px; color: #64748b;">
+            Mesterhjernen har automatisk forberedt KS-sjekklister, vernerunde-maler og FDV-perm for prosjektet.
+          </p>
+        </div>
+      </div>
+    </body>
+    </html>
+  `;
+
+  return await sendSystemEmail({
+    to: adminEmail,
+    subject: `🎉 Kontrakt signert av ${clientName}: ${projectName} (kr ${totalAmount.toLocaleString('no-NO')})`,
+    html: emailHtml,
+    text: `Hei ${adminName}!\n\n${clientName} har signert byggekontrakten for ${projectName} (kr ${totalAmount.toLocaleString('no-NO')} inkl. mva).\n\nÅpne prosjektet her: ${projectUrl}`,
+    companyName,
+    authorName: 'VikingMester Systemvarsel',
+    type: 'general',
+    metadata: { projectId, clientName, totalAmount, type: 'contract_signed_alert' }
+  });
+}
+
+/**
+ * 5. ADMIN: Kritisk avviksvarsel fra byggeplass som krever ledergodkjenning
+ */
+export async function sendAdminNewDeviationAlertEmail(params: {
+  adminEmail: string;
+  adminName?: string;
+  craftsmanName: string;
+  projectName: string;
+  deviationTitle: string;
+  severity: 'lav' | 'middels' | 'høy' | 'kritisk';
+  description: string;
+  deviationId: string;
+  companyName?: string;
+  baseUrl?: string;
+}): Promise<SendEmailResult> {
+  const {
+    adminEmail,
+    adminName = 'Leder',
+    craftsmanName,
+    projectName,
+    deviationTitle,
+    severity,
+    description,
+    deviationId,
+    companyName = 'VikingMester',
+    baseUrl = 'https://vikingmester.no'
+  } = params;
+
+  const deviationUrl = `${baseUrl}/?deviation=${deviationId}`;
+  const isHighOrCritical = severity === 'høy' || severity === 'kritisk';
+
+  const emailHtml = `
+    <!DOCTYPE html>
+    <html lang="no">
+    <head>
+      <meta charset="utf-8">
+      <style>
+        body { font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, sans-serif; background: #f8fafc; margin: 0; padding: 20px; color: #1e293b; }
+        .card { max-width: 600px; margin: 0 auto; background: #ffffff; border-radius: 16px; border: 1px solid #e2e8f0; overflow: hidden; }
+        .header { background: ${isHighOrCritical ? '#dc2626' : '#ea580c'}; padding: 24px 20px; color: #ffffff; }
+        .content { padding: 24px 20px; line-height: 1.6; color: #334155; }
+        .btn { background: #0f172a; color: white !important; font-weight: 700; padding: 14px 24px; border-radius: 10px; text-decoration: none; display: inline-block; }
+      </style>
+    </head>
+    <body>
+      <div class="card">
+        <div class="header">
+          <span style="background: rgba(255,255,255,0.25); color: white; padding: 3px 8px; border-radius: 999px; font-size: 11px; font-weight: bold; text-transform: uppercase;">
+            Avvik Registrert • ${severity.toUpperCase()} ALVORLIGHET
+          </span>
+          <h2 style="margin: 8px 0 0 0; font-size: 20px;">Nytt avvik på ${projectName}</h2>
+        </div>
+        <div class="content">
+          <p style="margin-top: 0;">Hei <strong>${adminName}</strong>,</p>
+          <p>
+            Fagarbeider <strong>${craftsmanName}</strong> har registrert et avvik som krever din vurdering og godkjenning av tiltak:
+          </p>
+
+          <div style="background: #fef2f2; border: 1px solid #fecaca; border-left: 4px solid #ef4444; padding: 14px; border-radius: 8px; margin: 18px 0;">
+            <strong style="color: #991b1b; font-size: 15px;">${deviationTitle}</strong>
+            <p style="margin: 6px 0 0 0; color: #7f1d1d; font-size: 13px;">${description}</p>
+          </div>
+
+          <div style="text-align: center; margin: 26px 0;">
+            <a href="${deviationUrl}" class="btn" target="_blank">🔍 Se avvik & Iverksett tiltak</a>
+          </div>
+
+          <p style="font-size: 12px; color: #64748b;">
+            Husk: Rask lukking av avvik sikrer overholdelse av TEK17 og forhindrer unødige forsinkelser og ekstrakostnader.
+          </p>
+        </div>
+      </div>
+    </body>
+    </html>
+  `;
+
+  return await sendSystemEmail({
+    to: adminEmail,
+    subject: `⚠️ Avviksvarsel (${severity.toUpperCase()}): ${deviationTitle} – ${projectName}`,
+    html: emailHtml,
+    text: `Hei ${adminName}!\n\n${craftsmanName} har registrert et avvik med ${severity} alvorlighet på ${projectName}: ${deviationTitle}.\n\nSe detaljer her: ${deviationUrl}`,
+    companyName,
+    authorName: 'VikingMester Avvikskontroll',
+    type: 'notice',
+    metadata: { deviationId, projectName, severity, type: 'admin_deviation_alert' }
+  });
+}
+
+/**
+ * 6. ADMIN: Velkomst og 3-trinns onboarding-assistanse for ny lederbruker
+ */
+export async function sendAdminOnboardingAssistanceEmail(params: {
+  adminEmail: string;
+  adminName: string;
+  companyName: string;
+  baseUrl?: string;
+}): Promise<SendEmailResult> {
+  const {
+    adminEmail,
+    adminName,
+    companyName,
+    baseUrl = 'https://vikingmester.no'
+  } = params;
+
+  const emailHtml = `
+    <!DOCTYPE html>
+    <html lang="no">
+    <head>
+      <meta charset="utf-8">
+      <style>
+        body { font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, sans-serif; background: #f8fafc; margin: 0; padding: 20px; color: #1e293b; }
+        .card { max-width: 600px; margin: 0 auto; background: #ffffff; border-radius: 16px; border: 1px solid #e2e8f0; overflow: hidden; }
+        .header { background: #0f172a; padding: 28px 20px; color: #ffffff; text-align: left; }
+        .content { padding: 26px 20px; line-height: 1.6; color: #334155; }
+        .step-item { display: flex; margin-bottom: 16px; background: #f8fafc; border: 1px solid #e2e8f0; border-radius: 10px; padding: 14px; }
+        .step-num { width: 32px; height: 32px; background: #0284c7; color: white; border-radius: 50%; display: flex; align-items: center; justify-content: center; font-weight: bold; margin-right: 14px; flex-shrink: 0; }
+        .btn { background: #059669; color: white !important; font-weight: 700; padding: 14px 28px; border-radius: 10px; text-decoration: none; display: inline-block; }
+      </style>
+    </head>
+    <body>
+      <div class="card">
+        <div class="header">
+          <span style="background: #10b981; color: white; padding: 3px 8px; border-radius: 999px; font-size: 11px; font-weight: bold; text-transform: uppercase;">Velkommen til VikingMester</span>
+          <h2 style="margin: 8px 0 0 0; font-size: 22px;">Gratulerer med ny lederkonto, ${adminName}!</h2>
+          <p style="margin: 4px 0 0 0; color: #94a3b8; font-size: 13px;">Oppsett for <strong>${companyName}</strong></p>
+        </div>
+        <div class="content">
+          <p style="margin-top: 0; font-size: 15px;">
+            VikingMester er laget for å fjerne 90% av papirarbeidet i byggeprosjektene dine. Her er 3 enkle steg for å komme i gang:
+          </p>
+
+          <div style="margin: 22px 0;">
+            <div style="background: #f8fafc; border: 1px solid #e2e8f0; border-radius: 10px; padding: 14px; margin-bottom: 12px;">
+              <strong style="color: #0f172a; font-size: 14px;">1. Sett opp firmaprofil & logo</strong>
+              <p style="margin: 4px 0 0 0; font-size: 13px; color: #64748b;">Legg inn logo, org.nr og bankdetaljer så alle tilbud, kontrakter og FDV-permer blir proffe med én gang.</p>
+            </div>
+            <div style="background: #f8fafc; border: 1px solid #e2e8f0; border-radius: 10px; padding: 14px; margin-bottom: 12px;">
+              <strong style="color: #0f172a; font-size: 14px;">2. Inviter fagarbeiderne dine</strong>
+              <p style="margin: 4px 0 0 0; font-size: 13px; color: #64748b;">Håndverkerne logger inn på mobil uten passord-stress, fyller ut sjekklister med tale-til-tekst og tar fotobevis direkte.</p>
+            </div>
+            <div style="background: #f8fafc; border: 1px solid #e2e8f0; border-radius: 10px; padding: 14px;">
+              <strong style="color: #0f172a; font-size: 14px;">3. Opprett ditt første prosjekt eller tilbud</strong>
+              <p style="margin: 4px 0 0 0; font-size: 13px; color: #64748b;">Skriv noen stikkord, så bygger Mesterhjernen komplett tilbud, NS 8406-kontrakt og fagspesifikke sjekklister automatisk.</p>
+            </div>
+          </div>
+
+          <div style="text-align: center; margin: 28px 0;">
+            <a href="${baseUrl}" class="btn" target="_blank">🚀 Logg inn på kontrollpanelet ditt</a>
+          </div>
+
+          <p style="font-size: 13px; color: #64748b; line-height: 1.5;">
+            Trenger du hjelp eller tips? Vår integrerte AI-assistent er tilgjengelig døgnet rundt direkte i chatten nederst i appen.
+          </p>
+        </div>
+      </div>
+    </body>
+    </html>
+  `;
+
+  return await sendSystemEmail({
+    to: adminEmail,
+    subject: `Velkommen til VikingMester – 3 enkle steg for å komme i gang for ${companyName}`,
+    html: emailHtml,
+    text: `Hei ${adminName}!\n\nVelkommen til VikingMester for ${companyName}.\n\nLogg inn her for å sette opp firmaprofil, invitere ansatte og opprette ditt første prosjekt:\n${baseUrl}`,
+    companyName: 'VikingMester',
+    authorName: 'Onboarding Team',
+    type: 'general',
+    metadata: { adminEmail, type: 'admin_onboarding' }
+  });
+}
+
+/**
+ * 7. HÅNDVERKER: Tildeling av nytt prosjekt / oppgave med direkte mobil-knapp
+ */
+export async function sendCraftsmanTaskAssignedEmail(params: {
+  craftsmanEmail: string;
+  craftsmanName: string;
+  projectName: string;
+  taskTitle: string;
+  taskDescription?: string;
+  projectAddress?: string;
+  deadline?: string;
+  companyName?: string;
+  baseUrl?: string;
+}): Promise<SendEmailResult> {
+  const {
+    craftsmanEmail,
+    craftsmanName,
+    projectName,
+    taskTitle,
+    taskDescription,
+    projectAddress,
+    deadline,
+    companyName = 'Mester Entreprenør AS',
+    baseUrl = 'https://vikingmester.no'
+  } = params;
+
+  const emailHtml = `
+    <!DOCTYPE html>
+    <html lang="no">
+    <head>
+      <meta charset="utf-8">
+      <style>
+        body { font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, sans-serif; background: #f8fafc; margin: 0; padding: 20px; color: #1e293b; }
+        .card { max-width: 600px; margin: 0 auto; background: #ffffff; border-radius: 16px; border: 1px solid #e2e8f0; overflow: hidden; }
+        .header { background: #0f172a; padding: 24px 20px; color: #ffffff; }
+        .content { padding: 24px 20px; line-height: 1.6; color: #334155; }
+        .task-box { background: #f8fafc; border: 1px solid #cbd5e1; border-radius: 10px; padding: 14px; margin: 18px 0; }
+        .btn { background: #0284c7; color: white !important; font-weight: 700; padding: 14px 24px; border-radius: 10px; text-decoration: none; display: inline-block; }
+      </style>
+    </head>
+    <body>
+      <div class="card">
+        <div class="header">
+          <span style="background: #0284c7; color: white; padding: 3px 8px; border-radius: 999px; font-size: 11px; font-weight: bold; text-transform: uppercase;">Nytt Oppdrag</span>
+          <h2 style="margin: 8px 0 0 0; font-size: 20px;">Du er tildelt oppgave på ${projectName}</h2>
+        </div>
+        <div class="content">
+          <p style="margin-top: 0;">Hei <strong>${craftsmanName}</strong>,</p>
+          <p>Du har fått tildelt et nytt arbeidsoppdrag fra <strong>${companyName}</strong>:</p>
+
+          <div class="task-box">
+            <h3 style="margin: 0 0 6px 0; font-size: 16px; color: #0f172a;">${taskTitle}</h3>
+            ${taskDescription ? `<p style="margin: 0 0 10px 0; font-size: 13px; color: #475569;">${taskDescription}</p>` : ''}
+            <div style="font-size: 12px; color: #64748b; line-height: 1.5;">
+              ${projectAddress ? `📍 <strong>Adresse:</strong> ${projectAddress}<br>` : ''}
+              ${deadline ? `📅 <strong>Frist / Tidsramme:</strong> ${deadline}<br>` : ''}
+              📋 <strong>Krav:</strong> Sjekklister og fotodokumentasjon fylles ut direkte på mobil underveis.
+            </div>
+          </div>
+
+          <div style="text-align: center; margin: 26px 0;">
+            <a href="${baseUrl}" class="btn" target="_blank">📱 Åpne oppgave & Sjekkliste på mobil</a>
+          </div>
+
+          <p style="font-size: 12px; color: #64748b;">
+            💡 <em>Husk at du kan bruke mikrofon-ikonet i appen for å snakke inn notater mens du jobber med verneutstyr!</em>
+          </p>
+        </div>
+      </div>
+    </body>
+    </html>
+  `;
+
+  return await sendSystemEmail({
+    to: craftsmanEmail,
+    subject: `📋 Ny oppgave tildelt: ${taskTitle} – ${projectName}`,
+    html: emailHtml,
+    text: `Hei ${craftsmanName}!\n\nDu er tildelt oppgaven «${taskTitle}» på ${projectName}.\n\nÅpne på mobil her: ${baseUrl}`,
+    companyName,
+    authorName: 'Oppdragsledelse',
+    type: 'general',
+    metadata: { craftsmanEmail, projectName, taskTitle, type: 'craftsman_task_assigned' }
+  });
+}
+
+/**
+ * 8. HÅNDVERKER: Tildeling av avvik som må utbedres med fotokrav
+ */
+export async function sendCraftsmanDeviationAssignedEmail(params: {
+  craftsmanEmail: string;
+  craftsmanName: string;
+  projectName: string;
+  deviationTitle: string;
+  actionRequired: string;
+  deadline?: string;
+  deviationId: string;
+  companyName?: string;
+  baseUrl?: string;
+}): Promise<SendEmailResult> {
+  const {
+    craftsmanEmail,
+    craftsmanName,
+    projectName,
+    deviationTitle,
+    actionRequired,
+    deadline,
+    deviationId,
+    companyName = 'Mester Entreprenør AS',
+    baseUrl = 'https://vikingmester.no'
+  } = params;
+
+  const deviationUrl = `${baseUrl}/?deviation=${deviationId}`;
+
+  const emailHtml = `
+    <!DOCTYPE html>
+    <html lang="no">
+    <head>
+      <meta charset="utf-8">
+      <style>
+        body { font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, sans-serif; background: #f8fafc; margin: 0; padding: 20px; color: #1e293b; }
+        .card { max-width: 600px; margin: 0 auto; background: #ffffff; border-radius: 16px; border: 1px solid #e2e8f0; overflow: hidden; }
+        .header { background: #ea580c; padding: 24px 20px; color: #ffffff; }
+        .content { padding: 24px 20px; line-height: 1.6; color: #334155; }
+        .action-box { background: #fff7ed; border: 1px solid #fed7aa; border-left: 4px solid #f97316; padding: 14px; border-radius: 8px; margin: 18px 0; }
+        .btn { background: #0f172a; color: white !important; font-weight: 700; padding: 14px 24px; border-radius: 10px; text-decoration: none; display: inline-block; }
+      </style>
+    </head>
+    <body>
+      <div class="card">
+        <div class="header">
+          <span style="background: rgba(255,255,255,0.25); color: white; padding: 3px 8px; border-radius: 999px; font-size: 11px; font-weight: bold; text-transform: uppercase;">Utbedringspålegg</span>
+          <h2 style="margin: 8px 0 0 0; font-size: 20px;">Avvik tildelt for utbedring</h2>
+        </div>
+        <div class="content">
+          <p style="margin-top: 0;">Hei <strong>${craftsmanName}</strong>,</p>
+          <p>Følgende avvik på <strong>${projectName}</strong> er tildelt deg for retting:</p>
+
+          <div class="action-box">
+            <h3 style="margin: 0 0 6px 0; font-size: 15px; color: #9a3412;">${deviationTitle}</h3>
+            <p style="margin: 0; font-size: 13px; color: #7c2d12;"><strong>Påkrevd tiltak:</strong> ${actionRequired}</p>
+            ${deadline ? `<div style="margin-top: 8px; font-size: 12px; color: #9a3412;">📅 <strong>Utbedringsfrist:</strong> ${deadline}</div>` : ''}
+          </div>
+
+          <p style="font-size: 13px; color: #334155;">
+            📸 <strong>Viktig:</strong> Når du har rettet avviket, må du ta etter-bilde med mobilen og markere avviket som utbedret. Bildet overføres automatisk til FDV-permen.
+          </p>
+
+          <div style="text-align: center; margin: 26px 0;">
+            <a href="${deviationUrl}" class="btn" target="_blank">📲 Åpne avviket & Last opp etter-bilde</a>
+          </div>
+        </div>
+      </div>
+    </body>
+    </html>
+  `;
+
+  return await sendSystemEmail({
+    to: craftsmanEmail,
+    subject: `🛠️ Utbedring kreves: ${deviationTitle} – ${projectName}`,
+    html: emailHtml,
+    text: `Hei ${craftsmanName}!\n\nDu er tildelt utbedring av avviket «${deviationTitle}» på ${projectName}.\nTiltak: ${actionRequired}\n\nÅpne og last opp etter-bilde her: ${deviationUrl}`,
+    companyName,
+    authorName: 'KS-Ansvarlig',
+    type: 'notice',
+    metadata: { deviationId, craftsmanEmail, projectName, type: 'craftsman_deviation_assigned' }
+  });
+}
+
+/**
+ * 9. HÅNDVERKER: Påminnelse om ufullstendige sjekklister før helg/milepæl
+ */
+export async function sendCraftsmanChecklistReminderEmail(params: {
+  craftsmanEmail: string;
+  craftsmanName: string;
+  projectName: string;
+  pendingCount: number;
+  companyName?: string;
+  baseUrl?: string;
+}): Promise<SendEmailResult> {
+  const {
+    craftsmanEmail,
+    craftsmanName,
+    projectName,
+    pendingCount,
+    companyName = 'Mester Entreprenør AS',
+    baseUrl = 'https://vikingmester.no'
+  } = params;
+
+  const emailHtml = `
+    <!DOCTYPE html>
+    <html lang="no">
+    <head>
+      <meta charset="utf-8">
+      <style>
+        body { font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, sans-serif; background: #f8fafc; margin: 0; padding: 20px; color: #1e293b; }
+        .card { max-width: 600px; margin: 0 auto; background: #ffffff; border-radius: 16px; border: 1px solid #e2e8f0; overflow: hidden; }
+        .header { background: #3b82f6; padding: 22px 20px; color: #ffffff; }
+        .content { padding: 24px 20px; line-height: 1.6; color: #334155; }
+        .btn { background: #0f172a; color: white !important; font-weight: 700; padding: 14px 24px; border-radius: 10px; text-decoration: none; display: inline-block; }
+      </style>
+    </head>
+    <body>
+      <div class="card">
+        <div class="header">
+          <h2 style="margin: 0; font-size: 20px;">📋 Påminnelse: ${pendingCount} sjekkpunkter gjenstår</h2>
+          <p style="margin: 4px 0 0 0; opacity: 0.9; font-size: 13px;">${projectName}</p>
+        </div>
+        <div class="content">
+          <p style="margin-top: 0;">Hei <strong>${craftsmanName}</strong>,</p>
+          <p>
+            For å sikre at vi er i rute med KS-dokumentasjonen og godkjenning for fakturering, minner vi om at du har <strong>${pendingCount} ubesvarte sjekkpunkter</strong> på <strong>${projectName}</strong>.
+          </p>
+          <div style="text-align: center; margin: 26px 0;">
+            <a href="${baseUrl}" class="btn" target="_blank">📱 Fullfør sjekkliste på mobil</a>
+          </div>
+          <p style="font-size: 12px; color: #64748b;">
+            Det tar bare 2 minutter med mobil-knappene. Takk for innsatsen!
+          </p>
+        </div>
+      </div>
+    </body>
+    </html>
+  `;
+
+  return await sendSystemEmail({
+    to: craftsmanEmail,
+    subject: `📋 KS-påminnelse: ${pendingCount} sjekkpunkter på ${projectName}`,
+    html: emailHtml,
+    text: `Hei ${craftsmanName}!\n\nDu har ${pendingCount} ubesvarte sjekkpunkter på ${projectName}.\n\nFullfør på mobil her: ${baseUrl}`,
+    companyName,
+    authorName: 'KS-Kvalitetssikring',
+    type: 'general',
+    metadata: { craftsmanEmail, projectName, pendingCount, type: 'craftsman_checklist_reminder' }
+  });
+}
+
+
