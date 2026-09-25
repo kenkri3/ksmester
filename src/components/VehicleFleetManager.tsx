@@ -28,6 +28,7 @@ import { Vehicle, VehicleEntry, Project } from '../types';
 import { db, auth, collection, onSnapshot, query, orderBy, addDoc, serverTimestamp, OperationType, handleFirestoreError } from '../services/firebase';
 import { cn } from '@/src/lib/utils';
 import { toast } from 'sonner';
+import { api } from '../services/api';
 
 interface VehicleFleetManagerProps {
   projects: Project[];
@@ -141,11 +142,12 @@ export const VehicleFleetManager: React.FC<VehicleFleetManagerProps> = ({
   const [isAddVehicleOpen, setIsAddVehicleOpen] = useState(false);
   const [showAutoImportModal, setShowAutoImportModal] = useState(false);
 
-  // Data state with localStorage persistence
+  // Data state with localStorage & Cloud persistence
   const [vehicles, setVehicles] = useState<Vehicle[]>(() => {
     try {
       const raw = localStorage.getItem('ks_vehicles_cache');
-      return raw ? JSON.parse(raw) : SEED_VEHICLES;
+      const parsed = raw ? JSON.parse(raw) : null;
+      return Array.isArray(parsed) && parsed.length > 0 ? parsed : SEED_VEHICLES;
     } catch {
       return SEED_VEHICLES;
     }
@@ -154,11 +156,38 @@ export const VehicleFleetManager: React.FC<VehicleFleetManagerProps> = ({
   const [logs, setLogs] = useState<VehicleEntry[]>(() => {
     try {
       const raw = localStorage.getItem('ks_vehicle_logs_cache');
-      return raw ? JSON.parse(raw) : SEED_LOGS;
+      const parsed = raw ? JSON.parse(raw) : null;
+      return Array.isArray(parsed) && parsed.length > 0 ? parsed : SEED_LOGS;
     } catch {
       return SEED_LOGS;
     }
   });
+
+  // ☁️ Sky-synkronisering: Hent felles firmabiler og kjøreboklogger for bedriften
+  useEffect(() => {
+    let isMounted = true;
+    async function syncCloudFleet() {
+      try {
+        const [cloudVehicles, cloudLogs] = await Promise.all([
+          api.getCollection('vehicles').catch(() => []),
+          api.getCollection('vehicle_logs').catch(() => [])
+        ]);
+
+        if (isMounted) {
+          if (Array.isArray(cloudVehicles) && cloudVehicles.length > 0) {
+            setVehicles(cloudVehicles);
+          }
+          if (Array.isArray(cloudLogs) && cloudLogs.length > 0) {
+            setLogs(cloudLogs);
+          }
+        }
+      } catch (err) {
+        console.warn('Kunne ikke laste bilflåte fra sky:', err);
+      }
+    }
+    syncCloudFleet();
+    return () => { isMounted = false; };
+  }, []);
 
   // Ubehandlede turer fra Auto-Kjørebok (GPS / Autopass)
   const [pendingAutoTrips, setPendingAutoTrips] = useState<any[]>([
@@ -278,12 +307,14 @@ export const VehicleFleetManager: React.FC<VehicleFleetManagerProps> = ({
       isAutoTracked: false
     };
 
-    // 1. Oppdater logg
+    // 1. Oppdater logg lokalt og i skyen
     setLogs(prev => [entry, ...prev]);
+    api.addDoc('vehicle_logs', entry).catch(() => {});
 
-    // 2. Oppdater bilens kilometerstand
+    // 2. Oppdater bilens kilometerstand lokalt og i skyen
     setVehicles(prev => prev.map(v => {
       if (v.id === selectedVeh.id && newTrip.endKm > v.km) {
+        api.updateDoc('vehicles', v.id, { km: Number(newTrip.endKm) }).catch(() => {});
         return { ...v, km: Number(newTrip.endKm) };
       }
       return v;
@@ -333,6 +364,7 @@ export const VehicleFleetManager: React.FC<VehicleFleetManagerProps> = ({
     };
 
     setVehicles(prev => [created, ...prev]);
+    api.addDoc('vehicles', created).catch(() => {});
     setIsAddVehicleOpen(false);
     toast.success(`${created.model} (${created.plate}) er lagt til i bilparken!`);
 
@@ -354,6 +386,7 @@ export const VehicleFleetManager: React.FC<VehicleFleetManagerProps> = ({
   const handleDeleteVehicle = (vehicleId: string, plate: string) => {
     if (confirm(`Er du sikker på at du vil fjerne bilen ${plate} fra bilparken?`)) {
       setVehicles(prev => prev.filter(v => v.id !== vehicleId));
+      api.deleteDoc('vehicles', vehicleId).catch(() => {});
       toast.info(`Bilen ${plate} ble fjernet.`);
     }
   };
@@ -362,23 +395,48 @@ export const VehicleFleetManager: React.FC<VehicleFleetManagerProps> = ({
   const handleDeleteLog = (logId: string) => {
     if (confirm('Vil du slette denne turen fra kjøreboken?')) {
       setLogs(prev => prev.filter(l => l.id !== logId));
+      api.deleteDoc('vehicle_logs', logId).catch(() => {});
       toast.info('Tur slettet fra kjøreboken.');
     }
   };
 
   // Bekreft automatiske turer fra Auto-Kjørebok (Smart-Synk)
-  const handleApproveAutoTrips = () => {
+  const handleApproveAutoTrips = async () => {
     if (pendingAutoTrips.length === 0) {
       toast.info('Ingen ubehandlede turer å bekrefte akkurat nå.');
       return;
     }
 
+    const currentVehicles = [...vehicles];
+    const missingPlates = new Set(pendingAutoTrips.map(a => a.plate));
+
+    // Sørg for at alle biler fra de oppdagede turene eksisterer i bilparken
+    missingPlates.forEach(plate => {
+      if (!currentVehicles.some(v => v.plate === plate)) {
+        const seedMatch = SEED_VEHICLES.find(sv => sv.plate === plate);
+        const autoVeh: Vehicle = seedMatch || {
+          id: `veh_${Date.now()}_${Math.random().toString(36).substring(2, 6)}`,
+          plate,
+          model: plate.startsWith('EL') ? 'Volkswagen ID. Buzz Cargo' : 'Ford Transit Custom 2.0 EcoBlue',
+          type: plate.startsWith('EL') ? 'EL' : 'Diesel',
+          status: 'Aktiv',
+          km: 45000,
+          nextServiceKm: 60000,
+          nextEuControl: '2027-01-01',
+          assignedDriver: 'Feltlag',
+          notes: 'Opprettet automatisk fra GPS-kjørebok'
+        };
+        currentVehicles.push(autoVeh);
+        api.addDoc('vehicles', autoVeh).catch(() => {});
+      }
+    });
+
     const newEntries: VehicleEntry[] = pendingAutoTrips.map(auto => {
-      const matchingVeh = vehicles.find(v => v.plate === auto.plate) || vehicles[0];
+      const matchingVeh = currentVehicles.find(v => v.plate === auto.plate) || currentVehicles[0];
       const start = matchingVeh ? matchingVeh.km : 40000;
       const end = start + auto.km;
 
-      return {
+      const newEntry: VehicleEntry = {
         id: `auto_${Date.now()}_${auto.id}`,
         vehicleId: matchingVeh ? matchingVeh.id : 'veh-1',
         plateNumber: auto.plate,
@@ -392,8 +450,12 @@ export const VehicleFleetManager: React.FC<VehicleFleetManagerProps> = ({
         tollFee: auto.toll,
         isAutoTracked: true
       };
+
+      api.addDoc('vehicle_logs', newEntry).catch(() => {});
+      return newEntry;
     });
 
+    setVehicles(currentVehicles);
     setLogs(prev => [...newEntries, ...prev]);
     setPendingAutoTrips([]);
     setShowAutoImportModal(false);
