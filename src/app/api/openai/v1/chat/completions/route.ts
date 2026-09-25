@@ -30,7 +30,7 @@ export async function POST(req: NextRequest) {
     }
 
     const body = await req.json().catch(() => ({}));
-    const { model = 'gemini-3.8-flash', messages = [] } = body;
+    const { model = 'gemini-2.5-flash', messages = [] } = body;
 
     if (!Array.isArray(messages) || messages.length === 0) {
       return NextResponse.json(

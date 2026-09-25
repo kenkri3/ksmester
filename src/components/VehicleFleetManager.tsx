@@ -22,7 +22,10 @@ import {
   FileText,
   Trash2,
   ShieldCheck,
-  Check
+  Check,
+  Sparkles,
+  HelpCircle,
+  BookOpen
 } from 'lucide-react';
 import { Vehicle, VehicleEntry, Project } from '../types';
 import { db, auth, collection, onSnapshot, query, orderBy, addDoc, serverTimestamp, OperationType, handleFirestoreError } from '../services/firebase';
@@ -222,6 +225,9 @@ export const VehicleFleetManager: React.FC<VehicleFleetManagerProps> = ({
       suggestedProject: 'Felles firmadrift'
     }
   ]);
+
+  // Veiledning / Hjelpepanel
+  const [showFleetGuide, setShowFleetGuide] = useState(false);
 
   // Skjema for ny tur
   const [newTrip, setNewTrip] = useState({
@@ -785,8 +791,98 @@ export const VehicleFleetManager: React.FC<VehicleFleetManagerProps> = ({
             <Download size={14} className="text-blue-400" />
             <span>Månedsoppsummering</span>
           </button>
+
+          <button
+            type="button"
+            onClick={() => setShowFleetGuide(prev => !prev)}
+            className={`px-3 py-1.5 rounded-xl border text-xs font-bold flex items-center gap-1.5 transition-all cursor-pointer ${
+              showFleetGuide 
+                ? 'bg-amber-500/20 text-amber-300 border-amber-500/40' 
+                : 'bg-slate-800/80 hover:bg-slate-700 text-slate-300 hover:text-white border-slate-700'
+            }`}
+            title="Vis hvordan elektronisk kjørebok fungerer i praksis"
+          >
+            <HelpCircle size={14} className={showFleetGuide ? "text-amber-400" : "text-slate-400"} />
+            <span>Slik fungerer det</span>
+          </button>
         </div>
       </div>
+
+      {/* Expandable hurtigveiledning */}
+      {showFleetGuide && (
+        <div className="mx-4 sm:mx-6 mt-4 p-5 rounded-2xl bg-gradient-to-br from-slate-900 to-amber-950/20 border border-amber-500/30 space-y-4">
+          <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-3 pb-3 border-b border-slate-800">
+            <div className="flex items-center gap-2.5">
+              <div className="w-8 h-8 rounded-xl bg-amber-500/20 text-amber-400 flex items-center justify-center font-bold">
+                <BookOpen size={16} />
+              </div>
+              <div>
+                <h4 className="font-black text-white text-sm">Slik fungerer Kjørebok & Flåtestyring</h4>
+                <p className="text-xs text-slate-300">
+                  Godkjent etter Skatteetatens krav for elektronisk kjørebok og kilometergodtgjørelse.
+                </p>
+              </div>
+            </div>
+            <span className="text-[10px] font-mono font-bold text-amber-300 bg-amber-500/10 border border-amber-500/25 px-2.5 py-1 rounded-lg shrink-0">
+              Statens sats: 4,90 kr/km + bom
+            </span>
+          </div>
+
+          <div className="grid grid-cols-1 md:grid-cols-3 gap-3">
+            <div className="p-3.5 rounded-xl bg-slate-950/70 border border-slate-800 space-y-1">
+              <div className="flex items-center gap-2">
+                <span className="w-5 h-5 rounded-full bg-amber-500 text-slate-950 text-[11px] font-black flex items-center justify-center">1</span>
+                <span className="text-xs font-bold text-white">Velg / registrer bil</span>
+              </div>
+              <p className="text-[11px] text-slate-400 leading-relaxed pl-7">
+                Legg inn firmabil eller privatbil. Start-km lagres automatisk som grunnlag for neste tur.
+              </p>
+            </div>
+
+            <div className="p-3.5 rounded-xl bg-slate-950/70 border border-slate-800 space-y-1">
+              <div className="flex items-center gap-2">
+                <span className="w-5 h-5 rounded-full bg-amber-500 text-slate-950 text-[11px] font-black flex items-center justify-center">2</span>
+                <span className="text-xs font-bold text-white">Før tur eller dikter til AI</span>
+              </div>
+              <p className="text-[11px] text-slate-400 leading-relaxed pl-7">
+                Fyll inn kilometer eller si: «Før 28 km til Vidjeveien for Marius». Bompenger legges til automatisk.
+              </p>
+            </div>
+
+            <div className="p-3.5 rounded-xl bg-slate-950/70 border border-slate-800 space-y-1">
+              <div className="flex items-center gap-2">
+                <span className="w-5 h-5 rounded-full bg-amber-500 text-slate-950 text-[11px] font-black flex items-center justify-center">3</span>
+                <span className="text-xs font-bold text-white">Automatisk oppgjør & eksport</span>
+              </div>
+              <p className="text-[11px] text-slate-400 leading-relaxed pl-7">
+                Systemet regner ut 4,90 kr/km + bom, og klargjør godkjent bilag for Tripletex, Fiken eller lønn.
+              </p>
+            </div>
+          </div>
+
+          <div className="flex flex-wrap items-center justify-between gap-3 pt-1">
+            <span className="text-xs text-slate-400 flex items-center gap-1.5">
+              <Sparkles size={14} className="text-amber-400" />
+              MesterAI kan føre turer for deg i sanntid via tale eller tekst.
+            </span>
+            <button
+              type="button"
+              onClick={() => {
+                window.dispatchEvent(new CustomEvent('mesterai:open-copilot', {
+                  detail: {
+                    module: 'vehicle',
+                    prompt: 'Forklar meg hvordan elektronisk kjørebok og flåtestyring fungerer i Vikingmester. Hvordan regnes 4,90 kr/km + bompenger, hvordan fører jeg turer raskest, og hvordan eksporterer jeg til Tripletex/Fiken?'
+                  }
+                }));
+              }}
+              className="px-3.5 py-1.5 rounded-xl bg-amber-500 hover:bg-amber-400 text-slate-950 font-bold text-xs flex items-center gap-1.5 transition-all cursor-pointer shadow-md"
+            >
+              <Sparkles size={13} />
+              <span>Spør MesterAI om Kjørebok</span>
+            </button>
+          </div>
+        </div>
+      )}
 
       {/* 3. Innhold etter aktiv fane */}
       <div className="p-4 sm:p-6 overflow-y-auto custom-scrollbar flex-1 space-y-6">
@@ -898,22 +994,95 @@ export const VehicleFleetManager: React.FC<VehicleFleetManagerProps> = ({
 
             {/* Turliste */}
             {filteredLogs.length === 0 ? (
-              <div className="p-12 text-center bg-slate-950/40 rounded-3xl border border-dashed border-slate-800 space-y-3">
-                <div className="w-12 h-12 rounded-2xl bg-slate-800 text-slate-500 flex items-center justify-center mx-auto">
-                  <Map size={24} />
+              searchQuery ? (
+                <div className="p-12 text-center bg-slate-950/40 rounded-3xl border border-dashed border-slate-800 space-y-3">
+                  <div className="w-12 h-12 rounded-2xl bg-slate-800 text-slate-500 flex items-center justify-center mx-auto">
+                    <Map size={24} />
+                  </div>
+                  <h3 className="font-bold text-white text-base">Ingen turer funnet</h3>
+                  <p className="text-xs text-slate-400 max-w-sm mx-auto">
+                    Ingen turer matchet søket ditt «{searchQuery}».
+                  </p>
+                  <button
+                    type="button"
+                    onClick={() => setSearchQuery('')}
+                    className="px-4 py-2 bg-slate-800 hover:bg-slate-700 text-white rounded-xl text-xs font-bold transition-colors cursor-pointer"
+                  >
+                    Nullstill søk
+                  </button>
                 </div>
-                <h3 className="font-bold text-white text-base">Ingen turer funnet</h3>
-                <p className="text-xs text-slate-400 max-w-sm mx-auto">
-                  {searchQuery ? 'Ingen turer matchet søket ditt.' : 'Trykk på "Ny Tur" for å registrere din første tur.'}
-                </p>
-                <button
-                  type="button"
-                  onClick={() => setIsNewTripOpen(true)}
-                  className="px-4 py-2 bg-amber-500 text-slate-950 rounded-xl text-xs font-bold hover:bg-amber-400 transition-colors cursor-pointer"
-                >
-                  Registrer ny tur nå
-                </button>
-              </div>
+              ) : (
+                <div className="p-6 sm:p-8 bg-slate-950/60 rounded-3xl border border-slate-800/80 space-y-6">
+                  <div className="text-center max-w-lg mx-auto space-y-2">
+                    <div className="w-12 h-12 rounded-2xl bg-amber-500/10 border border-amber-500/30 text-amber-400 flex items-center justify-center mx-auto">
+                      <Car size={24} />
+                    </div>
+                    <h3 className="font-black text-white text-lg">Kom i gang med Kjøreboken</h3>
+                    <p className="text-xs text-slate-400 leading-relaxed">
+                      Elektronisk kjørebok sikrer at alle kjørte kilometer og bompasseringer refunderes og faktureres riktig iht. Skatteetatens krav.
+                    </p>
+                  </div>
+
+                  <div className="grid grid-cols-1 md:grid-cols-3 gap-4">
+                    <div className="p-4 rounded-2xl bg-slate-900/80 border border-slate-800 space-y-2">
+                      <div className="w-7 h-7 rounded-xl bg-amber-500/20 text-amber-300 font-black text-xs flex items-center justify-center">
+                        1
+                      </div>
+                      <h4 className="font-bold text-white text-sm">Velg eller registrer bil</h4>
+                      <p className="text-xs text-slate-400 leading-relaxed">
+                        Start med å registrere firmabil eller privatbil under fanen «Biler». Startkilometerstand huskes automatisk til neste tur.
+                      </p>
+                    </div>
+
+                    <div className="p-4 rounded-2xl bg-slate-900/80 border border-slate-800 space-y-2">
+                      <div className="w-7 h-7 rounded-xl bg-amber-500/20 text-amber-300 font-black text-xs flex items-center justify-center">
+                        2
+                      </div>
+                      <h4 className="font-bold text-white text-sm">Før turen på sekunder</h4>
+                      <p className="text-xs text-slate-400 leading-relaxed">
+                        Trykk «Ny Tur» og skriv inn start/slutt km, eller dikter turen direkte til MesterAI med stemmen («Før 28 km til Vidjeveien»).
+                      </p>
+                    </div>
+
+                    <div className="p-4 rounded-2xl bg-slate-900/80 border border-slate-800 space-y-2">
+                      <div className="w-7 h-7 rounded-xl bg-amber-500/20 text-amber-300 font-black text-xs flex items-center justify-center">
+                        3
+                      </div>
+                      <h4 className="font-bold text-white text-sm">4,90 kr/km + bompenger</h4>
+                      <p className="text-xs text-slate-400 leading-relaxed">
+                        Refusjonskravet regnes ut umiddelbart. Eksporter til Tripletex, Fiken eller regnskap med 1 klikk ved månedsslutt.
+                      </p>
+                    </div>
+                  </div>
+
+                  <div className="flex flex-wrap items-center justify-center gap-3 pt-2">
+                    <button
+                      type="button"
+                      onClick={() => setIsNewTripOpen(true)}
+                      className="px-5 py-2.5 bg-gradient-to-r from-amber-500 to-orange-500 hover:from-amber-400 hover:to-orange-400 text-slate-950 font-black rounded-xl text-xs sm:text-sm flex items-center gap-2 shadow-lg shadow-amber-950/50 cursor-pointer transition-all"
+                    >
+                      <Plus size={16} />
+                      <span>Registrer første tur</span>
+                    </button>
+
+                    <button
+                      type="button"
+                      onClick={() => {
+                        window.dispatchEvent(new CustomEvent('mesterai:open-copilot', {
+                          detail: {
+                            module: 'vehicle',
+                            prompt: 'Jeg vil føre en kjøretur. Hjelp meg å registrere den trinn-for-trinn.'
+                          }
+                        }));
+                      }}
+                      className="px-4 py-2.5 bg-slate-800 hover:bg-slate-700 text-white font-bold rounded-xl text-xs sm:text-sm flex items-center gap-2 border border-slate-700 transition-all cursor-pointer"
+                    >
+                      <Sparkles size={15} className="text-amber-300" />
+                      <span>Før tur med MesterAI</span>
+                    </button>
+                  </div>
+                </div>
+              )
             ) : (
               <div className="space-y-3">
                 {filteredLogs.map(log => {
@@ -1126,6 +1295,30 @@ export const VehicleFleetManager: React.FC<VehicleFleetManagerProps> = ({
                 </p>
               </div>
             </div>
+
+            {/* Veiledningsbanner hvis 0 km er registrert */}
+            {stats.totalKm === 0 && (
+              <div className="p-4 sm:p-5 rounded-2xl bg-amber-500/10 border border-amber-500/30 flex items-start gap-3.5 text-xs">
+                <div className="p-2 rounded-xl bg-amber-500/20 text-amber-400 shrink-0">
+                  <Sparkles size={18} />
+                </div>
+                <div className="space-y-1.5 flex-1">
+                  <div className="font-bold text-amber-300 text-sm">Ingen turer registrert for denne perioden ennå</div>
+                  <p className="text-slate-300 leading-relaxed">
+                    Når du eller medarbeiderne fører turer (eller godkjenner de 3 ubehandlede GPS-turene under fanen «Kjørebok»), oppdateres statistikken automatisk i sanntid. Hver kilometer beregnes med <strong>kr {STATENS_KM_SATS}</strong> pluss faktiske bompenger, og viderefaktureres direkte til riktig byggeplass.
+                  </p>
+                  <div className="pt-1 flex flex-wrap items-center gap-2">
+                    <button
+                      type="button"
+                      onClick={() => setActiveTab('log')}
+                      className="px-3 py-1.5 rounded-lg bg-amber-500 hover:bg-amber-400 text-slate-950 font-bold text-xs cursor-pointer transition-colors"
+                    >
+                      Gå til Kjørebok for å godkjenne turer →
+                    </button>
+                  </div>
+                </div>
+              </div>
+            )}
 
             {/* Fordeling per bil og per prosjekt */}
             <div className="grid grid-cols-1 lg:grid-cols-2 gap-6">

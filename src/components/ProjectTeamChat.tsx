@@ -33,7 +33,9 @@ import {
   Paperclip,
   Maximize2,
   Trash2,
-  ArrowLeft
+  ArrowLeft,
+  ChevronDown,
+  ChevronRight
 } from 'lucide-react';
 import { toast } from 'sonner';
 import { Project } from '@/src/types';
@@ -146,6 +148,18 @@ export default function ProjectTeamChat({
   const [showAiSuggestions, setShowAiSuggestions] = useState(false);
   const [activeEmojiPickerForMsgId, setActiveEmojiPickerForMsgId] = useState<string | null>(null);
   const [isAttachmentMenuOpen, setIsAttachmentMenuOpen] = useState(false);
+
+  // Hurtigvelger for byggeplass ved statusoppdateringer/handlinger fra felleskanal
+  interface ProjectPickerAction {
+    type: 'quick_tag' | 'ai_suggestion' | 'image' | 'switch_only';
+    tagId?: TeamChatMessage['quickTag'];
+    tagLabel?: string;
+    tagText?: string;
+    prompt?: string;
+    imageData?: string;
+  }
+  const [projectPickerAction, setProjectPickerAction] = useState<ProjectPickerAction | null>(null);
+  const [projectSearchFilter, setProjectSearchFilter] = useState('');
 
   // Tale-diktering state
   const [isRecording, setIsRecording] = useState(false);
@@ -285,6 +299,27 @@ export default function ProjectTeamChat({
     }
   };
 
+  // Lagre melding direkte til en bestemt kanal
+  const postMessageToChannel = (targetChannelId: string, msg: TeamChatMessage): TeamChatMessage[] => {
+    const targetKey = `mester_teamchat_${currentTenantScope}_${targetChannelId}`;
+    let existing: TeamChatMessage[] = [];
+    try {
+      const raw = localStorage.getItem(targetKey);
+      if (raw) existing = JSON.parse(raw);
+    } catch {}
+    const updated = [...existing, msg];
+    try {
+      localStorage.setItem(targetKey, JSON.stringify(updated));
+      window.dispatchEvent(new CustomEvent('mester_teamchat_updated', { detail: { channelId: targetChannelId } }));
+    } catch (e) {
+      console.warn('Kunne ikke lagre chat-meldinger:', e);
+    }
+    if (activeChannelId === targetChannelId) {
+      setMessages(updated);
+    }
+    return updated;
+  };
+
   // Håndter sending av melding
   const handleSendMessage = async (textToSend?: string, quickTag?: TeamChatMessage['quickTag']) => {
     const content = (textToSend !== undefined ? textToSend : inputVal).trim();
@@ -322,15 +357,31 @@ export default function ProjectTeamChat({
   };
 
   // Autonomt MesterAI svar i chatten
-  const triggerMesterAiResponse = async (userPrompt: string, currentHistory: TeamChatMessage[]) => {
+  const triggerMesterAiResponse = async (
+    userPrompt: string, 
+    currentHistory: TeamChatMessage[],
+    overrideChannelId?: string,
+    overrideProject?: Project | null
+  ) => {
     setIsAiThinking(true);
+    const targetChannelId = overrideChannelId || activeChannelId;
+    const targetChannel = channels.find(c => c.id === targetChannelId) || activeChannel;
+    const currentProj = overrideProject || (targetChannel.projectId ? projects.find(p => p.id === targetChannel.projectId) : selectedProject);
+
     try {
       const cleanPrompt = userPrompt.replace(/@mesterai/gi, '').replace(/@ai/gi, '').trim();
+      const projContext = currentProj ? `\n[GJELDENDE BYGGEPLASS / PROSJEKT]:
+- Prosjektnavn: ${currentProj.name}
+- Adresse: ${currentProj.address || 'Ikke oppgitt'}
+- Byggherre / Kunde: ${currentProj.clientName || 'Ikke oppgitt'}
+- Prosjektbeskrivelse: ${currentProj.description || 'Byggeoppdrag'}
+Bruk denne konkrete byggeplasskonteksten, kunden og adressen i svaret ditt når det er relevant for TEK17, NS 8406, SJA eller framdrift.` : `\n[KONTEKST]: Dette er en felles internkanal for hele firmaet uten spesifikk byggeplass tilknyttet.`;
+
       const channelContext = `Du er MesterAI, en erfaren norsk byggmester, prosjektleder og fagrådgiver.
-Du svarer nå direkte inn i team-chatten for kanalen "${activeChannel.name}".
+Du svarer nå direkte inn i team-chatten for kanalen "${targetChannel.name}".
 Deltakere i chatten er tømrere, prosjektledere, underentreprenører og bas.
 Hold svaret konsist, praktisk, faglig presist i henhold til TEK17 / NS 8406 / Våtromsnormen, og i en vennlig, profesjonell håndverkertone.
-Maks 2-4 avsnitt eller punktliste.`;
+Maks 2-4 avsnitt eller punktliste.${projContext}`;
 
       const aiRes = await generateAiContent({
         prompt: cleanPrompt || 'Hva bør vi passe på i dag på denne byggeplassen?',
@@ -341,7 +392,7 @@ Maks 2-4 avsnitt eller punktliste.`;
       const now = new Date();
       const aiMsg: TeamChatMessage = {
         id: `ai_${Date.now()}`,
-        channelId: activeChannelId,
+        channelId: targetChannelId,
         senderId: 'mesterai_bot',
         senderName: 'MesterAI Fagpilot',
         senderRole: 'Autonom Byggmester AI',
@@ -353,14 +404,171 @@ Maks 2-4 avsnitt eller punktliste.`;
         isAiGenerated: true
       };
 
-      const withAi = [...currentHistory, aiMsg];
-      saveMessages(withAi);
+      const targetKey = `mester_teamchat_${currentTenantScope}_${targetChannelId}`;
+      let freshHistory: TeamChatMessage[] = currentHistory;
+      try {
+        const raw = localStorage.getItem(targetKey);
+        if (raw) freshHistory = JSON.parse(raw);
+      } catch {}
+      const withAi = [...freshHistory, aiMsg];
+      
+      try {
+        localStorage.setItem(targetKey, JSON.stringify(withAi));
+        window.dispatchEvent(new CustomEvent('mester_teamchat_updated', { detail: { channelId: targetChannelId } }));
+      } catch {}
+
+      if (activeChannelId === targetChannelId) {
+        setMessages(withAi);
+      }
     } catch (err) {
       console.warn('Feil ved svar fra MesterAI i teamchat:', err);
       toast.error('MesterAI kunne ikke svare akkurat nå.');
     } finally {
       setIsAiThinking(false);
     }
+  };
+
+  // Smart hurtigvelger-handlinger for byggeplass
+  const handleQuickTagClick = (tag: typeof QUICK_TAGS[number]) => {
+    // Hvis brukeren allerede står i en dedikert prosjektkanal:
+    if (activeChannel.type === 'project' && activeChannel.projectId) {
+      handleSendMessage(tag.text, tag.id);
+      return;
+    }
+
+    // Hvis brukeren står i felleskanalen og det finnes prosjekter:
+    if (projects.length > 0) {
+      setProjectPickerAction({
+        type: 'quick_tag',
+        tagId: tag.id,
+        tagLabel: tag.label,
+        tagText: tag.text
+      });
+    } else {
+      handleSendMessage(tag.text, tag.id);
+    }
+  };
+
+  const handleAiSuggestionClick = (item: typeof AI_SUGGESTIONS[number]) => {
+    if (activeChannel.type === 'project' && activeChannel.projectId) {
+      handleSendMessage(item.prompt);
+      return;
+    }
+
+    if (projects.length > 0) {
+      setProjectPickerAction({
+        type: 'ai_suggestion',
+        prompt: item.prompt,
+        tagLabel: item.label
+      });
+    } else {
+      handleSendMessage(item.prompt);
+    }
+  };
+
+  const handleSelectProjectForAction = (project: Project) => {
+    if (!projectPickerAction) return;
+    const targetChannelId = `proj_${project.id}`;
+
+    // 1. Bytt aktiv kanal og oppdater globalt valgt prosjekt
+    setActiveChannelId(targetChannelId);
+    if (onSelectProject) {
+      onSelectProject(project);
+    }
+
+    const now = new Date();
+    const formattedTime = now.toLocaleTimeString('no-NO', { hour: '2-digit', minute: '2-digit' });
+
+    if (projectPickerAction.type === 'quick_tag') {
+      const content = `${projectPickerAction.tagText} (${project.name})`;
+      const projectMsg: TeamChatMessage = {
+        id: `msg_${Date.now()}_${Math.random().toString(36).substring(2, 7)}`,
+        channelId: targetChannelId,
+        senderId: user?.id || 'current_user',
+        senderName: user?.displayName || 'Byggmester',
+        senderRole: user?.role === 'admin' ? 'Prosjektleder / Admin' : 'Håndverker',
+        senderCompany: user?.company || 'Firma',
+        senderCategory: user?.role === 'admin' ? 'admin' : 'team',
+        content,
+        timestamp: now.toISOString(),
+        formattedTime,
+        quickTag: projectPickerAction.tagId
+      };
+
+      postMessageToChannel(targetChannelId, projectMsg);
+
+      // Kringkastingsnotis i Hele firmaet (Felles) slik at alle ser hvor det skjedde
+      if (activeChannelId === 'company_general') {
+        const broadcastMsg: TeamChatMessage = {
+          id: `broadcast_${Date.now()}_${Math.random().toString(36).substring(2, 7)}`,
+          channelId: 'company_general',
+          senderId: user?.id || 'current_user',
+          senderName: user?.displayName || 'Byggmester',
+          senderRole: user?.role === 'admin' ? 'Prosjektleder / Admin' : 'Håndverker',
+          senderCompany: user?.company || 'Firma',
+          senderCategory: user?.role === 'admin' ? 'admin' : 'team',
+          content: `📢 [${project.name}] ${projectPickerAction.tagText}`,
+          timestamp: now.toISOString(),
+          formattedTime,
+          quickTag: projectPickerAction.tagId
+        };
+        postMessageToChannel('company_general', broadcastMsg);
+      }
+
+      toast.success(`Status "${projectPickerAction.tagLabel}" registrert på ${project.name}!`);
+    } else if (projectPickerAction.type === 'ai_suggestion') {
+      const contextualPrompt = `@MesterAI [Prosjekt: ${project.name}, Adresse: ${project.address || 'Ukjent'}, Kunde: ${project.clientName || 'Ukjent'}]\n${(projectPickerAction.prompt || '').replace(/@mesterai/gi, '').trim()}`;
+      const projectMsg: TeamChatMessage = {
+        id: `msg_${Date.now()}_${Math.random().toString(36).substring(2, 7)}`,
+        channelId: targetChannelId,
+        senderId: user?.id || 'current_user',
+        senderName: user?.displayName || 'Byggmester',
+        senderRole: user?.role === 'admin' ? 'Prosjektleder / Admin' : 'Håndverker',
+        senderCompany: user?.company || 'Firma',
+        senderCategory: user?.role === 'admin' ? 'admin' : 'team',
+        content: contextualPrompt,
+        timestamp: now.toISOString(),
+        formattedTime
+      };
+
+      const updatedHistory = postMessageToChannel(targetChannelId, projectMsg);
+      triggerMesterAiResponse(contextualPrompt, updatedHistory, targetChannelId, project);
+      toast.success(`MesterAI rådforespørsel sendt for ${project.name}`);
+    } else if (projectPickerAction.type === 'image' && projectPickerAction.imageData) {
+      const projectMsg: TeamChatMessage = {
+        id: `msg_${Date.now()}_${Math.random().toString(36).substring(2, 7)}`,
+        channelId: targetChannelId,
+        senderId: user?.id || 'current_user',
+        senderName: user?.displayName || 'Byggmester',
+        senderRole: user?.role === 'admin' ? 'Prosjektleder / Admin' : 'Håndverker',
+        senderCompany: user?.company || 'Firma',
+        senderCategory: user?.role === 'admin' ? 'admin' : 'team',
+        content: `📷 Bilde dokumentert fra byggeplassen (${project.name})`,
+        imageUrl: projectPickerAction.imageData,
+        timestamp: now.toISOString(),
+        formattedTime
+      };
+      postMessageToChannel(targetChannelId, projectMsg);
+      toast.success(`Bilde knyttet til ${project.name}`);
+    } else if (projectPickerAction.type === 'switch_only') {
+      toast.info(`Byttet til byggeplass: ${project.name}`);
+    }
+
+    setProjectPickerAction(null);
+    setMobileTab('chat');
+  };
+
+  const handleBypassProjectPicker = () => {
+    if (!projectPickerAction) return;
+    if (projectPickerAction.type === 'quick_tag') {
+      handleSendMessage(projectPickerAction.tagText, projectPickerAction.tagId);
+    } else if (projectPickerAction.type === 'ai_suggestion') {
+      handleSendMessage(projectPickerAction.prompt);
+    } else if (projectPickerAction.type === 'image' && projectPickerAction.imageData) {
+      setAttachedImage(projectPickerAction.imageData);
+      toast.success('Bilde lagt i felleskanalen');
+    }
+    setProjectPickerAction(null);
   };
 
   // Hurtigknapp for å spørre MesterAI
@@ -479,9 +687,18 @@ Maks 2-4 avsnitt eller punktliste.`;
 
     const reader = new FileReader();
     reader.onload = () => {
-      setAttachedImage(reader.result as string);
+      const data = reader.result as string;
+      if (!activeChannel.projectId && projects.length > 0) {
+        setProjectPickerAction({
+          type: 'image',
+          imageData: data,
+          tagLabel: 'Bilde fra byggeplass'
+        });
+      } else {
+        setAttachedImage(data);
+        toast.success('Bilde vedlagt – legg til tekst og trykk send');
+      }
       setIsAttachmentMenuOpen(false);
-      toast.success('Bilde vedlagt – legg til tekst og trykk send');
     };
     reader.readAsDataURL(file);
     e.target.value = '';
@@ -636,11 +853,29 @@ Maks 2-4 avsnitt eller punktliste.`;
               <h2 className="text-sm sm:text-base font-bold text-white truncate">
                 {activeChannel.name}
               </h2>
-              {activeChannel.type === 'project' && (
-                <span className="hidden sm:inline-flex shrink-0 px-2 py-0.5 rounded-full text-[10px] font-bold bg-emerald-500/15 text-emerald-400 border border-emerald-500/30">
-                  Byggeplass
-                </span>
-              )}
+              {activeChannel.type === 'project' ? (
+                <button
+                  type="button"
+                  onClick={() => setProjectPickerAction({ type: 'switch_only', tagLabel: 'Bytt byggeplass' })}
+                  className="hidden sm:inline-flex items-center gap-1 shrink-0 px-2 py-0.5 rounded-full text-[10px] font-bold bg-emerald-500/15 hover:bg-emerald-500/25 text-emerald-400 border border-emerald-500/30 cursor-pointer transition-colors"
+                  title="Klikk for å bytte byggeplass"
+                >
+                  <HardHat size={11} />
+                  <span>Byggeplass</span>
+                  <ChevronDown size={10} />
+                </button>
+              ) : projects.length > 0 ? (
+                <button
+                  type="button"
+                  onClick={() => setProjectPickerAction({ type: 'switch_only', tagLabel: 'Velg byggeplass' })}
+                  className="inline-flex items-center gap-1 shrink-0 px-2.5 py-0.5 rounded-full text-[10px] font-bold bg-purple-500/20 hover:bg-purple-500/30 text-purple-300 border border-purple-500/30 cursor-pointer transition-colors"
+                  title="Velg en byggeplass for å gå direkte til prosjektchatten"
+                >
+                  <HardHat size={11} className="text-amber-400" />
+                  <span>Velg byggeplass</span>
+                  <ChevronDown size={10} />
+                </button>
+              ) : null}
             </div>
             <p className="text-[11px] text-slate-400 truncate">
               {activeChannel.description}
@@ -1035,6 +1270,32 @@ Maks 2-4 avsnitt eller punktliste.`;
                         </div>
                       )}
 
+                      {/* Klikkbar hurtigsnarvei til prosjektchat hvis meldingen er en kringkasting fra et prosjekt */}
+                      {msg.content?.startsWith('📢 [') && (() => {
+                        const match = msg.content.match(/^📢 \[(.+?)\]/);
+                        const projName = match ? match[1] : null;
+                        const targetProj = projName ? projects.find(p => p.name === projName) : null;
+                        if (!targetProj) return null;
+                        return (
+                          <div className="mt-2.5 pt-2 border-t border-white/10 flex items-center justify-between gap-2">
+                            <span className="text-[10px] text-purple-200">Knyttet til {targetProj.name}</span>
+                            <button
+                              type="button"
+                              onClick={() => {
+                                setActiveChannelId(`proj_${targetProj.id}`);
+                                if (onSelectProject) onSelectProject(targetProj);
+                                setMobileTab('chat');
+                                toast.info(`Åpnet prosjektchat: ${targetProj.name}`);
+                              }}
+                              className="inline-flex items-center gap-1 px-2.5 py-1 rounded-lg bg-white/10 hover:bg-white/20 text-white font-bold text-[10px] transition-colors cursor-pointer"
+                            >
+                              <span>Åpne byggeplass</span>
+                              <ChevronRight size={11} />
+                            </button>
+                          </div>
+                        );
+                      })()}
+
                       {/* Emojireaksjoner */}
                       {msg.reactions && Object.keys(msg.reactions).length > 0 && (
                         <div className="flex flex-wrap items-center gap-1.5 mt-2.5 pt-2 border-t border-white/10">
@@ -1239,7 +1500,7 @@ Maks 2-4 avsnitt eller punktliste.`;
                     <button
                       key={idx}
                       type="button"
-                      onClick={() => handleSendMessage(item.prompt)}
+                      onClick={() => handleAiSuggestionClick(item)}
                       className="inline-flex items-center gap-1 px-3 py-1 rounded-full bg-purple-900/60 hover:bg-purple-800 text-purple-200 hover:text-white border border-purple-700/60 text-xs font-semibold shrink-0 transition-all active:scale-95 cursor-pointer backdrop-blur-sm shadow-xs"
                     >
                       <Sparkles size={11} className="text-amber-300" />
@@ -1257,7 +1518,7 @@ Maks 2-4 avsnitt eller punktliste.`;
                     <button
                       key={tag.id}
                       type="button"
-                      onClick={() => handleSendMessage(tag.text, tag.id)}
+                      onClick={() => handleQuickTagClick(tag)}
                       className="inline-flex items-center gap-1.5 px-3 py-1.5 rounded-full bg-[#182235]/90 hover:bg-[#202d47] text-slate-300 hover:text-white border border-white/10 text-xs font-semibold shrink-0 transition-all active:scale-95 cursor-pointer shadow-xs backdrop-blur-sm"
                     >
                       <Icon size={12} className="text-purple-400 shrink-0" />
@@ -1542,6 +1803,121 @@ Maks 2-4 avsnitt eller punktliste.`;
                 <span>Åpne direktemelding (1-til-1)</span>
               </button>
             </div>
+          </div>
+        </div>
+      )}
+
+      {/* 7. Modal: Hurtigvelger for byggeplass */}
+      {projectPickerAction && (
+        <div className="fixed inset-0 z-50 flex items-center justify-center p-4 bg-black/80 backdrop-blur-md animate-in fade-in duration-200">
+          <div className="bg-[#131b2e] border border-white/15 rounded-3xl p-6 max-w-md w-full shadow-2xl space-y-4 animate-in zoom-in-95 duration-200">
+            <div className="flex items-center justify-between pb-3 border-b border-white/10">
+              <div className="flex items-center gap-2.5">
+                <div className="w-10 h-10 rounded-2xl bg-purple-500/20 text-purple-400 border border-purple-500/30 flex items-center justify-center shrink-0">
+                  {projectPickerAction.type === 'quick_tag' && projectPickerAction.tagId === 'delivery' && <Truck size={20} className="text-amber-400" />}
+                  {projectPickerAction.type === 'quick_tag' && projectPickerAction.tagId === 'onsite' && <MapPin size={20} className="text-purple-400" />}
+                  {projectPickerAction.type === 'quick_tag' && projectPickerAction.tagId === 'inspection' && <CheckCircle2 size={20} className="text-emerald-400" />}
+                  {projectPickerAction.type === 'quick_tag' && projectPickerAction.tagId === 'urgent' && <AlertTriangle size={20} className="text-rose-400" />}
+                  {projectPickerAction.type === 'quick_tag' && projectPickerAction.tagId === 'finished' && <Clock size={20} className="text-blue-400" />}
+                  {projectPickerAction.type === 'image' && <Camera size={20} className="text-teal-400" />}
+                  {projectPickerAction.type === 'ai_suggestion' && <Sparkles size={20} className="text-amber-300" />}
+                  {projectPickerAction.type === 'switch_only' && <HardHat size={20} className="text-amber-400" />}
+                </div>
+                <div>
+                  <h4 className="text-sm font-black text-white">
+                    {projectPickerAction.type === 'switch_only' ? 'Velg byggeplass' : 'Hvilken byggeplass gjelder dette?'}
+                  </h4>
+                  <p className="text-[11px] text-purple-300 font-semibold">
+                    {projectPickerAction.tagLabel || 'Statusoppdatering'}
+                  </p>
+                </div>
+              </div>
+              <button
+                type="button"
+                onClick={() => setProjectPickerAction(null)}
+                className="p-1.5 rounded-full text-slate-400 hover:text-white hover:bg-white/10 cursor-pointer"
+              >
+                <X size={16} />
+              </button>
+            </div>
+
+            <p className="text-xs text-slate-300 leading-relaxed">
+              {projectPickerAction.type === 'switch_only'
+                ? 'Velg hvilket byggeplassprosjekt du vil åpne og chatte i:'
+                : projectPickerAction.type === 'image'
+                ? 'Velg hvilken byggeplass bildet tilhører for å lagre det direkte under prosjektets dokumentasjon:'
+                : projectPickerAction.type === 'ai_suggestion'
+                ? 'Velg byggeplass slik at MesterAI kan hente inn riktig adresse, tegninger og faglige forutsetninger:'
+                : `Du står på ${activeChannel.name}. Velg byggeplass for å knytte oppdateringen direkte til prosjektloggen og varsle teamet:`
+              }
+            </p>
+
+            {/* Søkefelt hvis flere enn 3 prosjekter */}
+            {projects.length > 3 && (
+              <div className="relative">
+                <Search size={14} className="absolute left-3 top-1/2 -translate-y-1/2 text-slate-400" />
+                <input
+                  type="text"
+                  placeholder="Søk i byggeplasser..."
+                  value={projectSearchFilter}
+                  onChange={(e) => setProjectSearchFilter(e.target.value)}
+                  className="w-full pl-9 pr-3 py-2 bg-white/5 border border-white/10 rounded-xl text-xs text-white placeholder-slate-400 focus:outline-none focus:border-purple-500"
+                />
+              </div>
+            )}
+
+            {/* Prosjektliste */}
+            <div className="space-y-2 max-h-72 overflow-y-auto custom-scrollbar pr-1">
+              {projects.length === 0 ? (
+                <p className="text-xs text-slate-400 text-center py-6">
+                  Ingen aktive byggeplasser funnet.
+                </p>
+              ) : (
+                projects
+                  .filter(p => {
+                    if (!projectSearchFilter.trim()) return true;
+                    const q = projectSearchFilter.toLowerCase();
+                    return (
+                      p.name.toLowerCase().includes(q) ||
+                      (p.address || '').toLowerCase().includes(q) ||
+                      (p.clientName || '').toLowerCase().includes(q)
+                    );
+                  })
+                  .map(p => (
+                    <button
+                      key={p.id}
+                      type="button"
+                      onClick={() => handleSelectProjectForAction(p)}
+                      className="w-full flex items-center justify-between p-3 rounded-2xl bg-white/5 hover:bg-purple-600/20 border border-white/10 hover:border-purple-500/40 transition-all text-left group cursor-pointer"
+                    >
+                      <div className="flex items-center gap-3 min-w-0">
+                        <div className="w-9 h-9 rounded-xl bg-purple-500/15 group-hover:bg-purple-500/25 text-purple-400 border border-purple-500/20 flex items-center justify-center shrink-0">
+                          <HardHat size={18} />
+                        </div>
+                        <div className="min-w-0">
+                          <p className="text-xs font-bold text-white group-hover:text-purple-200 truncate">{p.name}</p>
+                          <p className="text-[10px] text-slate-400 truncate">{p.address || p.clientName || 'Aktiv byggeplass'}</p>
+                        </div>
+                      </div>
+                      <ChevronRight size={15} className="text-slate-500 group-hover:text-purple-300 shrink-0" />
+                    </button>
+                  ))
+              )}
+            </div>
+
+            {/* Alternativ: Send til felleskanalen likevel */}
+            {projectPickerAction.type !== 'switch_only' && (
+              <div className="pt-2 border-t border-white/10 flex flex-col gap-2">
+                <button
+                  type="button"
+                  onClick={handleBypassProjectPicker}
+                  className="w-full py-2.5 px-3 rounded-xl bg-white/5 hover:bg-white/10 text-slate-300 hover:text-white border border-white/10 text-xs font-semibold transition-colors flex items-center justify-center gap-2 cursor-pointer"
+                >
+                  <Building2 size={13} className="text-slate-400" />
+                  <span>Send til Hele firmaet (Felles) likevel</span>
+                </button>
+              </div>
+            )}
           </div>
         </div>
       )}

@@ -721,10 +721,7 @@ export default function MesterAIChat({
     return () => window.removeEventListener('omnichannel_settings_updated', handleOmniUpdate);
   }, []);
 
-  // Auto-scroll to bottom whenever messages or loading state changes
-  useEffect(() => {
-    messagesEndRef.current?.scrollIntoView({ behavior: 'smooth' });
-  }, [messages, isLoading]);
+  // Note: Scrolling is handled precisely by the inner MesterAIAgentFrame component
   useEffect(() => {
     const unsub = onSnapshot(collection(db, 'tasks'), (snap) => {
       if (snap.docs && snap.docs.length > 0) {

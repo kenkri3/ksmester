@@ -136,6 +136,24 @@ export const inMemoryStore: Record<string, any[]> = {
       createdAt: new Date().toISOString()
     },
     {
+      id: 'proj-kongeveien-93a',
+      companyId: 'comp-001',
+      company: 'Mester Entreprenør AS',
+      name: 'Totalrenovering Kongeveien 93A',
+      aliases: ['Kongeveien 93A', 'Totalrenovering Kongeveien', 'KON-93'],
+      projectCode: 'KON-93',
+      address: 'Kongeveien 93A, 3188 Horten',
+      location: 'Kongeveien 93A, 3188 Horten',
+      clientName: 'Per Hansen (Privatkunde)',
+      clientEmail: 'per.hansen.horten@gmail.com',
+      clientPhone: '920 11 222',
+      status: 'active',
+      stage: 'Sluttfase / Montasje',
+      category: 'Totalrenovering enebolig',
+      progress: 85,
+      createdAt: new Date(Date.now() - 30 * 86400000).toISOString()
+    },
+    {
       id: 'proj-demo-sjusjoen',
       companyId: 'comp-demo-fjellheim',
       company: 'comp-demo-fjellheim',
@@ -263,6 +281,19 @@ export const inMemoryStore: Record<string, any[]> = {
       priority: 'medium',
       status: 'completed',
       createdAt: new Date().toISOString()
+    },
+    {
+      id: 'task-kon-1',
+      projectId: 'proj-kongeveien-93a',
+      projectName: 'Totalrenovering Kongeveien 93A',
+      companyId: 'comp-001',
+      title: 'Montering av listverk og foringer i 2. etasje',
+      description: 'Montering av gerikter rundt dører og vinduer før sluttvask og overlevering.',
+      assignedTo: 'Ken (Byggmester)',
+      dueDate: '2026-09-29',
+      priority: 'high',
+      status: 'pending',
+      createdAt: new Date().toISOString()
     }
   ],
   time_entries: [
@@ -294,6 +325,22 @@ export const inMemoryStore: Record<string, any[]> = {
       hours: 8.0,
       task: 'Pigging, riving av gammelt gulv og utlekting for rør-i-rør skap',
       description: 'Pigging, riving av gammelt gulv og utlekting for rør-i-rør skap',
+      category: 'arbeid',
+      status: 'approved',
+      createdAt: new Date().toISOString()
+    },
+    {
+      id: 'time-kon-1',
+      projectId: 'proj-kongeveien-93a',
+      projectName: 'Totalrenovering Kongeveien 93A',
+      companyId: 'comp-001',
+      userId: 'u-admin-123',
+      userName: 'Ken (Admin)',
+      workerName: 'Ken (Admin)',
+      date: '2026-09-24',
+      hours: 42.0,
+      task: 'Platekledning, listing og klargjøring for overlevering',
+      description: 'Platekledning, listing og klargjøring for overlevering',
       category: 'arbeid',
       status: 'approved',
       createdAt: new Date().toISOString()

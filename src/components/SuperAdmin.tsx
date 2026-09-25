@@ -67,6 +67,7 @@ import { cn } from '../lib/utils';
 import { toast } from 'sonner';
 import ProjectDetails from './ProjectDetails';
 import SeoAutopilotHub from './SeoAutopilotHub';
+import IntegrationGuideCard from './IntegrationGuideCard';
 
 export interface Company {
   id: string;
@@ -253,6 +254,92 @@ export default function SuperAdmin({ onBackToDashboard }: { onBackToDashboard?: 
   const [isTemplateModalOpen, setIsTemplateModalOpen] = useState(false);
   const [editingTemplateId, setEditingTemplateId] = useState<string | null>(null);
   const [companyUsers, setCompanyUsers] = useState<any[]>([]);
+
+  // 🔗 Ekte integrasjonsstatus og verifisering for NOBB, Discord, Slack, Teams
+  const [integrationStatus, setIntegrationStatus] = useState<any>(null);
+  const [isIntegrationModalOpen, setIsIntegrationModalOpen] = useState(false);
+  const [selectedIntegrationService, setSelectedIntegrationService] = useState<'nobb' | 'discord' | 'slack' | 'teams'>('nobb');
+  const [integrationInputKey, setIntegrationInputKey] = useState('');
+  const [integrationInputChannel, setIntegrationInputChannel] = useState('');
+  const [isVerifyingIntegration, setIsVerifyingIntegration] = useState(false);
+  const [verificationFeedback, setVerificationFeedback] = useState<{ success: boolean; message: string } | null>(null);
+
+  const loadIntegrationStatus = async () => {
+    try {
+      const res = await fetch('/api/integrations/status');
+      if (res.ok) {
+        const data = await res.json();
+        setIntegrationStatus(data);
+      }
+    } catch (err) {
+      console.warn('Kunne ikke hente integrasjonsstatus:', err);
+    }
+  };
+
+  useEffect(() => {
+    loadIntegrationStatus();
+  }, []);
+
+  const handleOpenIntegrationModal = (service: 'nobb' | 'discord' | 'slack' | 'teams') => {
+    setSelectedIntegrationService(service);
+    setVerificationFeedback(null);
+    setIntegrationInputKey('');
+    setIntegrationInputChannel(
+      service === 'discord' ? '#byggeplass' : (service === 'slack' ? '#prosjekt-varsler' : 'Byggeledelse')
+    );
+    setIsIntegrationModalOpen(true);
+  };
+
+  const handleVerifyAndConnect = async () => {
+    if (!integrationInputKey.trim()) {
+      toast.error('Vennligst oppgi nøkkel eller Webhook URL');
+      return;
+    }
+    setIsVerifyingIntegration(true);
+    setVerificationFeedback(null);
+    try {
+      const res = await fetch('/api/integrations/verify', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({
+          service: selectedIntegrationService,
+          keyOrUrl: integrationInputKey.trim(),
+          channelName: integrationInputChannel.trim(),
+          save: true
+        })
+      });
+      const data = await res.json();
+      if (res.ok && data.verified) {
+        setVerificationFeedback({ success: true, message: data.message });
+        toast.success(data.message);
+        setIntegrationInputKey('');
+        await loadIntegrationStatus();
+      } else {
+        setVerificationFeedback({ success: false, message: data.message || data.error || 'Verifisering feilet' });
+        toast.error(`Verifisering feilet: ${data.message || data.error || 'Ugyldig nøkkel/URL'}`);
+      }
+    } catch (err: any) {
+      setVerificationFeedback({ success: false, message: `Nettverksfeil: ${err.message}` });
+      toast.error(`Kunne ikke koble til: ${err.message}`);
+    } finally {
+      setIsVerifyingIntegration(false);
+    }
+  };
+
+  const handleDisconnectIntegration = async (service: string) => {
+    if (!confirm(`Er du sikker på at du vil koble fra ${service.toUpperCase()}?`)) return;
+    try {
+      const res = await fetch(`/api/integrations/verify?service=${encodeURIComponent(service)}`, { method: 'DELETE' });
+      if (res.ok) {
+        toast.info(`${service.toUpperCase()} er koblet fra.`);
+        setIntegrationInputKey('');
+        setVerificationFeedback(null);
+        await loadIntegrationStatus();
+      }
+    } catch (err: any) {
+      toast.error(`Kunne ikke koble fra: ${err.message}`);
+    }
+  };
 
   // Offer form state
   const [offerForm, setOfferForm] = useState({
@@ -1378,25 +1465,92 @@ Svar KUN med gyldig rå JSON (uten markdown \`\`\`json klammer):
         <div className="flex items-center gap-2">
           <Activity size={16} className="text-emerald-400 shrink-0" />
           <span className="font-bold text-slate-200">Plattformstatus:</span>
-          <span className="px-2 py-0.5 rounded-full bg-emerald-500/20 text-emerald-300 font-mono text-[10px] font-black uppercase">100% Operativ</span>
+          <span className={cn(
+            "px-2 py-0.5 rounded-full font-mono text-[10px] font-black uppercase",
+            integrationStatus?.database?.healthy ? "bg-emerald-500/20 text-emerald-300" : "bg-amber-500/20 text-amber-300"
+          )}>
+            {integrationStatus?.database?.healthy ? '100% Operativ' : 'Lokal Modus'}
+          </span>
         </div>
-        <div className="flex items-center gap-4 sm:gap-6 flex-wrap text-[11px] text-slate-300">
+        <div className="flex items-center gap-3 sm:gap-4 flex-wrap text-[11px] text-slate-300">
+          {/* MesterAI Motor */}
           <div className="flex items-center gap-1.5">
-            <span className="w-2 h-2 rounded-full bg-emerald-400 inline-block" />
-            <span>MesterAI Hybrid-motor: DeepSeek + Gemini (Aktiv)</span>
+            <span className={cn("w-2 h-2 rounded-full inline-block", integrationStatus?.ai?.active ? "bg-emerald-400" : "bg-amber-400")} />
+            <span>MesterAI: {integrationStatus?.ai?.engine || 'DeepSeek + Gemini'}</span>
           </div>
+
+          {/* Database */}
           <div className="flex items-center gap-1.5">
-            <span className="w-2 h-2 rounded-full bg-emerald-400 inline-block" />
-            <span>PostgreSQL DB (Tilkoblet)</span>
+            <span className={cn("w-2 h-2 rounded-full inline-block", integrationStatus?.database?.type === 'postgresql' ? "bg-emerald-400" : "bg-amber-400")} />
+            <span>{integrationStatus?.database?.type === 'postgresql' ? 'PostgreSQL DB' : 'Lokal DB'} ({integrationStatus?.database?.type === 'postgresql' ? 'Tilkoblet' : 'In-Memory'})</span>
           </div>
+
+          {/* Resend E-post */}
           <div className="flex items-center gap-1.5">
-            <span className="w-2 h-2 rounded-full bg-emerald-400 inline-block" />
-            <span>Resend E-post (Klar)</span>
+            <span className={cn("w-2 h-2 rounded-full inline-block", integrationStatus?.resend?.configured ? "bg-emerald-400" : "bg-slate-500")} />
+            <span>Resend E-post ({integrationStatus?.resend?.configured ? 'Klar' : 'Ikke konfigurert'})</span>
           </div>
-          <div className="flex items-center gap-1.5">
-            <span className="w-2 h-2 rounded-full bg-emerald-400 inline-block" />
-            <span>NOBB Byggevare-API (Tilkoblet)</span>
-          </div>
+
+          {/* NOBB Byggevare-API */}
+          <button 
+            type="button"
+            onClick={() => handleOpenIntegrationModal('nobb')}
+            className="flex items-center gap-1.5 hover:text-white transition-colors cursor-pointer group"
+            title="Klikk for å konfigurere eller teste NOBB API"
+          >
+            <span className={cn("w-2 h-2 rounded-full inline-block", integrationStatus?.integrations?.nobb?.connected ? "bg-emerald-400" : "bg-slate-500")} />
+            <span className={integrationStatus?.integrations?.nobb?.connected ? "text-emerald-300 font-bold" : "text-slate-400 group-hover:text-slate-200"}>
+              NOBB Byggevare-API ({integrationStatus?.integrations?.nobb?.connected ? 'Tilkoblet' : 'Ikke tilkoblet'})
+            </span>
+          </button>
+
+          {/* Discord */}
+          <button 
+            type="button"
+            onClick={() => handleOpenIntegrationModal('discord')}
+            className="flex items-center gap-1.5 hover:text-white transition-colors cursor-pointer group"
+            title="Klikk for å konfigurere eller teste Discord Webhook"
+          >
+            <span className={cn("w-2 h-2 rounded-full inline-block", integrationStatus?.integrations?.discord?.connected ? "bg-emerald-400" : "bg-slate-500")} />
+            <span className={integrationStatus?.integrations?.discord?.connected ? "text-emerald-300 font-bold" : "text-slate-400 group-hover:text-slate-200"}>
+              Discord ({integrationStatus?.integrations?.discord?.connected ? 'Tilkoblet' : 'Ikke tilkoblet'})
+            </span>
+          </button>
+
+          {/* Slack */}
+          <button 
+            type="button"
+            onClick={() => handleOpenIntegrationModal('slack')}
+            className="flex items-center gap-1.5 hover:text-white transition-colors cursor-pointer group"
+            title="Klikk for å konfigurere eller teste Slack Webhook"
+          >
+            <span className={cn("w-2 h-2 rounded-full inline-block", integrationStatus?.integrations?.slack?.connected ? "bg-emerald-400" : "bg-slate-500")} />
+            <span className={integrationStatus?.integrations?.slack?.connected ? "text-emerald-300 font-bold" : "text-slate-400 group-hover:text-slate-200"}>
+              Slack ({integrationStatus?.integrations?.slack?.connected ? 'Tilkoblet' : 'Ikke tilkoblet'})
+            </span>
+          </button>
+
+          {/* Teams */}
+          <button 
+            type="button"
+            onClick={() => handleOpenIntegrationModal('teams')}
+            className="flex items-center gap-1.5 hover:text-white transition-colors cursor-pointer group"
+            title="Klikk for å konfigurere eller teste Microsoft Teams Webhook"
+          >
+            <span className={cn("w-2 h-2 rounded-full inline-block", integrationStatus?.integrations?.teams?.connected ? "bg-emerald-400" : "bg-slate-500")} />
+            <span className={integrationStatus?.integrations?.teams?.connected ? "text-emerald-300 font-bold" : "text-slate-400 group-hover:text-slate-200"}>
+              Teams ({integrationStatus?.integrations?.teams?.connected ? 'Tilkoblet' : 'Ikke tilkoblet'})
+            </span>
+          </button>
+
+          {/* Administrer-knapp */}
+          <button
+            type="button"
+            onClick={() => handleOpenIntegrationModal('nobb')}
+            className="px-2.5 py-1 rounded-lg bg-electric-500/20 text-electric-300 hover:bg-electric-500/30 border border-electric-500/40 text-[10px] font-bold transition-all cursor-pointer shrink-0"
+          >
+            ⚙️ Administrer API & Integrasjoner
+          </button>
         </div>
       </div>
 
@@ -3938,6 +4092,272 @@ Svar KUN med gyldig rå JSON (uten markdown \`\`\`json klammer):
                 {editingTemplateId ? 'Oppdater mal' : 'Lagre mal'}
               </button>
             </form>
+          </motion.div>
+        </div>
+      )}
+
+      {/* 🔗 Integrasjons- & API-nøkkel modal for SuperAdmin */}
+      {isIntegrationModalOpen && (
+        <div className="fixed inset-0 z-[110] flex items-center justify-center p-3 sm:p-6 bg-black/80 backdrop-blur-md overflow-hidden">
+          <motion.div 
+            initial={{ opacity: 0, scale: 0.95 }}
+            animate={{ opacity: 1, scale: 1 }}
+            className="bg-slate-900 border border-slate-800 text-white rounded-[2rem] sm:rounded-[2.5rem] shadow-2xl w-full max-w-2xl max-h-[92vh] sm:max-h-[88vh] flex flex-col overflow-hidden my-auto"
+          >
+            <div className="p-4 sm:p-6 border-b border-slate-800 flex justify-between items-center shrink-0">
+              <div className="flex items-center gap-3">
+                <div className="w-10 h-10 rounded-xl bg-electric-500/20 text-electric-400 border border-electric-500/30 flex items-center justify-center">
+                  <Key size={20} />
+                </div>
+                <div>
+                  <h2 className="text-lg sm:text-xl font-bold text-white">Administrer API & Integrasjoner</h2>
+                  <p className="text-xs text-slate-400">Ekte verifisering og sanntidstilkobling for eksterne tjenester</p>
+                </div>
+              </div>
+              <button 
+                onClick={() => { setIsIntegrationModalOpen(false); setVerificationFeedback(null); }} 
+                className="p-2 hover:bg-slate-800 rounded-full transition-colors cursor-pointer text-slate-400 hover:text-white"
+              >
+                <X size={20} />
+              </button>
+            </div>
+
+            {/* Service selector tabs */}
+            <div className="flex border-b border-slate-800 px-4 sm:px-6 gap-2 shrink-0 overflow-x-auto no-scrollbar">
+              {[
+                { id: 'nobb', label: 'NOBB Byggevarer', icon: '📦' },
+                { id: 'discord', label: 'Discord', icon: '🎮' },
+                { id: 'slack', label: 'Slack', icon: '💬' },
+                { id: 'teams', label: 'Microsoft Teams', icon: '👥' },
+              ].map(tab => (
+                <button
+                  key={tab.id}
+                  onClick={() => handleOpenIntegrationModal(tab.id as any)}
+                  className={cn(
+                    "flex items-center gap-2 py-3 px-3 border-b-2 text-xs font-bold transition-all whitespace-nowrap cursor-pointer",
+                    selectedIntegrationService === tab.id
+                      ? "border-electric-400 text-electric-400 bg-electric-500/10"
+                      : "border-transparent text-slate-400 hover:text-slate-200"
+                  )}
+                >
+                  <span>{tab.icon}</span>
+                  <span>{tab.label}</span>
+                  <span className={cn(
+                    "w-2 h-2 rounded-full",
+                    integrationStatus?.integrations?.[tab.id]?.connected ? "bg-emerald-400" : "bg-slate-600"
+                  )} />
+                </button>
+              ))}
+            </div>
+
+            {/* Modal Body */}
+            <div className="p-4 sm:p-6 overflow-y-auto flex-1 space-y-5">
+              {/* Service description */}
+              {selectedIntegrationService === 'nobb' && (
+                <div className="p-4 rounded-2xl bg-slate-800/60 border border-slate-700/60 space-y-2">
+                  <div className="flex items-center justify-between">
+                    <span className="font-bold text-sm text-white">Norsk Byggevarebase (NOBB Export API)</span>
+                    <span className={cn(
+                      "px-2.5 py-0.5 rounded-full text-[10px] font-black uppercase tracking-wider",
+                      integrationStatus?.integrations?.nobb?.connected
+                        ? "bg-emerald-500/20 text-emerald-300 border border-emerald-500/30"
+                        : "bg-slate-700 text-slate-400"
+                    )}>
+                      {integrationStatus?.integrations?.nobb?.connected ? 'Tilkoblet og Verifisert' : 'Ikke tilkoblet'}
+                    </span>
+                  </div>
+                  <p className="text-xs text-slate-300 leading-relaxed">
+                    Gir direkte tilgang til over 1 million byggevarer, FDV-datablad, monteringsanvisninger, EPD og grossistpriser via Norsk Byggetjeneste REST API.
+                  </p>
+                  <p className="text-[11px] text-slate-400">
+                    Nøkkelen er en <code className="text-amber-300 bg-slate-900 px-1 py-0.5 rounded">Ocp-Apim-Subscription-Key</code> utstedt av Byggtjeneste (support.byggtjeneste.no).
+                  </p>
+                </div>
+              )}
+
+              {selectedIntegrationService === 'discord' && (
+                <div className="p-4 rounded-2xl bg-slate-800/60 border border-slate-700/60 space-y-2">
+                  <div className="flex items-center justify-between">
+                    <span className="font-bold text-sm text-white">Discord Omnichannel Webhook</span>
+                    <span className={cn(
+                      "px-2.5 py-0.5 rounded-full text-[10px] font-black uppercase tracking-wider",
+                      integrationStatus?.integrations?.discord?.connected
+                        ? "bg-emerald-500/20 text-emerald-300 border border-emerald-500/30"
+                        : "bg-slate-700 text-slate-400"
+                    )}>
+                      {integrationStatus?.integrations?.discord?.connected ? 'Tilkoblet og Verifisert' : 'Ikke tilkoblet'}
+                    </span>
+                  </div>
+                  <p className="text-xs text-slate-300 leading-relaxed">
+                    Sender automatisk byggedagbok, avvik og SJA-oppdateringer rett til håndverkernes Discord-kanal på mobil eller PC.
+                  </p>
+                  <p className="text-[11px] text-slate-400">
+                    Opprettes i Discord under <em>Serverinnstillinger ➔ Integrasjoner ➔ Webhooks</em>.
+                  </p>
+                </div>
+              )}
+
+              {selectedIntegrationService === 'slack' && (
+                <div className="p-4 rounded-2xl bg-slate-800/60 border border-slate-700/60 space-y-2">
+                  <div className="flex items-center justify-between">
+                    <span className="font-bold text-sm text-white">Slack Incoming Webhook</span>
+                    <span className={cn(
+                      "px-2.5 py-0.5 rounded-full text-[10px] font-black uppercase tracking-wider",
+                      integrationStatus?.integrations?.slack?.connected
+                        ? "bg-emerald-500/20 text-emerald-300 border border-emerald-500/30"
+                        : "bg-slate-700 text-slate-400"
+                    )}>
+                      {integrationStatus?.integrations?.slack?.connected ? 'Tilkoblet og Verifisert' : 'Ikke tilkoblet'}
+                    </span>
+                  </div>
+                  <p className="text-xs text-slate-300 leading-relaxed">
+                    Sender sanntidsvarsler for oppgaver, prosjektfremdrift og hendelser direkte til prosjektkanalen i Slack.
+                  </p>
+                  <p className="text-[11px] text-slate-400">
+                    Opprettes via <em>Slack App Directory ➔ Incoming Webhooks</em> (f.eks. https://hooks.slack.com/services/...).
+                  </p>
+                </div>
+              )}
+
+              {selectedIntegrationService === 'teams' && (
+                <div className="p-4 rounded-2xl bg-slate-800/60 border border-slate-700/60 space-y-2">
+                  <div className="flex items-center justify-between">
+                    <span className="font-bold text-sm text-white">Microsoft Teams Webhook / Workflows</span>
+                    <span className={cn(
+                      "px-2.5 py-0.5 rounded-full text-[10px] font-black uppercase tracking-wider",
+                      integrationStatus?.integrations?.teams?.connected
+                        ? "bg-emerald-500/20 text-emerald-300 border border-emerald-500/30"
+                        : "bg-slate-700 text-slate-400"
+                    )}>
+                      {integrationStatus?.integrations?.teams?.connected ? 'Tilkoblet og Verifisert' : 'Ikke tilkoblet'}
+                    </span>
+                  </div>
+                  <p className="text-xs text-slate-300 leading-relaxed">
+                    Sender formaterte Adaptive Cards og varsler for prosjektledelse og HMS direkte inn i Teams-teamet.
+                  </p>
+                  <p className="text-[11px] text-slate-400">
+                    Støtter både Power Automate Workflows og standard Office 365 Connector webhooks.
+                  </p>
+                </div>
+              )}
+
+              {/* 📖 Pedagogisk steg-for-steg veiledning for SuperAdmin */}
+              <IntegrationGuideCard service={selectedIntegrationService} variant="dark" defaultExpanded={false} />
+
+              {/* Status display if already connected */}
+              {integrationStatus?.integrations?.[selectedIntegrationService]?.connected && (
+                <div className="p-3.5 rounded-xl bg-emerald-500/10 border border-emerald-500/30 flex items-center justify-between">
+                  <div className="flex items-center gap-2">
+                    <CheckCircle2 size={16} className="text-emerald-400 shrink-0" />
+                    <div>
+                      <div className="text-xs font-bold text-emerald-300">Aktiv tilkobling verifisert</div>
+                      <div className="text-[11px] text-slate-400 font-mono">
+                        {integrationStatus.integrations[selectedIntegrationService].maskedCredential || 'Konfigurert'}
+                        {integrationStatus.integrations[selectedIntegrationService].channelOrInfo && ` • Kanal: ${integrationStatus.integrations[selectedIntegrationService].channelOrInfo}`}
+                      </div>
+                    </div>
+                  </div>
+                  <button
+                    type="button"
+                    onClick={() => handleDisconnectIntegration(selectedIntegrationService)}
+                    className="text-xs font-bold text-rose-400 hover:text-rose-300 hover:underline cursor-pointer"
+                  >
+                    Koble fra
+                  </button>
+                </div>
+              )}
+
+              {/* Input Form */}
+              <div className="space-y-3">
+                <div>
+                  <label className="text-xs font-bold text-slate-200 block mb-1">
+                    {selectedIntegrationService === 'nobb' ? 'NOBB Subscription Key (Ocp-Apim-Subscription-Key)' : 'Webhook URL'}
+                  </label>
+                  <input
+                    type="text"
+                    value={integrationInputKey}
+                    onChange={(e) => setIntegrationInputKey(e.target.value)}
+                    placeholder={
+                      selectedIntegrationService === 'nobb'
+                        ? 'f.eks. d3b07384d113edec49eaa6238ad5ff00'
+                        : selectedIntegrationService === 'discord'
+                        ? 'https://discord.com/api/webhooks/...'
+                        : selectedIntegrationService === 'slack'
+                        ? 'https://hooks.slack.com/services/...'
+                        : 'https://...webhook.office.com/... eller Power Automate URL'
+                    }
+                    className="w-full px-3.5 py-2.5 bg-slate-950 border border-slate-700 rounded-xl text-xs text-white placeholder-slate-500 focus:outline-none focus:border-electric-400 font-mono"
+                  />
+                </div>
+
+                {selectedIntegrationService !== 'nobb' && (
+                  <div>
+                    <label className="text-xs font-bold text-slate-200 block mb-1">
+                      Kanalnavn / Beskrivelse (valgfritt)
+                    </label>
+                    <input
+                      type="text"
+                      value={integrationInputChannel}
+                      onChange={(e) => setIntegrationInputChannel(e.target.value)}
+                      placeholder={
+                        selectedIntegrationService === 'discord' ? '#byggeplass' : 
+                        selectedIntegrationService === 'slack' ? '#prosjekt-varsler' : 'Byggeledelse'
+                      }
+                      className="w-full px-3.5 py-2.5 bg-slate-950 border border-slate-700 rounded-xl text-xs text-white placeholder-slate-500 focus:outline-none focus:border-electric-400"
+                    />
+                  </div>
+                )}
+              </div>
+
+              {/* Feedback box */}
+              {verificationFeedback && (
+                <div className={cn(
+                  "p-3 rounded-xl border text-xs flex items-start gap-2",
+                  verificationFeedback.success
+                    ? "bg-emerald-500/10 border-emerald-500/30 text-emerald-200"
+                    : "bg-rose-500/10 border-rose-500/30 text-rose-200"
+                )}>
+                  {verificationFeedback.success ? (
+                    <CheckCircle2 size={16} className="text-emerald-400 shrink-0 mt-0.5" />
+                  ) : (
+                    <AlertTriangle size={16} className="text-rose-400 shrink-0 mt-0.5" />
+                  )}
+                  <div>
+                    <div className="font-bold">{verificationFeedback.success ? 'Verifisering vellykket!' : 'Verifisering feilet'}</div>
+                    <div className="mt-0.5 text-[11px] leading-relaxed">{verificationFeedback.message}</div>
+                  </div>
+                </div>
+              )}
+
+              {/* Actions */}
+              <div className="pt-2 flex items-center justify-end gap-3 border-t border-slate-800">
+                <button
+                  type="button"
+                  onClick={() => { setIsIntegrationModalOpen(false); setVerificationFeedback(null); }}
+                  className="px-4 py-2 rounded-xl text-xs font-bold text-slate-400 hover:text-white hover:bg-slate-800 transition-colors cursor-pointer"
+                >
+                  Lukk
+                </button>
+                <button
+                  type="button"
+                  disabled={isVerifyingIntegration || !integrationInputKey.trim()}
+                  onClick={handleVerifyAndConnect}
+                  className="flex items-center gap-2 px-5 py-2.5 rounded-xl bg-gradient-to-r from-electric-500 to-electric-400 hover:from-electric-400 hover:to-electric-300 text-white font-black text-xs transition-all shadow-purple-cta cursor-pointer disabled:opacity-50"
+                >
+                  {isVerifyingIntegration ? (
+                    <>
+                      <div className="w-3.5 h-3.5 border-2 border-white border-t-transparent rounded-full animate-spin" />
+                      <span>Verifiserer tilkobling...</span>
+                    </>
+                  ) : (
+                    <>
+                      <ShieldCheck size={14} />
+                      <span>Verifiser & Koble til</span>
+                    </>
+                  )}
+                </button>
+              </div>
+            </div>
           </motion.div>
         </div>
       )}

@@ -4,7 +4,7 @@ import { checkCompanyQuota } from '@/src/lib/server/costTracker';
 import { getCachedAiResponse, setCachedAiResponse } from '@/src/lib/server/aiCache';
 import { tryResolveDeterministicSja } from '@/src/lib/server/ruleEngine';
 import { generateWithAiEngine, get1MinAiKey, getGeminiKey, getDeepSeekKey } from '@/src/lib/server/aiEngine';
-import { maskPII } from '@/src/lib/server/privacyShield';
+import { maskPII, containsPIIOrGdprData } from '@/src/lib/server/privacyShield';
 import { createHash } from 'crypto';
 
 function computeCacheKey(promptOrContents: any, systemInstruction?: string, model = 'default', images?: any[], inlineData?: any): string {
@@ -93,26 +93,41 @@ export async function POST(req: NextRequest) {
       }
     }
 
-    // 🛡️ GDPR Privacy Shield: Mask PII (fødselsnummer, kontonummer, telefoner, personskader) før eksterne AI-kall
-    if (typeof prompt === 'string') {
-      prompt = maskPII(prompt);
-    }
-    if (typeof contents === 'string') {
-      contents = maskPII(contents);
-    } else if (Array.isArray(contents)) {
-      contents = contents.map(item => {
-        if (typeof item === 'string') return maskPII(item);
-        if (item && typeof item === 'object') {
-          if (typeof item.text === 'string') return { ...item, text: maskPII(item.text) };
-          if (Array.isArray(item.parts)) {
-            return {
-              ...item,
-              parts: item.parts.map((p: any) => typeof p?.text === 'string' ? { ...p, text: maskPII(p.text) } : p)
-            };
+    // 🛡️ INTELLIGENT GDPR-RUTING:
+    // Sjekk om prompt eller contents inneholder GDPR-data, bilpark, ansatte eller PII.
+    const promptString = typeof prompt === 'string' ? prompt : (typeof contents === 'string' ? contents : JSON.stringify(contents || ''));
+    const isGdprSensitive = Boolean(
+      body.gdprProtected || 
+      containsPIIOrGdprData(promptString) || 
+      operation?.includes('gdpr') || 
+      operation?.includes('vehicle') || 
+      operation?.includes('fleet') ||
+      operation?.includes('bilpark')
+    );
+
+    // Hvis oppgaven er GDPR-sensitiv, ruter vi UMASSIKERT til EU-driftet modell (1min.ai / Gemini EU),
+    // slik at bilnummer, telefon og navn bevares for brukeren uten å forlate EU!
+    if (!isGdprSensitive) {
+      if (typeof prompt === 'string') {
+        prompt = maskPII(prompt);
+      }
+      if (typeof contents === 'string') {
+        contents = maskPII(contents);
+      } else if (Array.isArray(contents)) {
+        contents = contents.map(item => {
+          if (typeof item === 'string') return maskPII(item);
+          if (item && typeof item === 'object') {
+            if (typeof item.text === 'string') return { ...item, text: maskPII(item.text) };
+            if (Array.isArray(item.parts)) {
+              return {
+                ...item,
+                parts: item.parts.map((p: any) => typeof p?.text === 'string' ? { ...p, text: maskPII(p.text) } : p)
+              };
+            }
           }
-        }
-        return item;
-      });
+          return item;
+        });
+      }
     }
 
     // ⚡ 2. Server-side AI Cache (0 kr for gjentatte oppgaver, bilder og oversettelser)
@@ -136,12 +151,13 @@ export async function POST(req: NextRequest) {
       responseSchema,
       images,
       inlineData,
-      operation,
+      operation: isGdprSensitive ? 'ai_generate_gdpr_eu' : operation,
+      gdprProtected: isGdprSensitive,
       webSearch: body.webSearch,
       companyId: user?.companyId,
       companyName: (user as any)?.company,
       projectId: body.projectId,
-      notes: `AI request by ${user?.email || 'portal'}`
+      notes: isGdprSensitive ? `GDPR EU request by ${user?.email || 'portal'}` : `AI request by ${user?.email || 'portal'}`
     });
 
     // ⚡ Lagre i server-cache for fremtidige identiske henvendelser (0 kr)

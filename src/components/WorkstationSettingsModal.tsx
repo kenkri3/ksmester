@@ -34,6 +34,7 @@ import { cn } from '@/src/lib/utils';
 import { toast } from 'sonner';
 import { useTranslation } from 'react-i18next';
 import { db, doc, getDoc, setDoc } from '../services/firebase';
+import IntegrationGuideCard from './IntegrationGuideCard';
 
 interface WorkstationSettingsModalProps {
   isOpen: boolean;
@@ -67,6 +68,7 @@ export default function WorkstationSettingsModal({
   const [nobbKey, setNobbKey] = useState('');
   const [tripletexToken, setTripletexToken] = useState('');
   const [fikenToken, setFikenToken] = useState('');
+  const [isVerifyingNobb, setIsVerifyingNobb] = useState(false);
 
   // E-post & Utsendelse (Custom SMTP / Microsoft 365 / Gmail / Domeneshop osv.)
   const [emailProvider, setEmailProvider] = useState<string>('system_default');
@@ -1136,6 +1138,9 @@ export default function WorkstationSettingsModal({
                   </span>
                 </div>
 
+                {/* 📖 Trinn-for-trinn veiledning */}
+                <IntegrationGuideCard service="nobb" variant="dark" defaultExpanded={false} />
+
                 <div>
                   <label className="text-[11px] font-bold text-slate-400 uppercase tracking-wider block mb-1.5">
                     Ocp-Apim-Subscription-Key / NOBB API Nøkkel
@@ -1151,13 +1156,42 @@ export default function WorkstationSettingsModal({
                     {nobbKey && (
                       <button
                         type="button"
-                        onClick={() => {
-                          localStorage.setItem('nobb_api_key', nobbKey.trim());
-                          toast.success('NOBB BYOK-nøkkel lagret og verifisert!');
+                        disabled={isVerifyingNobb}
+                        onClick={async () => {
+                          setIsVerifyingNobb(true);
+                          try {
+                            const res = await fetch('/api/integrations/verify', {
+                              method: 'POST',
+                              headers: { 'Content-Type': 'application/json' },
+                              body: JSON.stringify({
+                                service: 'nobb',
+                                keyOrUrl: nobbKey.trim(),
+                                save: true
+                              })
+                            });
+                            const data = await res.json();
+                            if (res.ok && data.verified) {
+                              localStorage.setItem('nobb_api_key', nobbKey.trim());
+                              toast.success('NOBB BYOK-nøkkel verifisert mot Norsk Byggetjeneste!');
+                            } else {
+                              toast.error(`Verifisering feilet: ${data.message || 'Ugyldig nøkkel'}`);
+                            }
+                          } catch (err: any) {
+                            toast.error(`Kunne ikke nå Byggtjeneste: ${err.message}`);
+                          } finally {
+                            setIsVerifyingNobb(false);
+                          }
                         }}
-                        className="px-3 py-2 rounded-xl bg-emerald-600/20 hover:bg-emerald-600/30 text-emerald-300 border border-emerald-500/30 text-xs font-bold cursor-pointer"
+                        className="px-3.5 py-2 rounded-xl bg-emerald-600/20 hover:bg-emerald-600/30 text-emerald-300 border border-emerald-500/30 text-xs font-bold cursor-pointer disabled:opacity-50 flex items-center gap-1.5"
                       >
-                        Test & Lagre
+                        {isVerifyingNobb ? (
+                          <>
+                            <div className="w-3 h-3 border-2 border-emerald-400 border-t-transparent rounded-full animate-spin" />
+                            <span>Verifiserer...</span>
+                          </>
+                        ) : (
+                          <span>Test & Lagre</span>
+                        )}
                       </button>
                     )}
                   </div>

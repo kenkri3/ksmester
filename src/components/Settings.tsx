@@ -40,6 +40,7 @@ import { cn } from '@/src/lib/utils';
 import { db, doc, getDoc, setDoc, handleFirestoreError, OperationType, collection, query, where, getDocs, deleteDoc } from '../services/firebase';
 import InviteModal from './InviteModal';
 import OmnichannelModal from './OmnichannelModal';
+import IntegrationGuideCard, { IntegrationServiceType } from './IntegrationGuideCard';
 import { UserProfile as TeamMember } from '../types';
 
 interface SettingsProfile {
@@ -1315,12 +1316,28 @@ export default function Settings() {
               </button>
             </div>
 
-            <p className="text-xs text-slate-600 mb-4 leading-relaxed">
+            <p className="text-xs text-slate-600 mb-3 leading-relaxed">
               {activeIntegrationModal === 'NOBB' && 'Lim inn din API Subscription Key fra Norsk Byggetjeneste (NOBB). VikingMester henter automatisk produktdata, FDV-dokumentasjon, EPD og grossistpriser direkte til prosjektene dine.'}
               {activeIntegrationModal === 'Tripletex' && 'Lim inn din API-ansatt- eller sesjonstoken fra Tripletex. VikingMester synkroniserer automatisk godkjente tilleggsordrer og timelister direkte inn i prosjektet.'}
               {activeIntegrationModal === 'Boligmappa' && 'Lim inn bedriftens API-nøkkel fra Boligmappa. Samsvarserklæringer, TEK17-bilder og ferdigattester lastes automatisk opp til eiendommens gårds- og bruksnummer.'}
               {activeIntegrationModal === 'PowerOffice Go' && 'Lim inn Client Key eller Application Key fra PowerOffice Go for helautomatisk regnskapssynkronisering.'}
             </p>
+
+            {/* 📖 Trinn-for-trinn veiledning */}
+            {activeIntegrationModal && (
+              <div className="mb-4">
+                <IntegrationGuideCard 
+                  service={
+                    activeIntegrationModal === 'NOBB' ? 'nobb' :
+                    activeIntegrationModal === 'Boligmappa' ? 'boligmappa' :
+                    activeIntegrationModal === 'Tripletex' ? 'tripletex' :
+                    activeIntegrationModal === 'PowerOffice Go' ? 'poweroffice' : 'nobb'
+                  }
+                  variant="light"
+                  defaultExpanded={false}
+                />
+              </div>
+            )}
 
             <div className="mb-4">
               <label className="block text-[11px] font-black uppercase tracking-wider text-slate-700 mb-1.5">
@@ -1361,15 +1378,16 @@ export default function Settings() {
                         companyName: profile.companyName || 'Mesterbedrift'
                       })
                     });
+                    const data = await res.json();
                     if (res.ok) {
                       setConnectedServices(prev => ({ ...prev, [activeIntegrationModal!]: true }));
-                      toast.success(`Integrasjon med ${activeIntegrationModal} er lagret og tilkoblet!`);
+                      toast.success(`Integrasjon med ${activeIntegrationModal} er verifisert og tilkoblet!`);
                       setActiveIntegrationModal(null);
                     } else {
-                      toast.error('Kunne ikke lagre integrasjon');
+                      toast.error(`Kunne ikke koble til: ${data.error || 'Ugyldig nøkkel'}`);
                     }
-                  } catch {
-                    toast.error('Nettverksfeil ved lagring av integrasjon');
+                  } catch (err: any) {
+                    toast.error(`Nettverksfeil ved lagring av integrasjon: ${err.message || 'Ukjent feil'}`);
                   }
                 }}
                 className="px-5 py-2 rounded-xl bg-gradient-to-r from-electric-500 to-electric-400 hover:from-electric-400 hover:to-electric-300 text-white text-xs font-bold shadow-purple-cta transition-all disabled:opacity-50 cursor-pointer"

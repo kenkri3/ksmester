@@ -21,37 +21,38 @@ export interface CostLogRecord {
 // Valutakurs USD -> NOK
 export const NOK_USD_RATE = 10.80;
 
-// Offisielle Gemini 3.8 Flash / 2.5 Flash priser per 1M tokens
-// Input: $0.15 / 1M tokens (~1.62 NOK)
-// Output: $0.60 / 1M tokens (~6.48 NOK)
-export const GEMINI_PROMPT_PER_M = 0.15;
-export const GEMINI_COMPLETION_PER_M = 0.60;
+// Offisielle Gemini 2.5 Flash / 2.5 Pro priser per 1M tokens
+// Gemini 2.5 Flash: $0.075 input / $0.30 output (markedets billigste og raskeste multimodale modell!)
+export const GEMINI_PROMPT_PER_M = 0.075;
+export const GEMINI_COMPLETION_PER_M = 0.30;
+export const GEMINI_25_FLASH_PROMPT_PER_M = 0.075;
+export const GEMINI_25_FLASH_COMPLETION_PER_M = 0.30;
 export const GEMINI_LITE_PROMPT_PER_M = 0.075;
 export const GEMINI_LITE_COMPLETION_PER_M = 0.30;
 export const GEMINI_PRO_PROMPT_PER_M = 1.25;
 export const GEMINI_PRO_COMPLETION_PER_M = 5.00;
 
-// 1min.ai og GPT-4o priser
+// 1min.ai og OpenAI (GPT-4o, GPT-4o-mini, o3-mini) priser
 export const GPT4O_PROMPT_PER_M = 2.50;
 export const GPT4O_COMPLETION_PER_M = 10.00;
 export const GPT4O_MINI_PROMPT_PER_M = 0.15;
 export const GPT4O_MINI_COMPLETION_PER_M = 0.60;
+export const O3_MINI_PROMPT_PER_M = 1.10;
+export const O3_MINI_COMPLETION_PER_M = 4.40;
 
-// Claude 3.7 Sonnet / Claude 3.5 Sonnet priser (høypresisjon juridisk / NS 8406)
+// Claude (Anthropic) priser
+export const CLAUDE_HAIKU_PROMPT_PER_M = 0.80;
+export const CLAUDE_HAIKU_COMPLETION_PER_M = 4.00;
 export const CLAUDE_SONNET_PROMPT_PER_M = 3.00;
 export const CLAUDE_SONNET_COMPLETION_PER_M = 15.00;
 
-// DeepSeek Flash / DeepSeek V3 chat priser
+// DeepSeek V3 chat priser ($0.14 input / $0.28 output - lynrask og superbillig)
 export const DEEPSEEK_PROMPT_PER_M = 0.14;
 export const DEEPSEEK_COMPLETION_PER_M = 0.28;
 
-// DeepSeek V4 Pro / DeepSeek R1 reasoner priser
+// DeepSeek R1 reasoner priser ($0.55 input / $2.19 output)
 export const DEEPSEEK_R1_PROMPT_PER_M = 0.55;
 export const DEEPSEEK_R1_COMPLETION_PER_M = 2.19;
-
-// OpenAI o3-mini priser
-export const O3_MINI_PROMPT_PER_M = 1.10;
-export const O3_MINI_COMPLETION_PER_M = 4.40;
 
 // Inkluderte månedlige token- og bildekvoter per pakke for 100% marginvern
 export const PLAN_LIMITS: Record<string, { tokens: number; images: number; monthlyPrice: number }> = {
@@ -138,18 +139,33 @@ export async function trackTokenCost({
   let completionRate = GEMINI_COMPLETION_PER_M;
 
   const mLower = model.toLowerCase();
-  if (mLower.includes('claude-3-5-sonnet') || mLower.includes('claude-3.5-sonnet') || mLower.includes('claude-sonnet')) {
+  if (mLower.includes('claude-3-5-sonnet') || mLower.includes('claude-3.5-sonnet') || mLower.includes('claude-3-7-sonnet') || mLower.includes('claude-sonnet')) {
     promptRate = CLAUDE_SONNET_PROMPT_PER_M;
     completionRate = CLAUDE_SONNET_COMPLETION_PER_M;
+  } else if (mLower.includes('claude-3-5-haiku') || mLower.includes('haiku')) {
+    promptRate = CLAUDE_HAIKU_PROMPT_PER_M;
+    completionRate = CLAUDE_HAIKU_COMPLETION_PER_M;
+  } else if (mLower.includes('o3-mini')) {
+    promptRate = O3_MINI_PROMPT_PER_M;
+    completionRate = O3_MINI_COMPLETION_PER_M;
   } else if (mLower.includes('gpt-4o-mini')) {
     promptRate = GPT4O_MINI_PROMPT_PER_M;
     completionRate = GPT4O_MINI_COMPLETION_PER_M;
-  } else if (mLower.includes('lite') || mLower.includes('flash-lite')) {
-    promptRate = GEMINI_LITE_PROMPT_PER_M;
-    completionRate = GEMINI_LITE_COMPLETION_PER_M;
+  } else if (mLower.includes('gpt-4o')) {
+    promptRate = GPT4O_PROMPT_PER_M;
+    completionRate = GPT4O_COMPLETION_PER_M;
+  } else if (mLower.includes('deepseek-reasoner') || mLower.includes('deepseek-r1') || mLower.includes('reasoner')) {
+    promptRate = DEEPSEEK_R1_PROMPT_PER_M;
+    completionRate = DEEPSEEK_R1_COMPLETION_PER_M;
   } else if (mLower.includes('deepseek')) {
     promptRate = DEEPSEEK_PROMPT_PER_M;
     completionRate = DEEPSEEK_COMPLETION_PER_M;
+  } else if (mLower.includes('gemini-2.5-pro') || mLower.includes('gemini-pro')) {
+    promptRate = GEMINI_PRO_PROMPT_PER_M;
+    completionRate = GEMINI_PRO_COMPLETION_PER_M;
+  } else if (mLower.includes('gemini-2.5-flash') || mLower.includes('flash')) {
+    promptRate = GEMINI_25_FLASH_PROMPT_PER_M;
+    completionRate = GEMINI_25_FLASH_COMPLETION_PER_M;
   }
 
   const costPromptUsd = (promptTokens / 1_000_000) * promptRate;

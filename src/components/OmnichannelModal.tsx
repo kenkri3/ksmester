@@ -15,6 +15,7 @@ import {
   ShieldCheck 
 } from 'lucide-react';
 import { toast } from 'sonner';
+import IntegrationGuideCard from './IntegrationGuideCard';
 
 interface OmnichannelModalProps {
   isOpen: boolean;
@@ -82,11 +83,52 @@ export default function OmnichannelModal({ isOpen, onClose }: OmnichannelModalPr
     }
   }, [isOpen]);
 
-  const handleSave = () => {
+  const handleSave = async () => {
     try {
       localStorage.setItem(STORAGE_KEY, JSON.stringify(settings));
       window.dispatchEvent(new CustomEvent('omnichannel_settings_updated', { detail: settings }));
-      toast.success('Kanalinnstillinger lagret!');
+
+      // Synkroniser tilkoblinger til database
+      if (settings.discordEnabled && settings.discordWebhook.trim()) {
+        await fetch('/api/integrations/verify', {
+          method: 'POST',
+          headers: { 'Content-Type': 'application/json' },
+          body: JSON.stringify({
+            service: 'discord',
+            keyOrUrl: settings.discordWebhook.trim(),
+            channelName: settings.discordChannel,
+            save: true
+          })
+        }).catch(e => console.warn('Discord sync warning:', e));
+      }
+
+      if (settings.slackEnabled && settings.slackWebhook.trim()) {
+        await fetch('/api/integrations/verify', {
+          method: 'POST',
+          headers: { 'Content-Type': 'application/json' },
+          body: JSON.stringify({
+            service: 'slack',
+            keyOrUrl: settings.slackWebhook.trim(),
+            channelName: settings.slackChannel,
+            save: true
+          })
+        }).catch(e => console.warn('Slack sync warning:', e));
+      }
+
+      if (settings.teamsEnabled && settings.teamsWebhook.trim()) {
+        await fetch('/api/integrations/verify', {
+          method: 'POST',
+          headers: { 'Content-Type': 'application/json' },
+          body: JSON.stringify({
+            service: 'teams',
+            keyOrUrl: settings.teamsWebhook.trim(),
+            channelName: settings.teamsChannel,
+            save: true
+          })
+        }).catch(e => console.warn('Teams sync warning:', e));
+      }
+
+      toast.success('Kanalinnstillinger lagret og synkronisert!');
       onClose();
     } catch (e) {
       console.error('Error saving settings:', e);
@@ -94,15 +136,42 @@ export default function OmnichannelModal({ isOpen, onClose }: OmnichannelModalPr
     }
   };
 
-  const handleTestMessage = async (channelName: string) => {
+  const handleTestMessage = async (channelType: 'Discord' | 'Slack' | 'Microsoft Teams') => {
     setIsTesting(true);
+    const service = channelType === 'Discord' ? 'discord' : (channelType === 'Slack' ? 'slack' : 'teams');
+    const url = channelType === 'Discord' ? settings.discordWebhook : (channelType === 'Slack' ? settings.slackWebhook : settings.teamsWebhook);
+    const channel = channelType === 'Discord' ? settings.discordChannel : (channelType === 'Slack' ? settings.slackChannel : settings.teamsChannel);
+
+    if (!url.trim()) {
+      toast.error(`Vennligst lim inn Webhook URL for ${channelType} før du tester.`);
+      setIsTesting(false);
+      return;
+    }
+
     try {
-      await new Promise(r => setTimeout(r, 800));
-      toast.success(`Testmelding sendt til ${channelName}!`, {
-        description: 'VikingMester Autonom Agent verifiserte tilkoblingen mot kanalen.'
+      const res = await fetch('/api/integrations/verify', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({
+          service,
+          keyOrUrl: url.trim(),
+          channelName: channel,
+          save: false
+        })
       });
-    } catch {
-      toast.error(`Kunne ikke sende testmelding til ${channelName}`);
+
+      const data = await res.json();
+      if (res.ok && data.verified) {
+        toast.success(`Testmelding levert til ${channelType}!`, {
+          description: data.message
+        });
+      } else {
+        toast.error(`Tilkobling til ${channelType} feilet:`, {
+          description: data.message || 'Serveren avviste webhooken.'
+        });
+      }
+    } catch (err: any) {
+      toast.error(`Nettverksfeil mot ${channelType}: ${err.message || 'Ukjent feil'}`);
     } finally {
       setIsTesting(false);
     }
@@ -236,6 +305,9 @@ export default function OmnichannelModal({ isOpen, onClose }: OmnichannelModalPr
                 </label>
               </div>
 
+              {/* 📖 Trinn-for-trinn veiledning */}
+              <IntegrationGuideCard service="discord" variant="light" defaultExpanded={false} />
+
               <div className="space-y-3">
                 <div>
                   <label className="block text-xs font-black uppercase tracking-wider text-slate-500 mb-1.5">
@@ -311,6 +383,9 @@ export default function OmnichannelModal({ isOpen, onClose }: OmnichannelModalPr
                 </label>
               </div>
 
+              {/* 📖 Trinn-for-trinn veiledning */}
+              <IntegrationGuideCard service="slack" variant="light" defaultExpanded={false} />
+
               <div className="space-y-3">
                 <div>
                   <label className="block text-xs font-black uppercase tracking-wider text-slate-500 mb-1.5">
@@ -385,6 +460,9 @@ export default function OmnichannelModal({ isOpen, onClose }: OmnichannelModalPr
                   <div className="w-11 h-6 bg-slate-200 peer-focus:outline-none rounded-full peer peer-checked:after:translate-x-full peer-checked:after:border-white after:content-[''] after:absolute after:top-[2px] after:left-[2px] after:bg-white after:border-slate-300 after:border after:rounded-full after:h-5 after:w-5 after:transition-all peer-checked:bg-blue-600"></div>
                 </label>
               </div>
+
+              {/* 📖 Trinn-for-trinn veiledning */}
+              <IntegrationGuideCard service="teams" variant="light" defaultExpanded={false} />
 
               <div className="space-y-3">
                 <div>

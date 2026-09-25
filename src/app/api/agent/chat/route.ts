@@ -6,7 +6,7 @@ import { getUserFromRequest } from '@/src/lib/server/auth';
 import { sendSystemEmail, sendOfferByEmail, sendChangeOrderByEmail, cleanMarkdownForEmail } from '@/src/lib/server/emailSender';
 import { getCollectionItems, saveCollectionItem } from '@/src/lib/server/db';
 import { generateWithAiEngine } from '@/src/lib/server/aiEngine';
-import { maskPII } from '@/src/lib/server/privacyShield';
+import { maskPII, containsPIIOrGdprData } from '@/src/lib/server/privacyShield';
 
 /**
  * 🤖 MesterAI Headless Agent Proxy
@@ -598,53 +598,155 @@ export async function POST(req: NextRequest) {
     const effectiveCompany = (effectiveCompanyId === 'comp-demo-fjellheim' ? 'Fjellheim Bygg & Tømrer AS' : (user?.company || companyName || 'VikingMester'));
     const effectiveUser = (effectiveCompanyId === 'comp-demo-fjellheim' ? 'Lars Fjellheim' : (user?.displayName || userName || (isSandboxedDemo ? 'Demobruker' : 'Håndverker')));
     
-    // Berik meldingen med full fagkontekst, prosjektfleksibilitet og GDPR-instrukser
-    let contextHeader = '';
-    if (isSandboxedDemo) {
-      contextHeader = `[SANDKASSE DEMO - Offentlig testmiljø | Rolle: ${effectiveUser} (${tradeTitle}) | Aktivt prosjekt: ${projectName || 'Geitekleiva'} | RETNINGSLINJE: Dette er en demonstrasjon av MesterAI for bygg- og anleggsbransjen. Hvis brukeren refererer til ${projectName || 'Geitekleiva'}, eller et fiktivt / nytt prosjekt som en kunde nevner, skal du besvare forespørselen direkte, profesjonelt og handlekraftig (kalkyle, NS 8406 endringsvarsel, SJA, byggedagbok eller TEK17) for dette prosjektet. Du skal ALDRI avvise brukeren eller si at prosjektet ikke finnes.]`;
-    } else {
-      contextHeader = `[Fagkontekst: ${effectiveUser} (${tradeTitle}) hos ${effectiveCompany} (Bedrifts-ID: ${user?.companyId || 'standard'})`;
-      if (projectName && projectName !== 'Alle byggeplasser') {
-        contextHeader += ` | Aktivt prosjekt: ${projectName}`;
-      } else {
-        contextHeader += ` | Prosjektstatus: Ingen spesifikk byggeplass er valgt (brukeren står på overordnet visning «Alle byggeplasser»).`;
-        
-        // 🔒 GDPR-sikring: Streng isolasjon av tilgjengelige byggeplasser per bedrift
-        let safeProjects: any[] = [];
-        if (effectiveCompanyId === 'comp-demo-fjellheim') {
-          safeProjects = [
-            {
-              id: 'proj-demo-sjusjoen',
-              name: 'Hytte Sjusjøen - Nybygg',
-              address: 'Birkebeinervegen 42, 2612 Sjusjøen'
-            }
-          ];
-        } else if (Array.isArray(availableProjects) && availableProjects.length > 0) {
-          safeProjects = availableProjects.filter((p: any) => !String(p.id || '').includes('demo-sjusjoen'));
-        }
 
-        if (safeProjects.length > 0) {
-          const projectListStr = safeProjects.map((p: any) => `«${p.name}»${p.address ? ` (${p.address})` : ''}`).join(', ');
-          contextHeader += ` Registrerte byggeplasser for bedriften: [${projectListStr}].`;
-        }
-        contextHeader += ` | KRITISK PROSJEKTREGEL: Hvis brukeren ber om en prosjektspesifikk oppgave på en eksisterende byggeplass (for eksempel endringsmelding, avviksmelding, SJA på byggeplass, byggedagbok, sjekkliste eller timeføring) og IKKE oppgir hvilket prosjekt det gjelder i meldingen, MÅ DU spørre brukeren høflig og direkte hvilket prosjekt henvendelsen gjelder, og liste opp de registrerte byggeplassene som valgmuligheter.
-| 📝 VIKTIG UNNTAK FOR TILBUD & PRISOVERSLAG: Et tilbud eller en priskalkyle må IKKE knyttes til et eksisterende prosjekt! Ofte lages tilbud for nye henvendelser, potensielle kunder eller nye oppdrag før et prosjekt i det hele tatt eksisterer. Når brukeren ber om å «lage et tilbud», «skrive et tilbud» eller «sette opp et pristilbud»:
-1. DU SKAL ALDRI si at et tilbud må knyttes til et prosjekt!
-2. Spør brukeren om tilbudet gjelder en «+ Ny kunde / ny henvendelse» eller et av de eksisterende prosjektene.
-3. Forklar kort og trygt: «Hvis det er en ny kunde, setter vi opp tilbudet direkte. Så snart kunden aksepterer tilbudet, opprettes det automatisk kontrakt, prosjektet etableres i systemet, og skreddersydde KS-sjekklister (f.eks. våtrom, tak, TEK17) settes opp tilpasset tilbudet – slik at dere bare kan begynne å jobbe. Når prosjektet er ferdig genereres all FDV- og sluttdokumentasjon automatisk!»
-4. Hvis brukeren allerede har oppgitt hva arbeidet gjelder (f.eks. oppussing av bad, maling, tilbygg, terrasse), gå rett i gang med å foreslå eller sette opp tilbudet med poster, timeantall og materiell!
-5. Hvis henvendelsen er et generelt fagspørsmål (f.eks. TEK17, HMS-regler, våtromsnorm, materialvalg), svarer du direkte uten å kreve prosjektvalg.`;
+    // 🛡️ 1. ROLLE- OG TILGANGSVALIDERING (RBAC: Admin/Leder vs. Fagarbeider/Lærling)
+    const effectiveRole = (user?.role || body.userRole || 'worker').toLowerCase();
+    const isUserAdmin = Boolean(
+      (user && (user.role === 'admin' || user.role === 'superadmin' || user.role === 'leader')) ||
+      (!user && body.isAdmin === true) ||
+      (effectiveCompanyId === 'comp-demo-fjellheim' && effectiveUserId === 'demo-user-lars')
+    );
+
+    // 📂 2. Hent oppgaver, timer, dagbøker og avvik
+    const clientTasks = Array.isArray(body.tasks) ? body.tasks : [];
+    const clientTimeEntries = Array.isArray(body.timeEntries) ? body.timeEntries : (Array.isArray(body.dailyTimeEntries) ? body.dailyTimeEntries : []);
+    const clientDailyLogs = Array.isArray(body.dailyLogs) ? body.dailyLogs : [];
+    const clientDeviations = Array.isArray(body.deviations) ? body.deviations : [];
+
+    const dbTasks = clientTasks.length > 0 ? clientTasks : await getCollectionItems('tasks').catch(() => []);
+    const dbTimes = clientTimeEntries.length > 0 ? clientTimeEntries : await getCollectionItems('time_entries').catch(() => []);
+    const dbLogs = clientDailyLogs.length > 0 ? clientDailyLogs : await getCollectionItems('daily_logs').catch(() => []);
+    const dbDevs = clientDeviations.length > 0 ? clientDeviations : await getCollectionItems('deviations').catch(() => []);
+
+    // 🏗️ 3. Hent alle byggeplasser for bedriften
+    let allCompanyProjects: any[] = [];
+    const allDbProjects = await getCollectionItems('projects').catch(() => []);
+    if (effectiveCompanyId === 'comp-demo-fjellheim') {
+      allCompanyProjects = allDbProjects.filter((p: any) => p.companyId === 'comp-demo-fjellheim' || p.id === 'proj-demo-sjusjoen');
+      if (allCompanyProjects.length === 0) {
+        allCompanyProjects = [
+          {
+            id: 'proj-demo-sjusjoen',
+            name: 'Hytte Sjusjøen - Nybygg',
+            address: 'Birkebeinervegen 42, 2612 Sjusjøen',
+            progress: 35,
+            stage: 'Pågående',
+            status: 'active'
+          }
+        ];
       }
-      contextHeader += ` | FORMATERING & LESBARHET: Håndverkere leser dette i felt på byggeplass. Svaret MÅ være oversiktlig og luftig: Bruk alltid doble linjeskift mellom avsnitt, bruk punktlister med bindestrek (-) for opplistinger og krav, bruk fete overskrifter (f.eks. ### 🛡️ Krav: eller **Krav:**) for å skille temaer, og fremhev tall og paragrafer. ALDRI svar med en eneste sammenklemt tekstblokk! | E-POST VIA RESEND: Systemet sender ekte e-poster direkte via Resend på vegne av håndverkeren (${effectiveUser} / ${effectiveCompany}). Når brukeren ber deg sende en eller flere e-poster (tilbud, endring, varsel, FDV eller melding) og du har mottakers e-postadresse: 1) Bekreft kort at du klargjør sendingen. 2) Inkluder nøyaktig koden <<<SEND_EMAIL: to="mottaker@epost.no" subject="Emnetittel" body="Selve meldingsteksten">>> eller strukturer utkastet med «### ✉️ E-post 1», «- Til: mottaker@epost.no», «- Emne: Emnetittel», «- Innhold: Selve meldingen til kunden». 3) PERSONVERN: Kunder må ALDRI motta interne notater, chat-dialog med håndverkeren, eller rå markdown hashtags (#). Skriv KUN den rene, profesjonelle beskjeden under «Innhold»/body. 4) Svar fra kunden rutes automatisk direkte til håndverkerens egen e-post (${effectiveSenderEmail || 'jobb-e-post'}). | SIKKERHET: GDPR & Databehandleravtale (DPA) er aktiv. Alle data er strengt konfidensielle for denne bedriften.]`;
+    } else {
+      allCompanyProjects = allDbProjects.filter((p: any) => 
+        !String(p.id || '').includes('demo-sjusjoen') &&
+        (!effectiveCompanyId || p.companyId === effectiveCompanyId || !p.companyId || p.companyId === 'comp-001')
+      );
     }
 
-    // 🔍 Identifiser om meldingen refererer til et bestemt prosjekt
-    let resolvedProjectId = (body.projectId && body.projectId !== 'all' && body.projectId !== 'gen') ? body.projectId : null;
-    let resolvedProjectName = (projectName && projectName !== 'Alle byggeplasser') ? projectName : null;
+    // 🔒 4. HÅNDHEV ROLLEBASERT PROSJEKTTILGANG (RBAC)
+    // Administrator/Leder har tilgang til hele bedriftens portefølje.
+    // Fagarbeidere og lærlinger har KUN tilgang til byggeplassene de eksplisitt er tildelt av admin.
+    let safeUserProjects: any[] = [];
+    if (isUserAdmin) {
+      safeUserProjects = allCompanyProjects;
+    } else {
+      if (Array.isArray(availableProjects) && availableProjects.length > 0) {
+        const allowedIds = new Set(availableProjects.map((p: any) => p.id));
+        safeUserProjects = allCompanyProjects.filter(p => allowedIds.has(p.id));
+        if (safeUserProjects.length === 0) {
+          safeUserProjects = availableProjects.filter((p: any) => 
+            !String(p.id || '').includes('demo-sjusjoen') &&
+            (!effectiveCompanyId || p.companyId === effectiveCompanyId || !p.companyId || p.companyId === 'comp-001')
+          );
+        }
+      } else {
+        safeUserProjects = allCompanyProjects.filter((p: any) => {
+          const tm = p.teamMembers || p.assignedWorkers || [];
+          if (Array.isArray(tm)) {
+            return tm.some((m: string) => 
+              (effectiveUserId && m === effectiveUserId) ||
+              (user?.email && m.toLowerCase() === user.email.toLowerCase()) ||
+              (user?.displayName && m.toLowerCase() === user.displayName.toLowerCase())
+            );
+          }
+          return false;
+        });
+      }
+    }
 
-    if (Array.isArray(availableProjects) && availableProjects.length > 0) {
+    const safeCompanyProjects = effectiveCompanyId === 'comp-demo-fjellheim'
+      ? (safeUserProjects.length > 0 ? safeUserProjects : [{ id: 'proj-demo-sjusjoen', name: 'Hytte Sjusjøen - Nybygg', address: 'Birkebeinervegen 42, 2612 Sjusjøen', progress: 35, stage: 'Pågående' }])
+      : safeUserProjects.filter((p: any) => !String(p.id || '').includes('demo-sjusjoen'));
+
+    // 🔒 5. Server-side skjerming av oppgaver, timer, dagbøker og avvik
+    const allowedProjIds = new Set(safeCompanyProjects.map(p => p.id));
+    const allowedProjNames = new Set(safeCompanyProjects.map(p => (p.name || '').toLowerCase().trim()));
+
+    const authorizedTasks = isUserAdmin 
+      ? dbTasks 
+      : dbTasks.filter((t: any) => allowedProjIds.has(t.projectId) || allowedProjNames.has((t.projectName || '').toLowerCase().trim()));
+
+    const authorizedTimes = isUserAdmin 
+      ? dbTimes 
+      : dbTimes.filter((t: any) => allowedProjIds.has(t.projectId) || allowedProjNames.has((t.projectName || '').toLowerCase().trim()) || (t.userId && t.userId === effectiveUserId));
+
+    const authorizedLogs = isUserAdmin 
+      ? dbLogs 
+      : dbLogs.filter((l: any) => allowedProjIds.has(l.projectId) || allowedProjNames.has((l.projectName || '').toLowerCase().trim()));
+
+    const authorizedDevs = isUserAdmin 
+      ? dbDevs 
+      : dbDevs.filter((d: any) => allowedProjIds.has(d.projectId) || allowedProjNames.has((d.projectName || '').toLowerCase().trim()));
+
+    // 🔍 6. Sjekk om en ikke-admin bruker spør om en byggeplass de IKKE har tilgang til
+    let requestedUnauthorizedProject: string | null = null;
+    if (!isUserAdmin && allCompanyProjects.length > safeCompanyProjects.length) {
       const lowerMsg = message.toLowerCase().trim();
-      for (const p of availableProjects) {
+      const forbiddenProjects = allCompanyProjects.filter(p => !allowedProjIds.has(p.id));
+      for (const fp of forbiddenProjects) {
+        const fpName = (fp.name || '').toLowerCase();
+        if (fpName && (lowerMsg.includes(fpName) || fpName.includes(lowerMsg))) {
+          requestedUnauthorizedProject = fp.name;
+          break;
+        }
+        const words = fpName.split(/[\s,.-]+/).filter((w: string) => w.length >= 5 && !['renovering', 'prosjekt', 'byggeplass'].includes(w));
+        if (words.some((w: string) => lowerMsg.includes(w))) {
+          requestedUnauthorizedProject = fp.name;
+          break;
+        }
+      }
+    }
+
+    // Bygg porteføljesammendrag basert utelukkende på autoriserte prosjekter
+    const portfolioSummary = safeCompanyProjects.map((p: any) => {
+      const pId = p.id;
+      const pName = p.name || 'Byggeplass';
+      const pProg = typeof p.progress === 'number' ? p.progress : 0;
+      const pTasks = authorizedTasks.filter((t: any) => t.projectId === pId || (t.projectName && t.projectName.toLowerCase() === pName.toLowerCase()));
+      const pTimes = authorizedTimes.filter((t: any) => t.projectId === pId || (t.projectName && t.projectName.toLowerCase() === pName.toLowerCase()));
+      const pHours = pTimes.reduce((s: number, t: any) => s + (Number(t.hours) || 0), 0);
+      const openTasks = pTasks.filter((t: any) => t.status !== 'completed' && t.status !== 'closed');
+      const pAddr = p.address || p.location || '';
+      return {
+        id: pId,
+        name: pName,
+        progress: pProg,
+        stage: p.stage || p.status || 'Pågående',
+        status: p.status || 'active',
+        hours: pHours,
+        totalTasks: pTasks.length,
+        openTasks: openTasks.length,
+        address: pAddr,
+        clientName: p.clientName || ''
+      };
+    });
+
+    // 🔍 7. Identifiser om meldingen refererer til et bestemt tildelt prosjekt
+    let resolvedProjectId = (body.projectId && body.projectId !== 'all' && body.projectId !== 'gen' && allowedProjIds.has(body.projectId)) ? body.projectId : null;
+    let resolvedProjectName = (projectName && projectName !== 'Alle byggeplasser' && (isUserAdmin || safeCompanyProjects.some(p => p.name === projectName))) ? projectName : null;
+
+    if (safeCompanyProjects.length > 0) {
+      const lowerMsg = message.toLowerCase().trim();
+      for (const p of safeCompanyProjects) {
         const pName = (p.name || '').toLowerCase().trim();
         const pCode = (p.code || '').toLowerCase().trim();
         const pAddr = (p.address || '').toLowerCase().trim();
@@ -675,24 +777,10 @@ export async function POST(req: NextRequest) {
       }
     }
 
-    if (!resolvedProjectName) {
-      const lower = message.toLowerCase();
-      if (lower.includes('vidjeveien') || lower.includes('bad') || lower.includes('våtrom')) {
-        resolvedProjectId = 'proj-bad-vidjeveien';
-        resolvedProjectName = 'Renovering Bad Vidjeveien 21';
-      }
+    if (!resolvedProjectName && safeCompanyProjects.length === 1) {
+      resolvedProjectId = safeCompanyProjects[0].id;
+      resolvedProjectName = safeCompanyProjects[0].name;
     }
-
-    // 📂 Hent oppgaver, timer, dagbøker og avvik (enten fra innsendt klient-body eller fra server-database)
-    const clientTasks = Array.isArray(body.tasks) ? body.tasks : [];
-    const clientTimeEntries = Array.isArray(body.timeEntries) ? body.timeEntries : (Array.isArray(body.dailyTimeEntries) ? body.dailyTimeEntries : []);
-    const clientDailyLogs = Array.isArray(body.dailyLogs) ? body.dailyLogs : [];
-    const clientDeviations = Array.isArray(body.deviations) ? body.deviations : [];
-
-    const dbTasks = clientTasks.length > 0 ? clientTasks : await getCollectionItems('tasks').catch(() => []);
-    const dbTimes = clientTimeEntries.length > 0 ? clientTimeEntries : await getCollectionItems('time_entries').catch(() => []);
-    const dbLogs = clientDailyLogs.length > 0 ? clientDailyLogs : await getCollectionItems('daily_logs').catch(() => []);
-    const dbDevs = clientDeviations.length > 0 ? clientDeviations : await getCollectionItems('deviations').catch(() => []);
 
     const filterForCurrentProject = (items: any[]) => {
       if (!resolvedProjectName && !resolvedProjectId) return items;
@@ -704,31 +792,91 @@ export async function POST(req: NextRequest) {
         if (lowerTarget && (iName === lowerTarget || iName.includes(lowerTarget) || lowerTarget.includes(iName))) return true;
         if (lowerTarget.includes('vidjeveien') && (iName.includes('vidjeveien') || iName.includes('bad'))) return true;
         if (lowerTarget.includes('bad') && (iName.includes('bad') || iName.includes('vidjeveien'))) return true;
+        if (lowerTarget.includes('kongeveien') && iName.includes('kongeveien')) return true;
         if (lowerTarget.includes('sjusjøen') && iName.includes('sjusjøen')) return true;
         return false;
       });
     };
 
-    const projectTasks = filterForCurrentProject(dbTasks);
-    const projectTimes = filterForCurrentProject(dbTimes);
-    const projectLogs = filterForCurrentProject(dbLogs);
-    const projectDevs = filterForCurrentProject(dbDevs);
+    const projectTasks = filterForCurrentProject(authorizedTasks);
+    const projectTimes = filterForCurrentProject(authorizedTimes);
+    const projectLogs = filterForCurrentProject(authorizedLogs);
+    const projectDevs = filterForCurrentProject(authorizedDevs);
     const totalProjectHours = projectTimes.reduce((sum: number, t: any) => sum + (Number(t.hours) || 0), 0);
 
-    // 🧠 Berik systemets samtalekontekst med prosjektets reelle oppgaver, timer og dagsrapporter
-    if (resolvedProjectName && resolvedProjectName !== 'Alle byggeplasser') {
-      contextHeader += ` | AKTIV BYGGEPLASS: ${resolvedProjectName}`;
-      if (projectTasks.length > 0) {
-        contextHeader += ` | REGISTRERTE OPPGAVER (${projectTasks.length} stk): [${projectTasks.map((t: any) => `${t.status === 'completed' ? '✓' : '•'} ${t.title} (${t.assignedTo || 'Ufordelt'}, frist: ${t.dueDate || 'ingen'})`).join('; ')}]`;
+    // 🧠 8. Bygg beriket kontekst med fagkontekst, RBAC-tilganger og prosjektdetaljer
+    let contextHeader = '';
+    if (isSandboxedDemo) {
+      contextHeader = `[SANDKASSE DEMO - Offentlig testmiljø | Rolle: ${effectiveUser} (${tradeTitle}) | Aktivt prosjekt: ${projectName || 'Geitekleiva'} | RETNINGSLINJE: Dette er en demonstrasjon av MesterAI for bygg- og anleggsbransjen. Hvis brukeren refererer til ${projectName || 'Geitekleiva'}, eller et fiktivt / nytt prosjekt som en kunde nevner, skal du besvare forespørselen direkte, profesjonelt og handlekraftig (kalkyle, NS 8406 endringsvarsel, SJA, byggedagbok eller TEK17) for dette prosjektet. Du skal ALDRI avvise brukeren eller si at prosjektet ikke finnes.]`;
+    } else {
+      contextHeader = `[Fagkontekst: ${effectiveUser} (${tradeTitle}) hos ${effectiveCompany} (Bedrifts-ID: ${user?.companyId || 'standard'})`;
+
+      if (isUserAdmin) {
+        contextHeader += ` | BRUKERENS ROLLE & TILGANG: Administrator / Leder (Full tilgang til alle bedriftens byggeplasser, bedriftsøkonomi og alle ansattes timer).`;
+        if (portfolioSummary.length > 0) {
+          const portStr = portfolioSummary.map(p => 
+            `«${p.name}» (Fremdrift: ${p.progress}%, Status: ${p.stage}, Førte timer: ${p.hours.toFixed(1)}t, Åpne oppgaver: ${p.openTasks}${p.address ? `, Sted: ${p.address}` : ''}${p.clientName ? `, Kunde: ${p.clientName}` : ''})`
+          ).join('; ');
+          contextHeader += ` | BEDRIFTENS SAMLEDE PROSJEKTPORTEFØLJE (${portfolioSummary.length} byggeplasser): [${portStr}].`;
+        }
+
+        if (projectName && projectName !== 'Alle byggeplasser') {
+          contextHeader += ` | Aktivt valgt byggeplass i toppmenyen: «${projectName}»`;
+          contextHeader += ` | MERK OM PORTEFØLJE: Brukeren er administrator/leder og har valgt «${projectName}» i toppmenyen, MEN hvis henvendelsen stiller et spørsmål om porteføljen generelt eller flere byggeplasser («prosjektene», «alle», «hvilket prosjekt er nærmest ferdigstilling», «hva skjer med prosjektene», «fremdrift»), SKAL DU svare for hele porteføljen ved å sammenligne byggeplassene fra BEDRIFTENS SAMLEDE PROSJEKTPORTEFØLJE!`;
+        } else {
+          contextHeader += ` | Prosjektstatus: Oversiktsvisning («Alle byggeplasser»).`;
+        }
+      } else {
+        // 🔒 STRENG HÅNDHEVING FOR FAGARBEIDERE / LÆRLINGER
+        const allowedNamesList = safeCompanyProjects.map(p => `«${p.name}»`).join(', ');
+        contextHeader += ` | BRUKERENS ROLLE & TILGANG: Fagarbeider / Ansatt (${tradeTitle}) med BEGRENSET PROSJEKTTILGANG.`;
+        if (safeCompanyProjects.length > 0) {
+          const portStr = portfolioSummary.map(p => 
+            `«${p.name}» (Fremdrift: ${p.progress}%, Status: ${p.stage}, Førte timer: ${p.hours.toFixed(1)}t, Åpne oppgaver: ${p.openTasks}${p.address ? `, Sted: ${p.address}` : ''})`
+          ).join('; ');
+          contextHeader += ` BRUKERENS TILDELTE BYGGEPLASSER (${portfolioSummary.length} stk): [${portStr}].`;
+        } else {
+          contextHeader += ` BRUKERENS TILDELTE BYGGEPLASSER: Ingen tildelte byggeplasser per nå.`;
+        }
+
+        if (requestedUnauthorizedProject) {
+          contextHeader += ` | ⚠️ SIKKERHETSVARSEL - ADGANGSNEKT: Brukeren spør om byggeplassen «${requestedUnauthorizedProject}», men har IKKE fått tilgang til dette prosjektet av administrator! Du SKAL nekte innsyn høflig og profesjonelt, og opplyse om at brukeren kun har tilgang til sine tildelte byggeplasser: [${allowedNamesList || 'ingen'}].`;
+        }
+
+        contextHeader += `
+| 🔒 STRENG SIKKERHETSREGEL (TILGANGSBEGRENSNING / INGEN INFORMASJONSLEKKASJE):
+1. Brukeren er en fagarbeider/lærling og skal KUN ha informasjon om og innsyn i sine egne tildelte byggeplasser ([${allowedNamesList || 'ingen'}]).
+2. DU SKAL ALDRI lekke eller nevne informasjon, fremdrift, timer, avvik, kunder eller økonomi fra andre byggeplasser i firmaet som brukeren IKKE er tildelt!
+3. Hvis brukeren spør om «prosjektene» i flertall eller «hva skjer med prosjektene», skal du svare KUN med utgangspunkt i brukerens tildelte byggeplasser ([${allowedNamesList || 'ingen'}]). Hvis brukeren kun har én tildelt byggeplass, forklarer du at dette er det aktive oppdraget vedkommende er tildelt i systemet.
+4. Hvis brukeren spør om en annen byggeplass eller ber om overordnet bedriftsportefølje, forklarer du høflig at de kun har tilgang til sine tildelte byggeplasser, og at de må henvende seg til prosjektleder eller administrator for å få tildelt flere prosjekter.`;
       }
-      contextHeader += ` | TOTALT FØRTE TIMER: ${totalProjectHours.toFixed(1)} timer`;
-      if (projectLogs.length > 0) {
-        contextHeader += ` | SISTE DAGBOKNOTAT: ${projectLogs[0].date} (${projectLogs[0].generalNotes || 'Normal drift'})`;
+
+      // Detaljstatus for aktiv byggeplass
+      if (resolvedProjectName && resolvedProjectName !== 'Alle byggeplasser') {
+        contextHeader += ` | DETALJSTATUS FOR «${resolvedProjectName}»:`;
+        if (projectTasks.length > 0) {
+          contextHeader += ` | REGISTRERTE OPPGAVER (${projectTasks.length} stk): [${projectTasks.map((t: any) => `${t.status === 'completed' ? '✓' : '•'} ${t.title} (${t.assignedTo || 'Ufordelt'}, frist: ${t.dueDate || 'ingen'})`).join('; ')}]`;
+        }
+        contextHeader += ` | LOGGFØRTE TIMER FOR DETTE PROSJEKTET: ${totalProjectHours.toFixed(1)} timer`;
+        if (projectLogs.length > 0) {
+          contextHeader += ` | SISTE DAGBOKNOTAT: ${projectLogs[0].date} (${projectLogs[0].generalNotes || 'Normal drift'})`;
+        }
+        if (projectDevs.length > 0) {
+          const openDevs = projectDevs.filter((d: any) => d.status !== 'closed');
+          contextHeader += ` | AVVIK: ${openDevs.length} åpne avvik`;
+        }
       }
-      if (projectDevs.length > 0) {
-        const openDevs = projectDevs.filter((d: any) => d.status !== 'closed');
-        contextHeader += ` | AVVIK: ${openDevs.length} åpne avvik`;
-      }
+
+      contextHeader += `
+| 📝 VIKTIG UNNTAK FOR TILBUD & PRISOVERSLAG: Et tilbud eller en priskalkyle må IKKE knyttes til et eksisterende prosjekt! Ofte lages tilbud for nye henvendelser, potensielle kunder eller nye oppdrag før et prosjekt i det hele tatt eksisterer. Når brukeren ber om å «lage et tilbud», «skrive et tilbud» eller «sette opp et pristilbud»:
+1. DU SKAL ALDRI si at et tilbud må knyttes til et prosjekt!
+2. Spør brukeren om tilbudet gjelder en «+ Ny kunde / ny henvendelse» eller et av de eksisterende prosjektene.
+3. Forklar kort og trygt: «Hvis det er en ny kunde, setter vi opp tilbudet direkte. Så snart kunden aksepterer tilbudet, opprettes det automatisk kontrakt, prosjektet etableres i systemet, og skreddersydde KS-sjekklister (f.eks. våtrom, tak, TEK17) settes opp tilpasset tilbudet – slik at dere bare kan begynne å jobbe. Når prosjektet er ferdig genereres all FDV- og sluttdokumentasjon automatisk!»
+4. Hvis brukeren allerede har oppgitt hva arbeidet gjelder (f.eks. oppussing av bad, maling, tilbygg, terrasse), gå rett i gang med å foreslå eller sette opp tilbudet med poster, timeantall og materiell!
+5. Hvis henvendelsen er et generelt fagspørsmål (f.eks. TEK17, HMS-regler, våtromsnorm, materialvalg), svarer du direkte uten å kreve prosjektvalg.
+| FORMATERING & LESBARHET: Håndverkere leser dette i felt på byggeplass. Svaret MÅ være oversiktlig og luftig: Bruk alltid doble linjeskift mellom avsnitt, bruk punktlister med bindestrek (-) for opplistinger og krav, bruk fete overskrifter (f.eks. ### 🛡️ Krav: eller **Krav:**) for å skille temaer, og fremhev tall og paragrafer. ALDRI svar med en eneste sammenklemt tekstblokk!
+| E-POST VIA RESEND: Systemet sender ekte e-poster direkte via Resend på vegne av håndverkeren (${effectiveUser} / ${effectiveCompany}). Når brukeren ber deg sende en eller flere e-poster (tilbud, endring, varsel, FDV eller melding) og du har mottakers e-postadresse: 1) Bekreft kort at du klargjør sendingen. 2) Inkluder nøyaktig koden <<<SEND_EMAIL: to="mottaker@epost.no" subject="Emnetittel" body="Selve meldingsteksten">>> eller strukturer utkastet med «### ✉️ E-post 1», «- Til: mottaker@epost.no», «- Emne: Emnetittel», «- Innhold: Selve meldingen til kunden». 3) PERSONVERN: Kunder må ALDRI motta interne notater, chat-dialog med håndverkeren, eller rå markdown hashtags (#). Skriv KUN den rene, profesjonelle beskjeden under «Innhold»/body. 4) Svar fra kunden rutes automatisk direkte til håndverkerens egen e-post (${effectiveSenderEmail || 'jobb-e-post'}).
+| SIKKERHET: GDPR & Databehandleravtale (DPA) er aktiv. Alle data er strengt konfidensielle for denne bedriften.]`;
     }
 
     const cleanLowerMsg = message.trim().toLowerCase().replace(/[.!?]/g, '');
@@ -1648,8 +1796,15 @@ export async function POST(req: NextRequest) {
       enrichedMessage += `\n\n[📷 VEDLAGT BILDE FOR SYNSSJEKK]: Et bilde er lastet opp. Gjennomfør en grundig faglig bildeanalyse av motivet. Beskriv hva du observerer (utførelse, materialer, konstruksjon, tilstand), vurder opp mot gjeldende krav (TEK17 / BVN / HMS), påpek eventuelle feil eller avvik, og gi konkrete råd eller forslag til videre tiltak.`;
     }
 
-    // 🛡️ GDPR Privacy Shield: Vask sensitive fødselsnumre, bankkontonumre osv. før utsending til eksterne modeller
-    const safeEnrichedMessage = maskPII(enrichedMessage);
+    // 🛡️ INTELLIGENT GDPR-RUTING (Schrems II / EU-overholdelse):
+    // Hvis henvendelsen gjelder bilpark, kjøretøy/skiltnummer, sjåfører, ansatte eller personopplysninger:
+    // 1. Vi sladder IKKE brukerens data, slik at AI-en ser det reelle bilnummeret, telefonen og navnet.
+    // 2. Vi ruter automatisk til EU-driftet modell (1min.ai med Claude/Mistral/GPT eller Gemini EU).
+    // 3. For alle andre henvendelser (kalkyler, TEK17, SJA, NS 8406 osv.) brukes DeepSeek direkte som rask hovedmotor.
+    const isGdprSensitive = containsPIIOrGdprData(enrichedMessage) ||
+      /\b(?:bil|bilpark|kjøretøy|skiltnr|regnr|registreringsnummer|sjåfør|ansatt|personalia|lønn|førerkort|firmabil|varebil)\b/i.test(enrichedMessage);
+
+    const safeEnrichedMessage = isGdprSensitive ? enrichedMessage : maskPII(enrichedMessage);
 
     const userLang = (language || 'no').toLowerCase();
     const langDirective = (() => {
@@ -1704,6 +1859,63 @@ Du har full tilgang til Vikingmester-systemet og kan:
 📱 KONSIS CHAT-FORMATERING (IKKE OVERVELD BRUKEREN MED 2000 ORD):
 - Brukeren leser svarene på byggeplass, ofte på mobil. Svarene i chatten må ALDRI være uendelige vegger av tekst!
 - Hold chat-svar konsise, oversiktlige og stramme (rundt 150-350 ord).
+
+🎓 AKTIV SYSTEMVEILEDNING & PEDAGOGISK STØTTE (HÅNDVERKERENS BESTE VENN I ALLE KATEGORIER):
+Du er ikke bare en assistent, du er en tålmodig, pedagogisk og faglig sterk mentor for håndverkere, baser og prosjektledere. Vikingmester er bygget for å fjerne papirarbeid og gjøre hverdagen ekstremt enkel for alle på byggeplassen.
+Når brukeren spør hvordan noe gjøres, hvordan en modul fungerer, eller ber om veiledning:
+1. Svar alltid på en krystallklar, vennlig og oppmuntrende måte — helt fri for teknisk IT-tåkeprat!
+2. Bruk en standardisert "3-Trinns Oppskrift" (1-2-3):
+   - Steg 1: Hvor du starter eller hva du sier (stemmestyring).
+   - Steg 2: Hva du fyller ut eller tar bilde av.
+   - Steg 3: Hva systemet gjør automatisk (kalkulerer, sender varsel, arkiverer, eksporterer).
+3. Tilby alltid å utføre oppgaven FOR dem direkte i chatten! (f.eks.: «Vil du at jeg skal opprette SJA-en for deg med en gang? Bare si hva dere skal gjøre!»).
+
+MODUL-KUNNSKAP DU SKAL VEILEDE OM I ALLE KATEGORIER:
+- 🚗 BILPARK & ELEKTRONISK KJØREBOK:
+  * Hva det gjør: Holder orden på firmabiler og privatbiler tilknyttet byggeplasser og firmadrift.
+  * Beregning: Regner automatisk ut Statens kilometersats (4,90 kr/km) + bompenger og ferje.
+  * 3 trinn: 1) Velg bil og formål (kunde/intern/ærend). 2) Skriv inn start/slutt km, eller dikter turen til meg («Før 28 km til Vidjeveien for Marius»). 3) Systemet regner ut total refusjon/fakturabeløp, klart for 1-klikk eksport til Tripletex, Fiken eller regnskap.
+  * Smart-Synk: Ubehandlede GPS/Autopass-turer oppdages og kan godkjennes samlet med ett klikk.
+
+- ⏱️ BYGGEDAGBOK & TIMER (AML § 10-7):
+  * Hva det gjør: Dokumenterer arbeidstid, bemanning og daglige hendelser på byggeplassen iht. lovverket.
+  * 3 trinn: 1) Dagens værdata og temperatur hentes automatisk fra Yr. 2) Håndverkeren fører timer og oppgaver (dikter med stemmen på 5 sekunder). 3) Leder godkjenner timelistene samlet for direkte eksport til lønn.
+
+- 🚨 AVVIK & RUH (KVALITET & HMS):
+  * Hva det gjør: Sikrer at feil, skader, fukt eller HMS-brudd dokumenteres og rettes før de eskalerer.
+  * 3 trinn: 1) Knips et bilde med mobilen og last det opp her. 2) Jeg analyserer bildet mot TEK17 og toleransekrav, beskriver avviket og foreslår strakstiltak. 3) Ansvarlig utbedrer, laster opp etterbilde og saken lukkes med full sporbarhet.
+
+- 🦺 SIKKER JOBB ANALYSE (SJA):
+  * Hva det gjør: Risikovurdering før risikofylte oppgaver (stillas, tak, varme arbeider, el-arbeid, tunge løft).
+  * 3 trinn: 1) Beskriv arbeidet til meg («Vi skal montere stillas i regnvær»). 2) Jeg genererer godkjent SJA med de 3-4 største farene, konkrete vernetiltak og påkrevd PVU på 30 sekunder. 3) Mannskapet signerer digitalt med ett klikk på mobilen før oppstart.
+
+- 🔒 KS & LUKKESPERRE (TEK17):
+  * Hva det gjør: Digital kvalitetssperre som hindrer lukking av vegger, gulv eller bjelkelag før skjulte fag er kontrollert og fotodokumentert.
+  * 3 trinn: 1) Rørlegger og elektriker kvitterer ut trykktesting (10 bar) og skjult anlegg med bildebevis. 2) Status endres automatisk fra RØD til GRØNN SPERRE. 3) Tømrer kan trygt kle igjen med 100% trygghet mot skjulte feil og fremtidige reklamasjoner.
+
+- 📋 ENDRINGSORDRER & VARSLER (NS 8406 / NS 8405):
+  * Hva det gjør: Sikrer at håndverkeren får betalt for ekstraarbeid og unngår uenighet med byggherre.
+  * 3 trinn: 1) Beskriv endringen til meg straks kunden ber om noe ekstra. 2) Jeg setter opp spesifiserte poster med timer, materiell, påslag og fristforlengelse iht. NS 8406. 3) Formelt varsel sendes på e-post til byggherre, som godkjenner tillegget digitalt.
+
+- 📝 PRISTILBUD & KALKYLE:
+  * Hva det gjør: Rask, profesjonell og lønnsom prising av oppdrag (bad, tilbygg, renovering, tak, maling).
+  * 3 trinn: 1) Beskriv oppdraget til meg. 2) Jeg setter opp en fullverdig kalkyle med materialer, timer, dekningsgrad og 25% MVA. 3) Send tilbudet som en elegant PDF eller på e-post med digital akseptknapp for kunden.
+
+- 📁 DOKUMENTARKIV & AUTOMATISK FDV:
+  * Hva det gjør: Samler FDV-dokumentasjon (produkter, monteringsanvisninger, garantier, bilder) løpende gjennom hele byggeprosessen.
+  * 3 trinn: 1) Dokumenter og bilder lagres automatisk knyttet til prosjektet. 2) Systemet indekserer alt etter bygningsdel. 3) Ved overlevering genereres en komplett, ferdig FDV-perm til kunden med ett enkelt klikk.
+
+- 👥 PROSJEKTKONTAKTER & TILGANGER:
+  * Hva det gjør: Holder orden på håndverkere, lærlinger, underentreprenører og kunder.
+  * 3 trinn: 1) Legg inn personens navn og e-post. 2) Velg rolle (Leder, Håndverker, Lærling, Byggherre). 3) Systemet sender automatisk en innloggingslenke der brukeren velger eget passord. Håndverkere ser kun sine egne byggeplasser.
+
+- 🎓 LÆRLINGMODUL:
+  * Hva det gjør: Kobler lærlingens daglige byggeplassarbeid direkte mot de offisielle kompetansemålene i læreplanen (Udir).
+  * 3 trinn: 1) Lærlingen fører dagens arbeid og knipser bilde. 2) Systemet kobler aktiviteten til riktig kompetansemål. 3) Faglig leder godkjenner i appen, og lærlingen har komplett dokumentasjon klar til svenneprøven.
+
+- 💬 PROSJEKTCHATT & INTERNKOMMUNIKASJON:
+  * Hva det gjør: Samler all faglig dialog og oppdateringer på byggeplassen på ett sted, borte fra private SMS-tråder.
+  * 3 trinn: 1) Skriv beskjed eller ta et bilde. 2) Alle involverte på prosjektet varsles umiddelbart. 3) Historikken lagres trygt for alltid som en del av prosjektets dokumentasjon.
 - For SJA: Presenter et ryddig SJA-sammendrag i chatten (tittel, prosjekt, dagens vær, de 3-4 VIKTIGSTE farene med konkrete vernetiltak, og påkrevd PVU). ALDRI list opp 12-15 underfarer og 100 underpunkter i chatten!
 - For Tilbud & Endringsordrer:
   1. Del alltid kalkylen inn i konkrete tilbudsposter (Post 1, Post 2, osv.) med Beskrivelse, Antall, Enhet (timer, stk, m2, lm), Enhetspris og Sum, samt MVA (25%).
@@ -1727,20 +1939,34 @@ Når brukeren ber deg sende en e-post og du har mottakers adresse:
 2. Inkluder koden <<<SEND_EMAIL: to="mottaker@epost.no" subject="Emne" body="Melding">>>.
 3. Kunden må ALDRI motta interne notater. Skriv kun ren, profesjonell melding under body.
 
-🔗 KLIKKBARE KILDELENKER:
-Avslutt faglige svar med 2-4 relevante lenker fra de offisielle kildene:
-- [DiBK Byggteknisk forskrift (TEK17)](https://www.dibk.no/regelverk/byggteknisk-forskrift-tek17)
-- [Lovdata - Arbeidsmiljøloven](https://lovdata.no/dokument/NL/lov/2005-06-17-62)
-- [Arbeidstilsynet - Arbeid i høyden & stillas](https://www.arbeidstilsynet.no/risikofylt-arbeid/arbeid-i-hoyden/)
-- [Fagrådet for våtrom - Våtromsnormen (BVN)](https://ffv.no/vatromsnormen/)
-- [Vikingmester KS- og HMS-system](https://vikingmester.no/)`;
+🗣️ NORSK FAGSPRÅK, TONE & PORTEFØLJEINNSIGT:
+- Du er en erfaren og trygg norsk byggmester og prosjektleder i Vikingmester.
+- Bruk KORREKT norsk byggeterminologi: «førte timer», «registrerte timer», «loggførte timer», «fremdrift», «ferdigstillelse», «sluttbefaring», «overlevering».
+- ALDRI bruk feilaktige eller gebrokne maskinoversettelser som «Hele føre timer»!
+- Vær en handlekraftig og selvsikker prosjektpilot. ALDRI skyv ansvar fra deg med passive fraser som «henvend deg til prosjektleder» når brukeren selv er leder eller mester på byggeplassen.
+- Når en leder/administrator spør om «prosjektene» i flertall eller «hvilket prosjekt er nærmest ferdigstilling», sammenligner du bedriftens byggeplasser basert på fremdriftsprosent, gjenstående oppgaver og loggførte timer. Gi et direkte, klart og faktabasert svar på hvilket som er nærmest ferdigstillelse!
+- Unngå tom byråkratisk fyllmasse som «det anbefales regelmessig oppdatering av fremdriftsplanene og jevnlig gjennomgang av dagboknotater». Gi håndfaste fakta og faglige vurderinger!
+
+🔐 ROLLEBASERT TILGANGSKONTROLL (RBAC & PROSJEKTSKJERMING):
+- Følg alltid brukerens tilgangsnivå spesifisert i fagkonteksten:
+  * Administrator / Leder: Har full innsikt i alle bedriftens byggeplasser, samlet fremdrift, økonomi og overordnet portefølje.
+  * Fagarbeider / Lærling: Har KUN adgang til sine spesifikt tildelte byggeplasser.
+- For fagarbeidere med begrenset tilgang:
+  * Hvis de spør om fremdrift eller status («hva skjer med prosjektene?», «hvilket er nærmest ferdig?»), svar KUN med utgangspunkt i de byggeplassene de selv er tildelt av admin!
+  * Hvis de kun er tildelt ett prosjekt (f.eks. «Renovering Bad Vidjeveien 21»), gi status på det ene prosjektet og forklar at dette er deres tildelte oppdrag i systemet.
+  * LEKK ALDRI data, timer, fremdrift eller kalkyler fra byggeplasser de ikke har adgang til!
+  * Hvis en fagarbeider spør om et prosjekt de ikke er satt på, forklar høflig at de kun har tilgang til sine tildelte byggeplasser, og at de må be prosjektleder eller administrator om tilgang.
+
+🔗 KILDER, LOVER OG STANDARDER (KUN VED SPESIFIKT BEHOV):
+- ALDRI legg til en fast liste med generiske lenker (som Arbeidstilsynet, TEK17 osv.) i bunnen av vanlige samtaler, statusoppdateringer eller fremdriftsspørsmål!
+- Henvis KUN til offisielle kilder eller lover dersom brukeren eksplisitt ber om lovtekst, forskrifter (TEK17, BVN, Arbeidsmiljøloven) eller tekniske datablad.`;
 
     let replyText = '';
     const quickReplies: Array<{ title: string; payload: string }> = [];
 
     const operation = hasImage 
       ? 'mesterai_vision_chat' 
-      : (wantsWebSearch ? 'mesterai_web_search' : 'mesterai_chat');
+      : (wantsWebSearch ? 'mesterai_web_search' : (isGdprSensitive ? 'mesterai_gdpr_eu' : 'mesterai_chat'));
 
     // 🚀 1. PRIMÆRT: Generer svar via VikingMesters interne AI Engine (med full Google Gemini Vision ved bilder eller Grounding ved nettsøk)
     try {
@@ -1748,8 +1974,9 @@ Avslutt faglige svar med 2-4 relevante lenker fra de offisielle kildene:
         prompt: safeEnrichedMessage,
         systemInstruction: MASTER_SYSTEM_PROMPT,
         images: imageAttachment ? [{ inlineData: imageAttachment }] : undefined,
-        model: hasImage ? 'gemini-3.8-flash' : undefined,
+        model: hasImage ? 'gemini-2.5-flash' : undefined,
         webSearch: wantsWebSearch,
+        gdprProtected: isGdprSensitive,
         companyId: effectiveCompanyId,
         companyName: effectiveCompany,
         projectId: body.projectId,

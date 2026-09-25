@@ -18,6 +18,17 @@ export async function POST(req: NextRequest) {
     const effectiveCompanyId = user.companyId || 'comp-default';
     const effectiveCompanyName = (user as any)?.company || companyName || 'Bedriftsbruker';
 
+    // 0. Ekte forhåndsverifisering mot ekstern tjeneste (aldri godkjenn ugyldige nøkler)
+    if (service?.toUpperCase() === 'NOBB') {
+      const { verifyNobbKey } = await import('@/src/lib/server/integrationsService');
+      const verifyRes = await verifyNobbKey(secretToken);
+      if (!verifyRes.success) {
+        return NextResponse.json({ 
+          error: verifyRes.message || 'Verifisering mot Norsk Byggetjeneste (NOBB) feilet. Vennligst sjekk nøkkelen.'
+        }, { status: 400 });
+      }
+    }
+
     // 1. Lagre integrasjonen i databasen
     const integrationRecord = {
       id: `int-${Date.now()}-${Math.random().toString(36).substring(2, 7)}`,

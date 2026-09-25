@@ -51,10 +51,25 @@ export function maskPII(text: string): string {
     return '[EPOST_SKJULT_GDPR]';
   });
 
-  // Masker telefonnumre
-  sanitized = sanitized.replace(PHONE_NORWAY_REGEX, (match) => {
-    // Unngå datoer som 2026-09-24 eller 2024.11.05
-    if (/^\d{4}[-.]\d{2}[-.]\d{2}$/.test(match.trim())) return match;
+  // Masker telefonnumre (kun ekte 8-sifrede telefonnumre, ALDRI bilskilt, km-stand, postnummer eller valuta)
+  sanitized = sanitized.replace(PHONE_NORWAY_REGEX, (match, offset, fullStr) => {
+    const trimmed = match.trim();
+    // 1. Unngå datoer som 2026-09-24 eller 2024.11.05
+    if (/^\d{4}[-.]\d{2}[-.]\d{2}$/.test(trimmed)) return match;
+
+    // 2. Unngå bilskilt (to store bokstaver rett foran tallet, f.eks. GF 31234 eller EL 12345)
+    const precedingText = fullStr.slice(Math.max(0, offset - 10), offset);
+    if (/(?:^|\s)[A-ZÆØÅ]{2}\s*$/.test(precedingText)) return match;
+
+    // 3. Unngå km-stand, valuta eller måleenheter rett etter tallet
+    const subsequentText = fullStr.slice(offset + match.length, offset + match.length + 15);
+    if (/^\s*(?:km|kilometer|kr|nok|m2|lm|stk|kg)\b/i.test(subsequentText)) return match;
+
+    // 4. Må ha nøyaktig 8 siffer (uten landskode) for å være et gyldig norsk telefonnummer
+    const digitsOnly = trimmed.replace(/\D/g, '');
+    const cleanDigits = digitsOnly.startsWith('47') && digitsOnly.length === 10 ? digitsOnly.slice(2) : digitsOnly;
+    if (cleanDigits.length !== 8) return match;
+
     return '[TLF_SKJULT_GDPR]';
   });
 
@@ -69,6 +84,51 @@ export function maskPII(text: string): string {
   }
 
   return sanitized;
+}
+
+/**
+ * 🔍 Sjekker om en tekst inneholder personopplysninger (PII) eller GDPR-sensitiv informasjon:
+ * - Norsk fødselsnummer (11 siffer)
+ * - Bankkontonummer
+ * - Norsk telefonnummer
+ * - Personlige e-postadresser
+ * - Kjøretøy / bilpark / bilregistrering (regnr, skiltnr, bil, sjåfør, firmabil)
+ * - Personalia, ansattforhold, lønn, førerkort, helse/sykemelding
+ */
+export function containsPIIOrGdprData(text: string): boolean {
+  if (!text || typeof text !== 'string') return false;
+
+  // 1. Fødselsnummer (11 siffer)
+  if (/\b(0[1-9]|[12]\d|3[01])(0[1-9]|1[0-2])(\d{2})[\s-]?(\d{5})\b/.test(text)) return true;
+
+  // 2. Bankkontonummer
+  if (/\b(\d{4})[.\s]?(\d{2})[.\s]?(\d{5})\b/.test(text)) return true;
+
+  // 3. E-post (unntatt intern systemepost)
+  if (/\b[A-Za-z0-9._%+-]+@[A-Za-z0-9.-]+\.[A-Za-z]{2,7}\b/.test(text)) {
+    if (!text.includes('hei@vikingmester.no')) return true;
+  }
+
+  // 4. Telefonnummer (8 siffer med eller uten +47)
+  const phonePattern = /(?:(?:\+|00)47[\s.-]?)?(?:[49]\d{7}|[49]\d{2}[\s.-]\d{2}[\s.-]\d{3}|[49]\d{1}[\s.-]\d{2}[\s.-]\d{2}[\s.-]\d{2}|[235678]\d{7}|[235678]\d{1}[\s.-]\d{2}[\s.-]\d{2}[\s.-]\d{2})\b/;
+  if (phonePattern.test(text)) {
+    // Ikke trigg hvis det kun er km-stand eller valuta
+    if (!/\b\d+\s*(?:km|kr|nok|m2|lm)\b/i.test(text)) return true;
+  }
+
+  // 5. Bilpark, kjøretøy, registreringsnummer, sjåfør
+  const vehiclePattern = /\b(?:bilpark|firmabil|kjøretøy|registreringsnummer|skiltnummer|regnr|skiltnr|varebil|tilhenger|sjåfør|fører)\b/i;
+  if (vehiclePattern.test(text)) return true;
+
+  // 6. Norsk bilskilt format (to bokstaver etterfulgt av 5 siffer, f.eks. EL 12345, GF 31234, BT 88990)
+  const licensePlatePattern = /\b[A-ZÆØÅ]{2}\s*\d{5}\b/;
+  if (licensePlatePattern.test(text)) return true;
+
+  // 7. Ansattforhold, HR, personalia, sykemelding, førerkort
+  const hrPattern = /\b(?:ansatt|personalia|førerkort|sykemeldt|sykemelding|legeerklæring|arbeidsavtale|timelønn|personnummer)\b/i;
+  if (hrPattern.test(text)) return true;
+
+  return false;
 }
 
 /**

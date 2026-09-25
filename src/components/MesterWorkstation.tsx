@@ -1,6 +1,6 @@
 'use client';
 
-import React, { useState, useEffect, useRef, useMemo } from 'react';
+import React, { useState, useEffect, useRef, useMemo, useCallback } from 'react';
 import { motion, AnimatePresence } from 'motion/react';
 import ReactMarkdown from 'react-markdown';
 import remarkGfm from 'remark-gfm';
@@ -61,6 +61,7 @@ import {
   CloudSun,
   Lock,
   BookOpen,
+  HelpCircle,
   FileSpreadsheet,
   FileCheck,
   SquarePen,
@@ -126,6 +127,182 @@ interface MesterWorkstationProps {
   onOpenSettings: () => void;
   onOpenSuperAdmin?: () => void;
 }
+
+export interface ModuleGuideItem {
+  title: string;
+  badge: string;
+  lawBadge?: string;
+  desc: string;
+  steps: { num: string; title: string; text: string }[];
+  aiActionPrompt: string;
+}
+
+export const MODULE_GUIDE_DATA: Record<string, ModuleGuideItem> = {
+  vehicle: {
+    title: 'Bilpark & Elektronisk Kjørebok',
+    badge: 'Flåtestyring & Kjøregodtgjørelse',
+    lawBadge: 'Skatteetaten (4,90 kr/km)',
+    desc: 'Holder orden på firmabiler og ansattes privatbiler. Regner automatisk ut Statens kilometersats og bompenger, klart til lønn og fakturering.',
+    steps: [
+      { num: '1', title: 'Velg eller registrer bil', text: 'Legg inn firmabil eller privatbil med start-kilometerstand under fanen Biler.' },
+      { num: '2', title: 'Før turen eller dikter til AI', text: 'Fyll inn start/slutt km, eller be MesterAI føre den via tale («Før 24 km til Vidjeveien»).' },
+      { num: '3', title: 'Automatisk beregning & eksport', text: 'Systemet regner ut 4,90 kr/km + bompenger. 1-klikk eksport til Tripletex, Fiken eller CSV.' }
+    ],
+    aiActionPrompt: 'Forklar meg hvordan elektronisk kjørebok og flåtestyring fungerer i Vikingmester. Hvordan regnes 4,90 kr/km + bompenger, hvordan fører jeg turer raskest, og hvordan eksporterer jeg til Tripletex/Fiken?'
+  },
+  dailylog: {
+    title: 'Byggedagbok & Timer',
+    badge: 'Lovpålagt timeføring & Vær',
+    lawBadge: 'Arbeidsmiljøloven § 10-7',
+    desc: 'Registrer timer, mannskap og byggeplassforhold. Dagens værdata og temperatur hentes automatisk fra Yr.',
+    steps: [
+      { num: '1', title: 'Dagens vær & forhold', text: 'Yr-værdata og temperatur loggføres automatisk på byggedatoen.' },
+      { num: '2', title: 'Før timer med stemme eller tekst', text: 'Håndverkere fører timer og utført arbeid med mobilen eller tale på sekunder.' },
+      { num: '3', title: 'Ledergodkjenning & lønnseksport', text: 'Prosjektleder godkjenner timene samlet med ett klikk for eksport til lønn og faktura.' }
+    ],
+    aiActionPrompt: 'Hvordan fungerer byggedagbok og timeføring? Vis meg hvordan håndverkere fører timer med stemme eller tekst, og hvordan leder godkjenner iht. AML § 10-7.'
+  },
+  deviations: {
+    title: 'Avvik & RUH (Kvalitet & HMS)',
+    badge: 'Kvalitetssikring & Sporbarhet',
+    lawBadge: 'TEK17 kap. 2 & HMS-forskriften',
+    desc: 'Dokumenter feil, skader, fukt eller HMS-mangler før de utvikler seg til kostbare reklamasjoner.',
+    steps: [
+      { num: '1', title: 'Knips et foto med mobilen', text: 'Last opp bilde direkte fra byggeplassen eller forklar hva som har skjedd.' },
+      { num: '2', title: 'MesterAI analyserer mot TEK17', text: 'AI vurderer toleransekrav, identifiserer feilen og foreslår godkjente strakstiltak.' },
+      { num: '3', title: 'Utbedring & lukking med etterbilde', text: 'Når feilen er rettet, lastes etterbilde opp og avviket lukkes med full sporbarhet.' }
+    ],
+    aiActionPrompt: 'Hvordan melder vi inn avvik og RUH? Forklar hvordan bildegjenkjenning sjekker TEK17, og hvordan saken lukkes fagmessig.'
+  },
+  sja: {
+    title: 'Sikker Jobb Analyse (SJA)',
+    badge: 'Risikovurdering & Vernetiltak',
+    lawBadge: 'Forskrift om utførelse av arbeid',
+    desc: 'Lovpålagt risikovurdering før risikofylte oppgaver (stillas, tak, varme arbeider, el, tunge løft).',
+    steps: [
+      { num: '1', title: 'Beskriv arbeidet', text: 'Fortell MesterAI hva som skal gjøres (f.eks: «Montere stillas i vind og regn»).' },
+      { num: '2', title: 'MesterAI genererer SJA på 30 sekunder', text: 'Systemet identifiserer de 3-4 største farene, konkrete vernetiltak og påkrevd PVU.' },
+      { num: '3', title: 'Digital signering av mannskapet', text: 'Alle på arbeidslaget bekrefter og signerer digitalt på mobilen før oppstart.' }
+    ],
+    aiActionPrompt: 'Hvordan oppretter vi en godkjent Sikker Jobb Analyse (SJA)? Forklar 30-sekunders prosessen med farer, vernetiltak og signering av mannskap.'
+  },
+  change_orders: {
+    title: 'Endringsordrer & Varsler',
+    badge: 'Tilleggsarbeid & Krav',
+    lawBadge: 'Norsk Standard NS 8406 / NS 8405',
+    desc: 'Sikrer at bedriften får betalt for alle tillegg, endringer og uforutsette bygningsforhold.',
+    steps: [
+      { num: '1', title: 'Varsle i tide iht. NS 8406', text: 'Opprett varsel umiddelbart når kunden ber om endring eller uforutsette forhold oppstår.' },
+      { num: '2', title: 'MesterAI setter opp kalkylen', text: 'Få spesifiserte poster med timer, materiell, påslag og krav om fristforlengelse.' },
+      { num: '3', title: 'Byggherre godkjenner digitalt', text: 'Formelt varsel sendes på e-post til byggherre, som aksepterer med ett tastetrykk.' }
+    ],
+    aiActionPrompt: 'Hvordan fungerer endringsordrer og varsler iht. NS 8406 / NS 8405? Hvordan setter jeg opp kalkylen og sender formelt varsel til byggherre?'
+  },
+  offers: {
+    title: 'Pristilbud & Hurtigkalkyle',
+    badge: 'Kalkyle & Salg',
+    lawBadge: 'Byggblankett 3501 & Håndverkertjenesteloven',
+    desc: 'Rask, profesjonell og lønnsom prising av byggeoppdrag med full kontroll på dekningsbidrag og MVA.',
+    steps: [
+      { num: '1', title: 'Beskriv oppdraget', text: 'Fortell MesterAI hva som skal utføres (renovering, tilbygg, terrasse, bad osv.).' },
+      { num: '2', title: 'Kalkyle med materialer & timer', text: 'AI setter opp spesifiserte poster med enhetspriser, påslagsprosent og 25% MVA.' },
+      { num: '3', title: 'Send tilbud med digital aksept', text: 'Kunden mottar tilbudet på e-post eller PDF og kan signere/godkjenne direkte.' }
+    ],
+    aiActionPrompt: 'Hvordan lager og kalkulerer vi et vinnende pristilbud med MesterAI? Forklar oppsett av poster, påslag og hvordan kunden godkjenner digitalt.'
+  },
+  pre_close: {
+    title: 'KS & Lukkesperre (TEK17)',
+    badge: 'Forsegling & Skjult Anlegg',
+    lawBadge: 'TEK17 § 2-1 (Kvalitetssikring)',
+    desc: 'Digital sperre som fysisk hindrer lukking av vegger/gulv før rørlegger, elektriker og tømrer har kvittert ut kontrollpunktene.',
+    steps: [
+      { num: '1', title: 'Tverrfaglig kontroll', text: 'Rørlegger og elektriker sjekker trykktesting (10 bar), rør-i-rør og skjult anlegg.' },
+      { num: '2', title: 'Fotobevis før tildekking', text: 'Last opp bilder av rør og isolasjon som ugjendrivelig bevis i FDV-arkivet.' },
+      { num: '3', title: 'Hev sperren (Rød → Grønn)', text: 'Når alle fag har signert ut, heves sperren og tømrer kan kle igjen uten risiko for feil.' }
+    ],
+    aiActionPrompt: 'Hva er KS og Lukkesperre iht. TEK17? Forklar hvordan sperren fungerer, hvilke fagkontroller som kreves, og hvordan den heves.'
+  },
+  archive: {
+    title: 'Dokumentarkiv & FDV',
+    badge: 'Overleveringsperm & FDV',
+    lawBadge: 'TEK17 kapittel 4 (FDV)',
+    desc: 'Samler all produktdokumentasjon, monteringsanvisninger, tegninger og godkjenninger for prosjektet.',
+    steps: [
+      { num: '1', title: 'Løpende arkivering', text: 'Last opp datablader, garantier, bilder og samsvarserklæringer underveis i byggingen.' },
+      { num: '2', title: 'Automatisk indeksering', text: 'MesterAI sorterer dokumentene automatisk etter bygningsdel og fag.' },
+      { num: '3', title: '1-klikk komplett FDV-perm', text: 'Generer en ferdig, profesjonell FDV-sluttrapport for overlevering til byggherre.' }
+    ],
+    aiActionPrompt: 'Hvordan fungerer dokumentarkivet og automatisk FDV-generering? Hvordan samles alt til en komplett overleveringsperm?'
+  },
+  contacts: {
+    title: 'Prosjektkontakter & Telefonbok',
+    badge: 'Team & Rettigheter',
+    lawBadge: 'Rollebasert tilgangskontroll (RBAC)',
+    desc: 'Full oversikt over ansatte, lærlinger, underentreprenører og byggherrer.',
+    steps: [
+      { num: '1', title: 'Legg inn person', text: 'Fyll inn navn, telefon og e-post for den nye medarbeideren eller samarbeidspartneren.' },
+      { num: '2', title: 'Velg rolle & prosjekt', text: 'Velg tilgangsnivå (Leder, Håndverker, Lærling, Byggherre). Håndverkere ser kun tildelte plasser.' },
+      { num: '3', title: 'Send innloggingslenke', text: 'Systemet sender automatisk en personlig aktiveringslenke der de velger eget passord.' }
+    ],
+    aiActionPrompt: 'Hvordan administrerer jeg kontakter, håndverkere og byggherrer i Vikingmester? Hvordan sender jeg innloggingslenke og tildeler byggeplass?'
+  },
+  apprentice: {
+    title: 'Lærlingmodul & Opplæringsbok',
+    badge: 'Fagopplæring & Kompetansemål',
+    lawBadge: 'Utdanningsdirektoratet (Læreplan Vg3)',
+    desc: 'Gjør lærlingoppfølging lekende lett for både lærling og faglig leder.',
+    steps: [
+      { num: '1', title: 'Lærlingen fører arbeid', text: 'Lærlingen logger utført arbeid med bilder og beskrivelse på mobilen.' },
+      { num: '2', title: 'MesterAI kobler kompetansemål', text: 'AI kobler aktiviteten automatisk mot de offisielle læreplanmålene for faget.' },
+      { num: '3', title: 'Veiledergodkjenning', text: 'Faglig leder godkjenner i appen, og lærlingen har komplett dokumentasjon klar til svenneprøven.' }
+    ],
+    aiActionPrompt: 'Hvordan fungerer lærlingmodulen og opplæringsboken? Hvordan kobles daglig arbeid til læreplanmålene og faglig leder-godkjenning?'
+  },
+  hms: {
+    title: 'HMS, Stoffkartotek & Vernerunder',
+    badge: 'Internkontroll & Sikkerhet',
+    lawBadge: 'Internkontrollforskriften',
+    desc: 'Alt lovpålagt HMS-arbeid samlet på ett sted: vernerunder, stoffkartotek for kjemikalier og beredskapsplaner.',
+    steps: [
+      { num: '1', title: 'Digital vernerunde', text: 'Gjennomfør vernerunden med sjekkliste og bilder direkte på mobilen.' },
+      { num: '2', title: 'Stoffkartotek med sikkerhetsdatablader', text: 'Alle kjemikalier, lim og maling har lett tilgjengelige sikkerhetsdatablader.' },
+      { num: '3', title: 'Full sporbarhet ved tilsyn', text: 'Dokumentasjonen er 100% i orden dersom Arbeidstilsynet eller byggherre kommer på kontroll.' }
+    ],
+    aiActionPrompt: 'Hvordan fungerer HMS-modulen, vernerunder og stoffkartotek? Hva krever Arbeidstilsynet og hvordan hjelper systemet oss?'
+  },
+  teamchat: {
+    title: 'Prosjekt- & Firmachatt',
+    badge: 'Byggeplasskommunikasjon',
+    lawBadge: 'Sikker intern samhandling',
+    desc: 'Hold all dialog, beskjeder og bilder samlet på byggeplassen, fri fra spredte SMS-tråder.',
+    steps: [
+      { num: '1', title: 'Prosjektspesifikk kanal', text: 'Beskjeder som skrives er knyttet direkte til gjeldende prosjekt.' },
+      { num: '2', title: 'Del bilder og oppdateringer', text: 'Del situasjonsbilder, spørsmål og HMS-meldinger i sanntid med alle involverte.' },
+      { num: '3', title: 'Søkbar historikk', text: 'Aldri mer uenighet om hva som ble avtalt – all historikk er bevart.' }
+    ],
+    aiActionPrompt: 'Hvordan fungerer prosjekt- og firmachatten internt? Hvordan holder vi all dialog og bildedokumentasjon samlet på byggeplassen?'
+  },
+  superadmin: {
+    title: 'SuperAdmin Portal & SaaS Drift',
+    badge: 'Systemdrift & Marginer',
+    lawBadge: '96–98% garantert lønnsomhet',
+    desc: 'Overordnet administrasjon av hele Vikingmester: bedrifter, abonnement, marginbeskyttelse og tokenforbruk.',
+    steps: [
+      { num: '1', title: 'Bedriftsoversikt & Lisenser', text: 'Administrer aktive selskaper, brukere og abonnementstyper (Solo, Team, Totalentreprenør).' },
+      { num: '2', title: 'Marginbeskyttelse & Tokenovervåking', text: 'Systemet sperrer automatisk all tapsrisiko og sikrer 96–98% bruttomargin i alle scenarier.' },
+      { num: '3', title: 'Inviter SuperAdmin / Kunder', text: 'Opprett nye bedrifter eller medadministratorer med automatisk e-post og selvvalgt passord.' }
+    ],
+    aiActionPrompt: 'Hvordan fungerer SuperAdmin-portalen, marginbeskyttelsen (96–98%), tokenovervåkning og opprettelse av nye bedrifter?'
+  }
+};
+
+export const getModuleHelpPrompt = (tab: string | null, projName?: string | null): string => {
+  const pName = projName ? ` for ${projName}` : '';
+  if (tab && MODULE_GUIDE_DATA[tab]) {
+    return MODULE_GUIDE_DATA[tab].aiActionPrompt;
+  }
+  return `Hvordan fungerer denne visningen${pName}? Gi meg en kort, enkel 3-trinns veiledning for håndverkere og prosjektledere.`;
+};
 
 export default function MesterWorkstation({
   initialModuleTab,
@@ -196,7 +373,18 @@ export default function MesterWorkstation({
     return 'chat';
   });
   const [activeModuleTab, setActiveModuleTab] = useState<string | null>(initialModuleTab || null);
+  const [showModuleGuide, setShowModuleGuide] = useState(false);
   const [activeForm, setActiveForm] = useState<{ type: InChatFormType; data?: any } | null>(null);
+
+  const handleOpenModuleCopilotHelp = () => {
+    const prompt = getModuleHelpPrompt(activeModuleTab, selectedProject?.name);
+    window.dispatchEvent(new CustomEvent('mesterai:open-copilot', {
+      detail: {
+        module: activeModuleTab,
+        prompt: prompt
+      }
+    }));
+  };
   const [isProjectDropdownOpen, setIsProjectDropdownOpen] = useState(false);
   const projectDropdownRef = useRef<HTMLDivElement>(null);
   const mobileProjectDropdownRef = useRef<HTMLDivElement>(null);
@@ -622,8 +810,26 @@ export default function MesterWorkstation({
       if (allowed.includes('all')) return projects;
       return projects.filter(p => allowed.includes(p.id));
     }
+    // Sjekk om prosjektet har håndverkeren tildelt i teamMembers eller oppgaver
+    const memberProjects = projects.filter(p => {
+      const tm = (p as any).teamMembers || (p as any).assignedWorkers || [];
+      if (Array.isArray(tm)) {
+        return tm.some((m: string) => 
+          (user?.id && m === user.id) ||
+          (myEmail && m.toLowerCase() === myEmail) ||
+          (myName && m.toLowerCase() === myName)
+        );
+      }
+      return false;
+    });
+    if (memberProjects.length > 0) return memberProjects;
+
+    // Fagarbeidere og lærlinger uten eksplisitt tildeling har kun tilgang til tildelte prosjekter
+    if (!isAdmin && (user?.role === 'worker' || user?.role === 'apprentice' || role === 'worker' || role === 'apprentice')) {
+      return [];
+    }
     return projects;
-  }, [projects, isAdmin, user?.email, user?.displayName, (user as any)?.accessibleProjects, projectContacts]);
+  }, [projects, isAdmin, user?.email, user?.displayName, (user as any)?.accessibleProjects, projectContacts, role, user?.role, user?.id]);
 
   const currentTenantScope = impersonatedCompanyId || (user?.company ? user.company.replace(/[^a-zA-Z0-9]/g, '_').toLowerCase() : 'tenant_default');
   const contactsStorageKey = `mester_contacts_${currentTenantScope}_${selectedProject?.id || 'all'}`;
@@ -1103,6 +1309,8 @@ export default function MesterWorkstation({
   const textareaRef = useRef<HTMLTextAreaElement>(null);
   const messagesEndRef = useRef<HTMLDivElement>(null);
   const latestMessageTopRef = useRef<HTMLDivElement>(null);
+  const latestTurnTopRef = useRef<HTMLDivElement>(null);
+  const isUserScrollingRef = useRef(false);
   const thinkingRef = useRef<HTMLDivElement>(null);
   const chatScrollContainerRef = useRef<HTMLDivElement>(null);
   const prevMessagesLengthRef = useRef(messages.length);
@@ -1205,6 +1413,45 @@ export default function MesterWorkstation({
     return () => window.removeEventListener('mester_live_data_updated', handleLiveAgentUpdate);
   }, [logsStorageKey]);
 
+  // 🎯 Gemini-stil presis scroll til toppen av svar / spørsmål
+  const performSmartScrollToTop = useCallback((smooth = true) => {
+    const container = chatScrollContainerRef.current;
+    if (!container) return;
+
+    const promptEl = latestTurnTopRef.current;
+    const assistantEl = latestMessageTopRef.current;
+
+    let targetEl: HTMLElement | null = assistantEl;
+    if (promptEl && assistantEl) {
+      const promptHeight = promptEl.offsetHeight;
+      // Hvis spørsmålet er konsist (under 180px), rull slik at spørsmålet står øverst
+      // og svaret begynner rett under (1:1 lik Gemini og ChatGPT web/mobil)
+      if (promptHeight > 0 && promptHeight <= 180) {
+        targetEl = promptEl;
+      }
+    } else if (promptEl && !assistantEl) {
+      targetEl = promptEl;
+    }
+
+    if (!targetEl) return;
+
+    const containerRect = container.getBoundingClientRect();
+    const targetRect = targetEl.getBoundingClientRect();
+
+    const currentScrollTop = container.scrollTop;
+    const targetScrollTop = targetRect.top - containerRect.top + currentScrollTop;
+    const finalScrollTop = Math.max(0, targetScrollTop - 24);
+
+    container.scrollTo({
+      top: finalScrollTop,
+      behavior: smooth ? 'smooth' : 'auto'
+    });
+  }, []);
+
+  const handleUserScrollIntent = useCallback(() => {
+    isUserScrollingRef.current = true;
+  }, []);
+
   // 📜 Gemini-stil smart scroll:
   // Når et nytt svar ankommer, ruller visningen alltid til TOPPEN av svaret
   // slik at brukeren kan begynne å lese ovenfra og ned (aldri starte nederst og måtte rulle opp!)
@@ -1218,16 +1465,61 @@ export default function MesterWorkstation({
     prevMessagesLengthRef.current = messages.length;
     prevIsLoadingRef.current = isLoading;
 
-    const timer = setTimeout(() => {
-      if (justStartedLoading && thinkingRef.current) {
-        thinkingRef.current.scrollIntoView({ behavior: 'smooth', block: 'start' });
-      } else if ((hadNewMessage || justStoppedLoading) && latestMessageTopRef.current) {
-        latestMessageTopRef.current.scrollIntoView({ behavior: 'smooth', block: 'start' });
-      }
-    }, 70);
+    if (justStartedLoading) {
+      isUserScrollingRef.current = false;
+      const timer = setTimeout(() => {
+        const container = chatScrollContainerRef.current;
+        const target = latestTurnTopRef.current || thinkingRef.current;
+        if (container && target) {
+          const containerRect = container.getBoundingClientRect();
+          const targetRect = target.getBoundingClientRect();
+          const targetScrollTop = targetRect.top - containerRect.top + container.scrollTop;
+          container.scrollTo({
+            top: Math.max(0, targetScrollTop - 24),
+            behavior: 'smooth'
+          });
+        }
+      }, 50);
+      return () => clearTimeout(timer);
+    }
 
-    return () => clearTimeout(timer);
-  }, [messages, isLoading, viewMode]);
+    if (hadNewMessage || justStoppedLoading) {
+      isUserScrollingRef.current = false;
+
+      // Fase 1: Umiddelbar posisjonering i rAF (hindrer at brukeren et halvt sekund ser bunnen)
+      const rafId = requestAnimationFrame(() => {
+        performSmartScrollToTop(false);
+      });
+
+      // Fase 2: Myk justering etter at ReactMarkdown og komponenter har hydrert (70ms)
+      const t1 = setTimeout(() => {
+        if (!isUserScrollingRef.current) {
+          performSmartScrollToTop(true);
+        }
+      }, 70);
+
+      // Fase 3: Stabilisering etter at tabeller, punkter og styling har satt seg (220ms)
+      const t2 = setTimeout(() => {
+        if (!isUserScrollingRef.current) {
+          performSmartScrollToTop(true);
+        }
+      }, 220);
+
+      // Fase 4: Endelig garanti for å sikre at visningen er låst til toppen (480ms)
+      const t3 = setTimeout(() => {
+        if (!isUserScrollingRef.current) {
+          performSmartScrollToTop(true);
+        }
+      }, 480);
+
+      return () => {
+        cancelAnimationFrame(rafId);
+        clearTimeout(t1);
+        clearTimeout(t2);
+        clearTimeout(t3);
+      };
+    }
+  }, [messages, isLoading, viewMode, performSmartScrollToTop]);
 
   // 📐 Auto-grow textarea
   useEffect(() => {
@@ -1951,8 +2243,12 @@ export default function MesterWorkstation({
           availableProjects: userAccessibleProjects.map(p => ({
             id: p.id,
             name: p.name,
-            code: p.code,
-            address: p.address || (p as any).location
+            code: p.code || p.projectCode,
+            address: p.address || (p as any).location,
+            progress: typeof p.progress === 'number' ? p.progress : 0,
+            status: p.status || 'active',
+            stage: p.stage || 'Pågående',
+            clientName: p.clientName || 'Privatkunde'
           })),
           userName: effectiveUserName,
           userTrade: trade || user?.trade || 'carpenter',
@@ -1968,39 +2264,45 @@ export default function MesterWorkstation({
           teamMembers: projectContacts
             .filter(c => c.category === 'team')
             .map(c => ({ id: c.id, name: c.name, role: c.role, email: c.email })),
-          tasks: (tasks || []).map((t: any) => ({
-            id: t.id,
-            title: t.title,
-            projectId: t.projectId,
-            projectName: t.projectName,
-            assignedTo: t.assignedTo,
-            dueDate: t.dueDate,
-            status: t.status,
-            priority: t.priority,
-            description: t.description
-          })),
-          timeEntries: (dailyTimeEntries || []).map((t: any) => ({
-            id: t.id,
-            projectId: t.projectId,
-            projectName: t.projectName,
-            userName: t.workerName || t.userName,
-            workerName: t.workerName || t.userName,
-            date: t.date,
-            hours: t.hours,
-            task: t.task || t.description,
-            status: t.status
-          })),
-          deviations: (deviations || []).map((d: any) => ({
-            id: d.id,
-            projectId: d.projectId,
-            projectName: d.projectName,
-            title: d.title,
-            severity: d.severity,
-            status: d.status,
-            trade: d.trade,
-            description: d.description,
-            correctiveAction: d.correctiveAction
-          }))
+          tasks: (tasks || [])
+            .filter((t: any) => isAdmin || !t.projectId || userAccessibleProjects.some(p => p.id === t.projectId))
+            .map((t: any) => ({
+              id: t.id,
+              title: t.title,
+              projectId: t.projectId,
+              projectName: t.projectName,
+              assignedTo: t.assignedTo,
+              dueDate: t.dueDate,
+              status: t.status,
+              priority: t.priority,
+              description: t.description
+            })),
+          timeEntries: (dailyTimeEntries || [])
+            .filter((t: any) => isAdmin || !t.projectId || userAccessibleProjects.some(p => p.id === t.projectId))
+            .map((t: any) => ({
+              id: t.id,
+              projectId: t.projectId,
+              projectName: t.projectName,
+              userName: t.workerName || t.userName,
+              workerName: t.workerName || t.userName,
+              date: t.date,
+              hours: t.hours,
+              task: t.task || t.description,
+              status: t.status
+            })),
+          deviations: (deviations || [])
+            .filter((d: any) => isAdmin || !d.projectId || userAccessibleProjects.some(p => p.id === d.projectId))
+            .map((d: any) => ({
+              id: d.id,
+              projectId: d.projectId,
+              projectName: d.projectName,
+              title: d.title,
+              severity: d.severity,
+              status: d.status,
+              trade: d.trade,
+              description: d.description,
+              correctiveAction: d.correctiveAction
+            }))
         })
       });
 
@@ -2733,7 +3035,13 @@ export default function MesterWorkstation({
             />
           </div>
         ) : (
-          <div ref={chatScrollContainerRef} className="flex-1 overflow-y-auto overscroll-y-contain custom-scrollbar flex flex-col relative [touch-action:pan-y]">
+          <div 
+            ref={chatScrollContainerRef} 
+            onWheel={handleUserScrollIntent}
+            onTouchMove={handleUserScrollIntent}
+            style={{ overflowAnchor: 'none' }}
+            className="flex-1 overflow-y-auto overscroll-y-contain custom-scrollbar flex flex-col relative [touch-action:pan-y] [overflow-anchor:none]"
+          >
             {viewMode === 'module' ? (
               /* 📊 MODULE VIEW (When user clicks a module from the left sidebar) */
               <div className="p-4 sm:p-6 max-w-7xl mx-auto w-full space-y-4">
@@ -2752,13 +3060,28 @@ export default function MesterWorkstation({
 
                   <button
                     type="button"
-                    onClick={() => window.dispatchEvent(new CustomEvent('mesterai:open-copilot'))}
+                    onClick={handleOpenModuleCopilotHelp}
                     className="inline-flex items-center gap-2 px-3.5 py-2 rounded-xl bg-gradient-to-r from-electric-600 to-indigo-600 hover:from-electric-500 hover:to-indigo-500 text-white font-black text-xs sm:text-sm shadow-md transition-all cursor-pointer border border-electric-400/40"
-                    title="Åpne MesterAI Copilot for denne visningen (Ctrl+M)"
+                    title="Åpne MesterAI Copilot for veiledning i denne visningen (Ctrl+M)"
                   >
                     <Sparkles size={15} className="text-amber-300 animate-pulse" />
                     <span>Spør MesterAI om denne visningen</span>
                     <span className="hidden md:inline text-[10px] font-mono opacity-80 bg-black/30 px-1.5 py-0.5 rounded-md">Ctrl+M</span>
+                  </button>
+
+                  <button
+                    type="button"
+                    onClick={() => setShowModuleGuide(prev => !prev)}
+                    className={`inline-flex items-center gap-1.5 px-3 py-2 rounded-xl text-xs font-bold transition-all cursor-pointer border ${
+                      showModuleGuide 
+                        ? 'bg-amber-500/20 text-amber-300 border-amber-500/40 shadow-xs' 
+                        : 'bg-slate-800 hover:bg-slate-700 text-slate-300 border-slate-700'
+                    }`}
+                    title="Vis hvordan denne modulen fungerer i 3 enkle steg"
+                  >
+                    <HelpCircle size={15} className={showModuleGuide ? "text-amber-400" : "text-slate-400"} />
+                    <span className="hidden sm:inline">Slik fungerer det</span>
+                    <span className="sm:hidden">Hjelp</span>
                   </button>
                 </div>
                 <span className="text-xs text-slate-400 font-medium hidden sm:inline">
@@ -2797,6 +3120,67 @@ export default function MesterWorkstation({
                   )}
                 </span>
               </div>
+
+              {/* Modulveiledning panel hvis aktivert */}
+              {showModuleGuide && activeModuleTab && MODULE_GUIDE_DATA[activeModuleTab] && (() => {
+                const guide = MODULE_GUIDE_DATA[activeModuleTab];
+                return (
+                  <div className="p-5 rounded-2xl bg-gradient-to-br from-slate-900 via-slate-900 to-indigo-950/40 border border-electric-500/30 shadow-xl space-y-4 animate-in fade-in duration-200">
+                    <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-3 pb-3 border-b border-slate-800">
+                      <div className="flex items-center gap-2.5">
+                        <div className="w-8 h-8 rounded-xl bg-electric-500/20 text-electric-400 border border-electric-500/30 flex items-center justify-center font-bold shrink-0">
+                          <BookOpen size={16} />
+                        </div>
+                        <div>
+                          <div className="flex flex-wrap items-center gap-2">
+                            <h4 className="font-black text-white text-sm">{guide.title}</h4>
+                            <span className="text-[10px] font-bold px-2 py-0.5 rounded-full bg-electric-500/20 text-electric-300 border border-electric-500/30">
+                              {guide.badge}
+                            </span>
+                          </div>
+                          <p className="text-xs text-slate-300 mt-0.5">{guide.desc}</p>
+                        </div>
+                      </div>
+                      {guide.lawBadge && (
+                        <span className="self-start sm:self-center text-[10px] font-mono font-bold text-amber-300 bg-amber-500/10 border border-amber-500/25 px-2.5 py-1 rounded-lg shrink-0">
+                          ⚖️ {guide.lawBadge}
+                        </span>
+                      )}
+                    </div>
+
+                    {/* 3 Trinn */}
+                    <div className="grid grid-cols-1 md:grid-cols-3 gap-3">
+                      {guide.steps.map((st, i) => (
+                        <div key={i} className="p-3.5 rounded-xl bg-slate-950/70 border border-slate-800 space-y-1">
+                          <div className="flex items-center gap-2">
+                            <span className="w-5 h-5 rounded-full bg-electric-600 text-white text-[11px] font-black flex items-center justify-center shrink-0">
+                              {st.num}
+                            </span>
+                            <span className="text-xs font-bold text-white">{st.title}</span>
+                          </div>
+                          <p className="text-[11px] text-slate-400 leading-relaxed pl-7">{st.text}</p>
+                        </div>
+                      ))}
+                    </div>
+
+                    {/* AI Action footer */}
+                    <div className="flex flex-wrap items-center justify-between gap-3 pt-1">
+                      <span className="text-xs text-slate-400 flex items-center gap-1.5">
+                        <Sparkles size={14} className="text-amber-400" />
+                        MesterAI kan hjelpe deg å utføre denne oppgaven trinn-for-trinn eller via stemmen.
+                      </span>
+                      <button
+                        type="button"
+                        onClick={handleOpenModuleCopilotHelp}
+                        className="px-3.5 py-1.5 rounded-xl bg-electric-600 hover:bg-electric-500 text-white font-bold text-xs flex items-center gap-2 transition-all cursor-pointer shadow-md"
+                      >
+                        <Sparkles size={13} className="text-amber-300" />
+                        <span>Spør MesterAI om denne modulen</span>
+                      </button>
+                    </div>
+                  </div>
+                );
+              })()}
 
               {/* 0A. 🏗️ PROSJEKTOVERSIKT & DASHBOARD (INLINE I ARBEIDSVINDUET) */}
               {activeModuleTab === 'project_details' && (
@@ -5754,148 +6138,173 @@ export default function MesterWorkstation({
                   </div>
                 </div>
               ) : (
-                /* Chat Messages Stream (ChatGPT & Gemini style) */
-                <div className="space-y-6 pt-2">
-                  {messages.map((msg) => (
-                    <div
-                      key={msg.id}
-                      className={cn(
-                        "flex flex-col gap-1.5",
-                        msg.role === 'user'
-                          ? "max-w-[88%] sm:max-w-[78%] ml-auto items-end"
-                          : "w-full items-start"
-                      )}
-                    >
-                      {msg.role === 'assistant' && (
-                        <div className="flex items-center gap-2 text-xs font-bold text-purple-400 mb-1 px-1">
-                          <Bot size={15} />
-                          <span>{t('ws_mesterai_pilot', 'MesterAI Pilot')}</span>
-                          <span className="text-[10px] text-slate-500">{msg.timestamp}</span>
+                <div className="space-y-6 pt-2 pb-24 sm:pb-32">
+                  {messages.map((msg, idx) => {
+                    const isLatest = idx === messages.length - 1;
+                    const isPromptForLatest = 
+                      idx === messages.length - 2 && 
+                      msg.role === 'user' && 
+                      messages[messages.length - 1]?.role === 'assistant';
+
+                    return (
+                      <div
+                        key={msg.id}
+                        ref={
+                          isPromptForLatest 
+                            ? latestTurnTopRef 
+                            : isLatest 
+                            ? latestMessageTopRef 
+                            : undefined
+                        }
+                        className={cn(
+                          "flex flex-col gap-2 scroll-mt-6 sm:scroll-mt-8 transition-all",
+                          msg.role === 'user'
+                            ? "max-w-[90%] sm:max-w-[80%] ml-auto items-end"
+                            : "w-full items-start"
+                        )}
+                      >
+                        <div className={cn(
+                          "w-full transition-all",
+                          msg.role === 'user'
+                            ? "bg-[#24272a] text-white px-5 py-3.5 sm:px-6 sm:py-4 rounded-[26px] shadow-sm text-[17px] sm:text-[19px] font-semibold leading-relaxed"
+                            : "bg-[#13161c]/80 sm:bg-[#13161c]/60 border border-slate-800/80 rounded-3xl p-5 sm:p-7 shadow-lg backdrop-blur-md"
+                        )}>
+                          {msg.role === 'user' ? (
+                            <div className="whitespace-pre-wrap font-medium">
+                              {msg.imageUrl && (
+                                <div className="mb-3 rounded-2xl overflow-hidden border border-white/20 max-w-xs shadow-md">
+                                  <img src={msg.imageUrl} alt="Vedlagt bilde" className="w-full h-auto object-cover" />
+                                </div>
+                              )}
+                              {msg.content}
+                            </div>
+                          ) : (
+                            <div>
+                              <div className="flex items-center gap-2 text-xs font-bold text-amber-400 mb-3 px-1">
+                                <Sparkles size={16} className="text-amber-400" />
+                                <span className="text-[13px] tracking-wide font-semibold text-white/90">{t('ws_mesterai_pilot', 'MesterAI Pilot')}</span>
+                                <span className="text-[11px] text-slate-400 font-mono ml-auto">{msg.timestamp}</span>
+                              </div>
+
+                              {msg.imageUrl && (
+                                <div className="mb-4 rounded-2xl overflow-hidden border border-white/20 max-w-sm shadow-md">
+                                  <img src={msg.imageUrl} alt="Vedlagt bilde" className="w-full h-auto object-cover" />
+                                </div>
+                              )}
+
+                              <div className="text-white">
+                                <ReactMarkdown 
+                                  remarkPlugins={[remarkGfm]}
+                                  components={{
+                                    h1: ({ node, ...props }) => (
+                                      <h2 className="text-[22px] sm:text-[24px] font-bold text-white mt-6 mb-3 tracking-tight border-b border-slate-800/80 pb-2 flex items-center gap-2" {...props} />
+                                    ),
+                                    h2: ({ node, ...props }) => (
+                                      <h3 className="text-[20px] sm:text-[22px] font-bold text-white mt-5 mb-2.5 tracking-tight flex items-center gap-2" {...props} />
+                                    ),
+                                    h3: ({ node, ...props }) => (
+                                      <h4 className="text-[18px] sm:text-[19px] font-bold text-emerald-400 mt-4 mb-2 flex items-center gap-2 uppercase tracking-wide text-sm sm:text-base" {...props} />
+                                    ),
+                                    p: ({ node, ...props }) => (
+                                      <p className="text-[17px] sm:text-[19px] text-white/95 leading-[1.65] font-normal mb-3.5 last:mb-0" {...props} />
+                                    ),
+                                    ul: ({ node, ...props }) => (
+                                      <ul className="my-3 space-y-2.5 pl-1 list-none" {...props} />
+                                    ),
+                                    ol: ({ node, ...props }) => (
+                                      <ol className="my-3 space-y-2.5 pl-6 list-decimal text-[17px] sm:text-[19px] text-white/95 leading-[1.65]" {...props} />
+                                    ),
+                                    li: ({ node, ...props }) => (
+                                      <li className="text-[17px] sm:text-[19px] text-white/95 leading-[1.65] flex items-start gap-3">
+                                        <span className="w-2 h-2 rounded-full border-2 border-emerald-400/90 bg-emerald-400/40 mt-2.5 shrink-0 shadow-xs" />
+                                        <span className="flex-1 min-w-0">{props.children}</span>
+                                      </li>
+                                    ),
+                                    strong: ({ node, ...props }) => (
+                                      <strong className="font-bold text-white" {...props} />
+                                    ),
+                                    blockquote: ({ node, ...props }) => (
+                                      <blockquote className="my-4 p-4 bg-emerald-950/30 border-l-4 border-emerald-500 rounded-r-2xl text-[16px] sm:text-[18px] text-emerald-200 leading-relaxed shadow-xs" {...props} />
+                                    ),
+                                    table: ({ node, ...props }) => (
+                                      <div className="my-4 rounded-2xl border border-slate-800 overflow-x-auto text-[15px] sm:text-[16px] shadow-md bg-slate-950/80">
+                                        <table className="w-full text-left divide-y divide-slate-800" {...props} />
+                                      </div>
+                                    ),
+                                    th: ({ node, ...props }) => (
+                                      <th className="p-3.5 bg-slate-900 text-slate-300 font-bold text-[13px] uppercase tracking-wider" {...props} />
+                                    ),
+                                    td: ({ node, ...props }) => (
+                                      <td className="p-3.5 text-white/90 border-b border-slate-800/60" {...props} />
+                                    ),
+                                    code: ({ node, inline, ...props }: any) => (
+                                      <code className="px-2 py-0.5 rounded-lg bg-slate-800/90 text-amber-300 font-mono text-[15px] sm:text-[16px] border border-slate-700/50" {...props} />
+                                    ),
+                                    a: ({ node, href, children, ...props }: any) => (
+                                      <a
+                                        href={href}
+                                        target="_blank"
+                                        rel="noopener noreferrer"
+                                        className="inline-flex items-center gap-1.5 text-emerald-300 hover:text-white bg-emerald-500/15 hover:bg-emerald-500/25 px-3 py-1 rounded-xl border border-emerald-500/30 transition-all font-semibold text-[15px] sm:text-[16px] no-underline group shadow-xs my-0.5 cursor-pointer"
+                                        {...props}
+                                      >
+                                        <ExternalLink size={13} className="text-emerald-400 group-hover:text-emerald-300 shrink-0" />
+                                        <span className="underline decoration-emerald-400/40 group-hover:decoration-white">{children}</span>
+                                      </a>
+                                    )
+                                  }}
+                                >
+                                  {formatAiMarkdown(msg.content)}
+                                </ReactMarkdown>
+                              </div>
+                            </div>
+                          )}
+
+                          {/* Quick Replies below assistant message */}
+                          {msg.quickReplies && msg.quickReplies.length > 0 && (
+                            <div className="mt-5 pt-3.5 border-t border-slate-800 flex flex-wrap gap-2.5">
+                              {msg.quickReplies.map((qr, i) => (
+                                <button
+                                  key={i}
+                                  type="button"
+                                  onClick={() => handleSendMessage(qr.payload || qr.title)}
+                                  className="px-4 py-2 rounded-full bg-slate-800/90 hover:bg-emerald-950/60 border border-slate-700 hover:border-emerald-500/50 text-[14px] sm:text-[15px] font-semibold text-slate-100 hover:text-white transition-all cursor-pointer shadow-xs active:scale-95"
+                                >
+                                  {qr.title}
+                                </button>
+                              ))}
+                            </div>
+                          )}
                         </div>
-                      )}
 
-                      <div className={cn(
-                        "p-4 sm:p-5 rounded-2xl sm:rounded-3xl text-sm leading-relaxed",
-                        msg.role === 'user'
-                          ? "bg-gradient-to-r from-purple-700 to-electric-600 text-white rounded-2xl sm:rounded-3xl shadow-md"
-                          : "bg-slate-900 text-slate-100 border border-slate-800 rounded-2xl sm:rounded-3xl w-full shadow-md"
-                      )}>
-                        {msg.imageUrl && (
-                          <div className="mb-3 rounded-2xl overflow-hidden border border-white/20 max-w-xs shadow-md">
-                            <img src={msg.imageUrl} alt="Vedlagt bilde" className="w-full h-auto object-cover" />
-                          </div>
-                        )}
-
-
-                        {msg.role === 'user' ? (
-                          <div className="whitespace-pre-wrap font-medium">{msg.content}</div>
-                        ) : (
-                          <div className="prose prose-invert prose-sm max-w-none text-slate-200">
-                            <ReactMarkdown 
-                              remarkPlugins={[remarkGfm]}
-                              components={{
-                                h1: ({ node, ...props }) => (
-                                  <h3 className="text-base font-black text-white mt-5 mb-2.5 flex items-center gap-2 border-b border-slate-800 pb-2" {...props} />
-                                ),
-                                h2: ({ node, ...props }) => (
-                                  <h4 className="text-sm font-black text-purple-300 mt-4 mb-2 flex items-center gap-2 border-b border-purple-500/20 pb-1.5" {...props} />
-                                ),
-                                h3: ({ node, ...props }) => (
-                                  <h5 className="text-xs sm:text-sm font-bold text-teal-300 mt-4 mb-2 flex items-center gap-1.5 uppercase tracking-wider" {...props} />
-                                ),
-                                p: ({ node, ...props }) => (
-                                  <p className="text-xs sm:text-sm text-slate-200 leading-relaxed mb-3 last:mb-0" {...props} />
-                                ),
-                                ul: ({ node, ...props }) => (
-                                  <ul className="my-2.5 space-y-2 pl-1 list-none" {...props} />
-                                ),
-                                ol: ({ node, ...props }) => (
-                                  <ol className="my-2.5 space-y-2 pl-4 list-decimal text-slate-200" {...props} />
-                                ),
-                                li: ({ node, ...props }) => (
-                                  <li className="text-xs sm:text-sm text-slate-200 leading-relaxed flex items-start gap-2.5">
-                                    <span className="w-1.5 h-1.5 rounded-full bg-purple-400 mt-2 shrink-0 shadow-xs" />
-                                    <span className="flex-1 min-w-0">{props.children}</span>
-                                  </li>
-                                ),
-                                strong: ({ node, ...props }) => (
-                                  <strong className="font-bold text-white" {...props} />
-                                ),
-                                blockquote: ({ node, ...props }) => (
-                                  <blockquote className="my-3.5 p-3.5 bg-gradient-to-r from-purple-950/40 to-slate-900 border-l-4 border-purple-500 rounded-r-2xl text-xs sm:text-sm text-purple-200 shadow-sm" {...props} />
-                                ),
-                                table: ({ node, ...props }) => (
-                                  <div className="my-3 rounded-2xl border border-slate-800 overflow-hidden text-xs shadow-md">
-                                    <table className="w-full text-left divide-y divide-slate-800" {...props} />
-                                  </div>
-                                ),
-                                th: ({ node, ...props }) => (
-                                  <th className="p-3 bg-slate-950 text-slate-400 font-extrabold text-[11px] uppercase tracking-wider" {...props} />
-                                ),
-                                td: ({ node, ...props }) => (
-                                  <td className="p-3 text-slate-300 border-b border-slate-800/50" {...props} />
-                                ),
-                                a: ({ node, href, children, ...props }: any) => (
-                                  <a
-                                    href={href}
-                                    target="_blank"
-                                    rel="noopener noreferrer"
-                                    className="inline-flex items-center gap-1.5 text-purple-300 hover:text-white bg-purple-500/15 hover:bg-purple-500/25 px-2.5 py-1 rounded-lg border border-purple-500/30 transition-all font-semibold text-xs no-underline group shadow-xs my-0.5 cursor-pointer"
-                                    {...props}
-                                  >
-                                    <ExternalLink size={12} className="text-purple-400 group-hover:text-purple-300 shrink-0" />
-                                    <span className="underline decoration-purple-400/40 group-hover:decoration-white">{children}</span>
-                                  </a>
-                                )
-                              }}
+                        {/* Assistant actions: Copy, Speak */}
+                        {msg.role === 'assistant' && (
+                          <div className="flex items-center gap-3 mt-1.5 text-slate-400 text-xs pl-2">
+                            <button
+                              type="button"
+                              onClick={() => handleCopy(msg.id, msg.content)}
+                              className="inline-flex items-center gap-1.5 px-2.5 py-1 rounded-lg bg-slate-900/60 hover:bg-slate-800 hover:text-white transition-all cursor-pointer text-slate-400"
+                              title={t('ws_copy_reply', "Kopier svar")}
                             >
-                              {formatAiMarkdown(msg.content)}
-                            </ReactMarkdown>
-                          </div>
-                        )}
-
-                        {/* Quick Replies below assistant message */}
-                        {msg.quickReplies && msg.quickReplies.length > 0 && (
-                          <div className="mt-4 pt-3 border-t border-slate-800 flex flex-wrap gap-2">
-                            {msg.quickReplies.map((qr, i) => (
-                              <button
-                                key={i}
-                                type="button"
-                                onClick={() => handleSendMessage(qr.payload || qr.title)}
-                                className="px-3 py-1.5 rounded-full bg-slate-800 hover:bg-purple-950/60 border border-slate-700 hover:border-purple-500/50 text-xs font-semibold text-slate-200 hover:text-white transition-all cursor-pointer shadow-xs active:scale-95"
-                              >
-                                {qr.title}
-                              </button>
-                            ))}
+                              {copiedId === msg.id ? <Check size={13} className="text-emerald-400" /> : <Copy size={13} />}
+                              <span>Kopier</span>
+                            </button>
+                            <button
+                              type="button"
+                              onClick={() => handleSpeakText(msg.content)}
+                              className="inline-flex items-center gap-1.5 px-2.5 py-1 rounded-lg bg-slate-900/60 hover:bg-slate-800 hover:text-white transition-all cursor-pointer text-slate-400"
+                              title={t('ws_listen_reply', "Les opp svar")}
+                            >
+                              {isSpeaking ? <VolumeX size={13} className="text-amber-400" /> : <Volume2 size={13} />}
+                              <span>{isSpeaking ? 'Stopp' : 'Les opp'}</span>
+                            </button>
                           </div>
                         )}
                       </div>
+                    );
+                  })}
 
-                      {/* Assistant actions: Copy, Speak */}
-                      {msg.role === 'assistant' && (
-                        <div className="flex items-center gap-2 mt-1 text-slate-500 text-xs pl-2">
-                          <button
-                            type="button"
-                            onClick={() => handleCopy(msg.id, msg.content)}
-                            className="p-1 hover:text-white transition-colors cursor-pointer"
-                            title={t('ws_copy_reply', "Kopier svar")}
-                          >
-                            {copiedId === msg.id ? <Check size={13} className="text-emerald-400" /> : <Copy size={13} />}
-                          </button>
-                          <button
-                            type="button"
-                            onClick={() => handleSpeakText(msg.content)}
-                            className="p-1 hover:text-white transition-colors cursor-pointer"
-                            title={t('ws_listen_reply', "Les opp svar")}
-                          >
-                            {isSpeaking ? <VolumeX size={13} className="text-amber-400" /> : <Volume2 size={13} />}
-                          </button>
-                        </div>
-                      )}
-                    </div>
-                  ))}
-
-                  {/* ✦ Next-Gen Dynamic Thinking & Reasoning HUD (Gemini / o3 / Perplexity inspired) */}
+                  {/* ✦ Next-Gen Dynamic Thinking & Reasoning HUD (Gemini / o3 inspired) */}
                   {isLoading && (() => {
                     const flow = getDynamicReasoningFlow(
                       activeThinkingQuery,
@@ -5904,45 +6313,48 @@ export default function MesterWorkstation({
                     );
 
                     return (
-                      <div className="w-full rounded-2xl bg-[#0c1220]/95 border border-purple-500/30 p-3.5 shadow-2xl backdrop-blur-xl animate-in fade-in duration-200 my-2.5 overflow-hidden relative">
-                        {/* Subtil bakgrunnsglød */}
-                        <div className="absolute -top-10 -left-10 w-28 h-28 bg-purple-600/10 rounded-full blur-2xl pointer-events-none" />
-                        <div className="absolute -bottom-10 -right-10 w-28 h-28 bg-blue-600/10 rounded-full blur-2xl pointer-events-none" />
+                      <div 
+                        ref={thinkingRef}
+                        className="w-full rounded-3xl bg-[#0c1220]/95 border border-amber-500/30 p-5 shadow-2xl backdrop-blur-xl animate-in fade-in duration-200 my-3 overflow-hidden relative scroll-mt-6 sm:scroll-mt-8"
+                      >
+                        {/* Subtil Gemini-aura bakgrunnsglød */}
+                        <div className="absolute -top-12 -left-12 w-44 h-44 bg-gradient-to-br from-amber-500/20 via-emerald-500/15 to-transparent rounded-full blur-3xl pointer-events-none animate-pulse" />
+                        <div className="absolute -bottom-12 -right-12 w-44 h-44 bg-gradient-to-tl from-purple-500/20 via-blue-500/15 to-transparent rounded-full blur-3xl pointer-events-none animate-pulse" />
 
                         {/* Topplinje med dynamisk oppgavetittel og sanntidstimer */}
-                        <div className="flex items-center justify-between pb-2 border-b border-white/10 relative z-10">
-                          <div className="flex items-center gap-2.5 min-w-0 pr-2">
-                            <div className="relative flex items-center justify-center w-7 h-7 rounded-lg bg-gradient-to-tr from-purple-600/25 to-blue-600/25 border border-purple-500/35 shrink-0">
-                              <Sparkles size={13} className="text-purple-300 animate-pulse" />
-                              <span className="absolute inset-0 rounded-lg bg-purple-400/20 animate-ping opacity-60" />
+                        <div className="flex items-center justify-between pb-3 border-b border-white/10 relative z-10">
+                          <div className="flex items-center gap-3 min-w-0 pr-2">
+                            <div className="relative flex items-center justify-center w-8 h-8 rounded-xl bg-gradient-to-tr from-amber-500/25 via-emerald-500/25 to-purple-500/25 border border-amber-500/40 shrink-0 shadow-sm">
+                              <span className="text-amber-300 text-sm font-bold select-none animate-pulse">✦</span>
+                              <span className="absolute inset-0 rounded-xl bg-amber-400/20 animate-ping opacity-50" />
                             </div>
                             <div className="flex flex-col min-w-0">
-                              <span className="text-xs font-bold text-white tracking-wide truncate">
+                              <span className="text-[17px] sm:text-[19px] font-bold text-white tracking-tight truncate">
                                 {flow.headline}
                               </span>
-                              <span className="text-[10px] text-purple-300/80 font-mono tracking-wider uppercase font-semibold">
+                              <span className="text-xs text-amber-300/90 font-mono tracking-wider uppercase font-semibold">
                                 {flow.subSummary}
                               </span>
                             </div>
                           </div>
 
                           {/* Sanntids tenketimer */}
-                          <div className="flex items-center gap-1.5 px-2.5 py-0.5 rounded-full bg-purple-500/15 border border-purple-500/30 text-[11px] font-mono text-purple-300 shrink-0">
-                            <span className="w-1.5 h-1.5 rounded-full bg-purple-400 animate-pulse" />
+                          <div className="flex items-center gap-1.5 px-3 py-1 rounded-full bg-amber-500/15 border border-amber-500/30 text-xs font-mono text-amber-300 shrink-0">
+                            <span className="w-2 h-2 rounded-full bg-amber-400 animate-pulse" />
                             <span>{activeThinkingDuration}s</span>
                           </div>
                         </div>
 
                         {/* Levende fremdriftslinje */}
-                        <div className="w-full h-0.5 bg-white/5 rounded-full overflow-hidden my-2.5 relative z-10">
+                        <div className="w-full h-1 bg-white/5 rounded-full overflow-hidden my-3 relative z-10">
                           <div 
-                            className="h-full bg-gradient-to-r from-purple-500 via-indigo-500 to-emerald-400 transition-all duration-700 ease-out rounded-full"
+                            className="h-full bg-gradient-to-r from-amber-500 via-emerald-400 to-purple-500 transition-all duration-700 ease-out rounded-full"
                             style={{ width: `${Math.min(96, Math.max(16, (activeThinkingDuration / 7.5) * 100))}%` }}
                           />
                         </div>
 
                         {/* Dynamisk punktvis resonneringsstrøm */}
-                        <div className="space-y-2 relative z-10">
+                        <div className="space-y-2.5 relative z-10">
                           {flow.steps.map((step, idx, arr) => {
                             const isDone = activeThinkingDuration >= (arr[idx + 1]?.time ?? 99);
                             const isActive = !isDone && activeThinkingDuration >= step.time;
@@ -5950,28 +6362,28 @@ export default function MesterWorkstation({
                             return (
                               <div 
                                 key={step.id} 
-                                className={`flex items-center gap-2.5 text-xs transition-all duration-300 ${
+                                className={`flex items-center gap-3 text-sm transition-all duration-300 ${
                                   isDone 
                                     ? 'text-slate-300 font-normal' 
                                     : isActive 
-                                    ? 'text-white font-medium drop-shadow-[0_0_8px_rgba(255,255,255,0.2)]' 
+                                    ? 'text-white font-semibold drop-shadow-[0_0_8px_rgba(255,255,255,0.2)]' 
                                     : 'text-slate-500/70 opacity-40'
                                 }`}
                               >
                                 {isDone ? (
-                                  <div className="w-4 h-4 rounded-full bg-emerald-500/20 text-emerald-400 border border-emerald-500/40 flex items-center justify-center shrink-0">
-                                    <Check size={10} strokeWidth={3} />
+                                  <div className="w-5 h-5 rounded-full bg-emerald-500/20 text-emerald-400 border border-emerald-500/40 flex items-center justify-center shrink-0">
+                                    <Check size={11} strokeWidth={3} />
                                   </div>
                                 ) : isActive ? (
-                                  <div className="w-4 h-4 rounded-full bg-purple-500/20 text-purple-300 border border-purple-500/40 flex items-center justify-center shrink-0">
-                                    <Loader2 size={10} className="animate-spin text-purple-400" />
+                                  <div className="w-5 h-5 rounded-full bg-amber-500/20 text-amber-300 border border-amber-500/40 flex items-center justify-center shrink-0">
+                                    <Loader2 size={11} className="animate-spin text-amber-400" />
                                   </div>
                                 ) : (
-                                  <div className="w-4 h-4 rounded-full bg-slate-800/80 border border-slate-700/80 flex items-center justify-center shrink-0">
+                                  <div className="w-5 h-5 rounded-full bg-slate-800/80 border border-slate-700/80 flex items-center justify-center shrink-0">
                                     <span className="w-1.5 h-1.5 rounded-full bg-slate-600" />
                                   </div>
                                 )}
-                                <span className="flex-1 truncate">
+                                <span className="flex-1 truncate text-[14px] sm:text-[15px]">
                                   {step.title}
                                   {isActive && <span className="inline-block animate-pulse ml-0.5">...</span>}
                                 </span>

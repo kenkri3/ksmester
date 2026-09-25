@@ -1,6 +1,6 @@
 'use client';
 
-import React, { useState, useRef, useEffect } from 'react';
+import React, { useState, useRef, useEffect, useCallback } from 'react';
 import { 
   Sparkles, 
   RefreshCw, 
@@ -198,6 +198,12 @@ export default function MesterAIAgentFrame({
 
   const messagesEndRef = useRef<HTMLDivElement>(null);
   const messagesContainerRef = useRef<HTMLDivElement>(null);
+  const latestMessageTopRef = useRef<HTMLDivElement>(null);
+  const latestTurnTopRef = useRef<HTMLDivElement>(null);
+  const isUserScrollingRef = useRef(false);
+  const thinkingRef = useRef<HTMLDivElement>(null);
+  const prevMessagesLengthRef = useRef(0);
+  const prevIsLoadingRef = useRef(false);
   const recognitionRef = useRef<any>(null);
   const textareaRef = useRef<HTMLTextAreaElement>(null);
   const loadingTimerRef = useRef<any>(null);
@@ -361,18 +367,112 @@ export default function MesterAIAgentFrame({
     }
   };
 
+  // 🎯 Gemini-stil presis scroll til toppen av svar / spørsmål
+  const performSmartScrollToTop = useCallback((smooth = true) => {
+    const container = messagesContainerRef.current;
+    if (!container) return;
+
+    const promptEl = latestTurnTopRef.current;
+    const assistantEl = latestMessageTopRef.current;
+
+    let targetEl: HTMLElement | null = assistantEl;
+    if (promptEl && assistantEl) {
+      const promptHeight = promptEl.offsetHeight;
+      if (promptHeight > 0 && promptHeight <= 180) {
+        targetEl = promptEl;
+      }
+    } else if (promptEl && !assistantEl) {
+      targetEl = promptEl;
+    }
+
+    if (!targetEl) return;
+
+    const containerRect = container.getBoundingClientRect();
+    const targetRect = targetEl.getBoundingClientRect();
+
+    const currentScrollTop = container.scrollTop;
+    const targetScrollTop = targetRect.top - containerRect.top + currentScrollTop;
+    const finalScrollTop = Math.max(0, targetScrollTop - 20);
+
+    container.scrollTo({
+      top: finalScrollTop,
+      behavior: smooth ? 'smooth' : 'auto'
+    });
+  }, []);
+
+  const handleUserScrollIntent = useCallback(() => {
+    isUserScrollingRef.current = true;
+  }, []);
+
+  // 📜 Gemini-stil smart scroll:
+  // Rull alltid til TOPPEN av det nye svaret slik at brukeren kan lese nedover
   useEffect(() => {
     try {
       sessionStorage.setItem(effectiveStorageKey, JSON.stringify(messages));
     } catch {}
-    // Scroll kun internt i meldingsboksen uten å rulle foreldrevinduet eller hele nettsiden
-    if (messagesContainerRef.current) {
-      messagesContainerRef.current.scrollTo({
-        top: messagesContainerRef.current.scrollHeight,
-        behavior: 'smooth'
-      });
+
+    const hadNewMessage = messages.length > prevMessagesLengthRef.current;
+    const justStoppedLoading = prevIsLoadingRef.current && !isLoading;
+    const justStartedLoading = !prevIsLoadingRef.current && isLoading;
+
+    prevMessagesLengthRef.current = messages.length;
+    prevIsLoadingRef.current = isLoading;
+
+    if (justStartedLoading) {
+      isUserScrollingRef.current = false;
+      const timer = setTimeout(() => {
+        const container = messagesContainerRef.current;
+        const target = latestTurnTopRef.current || thinkingRef.current;
+        if (container && target) {
+          const containerRect = container.getBoundingClientRect();
+          const targetRect = target.getBoundingClientRect();
+          const targetScrollTop = targetRect.top - containerRect.top + container.scrollTop;
+          container.scrollTo({
+            top: Math.max(0, targetScrollTop - 20),
+            behavior: 'smooth'
+          });
+        }
+      }, 50);
+      return () => clearTimeout(timer);
     }
-  }, [messages, effectiveStorageKey]);
+
+    if (hadNewMessage || justStoppedLoading) {
+      isUserScrollingRef.current = false;
+
+      // Fase 1: Umiddelbar posisjonering i rAF
+      const rafId = requestAnimationFrame(() => {
+        performSmartScrollToTop(false);
+      });
+
+      // Fase 2: Myk justering etter hydrering (60ms)
+      const t1 = setTimeout(() => {
+        if (!isUserScrollingRef.current) {
+          performSmartScrollToTop(true);
+        }
+      }, 60);
+
+      // Fase 3: Stabilisering etter at innholdet har satt seg (200ms)
+      const t2 = setTimeout(() => {
+        if (!isUserScrollingRef.current) {
+          performSmartScrollToTop(true);
+        }
+      }, 200);
+
+      // Fase 4: Endelig garanti for topp-låsing (450ms)
+      const t3 = setTimeout(() => {
+        if (!isUserScrollingRef.current) {
+          performSmartScrollToTop(true);
+        }
+      }, 450);
+
+      return () => {
+        cancelAnimationFrame(rafId);
+        clearTimeout(t1);
+        clearTimeout(t2);
+        clearTimeout(t3);
+      };
+    }
+  }, [messages, isLoading, effectiveStorageKey, performSmartScrollToTop]);
 
   const handleClearHistory = () => {
     if (typeof window !== 'undefined') {
@@ -637,58 +737,58 @@ export default function MesterAIAgentFrame({
     const formatted = formatAiMarkdown(content || '');
 
     return (
-      <div className="text-slate-800 leading-relaxed font-sans text-[13.5px] sm:text-sm">
+      <div className="text-slate-900 leading-[1.65] font-sans text-[16px] sm:text-[17.5px]">
         <ReactMarkdown
           remarkPlugins={[remarkGfm]}
           components={{
             p: ({ children }) => (
-              <p className="text-[13.5px] sm:text-sm text-slate-800 leading-relaxed my-2 first:mt-0 last:mb-0">
+              <p className="text-[16px] sm:text-[17.5px] text-slate-900 leading-[1.65] my-2.5 first:mt-0 last:mb-0">
                 {children}
               </p>
             ),
             strong: ({ children }) => (
-              <strong className="font-extrabold text-navy-950 bg-slate-100 px-1 py-0.5 rounded text-[13px]">
+              <strong className="font-bold text-slate-950">
                 {children}
               </strong>
             ),
             em: ({ children }) => (
-              <em className="italic text-slate-700">
+              <em className="italic text-slate-800">
                 {children}
               </em>
             ),
             ul: ({ children }) => (
-              <ul className="space-y-2 my-2.5 pl-2 list-none text-[13.5px] sm:text-sm text-slate-800">
+              <ul className="space-y-2.5 my-3 pl-1 list-none text-[16px] sm:text-[17.5px] text-slate-900">
                 {children}
               </ul>
             ),
             ol: ({ children }) => (
-              <ol className="list-decimal space-y-2 my-2.5 pl-5 text-[13.5px] sm:text-sm text-slate-800 font-medium">
+              <ol className="list-decimal space-y-2.5 my-3 pl-6 text-[16px] sm:text-[17.5px] text-slate-900 font-normal">
                 {children}
               </ol>
             ),
             li: ({ children }) => (
-              <li className="text-[13.5px] sm:text-sm text-slate-800 leading-relaxed flex items-start gap-2.5">
-                <span className="w-1.5 h-1.5 rounded-full bg-electric-600 mt-2 shrink-0 shadow-xs" />
+              <li className="text-[16px] sm:text-[17.5px] text-slate-900 leading-[1.65] flex items-start gap-3">
+                <span className="w-2 h-2 rounded-full border-2 border-electric-600 bg-electric-100 mt-2 shrink-0 shadow-xs" />
                 <span className="flex-1 min-w-0">{children}</span>
               </li>
             ),
             h1: ({ children }) => (
-              <h3 className="text-sm sm:text-base font-black text-navy-950 mt-4 mb-2 pb-1 border-b border-slate-200">
+              <h3 className="text-[20px] sm:text-[22px] font-black text-navy-950 mt-4 mb-2 pb-1.5 border-b border-slate-200">
                 {children}
               </h3>
             ),
             h2: ({ children }) => (
-              <h4 className="text-[13.5px] sm:text-sm font-black text-electric-800 mt-3.5 mb-1.5">
+              <h4 className="text-[18px] sm:text-[20px] font-black text-electric-900 mt-3.5 mb-1.5">
                 {children}
               </h4>
             ),
             h3: ({ children }) => (
-              <h5 className="text-[12.5px] sm:text-[13px] font-bold text-teal-800 bg-teal-50 border border-teal-200/60 px-2.5 py-1 rounded-lg w-fit mt-3 mb-1.5 flex items-center gap-1">
+              <h5 className="text-[16px] sm:text-[17px] font-bold text-teal-900 bg-teal-50 border border-teal-200/80 px-3 py-1 rounded-lg w-fit mt-3 mb-1.5 flex items-center gap-1.5">
                 {children}
               </h5>
             ),
             blockquote: ({ children }) => (
-              <blockquote className="border-l-4 border-electric-500 bg-gradient-to-r from-electric-50/80 to-slate-50 pl-3.5 py-2.5 my-3 rounded-r-xl text-xs sm:text-[13px] text-navy-950 font-medium shadow-xs">
+              <blockquote className="border-l-4 border-electric-500 bg-gradient-to-r from-electric-50/80 to-slate-50 pl-4 py-3 my-3.5 rounded-r-xl text-[15px] sm:text-[16px] text-navy-950 font-medium shadow-xs">
                 {children}
               </blockquote>
             )
@@ -757,93 +857,112 @@ export default function MesterAIAgentFrame({
       {/* 💬 Meldinger-container */}
       <div 
         ref={messagesContainerRef}
-        className="flex-1 overflow-y-auto p-4 sm:p-5 space-y-4 bg-slate-50/50 custom-scrollbar"
+        onWheel={handleUserScrollIntent}
+        onTouchMove={handleUserScrollIntent}
+        style={{ overflowAnchor: 'none' }}
+        className="flex-1 overflow-y-auto p-4 sm:p-5 space-y-4 bg-slate-50/50 custom-scrollbar [overflow-anchor:none]"
       >
-        {messages.map((msg) => (
-          <div 
-            key={msg.id}
-            className={cn(
-              "flex flex-col gap-1.5 max-w-[92%] sm:max-w-[85%]",
-              msg.role === 'user' ? "ml-auto items-end" : "mr-auto items-start"
-            )}
-          >
-            <div className={cn(
-              "p-3.5 sm:p-4 rounded-2xl shadow-xs transition-all",
-              msg.role === 'user' 
-                ? "bg-gradient-to-r from-electric-600 to-electric-500 text-white rounded-br-xs shadow-md shadow-electric-600/15" 
-                : "bg-white text-navy-950 border border-slate-200/90 rounded-bl-xs"
-            )}>
-              {msg.role === 'assistant' && (
-                <div className="flex items-center justify-between gap-2 mb-2 pb-1.5 border-b border-slate-100 flex-wrap">
-                  <div className="flex items-center gap-1.5 text-xs font-black text-electric-700">
-                    <Bot size={14} />
-                    <span>MesterAI Pilot</span>
-                  </div>
-                  <div className="flex items-center gap-2">
-                    <span className="text-[10px] text-slate-400">{msg.timestamp}</span>
-                    <button
-                      type="button"
-                      onClick={() => handleCopy(msg.id, msg.content)}
-                      className="text-slate-400 hover:text-navy-900 transition-colors cursor-pointer"
-                      title="Kopier"
-                    >
-                      {copiedId === msg.id ? <Check size={12} className="text-emerald-600" /> : <Copy size={12} />}
-                    </button>
-                  </div>
-                </div>
-              )}
+        {messages.map((msg, idx) => {
+          const isLatest = idx === messages.length - 1;
+          const isPromptForLatest = 
+            idx === messages.length - 2 && 
+            msg.role === 'user' && 
+            messages[messages.length - 1]?.role === 'assistant';
 
-              {msg.role === 'user' ? (
-                <div>
-                  {msg.imageUrl && (
-                    <div className="mb-2 rounded-xl overflow-hidden border border-white/20 shadow-xs max-w-[240px]">
-                      <img 
-                        src={msg.imageUrl} 
-                        alt="Vedlagt foto" 
-                        className="w-full h-auto max-h-48 object-cover rounded-lg"
-                      />
+          return (
+            <div 
+              key={msg.id}
+              ref={
+                isPromptForLatest 
+                  ? latestTurnTopRef 
+                  : isLatest 
+                  ? latestMessageTopRef 
+                  : undefined
+              }
+              className={cn(
+                "flex flex-col gap-1.5 max-w-[94%] sm:max-w-[85%] scroll-mt-4 sm:scroll-mt-6 transition-all",
+                msg.role === 'user' ? "ml-auto items-end" : "mr-auto items-start w-full"
+              )}
+            >
+              <div className={cn(
+                "p-4 sm:p-5 rounded-3xl shadow-sm transition-all w-full",
+                msg.role === 'user' 
+                  ? "bg-[#24272a] text-white rounded-br-md max-w-fit ml-auto" 
+                  : "bg-white text-navy-950 border border-slate-200/90 rounded-bl-md"
+              )}>
+                {msg.role === 'assistant' && (
+                  <div className="flex items-center justify-between gap-2 mb-2 pb-1.5 border-b border-slate-100 flex-wrap">
+                    <div className="flex items-center gap-1.5 text-xs font-black text-electric-700">
+                      <Bot size={14} />
+                      <span>MesterAI Pilot</span>
                     </div>
-                  )}
-                  <div className="text-xs sm:text-sm leading-relaxed whitespace-pre-wrap text-white font-medium">
-                    {formatUserMessage(msg.content)}
+                    <div className="flex items-center gap-2">
+                      <span className="text-[10px] text-slate-400">{msg.timestamp}</span>
+                      <button
+                        type="button"
+                        onClick={() => handleCopy(msg.id, msg.content)}
+                        className="text-slate-400 hover:text-navy-900 transition-colors cursor-pointer"
+                        title="Kopier"
+                      >
+                        {copiedId === msg.id ? <Check size={12} className="text-emerald-600" /> : <Copy size={12} />}
+                      </button>
+                    </div>
                   </div>
-                </div>
-              ) : (
-                renderFormattedContent(msg.content)
-              )}
+                )}
 
-              {/* Hurtigvalg (Quick Replies) */}
-              {msg.quickReplies && msg.quickReplies.length > 0 && (
-                <div className="mt-3 pt-2.5 border-t border-slate-100 grid grid-cols-2 gap-2">
-                  {msg.quickReplies.map((qr, i) => (
-                    <button
-                      key={i}
-                      type="button"
-                      disabled={isLoading}
-                      onClick={() => handleSendMessage(qr.payload || qr.title, undefined, qr.title)}
-                      className="flex items-center justify-center text-center px-2.5 py-2.5 rounded-xl bg-slate-50 hover:bg-electric-50 text-slate-800 hover:text-electric-900 text-xs font-bold border border-slate-200 hover:border-electric-300 transition-all cursor-pointer shadow-2xs active:scale-95 leading-snug"
-                    >
-                      <span className="line-clamp-2 break-words">{qr.title}</span>
-                    </button>
-                  ))}
-                </div>
-              )}
+                {msg.role === 'user' ? (
+                  <div>
+                    {msg.imageUrl && (
+                      <div className="mb-2 rounded-xl overflow-hidden border border-white/20 shadow-xs max-w-[240px]">
+                        <img 
+                          src={msg.imageUrl} 
+                          alt="Vedlagt foto" 
+                          className="w-full h-auto max-h-48 object-cover rounded-lg"
+                        />
+                      </div>
+                    )}
+                    <div className="text-[16px] sm:text-[17.5px] leading-relaxed whitespace-pre-wrap text-white font-medium">
+                      {formatUserMessage(msg.content)}
+                    </div>
+                  </div>
+                ) : (
+                  renderFormattedContent(msg.content)
+                )}
+
+                {/* Hurtigvalg (Quick Replies) */}
+                {msg.quickReplies && msg.quickReplies.length > 0 && (
+                  <div className="mt-3.5 pt-3 border-t border-slate-100 grid grid-cols-2 gap-2">
+                    {msg.quickReplies.map((qr, i) => (
+                      <button
+                        key={i}
+                        type="button"
+                        disabled={isLoading}
+                        onClick={() => handleSendMessage(qr.payload || qr.title, undefined, qr.title)}
+                        className="flex items-center justify-center text-center px-3 py-2.5 rounded-xl bg-slate-50 hover:bg-electric-50 text-slate-800 hover:text-electric-900 text-xs sm:text-sm font-bold border border-slate-200 hover:border-electric-300 transition-all cursor-pointer shadow-2xs active:scale-95 leading-snug"
+                      >
+                        <span className="line-clamp-2 break-words">{qr.title}</span>
+                      </button>
+                    ))}
+                  </div>
+                )}
+              </div>
             </div>
-          </div>
-        ))}
+          );
+        })}
 
         {isLoading && (
-          <div className="mr-auto items-start max-w-[88%]">
-            <div className="bg-white p-3 sm:p-3.5 rounded-2xl border border-slate-200/90 shadow-2xs flex items-center gap-3 animate-in fade-in duration-200">
-              <div className="w-7 h-7 rounded-xl bg-gradient-to-tr from-electric-600 via-indigo-600 to-purple-500 text-white flex items-center justify-center shrink-0 shadow-xs">
-                <RefreshCw size={13} className="animate-spin" />
+          <div ref={thinkingRef} className="mr-auto items-start max-w-[92%] sm:max-w-[85%] scroll-mt-4 sm:scroll-mt-6">
+            <div className="bg-white p-4 sm:p-4.5 rounded-2xl border border-amber-300/80 shadow-md flex items-center gap-3.5 animate-in fade-in duration-200 relative overflow-hidden">
+              <div className="absolute -top-6 -left-6 w-24 h-24 bg-amber-400/10 rounded-full blur-xl pointer-events-none" />
+              <div className="w-8 h-8 rounded-xl bg-gradient-to-tr from-amber-500 via-orange-500 to-amber-600 text-white flex items-center justify-center shrink-0 shadow-xs">
+                <span className="text-amber-100 text-sm font-bold animate-pulse">✦</span>
               </div>
               <div className="flex flex-col min-w-0 pr-1">
-                <span className="text-xs text-slate-800 font-semibold leading-tight animate-pulse transition-all">
+                <span className="text-sm sm:text-[15px] text-slate-900 font-bold leading-tight animate-pulse transition-all">
                   {loadingStatus}
                 </span>
-                <span className="text-[10px] text-slate-400 font-medium mt-0.5">
-                  MesterAI Autonom Agent
+                <span className="text-[11px] text-amber-600/90 font-semibold mt-0.5">
+                  MesterAI tenker og analyserer...
                 </span>
               </div>
             </div>

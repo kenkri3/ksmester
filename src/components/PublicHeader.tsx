@@ -75,18 +75,14 @@ export function PublicHeader() {
       <header className="sticky top-0 z-40 bg-white/95 backdrop-blur-md border-b border-slate-200 shadow-xs">
         <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 h-16 flex items-center justify-between">
           {/* Logo & Vision Tag */}
-          <div className="flex items-center gap-3">
+          <div className="flex items-center gap-3 shrink-0">
             <Link href="/" className="flex items-center gap-2.5">
               <Logo size="md" />
             </Link>
-            <span className="hidden lg:inline-flex items-center gap-1 text-[10px] font-black uppercase tracking-widest text-emerald-700 bg-emerald-50 px-2.5 py-0.5 rounded-full border border-emerald-200">
-              <span className="w-1.5 h-1.5 rounded-full bg-emerald-500 animate-pulse" />
-              100% AUTONOM BYGGELEDER
-            </span>
           </div>
 
           {/* Desktop Nav - SELLER DRØMMEN */}
-          <nav className="hidden md:flex items-center gap-5 text-xs lg:text-sm font-semibold text-slate-700">
+          <nav className="hidden lg:flex items-center gap-2 xl:gap-3 2xl:gap-4 text-xs font-semibold text-slate-700">
             {/* Superkrefter / Autonome Løsninger Dropdown */}
             <div className="relative group">
               <button
@@ -302,26 +298,26 @@ export function PublicHeader() {
             </Link>
 
             {/* FAQ */}
-            <Link href="/faq" className="hover:text-electric-600 transition-colors">
+            <Link href="/faq" className="hidden xl:inline-flex hover:text-electric-600 transition-colors whitespace-nowrap">
               FAQ
             </Link>
 
             {/* Om oss */}
-            <Link href="/om-oss" className="hover:text-electric-600 transition-colors">
+            <Link href="/om-oss" className="hidden xl:inline-flex hover:text-electric-600 transition-colors whitespace-nowrap">
               Om oss
             </Link>
 
             {/* Kontakt */}
-            <Link href="/kontakt" className="hover:text-electric-600 transition-colors">
+            <Link href="/kontakt" className="hidden lg:inline-flex hover:text-electric-600 transition-colors whitespace-nowrap">
               Kontakt
             </Link>
           </nav>
 
           {/* Action buttons */}
-          <div className="hidden sm:flex items-center gap-2.5 shrink-0">
+          <div className="hidden lg:flex items-center gap-2 xl:gap-2.5 shrink-0">
             <Link
               href="/?login=true"
-              className="whitespace-nowrap shrink-0 px-3 py-2 text-xs font-bold text-slate-700 hover:text-navy-900 hover:bg-slate-100 rounded-xl transition-colors"
+              className="whitespace-nowrap shrink-0 px-2.5 xl:px-3 py-2 text-xs font-bold text-slate-700 hover:text-navy-900 hover:bg-slate-100 rounded-xl transition-colors"
             >
               Logg inn
             </Link>
@@ -336,17 +332,18 @@ export function PublicHeader() {
                   }
                 }
               }}
-              className="whitespace-nowrap shrink-0 px-4 py-2 text-xs font-extrabold text-white bg-gradient-to-r from-electric-500 to-electric-400 hover:from-electric-400 hover:to-electric-300 rounded-xl transition-all shadow-md shadow-electric-500/25 flex items-center gap-1.5 active:scale-95"
+              className="whitespace-nowrap shrink-0 px-3.5 xl:px-4 py-2 text-xs font-extrabold text-white bg-gradient-to-r from-electric-500 to-electric-400 hover:from-electric-400 hover:to-electric-300 rounded-xl transition-all shadow-md shadow-electric-500/25 flex items-center gap-1.5 active:scale-95"
             >
               <Sparkles size={14} className="text-amber-300 animate-pulse shrink-0" />
-              <span>Start 14 dager gratis</span>
+              <span className="hidden xl:inline">Start 14 dager gratis</span>
+              <span className="xl:hidden">Prøv gratis</span>
             </Link>
           </div>
 
           {/* Mobile menu button */}
           <button
             onClick={() => setMobileMenuOpen(!mobileMenuOpen)}
-            className="md:hidden p-2 text-slate-700 hover:text-navy-900 rounded-lg hover:bg-slate-100"
+            className="lg:hidden p-2 text-slate-700 hover:text-navy-900 rounded-lg hover:bg-slate-100"
             aria-label="Meny"
           >
             {mobileMenuOpen ? <X size={24} /> : <Menu size={24} />}
@@ -355,7 +352,7 @@ export function PublicHeader() {
 
         {/* Mobile nav modal/dropdown */}
         {mobileMenuOpen && (
-          <div className="md:hidden bg-white border-b border-slate-200 px-4 pt-2 pb-6 space-y-3">
+          <div className="lg:hidden bg-white border-b border-slate-200 px-4 pt-2 pb-6 space-y-3">
             <div className="font-bold text-xs uppercase tracking-wider text-slate-400 pt-2 flex items-center justify-between">
               <span>Autonome Superkrefter</span>
               <span className="text-emerald-600 font-bold text-[10px]">100% Autonom & Offline</span>

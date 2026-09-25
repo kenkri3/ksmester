@@ -1,6 +1,6 @@
 'use client';
 
-import React, { useState, useEffect, useRef, useMemo } from 'react';
+import React, { useState, useEffect, useRef, useMemo, useCallback } from 'react';
 import { motion, AnimatePresence } from 'motion/react';
 import { 
   Sparkles, 
@@ -86,6 +86,11 @@ export default function MesterAICopilot({
 
   const messagesEndRef = useRef<HTMLDivElement>(null);
   const messagesContainerRef = useRef<HTMLDivElement>(null);
+  const latestMessageTopRef = useRef<HTMLDivElement>(null);
+  const latestTurnTopRef = useRef<HTMLDivElement>(null);
+  const isUserScrollingRef = useRef(false);
+  const prevMessagesLengthRef = useRef(0);
+  const prevIsLoadingRef = useRef(false);
   const textareaRef = useRef<HTMLTextAreaElement>(null);
   const fileInputRef = useRef<HTMLInputElement>(null);
   const recognitionRef = useRef<any>(null);
@@ -189,6 +194,138 @@ export default function MesterAICopilot({
       };
     }
 
+    if (activeModuleTab === 'vehicle') {
+      return {
+        id: 'context-vehicle',
+        role: 'assistant' as const,
+        content: `Hei ${userName}! 🚗 Du er i **Bilpark & Elektronisk Kjørebok**.\n\nHer har du full oversikt over firmabiler og privatbiler. Systemet beregner automatisk **4,90 kr/km (Statens satser) + bompenger** og klargjør godkjente bilag for lønn, faktura og regnskap (Tripletex/Fiken).\n\nDu kan diktere turer med stemmen («Før 28 km til Vidjeveien»), godkjenne oppdagede turer, eller hente månedsoversikt. Hva vil du gjøre?`,
+        timestamp: timeStr,
+        quickReplies: [
+          { title: '💡 Hvordan fungerer kjøreboken?', payload: 'Forklar meg hvordan elektronisk kjørebok og flåtestyring fungerer i praksis, og hvordan jeg fører eller eksporterer turer.' },
+          { title: '🎙️ Før tur med stemmen', payload: 'Hvordan fører jeg turer enklest mulig med stemmen her?' },
+          { title: '📊 Beregning & Statens satser', payload: 'Hvordan regnes kilometergodtgjørelse og bompenger ut iht. Skatteetaten?' },
+          { title: '📁 Eksport til Tripletex/regnskap', payload: 'Hvordan eksporterer jeg kjøreboken til Tripletex eller regnskap?' }
+        ]
+      };
+    }
+
+    if (activeModuleTab === 'pre_close') {
+      return {
+        id: 'context-pre_close',
+        role: 'assistant' as const,
+        content: `Hei ${userName}! 🔒 Du er i **KS & Lukkesperre (TEK17)** ${projLabel}.\n\nLukkesperren sikrer at ingen vegger, bjelkelag eller våtrom lukkes før skjulte installasjoner (rør, el, ventilasjon, dampsperre) er godkjent og fotodokumentert. Dette forhindrer dyre reklamasjoner og tvister!\n\nHva vil du kontrollere eller forsegle i dag?`,
+        timestamp: timeStr,
+        quickReplies: [
+          { title: '💡 Hva er en lukkesperre?', payload: 'Hva er en lukkesperre, og hvorfor kreves dette iht. TEK17?' },
+          { title: '📸 Dokumenter skjult installasjon', payload: `Hvordan forsegler og fotodokumenterer jeg en lukkesone på ${currentProjName || 'prosjektet'}?` },
+          { title: '✅ Sjekkliste før lukking', payload: 'Hva må sjekkes før vi lukker vegger og bjelkelag?' },
+          { title: '📋 Vis godkjente lukkesoner', payload: `Vis status for alle lukkesoner på ${currentProjName || 'prosjektet'}` }
+        ]
+      };
+    }
+
+    if (activeModuleTab === 'archive') {
+      return {
+        id: 'context-archive',
+        role: 'assistant' as const,
+        content: `Hei ${userName}! 📁 Du er i **Dokumentarkiv & FDV** ${projLabel}.\n\nHer samles alle FDV-blader, produktdatablad, tegninger, samsvarserklæringer og fotobevis automatisk. Ved prosjektslutt kan du generere en komplett, profesjonell FDV-sluttrapport med ett klikk til byggherren!\n\nHva trenger du hjelp til?`,
+        timestamp: timeStr,
+        quickReplies: [
+          { title: '📑 Generer komplett FDV-perm', payload: `Hvordan genererer og eksporterer jeg en komplett FDV-perm for ${currentProjName || 'prosjektet'}?` },
+          { title: '📂 Hvilke dokumenter må med?', payload: 'Hvilken FDV-dokumentasjon kreves ved overlevering til kunde?' },
+          { title: '🔍 Søk i produktdatablad', payload: 'Hvordan finner jeg datablad og monteringsanvisninger i arkivet?' },
+          { title: '📤 Del arkiv med kunde', payload: 'Hvordan gir jeg byggherre eller kunde tilgang til prosjektarkivet?' }
+        ]
+      };
+    }
+
+    if (activeModuleTab === 'contacts') {
+      return {
+        id: 'context-contacts',
+        role: 'assistant' as const,
+        content: `Hei ${userName}! 👥 Du er i **Prosjektkontakter & Telefonbok** ${projLabel}.\n\nHer administrerer du håndverkere, lærlinger, underentreprenører og byggherrer. Du kan tildele byggeplasser, sende innloggingslenker og definere roller med ett klikk!\n\nHvem vil du legge til eller administrere?`,
+        timestamp: timeStr,
+        quickReplies: [
+          { title: '➕ Inviter ny håndverker', payload: 'Hvordan inviterer jeg en ny fagarbeider eller lærling til systemet?' },
+          { title: '🔑 Forklar tilgangsnivåer', payload: 'Hva er forskjellen på SuperAdmin, Leder, Håndverker og Kunde-tilgang?' },
+          { title: '👷 Tildel byggeplass', payload: `Hvordan tildeler jeg ansatte til ${currentProjName || 'byggeplasser'}?` },
+          { title: '✉️ Send innloggingslenke', payload: 'Hvordan sender jeg en direkte innloggingslenke til en kollega?' }
+        ]
+      };
+    }
+
+    if (activeModuleTab === 'apprentice') {
+      return {
+        id: 'context-apprentice',
+        role: 'assistant' as const,
+        content: `Hei ${userName}! 🎓 Du er i **Lærlingmodul & Opplæringsbok** ${projLabel}.\n\nHer kobles lærlingens daglige byggeplassarbeid direkte mot læreplanmålene (Udir). MesterAI foreslår relevante kompetansemål ut fra utført arbeid, så faglig leder og lærling sparer timevis med papirarbeid!\n\nHva vil du registrere eller gjennomgå?`,
+        timestamp: timeStr,
+        quickReplies: [
+          { title: '📖 Hvordan fungerer lærlingmodulen?', payload: 'Hvordan bruker lærlingen og faglig leder opplæringsboken i Vikingmester?' },
+          { title: '🎯 Koble arbeid mot læreplanmål', payload: 'Hvordan kobler jeg dagens tømrerarbeid til læreplanmålene?' },
+          { title: '✍️ Veiledergodkjenning', payload: 'Hvordan godkjenner jeg utførte lærlingoppgaver som faglig leder?' },
+          { title: '📊 Vis fremdriftsrapport', payload: 'Hvordan ser lærlingens samlede måloppnåelse ut mot svenneprøven?' }
+        ]
+      };
+    }
+
+    if (activeModuleTab === 'teamchat') {
+      return {
+        id: 'context-teamchat',
+        role: 'assistant' as const,
+        content: `Hei ${userName}! 💬 Du er i **Prosjekt- & Firmachatt** ${projLabel}.\n\nHer foregår all internkommunikasjon trygt samlet på byggeplassen, uten at viktige avtaler forsvinner i rotete private SMS-tråder. Alle beskjeder, bilder og HMS-varsler forblir søkbare og knyttet til prosjektet!\n\nHva lurer du på?`,
+        timestamp: timeStr,
+        quickReplies: [
+          { title: '📢 Hvordan varsler jeg alle?', payload: 'Hvordan sender jeg en fellesbeskjed til alle på byggeplassen?' },
+          { title: '🔒 Hvem kan se meldingene?', payload: 'Hvem har tilgang til denne prosjektchatten?' },
+          { title: '📸 Deling av bilder og tegninger', payload: 'Hvordan deler vi byggeplassbilder og tegninger i chatten?' }
+        ]
+      };
+    }
+
+    if (activeModuleTab === 'superadmin') {
+      return {
+        id: 'context-superadmin',
+        role: 'assistant' as const,
+        content: `Hei ${userName}! 👑 Du er i **SuperAdmin Portal & SaaS Drift**.\n\nHer har du full oversikt over hele plattformen: bedrifter, abonnement, marginer (96–98%), tokenforbruk, AI-drift og brukerinvitasjoner.\n\nHva vil du overvåke eller justere?`,
+        timestamp: timeStr,
+        quickReplies: [
+          { title: '🛡️ Margin & Token-sikring', payload: 'Hvordan er marginer og token-sikringen lagt opp i Vikingmester?' },
+          { title: '🏢 Bedriftsoversikt & Kunder', payload: 'Hvordan administrerer jeg bedrifter og aktive abonnement?' },
+          { title: '✉️ Inviter SuperAdmin / Kunde', payload: 'Hvordan oppretter og inviterer jeg en ny bedrift eller SuperAdmin?' }
+        ]
+      };
+    }
+
+    if (activeModuleTab === 'all_modules') {
+      return {
+        id: 'context-all_modules',
+        role: 'assistant' as const,
+        content: `Hei ${userName}! 🧩 Du er i **Moduloversikten**.\n\nVikingmester dekker hele verdikjeden for håndverkere: Kalkyle, Kontrakter, Byggedagbok, Kjørebok, SJA, Avvik, Lukkesperre, FDV og HMS. Alle moduler er samkjørte og deler prosjektdata automatisk!\n\nHvilken modul vil du lære mer om eller åpne?`,
+        timestamp: timeStr,
+        quickReplies: [
+          { title: '🚗 Kjørebok & Bilpark', payload: 'Forklar hvordan kjøreboken fungerer og regner ut kilometergodtgjørelse.' },
+          { title: '🔒 KS & Lukkesperre', payload: 'Forklar hvordan lukkesperre fungerer iht. TEK17.' },
+          { title: '📋 Endringsordrer (NS 8406)', payload: 'Forklar hvordan endringsordrer og varsler fungerer.' },
+          { title: '📁 Dokumentarkiv & FDV', payload: 'Hvordan fungerer automatisk FDV-generering?' }
+        ]
+      };
+    }
+
+    if (activeModuleTab === 'create_project') {
+      return {
+        id: 'context-create_project',
+        role: 'assistant' as const,
+        content: `Hei ${userName}! 🏗️ Du er i **Opprett nytt prosjekt**.\n\nHer setter du opp en ny byggeplass med kundeinformasjon, adresse, entrepriseform og oppstartsjekkliste. Du kan også bare fortelle meg om jobben i chatten, så oppretter jeg hele prosjektet for deg!\n\nHva slags prosjekt skal dere starte?`,
+        timestamp: timeStr,
+        quickReplies: [
+          { title: '🏠 Opprett enebolig / tilbygg', payload: 'Hjelp meg å opprette et nytt tilbygg-prosjekt med full struktur.' },
+          { title: '🚿 Opprett bad renovering', payload: 'Hjelp meg å opprette et bad-oppussingsprosjekt iht. Våtromsnormen.' },
+          { title: '📋 Sjekkliste ved prosjektoppstart', payload: 'Hvilke lovpålagte HMS- og KS-dokumenter må opprettes ved prosjektoppstart?' }
+        ]
+      };
+    }
+
     // Standard velkomst (prosjektoversikt, dashboard eller andre visninger)
     return {
       id: 'context-general',
@@ -226,20 +363,113 @@ export default function MesterAICopilot({
     }
   }, [contextualGreeting]);
 
-  // Lagre historikk
+  // 🎯 Gemini-stil presis scroll til toppen av svar / spørsmål
+  const performSmartScrollToTop = useCallback((smooth = true) => {
+    const container = messagesContainerRef.current;
+    if (!container) return;
+
+    const promptEl = latestTurnTopRef.current;
+    const assistantEl = latestMessageTopRef.current;
+
+    let targetEl: HTMLElement | null = assistantEl;
+    if (promptEl && assistantEl) {
+      const promptHeight = promptEl.offsetHeight;
+      if (promptHeight > 0 && promptHeight <= 180) {
+        targetEl = promptEl;
+      }
+    } else if (promptEl && !assistantEl) {
+      targetEl = promptEl;
+    }
+
+    if (!targetEl) return;
+
+    const containerRect = container.getBoundingClientRect();
+    const targetRect = targetEl.getBoundingClientRect();
+
+    const currentScrollTop = container.scrollTop;
+    const targetScrollTop = targetRect.top - containerRect.top + currentScrollTop;
+    const finalScrollTop = Math.max(0, targetScrollTop - 16);
+
+    container.scrollTo({
+      top: finalScrollTop,
+      behavior: smooth ? 'smooth' : 'auto'
+    });
+  }, []);
+
+  const handleUserScrollIntent = useCallback(() => {
+    isUserScrollingRef.current = true;
+  }, []);
+
+  // Lagre historikk & smart scroll til toppen av nye svar
   useEffect(() => {
     if (typeof window !== 'undefined' && messages.length > 0) {
       try {
         sessionStorage.setItem('mester_copilot_history', JSON.stringify(messages));
       } catch {}
     }
-    if (messagesContainerRef.current) {
-      messagesContainerRef.current.scrollTo({
-        top: messagesContainerRef.current.scrollHeight,
-        behavior: 'smooth'
-      });
+
+    const hadNewMessage = messages.length > prevMessagesLengthRef.current;
+    const justStoppedLoading = prevIsLoadingRef.current && !isLoading;
+    const justStartedLoading = !prevIsLoadingRef.current && isLoading;
+
+    prevMessagesLengthRef.current = messages.length;
+    prevIsLoadingRef.current = isLoading;
+
+    if (justStartedLoading) {
+      isUserScrollingRef.current = false;
+      const timer = setTimeout(() => {
+        const container = messagesContainerRef.current;
+        const target = latestTurnTopRef.current || latestMessageTopRef.current;
+        if (container && target) {
+          const containerRect = container.getBoundingClientRect();
+          const targetRect = target.getBoundingClientRect();
+          const targetScrollTop = targetRect.top - containerRect.top + container.scrollTop;
+          container.scrollTo({
+            top: Math.max(0, targetScrollTop - 16),
+            behavior: 'smooth'
+          });
+        }
+      }, 50);
+      return () => clearTimeout(timer);
     }
-  }, [messages]);
+
+    if (hadNewMessage || justStoppedLoading) {
+      isUserScrollingRef.current = false;
+
+      // Fase 1: Umiddelbar posisjonering i rAF
+      const rafId = requestAnimationFrame(() => {
+        performSmartScrollToTop(false);
+      });
+
+      // Fase 2: Myk justering etter hydrering (60ms)
+      const t1 = setTimeout(() => {
+        if (!isUserScrollingRef.current) {
+          performSmartScrollToTop(true);
+        }
+      }, 60);
+
+      // Fase 3: Stabilisering (200ms)
+      const t2 = setTimeout(() => {
+        if (!isUserScrollingRef.current) {
+          performSmartScrollToTop(true);
+        }
+      }, 200);
+
+      // Fase 4: Endelig garanti for topp-låsing (450ms)
+      const t3 = setTimeout(() => {
+        if (!isUserScrollingRef.current) {
+          performSmartScrollToTop(true);
+        }
+      }, 450);
+
+      return () => {
+        cancelAnimationFrame(rafId);
+        clearTimeout(t1);
+        clearTimeout(t2);
+        clearTimeout(t3);
+      };
+    }
+  }, [messages, isLoading, performSmartScrollToTop]);
 
   // Tastatursnarvei: Ctrl+M eller Cmd+K for å åpne/lukke Copilot overalt
   useEffect(() => {
@@ -417,7 +647,16 @@ export default function MesterAICopilot({
           sessionId: `copilot-${user?.id || 'guest'}`,
           projectName: currentProjName,
           projectId: selectedProject?.id,
-          availableProjects: projects.map(p => ({ id: p.id, name: p.name, code: p.code })),
+          availableProjects: projects.map(p => ({
+            id: p.id,
+            name: p.name,
+            code: p.code || p.projectCode,
+            address: p.address || (p as any).location,
+            progress: typeof p.progress === 'number' ? p.progress : 0,
+            status: p.status || 'active',
+            stage: p.stage || 'Pågående',
+            clientName: p.clientName || 'Privatkunde'
+          })),
           userName,
           userTrade,
           companyName,
@@ -640,15 +879,31 @@ export default function MesterAICopilot({
             {/* Meldingsliste */}
             <div 
               ref={messagesContainerRef}
-              className="flex-1 overflow-y-auto overscroll-contain p-4 space-y-4 custom-scrollbar"
+              onWheel={handleUserScrollIntent}
+              onTouchMove={handleUserScrollIntent}
+              style={{ overflowAnchor: 'none' }}
+              className="flex-1 overflow-y-auto overscroll-contain p-4 space-y-4 custom-scrollbar [overflow-anchor:none]"
             >
-              {messages.map((m) => {
+              {messages.map((m, idx) => {
                 const isUser = m.role === 'user';
+                const isLatest = idx === messages.length - 1;
+                const isPromptForLatest = 
+                  idx === messages.length - 2 && 
+                  m.role === 'user' && 
+                  messages[messages.length - 1]?.role === 'assistant';
+
                 return (
                   <div
                     key={m.id}
+                    ref={
+                      isPromptForLatest 
+                        ? latestTurnTopRef 
+                        : isLatest 
+                        ? latestMessageTopRef 
+                        : undefined
+                    }
                     className={cn(
-                      "flex flex-col gap-1.5",
+                      "flex flex-col gap-1.5 scroll-mt-4 transition-all",
                       isUser ? "max-w-[88%] ml-auto items-end" : "w-full items-start"
                     )}
                   >

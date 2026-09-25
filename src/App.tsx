@@ -637,20 +637,16 @@ function AppContent() {
                     >
                       <Logo size="md" className="text-navy-900" />
                     </div>
-                    <span className="hidden 2xl:inline-flex items-center gap-1 text-[10px] font-black uppercase tracking-widest text-emerald-700 bg-emerald-50 px-2.5 py-0.5 rounded-full border border-emerald-200 shrink-0">
-                      <span className="w-1.5 h-1.5 rounded-full bg-emerald-500 animate-pulse" />
-                      100% AUTONOM BYGGELEDER
-                    </span>
                   </div>
 
               {/* Desktop Center: World-Class SaaS Links That Sell The Dream */}
-              <div className="hidden md:flex items-center gap-1 lg:gap-1.5 xl:gap-2">
+              <div className="hidden lg:flex items-center gap-1 xl:gap-1.5 2xl:gap-2">
                 {/* Autonome Superkrefter Dropdown */}
                 <div className="relative group">
                   <button 
                     onClick={() => setIsSolutionsDropdownOpen(!isSolutionsDropdownOpen)}
                     className={cn(
-                      "px-2.5 lg:px-3 py-2 rounded-xl text-xs font-bold transition-all flex items-center gap-1.5 cursor-pointer whitespace-nowrap",
+                      "px-2.5 xl:px-3 py-2 rounded-xl text-xs font-bold transition-all flex items-center gap-1.5 cursor-pointer whitespace-nowrap",
                       (view === 'landing' && ['ai', 'hms', 'fdv'].includes(landingTab))
                         ? "bg-electric-50 text-electric-600 font-bold border border-electric-300/30" 
                         : "text-slate-700 hover:text-navy-900 hover:bg-slate-100"
@@ -761,7 +757,7 @@ function AppContent() {
                 <Link
                   href="/priser"
                   className={cn(
-                    "px-2.5 lg:px-3 py-2 rounded-xl text-xs font-bold transition-all flex items-center gap-1.5 whitespace-nowrap",
+                    "px-2 xl:px-2.5 py-2 rounded-xl text-xs font-bold transition-all flex items-center gap-1.5 whitespace-nowrap",
                     view === 'pricing'
                       ? "bg-electric-50 text-electric-600 font-bold border border-electric-300/30"
                       : "text-slate-700 hover:text-navy-900 hover:bg-slate-100"
@@ -773,22 +769,19 @@ function AppContent() {
                   </span>
                 </Link>
 
-                {/* Kundeportal (Digital Signering) */}
+                {/* Kundeportal */}
                 <button 
                   onClick={() => setIsPortalModalOpen(true)}
-                  className="px-2.5 lg:px-3 py-2 rounded-xl text-xs font-bold text-slate-700 hover:text-navy-900 hover:bg-slate-100 transition-all flex items-center gap-1.5 cursor-pointer whitespace-nowrap"
+                  className="px-2 xl:px-2.5 py-2 rounded-xl text-xs font-bold text-slate-700 hover:text-navy-900 hover:bg-slate-100 transition-all flex items-center gap-1.5 cursor-pointer whitespace-nowrap"
                 >
                   <Users size={14} className="text-emerald-600 shrink-0" />
                   <span>Kundeportal</span>
-                  <span className="hidden 2xl:inline text-[9px] font-bold text-emerald-700 bg-emerald-50 px-1.5 py-0.2 rounded border border-emerald-200">
-                    Digital signatur
-                  </span>
                 </button>
 
                 {/* FAQ */}
                 <Link
                   href="/faq"
-                  className="hidden xl:inline-flex px-2 lg:px-2.5 py-2 rounded-xl text-xs font-semibold text-slate-600 hover:text-navy-900 hover:bg-slate-100 transition-all whitespace-nowrap"
+                  className="hidden xl:inline-flex px-2 xl:px-2.5 py-2 rounded-xl text-xs font-semibold text-slate-600 hover:text-navy-900 hover:bg-slate-100 transition-all whitespace-nowrap"
                 >
                   FAQ
                 </Link>
@@ -797,7 +790,7 @@ function AppContent() {
                 <Link
                   href="/om-oss"
                   className={cn(
-                    "hidden xl:inline-flex px-2 lg:px-2.5 py-2 rounded-xl text-xs font-semibold transition-all whitespace-nowrap",
+                    "hidden xl:inline-flex px-2 xl:px-2.5 py-2 rounded-xl text-xs font-semibold transition-all whitespace-nowrap",
                     view === 'about'
                       ? "bg-electric-50 text-electric-600 font-bold border border-electric-300/30"
                       : "text-slate-600 hover:text-navy-900 hover:bg-slate-100"
@@ -810,7 +803,7 @@ function AppContent() {
                 <Link
                   href="/kontakt"
                   className={cn(
-                    "hidden lg:inline-flex px-2 lg:px-2.5 py-2 rounded-xl text-xs font-semibold transition-all whitespace-nowrap",
+                    "hidden lg:inline-flex px-2 xl:px-2.5 py-2 rounded-xl text-xs font-semibold transition-all whitespace-nowrap",
                     view === 'contact'
                       ? "bg-electric-50 text-electric-600 font-bold border border-electric-300/30"
                       : "text-slate-600 hover:text-navy-900 hover:bg-slate-100"
@@ -821,7 +814,7 @@ function AppContent() {
               </div>
 
               {/* Desktop Right: Actions */}
-              <div className="hidden md:flex items-center gap-2 lg:gap-2.5 shrink-0">
+              <div className="hidden lg:flex items-center gap-1.5 xl:gap-2 2xl:gap-2.5 shrink-0">
                 {/* Language Selector */}
                 <div className="flex items-center gap-1 px-2 py-1.5 bg-slate-100 hover:bg-slate-200/80 rounded-xl border border-slate-200 transition-all shrink-0">
                   <Globe size={13} className="text-slate-500 shrink-0" />
@@ -841,32 +834,33 @@ function AppContent() {
                 {user ? (
                   <button 
                     onClick={handleGoToDashboard}
-                    className="whitespace-nowrap shrink-0 bg-gradient-to-r from-electric-500 to-electric-400 hover:from-electric-400 hover:to-electric-300 text-white px-3.5 lg:px-4 py-2 rounded-xl text-xs font-bold transition-all shadow-purple-cta active:scale-95 flex items-center gap-1.5 cursor-pointer"
+                    className="whitespace-nowrap shrink-0 bg-gradient-to-r from-electric-500 to-electric-400 hover:from-electric-400 hover:to-electric-300 text-white px-3.5 xl:px-4 py-2 rounded-xl text-xs font-bold transition-all shadow-purple-cta active:scale-95 flex items-center gap-1.5 cursor-pointer"
                   >
                     <LayoutDashboard size={14} />
                     <span>{t('nav_dashboard', 'Gå til Dashboard')}</span>
                   </button>
                 ) : (
-                  <div className="flex items-center gap-1.5 lg:gap-2 shrink-0">
+                  <div className="flex items-center gap-1.5 xl:gap-2 shrink-0">
                     <button 
                       onClick={() => setView('login')}
-                      className="whitespace-nowrap shrink-0 text-slate-700 hover:text-navy-900 px-2.5 lg:px-3 py-2 rounded-xl text-xs font-bold hover:bg-slate-100 transition-all cursor-pointer"
+                      className="whitespace-nowrap shrink-0 text-slate-700 hover:text-navy-900 px-2 xl:px-3 py-2 rounded-xl text-xs font-bold hover:bg-slate-100 transition-all cursor-pointer"
                     >
                       {t('nav_login', 'Logg inn')}
                     </button>
                     <button 
                       onClick={handleGoToOrder}
-                      className="whitespace-nowrap shrink-0 bg-gradient-to-r from-electric-500 to-electric-400 hover:from-electric-400 hover:to-electric-300 text-white px-3.5 lg:px-4 py-2 rounded-xl text-xs font-extrabold transition-all shadow-purple-cta hover:shadow-purple-hover active:scale-95 flex items-center gap-1.5 cursor-pointer"
+                      className="whitespace-nowrap shrink-0 bg-gradient-to-r from-electric-500 to-electric-400 hover:from-electric-400 hover:to-electric-300 text-white px-3 xl:px-4 py-2 rounded-xl text-xs font-extrabold transition-all shadow-purple-cta hover:shadow-purple-hover active:scale-95 flex items-center gap-1.5 cursor-pointer"
                     >
                       <Sparkles size={13} className="text-amber-300 animate-pulse shrink-0" />
-                      <span>Start 14 dager gratis</span>
+                      <span className="hidden xl:inline">Start 14 dager gratis</span>
+                      <span className="xl:hidden">Prøv gratis</span>
                     </button>
                   </div>
                 )}
               </div>
 
               {/* Mobile Menu Button */}
-              <div className="md:hidden flex items-center gap-2">
+              <div className="lg:hidden flex items-center gap-2">
                 <NetworkStatusBadge />
                 <button 
                   onClick={() => setIsMenuOpen(!isMenuOpen)}
@@ -1055,7 +1049,10 @@ function AppContent() {
               initial={{ opacity: 0, y: -20 }}
               animate={{ opacity: 1, y: 0 }}
               exit={{ opacity: 0, y: -20 }}
-              className="absolute top-full left-0 right-0 bg-[#060911] border-b border-white/10 p-4 md:hidden shadow-2xl max-h-[calc(100dvh-5rem)] overflow-y-auto custom-scrollbar z-40 pb-24 text-slate-100"
+              className={cn(
+                "absolute top-full left-0 right-0 bg-[#060911] border-b border-white/10 p-4 shadow-2xl max-h-[calc(100dvh-5rem)] overflow-y-auto custom-scrollbar z-40 pb-24 text-slate-100",
+                (!user || ['landing', 'pricing', 'about', 'contact', 'privacy', 'terms'].includes(view)) ? "lg:hidden" : "md:hidden"
+              )}
             >
               {(!user || ['landing', 'pricing', 'about', 'contact', 'privacy', 'terms'].includes(view)) ? (
                 /* Public Mobile Menu (Gemini OLED Dark Aesthetic) */

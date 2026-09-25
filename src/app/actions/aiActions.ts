@@ -29,7 +29,7 @@ export async function generateSJAAction(taskDescription: string, weatherContext?
 
   // 2. Check server-side cache (0 tokens)
   const prompt = `Generer SJA for: ${taskDescription}. Vær: ${weatherContext || 'Normalt'}.`;
-  const cacheKey = hashAiRequest(prompt, 'sja_generator', 'deepseek-flash');
+  const cacheKey = hashAiRequest(prompt, 'sja_generator', 'deepseek-chat');
   const cached = await getCachedAiResponse(cacheKey);
   if (cached) {
     try {

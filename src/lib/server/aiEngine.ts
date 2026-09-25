@@ -1,5 +1,6 @@
 import { GoogleGenAI } from '@google/genai';
 import { trackTokenCost, checkCompanyQuota } from './costTracker';
+import { containsPIIOrGdprData } from './privacyShield';
 
 export interface AiImageAttachment {
   data?: string; // base64
@@ -27,6 +28,7 @@ export interface GenerateAiOptions {
   projectId?: string;
   notes?: string;
   apiKey?: string;
+  gdprProtected?: boolean; // 🛡️ Ruter til EU-driftet modell (1min.ai / Claude / Mistral / Gemini EU)
 }
 
 export interface AiEngineResult {
@@ -154,111 +156,123 @@ export function getOpenRouterKey(): string | null {
 
 /**
  * Intelligent modellruter (Kvalitet vs. Tokenkostnad).
- * Ruter oppgaver automatisk til de nyeste 2026-flaggskipmodellene:
- * - Nettsøk: Gemini 3.8 Flash (med Google Search Grounding) / gpt-4o
- * - Tekst / Rådgivning / Kalkyle / KS: DeepSeek-Flash (deepseek-flash / deepseek-chat)
- * - Kompleks resonnering / NS 8406 tvist: DeepSeek-V4 Pro (deepseek-v4-pro / deepseek-reasoner) / Claude 3.7 Sonnet / o3-mini
- * - SEO & E-E-A-T fagartikler: Claude 3.7 Sonnet (claude-3-7-sonnet) / DeepSeek-Flash
- * - SJA: DeepSeek-Flash / Gemini 3.8 Flash
- * - Vision / Bildeanalyse: Gemini 3.8 Flash (med fallback til gemini-3.5-flash / gemini-2.5-flash)
+ * Ruter oppgaver automatisk til de nyeste og mest kostnadseffektive flaggskipmodellene:
+ * - Nettsøk: Gemini 2.5 Flash (med Google Search Grounding) / gpt-4o-mini
+ * - Tekst / Rådgivning / Kalkyle / KS: DeepSeek-Chat (DeepSeek-V3, $0.14/1M) / gpt-4o-mini
+ * - Kompleks resonnering / NS 8406 tvist: DeepSeek-Reasoner (DeepSeek-R1) / o3-mini / Gemini 2.5 Pro
+ * - GDPR / Personopplysninger / Bilpark: gpt-4o-mini / mistral-large / Gemini 2.5 Flash (EU-hostet, 100% usladde data)
+ * - SEO & E-E-A-T fagartikler: gpt-4o / Claude 3.5 Sonnet / DeepSeek-Chat
+ * - SJA: DeepSeek-Chat / Gemini 2.5 Flash / gpt-4o-mini
+ * - Vision / Bildeanalyse: Gemini 2.5 Flash ($0.075/1M, 1M context) med fallback til Gemini 2.5 Pro / gpt-4o
  */
 export function resolveOptimalModel(
   operation?: string,
   requestedModel?: string,
-  webSearch = false
+  webSearch = false,
+  gdprProtected = false
 ): { oneMinModel: string; geminiModel: string; deepseekModel: string } {
   const op = (operation || '').toLowerCase();
 
-  // Hvis webSearch er aktivert:
+  // 🛡️ Hvis oppgaven er GDPR-beskyttet (personopplysninger, bilpark, ansatte):
+  // Bruker superraske, presise og ultrabillige gpt-4o-mini / Claude 3.5 Haiku / Mistral Large via 1min.ai eller Gemini 2.5 Flash EU
+  if (gdprProtected || op.includes('gdpr') || op.includes('fleet') || op.includes('vehicle') || op.includes('bilpark') || op.includes('employee') || op.includes('hr')) {
+    return {
+      oneMinModel: process.env.ONE_MIN_AI_GDPR_MODEL || 'gpt-4o-mini',
+      geminiModel: process.env.GEMINI_MODEL || 'gemini-2.5-flash',
+      deepseekModel: 'deepseek-chat'
+    };
+  }
+
+  // Hvis webSearch er aktivert (1min.ai krever OpenAI for nettsøk):
   if (webSearch) {
     return {
-      oneMinModel: process.env.ONE_MIN_AI_SEARCH_MODEL || 'gpt-4o',
-      geminiModel: process.env.GEMINI_MODEL || 'gemini-3.8-flash',
-      deepseekModel: 'deepseek-flash'
+      oneMinModel: process.env.ONE_MIN_AI_SEARCH_MODEL || 'gpt-4o-mini',
+      geminiModel: process.env.GEMINI_MODEL || 'gemini-2.5-flash',
+      deepseekModel: 'deepseek-chat'
     };
   }
 
   // Hvis eksplisitt modell er bedt om:
   if (requestedModel) {
     const reqLower = requestedModel.toLowerCase();
-    if (reqLower.includes('reasoner') || reqLower.includes('r1') || reqLower.includes('pro')) {
+    if (reqLower.includes('reasoner') || reqLower.includes('r1') || reqLower.includes('pro') || reqLower.includes('o3') || reqLower.includes('o1')) {
       return {
-        oneMinModel: 'claude-3-7-sonnet',
-        geminiModel: 'gemini-3.1-pro-preview',
-        deepseekModel: 'deepseek-v4-pro'
+        oneMinModel: 'o3-mini',
+        geminiModel: 'gemini-2.5-pro',
+        deepseekModel: 'deepseek-reasoner'
       };
     }
     if (reqLower.includes('deepseek')) {
       return {
-        oneMinModel: 'gpt-4o',
-        geminiModel: 'gemini-3.8-flash',
-        deepseekModel: 'deepseek-flash'
+        oneMinModel: 'gpt-4o-mini',
+        geminiModel: 'gemini-2.5-flash',
+        deepseekModel: 'deepseek-chat'
       };
     }
     if (reqLower.startsWith('gemini')) {
       return {
-        oneMinModel: 'gpt-4o',
+        oneMinModel: 'gpt-4o-mini',
         geminiModel: requestedModel,
-        deepseekModel: 'deepseek-flash'
+        deepseekModel: 'deepseek-chat'
       };
     }
     return {
       oneMinModel: requestedModel,
-      geminiModel: 'gemini-3.8-flash',
-      deepseekModel: 'deepseek-flash'
+      geminiModel: 'gemini-2.5-flash',
+      deepseekModel: 'deepseek-chat'
     };
   }
 
-  // 1. MesterAI Samtalepartner, Rådgivning, Tilbud & Kalkyle -> DeepSeek-Flash (med Claude 3.7 Sonnet / Gemini 3.8 Flash)
+  // 1. MesterAI Samtalepartner, Rådgivning, Tilbud & Kalkyle -> DeepSeek-Chat (V3) / gpt-4o-mini / Gemini 2.5 Flash
   if (op.includes('conversation') || op.includes('advisor') || op.includes('consultation') || op.includes('chat') || op.includes('offer') || op.includes('tilbud') || op.includes('kalkyle')) {
     return {
-      oneMinModel: process.env.ONE_MIN_AI_CHAT_MODEL || 'claude-3-7-sonnet',
-      geminiModel: 'gemini-3.8-flash',
-      deepseekModel: 'deepseek-flash'
+      oneMinModel: process.env.ONE_MIN_AI_CHAT_MODEL || 'gpt-4o-mini',
+      geminiModel: 'gemini-2.5-flash',
+      deepseekModel: 'deepseek-chat'
     };
   }
 
-  // 2. Juridisk, NS 8406, Tvister, Endringsordrer, Kontrakt -> DeepSeek-V4-Pro / Claude 3.7 Sonnet / Gemini 3.1 Pro
+  // 2. Juridisk, NS 8406, Tvister, Endringsordrer, Kontrakt -> DeepSeek-Reasoner (R1) / o3-mini / Gemini 2.5 Pro
   if (op.includes('change_order') || op.includes('contract') || op.includes('legal') || op.includes('ns8406') || op.includes('varsel') || op.includes('tvist') || op.includes('dispute')) {
     return {
-      oneMinModel: process.env.ONE_MIN_AI_LEGAL_MODEL || 'claude-3-7-sonnet',
-      geminiModel: 'gemini-3.1-pro-preview',
-      deepseekModel: 'deepseek-v4-pro'
+      oneMinModel: process.env.ONE_MIN_AI_LEGAL_MODEL || 'o3-mini',
+      geminiModel: 'gemini-2.5-pro',
+      deepseekModel: 'deepseek-reasoner'
     };
   }
 
-  // 3. SEO & Faglige artikler -> Claude 3.7 Sonnet / DeepSeek-Flash
+  // 3. SEO & Faglige artikler -> gpt-4o / Claude 3.5 Sonnet / DeepSeek-Chat
   if (op.includes('seo') || op.includes('article')) {
     return {
-      oneMinModel: process.env.ONE_MIN_AI_SEO_MODEL || 'claude-3-7-sonnet',
-      geminiModel: 'gemini-3.8-flash',
-      deepseekModel: 'deepseek-flash'
+      oneMinModel: process.env.ONE_MIN_AI_SEO_MODEL || 'gpt-4o',
+      geminiModel: 'gemini-2.5-flash',
+      deepseekModel: 'deepseek-chat'
     };
   }
 
-  // 4. SJA (Sikker Jobb Analyse) -> DeepSeek-Flash / Gemini 3.8 Flash
+  // 4. SJA (Sikker Jobb Analyse) -> DeepSeek-Chat / Gemini 2.5 Flash / gpt-4o-mini
   if (op.includes('sja')) {
     return {
-      oneMinModel: process.env.ONE_MIN_AI_SJA_MODEL || 'gemini-3.8-flash',
-      geminiModel: 'gemini-3.8-flash',
-      deepseekModel: 'deepseek-flash'
+      oneMinModel: process.env.ONE_MIN_AI_SJA_MODEL || 'gpt-4o-mini',
+      geminiModel: 'gemini-2.5-flash',
+      deepseekModel: 'deepseek-chat'
     };
   }
 
-  // 5. Bildeanalyse / TEK17 Vision / Skanning -> Gemini 3.8 Flash
+  // 5. Bildeanalyse / TEK17 Vision / Skanning -> Gemini 2.5 Flash (verdensledende multimodalitet, lynrask og $0.075/1M)
   if (op.includes('vision') || op.includes('image') || op.includes('bilde') || op.includes('foto') || op.includes('scan')) {
     return {
-      oneMinModel: process.env.ONE_MIN_AI_VISION_MODEL || 'gemini-3.8-flash',
-      geminiModel: process.env.GEMINI_MODEL || 'gemini-3.8-flash',
-      deepseekModel: 'deepseek-flash'
+      oneMinModel: process.env.ONE_MIN_AI_VISION_MODEL || 'gpt-4o',
+      geminiModel: process.env.GEMINI_MODEL || 'gemini-2.5-flash',
+      deepseekModel: 'deepseek-chat'
     };
   }
 
-  // 6. Standard / Byggedagbok / Oversettelse / Generelt -> DeepSeek-Flash / Gemini 3.8 Flash
+  // 6. Standard / Byggedagbok / Oversettelse / Generelt -> DeepSeek-Chat / gpt-4o-mini / Gemini 2.5 Flash
   return {
-    oneMinModel: process.env.ONE_MIN_AI_DEFAULT_MODEL || 'claude-3-7-sonnet',
-    geminiModel: process.env.GEMINI_MODEL || 'gemini-3.8-flash',
-    deepseekModel: 'deepseek-flash'
+    oneMinModel: process.env.ONE_MIN_AI_DEFAULT_MODEL || 'gpt-4o-mini',
+    geminiModel: process.env.GEMINI_MODEL || 'gemini-2.5-flash',
+    deepseekModel: 'deepseek-chat'
   };
 }
 
@@ -373,11 +387,13 @@ async function call1MinAi(
 
   const candidateModels = [
     effectiveModel,
-    'claude-3-7-sonnet',
-    'gemini-3.8-flash',
+    'gpt-4o-mini',
+    'claude-3-5-haiku',
+    'gemini-2.5-flash',
     'o3-mini',
     'gpt-4o',
-    'gpt-4o-mini'
+    'claude-3-5-sonnet',
+    'claude-3-7-sonnet'
   ].filter(Boolean);
   const uniqueCandidateModels = Array.from(new Set(candidateModels));
 
@@ -508,17 +524,14 @@ async function callGeminiBackup(
   const currentMonth = new Intl.DateTimeFormat('no-NO', { month: 'long', timeZone: 'Europe/Oslo' }).format(now);
   const dateContext = `Dagens reelle dato er ${dateStr} (kl. ${timeStr}, ${currentYear}). Måneden er ${currentMonth} (${currentYear}, høst), IKKE mai eller 17. mai.`;
 
-  // Prioriter Gemini 3.8 Flash som primær modell for bildeanalyse og lynrask multimodal inferens
+  // Prioriter Gemini 2.5 Flash som primær modell for bildeanalyse og lynrask multimodal inferens ($0.075/1M tokens)
   const candidateModels = [
     model && model.startsWith('gemini') ? model : null,
     process.env.GEMINI_MODEL,
-    'gemini-3.8-flash',
-    'gemini-3.5-flash',
-    'gemini-3.1-pro-preview',
     'gemini-2.5-flash',
+    'gemini-2.5-pro',
     'gemini-2.0-flash',
     'gemini-1.5-flash',
-    'gemini-2.5-pro',
     'gemini-1.5-pro'
   ].filter(Boolean) as string[];
 
@@ -627,7 +640,7 @@ async function callGeminiBackup(
 }
 
 /**
- * Direkte anrop til DeepSeek API (deepseek-flash / deepseek-v4-pro med fallback til deepseek-chat / deepseek-reasoner).
+ * Direkte anrop til DeepSeek API (deepseek-chat / deepseek-reasoner).
  */
 async function callDeepSeekDirect(
   deepseekKey: string,
@@ -664,8 +677,8 @@ async function callDeepSeekDirect(
   const isReasoner = !forceJson && (model?.includes('reasoner') || model?.includes('r1') || model?.includes('pro'));
 
   const candidateModels = isReasoner
-    ? ['deepseek-v4-pro', 'deepseek-reasoner', 'deepseek-flash', 'deepseek-chat']
-    : ['deepseek-flash', 'deepseek-chat', 'deepseek-v4-pro'];
+    ? ['deepseek-reasoner', 'deepseek-chat']
+    : ['deepseek-chat', 'deepseek-reasoner'];
 
   let lastError: any = null;
   for (const cand of candidateModels) {
@@ -862,7 +875,20 @@ export async function generateWithAiEngine(options: GenerateAiOptions): Promise<
   const isWebSearch = Boolean(options.webSearch);
   const isJsonExpected = options.responseMimeType === 'application/json' || Boolean(options.responseSchema);
 
-  const { oneMinModel, geminiModel, deepseekModel } = resolveOptimalModel(options.operation, options.model, isWebSearch);
+  const isGdprSensitive = Boolean(
+    options.gdprProtected ||
+    (options.operation && (
+      options.operation.includes('gdpr') ||
+      options.operation.includes('fleet') ||
+      options.operation.includes('vehicle') ||
+      options.operation.includes('bilpark') ||
+      options.operation.includes('employee') ||
+      options.operation.includes('hr')
+    )) ||
+    (promptText && containsPIIOrGdprData(promptText))
+  );
+
+  const { oneMinModel, geminiModel, deepseekModel } = resolveOptimalModel(options.operation, options.model, isWebSearch, isGdprSensitive);
 
   // ==========================================================================
   // CASE 1: SYN / BILDEANALYSE (Vision / TEK17 / Foto / Skanning)
@@ -1051,6 +1077,103 @@ export async function generateWithAiEngine(options: GenerateAiOptions): Promise<
         console.warn(`[AI Engine - WebSearch] 1min.AI feilet (${oneMinErr.message})`);
       }
     }
+  }
+
+  // ==========================================================================
+  // CASE 2.5: GDPR & PERSONOPPLYSNINGER (Schrems II / EU-overholdelse)
+  // Hvis oppgaven gjelder GDPR-sensitive opplysninger (kjøretøy/bilpark, ansatte,
+  // telefonnummer, kontaktpersoner osv.):
+  // 1. Dataene sendes ALDRI til modeller utenfor EU/EØS (DeepSeek i Kina omgås helt).
+  // 2. 1min.AI med EU-godkjente modeller (Claude 3.7 Sonnet / Mistral Large / GPT-4o)
+  //    eller Google Gemini EU kalles med den FULLSTENDIGE, USLADDEDE informasjonen.
+  // 3. Bilens registreringsnummer, telefonnummer og navn bevares 100% uten sladding!
+  // ==========================================================================
+  if (isGdprSensitive) {
+    // 2.5.1 Primær for GDPR: 1min.AI med EU/rask modell (f.eks. gpt-4o-mini, Mistral Large eller Claude 3.5 Haiku)
+    if (oneMinKey) {
+      try {
+        const gdprModel = process.env.ONE_MIN_AI_GDPR_MODEL || oneMinModel || 'gpt-4o-mini';
+        const res = await call1MinAi(
+          oneMinKey,
+          gdprModel,
+          promptText,
+          options.systemInstruction,
+          [],
+          false,
+          isJsonExpected
+        );
+
+        if (res.text && res.text.trim().length > 0) {
+          trackTokenCost({
+            model: gdprModel,
+            promptTokens: res.promptTokens,
+            completionTokens: res.completionTokens,
+            operation: options.operation || 'ai_generate_gdpr_eu_1min',
+            companyId: options.companyId,
+            companyName: options.companyName,
+            projectId: options.projectId,
+            notes: options.notes || `GDPR EU Engine (1min.ai ${gdprModel})`,
+            service: '1min.ai'
+          }).catch(() => {});
+
+          return {
+            text: res.text,
+            source: '1min.ai',
+            model: gdprModel,
+            usage: {
+              promptTokens: res.promptTokens,
+              completionTokens: res.completionTokens,
+              totalTokens: res.promptTokens + res.completionTokens
+            }
+          };
+        }
+      } catch (oneMinErr: any) {
+        console.warn(`[AI Engine - GDPR EU] 1min.AI feilet (${oneMinErr.message}), faller tilbake til Google Gemini EU...`);
+      }
+    }
+
+    // 2.5.2 Sekundær for GDPR: Google Gemini (Google Cloud EU DPA)
+    if (geminiKey) {
+      try {
+        const res = await callGeminiBackup(
+          geminiKey,
+          geminiModel,
+          promptText,
+          options.systemInstruction,
+          imagesToProcess,
+          options.responseMimeType,
+          options.responseSchema,
+          false
+        );
+
+        trackTokenCost({
+          model: res.executedModel,
+          promptTokens: res.promptTokens,
+          completionTokens: res.completionTokens,
+          operation: options.operation || 'ai_generate_gdpr_eu_gemini',
+          companyId: options.companyId,
+          companyName: options.companyName,
+          projectId: options.projectId,
+          notes: options.notes || `GDPR EU Engine (Gemini ${res.executedModel})`,
+          service: 'gemini'
+        }).catch(() => {});
+
+        return {
+          text: res.text,
+          source: 'gemini_backup',
+          model: res.executedModel,
+          usage: {
+            promptTokens: res.promptTokens,
+            completionTokens: res.completionTokens,
+            totalTokens: res.promptTokens + res.completionTokens
+          }
+        };
+      } catch (gErr: any) {
+        console.warn(`[AI Engine - GDPR EU] Gemini EU feilet (${gErr.message})`);
+      }
+    }
+
+    throw new Error('GDPR-beskyttet oppgave krever en EU-godkjent modell (1min.AI eller Google Gemini EU), men ingen var tilgjengelig.');
   }
 
   // ==========================================================================

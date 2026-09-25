@@ -26,6 +26,7 @@ import { db, collection, query, where, onSnapshot, addDoc, serverTimestamp } fro
 import { api } from '../services/api';
 import { toast } from 'sonner';
 import { cn } from '@/src/lib/utils';
+import IntegrationGuideCard from './IntegrationGuideCard';
 
 interface ProjectOption {
   id: string;
@@ -327,6 +328,7 @@ const DocumentationArchive: React.FC<DocumentationArchiveProps> = ({
   const [clientNameInput, setClientNameInput] = useState('');
   const [emailMode, setEmailMode] = useState<'single' | 'combined'>('combined');
   const [showNobbByokModal, setShowNobbByokModal] = useState(false);
+  const [isVerifyingNobb, setIsVerifyingNobb] = useState(false);
   const [nobbKeyInput, setNobbKeyInput] = useState(() => {
     if (typeof window !== 'undefined') {
       return localStorage.getItem('nobb_api_key') || '';
@@ -1032,9 +1034,14 @@ const DocumentationArchive: React.FC<DocumentationArchiveProps> = ({
               </button>
             </div>
 
-            <p className="text-xs text-neutral-600 mb-4 leading-relaxed">
+            <p className="text-xs text-neutral-600 mb-3 leading-relaxed">
               Norsk Byggtjeneste AS krever at hver enkelt bedrift har egen lisensavtale for API-tilgang til Norsk Byggevarebase (NOBB). VikingMester henter offisielle FDV-blader, EPD og grossistpriser direkte på din bedrifts avtale.
             </p>
+
+            {/* 📖 Trinn-for-trinn veiledning */}
+            <div className="mb-4">
+              <IntegrationGuideCard service="nobb" variant="light" defaultExpanded={false} />
+            </div>
 
             <div className="mb-4">
               <label className="block text-[11px] font-black uppercase tracking-wider text-neutral-700 mb-1.5">
@@ -1062,11 +1069,11 @@ const DocumentationArchive: React.FC<DocumentationArchiveProps> = ({
               </button>
               <button
                 type="button"
-                disabled={!nobbKeyInput.trim()}
+                disabled={!nobbKeyInput.trim() || isVerifyingNobb}
                 onClick={async () => {
+                  setIsVerifyingNobb(true);
                   try {
-                    localStorage.setItem('nobb_api_key', nobbKeyInput.trim());
-                    await fetch('/api/settings/integrations', {
+                    const res = await fetch('/api/settings/integrations', {
                       method: 'POST',
                       headers: { 'Content-Type': 'application/json' },
                       body: JSON.stringify({
@@ -1074,17 +1081,32 @@ const DocumentationArchive: React.FC<DocumentationArchiveProps> = ({
                         secretToken: nobbKeyInput.trim(),
                         status: 'active'
                       })
-                    }).catch(() => {});
+                    });
+                    const data = await res.json().catch(() => ({}));
+                    if (!res.ok) {
+                      toast.error(data.error || 'Verifisering mot Norsk Byggetjeneste (NOBB) feilet. Vennligst sjekk nøkkelen.');
+                      return;
+                    }
+                    localStorage.setItem('nobb_api_key', nobbKeyInput.trim());
                     setShowNobbByokModal(false);
-                    toast.success('NOBB API-nøkkel (BYOK) er lagret!');
+                    toast.success('NOBB API-nøkkel er verifisert og koblet til!');
                     handleSyncNOBB();
-                  } catch (e) {
-                    toast.error('Kunne ikke lagre NOBB API-nøkkel');
+                  } catch (e: any) {
+                    toast.error(e?.message || 'Kunne ikke kontakte serveren for verifisering.');
+                  } finally {
+                    setIsVerifyingNobb(false);
                   }
                 }}
-                className="px-4 py-2 rounded-xl bg-emerald-600 hover:bg-emerald-500 text-white text-xs font-bold shadow-md transition-all disabled:opacity-50 cursor-pointer"
+                className="px-4 py-2 rounded-xl bg-emerald-600 hover:bg-emerald-500 text-white text-xs font-bold shadow-md transition-all disabled:opacity-50 cursor-pointer flex items-center gap-2"
               >
-                Lagre og synkroniser FDV
+                {isVerifyingNobb ? (
+                  <>
+                    <div className="w-3.5 h-3.5 border-2 border-white border-t-transparent rounded-full animate-spin" />
+                    <span>Verifiserer nøkkel...</span>
+                  </>
+                ) : (
+                  <span>Verifiser og synkroniser FDV</span>
+                )}
               </button>
             </div>
           </div>
