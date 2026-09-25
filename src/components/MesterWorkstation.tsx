@@ -2874,18 +2874,8 @@ export default function MesterWorkstation({
             className="flex-1 bg-transparent px-3 py-2 text-sm sm:text-[15px] text-white placeholder:text-slate-400 focus:outline-none resize-none max-h-32 min-h-[38px] leading-relaxed no-scrollbar overflow-y-auto"
           />
 
-          {/* Right controls: Model Pill + Mic + Send */}
+          {/* Right controls: Mic + Send */}
           <div className="flex items-center gap-1.5 shrink-0 pr-1">
-            {/* ⚡ Clean Model Pill (Gemini style) */}
-            <div 
-              className="hidden sm:inline-flex items-center gap-1.5 px-2.5 py-1 rounded-full bg-white/5 border border-white/10 text-[11px] font-semibold text-slate-300 hover:text-white select-none transition-colors"
-              title="MesterAI 4.5 Turbo: Topp ytelse med TEK17, NS 8406 og NOBB"
-            >
-              <span className="w-1.5 h-1.5 rounded-full bg-emerald-400" />
-              <span>MesterAI Pro</span>
-              <ChevronDown size={11} className="text-slate-400" />
-            </div>
-
             {/* Regular Mic Dictation */}
             <button
               type="button"
