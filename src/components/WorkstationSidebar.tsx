@@ -107,6 +107,16 @@ export default function WorkstationSidebar({
   const [editingSessionId, setEditingSessionId] = useState<string | null>(null);
   const [editingTitle, setEditingTitle] = useState('');
 
+  // 🖱️ Hover-to-expand desktop sidebar state
+  const [isHovered, setIsHovered] = useState(false);
+  const isEffectiveCollapsed = isCollapsedDesktop && !isHovered;
+
+  useEffect(() => {
+    if (!isCollapsedDesktop) {
+      setIsHovered(false);
+    }
+  }, [isCollapsedDesktop]);
+
   // Hent og abonner på oppdateringer i samtalehistorikk
   useEffect(() => {
     const reload = () => {
@@ -264,24 +274,48 @@ export default function WorkstationSidebar({
         )}
       </AnimatePresence>
 
+      {/* Flow spacer so main chat canvas does NOT jump or reflow when hovering over collapsed sidebar */}
+      {isCollapsedDesktop && isHovered && (
+        <div className="hidden md:block w-[72px] shrink-0 h-full pointer-events-none" />
+      )}
+
       {/* 🖥️ Sidebar Container (Styled identically to Gemini / Chat Workstation) */}
       <aside
+        onMouseEnter={() => {
+          if (isCollapsedDesktop) setIsHovered(true);
+        }}
+        onMouseLeave={() => {
+          if (isCollapsedDesktop) setIsHovered(false);
+        }}
         className={cn(
-          "text-slate-200 border-r border-slate-800/80 flex flex-col z-50 transition-all duration-300 ease-in-out shrink-0 select-none",
+          "text-slate-200 border-r border-slate-800/80 flex flex-col z-50 transition-all duration-200 ease-out shrink-0 select-none",
           // Mobile: Rich Navy/Slate Drawer matching chat aesthetic
           "fixed inset-y-0 left-0 h-full w-[88vw] max-w-[360px] sm:max-w-[380px] bg-[#0A101D] border-r border-slate-800/90 shadow-2xl",
           isOpenMobile ? "translate-x-0" : "-translate-x-full",
-          // Desktop: Static in-flow sidebar
-          "md:static md:translate-x-0 md:h-[100dvh] md:bg-[#0A101D] md:border-slate-800/80",
-          isCollapsedDesktop ? "md:w-[72px]" : "md:w-[290px] lg:w-[320px]"
+          // Desktop:
+          "md:translate-x-0 md:h-[100dvh] md:bg-[#0A101D] md:border-slate-800/80",
+          isCollapsedDesktop && isHovered
+            ? "md:fixed md:inset-y-0 md:left-0 md:w-[290px] lg:w-[320px] md:shadow-2xl md:shadow-black/95 md:ring-1 md:ring-white/10 md:z-50"
+            : isCollapsedDesktop
+              ? "md:static md:w-[72px]"
+              : "md:static md:w-[290px] lg:w-[320px]"
         )}
       >
         {/* 1. Header: Gemini style with brand & close/collapse toggle */}
-        <div className="h-16 px-4 sm:px-5 flex items-center justify-between border-b border-slate-800/80 shrink-0 bg-[#0A101D]">
+        <div className={cn(
+          "h-16 flex items-center border-b border-slate-800/80 shrink-0 bg-[#0A101D] transition-all",
+          isEffectiveCollapsed ? "justify-center px-0" : "px-4 sm:px-5 justify-between"
+        )}>
           <div className="flex items-center gap-3 min-w-0">
             {/* 🛡️ Offisielt VikingMester AI Merkevare-ikon */}
-            <MesterAIIcon size="md" />
-            {!isCollapsedDesktop && (
+            <div
+              onClick={isCollapsedDesktop ? onToggleCollapseDesktop : undefined}
+              className={cn(isCollapsedDesktop && "cursor-pointer hover:scale-105 transition-transform")}
+              title={isCollapsedDesktop ? (isHovered ? "Klikk for å låse menyen åpen" : "Hold over med musa eller klikk for å åpne") : undefined}
+            >
+              <MesterAIIcon size="md" />
+            </div>
+            {!isEffectiveCollapsed && (
               <div className="min-w-0 flex items-center gap-2">
                 <span className="font-bold text-[17px] tracking-tight text-white truncate">
                   VikingMester
@@ -297,10 +331,17 @@ export default function WorkstationSidebar({
           <button
             type="button"
             onClick={onToggleCollapseDesktop}
-            className="hidden md:flex p-2 rounded-xl text-slate-400 hover:text-white hover:bg-slate-800/70 transition-colors cursor-pointer"
-            title={isCollapsedDesktop ? "Åpne sidemeny" : "Lukk sidemeny"}
+            className={cn(
+              "hidden md:flex p-2 rounded-xl text-slate-400 hover:text-white hover:bg-slate-800/70 transition-colors cursor-pointer",
+              isEffectiveCollapsed && "hidden"
+            )}
+            title={isCollapsedDesktop ? "Lås menyen åpen" : "Lukk sidemeny (vis kun ikoner)"}
           >
-            {isCollapsedDesktop ? <PanelLeftOpen size={19} /> : <PanelLeftClose size={19} />}
+            {isCollapsedDesktop ? (
+              <PanelLeftOpen size={19} className="text-emerald-400 hover:text-emerald-300" />
+            ) : (
+              <PanelLeftClose size={19} />
+            )}
           </button>
 
           {/* Mobile close button (Gemini round X) */}
@@ -325,16 +366,16 @@ export default function WorkstationSidebar({
             className={cn(
               "w-full flex items-center gap-3 py-2.5 px-4 rounded-full font-medium text-[14px] sm:text-[15px] text-white transition-all shadow-sm active:scale-98 cursor-pointer",
               "bg-[#1c2230] hover:bg-[#242c3d] border border-white/10 hover:border-white/20",
-              isCollapsedDesktop && "md:p-2.5 md:justify-center md:rounded-2xl"
+              isEffectiveCollapsed && "md:p-2.5 md:justify-center md:rounded-2xl"
             )}
             title={t('ws_start_new_chat_title', "Start en ny samtale eller oppgave")}
           >
             <Plus size={18} className="text-white shrink-0" />
-            {!isCollapsedDesktop && <span className="truncate">{t('ws_new_chat', "Ny samtale")}</span>}
+            {!isEffectiveCollapsed && <span className="truncate">{t('ws_new_chat', "Ny samtale")}</span>}
           </button>
 
           {/* 🔍 Søk i samtaler (Clean pill style) */}
-          {!isCollapsedDesktop && (
+          {!isEffectiveCollapsed && (
             <button
               type="button"
               onClick={() => {
@@ -356,13 +397,13 @@ export default function WorkstationSidebar({
         <div className="flex-1 overflow-y-auto overscroll-y-contain no-scrollbar md:custom-scrollbar p-3 space-y-4 [touch-action:pan-y]">
           {/* Seksjon A: Verktøy & Moduler (Quick access) */}
           <div className="space-y-1">
-            {!isCollapsedDesktop && (
+            {!isEffectiveCollapsed && (
               <div className="px-3 pt-1 pb-1.5 text-[12px] sm:text-[13px] font-bold uppercase tracking-wider text-slate-400/90 flex items-center justify-between">
                 <span>{t('ws_modules_heading', "Moduler & Fagsystem")}</span>
               </div>
             )}
 
-            {MODULES.slice(0, isCollapsedDesktop ? 5 : MODULES.length).map((mod) => {
+            {MODULES.slice(0, isEffectiveCollapsed ? 5 : MODULES.length).map((mod) => {
               const IconComponent = mod.icon;
               const isCurrentTab = currentActiveTab === mod.id;
               const isAllowed = hasModuleAccess ? hasModuleAccess(mod.id) : true;
@@ -389,23 +430,23 @@ export default function WorkstationSidebar({
                         : isAllowed 
                           ? "text-slate-200 hover:text-white hover:bg-[#131822] border border-transparent hover:border-white/10" 
                           : "text-slate-500 hover:bg-slate-900/40 opacity-60",
-                      isCollapsedDesktop && "justify-center px-2 py-2.5"
+                      isEffectiveCollapsed && "justify-center px-2 py-2.5"
                     )}
                     title={isAllowed ? label : `${label} (Låst i gjeldende pakke)`}
                   >
                     <div className="flex items-center gap-3 min-w-0">
                       <IconComponent size={20} className={cn(isAllowed ? mod.color : "text-slate-600", "shrink-0 transition-transform group-hover:scale-110")} />
-                      {!isCollapsedDesktop && (
+                      {!isEffectiveCollapsed && (
                         <span className="truncate">{label}</span>
                       )}
                     </div>
-                    {!isCollapsedDesktop && !isAllowed && (
+                    {!isEffectiveCollapsed && !isAllowed && (
                       <Lock size={14} className="text-slate-500 shrink-0" />
                     )}
                   </button>
 
                   {/* ➕ Hurtigknapp for å opprette tilbud direkte fra modullisten */}
-                  {mod.id === 'offers' && !isCollapsedDesktop && isAllowed && (
+                  {mod.id === 'offers' && !isEffectiveCollapsed && isAllowed && (
                     <button
                       type="button"
                       onClick={(e) => {
@@ -436,12 +477,12 @@ export default function WorkstationSidebar({
                 className={cn(
                   "w-full flex items-center gap-3 px-3.5 py-2.5 sm:py-3 rounded-2xl text-[15px] sm:text-[16px] font-bold transition-all cursor-pointer text-left group mt-2",
                   "bg-gradient-to-r from-amber-500/15 via-yellow-500/10 to-amber-600/15 border border-amber-500/40 text-amber-300 hover:text-white hover:bg-amber-500/25 hover:border-amber-400 shadow-xs",
-                  isCollapsedDesktop && "justify-center px-2 py-2.5"
+                  isEffectiveCollapsed && "justify-center px-2 py-2.5"
                 )}
                 title={t('ws_superadmin_portal', "SuperAdmin Portal")}
               >
                 <Crown size={20} className="text-amber-400 shrink-0 group-hover:scale-110 group-hover:rotate-6 transition-transform" />
-                {!isCollapsedDesktop && (
+                {!isEffectiveCollapsed && (
                   <div className="flex items-center justify-between w-full min-w-0">
                     <span className="truncate">{t('ws_superadmin_portal', "SuperAdmin Portal")}</span>
                     <span className="text-[10px] px-2 py-0.5 rounded-full bg-amber-400/20 text-amber-200 font-mono font-black border border-amber-400/30">SYS</span>
@@ -464,13 +505,13 @@ export default function WorkstationSidebar({
                 className={cn(
                   "w-full flex items-center gap-3 px-3.5 py-2.5 sm:py-3 rounded-2xl text-[15px] sm:text-[16px] font-black transition-all cursor-pointer text-left group mt-2",
                   "bg-amber-500 text-neutral-950 hover:bg-amber-400 shadow-md",
-                  isCollapsedDesktop && "justify-center px-2 py-2.5"
+                  isEffectiveCollapsed && "justify-center px-2 py-2.5"
                 )}
-                title={t('ws_back_to_superadmin', "← Tilbake til SuperAdmin")}
+                title={t('ws_back_to_superadmin', "Tilbake til SuperAdmin")}
               >
                 <ArrowLeft size={16} className="shrink-0" />
-                {!isCollapsedDesktop && (
-                  <span className="truncate">{t('ws_back_to_superadmin', "← Tilbake til SuperAdmin")}</span>
+                {!isEffectiveCollapsed && (
+                  <span className="truncate">{t('ws_back_to_superadmin', "Tilbake til SuperAdmin")}</span>
                 )}
               </button>
             )}
@@ -478,7 +519,7 @@ export default function WorkstationSidebar({
 
           {/* Seksjon B: Prosjekter (Gemini: "Notatbøker") */}
           <div className="space-y-1.5 pt-3 border-t border-slate-800/80">
-            {!isCollapsedDesktop && (
+            {!isEffectiveCollapsed && (
               <div className="px-3 py-1 flex items-center justify-between text-[12px] sm:text-[13px] font-bold uppercase tracking-wider text-slate-400/90">
                 <button
                   type="button"
@@ -521,12 +562,12 @@ export default function WorkstationSidebar({
                   (!selectedProject && currentActiveTab === 'all_projects')
                     ? "bg-[#161c28] text-white font-bold border border-slate-700/80 shadow-md ring-1 ring-white/10"
                     : "text-slate-200 hover:text-white hover:bg-[#131822] border border-transparent hover:border-white/10",
-                  isCollapsedDesktop && "justify-center px-2 py-2.5"
+                  isEffectiveCollapsed && "justify-center px-2 py-2.5"
                 )}
                 title={t('ws_all_sites', "Alle byggeplasser")}
               >
                 <HardHat size={20} className={(!selectedProject && currentActiveTab === 'all_projects') ? "text-amber-400 shrink-0" : "text-slate-400 shrink-0"} />
-                {!isCollapsedDesktop && (
+                {!isEffectiveCollapsed && (
                   <span className="truncate">{t('ws_all_sites', "Alle byggeplasser")}</span>
                 )}
               </button>
@@ -547,7 +588,7 @@ export default function WorkstationSidebar({
                       isSelected
                         ? "bg-[#131d30] border border-electric-500/50 text-white font-bold shadow-md ring-1 ring-electric-500/20"
                         : "text-slate-200 hover:text-white hover:bg-[#131822] border border-transparent hover:border-white/10",
-                      isCollapsedDesktop && "justify-center px-2 py-2.5"
+                      isEffectiveCollapsed && "justify-center px-2 py-2.5"
                     )}
                     title={`${proj.name} (${proj.clientName || 'Byggeplass'})`}
                   >
@@ -556,11 +597,11 @@ export default function WorkstationSidebar({
                         "w-2.5 h-2.5 rounded-full shrink-0",
                         isSelected ? "bg-emerald-400 animate-pulse ring-2 ring-emerald-500/30" : "bg-slate-500 group-hover:bg-slate-300"
                       )} />
-                      {!isCollapsedDesktop && (
+                      {!isEffectiveCollapsed && (
                         <span className="truncate">{proj.name}</span>
                       )}
                     </div>
-                    {!isCollapsedDesktop && proj.progress !== undefined && (
+                    {!isEffectiveCollapsed && proj.progress !== undefined && (
                       <span className="text-[11px] font-mono font-bold px-2 py-0.5 rounded-full bg-slate-800/90 text-slate-300 border border-slate-700/60 shrink-0">
                         {proj.progress}%
                       </span>
@@ -573,7 +614,7 @@ export default function WorkstationSidebar({
 
           {/* Seksjon C: Samtaler & Oppgaver (Smart Sortering, Prosjektmapper & Fast Filter) */}
           <div className="space-y-2 pt-3 border-t border-slate-800/80">
-            {!isCollapsedDesktop && (
+            {!isEffectiveCollapsed && (
               <div className="px-2 space-y-2">
                 {/* Header med tittel, antall, og visningsmodus-knapper */}
                 <div className="flex items-center justify-between gap-1">
@@ -686,7 +727,7 @@ export default function WorkstationSidebar({
             )}
 
             {filteredSessions.length === 0 ? (
-              !isCollapsedDesktop && (
+              !isEffectiveCollapsed && (
                 <div className="px-3 py-4 text-center space-y-1">
                   <p className="text-xs text-slate-500 italic">
                     {sidebarChatFilter
@@ -714,7 +755,7 @@ export default function WorkstationSidebar({
                   const isCurrentActiveProject = selectedProject?.id === group.projectId;
                   return (
                     <div key={group.projectId} className="space-y-1">
-                      {!isCollapsedDesktop && (
+                      {!isEffectiveCollapsed && (
                         <button
                           type="button"
                           onClick={() => toggleProjectExpand(group.projectId)}
@@ -742,14 +783,14 @@ export default function WorkstationSidebar({
                         </button>
                       )}
 
-                      {(isExpanded || isCollapsedDesktop) && (
-                        <div className={cn("space-y-1", !isCollapsedDesktop && "ml-2.5 pl-2 border-l border-slate-800/80 my-1")}>
+                      {(isExpanded || isEffectiveCollapsed) && (
+                        <div className={cn("space-y-1", !isEffectiveCollapsed && "ml-2.5 pl-2 border-l border-slate-800/80 my-1")}>
                           {group.sessions.map(session => (
                             <SessionItem
                               key={session.id}
                               session={session}
                               isActive={activeSessionId === session.id}
-                              isCollapsed={isCollapsedDesktop}
+                              isCollapsed={isEffectiveCollapsed}
                               isEditing={editingSessionId === session.id}
                               editingTitle={editingTitle}
                               onSetEditingTitle={setEditingTitle}
@@ -776,7 +817,7 @@ export default function WorkstationSidebar({
                 {/* 📌 Festede samtaler */}
                 {pinned.length > 0 && (
                   <div className="space-y-1 pb-1.5 mb-1 border-b border-white/5">
-                    {!isCollapsedDesktop && (
+                    {!isEffectiveCollapsed && (
                       <button
                         type="button"
                         onClick={() => toggleBucketCollapse('pinned')}
@@ -799,7 +840,7 @@ export default function WorkstationSidebar({
                         key={session.id}
                         session={session}
                         isActive={activeSessionId === session.id}
-                        isCollapsed={isCollapsedDesktop}
+                        isCollapsed={isEffectiveCollapsed}
                         isEditing={editingSessionId === session.id}
                         editingTitle={editingTitle}
                         showProjectBadge={true}
@@ -821,7 +862,7 @@ export default function WorkstationSidebar({
                 {/* ⚡ I dag */}
                 {today.length > 0 && (
                   <div className="space-y-1">
-                    {!isCollapsedDesktop && (
+                    {!isEffectiveCollapsed && (
                       <button
                         type="button"
                         onClick={() => toggleBucketCollapse('today')}
@@ -843,7 +884,7 @@ export default function WorkstationSidebar({
                             key={session.id}
                             session={session}
                             isActive={activeSessionId === session.id}
-                            isCollapsed={isCollapsedDesktop}
+                            isCollapsed={isEffectiveCollapsed}
                             isEditing={editingSessionId === session.id}
                             editingTitle={editingTitle}
                             showProjectBadge={true}
@@ -859,7 +900,7 @@ export default function WorkstationSidebar({
                             onDelete={(e) => handleDeleteSession(e, session.id, session.title)}
                           />
                         ))}
-                        {!isCollapsedDesktop && today.length > 5 && (
+                        {!isEffectiveCollapsed && today.length > 5 && (
                           <button
                             type="button"
                             onClick={() => toggleShowAllInBucket('today')}
@@ -876,7 +917,7 @@ export default function WorkstationSidebar({
                 {/* 📅 I går */}
                 {yesterday.length > 0 && (
                   <div className="space-y-1">
-                    {!isCollapsedDesktop && (
+                    {!isEffectiveCollapsed && (
                       <button
                         type="button"
                         onClick={() => toggleBucketCollapse('yesterday')}
@@ -898,7 +939,7 @@ export default function WorkstationSidebar({
                             key={session.id}
                             session={session}
                             isActive={activeSessionId === session.id}
-                            isCollapsed={isCollapsedDesktop}
+                            isCollapsed={isEffectiveCollapsed}
                             isEditing={editingSessionId === session.id}
                             editingTitle={editingTitle}
                             showProjectBadge={true}
@@ -914,7 +955,7 @@ export default function WorkstationSidebar({
                             onDelete={(e) => handleDeleteSession(e, session.id, session.title)}
                           />
                         ))}
-                        {!isCollapsedDesktop && yesterday.length > 5 && (
+                        {!isEffectiveCollapsed && yesterday.length > 5 && (
                           <button
                             type="button"
                             onClick={() => toggleShowAllInBucket('yesterday')}
@@ -931,7 +972,7 @@ export default function WorkstationSidebar({
                 {/* 🗓️ Siste 7 dager */}
                 {last7Days.length > 0 && (
                   <div className="space-y-1">
-                    {!isCollapsedDesktop && (
+                    {!isEffectiveCollapsed && (
                       <button
                         type="button"
                         onClick={() => toggleBucketCollapse('last7Days')}
@@ -953,7 +994,7 @@ export default function WorkstationSidebar({
                             key={session.id}
                             session={session}
                             isActive={activeSessionId === session.id}
-                            isCollapsed={isCollapsedDesktop}
+                            isCollapsed={isEffectiveCollapsed}
                             isEditing={editingSessionId === session.id}
                             editingTitle={editingTitle}
                             showProjectBadge={true}
@@ -969,7 +1010,7 @@ export default function WorkstationSidebar({
                             onDelete={(e) => handleDeleteSession(e, session.id, session.title)}
                           />
                         ))}
-                        {!isCollapsedDesktop && last7Days.length > 5 && (
+                        {!isEffectiveCollapsed && last7Days.length > 5 && (
                           <button
                             type="button"
                             onClick={() => toggleShowAllInBucket('last7Days')}
@@ -986,7 +1027,7 @@ export default function WorkstationSidebar({
                 {/* 🗃️ Eldre samtaler */}
                 {older.length > 0 && (
                   <div className="space-y-1">
-                    {!isCollapsedDesktop && (
+                    {!isEffectiveCollapsed && (
                       <button
                         type="button"
                         onClick={() => toggleBucketCollapse('older')}
@@ -1008,7 +1049,7 @@ export default function WorkstationSidebar({
                             key={session.id}
                             session={session}
                             isActive={activeSessionId === session.id}
-                            isCollapsed={isCollapsedDesktop}
+                            isCollapsed={isEffectiveCollapsed}
                             isEditing={editingSessionId === session.id}
                             editingTitle={editingTitle}
                             showProjectBadge={true}
@@ -1024,7 +1065,7 @@ export default function WorkstationSidebar({
                             onDelete={(e) => handleDeleteSession(e, session.id, session.title)}
                           />
                         ))}
-                        {!isCollapsedDesktop && older.length > 5 && (
+                        {!isEffectiveCollapsed && older.length > 5 && (
                           <button
                             type="button"
                             onClick={() => toggleShowAllInBucket('older')}
@@ -1044,7 +1085,7 @@ export default function WorkstationSidebar({
 
         {/* 4. Footer: Gemini-style user profile card with location, settings & logout */}
         <div className="p-3.5 border-t border-slate-800/80 shrink-0 bg-[#0A101D] space-y-2.5">
-          <div className={cn("p-2.5 rounded-2xl bg-[#13161c] border border-white/10 flex items-center justify-between gap-2.5 transition-all shadow-md", isCollapsedDesktop && "justify-center p-1.5 bg-transparent border-transparent shadow-none")}>
+          <div className={cn("p-2.5 rounded-2xl bg-[#13161c] border border-white/10 flex items-center justify-between gap-2.5 transition-all shadow-md", isEffectiveCollapsed && "justify-center p-1.5 bg-transparent border-transparent shadow-none")}>
             <div className="flex items-center gap-3 min-w-0">
               {user?.photoURL ? (
                 <img 
@@ -1055,7 +1096,7 @@ export default function WorkstationSidebar({
               ) : (
                 <div 
                   onClick={() => {
-                    if (isCollapsedDesktop && isSuperAdmin && !impersonatedCompanyId) {
+                    if (isEffectiveCollapsed && isSuperAdmin && !impersonatedCompanyId) {
                       if (onOpenSuperAdmin) onOpenSuperAdmin();
                       else window.dispatchEvent(new CustomEvent("navigate_view", { detail: { view: "super-admin" } }));
                     }
@@ -1065,12 +1106,12 @@ export default function WorkstationSidebar({
                     impersonatedCompanyId
                       ? "bg-gradient-to-tr from-amber-600 to-amber-400 ring-amber-500/30"
                       : "bg-gradient-to-tr from-purple-600 to-blue-500 ring-purple-500/30",
-                    isCollapsedDesktop && isSuperAdmin && !impersonatedCompanyId && "cursor-pointer ring-amber-400/50 hover:scale-105 transition-transform"
+                    isEffectiveCollapsed && isSuperAdmin && !impersonatedCompanyId && "cursor-pointer ring-amber-400/50 hover:scale-105 transition-transform"
                   )}
                   title={
                     impersonatedCompanyId
                       ? `Viser som kunde: ${impersonatedCompanyId === 'comp-demo-fjellheim' ? 'Fjellheim Bygg' : impersonatedCompanyId}`
-                      : (isCollapsedDesktop && isSuperAdmin ? "👑 SuperAdmin Portal (klikk her)" : undefined)
+                      : (isEffectiveCollapsed && isSuperAdmin ? "👑 SuperAdmin Portal (klikk her)" : undefined)
                   }
                 >
                   {impersonatedCompanyId === 'comp-demo-fjellheim' 
@@ -1078,7 +1119,7 @@ export default function WorkstationSidebar({
                     : (user?.displayName ? user.displayName.charAt(0).toUpperCase() : 'K')}
                 </div>
               )}
-              {!isCollapsedDesktop && (
+              {!isEffectiveCollapsed && (
                 <div className="min-w-0">
                   <p className="text-[14px] sm:text-[15px] font-bold text-white truncate">
                     {impersonatedCompanyId === 'comp-demo-fjellheim' 
@@ -1097,7 +1138,7 @@ export default function WorkstationSidebar({
               )}
             </div>
 
-            {!isCollapsedDesktop && (
+            {!isEffectiveCollapsed && (
               <div className="flex items-center gap-1 shrink-0">
                 {isSuperAdmin && (
                   <button
@@ -1139,7 +1180,7 @@ export default function WorkstationSidebar({
             )}
           </div>
 
-          {!isCollapsedDesktop && (
+          {!isEffectiveCollapsed && (
             <div className="pt-1 flex items-center justify-between text-[11px] sm:text-[12px] text-slate-400 border-t border-slate-800/80">
               <span className="flex items-center gap-1.5 truncate">
                 <MapPin size={13} className="text-slate-500 shrink-0" />

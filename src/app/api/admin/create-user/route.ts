@@ -17,7 +17,7 @@ export async function POST(req: NextRequest) {
     }
 
     const body = await req.json();
-    const accountType = body.accountType || 'partner'; // 'partner' | 'internal' | 'customer'
+    const accountType = body.accountType || 'trial'; // 'trial' | 'tester' | 'partner' | 'internal' | 'customer'
     const companyMode = body.companyMode || 'new';     // 'new' | 'existing'
     let companyId = sanitize(body.companyId || '').trim();
     let companyName = sanitize(body.companyName || '').trim();
@@ -30,6 +30,12 @@ export async function POST(req: NextRequest) {
     const trade = sanitize(body.trade || 'Byggmester / Tømrer');
     const sendWelcomeEmail = Boolean(body.sendWelcomeEmail);
     const customMessage = body.customMessage ? String(body.customMessage) : null;
+
+    const isTrial = accountType === 'trial' || accountType === 'tester' || Boolean(body.isTrial);
+    const isBetaTester = Boolean(body.isBetaTester || accountType === 'tester');
+    const trialDays = typeof body.trialDays === 'number' && body.trialDays > 0 
+      ? body.trialDays 
+      : (body.trialDays ? parseInt(body.trialDays) : (isBetaTester ? 60 : 14));
 
     if (!email) {
       return NextResponse.json({ error: 'E-postadresse er påkrevd.' }, { status: 400 });
@@ -93,11 +99,13 @@ export async function POST(req: NextRequest) {
       if (!companyName) {
         companyName = isInternal 
           ? 'VikingMester Internt' 
-          : (name ? `${name} (Partner)` : 'Samarbeidspartner AS');
+          : isPartner
+          ? (name ? `${name} (Partner)` : 'Samarbeidspartner AS')
+          : (name ? `${name} AS` : 'Prøvebedrift AS');
       }
 
-      const plan = isInternal ? 'internal' : isPartner ? 'partner' : (body.plan || 'team');
-      const monthlyPrice = (isPartner || isInternal) ? 0 : (plan === 'solo' ? 690 : plan === 'entreprenor' ? 2990 : 1490);
+      const plan = isInternal ? 'internal' : isPartner ? 'partner' : isBetaTester ? 'entreprenor' : (body.plan || 'team');
+      const monthlyPrice = (isPartner || isInternal || isTrial) ? 0 : (plan === 'solo' ? 690 : plan === 'entreprenor' ? 2990 : 1490);
 
       finalCompany = {
         id: companyId,
@@ -111,11 +119,15 @@ export async function POST(req: NextRequest) {
         plan,
         monthlyPrice,
         status: 'active',
-        subscriptionStatus: 'active', // Alltid aktiv uten tidsbegrensning for partnere/kollegaer
+        subscriptionStatus: isTrial ? 'trial' : 'active',
+        trialDays: isTrial ? trialDays : undefined,
+        trialStartDate: isTrial ? now.toISOString() : undefined,
+        trialDaysLeft: isTrial ? trialDays : undefined,
+        isBetaTester,
         isPartner,
         isInternal,
         modules: body.modules || [
-          'projects', 'checklists', 'deviations', 'ai', 'economy',
+          'all_modules', 'projects', 'checklists', 'deviations', 'ai', 'economy',
           'fdv', 'inventory', 'vehicle', 'time', 'apprentice', 'building_app'
         ],
         userCount: 1,
@@ -131,7 +143,13 @@ export async function POST(req: NextRequest) {
         companyName = existingComp.name || companyName;
         existingComp.userCount = (existingComp.userCount || 0) + 1;
         existingComp.updatedAt = now.toISOString();
-        if (isInternal) {
+        if (isTrial) {
+          existingComp.subscriptionStatus = 'trial';
+          existingComp.trialDays = trialDays;
+          existingComp.trialStartDate = now.toISOString();
+          existingComp.trialDaysLeft = trialDays;
+          if (isBetaTester) existingComp.isBetaTester = true;
+        } else if (isInternal) {
           existingComp.isInternal = true;
           existingComp.plan = 'internal';
           existingComp.monthlyPrice = 0;
@@ -159,7 +177,11 @@ export async function POST(req: NextRequest) {
       trade: trade || 'Byggmester',
       company: isSuperAdminAccount ? 'AIChat Norge AS / Vikingnet' : companyName,
       companyId: isSuperAdminAccount ? 'comp-001' : companyId,
-      subscriptionStatus: 'active', // Ingen prøvetidslås
+      subscriptionStatus: isTrial ? 'trial' : 'active',
+      trialDays: isTrial ? trialDays : undefined,
+      trialStartDate: isTrial ? now.toISOString() : undefined,
+      trialDaysLeft: isTrial ? trialDays : undefined,
+      isBetaTester,
       orgnr: isSuperAdminAccount ? '933 607 779' : (orgNumber || null),
       phone: phone || null,
       isPartner: isSuperAdminAccount || isPartner,
@@ -170,13 +192,16 @@ export async function POST(req: NextRequest) {
 
     // Lagre bruker i PostgreSQL og inMemoryStore
     await dbQuery(
-      `INSERT INTO users (id, email, password, display_name, role, trade, company, company_id, subscription_status, orgnr)
-       VALUES ($1, $2, $3, $4, $5, $6, $7, $8, $9, $10)
+      `INSERT INTO users (id, email, password, display_name, role, trade, company, company_id, subscription_status, orgnr, trial_days, trial_start_date, is_beta_tester)
+       VALUES ($1, $2, $3, $4, $5, $6, $7, $8, $9, $10, $11, $12, $13)
        ON CONFLICT (email) DO UPDATE SET
          display_name = EXCLUDED.display_name,
          company = EXCLUDED.company,
          company_id = EXCLUDED.company_id,
          subscription_status = EXCLUDED.subscription_status,
+         trial_days = EXCLUDED.trial_days,
+         trial_start_date = EXCLUDED.trial_start_date,
+         is_beta_tester = EXCLUDED.is_beta_tester,
          role = EXCLUDED.role`,
       [
         userObj.id,
@@ -188,7 +213,10 @@ export async function POST(req: NextRequest) {
         userObj.company,
         userObj.companyId,
         userObj.subscriptionStatus,
-        userObj.orgnr
+        userObj.orgnr,
+        isTrial ? trialDays : 14,
+        isTrial ? now.toISOString() : null,
+        isBetaTester
       ]
     ).catch((err) => {
       console.warn('Admin user direct insert warning:', err);
@@ -215,7 +243,7 @@ export async function POST(req: NextRequest) {
     await saveCollectionItem('password_resets', {
       email: emailLower,
       token: resetToken,
-      expiresAt: new Date(Date.now() + 7 * 24 * 60 * 60 * 1000).toISOString(), // 7 dagers gyldighet for invitasjonsaktivering
+      expiresAt: new Date(Date.now() + 30 * 24 * 60 * 60 * 1000).toISOString(), // 30 dagers gyldighet for invitasjonsaktivering
       createdAt: now.toISOString(),
       status: 'pending'
     });
@@ -224,15 +252,22 @@ export async function POST(req: NextRequest) {
     let emailMessage = '';
     if (sendWelcomeEmail) {
       try {
-
         const subject = isSuperAdminAccount
           ? `👑 Velkommen som SuperAdmin & Systemeier i VikingMester`
+          : isBetaTester
+          ? `🧪 Velkommen som Betatester i VikingMester (${trialDays} dagers gratis tilgang)`
+          : isTrial
+          ? `Velkommen til VikingMester (${trialDays} dagers gratis prøveperiode)`
           : isInternal 
           ? `Din interne brukerkonto i VikingMester` 
           : `Velkommen som samarbeidspartner i VikingMester`;
 
         const greetingText = customMessage || (isSuperAdminAccount
           ? `Hei ${name || 'Fredrik'}!\n\nDu har blitt opprettet som SuperAdmin og Systemeier for VikingMester (AIChat Norge AS / Vikingnet).\n\nDu har 100% full plattformeiertilgang med nøyaktig samme rettigheter som Kenneth Kristiansen (SuperAdmin-portal, ubegrenset kalkyle, impersonering og full systemkontroll).\n\nDu kan velge ditt eget personlige passord med en gang ved å klikke på knappen under.`
+          : isBetaTester
+          ? `Hei ${name || 'Fagarbeider'}!\n\nDu har blitt invitert som betatester i VikingMester med ${trialDays} dagers full, kostnadsfri tilgang til hele systemet!\n\nVi setter stor pris på at du tester ut løsningen i din arbeidshverdag. Test gjerne byggedagbok med stemmestyring, TEK17-visjon for fotokontroll, kalkyler, endringsordrer og SJA.\n\nKlikk på knappen under for å velge ditt personlige passord og komme i gang med én gang.`
+          : isTrial
+          ? `Hei ${name || 'Byggmester'}!\n\nVelkommen til VikingMester! Det er opprettet en konto for deg med ${trialDays} dagers kostnadsfri og uforpliktende prøveperiode for ${companyName}.\n\nKlikk på knappen under for å velge ditt eget personlige passord og starte prøveperioden.`
           : isInternal
           ? `Hei ${name || 'kollega'}!\n\nDet er opprettet en intern brukerkonto for deg i VikingMester for ${companyName}.\n\nKlikk på knappen under for å velge ditt personlige passord og aktivere kontoen.`
           : `Hei ${name || 'samarbeidspartner'}!\n\nVi har gleden av å ønske deg velkommen til VikingMester. Du har fått tildelt en partnerkonto med full tilgang til plattformen.\n\nKlikk på knappen under for å velge ditt personlige passord og aktivere kontoen.`);
@@ -240,18 +275,18 @@ export async function POST(req: NextRequest) {
         const emailHtml = `
           <div style="font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, sans-serif; max-width: 600px; margin: 0 auto; padding: 24px; color: #1e293b; background: #ffffff;">
             <div style="text-align: center; margin-bottom: 24px;">
-              <h1 style="color: ${isSuperAdminAccount ? '#d97706' : '#4f46e5'}; margin: 0; font-size: 26px; font-weight: 800;">
-                ${isSuperAdminAccount ? '👑 VikingMester SuperAdmin' : 'VikingMester'}
+              <h1 style="color: ${isSuperAdminAccount ? '#d97706' : isBetaTester ? '#06b6d4' : '#4f46e5'}; margin: 0; font-size: 26px; font-weight: 800;">
+                ${isSuperAdminAccount ? '👑 VikingMester SuperAdmin' : isBetaTester ? '🧪 VikingMester Betatest' : 'VikingMester'}
               </h1>
               <p style="color: #64748b; font-size: 13px; margin-top: 4px;">KS, HMS & Prosjektstyring for Bygg og Anlegg</p>
             </div>
 
-            <div style="background: #f8fafc; border: 1px solid ${isSuperAdminAccount ? '#fde68a' : '#e2e8f0'}; border-radius: 16px; padding: 20px; margin-bottom: 24px;">
+            <div style="background: #f8fafc; border: 1px solid ${isSuperAdminAccount ? '#fde68a' : isBetaTester ? '#a5f3fc' : '#e2e8f0'}; border-radius: 16px; padding: 20px; margin-bottom: 24px;">
               <p style="font-size: 15px; line-height: 1.6; margin-top: 0;">${greetingText.replace(/\n/g, '<br/>')}</p>
               
               <div style="text-align: center; margin: 24px 0 20px 0;">
-                <a href="${setPasswordUrl}" style="display: inline-block; background: ${isSuperAdminAccount ? 'linear-gradient(135deg, #d97706 0%, #f59e0b 100%)' : 'linear-gradient(135deg, #4f46e5 0%, #6366f1 100%)'}; color: #ffffff; text-decoration: none; font-weight: 800; font-size: 15px; padding: 14px 32px; border-radius: 12px; box-shadow: 0 4px 14px rgba(217, 119, 6, 0.3);">
-                  ${isSuperAdminAccount ? '👑 Velg ditt passord og aktiver SuperAdmin nå →' : 'Velg ditt personlige passord & logg inn →'}
+                <a href="${setPasswordUrl}" style="display: inline-block; background: ${isSuperAdminAccount ? 'linear-gradient(135deg, #d97706 0%, #f59e0b 100%)' : isBetaTester ? 'linear-gradient(135deg, #0891b2 0%, #06b6d4 100%)' : 'linear-gradient(135deg, #4f46e5 0%, #6366f1 100%)'}; color: #ffffff; text-decoration: none; font-weight: 800; font-size: 15px; padding: 14px 32px; border-radius: 12px; box-shadow: 0 4px 14px rgba(79, 70, 229, 0.3);">
+                  ${isSuperAdminAccount ? '👑 Velg ditt passord og aktiver SuperAdmin nå →' : isBetaTester ? '🧪 Velg passord & start betatestingen →' : 'Velg ditt personlige passord & logg inn →'}
                 </a>
               </div>
 
@@ -261,6 +296,7 @@ export async function POST(req: NextRequest) {
                 <p style="margin: 4px 0; font-size: 14px;"><strong>Midlertidig passord:</strong> <code style="background: #f1f5f9; padding: 2px 6px; border-radius: 4px; font-weight: bold; color: #0f172a;">${password}</code></p>
                 <p style="margin: 4px 0; font-size: 14px;"><strong>Firma / Organisasjon:</strong> ${userObj.company}</p>
                 <p style="margin: 4px 0; font-size: 14px;"><strong>Rolle:</strong> <span style="font-weight: bold; color: ${isSuperAdminAccount ? '#d97706' : '#1e293b'};">${isSuperAdminAccount ? '👑 SuperAdmin / Systemeier' : role === 'admin' ? 'Administrator' : role === 'manager' ? 'Prosjektleder' : 'Håndverker'}</span></p>
+                ${isTrial ? `<p style="margin: 4px 0; font-size: 14px;"><strong>Prøveperiode:</strong> <span style="color: #059669; font-weight: bold;">${trialDays} dager kostnadsfritt${isBetaTester ? ' (🧪 Betatester)' : ''}</span></p>` : ''}
               </div>
 
               <p style="font-size: 12px; color: #64748b; line-height: 1.5; text-align: center; margin-bottom: 0;">
@@ -302,6 +338,8 @@ export async function POST(req: NextRequest) {
         company: userObj.company,
         companyId: userObj.companyId,
         subscriptionStatus: userObj.subscriptionStatus,
+        trialDays: isTrial ? trialDays : undefined,
+        isBetaTester: Boolean(isBetaTester),
         isPartner: userObj.isPartner,
         isInternal: userObj.isInternal
       },

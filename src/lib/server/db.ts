@@ -540,6 +540,8 @@ export async function initDb() {
       CREATE INDEX IF NOT EXISTS idx_health_reports_project ON project_health_reports (project_id);
 
       ALTER TABLE users ADD COLUMN IF NOT EXISTS orgnr VARCHAR(50);
+      ALTER TABLE users ADD COLUMN IF NOT EXISTS trial_days INT DEFAULT 14;
+      ALTER TABLE users ADD COLUMN IF NOT EXISTS is_beta_tester BOOLEAN DEFAULT FALSE;
     `);
 
     const seedAdmins = [

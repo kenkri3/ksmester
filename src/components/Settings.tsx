@@ -76,7 +76,7 @@ interface SettingsProfile {
 }
 
 export default function Settings() {
-  const { user, logout, subscriptionStatus, trialDaysLeft } = useAuth();
+  const { user, logout, subscriptionStatus, trialDaysLeft, totalTrialDays, isBetaTester } = useAuth();
   const { t, i18n } = useTranslation();
   const [activeTab, setActiveTab] = useState<'profile' | 'company' | 'team' | 'modules' | 'notifications' | 'billing' | 'system' | 'privacy'>('profile');
   const [isSaved, setIsSaved] = useState(false);
@@ -906,15 +906,22 @@ export default function Settings() {
                 )}>
                   <div className="absolute top-0 right-0 w-64 h-64 bg-emerald-500/20 rounded-full -mr-32 -mt-32 blur-3xl"></div>
                   <div className="relative z-10">
-                    <div className="text-[10px] font-black uppercase tracking-widest text-emerald-400 mb-2">
-                      {subscriptionStatus === 'trial' ? t('trial_period', 'Prøveperiode') : t('current_plan', 'Gjeldende plan')}
+                    <div className="flex items-center gap-2 mb-2">
+                      <div className="text-[10px] font-black uppercase tracking-widest text-emerald-400">
+                        {subscriptionStatus === 'trial' ? (isBetaTester ? '🧪 Betatester · Prøveperiode' : t('trial_period', 'Prøveperiode')) : t('current_plan', 'Gjeldende plan')}
+                      </div>
+                      {isBetaTester && (
+                        <span className="px-2 py-0.5 rounded-full text-[9px] font-black uppercase tracking-wider bg-cyan-500/20 text-cyan-300 border border-cyan-500/30">
+                          Beta
+                        </span>
+                      )}
                     </div>
                     <h3 className="text-3xl font-bold mb-2">
-                      {subscriptionStatus === 'trial' ? t('free_trial', 'Gratis prøveperiode') : profile.billing.plan}
+                      {subscriptionStatus === 'trial' ? (isBetaTester ? `Gratis Betatest (${totalTrialDays || 60} dager)` : t('free_trial', 'Gratis prøveperiode')) : profile.billing.plan}
                     </h3>
-                    <p className="text-neutral-400 text-sm mb-6">
+                    <p className="text-neutral-300 text-sm mb-6">
                       {subscriptionStatus === 'trial' 
-                        ? `${trialDaysLeft} ${t('days_left', 'dager igjen')}` 
+                        ? `${trialDaysLeft} ${t('days_left', 'dager igjen')}${totalTrialDays ? ` (av ${totalTrialDays} dager)` : ''}` 
                         : `${t('billing_cycle', 'Neste fakturering')}: ${new Date(profile.billing.nextBilling).toLocaleDateString()}`
                       }
                     </p>

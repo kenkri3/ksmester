@@ -31,6 +31,8 @@ export interface User {
   emailVerified?: boolean;
   plan?: string;
   modules?: string[];
+  isBetaTester?: boolean;
+  totalTrialDays?: number | null;
 }
 
 interface AuthContextType {
@@ -53,6 +55,8 @@ interface AuthContextType {
   companyModules: string[] | null;
   subscriptionStatus: string | null;
   trialDaysLeft: number | null;
+  totalTrialDays?: number | null;
+  isBetaTester?: boolean;
   impersonatedCompanyId: string | null;
   impersonatedRole: string | null;
   impersonatedCompanyPlan?: string | null;
@@ -70,6 +74,8 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
   const [companyModules, setCompanyModules] = useState<string[] | null>(null);
   const [subscriptionStatus, setSubscriptionStatus] = useState<string | null>('active');
   const [trialDaysLeft, setTrialDaysLeft] = useState<number | null>(null);
+  const [totalTrialDays, setTotalTrialDays] = useState<number | null>(null);
+  const [isBetaTester, setIsBetaTester] = useState<boolean>(false);
   const [loading, setLoading] = useState(true);
   const [isAuthReady, setIsAuthReady] = useState(false);
 
@@ -139,6 +145,8 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
           setCompany(userObj.company || 'Min Bedrift');
           setSubscriptionStatus(u.subscriptionStatus || 'active');
           setTrialDaysLeft(typeof u.trialDaysLeft === 'number' ? u.trialDaysLeft : null);
+          setTotalTrialDays(typeof u.totalTrialDays === 'number' ? u.totalTrialDays : null);
+          setIsBetaTester(Boolean(u.isBetaTester));
         } else {
           setUser(null);
           setCurrentAuthUser(null);
@@ -355,6 +363,8 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
       companyModules,
       subscriptionStatus: impersonatedCompanyId ? 'active' : subscriptionStatus,
       trialDaysLeft: impersonatedCompanyId ? null : trialDaysLeft,
+      totalTrialDays: impersonatedCompanyId ? null : totalTrialDays,
+      isBetaTester: impersonatedCompanyId ? false : isBetaTester,
       impersonatedCompanyId,
       impersonatedRole,
       impersonatedCompanyPlan,

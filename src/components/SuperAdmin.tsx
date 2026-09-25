@@ -23,6 +23,7 @@ import {
   Timer,
   GraduationCap,
   Mail,
+  Phone,
   FileText,
   Send,
   MessageSquare,
@@ -84,6 +85,8 @@ export interface Company {
   updatedAt?: any;
   userCount?: number;
   trialStartDate?: string;
+  trialDays?: number;
+  isBetaTester?: boolean;
   contactName?: string;
   contactPerson?: string;
   contactEmail?: string;
@@ -211,6 +214,7 @@ export default function SuperAdmin({ onBackToDashboard }: { onBackToDashboard?: 
   const [isCreateModalOpen, setIsCreateModalOpen] = useState(false);
   const [isPartnerModalOpen, setIsPartnerModalOpen] = useState(false);
   const [isSuperAdminInviteModalOpen, setIsSuperAdminInviteModalOpen] = useState(false);
+  const [isInviteTesterModalOpen, setIsInviteTesterModalOpen] = useState(false);
   const [isUserModalOpen, setIsUserModalOpen] = useState(false);
   const [isAddingUser, setIsAddingUser] = useState(false);
   const [newUserName, setNewUserName] = useState('');
@@ -872,7 +876,14 @@ Svar KUN med gyldig rå JSON (uten markdown \`\`\`json klammer):
     }
   };
 
-  const handleUpdateCompanyInfo = async (companyId: string, name: string, orgNumber: string, plan?: 'solo' | 'team' | 'entreprenor' | 'partner' | 'internal') => {
+  const handleUpdateCompanyInfo = async (
+    companyId: string, 
+    name: string, 
+    orgNumber: string, 
+    plan?: 'solo' | 'team' | 'entreprenor' | 'partner' | 'internal',
+    trialDays?: number,
+    isBetaTester?: boolean
+  ) => {
     try {
       const isInternal = plan === 'internal';
       const isPartner = plan === 'partner';
@@ -881,6 +892,13 @@ Svar KUN med gyldig rå JSON (uten markdown \`\`\`json klammer):
         orgNumber,
         updatedAt: serverTimestamp()
       };
+      if (typeof trialDays === 'number' && trialDays > 0) {
+        updateData.trialDays = trialDays;
+        updateData.trialDaysLeft = trialDays;
+      }
+      if (typeof isBetaTester === 'boolean') {
+        updateData.isBetaTester = isBetaTester;
+      }
       if (plan) {
         updateData.plan = plan;
         if (isInternal) {
@@ -900,6 +918,17 @@ Svar KUN med gyldig rå JSON (uten markdown \`\`\`json klammer):
         }
       }
       await updateDoc(doc(db, 'companies', companyId), updateData);
+
+      const token = typeof window !== 'undefined' ? localStorage.getItem('token') : null;
+      await fetch(`/api/data/companies/${companyId}`, {
+        method: 'PUT',
+        headers: {
+          'Content-Type': 'application/json',
+          ...(token ? { 'Authorization': 'Bearer ' + token } : {})
+        },
+        body: JSON.stringify(updateData)
+      }).catch(() => {});
+
       setCompanies(prev => prev.map(c => c.id === companyId ? { ...c, ...updateData } : c));
       toast.success('Kundeinfo ble oppdatert!');
     } catch (error) {
@@ -1122,16 +1151,18 @@ Svar KUN med gyldig rå JSON (uten markdown \`\`\`json klammer):
     return fromCosts || (accountingData?.expensesBreakdown?.tokenInferenceNok || 0);
   }, [thisMonthCosts, accountingData]);
 
-  // Hjelper for å beregne dager igjen av 14-dagers prøveperiode
+  // Hjelper for å beregne dager igjen av skreddersydd prøveperiode (f.eks. 60 dager for betatester)
   const getTrialInfo = (company: Company) => {
     if (!company || company.subscriptionStatus !== 'trial' || isCompanyFreeTier(company)) return null;
     const start = company.trialStartDate 
       ? new Date(company.trialStartDate) 
       : (company.createdAt?.toDate ? company.createdAt.toDate() : new Date(company.createdAt || Date.now()));
     const elapsedDays = Math.floor((Date.now() - start.getTime()) / (1000 * 60 * 60 * 24));
-    const remainingDays = Math.max(0, 14 - elapsedDays);
+    const totalDays = typeof company.trialDays === 'number' && company.trialDays > 0 ? company.trialDays : 14;
+    const remainingDays = Math.max(0, totalDays - elapsedDays);
     return {
       remainingDays,
+      totalDays,
       isExpired: remainingDays === 0
     };
   };
@@ -1441,6 +1472,14 @@ Svar KUN med gyldig rå JSON (uten markdown \`\`\`json klammer):
           >
             <Crown size={16} className="shrink-0 text-amber-400" />
             <span className="truncate">👑 Inviter SuperAdmin</span>
+          </button>
+          <button 
+            onClick={() => setIsInviteTesterModalOpen(true)}
+            className="flex items-center justify-center gap-1.5 px-3.5 py-2.5 bg-emerald-500/20 hover:bg-emerald-500/30 text-emerald-300 border border-emerald-500/40 rounded-xl font-bold transition-all text-xs sm:text-sm cursor-pointer shadow-xs"
+            title="Inviter snekker, håndverker eller betatester med valgfri prøveperiode (f.eks. 60 dager)"
+          >
+            <Sparkles size={16} className="shrink-0 text-emerald-400" />
+            <span className="truncate">🧪 Inviter tester / snekker</span>
           </button>
           <button 
             onClick={() => setIsPartnerModalOpen(true)}
@@ -1829,9 +1868,9 @@ Svar KUN med gyldig rå JSON (uten markdown \`\`\`json klammer):
                                   {!isCompanyFreeTier(company) && company.subscriptionStatus === 'active' && '🟢 Aktiv'}
                                   {!isCompanyFreeTier(company) && company.subscriptionStatus === 'trial' && (
                                     <>
-                                      <span>Prøvetid</span>
+                                      <span>{company.isBetaTester ? '🧪 Betatester' : 'Prøvetid'}</span>
                                       {trialInfo && (
-                                        <span className="font-bold opacity-80">({trialInfo.remainingDays}d)</span>
+                                        <span className="font-bold opacity-90">({trialInfo.remainingDays}d / {trialInfo.totalDays}d)</span>
                                       )}
                                     </>
                                   )}
@@ -3718,6 +3757,14 @@ Svar KUN med gyldig rå JSON (uten markdown \`\`\`json klammer):
         />
       )}
 
+      {/* Invite Tester / Craftsman Modal */}
+      {isInviteTesterModalOpen && (
+        <InviteTesterModal 
+          onClose={() => setIsInviteTesterModalOpen(false)} 
+          onSuccess={() => setIsInviteTesterModalOpen(false)}
+        />
+      )}
+
       {/* Create Partner / Colleague Modal */}
       {isPartnerModalOpen && (
         <CreatePartnerModal 
@@ -3751,7 +3798,7 @@ Svar KUN med gyldig rå JSON (uten markdown \`\`\`json klammer):
           company={selectedCompany}
           onClose={() => setIsEditInfoModalOpen(false)} 
           onSuccess={(updated) => {
-            handleUpdateCompanyInfo(selectedCompany.id, updated.name, updated.orgNumber, updated.plan);
+            handleUpdateCompanyInfo(selectedCompany.id, updated.name, updated.orgNumber, updated.plan, updated.trialDays, updated.isBetaTester);
             setIsEditInfoModalOpen(false);
           }}
         />
@@ -4711,6 +4758,593 @@ Rolle: SuperAdmin (Full plattformeiertilgang, 500M tokens/mnd, alle moduler)`;
   );
 }
 
+function InviteTesterModal({
+  onClose,
+  onSuccess
+}: {
+  onClose: () => void;
+  onSuccess: () => void;
+}) {
+  const [name, setName] = useState('');
+  const [email, setEmail] = useState('');
+  const [phone, setPhone] = useState('');
+  const [companyName, setCompanyName] = useState('');
+  const [trade, setTrade] = useState('Tømrer / Snekker');
+  const [role, setRole] = useState<'admin' | 'worker'>('admin');
+  const [trialDays, setTrialDays] = useState(60); // 60 dager default som Kenneth ba om!
+  const [isCustomDays, setIsCustomDays] = useState(false);
+  const [customDays, setCustomDays] = useState('60');
+  const [isBetaTester, setIsBetaTester] = useState(true); // Betatester default som Kenneth ba om!
+  const [sendWelcomeEmail, setSendWelcomeEmail] = useState(true);
+  const [customMessage, setCustomMessage] = useState('');
+  const [password, setPassword] = useState('');
+  const [showPassword, setShowPassword] = useState(false);
+  const [loading, setLoading] = useState(false);
+  const [copiedLink, setCopiedLink] = useState(false);
+  const [copiedAll, setCopiedAll] = useState(false);
+  const [createdData, setCreatedData] = useState<{
+    user: any;
+    company: any;
+    password: string;
+    loginUrl: string;
+    inviteLink: string;
+    emailSent: boolean;
+  } | null>(null);
+
+  const generatePassword = () => {
+    const chars = 'ABCDEFGHJKLMNPQRSTUVWXYZabcdefghijkmnopqrstuvwxyz23456789!@#$';
+    let pwd = 'VM-';
+    for (let i = 0; i < 6; i++) {
+      pwd += chars.charAt(Math.floor(Math.random() * chars.length));
+    }
+    pwd += '26!';
+    setPassword(pwd);
+  };
+
+  useEffect(() => {
+    generatePassword();
+  }, []);
+
+  const handleApplyCarpenterPreset = () => {
+    setTrade('Tømrer / Snekker');
+    setTrialDays(60);
+    setIsCustomDays(false);
+    setIsBetaTester(true);
+    setRole('admin');
+    toast.success('Forhåndsinnstilt for tømrer / snekker (60 dagers gratis betatesting) 🪵');
+  };
+
+  const getEffectiveDays = () => {
+    if (isCustomDays) {
+      const parsed = parseInt(customDays);
+      return isNaN(parsed) || parsed <= 0 ? 60 : parsed;
+    }
+    return trialDays;
+  };
+
+  const handleSubmit = async (e: React.FormEvent) => {
+    e.preventDefault();
+    if (!email || !password) {
+      toast.error('Både e-post og passord må fylles ut.');
+      return;
+    }
+
+    setLoading(true);
+    try {
+      const effectiveDays = getEffectiveDays();
+      const compName = companyName.trim() || (name.trim() ? `${name.trim()} AS` : 'Snekkerbedrift AS');
+
+      const token = typeof window !== 'undefined' ? localStorage.getItem('token') : null;
+      const res = await fetch('/api/admin/create-user', {
+        method: 'POST',
+        headers: {
+          'Content-Type': 'application/json',
+          ...(token ? { 'Authorization': 'Bearer ' + token } : {})
+        },
+        body: JSON.stringify({
+          accountType: isBetaTester ? 'tester' : 'trial',
+          companyMode: 'new',
+          companyName: compName,
+          name: name.trim() || email.split('@')[0],
+          email: email.trim(),
+          phone: phone.trim(),
+          role,
+          trade,
+          trialDays: effectiveDays,
+          isBetaTester,
+          password: password.trim(),
+          sendWelcomeEmail,
+          customMessage: customMessage.trim() || undefined
+        })
+      });
+
+      const data = await res.json();
+      if (!res.ok) {
+        throw new Error(data.error || 'Kunne ikke opprette invitasjon');
+      }
+
+      toast.success(`Invitasjon og ${effectiveDays} dagers betatest-tilgang er opprettet for ${name || email}! 🎉`);
+      setCreatedData({
+        user: data.user,
+        company: data.company,
+        password: password.trim(),
+        loginUrl: 'https://vikingmester.no',
+        inviteLink: data.inviteLink || 'https://vikingmester.no',
+        emailSent: Boolean(data.emailSent)
+      });
+    } catch (err: any) {
+      console.error('Invite tester error:', err);
+      toast.error(err.message || 'Feil ved sending av invitasjon');
+    } finally {
+      setLoading(false);
+    }
+  };
+
+  const copyInviteLink = () => {
+    if (!createdData?.inviteLink) return;
+    navigator.clipboard.writeText(createdData.inviteLink);
+    setCopiedLink(true);
+    toast.success('Direkte aktiveringslenke kopiert til utklippstavle! Klar for SMS/WhatsApp 📲');
+    setTimeout(() => setCopiedLink(false), 3000);
+  };
+
+  const copyAllInfo = () => {
+    if (!createdData) return;
+    const days = getEffectiveDays();
+    const msg = `Hei ${name || 'håndverker'}!
+
+Her er din gratis prøvetilgang til VikingMester / KS Mester (${days} dagers gratis testperiode som betatester):
+
+👉 Klikk her for å aktivere kontoen og velge ditt eget passord:
+${createdData.inviteLink}
+
+Alternativt kan du logge inn direkte med disse opplysningene:
+Nettadresse: https://vikingmester.no
+Brukernavn: ${createdData.user.email}
+Midlertidig passord: ${createdData.password}
+Firma: ${createdData.company?.name || companyName || 'Ditt firma'}
+
+Lykke til med testingen! Gi meg gjerne beskjed om du finner ting som ikke fungerer eller savner funksjoner.`;
+
+    navigator.clipboard.writeText(msg);
+    setCopiedAll(true);
+    toast.success('Fullstendig invitasjonsmelding kopiert! Klar til å limes inn i SMS/WhatsApp.');
+    setTimeout(() => setCopiedAll(false), 3000);
+  };
+
+  const getWhatsAppUrl = () => {
+    if (!createdData || !phone) return null;
+    const cleanPhone = phone.replace(/[^0-9]/g, '');
+    const fullPhone = cleanPhone.startsWith('47') ? cleanPhone : `47${cleanPhone}`;
+    const days = getEffectiveDays();
+    const msg = `Hei ${name || 'snekker'}! Her er din ${days}-dagers gratis testtilgang til VikingMester: ${createdData.inviteLink}`;
+    return `https://wa.me/${fullPhone}?text=${encodeURIComponent(msg)}`;
+  };
+
+  const handleResetForAnother = () => {
+    setName('');
+    setEmail('');
+    setPhone('');
+    setCompanyName('');
+    setCustomMessage('');
+    generatePassword();
+    setCreatedData(null);
+  };
+
+  // Vis kvittering / overleveringsskjerm dersom invitasjonen er opprettet
+  if (createdData) {
+    const days = getEffectiveDays();
+    const whatsappUrl = getWhatsAppUrl();
+
+    return (
+      <div className="fixed inset-0 z-[100] flex items-center justify-center p-4 bg-black/80 backdrop-blur-md overflow-y-auto">
+        <motion.div 
+          initial={{ opacity: 0, scale: 0.95 }}
+          animate={{ opacity: 1, scale: 1 }}
+          className="bg-[#0B0F17] text-white rounded-[2.5rem] shadow-2xl w-full max-w-lg overflow-hidden border border-emerald-500/30 my-6"
+        >
+          <div className="p-6 sm:p-8 text-center space-y-4">
+            <div className="w-16 h-16 bg-gradient-to-br from-emerald-400 to-emerald-600 text-white rounded-3xl flex items-center justify-center mx-auto shadow-lg shadow-emerald-500/30">
+              <Sparkles size={36} />
+            </div>
+
+            <div>
+              <div className="inline-flex items-center gap-1.5 px-3 py-1 rounded-full bg-emerald-500/20 text-emerald-300 border border-emerald-500/30 text-xs font-black uppercase mb-2">
+                🧪 Betatester · {days} dager gratis tilgang
+              </div>
+              <h2 className="text-2xl font-black text-white">
+                Invitasjon er klar for {name || createdData.user.displayName}! 🎉
+              </h2>
+              <p className="text-xs text-slate-300 mt-1 max-w-sm mx-auto">
+                Kontoen er opprettet og klar til bruk. Brukeren kan enten klikke på aktiveringslenken for å velge eget passord, eller logge inn med midlertidig passord.
+              </p>
+            </div>
+
+            {/* Informasjonskort */}
+            <div className="bg-[#131722] border border-slate-800 rounded-2xl p-5 text-left space-y-2.5 font-mono text-xs text-slate-200">
+              <div className="flex justify-between items-center pb-2 border-b border-slate-800">
+                <span className="font-sans font-bold text-[10px] uppercase text-emerald-400 flex items-center gap-1">
+                  <HardHat size={12} className="text-emerald-400" /> {trade}
+                </span>
+                <span className="font-sans text-[10px] bg-emerald-500/20 text-emerald-300 border border-emerald-500/30 px-2.5 py-0.5 rounded-full font-black">
+                  {createdData.emailSent ? 'Velkomst-e-post sendt ✓' : 'Klar for overlevering'}
+                </span>
+              </div>
+              <div><strong className="font-sans text-slate-400 text-[11px]">Brukernavn:</strong> {createdData.user.email}</div>
+              <div className="flex items-center justify-between">
+                <div>
+                  <strong className="font-sans text-slate-400 text-[11px]">Midlertidig passord:</strong>{' '}
+                  <span className="bg-slate-950 px-2 py-0.5 rounded border border-emerald-500/30 font-bold text-emerald-300">
+                    {createdData.password}
+                  </span>
+                </div>
+              </div>
+              <div><strong className="font-sans text-slate-400 text-[11px]">Firma:</strong> {createdData.company?.name || companyName || 'Opprettet bedrift'}</div>
+              <div><strong className="font-sans text-slate-400 text-[11px]">Prøveperiode:</strong> <span className="font-bold text-emerald-300">{days} dager gratis</span> {isBetaTester && '· 🧪 Betatester'}</div>
+            </div>
+
+            {/* Hurtighandlinger for Kenneth */}
+            <div className="space-y-2 pt-2">
+              <button
+                type="button"
+                onClick={copyInviteLink}
+                className="w-full py-3.5 bg-gradient-to-r from-emerald-500 to-emerald-600 hover:from-emerald-600 hover:to-emerald-700 text-white rounded-2xl font-black text-sm flex items-center justify-center gap-2 shadow-lg shadow-emerald-950/50 cursor-pointer transition-all"
+              >
+                {copiedLink ? <Check size={18} /> : <Copy size={18} />}
+                <span>{copiedLink ? 'Kopiert til utklippstavle!' : 'Kopier invitasjonslenke (SMS / WhatsApp)'}</span>
+              </button>
+
+              <button
+                type="button"
+                onClick={copyAllInfo}
+                className="w-full py-3 bg-slate-900 hover:bg-slate-800 text-emerald-300 border border-emerald-500/40 rounded-2xl font-bold text-xs flex items-center justify-center gap-2 cursor-pointer transition-all"
+              >
+                {copiedAll ? <Check size={14} /> : <ExternalLink size={14} />}
+                <span>{copiedAll ? 'Kopiert hel tekstmelding!' : 'Kopier komplett innloggingsmelding'}</span>
+              </button>
+
+              {whatsappUrl && (
+                <a
+                  href={whatsappUrl}
+                  target="_blank"
+                  rel="noopener noreferrer"
+                  className="w-full py-3 bg-emerald-950/60 hover:bg-emerald-900/60 text-emerald-200 border border-emerald-500/30 rounded-2xl font-bold text-xs flex items-center justify-center gap-2 cursor-pointer transition-all"
+                >
+                  <MessageSquare size={14} />
+                  <span>Send direkte via WhatsApp ({phone})</span>
+                </a>
+              )}
+
+              <div className="flex gap-2 pt-2">
+                <button
+                  type="button"
+                  onClick={handleResetForAnother}
+                  className="flex-1 py-3 bg-slate-800 hover:bg-slate-700 text-slate-300 border border-slate-700 rounded-2xl font-bold text-xs cursor-pointer transition-all"
+                >
+                  + Inviter enda en håndverker
+                </button>
+                <button
+                  type="button"
+                  onClick={() => {
+                    onSuccess();
+                    onClose();
+                  }}
+                  className="flex-1 py-3 bg-emerald-600 hover:bg-emerald-500 text-white rounded-2xl font-bold text-xs cursor-pointer transition-all"
+                >
+                  Ferdig & Lukk
+                </button>
+              </div>
+            </div>
+          </div>
+        </motion.div>
+      </div>
+    );
+  }
+
+  return (
+    <div className="fixed inset-0 z-[100] flex items-center justify-center p-4 bg-black/80 backdrop-blur-md overflow-y-auto">
+      <motion.div 
+        initial={{ opacity: 0, scale: 0.95 }}
+        animate={{ opacity: 1, scale: 1 }}
+        className="bg-[#0B0F17] text-white rounded-[2.5rem] shadow-2xl w-full max-w-xl overflow-hidden my-8 border border-emerald-500/20"
+      >
+        <div className="p-6 sm:p-8 border-b border-slate-800 flex justify-between items-center bg-[#131722]">
+          <div className="flex items-center gap-3">
+            <div className="w-12 h-12 rounded-2xl bg-emerald-500/20 border border-emerald-500/30 text-emerald-400 flex items-center justify-center shrink-0 shadow-md">
+              <Sparkles size={24} />
+            </div>
+            <div>
+              <h2 className="text-xl sm:text-2xl font-black text-white flex items-center gap-2">
+                Inviter snekker / håndverker
+              </h2>
+              <p className="text-xs text-emerald-400 font-semibold">
+                🧪 Valgfri prøveperiode · Full tilgang · Sendes på e-post eller SMS
+              </p>
+            </div>
+          </div>
+          <button onClick={onClose} className="p-2 hover:bg-slate-800 rounded-full transition-colors cursor-pointer text-slate-400 hover:text-white">
+            <XCircle size={24} />
+          </button>
+        </div>
+
+        <form onSubmit={handleSubmit} className="p-6 sm:p-8 space-y-5 bg-[#0B0F17]">
+          {/* Hurtigknapp for Snekker Betatester */}
+          <div className="p-3.5 bg-gradient-to-r from-emerald-950/40 via-purple-950/30 to-emerald-950/40 border border-emerald-500/30 rounded-2xl flex items-center justify-between gap-3">
+            <div className="text-xs">
+              <div className="font-black text-white">Vil du invitere en snekker som betatester?</div>
+              <div className="text-slate-300 text-[11px]">Forhåndsinnstilt med 60 dagers gratis prøveperiode og tømrerfag:</div>
+            </div>
+            <button
+              type="button"
+              onClick={handleApplyCarpenterPreset}
+              className="px-3 py-1.5 bg-emerald-600 hover:bg-emerald-500 text-white rounded-xl text-xs font-black shrink-0 transition-all shadow-xs cursor-pointer"
+            >
+              🪵 60 dager Betatest
+            </button>
+          </div>
+
+          {/* Bruker & Kontaktinformasjon */}
+          <div className="grid grid-cols-1 sm:grid-cols-2 gap-3">
+            <div className="space-y-1">
+              <label className="text-xs font-bold uppercase text-slate-400 ml-1">Navn på håndverker *</label>
+              <input
+                required
+                type="text"
+                value={name}
+                onChange={(e) => setName(e.target.value)}
+                placeholder="F.eks. Ola Nordmann"
+                className="w-full px-3.5 py-2.5 bg-slate-950 border border-slate-800 rounded-xl text-xs font-semibold text-white placeholder:text-slate-500 outline-none focus:ring-2 focus:ring-emerald-500/30 focus:border-emerald-500 transition-all shadow-2xs"
+              />
+            </div>
+
+            <div className="space-y-1">
+              <label className="text-xs font-bold uppercase text-slate-400 ml-1">E-postadresse (innlogging) *</label>
+              <input
+                required
+                type="email"
+                value={email}
+                onChange={(e) => setEmail(e.target.value)}
+                placeholder="ola@snekker.no"
+                className="w-full px-3.5 py-2.5 bg-slate-950 border border-slate-800 rounded-xl text-xs font-semibold text-white placeholder:text-slate-500 outline-none focus:ring-2 focus:ring-emerald-500/30 focus:border-emerald-500 transition-all shadow-2xs"
+              />
+            </div>
+          </div>
+
+          <div className="grid grid-cols-1 sm:grid-cols-2 gap-3">
+            <div className="space-y-1">
+              <label className="text-xs font-bold uppercase text-slate-400 ml-1">Mobilnummer (valgfritt - for SMS)</label>
+              <input
+                type="tel"
+                value={phone}
+                onChange={(e) => setPhone(e.target.value)}
+                placeholder="F.eks. 912 34 567"
+                className="w-full px-3.5 py-2.5 bg-slate-950 border border-slate-800 rounded-xl text-xs font-semibold text-white placeholder:text-slate-500 outline-none focus:ring-2 focus:ring-emerald-500/30 focus:border-emerald-500 transition-all shadow-2xs"
+              />
+            </div>
+
+            <div className="space-y-1">
+              <label className="text-xs font-bold uppercase text-slate-400 ml-1">Firmanavn</label>
+              <input
+                type="text"
+                value={companyName}
+                onChange={(e) => setCompanyName(e.target.value)}
+                placeholder={name ? `${name} AS` : 'F.eks. Nordmann Bygg AS'}
+                className="w-full px-3.5 py-2.5 bg-slate-950 border border-slate-800 rounded-xl text-xs font-semibold text-white placeholder:text-slate-500 outline-none focus:ring-2 focus:ring-emerald-500/30 focus:border-emerald-500 transition-all shadow-2xs"
+              />
+            </div>
+          </div>
+
+          {/* Fagfelt & Rolle */}
+          <div className="grid grid-cols-1 sm:grid-cols-2 gap-3">
+            <div className="space-y-1">
+              <label className="text-xs font-bold uppercase text-slate-400 ml-1">Fagområde</label>
+              <select
+                value={trade}
+                onChange={(e) => setTrade(e.target.value)}
+                className="w-full px-3.5 py-2.5 bg-slate-950 border border-slate-800 rounded-xl text-xs font-semibold text-white outline-none focus:ring-2 focus:ring-emerald-500/30 focus:border-emerald-500 transition-all shadow-2xs"
+              >
+                <option value="Tømrer / Snekker">🪵 Tømrer / Snekker</option>
+                <option value="Byggmester">🏗️ Byggmester</option>
+                <option value="Maler / Sparkler">🎨 Maler / Sparkler</option>
+                <option value="Elektriker">⚡ Elektriker</option>
+                <option value="Rørlegger">🔧 Rørlegger</option>
+                <option value="Murer / Flislegger">🧱 Murer / Flislegger</option>
+                <option value="Taktekker">🏠 Taktekker</option>
+                <option value="Entreprenør / Bygg">🏢 Entreprenør / Bygg</option>
+                <option value="Ventilasjon / Blikk">💨 Ventilasjon / Blikkenslager</option>
+                <option value="Annet fagfelt">🔨 Annet fagfelt</option>
+              </select>
+            </div>
+
+            <div className="space-y-1">
+              <label className="text-xs font-bold uppercase text-slate-400 ml-1">Rolle i bedriften</label>
+              <select
+                value={role}
+                onChange={(e) => setRole(e.target.value as any)}
+                className="w-full px-3.5 py-2.5 bg-slate-950 border border-slate-800 rounded-xl text-xs font-semibold text-white outline-none focus:ring-2 focus:ring-emerald-500/30 focus:border-emerald-500 transition-all shadow-2xs"
+              >
+                <option value="admin">Leder / Administrator (Full tilgang)</option>
+                <option value="worker">Håndverker / Ansatt</option>
+              </select>
+            </div>
+          </div>
+
+          {/* ⏱️ Skreddersydd prøveperiode (14, 30, 60, 90 eller egendefinert) */}
+          <div className="p-4 rounded-2xl bg-[#131722] border border-slate-800 space-y-3">
+            <div className="flex items-center justify-between">
+              <label className="text-xs font-black uppercase tracking-wider text-emerald-400 flex items-center gap-1.5">
+                <Clock size={14} /> Velg prøveperiode (Varighet)
+              </label>
+              <span className="text-[11px] font-bold text-slate-300">
+                Aktiv periode: <strong className="text-emerald-300 font-mono">{getEffectiveDays()} dager</strong>
+              </span>
+            </div>
+
+            <div className="grid grid-cols-2 sm:grid-cols-4 gap-2">
+              {[
+                { label: '14 dager', sub: 'Standard', days: 14 },
+                { label: '30 dager', sub: '1 måned', days: 30 },
+                { label: '60 dager', sub: 'Betatester ⭐', days: 60 },
+                { label: '90 dager', sub: '3 måneder', days: 90 },
+              ].map((opt) => (
+                <button
+                  key={opt.days}
+                  type="button"
+                  onClick={() => {
+                    setTrialDays(opt.days);
+                    setIsCustomDays(false);
+                    if (opt.days >= 60) setIsBetaTester(true);
+                  }}
+                  className={cn(
+                    "p-2.5 rounded-xl border text-center transition-all cursor-pointer",
+                    !isCustomDays && trialDays === opt.days
+                      ? "bg-emerald-500/20 border-emerald-500 text-emerald-300 shadow-xs"
+                      : "bg-slate-950 border-slate-800 text-slate-400 hover:text-white hover:border-slate-700"
+                  )}
+                >
+                  <div className="text-xs font-black">{opt.label}</div>
+                  <div className="text-[10px] text-slate-400">{opt.sub}</div>
+                </button>
+              ))}
+            </div>
+
+            <div className="flex items-center gap-2 pt-1">
+              <button
+                type="button"
+                onClick={() => setIsCustomDays(!isCustomDays)}
+                className={cn(
+                  "px-3 py-1.5 rounded-lg border text-xs font-bold transition-all cursor-pointer",
+                  isCustomDays 
+                    ? "bg-emerald-500 text-slate-950 border-emerald-400" 
+                    : "bg-slate-950 text-slate-400 border-slate-800 hover:text-white"
+                )}
+              >
+                Egendefinert antall dager:
+              </button>
+              {isCustomDays && (
+                <div className="flex items-center gap-1.5">
+                  <input
+                    type="number"
+                    min="1"
+                    max="365"
+                    value={customDays}
+                    onChange={(e) => setCustomDays(e.target.value)}
+                    className="w-24 px-3 py-1.5 bg-slate-950 border border-slate-800 rounded-xl text-xs font-bold text-white outline-none focus:ring-1 focus:ring-emerald-500"
+                  />
+                  <span className="text-xs text-slate-400">dager</span>
+                </div>
+              )}
+            </div>
+
+            {/* Betatester-merking */}
+            <div className="pt-2 border-t border-slate-800/80">
+              <label className="flex items-start gap-2.5 cursor-pointer">
+                <input
+                  type="checkbox"
+                  checked={isBetaTester}
+                  onChange={(e) => setIsBetaTester(e.target.checked)}
+                  className="w-4 h-4 rounded text-emerald-600 focus:ring-emerald-500 cursor-pointer mt-0.5"
+                />
+                <div className="text-xs">
+                  <span className="font-bold text-white flex items-center gap-1.5">
+                    🧪 Merk som offisiell Betatester
+                  </span>
+                  <span className="text-[11px] text-slate-400 block mt-0.5">
+                    Gir Betatester-merke i profilen, tilgang til alle systemmoduler, og gir snekkeren mulighet til å teste systemet og melde inn forbedringsforslag.
+                  </span>
+                </div>
+              </label>
+            </div>
+          </div>
+
+          {/* Passord & Velkomstmelding */}
+          <div className="space-y-1">
+            <div className="flex justify-between items-center">
+              <label className="text-xs font-bold uppercase text-slate-400 ml-1">Midlertidig passord *</label>
+              <button
+                type="button"
+                onClick={generatePassword}
+                className="text-[10px] text-emerald-400 hover:underline font-bold cursor-pointer"
+              >
+                Generer nytt
+              </button>
+            </div>
+            <div className="relative">
+              <input
+                required
+                type={showPassword ? 'text' : 'password'}
+                value={password}
+                onChange={(e) => setPassword(e.target.value)}
+                placeholder="Passord"
+                className="w-full px-3.5 py-2.5 bg-slate-950 border border-slate-800 rounded-xl text-xs font-mono font-bold text-white placeholder:text-slate-500 outline-none focus:ring-2 focus:ring-emerald-500/30 focus:border-emerald-500 pr-10 transition-all shadow-2xs"
+              />
+              <button
+                type="button"
+                onClick={() => setShowPassword(!showPassword)}
+                className="absolute right-3 top-1/2 -translate-y-1/2 text-slate-400 hover:text-white cursor-pointer"
+              >
+                {showPassword ? <EyeOff size={15} /> : <Eye size={15} />}
+              </button>
+            </div>
+          </div>
+
+          {/* Personlig notat / hilsen */}
+          <div className="space-y-1">
+            <label className="text-xs font-bold uppercase text-slate-400 ml-1">Personlig hilsen i invitasjonen (valgfritt)</label>
+            <textarea
+              rows={2}
+              value={customMessage}
+              onChange={(e) => setCustomMessage(e.target.value)}
+              placeholder="F.eks: Hei! Her er gratis tilgang i 60 dager som avtalt. Test i vei og gi meg beskjed om du oppdager noe som ikke fungerer!"
+              className="w-full px-3.5 py-2 bg-slate-950 border border-slate-800 rounded-xl text-xs text-white placeholder:text-slate-500 outline-none focus:ring-2 focus:ring-emerald-500/30 focus:border-emerald-500 transition-all shadow-2xs resize-none"
+            />
+          </div>
+
+          {/* E-post checkbox */}
+          <label className="flex items-center gap-2 cursor-pointer pt-1">
+            <input
+              type="checkbox"
+              checked={sendWelcomeEmail}
+              onChange={(e) => setSendWelcomeEmail(e.target.checked)}
+              className="w-4 h-4 rounded text-emerald-600 focus:ring-emerald-500 cursor-pointer"
+            />
+            <span className="text-xs font-bold text-slate-300">
+              Send velkomst-e-post med direkte aktiveringslenke via Resend
+            </span>
+          </label>
+
+          <div className="flex gap-3 pt-2">
+            <button
+              type="button"
+              onClick={onClose}
+              className="px-5 py-3.5 bg-slate-800 hover:bg-slate-700 text-slate-300 border border-slate-700 rounded-2xl font-bold text-xs cursor-pointer transition-all"
+            >
+              Avbryt
+            </button>
+            <button
+              type="submit"
+              disabled={loading}
+              className="flex-1 py-3.5 bg-gradient-to-r from-emerald-500 to-emerald-600 hover:from-emerald-600 hover:to-emerald-700 text-white rounded-2xl font-black text-sm flex items-center justify-center gap-2 shadow-lg shadow-emerald-950/50 cursor-pointer transition-all disabled:opacity-50"
+            >
+              {loading ? (
+                <>
+                  <div className="w-4 h-4 border-2 border-white border-t-transparent rounded-full animate-spin" />
+                  <span>Sender invitasjon...</span>
+                </>
+              ) : (
+                <>
+                  <Send size={16} />
+                  <span>Opprett & Send invitasjon ({getEffectiveDays()} dager)</span>
+                </>
+              )}
+            </button>
+          </div>
+        </form>
+      </motion.div>
+    </div>
+  );
+}
+
 function CreatePartnerModal({
   companies,
   onClose,
@@ -5145,7 +5779,21 @@ Rolle: ${createdData.user.role === 'admin' ? 'Administrator' : createdData.user.
   );
 }
 
-function EditCompanyInfoModal({ company, onClose, onSuccess }: { company: Company, onClose: () => void, onSuccess: (data: { name: string, orgNumber: string, plan: 'solo' | 'team' | 'entreprenor' | 'partner' | 'internal' }) => void }) {
+function EditCompanyInfoModal({ 
+  company, 
+  onClose, 
+  onSuccess 
+}: { 
+  company: Company; 
+  onClose: () => void; 
+  onSuccess: (data: { 
+    name: string; 
+    orgNumber: string; 
+    plan: 'solo' | 'team' | 'entreprenor' | 'partner' | 'internal';
+    trialDays?: number;
+    isBetaTester?: boolean;
+  }) => void;
+}) {
   const isInternal = isCompanyInternalAdmin(company);
   const [name, setName] = useState(company.name);
   const [orgNumber, setOrgNumber] = useState(company.orgNumber || '');
@@ -5155,12 +5803,21 @@ function EditCompanyInfoModal({ company, onClose, onSuccess }: { company: Compan
     ? company.plan
     : 'team';
   const [plan, setPlan] = useState<'solo' | 'team' | 'entreprenor' | 'partner' | 'internal'>(initialPlan);
+  const isTrial = company.subscriptionStatus === 'trial';
+  const [trialDays, setTrialDays] = useState<number>(company.trialDays || 14);
+  const [isBetaTester, setIsBetaTester] = useState<boolean>(Boolean(company.isBetaTester));
   const [loading, setLoading] = useState(false);
 
   const handleSubmit = (e: React.FormEvent) => {
     e.preventDefault();
     setLoading(true);
-    onSuccess({ name, orgNumber, plan });
+    onSuccess({ 
+      name, 
+      orgNumber, 
+      plan,
+      trialDays: isTrial ? trialDays : undefined,
+      isBetaTester: isTrial ? isBetaTester : undefined
+    });
   };
 
   return (
@@ -5177,7 +5834,7 @@ function EditCompanyInfoModal({ company, onClose, onSuccess }: { company: Compan
           </button>
         </div>
         
-        <form onSubmit={handleSubmit} className="p-6 sm:p-8 space-y-6 bg-[#0B0F17]">
+        <form onSubmit={handleSubmit} className="p-6 sm:p-8 space-y-5 bg-[#0B0F17]">
           <div className="space-y-2">
             <label className="text-xs font-black uppercase tracking-widest text-slate-400 ml-1">Kundenavn</label>
             <input 
@@ -5213,18 +5870,80 @@ function EditCompanyInfoModal({ company, onClose, onSuccess }: { company: Compan
             </select>
           </div>
 
-          <div className="flex gap-4 pt-4">
+          {isTrial && (
+            <div className="p-4 rounded-2xl bg-amber-500/10 border border-amber-500/30 space-y-3">
+              <div className="flex items-center justify-between">
+                <span className="text-xs font-black uppercase tracking-wider text-amber-400 flex items-center gap-1.5">
+                  <Clock size={14} /> Skreddersy Prøveperiode
+                </span>
+                {isBetaTester && (
+                  <span className="text-[10px] font-black uppercase bg-emerald-500/20 text-emerald-300 border border-emerald-500/30 px-2 py-0.5 rounded-full">
+                    🧪 Betatester
+                  </span>
+                )}
+              </div>
+              <div className="space-y-1.5">
+                <label className="text-[11px] font-bold text-slate-300">Varighet (antall dager gratis)</label>
+                <div className="grid grid-cols-4 gap-1.5">
+                  {[14, 30, 60, 90].map((days) => (
+                    <button
+                      key={days}
+                      type="button"
+                      onClick={() => {
+                        setTrialDays(days);
+                        if (days >= 60) setIsBetaTester(true);
+                      }}
+                      className={cn(
+                        "py-2 px-1 text-xs font-bold rounded-xl transition-all border cursor-pointer",
+                        trialDays === days 
+                          ? "bg-amber-500 text-slate-950 border-amber-400 shadow-xs" 
+                          : "bg-slate-900 text-slate-300 border-slate-700 hover:border-slate-500"
+                      )}
+                    >
+                      {days} dager
+                    </button>
+                  ))}
+                </div>
+                <div className="flex items-center gap-2 pt-1">
+                  <span className="text-xs text-slate-400">Egendefinert:</span>
+                  <input
+                    type="number"
+                    min="1"
+                    max="365"
+                    value={trialDays}
+                    onChange={(e) => setTrialDays(parseInt(e.target.value) || 14)}
+                    className="w-24 px-3 py-1.5 bg-slate-950 border border-slate-800 rounded-xl text-xs font-bold text-white outline-none focus:ring-1 focus:ring-amber-500"
+                  />
+                  <span className="text-xs text-slate-400">dager</span>
+                </div>
+              </div>
+
+              <label className="flex items-center gap-2 cursor-pointer pt-1">
+                <input
+                  type="checkbox"
+                  checked={isBetaTester}
+                  onChange={(e) => setIsBetaTester(e.target.checked)}
+                  className="w-4 h-4 rounded text-emerald-500 focus:ring-emerald-500 cursor-pointer"
+                />
+                <span className="text-xs font-bold text-slate-200">
+                  🧪 Merk som offisiell Betatester
+                </span>
+              </label>
+            </div>
+          )}
+
+          <div className="flex gap-4 pt-3">
             <button 
               type="submit"
               disabled={loading}
-              className="flex-1 bg-blue-600 hover:bg-blue-500 text-white py-4 rounded-2xl font-bold transition-all shadow-lg shadow-blue-950/50 disabled:opacity-50 cursor-pointer"
+              className="flex-1 bg-blue-600 hover:bg-blue-500 text-white py-3.5 rounded-2xl font-bold transition-all shadow-lg shadow-blue-950/50 disabled:opacity-50 cursor-pointer"
             >
               {loading ? 'Lagrer...' : 'Lagre endringer'}
             </button>
             <button 
               type="button"
               onClick={onClose}
-              className="flex-1 bg-slate-800 hover:bg-slate-700 text-slate-300 border border-slate-700 py-4 rounded-2xl font-bold transition-all cursor-pointer"
+              className="flex-1 bg-slate-800 hover:bg-slate-700 text-slate-300 border border-slate-700 py-3.5 rounded-2xl font-bold transition-all cursor-pointer"
             >
               Avbryt
             </button>
@@ -5239,6 +5958,8 @@ function CreateCompanyModal({ onClose, onSuccess }: { onClose: () => void, onSuc
   const [name, setName] = useState('');
   const [orgNumber, setOrgNumber] = useState('');
   const [status, setStatus] = useState<'trial' | 'active'>('trial');
+  const [trialDays, setTrialDays] = useState(14);
+  const [isBetaTester, setIsBetaTester] = useState(false);
   const [plan, setPlan] = useState<'solo' | 'team' | 'entreprenor' | 'partner' | 'internal'>('team');
   const [loading, setLoading] = useState(false);
 
@@ -5252,10 +5973,14 @@ function CreateCompanyModal({ onClose, onSuccess }: { onClose: () => void, onSuc
         name,
         orgNumber,
         subscriptionStatus: (isPartner || isInternal) ? 'active' : status,
+        trialDays: status === 'trial' ? trialDays : undefined,
+        trialStartDate: status === 'trial' ? new Date().toISOString() : undefined,
+        trialDaysLeft: status === 'trial' ? trialDays : undefined,
+        isBetaTester: status === 'trial' ? isBetaTester : false,
         plan,
         isPartner,
         isInternal,
-        monthlyPrice: (isPartner || isInternal) ? 0 : (plan === 'solo' ? 690 : plan === 'entreprenor' ? 2990 : 1490),
+        monthlyPrice: (isPartner || isInternal || status === 'trial') ? 0 : (plan === 'solo' ? 690 : plan === 'entreprenor' ? 2990 : 1490),
         modules: ['projects', 'checklists', 'deviations', 'ai', 'economy', 'fdv', 'inventory', 'vehicle', 'time', 'apprentice', 'building_app'], // All default modules enabled
         createdAt: serverTimestamp(),
         updatedAt: serverTimestamp(),
@@ -5347,6 +6072,68 @@ function CreateCompanyModal({ onClose, onSuccess }: { onClose: () => void, onSuc
               </button>
             </div>
           </div>
+
+          {status === 'trial' && (
+            <div className="p-4 rounded-2xl bg-amber-500/10 border border-amber-500/30 space-y-3">
+              <div className="flex items-center justify-between">
+                <span className="text-xs font-black uppercase tracking-wider text-amber-400 flex items-center gap-1.5">
+                  <Clock size={14} /> Skreddersy Prøveperiode
+                </span>
+                {isBetaTester && (
+                  <span className="text-[10px] font-black uppercase bg-emerald-500/20 text-emerald-300 border border-emerald-500/30 px-2 py-0.5 rounded-full">
+                    🧪 Betatester
+                  </span>
+                )}
+              </div>
+              <div className="space-y-1.5">
+                <label className="text-[11px] font-bold text-slate-300">Varighet (antall dager gratis)</label>
+                <div className="grid grid-cols-4 gap-1.5">
+                  {[14, 30, 60, 90].map((days) => (
+                    <button
+                      key={days}
+                      type="button"
+                      onClick={() => {
+                        setTrialDays(days);
+                        if (days >= 60) setIsBetaTester(true);
+                      }}
+                      className={cn(
+                        "py-2 px-1 text-xs font-bold rounded-xl transition-all border cursor-pointer",
+                        trialDays === days 
+                          ? "bg-amber-500 text-slate-950 border-amber-400 shadow-xs" 
+                          : "bg-slate-900 text-slate-300 border-slate-700 hover:border-slate-500"
+                      )}
+                    >
+                      {days} dager
+                    </button>
+                  ))}
+                </div>
+                <div className="flex items-center gap-2 pt-1">
+                  <span className="text-xs text-slate-400">Egendefinert:</span>
+                  <input
+                    type="number"
+                    min="1"
+                    max="365"
+                    value={trialDays}
+                    onChange={(e) => setTrialDays(parseInt(e.target.value) || 14)}
+                    className="w-24 px-3 py-1.5 bg-slate-950 border border-slate-800 rounded-xl text-xs font-bold text-white outline-none focus:ring-1 focus:ring-amber-500"
+                  />
+                  <span className="text-xs text-slate-400">dager</span>
+                </div>
+              </div>
+
+              <label className="flex items-center gap-2 cursor-pointer pt-1">
+                <input
+                  type="checkbox"
+                  checked={isBetaTester}
+                  onChange={(e) => setIsBetaTester(e.target.checked)}
+                  className="w-4 h-4 rounded text-emerald-500 focus:ring-emerald-500 cursor-pointer"
+                />
+                <span className="text-xs font-bold text-slate-200">
+                  🧪 Merk som offisiell Betatester
+                </span>
+              </label>
+            </div>
+          )}
 
           <button 
             disabled={loading}

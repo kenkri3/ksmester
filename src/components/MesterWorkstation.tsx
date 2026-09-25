@@ -3206,6 +3206,19 @@ export default function MesterWorkstation({
               {/* 🖥️ DESKTOP TOP BAR (Full workstation cockpit) */}
               <div className="hidden md:flex items-center justify-between w-full">
                 <div className="flex items-center gap-2.5 min-w-0">
+                  {/* Åpne/lås sidemeny-knapp dersom minimert på desktop */}
+                  {isCollapsedDesktop && (
+                    <button
+                      type="button"
+                      onClick={toggleCollapseDesktop}
+                      className="p-1.5 px-2 rounded-xl bg-slate-900/90 border border-slate-800 hover:border-slate-700 text-slate-300 hover:text-white transition-all cursor-pointer shadow-xs shrink-0 flex items-center gap-1.5 text-xs font-semibold"
+                      title={t('ws_open_sidebar', "Åpne og lås sidemeny")}
+                    >
+                      <PanelLeftOpen size={16} className="text-emerald-400" />
+                      <span className="hidden xl:inline text-slate-400 hover:text-white text-[11px]">{t('ws_menu', 'Meny')}</span>
+                    </button>
+                  )}
+
                   {/* Workstation Badge & Selected Project Dropdown */}
                   <div ref={projectDropdownRef} className="relative">
                     <button
