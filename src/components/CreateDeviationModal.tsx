@@ -216,27 +216,27 @@ export default function CreateDeviationModal({ isOpen, onClose, projects }: Crea
   return (
     <AnimatePresence>
       {isOpen && (
-        <motion.div key="create-deviation-backdrop" className="fixed inset-0 z-50 flex items-end sm:items-center justify-center p-0 sm:p-4 bg-black/60 backdrop-blur-sm">
+        <motion.div key="create-deviation-backdrop" className="fixed inset-0 z-50 flex items-end sm:items-center justify-center p-0 sm:p-4 bg-black/80 backdrop-blur-md">
           <motion.div
             initial={{ opacity: 0, scale: 0.98, y: 20 }}
             animate={{ opacity: 1, scale: 1, y: 0 }}
             exit={{ opacity: 0, scale: 0.98, y: 20 }}
-            className="bg-white w-full max-w-lg rounded-t-[2.5rem] sm:rounded-[2.5rem] shadow-2xl overflow-hidden flex flex-col max-h-[92vh] sm:max-h-[calc(100vh-2rem)] pb-[env(safe-area-inset-bottom,0px)]"
+            className="bg-[#0B0F17] text-white border border-slate-800 w-full max-w-lg rounded-t-[2.5rem] sm:rounded-[2.5rem] shadow-2xl overflow-hidden flex flex-col max-h-[92vh] sm:max-h-[calc(100vh-2rem)] pb-[env(safe-area-inset-bottom,0px)]"
           >
             {/* Mobile Grab Handle */}
-            <div className="sm:hidden w-12 h-1.5 bg-neutral-300 rounded-full mx-auto mt-3 mb-1" />
+            <div className="sm:hidden w-12 h-1.5 bg-slate-700 rounded-full mx-auto mt-3 mb-1" />
 
-            <div className="p-4 sm:p-8 border-b border-neutral-100 flex justify-between items-center bg-orange-50 shrink-0">
+            <div className="p-4 sm:p-8 border-b border-slate-800 flex justify-between items-center bg-[#131722] shrink-0">
               <div className="flex items-center gap-2.5 sm:gap-3">
-                <div className="p-2 sm:p-2.5 bg-orange-100 text-orange-600 rounded-xl">
+                <div className="p-2 sm:p-2.5 bg-amber-500/20 text-amber-400 border border-amber-500/30 rounded-xl">
                   <AlertTriangle size={20} className="sm:w-6 sm:h-6" />
                 </div>
                 <div>
-                  <h2 className="text-base sm:text-xl font-bold text-orange-900">{t('log_deviation', 'Loggfør Avvik / RUH')}</h2>
-                  <p className="text-[11px] sm:text-xs text-orange-700 font-medium uppercase tracking-wider">HMS & Kvalitetssikring</p>
+                  <h2 className="text-base sm:text-xl font-bold text-white">{t('log_deviation', 'Loggfør Avvik / RUH')}</h2>
+                  <p className="text-[11px] sm:text-xs text-amber-400 font-medium uppercase tracking-wider">HMS & Kvalitetssikring</p>
                 </div>
               </div>
-              <button onClick={onClose} aria-label="Lukk" title="Lukk" className="p-2 hover:bg-orange-100 rounded-full transition-colors text-orange-900">
+              <button onClick={onClose} aria-label="Lukk" title="Lukk" className="p-2 hover:bg-slate-800 rounded-full transition-colors text-slate-400 hover:text-white">
                 <X size={20} className="sm:w-5 sm:h-5" />
               </button>
             </div>
@@ -244,28 +244,28 @@ export default function CreateDeviationModal({ isOpen, onClose, projects }: Crea
             <form id="create-deviation-form" onSubmit={handleSubmit} className="flex-1 overflow-y-auto custom-scrollbar p-4 sm:p-8 space-y-4 sm:space-y-6">
               <div className="space-y-4">
                 <div>
-                  <label className="block text-xs font-bold text-neutral-500 uppercase tracking-widest mb-1.5">Tittel på avvik</label>
+                  <label className="block text-xs font-bold text-slate-400 uppercase tracking-widest mb-1.5">Tittel på avvik</label>
                   <input
                     required
                     type="text"
                     value={formData.title}
                     onChange={(e) => setFormData({ ...formData, title: e.target.value })}
-                    className="w-full px-3.5 py-2.5 sm:py-3 bg-neutral-50 border border-neutral-200 rounded-xl focus:ring-2 focus:ring-orange-500/20 focus:border-orange-500 outline-none transition-all text-sm sm:text-base font-medium"
+                    className="w-full px-3.5 py-2.5 sm:py-3 bg-slate-950 border border-slate-800 rounded-xl focus:border-amber-500 outline-none transition-all text-sm sm:text-base font-medium text-white placeholder:text-slate-600"
                     placeholder="F.eks. Manglende rekkverk i 2. etasje"
                   />
                 </div>
 
                 <div>
-                  <label className="block text-xs font-bold text-neutral-500 uppercase tracking-widest mb-1.5">Prosjekt</label>
+                  <label className="block text-xs font-bold text-slate-400 uppercase tracking-widest mb-1.5">Prosjekt</label>
                   <select
                     required
                     value={formData.projectId}
                     onChange={(e) => setFormData({ ...formData, projectId: e.target.value })}
-                    className="w-full px-3.5 py-2.5 sm:py-3 bg-neutral-50 border border-neutral-200 rounded-xl focus:ring-2 focus:ring-orange-500/20 focus:border-orange-500 outline-none transition-all appearance-none text-sm sm:text-base font-medium"
+                    className="w-full px-3.5 py-2.5 sm:py-3 bg-slate-950 border border-slate-800 rounded-xl focus:border-amber-500 outline-none transition-all appearance-none text-sm sm:text-base font-medium text-white"
                   >
-                    <option value="">Velg prosjekt...</option>
+                    <option value="" className="bg-slate-950 text-slate-400">Velg prosjekt...</option>
                     {projects.map((p) => (
-                      <option key={p.id} value={p.id}>{p.name}</option>
+                      <option key={p.id} value={p.id} className="bg-slate-950 text-white">{p.name}</option>
                     ))}
                   </select>
                 </div>
@@ -277,12 +277,12 @@ export default function CreateDeviationModal({ isOpen, onClose, projects }: Crea
                       type="button"
                       onClick={() => setFormData({ ...formData, severity: sev })}
                       className={cn(
-                        "py-2.5 sm:py-3 rounded-xl text-xs font-bold uppercase tracking-wider border transition-all",
+                        "py-2.5 sm:py-3 rounded-xl text-xs font-bold uppercase tracking-wider border transition-all cursor-pointer",
                         formData.severity === sev 
-                          ? (sev === 'high' ? "bg-red-600 border-red-600 text-white shadow-lg shadow-red-100" : 
-                             sev === 'medium' ? "bg-orange-600 border-orange-600 text-white shadow-lg shadow-orange-100" : 
-                             "bg-blue-600 border-blue-600 text-white shadow-lg shadow-blue-100")
-                          : "bg-white border-neutral-200 text-neutral-500 hover:border-neutral-300"
+                          ? (sev === 'high' ? "bg-red-600 border-red-500 text-white shadow-lg shadow-red-950/50" : 
+                             sev === 'medium' ? "bg-amber-600 border-amber-500 text-white shadow-lg shadow-amber-950/50" : 
+                             "bg-blue-600 border-blue-500 text-white shadow-lg shadow-blue-950/50")
+                          : "bg-slate-950 border-slate-800 text-slate-400 hover:text-white hover:border-slate-700"
                       )}
                     >
                       {t(sev)}
@@ -292,7 +292,7 @@ export default function CreateDeviationModal({ isOpen, onClose, projects }: Crea
 
                 <div>
                   <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-1 sm:gap-2 mb-1.5">
-                    <label className="block text-xs font-bold text-neutral-500 uppercase tracking-widest">Beskrivelse</label>
+                    <label className="block text-xs font-bold text-slate-400 uppercase tracking-widest">Beskrivelse</label>
                     <div className="flex items-center gap-2">
                       <AiTextAssistant 
                         currentText={formData.description} 
@@ -303,7 +303,7 @@ export default function CreateDeviationModal({ isOpen, onClose, projects }: Crea
                         type="button"
                         onClick={analyzeDeviationWithAi}
                         disabled={isAiAnalyzing || !formData.description}
-                        className="flex items-center gap-1 text-[11px] sm:text-xs font-bold text-orange-600 hover:text-orange-500 transition-colors disabled:opacity-50"
+                        className="flex items-center gap-1 text-[11px] sm:text-xs font-bold text-amber-400 hover:text-amber-300 transition-colors disabled:opacity-50 cursor-pointer"
                       >
                         {isAiAnalyzing ? <Loader2 className="animate-spin" size={12} /> : <Sparkles size={12} />}
                         Analyser med AI
@@ -315,40 +315,40 @@ export default function CreateDeviationModal({ isOpen, onClose, projects }: Crea
                     rows={3}
                     value={formData.description}
                     onChange={(e) => setFormData({ ...formData, description: e.target.value })}
-                    className="w-full px-3.5 py-2.5 sm:py-3 bg-neutral-50 border border-neutral-200 rounded-xl focus:ring-2 focus:ring-orange-500/20 focus:border-orange-500 outline-none transition-all resize-none text-sm sm:text-base font-medium"
+                    className="w-full px-3.5 py-2.5 sm:py-3 bg-slate-950 border border-slate-800 rounded-xl focus:border-amber-500 outline-none transition-all resize-none text-sm sm:text-base font-medium text-white placeholder:text-slate-600"
                     placeholder="Beskriv hva som har skjedd og eventuelle umiddelbare tiltak..."
                   />
                 </div>
 
                 <div className="relative">
-                  <label className="block text-xs font-bold text-neutral-500 uppercase tracking-widest mb-1.5">Lokasjon / Adresse</label>
+                  <label className="block text-xs font-bold text-slate-400 uppercase tracking-widest mb-1.5">Lokasjon / Adresse</label>
                   <div className="relative">
-                    <MapPin className="absolute left-3.5 top-1/2 -translate-y-1/2 text-neutral-400" size={16} />
+                    <MapPin className="absolute left-3.5 top-1/2 -translate-y-1/2 text-slate-500" size={16} />
                     <input 
                       type="text"
                       value={addressSearch !== '' ? addressSearch : formData.location}
                       onChange={(e) => setAddressSearch(e.target.value)}
-                      className="w-full bg-neutral-50 border border-neutral-200 rounded-xl sm:rounded-2xl py-2.5 sm:py-3.5 pl-10 sm:pl-12 pr-4 text-sm sm:text-base focus:ring-2 focus:ring-orange-500/20 focus:border-orange-500 outline-none transition-all font-medium"
+                      className="w-full bg-slate-950 border border-slate-800 rounded-xl sm:rounded-2xl py-2.5 sm:py-3.5 pl-10 sm:pl-12 pr-4 text-sm sm:text-base focus:border-amber-500 outline-none transition-all font-medium text-white placeholder:text-slate-600"
                       placeholder="Søk adresse for GNR/BNR..."
                     />
                     {isSearchingAddress && (
                       <div className="absolute right-3.5 top-1/2 -translate-y-1/2">
-                        <Loader2 className="animate-spin text-neutral-400" size={14} />
+                        <Loader2 className="animate-spin text-slate-400" size={14} />
                       </div>
                     )}
                   </div>
 
                   {addressSuggestions.length > 0 && (
-                    <div className="absolute z-50 left-0 right-0 mt-1 bg-white border border-neutral-200 rounded-xl sm:rounded-2xl shadow-xl overflow-hidden max-h-48 overflow-y-auto custom-scrollbar">
+                    <div className="absolute z-50 left-0 right-0 mt-1 bg-[#131722] border border-slate-800 rounded-xl sm:rounded-2xl shadow-xl overflow-hidden max-h-48 overflow-y-auto custom-scrollbar divide-y divide-slate-800">
                       {addressSuggestions.map((addr, i) => (
                         <button
                           key={i}
                           type="button"
                           onClick={() => selectAddress(addr)}
-                          className="w-full text-left p-3 hover:bg-neutral-50 transition-colors border-b border-neutral-100 last:border-0"
+                          className="w-full text-left p-3 hover:bg-slate-800 transition-colors cursor-pointer"
                         >
-                          <div className="text-xs sm:text-sm font-bold">{addr.address}</div>
-                          <div className="text-[10px] sm:text-xs text-neutral-500">
+                          <div className="text-xs sm:text-sm font-bold text-white">{addr.address}</div>
+                          <div className="text-[10px] sm:text-xs text-slate-400">
                             {addr.postcode} {addr.city} {addr.gnr && `(GNR: ${addr.gnr}, BNR: ${addr.bnr})`}
                           </div>
                         </button>
@@ -359,22 +359,22 @@ export default function CreateDeviationModal({ isOpen, onClose, projects }: Crea
 
                 <div className="grid grid-cols-1 sm:grid-cols-2 gap-3 sm:gap-4">
                   <div>
-                    <label className="block text-xs font-bold text-neutral-500 uppercase tracking-widest mb-1.5">GNR</label>
+                    <label className="block text-xs font-bold text-slate-400 uppercase tracking-widest mb-1.5">GNR</label>
                     <input 
                       type="text"
                       value={formData.gnr}
                       onChange={(e) => setFormData({ ...formData, gnr: e.target.value })}
-                      className="w-full bg-neutral-50 border border-neutral-200 rounded-xl sm:rounded-2xl py-2.5 sm:py-3 px-3.5 text-sm sm:text-base focus:ring-2 focus:ring-orange-500/20 focus:border-rose-500 outline-none transition-all font-medium"
+                      className="w-full bg-slate-950 border border-slate-800 rounded-xl sm:rounded-2xl py-2.5 sm:py-3 px-3.5 text-sm sm:text-base focus:border-amber-500 outline-none transition-all font-medium text-white placeholder:text-slate-600 font-mono"
                       placeholder="Gårdsnummer"
                     />
                   </div>
                   <div>
-                    <label className="block text-xs font-bold text-neutral-500 uppercase tracking-widest mb-1.5">BNR</label>
+                    <label className="block text-xs font-bold text-slate-400 uppercase tracking-widest mb-1.5">BNR</label>
                     <input 
                       type="text"
                       value={formData.bnr}
                       onChange={(e) => setFormData({ ...formData, bnr: e.target.value })}
-                      className="w-full bg-neutral-50 border border-neutral-200 rounded-xl sm:rounded-2xl py-2.5 sm:py-3 px-3.5 text-sm sm:text-base focus:ring-2 focus:ring-orange-500/20 focus:border-rose-500 outline-none transition-all font-medium"
+                      className="w-full bg-slate-950 border border-slate-800 rounded-xl sm:rounded-2xl py-2.5 sm:py-3 px-3.5 text-sm sm:text-base focus:border-amber-500 outline-none transition-all font-medium text-white placeholder:text-slate-600 font-mono"
                       placeholder="Bruksnummer"
                     />
                   </div>
@@ -391,12 +391,12 @@ export default function CreateDeviationModal({ isOpen, onClose, projects }: Crea
                 />
 
                 {photoUrl && (
-                  <div className="relative inline-block my-2 rounded-xl overflow-hidden border border-neutral-200">
+                  <div className="relative inline-block my-2 rounded-xl overflow-hidden border border-slate-800">
                     <img src={photoUrl} alt="Avviksbilde" className="h-32 w-full max-w-xs object-cover rounded-xl" />
                     <button 
                       type="button" 
                       onClick={() => setPhotoUrl(null)} 
-                      className="absolute top-1.5 right-1.5 p-1.5 bg-black/70 text-white rounded-full hover:bg-black transition-colors"
+                      className="absolute top-1.5 right-1.5 p-1.5 bg-black/80 text-white rounded-full hover:bg-black transition-colors"
                       title="Fjern bilde"
                     >
                       <X size={14} />
@@ -408,18 +408,18 @@ export default function CreateDeviationModal({ isOpen, onClose, projects }: Crea
                   <button 
                     type="button" 
                     onClick={() => fileInputRef.current?.click()}
-                    className="flex-1 flex items-center justify-center gap-2 py-3 bg-neutral-100 text-neutral-800 rounded-xl text-xs sm:text-sm font-bold hover:bg-neutral-200 transition-colors active:scale-95"
+                    className="flex-1 flex items-center justify-center gap-2 py-3 bg-slate-900 border border-slate-800 text-slate-200 rounded-xl text-xs sm:text-sm font-bold hover:bg-slate-800 transition-colors active:scale-95 cursor-pointer"
                   >
-                    <Camera size={16} className="text-orange-600" />
+                    <Camera size={16} className="text-amber-400" />
                     {photoUrl ? 'Endre bilde' : 'Legg til bilde'}
                   </button>
                   <button 
                     type="button" 
                     disabled={isLocating}
                     onClick={handleGetLocation}
-                    className="flex-1 flex items-center justify-center gap-2 py-3 bg-neutral-100 text-neutral-800 rounded-xl text-xs sm:text-sm font-bold hover:bg-neutral-200 transition-colors disabled:opacity-50 active:scale-95"
+                    className="flex-1 flex items-center justify-center gap-2 py-3 bg-slate-900 border border-slate-800 text-slate-200 rounded-xl text-xs sm:text-sm font-bold hover:bg-slate-800 transition-colors disabled:opacity-50 active:scale-95 cursor-pointer"
                   >
-                    {isLocating ? <Loader2 size={16} className="animate-spin text-orange-600" /> : <MapPin size={16} className="text-orange-600" />}
+                    {isLocating ? <Loader2 size={16} className="animate-spin text-amber-400" /> : <MapPin size={16} className="text-amber-400" />}
                     {isLocating ? 'Henter GPS...' : 'Posisjon'}
                   </button>
                 </div>
@@ -428,7 +428,7 @@ export default function CreateDeviationModal({ isOpen, onClose, projects }: Crea
             </form>
 
             {/* FAST FOOTER */}
-            <div className="px-5 sm:px-8 py-3.5 sm:py-4 bg-slate-50 border-t border-neutral-100 shrink-0 flex items-center justify-between gap-3">
+            <div className="px-5 sm:px-8 py-3.5 sm:py-4 bg-[#0B0F17] border-t border-slate-800 shrink-0 flex items-center justify-between gap-3">
               <span className="text-[11px] text-slate-400 hidden sm:inline">
                 Avviket loggføres og analyseres automatisk av MesterAI
               </span>
@@ -436,7 +436,7 @@ export default function CreateDeviationModal({ isOpen, onClose, projects }: Crea
                 <button
                   type="button"
                   onClick={onClose}
-                  className="px-4 py-2 rounded-xl text-xs font-bold text-slate-600 hover:bg-slate-200 transition-colors cursor-pointer"
+                  className="px-4 py-2 rounded-xl text-xs font-bold text-slate-400 hover:bg-slate-800 hover:text-white transition-colors cursor-pointer"
                 >
                   Avbryt
                 </button>
@@ -444,7 +444,7 @@ export default function CreateDeviationModal({ isOpen, onClose, projects }: Crea
                   form="create-deviation-form"
                   disabled={loading}
                   type="submit"
-                  className="px-5 sm:px-7 py-2.5 sm:py-3 bg-orange-600 hover:bg-orange-500 text-white rounded-xl font-bold text-xs sm:text-sm flex items-center justify-center gap-2 transition-all shadow-md shadow-orange-200/50 disabled:opacity-50 active:scale-95 cursor-pointer"
+                  className="px-5 sm:px-7 py-2.5 sm:py-3 bg-amber-600 hover:bg-amber-500 text-white rounded-xl font-bold text-xs sm:text-sm flex items-center justify-center gap-2 transition-all shadow-md shadow-amber-950/50 disabled:opacity-50 active:scale-95 cursor-pointer"
                 >
                   {loading ? (
                     <div className="w-4 h-4 border-2 border-white/30 border-t-white rounded-full animate-spin" />

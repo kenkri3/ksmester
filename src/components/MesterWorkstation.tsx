@@ -409,7 +409,7 @@ export default function MesterWorkstation({
     };
   }, [isProjectDropdownOpen]);
 
-  // Lokal tilbuds-modal state som fallback dersom onOpenOfferModal ikke er overordnet håndtert
+  // Lokal tilbuds-modal state som fallback
   const [isLocalOfferModalOpen, setIsLocalOfferModalOpen] = useState(false);
   const [localOfferInitialData, setLocalOfferInitialData] = useState<any>(null);
 
@@ -422,12 +422,78 @@ export default function MesterWorkstation({
       title: `Tilbud - ${selectedProject.name}`
     } : { clientName: '', projectId: '' });
 
-    if (onOpenOfferModal) {
-      onOpenOfferModal(data);
-    } else {
-      setLocalOfferInitialData(data);
-      setIsLocalOfferModalOpen(true);
+    // Åpne direkte i arbeidsflaten der MesterAI er (ingen popup!)
+    setActiveForm({ type: 'offer', data });
+    setViewMode('form');
+  };
+
+  const handleOpenCreateChangeOrder = (initialData?: any) => {
+    setActiveForm({ type: 'change_order', data: initialData || { projectId: selectedProject?.id } });
+    setViewMode('form');
+  };
+
+  const handleOpenCreateSJA = (initialData?: any) => {
+    setActiveForm({ type: 'sja', data: initialData || { projectId: selectedProject?.id } });
+    setViewMode('form');
+  };
+
+  const handleOpenCreateDeviation = (initialData?: any) => {
+    setActiveForm({ type: 'deviation', data: initialData || { projectId: selectedProject?.id } });
+    setViewMode('form');
+  };
+
+  const handleOpenCreateTime = (initialData?: any) => {
+    setActiveForm({ type: 'time', data: initialData || { projectId: selectedProject?.id } });
+    setViewMode('form');
+  };
+
+  const handleFormSuccess = (msg: string, resultMeta?: any) => {
+    let actions: any[] | undefined = undefined;
+
+    if (resultMeta?.type === 'offer_created') {
+      const offerLink = resultMeta.offerLink || `${typeof window !== 'undefined' ? window.location.origin : ''}/?offerToken=${resultMeta.token || ''}`;
+      actions = [
+        {
+          id: 'open_public_offer',
+          type: 'open_public_offer',
+          label: '👁️ Se digitalt tilbud (Kunde)',
+          data: { token: resultMeta.token, offerLink, offer: resultMeta.offerData }
+        },
+        {
+          id: 'open_offer_form',
+          type: 'open_offer_form',
+          label: '📝 Åpne i Tilbudsbygger',
+          data: resultMeta.offerData || { id: resultMeta.offerId, token: resultMeta.token }
+        },
+        {
+          id: 'copy_offer_link',
+          type: 'copy_link',
+          label: '🔗 Kopier tilbudslenke',
+          data: { url: offerLink, shareUrl: offerLink }
+        }
+      ];
+    } else if (resultMeta?.type === 'change_order_created') {
+      actions = [
+        {
+          id: 'open_co_module',
+          type: 'open_module',
+          label: '📋 Se alle endringsordrer',
+          data: { module: 'change_orders' }
+        }
+      ];
     }
+
+    const aiMessage: ChatMessageItem = {
+      id: `ai-${Date.now()}`,
+      role: 'assistant',
+      content: msg,
+      timestamp: new Date().toLocaleTimeString('no-NO', { hour: '2-digit', minute: '2-digit' }),
+      actions
+    };
+
+    setMessages(prev => [...prev, aiMessage]);
+    setViewMode('chat');
+    setActiveForm(null);
   };
 
   // 🚨 Håndtering av avvik & RUH (både fra database og lokale oppføringer meldt til agenten)
@@ -3015,7 +3081,28 @@ export default function MesterWorkstation({
         </AnimatePresence>
 
         {/* 3. Main Stage Content Area */}
-        {viewMode === 'module' && activeModuleTab === 'teamchat' ? (
+        {viewMode === 'form' && activeForm ? (
+          /* 📝 SKJEMA & BYGGER DIREKTE I ARBEIDSFLATEN DER MESTERAI ER (INGEN POPUP) */
+          <div className="flex-1 flex flex-col h-full w-full overflow-hidden bg-[#0A101D] relative">
+            <InChatWorkspace
+              formType={activeForm.type}
+              initialData={activeForm.data}
+              projects={projects}
+              selectedProject={selectedProject}
+              onClose={() => {
+                setActiveForm(null);
+                setViewMode('chat');
+              }}
+              onSuccess={(msg, actionData) => {
+                handleFormSuccess(msg, actionData);
+              }}
+              onSwitchForm={(nextType, nextData) => {
+                setActiveForm({ type: nextType, data: nextData });
+              }}
+              onOpenOmnichannelModal={onOpenOmnichannelModal}
+            />
+          </div>
+        ) : viewMode === 'module' && activeModuleTab === 'teamchat' ? (
           /* 💬 PROSJEKT- & FIRMACHATT: FULLSKJERM EDGE-TO-EDGE SOM HOVEDCHATTEN (INGEN DOBLE BOKSER ELLER SCROLLBARS) */
           <div className="flex-1 flex flex-col h-full w-full overflow-hidden bg-[#0A101D] relative">
             <ProjectTeamChat
@@ -3852,15 +3939,13 @@ export default function MesterWorkstation({
                         </p>
                       </div>
                       <div className="flex items-center gap-2 flex-wrap">
-                        {onOpenOfferModal && (
-                          <button
-                            type="button"
-                            onClick={() => onOpenOfferModal({ clientName: '', projectId: '' })}
-                            className="inline-flex items-center gap-1.5 px-3 py-2 rounded-xl bg-slate-800 hover:bg-slate-700 text-white text-xs font-bold transition-all border border-slate-700 cursor-pointer shrink-0"
-                          >
-                            <Plus size={14} /> Nytt tilbud
-                          </button>
-                        )}
+                        <button
+                          type="button"
+                          onClick={() => handleOpenCreateOffer({ clientName: '', projectId: selectedProject?.id || '' })}
+                          className="inline-flex items-center gap-1.5 px-3 py-2 rounded-xl bg-slate-800 hover:bg-slate-700 text-white text-xs font-bold transition-all border border-slate-700 cursor-pointer shrink-0"
+                        >
+                          <Plus size={14} /> Nytt tilbud
+                        </button>
                         <button
                           type="button"
                           onClick={handleCreateOfferFromCalc}
@@ -4493,7 +4578,7 @@ export default function MesterWorkstation({
                       )}
                       <button
                         type="button"
-                        onClick={() => onOpenChangeOrderModal?.()}
+                        onClick={() => handleOpenCreateChangeOrder()}
                         className="inline-flex items-center gap-2 px-4 py-2 rounded-xl bg-purple-600 hover:bg-purple-500 text-white text-xs font-bold transition-all shadow-md cursor-pointer"
                       >
                         <Plus size={15} /> Ny endringsordre
@@ -4725,9 +4810,7 @@ export default function MesterWorkstation({
 
                         <button
                           type="button"
-                          onClick={() => {
-                            window.dispatchEvent(new CustomEvent('trigger_dashboard_action', { detail: { actionId: 'log_deviation' } }));
-                          }}
+                          onClick={() => handleOpenCreateDeviation({ projectId: deviationFilterProject !== 'all' ? deviationFilterProject : selectedProject?.id })}
                           className="px-3.5 py-2 rounded-xl bg-rose-600 hover:bg-rose-500 text-white font-bold text-xs sm:text-sm flex items-center gap-2 shadow-md transition-all cursor-pointer"
                         >
                           <Plus size={15} />
@@ -4922,16 +5005,25 @@ export default function MesterWorkstation({
                         Risikovurdering og påbudt verneutstyr før oppstart.
                       </p>
                     </div>
-                    <button
-                      type="button"
-                      onClick={() => {
-                        setViewMode('chat');
-                        handleSendMessage('Opprett en SJA for arbeid i stillas og fasadekledning');
-                      }}
-                      className="inline-flex items-center gap-2 px-4 py-2 rounded-xl bg-blue-600 hover:bg-blue-500 text-white text-xs font-bold transition-all shadow-md cursor-pointer"
-                    >
-                      <Plus size={15} /> Opprett ny SJA med MesterAI
-                    </button>
+                    <div className="flex items-center gap-2">
+                      <button
+                        type="button"
+                        onClick={() => handleOpenCreateSJA()}
+                        className="inline-flex items-center gap-2 px-3.5 py-2 rounded-xl bg-blue-600 hover:bg-blue-500 text-white text-xs font-bold transition-all shadow-md cursor-pointer"
+                      >
+                        <Plus size={14} /> Fyll ut SJA
+                      </button>
+                      <button
+                        type="button"
+                        onClick={() => {
+                          setViewMode('chat');
+                          handleSendMessage('Opprett en SJA for arbeid i stillas og fasadekledning');
+                        }}
+                        className="inline-flex items-center gap-2 px-3.5 py-2 rounded-xl bg-slate-800 hover:bg-slate-700 text-slate-200 text-xs font-bold transition-all border border-slate-700 cursor-pointer"
+                      >
+                        <Sparkles size={14} className="text-amber-300" /> Med MesterAI
+                      </button>
+                    </div>
                   </div>
 
                   {/* PVU Påbud */}
@@ -6257,6 +6349,34 @@ export default function MesterWorkstation({
                                   {formatAiMarkdown(msg.content)}
                                 </ReactMarkdown>
                               </div>
+                            </div>
+                          )}
+
+                          {/* Rich Actions (f.eks. etter opprettet tilbud eller handlinger) */}
+                          {msg.actions && msg.actions.length > 0 && (
+                            <div className="mt-4 pt-3 border-t border-slate-800 flex flex-wrap gap-2">
+                              {msg.actions.map((act, i) => (
+                                <button
+                                  key={i}
+                                  type="button"
+                                  onClick={() => {
+                                    if (act.type === 'open_public_offer' && act.data?.offerLink) {
+                                      window.open(act.data.offerLink, '_blank');
+                                    } else if (act.type === 'open_offer_form') {
+                                      handleOpenCreateOffer(act.data);
+                                    } else if (act.type === 'copy_link' && act.data?.url) {
+                                      navigator.clipboard.writeText(act.data.url);
+                                      toast.success('Lenke kopiert!');
+                                    } else if (act.type === 'open_module' && act.data?.module) {
+                                      setActiveModuleTab(act.data.module);
+                                      setViewMode('module');
+                                    }
+                                  }}
+                                  className="px-3.5 py-1.5 rounded-xl bg-purple-600/20 hover:bg-purple-600/40 text-purple-300 hover:text-white border border-purple-500/30 text-xs font-bold transition-all flex items-center gap-1.5 cursor-pointer shadow-xs"
+                                >
+                                  <span>{act.label}</span>
+                                </button>
+                              ))}
                             </div>
                           )}
 

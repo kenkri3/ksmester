@@ -19,13 +19,36 @@ export async function POST(req: NextRequest) {
     const effectiveCompanyName = (user as any)?.company || companyName || 'Bedriftsbruker';
 
     // 0. Ekte forhåndsverifisering mot ekstern tjeneste (aldri godkjenn ugyldige nøkler)
-    if (service?.toUpperCase() === 'NOBB') {
+    const sLower = service?.toLowerCase();
+    if (sLower === 'nobb') {
       const { verifyNobbKey } = await import('@/src/lib/server/integrationsService');
       const verifyRes = await verifyNobbKey(secretToken);
       if (!verifyRes.success) {
-        return NextResponse.json({ 
-          error: verifyRes.message || 'Verifisering mot Norsk Byggetjeneste (NOBB) feilet. Vennligst sjekk nøkkelen.'
-        }, { status: 400 });
+        return NextResponse.json({ error: verifyRes.message }, { status: 400 });
+      }
+    } else if (sLower === 'fiken') {
+      const { verifyFikenToken } = await import('@/src/lib/server/integrationsService');
+      const verifyRes = await verifyFikenToken(secretToken);
+      if (!verifyRes.success) {
+        return NextResponse.json({ error: verifyRes.message }, { status: 400 });
+      }
+    } else if (sLower === 'tripletex') {
+      const { verifyTripletexToken } = await import('@/src/lib/server/integrationsService');
+      const verifyRes = await verifyTripletexToken(secretToken);
+      if (!verifyRes.success) {
+        return NextResponse.json({ error: verifyRes.message }, { status: 400 });
+      }
+    } else if (sLower === 'poweroffice' || sLower === 'poweroffice go') {
+      const { verifyPowerOfficeToken } = await import('@/src/lib/server/integrationsService');
+      const verifyRes = await verifyPowerOfficeToken(secretToken);
+      if (!verifyRes.success) {
+        return NextResponse.json({ error: verifyRes.message }, { status: 400 });
+      }
+    } else if (sLower === 'boligmappa') {
+      const { verifyBoligmappaKey } = await import('@/src/lib/server/integrationsService');
+      const verifyRes = await verifyBoligmappaKey(secretToken);
+      if (!verifyRes.success) {
+        return NextResponse.json({ error: verifyRes.message }, { status: 400 });
       }
     }
 

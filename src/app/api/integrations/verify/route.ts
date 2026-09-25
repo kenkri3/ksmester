@@ -3,7 +3,11 @@ import {
   verifyNobbKey, 
   verifyDiscordWebhook, 
   verifySlackWebhook, 
-  verifyTeamsWebhook 
+  verifyTeamsWebhook,
+  verifyFikenToken,
+  verifyTripletexToken,
+  verifyPowerOfficeToken,
+  verifyBoligmappaKey
 } from '@/src/lib/server/integrationsService';
 import { getUserFromRequest } from '@/src/lib/server/auth';
 import { getCollectionItems, saveCollectionItem, deleteCollectionItem } from '@/src/lib/server/db';
@@ -37,6 +41,19 @@ export async function POST(req: NextRequest) {
         break;
       case 'teams':
         result = await verifyTeamsWebhook(keyOrUrl, channelName);
+        break;
+      case 'fiken':
+        result = await verifyFikenToken(keyOrUrl);
+        break;
+      case 'tripletex':
+        result = await verifyTripletexToken(keyOrUrl);
+        break;
+      case 'poweroffice':
+      case 'poweroffice go':
+        result = await verifyPowerOfficeToken(keyOrUrl);
+        break;
+      case 'boligmappa':
+        result = await verifyBoligmappaKey(keyOrUrl);
         break;
       default:
         return NextResponse.json({ error: `Ukjent tjeneste: ${service}` }, { status: 400 });

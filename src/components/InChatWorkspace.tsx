@@ -74,21 +74,21 @@ export default function InChatWorkspace({
   }, [propProjects]);
 
   return (
-    <div className="flex-1 flex flex-col bg-slate-50 overflow-hidden animate-in fade-in slide-in-from-bottom-3 duration-200">
+    <div className="flex-1 flex flex-col bg-[#0A101D] text-white overflow-hidden animate-in fade-in slide-in-from-bottom-3 duration-200">
       {/* Form Header */}
-      <div className="px-3 sm:px-6 py-3 bg-white border-b border-slate-200 flex items-center justify-between gap-2 shrink-0 shadow-xs sticky top-0 z-20">
+      <div className="px-3 sm:px-6 py-3 bg-[#131722]/95 backdrop-blur-md border-b border-slate-800 flex items-center justify-between gap-2 shrink-0 shadow-md sticky top-0 z-20">
         <div className="flex items-center gap-2 sm:gap-3 min-w-0">
           <button
             type="button"
             onClick={onClose}
-            className="p-1.5 -ml-1 text-slate-600 hover:text-navy-900 hover:bg-slate-100 rounded-xl transition-all flex items-center gap-1 text-xs font-bold cursor-pointer shrink-0"
+            className="p-1.5 -ml-1 text-slate-400 hover:text-white hover:bg-slate-800 rounded-xl transition-all flex items-center gap-1.5 text-xs font-bold cursor-pointer shrink-0"
             title="Gå tilbake til samtalen"
           >
             <ArrowLeft size={16} />
             <span className="text-xs">Tilbake</span>
           </button>
 
-          <div className="h-4 w-px bg-slate-200 shrink-0" />
+          <div className="h-4 w-px bg-slate-800 shrink-0" />
 
           <div className="flex items-center gap-2 min-w-0">
             {formType === 'offer' && (
@@ -97,8 +97,8 @@ export default function InChatWorkspace({
                   <Calculator size={15} />
                 </div>
                 <div>
-                  <h4 className="text-xs sm:text-sm font-black text-navy-900">Tilbudsbygger & Kalkyle</h4>
-                  <p className="text-[10px] text-slate-500 hidden sm:block">Opprett profesjonelt tilbud med kalkyle</p>
+                  <h4 className="text-xs sm:text-sm font-black text-white">Tilbudsbygger & Kalkyle</h4>
+                  <p className="text-[10px] text-slate-400 hidden sm:block">Opprett profesjonelt tilbud med kalkyle</p>
                 </div>
               </>
             )}
@@ -108,8 +108,8 @@ export default function InChatWorkspace({
                   <FileSignature size={15} />
                 </div>
                 <div>
-                  <h4 className="text-xs sm:text-sm font-black text-navy-900">Endringsordre (NS 8406)</h4>
-                  <p className="text-[10px] text-slate-500 hidden sm:block">Varsle tillegg og fristforlengelse formelt</p>
+                  <h4 className="text-xs sm:text-sm font-black text-white">Endringsordre (NS 8406)</h4>
+                  <p className="text-[10px] text-slate-400 hidden sm:block">Varsle tillegg og fristforlengelse formelt</p>
                 </div>
               </>
             )}
@@ -119,8 +119,8 @@ export default function InChatWorkspace({
                   <ShieldAlert size={15} />
                 </div>
                 <div>
-                  <h4 className="text-xs sm:text-sm font-black text-navy-900">Sikker Jobb Analyse (SJA)</h4>
-                  <p className="text-[10px] text-slate-500 hidden sm:block">Risikovurdering før risikofylt arbeid</p>
+                  <h4 className="text-xs sm:text-sm font-black text-white">Sikker Jobb Analyse (SJA)</h4>
+                  <p className="text-[10px] text-slate-400 hidden sm:block">Risikovurdering før risikofylt arbeid</p>
                 </div>
               </>
             )}
@@ -130,8 +130,8 @@ export default function InChatWorkspace({
                   <AlertTriangle size={15} />
                 </div>
                 <div>
-                  <h4 className="text-xs sm:text-sm font-black text-navy-900">Registrer Avvik / RUH</h4>
-                  <p className="text-[10px] text-slate-500 hidden sm:block">Kvalitets- eller HMS-avvik</p>
+                  <h4 className="text-xs sm:text-sm font-black text-white">Registrer Avvik / RUH</h4>
+                  <p className="text-[10px] text-slate-400 hidden sm:block">Kvalitets- eller HMS-avvik</p>
                 </div>
               </>
             )}
@@ -141,8 +141,8 @@ export default function InChatWorkspace({
                   <Timer size={15} />
                 </div>
                 <div>
-                  <h4 className="text-xs sm:text-sm font-black text-navy-900">Timeføring</h4>
-                  <p className="text-[10px] text-slate-500 hidden sm:block">Registrer timer på prosjekt</p>
+                  <h4 className="text-xs sm:text-sm font-black text-white">Timeføring</h4>
+                  <p className="text-[10px] text-slate-400 hidden sm:block">Registrer timer på prosjekt</p>
                 </div>
               </>
             )}
@@ -152,8 +152,8 @@ export default function InChatWorkspace({
                   <ListTodo size={15} />
                 </div>
                 <div>
-                  <h4 className="text-xs sm:text-sm font-black text-navy-900">Tildel Oppgave / Arbeidsordre</h4>
-                  <p className="text-[10px] text-slate-500 hidden sm:block">Deleger oppgave med frist og varsel</p>
+                  <h4 className="text-xs sm:text-sm font-black text-white">Tildel Oppgave / Arbeidsordre</h4>
+                  <p className="text-[10px] text-slate-400 hidden sm:block">Deleger oppgave med frist og varsel</p>
                 </div>
               </>
             )}
@@ -163,8 +163,8 @@ export default function InChatWorkspace({
                   <Sparkles size={15} />
                 </div>
                 <div>
-                  <h4 className="text-xs sm:text-sm font-black text-navy-900">Skjemaer & Verktøy</h4>
-                  <p className="text-[10px] text-slate-500 hidden sm:block">Velg funksjon du ønsker å åpne i chatten</p>
+                  <h4 className="text-xs sm:text-sm font-black text-white">Skjemaer & Verktøy</h4>
+                  <p className="text-[10px] text-slate-400 hidden sm:block">Velg funksjon du ønsker å åpne i chatten</p>
                 </div>
               </>
             )}
@@ -174,7 +174,7 @@ export default function InChatWorkspace({
         <button
           type="button"
           onClick={onClose}
-          className="p-1.5 text-slate-400 hover:text-navy-900 hover:bg-slate-100 rounded-xl transition-all cursor-pointer"
+          className="p-1.5 text-slate-400 hover:text-white hover:bg-slate-800 rounded-xl transition-all cursor-pointer"
           title="Lukk skjema og gå tilbake"
         >
           <X size={17} />
@@ -619,16 +619,16 @@ function InChatOfferForm({
       />
 
       {/* Project & Client Card */}
-      <div className="bg-white p-4 sm:p-5 rounded-2xl border border-slate-200/90 shadow-2xs space-y-4">
-        <h5 className="text-xs font-black uppercase tracking-wider text-slate-400">1. Prosjekt & Oppdragsgiver</h5>
+      <div className="bg-[#131722] p-4 sm:p-5 rounded-2xl border border-slate-800 shadow-xl space-y-4 text-white">
+        <h5 className="text-xs font-black uppercase tracking-wider text-purple-400">1. Prosjekt & Oppdragsgiver</h5>
 
         {projects.length > 0 && (
           <div>
-            <label className="block text-[11px] font-bold text-slate-700 mb-1">Knytt til eksisterende prosjekt</label>
+            <label className="block text-[11px] font-bold text-slate-300 mb-1">Knytt til eksisterende prosjekt</label>
             <select
               value={projectId}
               onChange={(e) => handleProjectChange(e.target.value)}
-              className="w-full px-3 py-2.5 bg-slate-50 border border-slate-200 rounded-xl text-xs font-bold text-slate-800 outline-none focus:bg-white focus:ring-2 focus:ring-emerald-500/20 focus:border-emerald-500"
+              className="w-full px-3 py-2.5 bg-slate-950 border border-slate-800 rounded-xl text-xs font-bold text-white outline-none focus:bg-slate-900 focus:ring-2 focus:ring-purple-500/20 focus:border-purple-500"
             >
               <option value="">-- Nytt frittstående tilbud --</option>
               {projects.map(p => (
@@ -640,60 +640,60 @@ function InChatOfferForm({
 
         <div className="grid grid-cols-1 sm:grid-cols-2 gap-3">
           <div>
-            <label className="block text-[11px] font-bold text-slate-700 mb-1">Kundenavn *</label>
+            <label className="block text-[11px] font-bold text-slate-300 mb-1">Kundenavn *</label>
             <input
               type="text"
               value={clientName}
               onChange={(e) => setClientName(e.target.value)}
               placeholder="F.eks. Ola Nordmann"
               required
-              className="w-full px-3 py-2.5 bg-slate-50 border border-slate-200 rounded-xl text-xs font-bold text-slate-900 outline-none focus:bg-white focus:border-emerald-500"
+              className="w-full px-3 py-2.5 bg-slate-950 border border-slate-800 rounded-xl text-xs font-bold text-white placeholder:text-slate-500 outline-none focus:bg-slate-900 focus:border-purple-500"
             />
           </div>
           <div>
-            <label className="block text-[11px] font-bold text-slate-700 mb-1">Kunde e-post</label>
+            <label className="block text-[11px] font-bold text-slate-300 mb-1">Kunde e-post</label>
             <input
               type="email"
               value={clientEmail}
               onChange={(e) => setClientEmail(e.target.value)}
               placeholder="kunde@eksempel.no"
-              className="w-full px-3 py-2.5 bg-slate-50 border border-slate-200 rounded-xl text-xs font-bold text-slate-900 outline-none focus:bg-white focus:border-emerald-500"
+              className="w-full px-3 py-2.5 bg-slate-950 border border-slate-800 rounded-xl text-xs font-bold text-white placeholder:text-slate-500 outline-none focus:bg-slate-900 focus:border-purple-500"
             />
           </div>
         </div>
 
         <div>
-          <label className="block text-[11px] font-bold text-slate-700 mb-1">Tittel på tilbud *</label>
+          <label className="block text-[11px] font-bold text-slate-300 mb-1">Tittel på tilbud *</label>
           <input
             type="text"
             value={title}
             onChange={(e) => setTitle(e.target.value)}
             placeholder="F.eks. Totalrenovering av bad og våtrom"
             required
-            className="w-full px-3 py-2.5 bg-slate-50 border border-slate-200 rounded-xl text-xs font-bold text-slate-900 outline-none focus:bg-white focus:border-emerald-500"
+            className="w-full px-3 py-2.5 bg-slate-950 border border-slate-800 rounded-xl text-xs font-bold text-white placeholder:text-slate-500 outline-none focus:bg-slate-900 focus:border-purple-500"
           />
         </div>
 
         <div>
-          <label className="block text-[11px] font-bold text-slate-700 mb-1">Kort beskrivelse / forbehold</label>
+          <label className="block text-[11px] font-bold text-slate-300 mb-1">Kort beskrivelse / forbehold</label>
           <textarea
             value={description}
             onChange={(e) => setDescription(e.target.value)}
             rows={2}
             placeholder="Beskriv omfanget eller standard forbehold iht. NS 8406..."
-            className="w-full px-3 py-2 bg-slate-50 border border-slate-200 rounded-xl text-xs font-medium text-slate-900 outline-none focus:bg-white focus:border-emerald-500 resize-none"
+            className="w-full px-3 py-2 bg-slate-950 border border-slate-800 rounded-xl text-xs font-medium text-white placeholder:text-slate-500 outline-none focus:bg-slate-900 focus:border-purple-500 resize-none"
           />
         </div>
       </div>
 
       {/* Line Items & Calculations Card */}
-      <div className="bg-white p-4 sm:p-5 rounded-2xl border border-slate-200/90 shadow-2xs space-y-4">
+      <div className="bg-[#131722] p-4 sm:p-5 rounded-2xl border border-slate-800 shadow-xl space-y-4 text-white">
         <div className="flex items-center justify-between">
-          <h5 className="text-xs font-black uppercase tracking-wider text-slate-400">2. Kalkyleposter & Priser</h5>
+          <h5 className="text-xs font-black uppercase tracking-wider text-purple-400">2. Kalkyleposter & Priser</h5>
           <button
             type="button"
             onClick={handleAddItem}
-            className="px-3 py-1 bg-emerald-50 hover:bg-emerald-100 text-emerald-700 rounded-lg text-xs font-bold transition-all flex items-center gap-1 cursor-pointer"
+            className="px-3 py-1.5 bg-purple-600/20 hover:bg-purple-600/30 text-purple-300 hover:text-white border border-purple-500/30 rounded-xl text-xs font-bold transition-all flex items-center gap-1.5 cursor-pointer"
           >
             <Plus size={13} />
             <span>Legg til post</span>
@@ -702,19 +702,19 @@ function InChatOfferForm({
 
         <div className="space-y-2.5">
           {items.map((item, idx) => (
-            <div key={idx} className="p-3 rounded-xl bg-slate-50/80 border border-slate-200/80 space-y-2">
+            <div key={idx} className="p-3 rounded-xl bg-[#0B0F17]/90 border border-slate-800 space-y-2">
               <div className="flex items-center justify-between gap-2">
                 <input
                   type="text"
                   value={item.description}
                   onChange={(e) => handleUpdateItem(idx, 'description', e.target.value)}
                   placeholder="Postbeskrivelse..."
-                  className="flex-1 px-2.5 py-1.5 bg-white border border-slate-200 rounded-lg text-xs font-bold text-slate-900 outline-none"
+                  className="flex-1 px-2.5 py-1.5 bg-slate-900 border border-slate-800 rounded-lg text-xs font-bold text-white placeholder:text-slate-500 outline-none focus:border-purple-500"
                 />
                 <button
                   type="button"
                   onClick={() => handleRemoveItem(idx)}
-                  className="p-1.5 text-slate-400 hover:text-rose-600 transition-colors cursor-pointer"
+                  className="p-1.5 text-slate-400 hover:text-rose-400 transition-colors cursor-pointer"
                   title="Slett post"
                 >
                   <Trash2 size={14} />
@@ -723,22 +723,22 @@ function InChatOfferForm({
 
               <div className="grid grid-cols-2 sm:grid-cols-4 gap-2.5 sm:gap-2 pt-1">
                 <div>
-                  <span className="block text-[10px] text-slate-500 font-bold mb-0.5">Antall</span>
+                  <span className="block text-[10px] text-slate-400 font-bold mb-0.5">Antall</span>
                   <input
                     type="number"
                     min="0.1"
                     step="any"
                     value={item.quantity}
                     onChange={(e) => handleUpdateItem(idx, 'quantity', e.target.value)}
-                    className="w-full px-2.5 py-1.5 bg-white border border-slate-200 rounded-lg text-xs font-bold text-slate-900 outline-none focus:border-emerald-500"
+                    className="w-full px-2.5 py-1.5 bg-slate-900 border border-slate-800 rounded-lg text-xs font-bold text-white outline-none focus:border-purple-500"
                   />
                 </div>
                 <div>
-                  <span className="block text-[10px] text-slate-500 font-bold mb-0.5">Enhet</span>
+                  <span className="block text-[10px] text-slate-400 font-bold mb-0.5">Enhet</span>
                   <select
                     value={item.unit}
                     onChange={(e) => handleUpdateItem(idx, 'unit', e.target.value)}
-                    className="w-full px-2 py-1.5 bg-white border border-slate-200 rounded-lg text-xs font-bold text-slate-900 outline-none focus:border-emerald-500"
+                    className="w-full px-2 py-1.5 bg-slate-900 border border-slate-800 rounded-lg text-xs font-bold text-white outline-none focus:border-purple-500"
                   >
                     <option value="timer">timer</option>
                     <option value="stk">stk</option>
@@ -749,19 +749,19 @@ function InChatOfferForm({
                   </select>
                 </div>
                 <div>
-                  <span className="block text-[10px] text-slate-500 font-bold mb-0.5">Enhetspris (kr)</span>
+                  <span className="block text-[10px] text-slate-400 font-bold mb-0.5">Enhetspris (kr)</span>
                   <input
                     type="number"
                     min="0"
                     step="1"
                     value={item.pricePerUnit}
                     onChange={(e) => handleUpdateItem(idx, 'pricePerUnit', e.target.value)}
-                    className="w-full px-2.5 py-1.5 bg-white border border-slate-200 rounded-lg text-xs font-bold text-slate-900 outline-none focus:border-emerald-500"
+                    className="w-full px-2.5 py-1.5 bg-slate-900 border border-slate-800 rounded-lg text-xs font-bold text-white outline-none focus:border-purple-500"
                   />
                 </div>
                 <div>
-                  <span className="block text-[10px] text-slate-500 font-bold mb-0.5">Sum</span>
-                  <div className="px-2.5 py-1.5 bg-slate-100 border border-slate-200/80 rounded-lg text-xs font-black text-slate-900 flex items-center justify-between">
+                  <span className="block text-[10px] text-slate-400 font-bold mb-0.5">Sum</span>
+                  <div className="px-2.5 py-1.5 bg-slate-950 border border-slate-800 rounded-lg text-xs font-black text-white flex items-center justify-between">
                     <span>{item.total.toLocaleString('no-NO')} kr</span>
                   </div>
                 </div>
@@ -771,14 +771,14 @@ function InChatOfferForm({
         </div>
 
         {/* Calculation Summary Footer */}
-        <div className="pt-3 border-t border-slate-200 space-y-1 text-right">
-          <div className="text-xs text-slate-600">
-            Sum eks. mva: <strong className="text-navy-900 font-black">{sumExVat.toLocaleString('no-NO')} kr</strong>
+        <div className="pt-3 border-t border-slate-800 space-y-1 text-right">
+          <div className="text-xs text-slate-400">
+            Sum eks. mva: <strong className="text-white font-black">{sumExVat.toLocaleString('no-NO')} kr</strong>
           </div>
-          <div className="text-xs text-slate-500">
-            MVA (25%): <span className="font-bold">{vatAmount.toLocaleString('no-NO')} kr</span>
+          <div className="text-xs text-slate-400">
+            MVA (25%): <span className="font-bold text-slate-200">{vatAmount.toLocaleString('no-NO')} kr</span>
           </div>
-          <div className="text-sm font-black text-emerald-700 pt-1">
+          <div className="text-sm font-black text-emerald-400 pt-1">
             Totalbeløp inkl. mva: {totalIncVat.toLocaleString('no-NO')} kr
           </div>
         </div>
@@ -881,16 +881,16 @@ function InChatChangeOrderForm({
         onApply={handleApplyAutofill}
       />
 
-      <div className="bg-white p-4 sm:p-5 rounded-2xl border border-slate-200/90 shadow-2xs space-y-3.5">
-        <h5 className="text-xs font-black uppercase tracking-wider text-slate-400">Endringsopplysninger iht. NS 8406</h5>
+      <div className="bg-[#131722] p-4 sm:p-5 rounded-2xl border border-slate-800 shadow-xl space-y-3.5 text-white">
+        <h5 className="text-xs font-black uppercase tracking-wider text-rose-400">Endringsopplysninger iht. NS 8406</h5>
 
         {projects.length > 0 && (
           <div>
-            <label className="block text-[11px] font-bold text-slate-700 mb-1">Prosjekt *</label>
+            <label className="block text-[11px] font-bold text-slate-300 mb-1">Prosjekt *</label>
             <select
               value={projectId}
               onChange={(e) => setProjectId(e.target.value)}
-              className="w-full px-3 py-2.5 bg-slate-50 border border-slate-200 rounded-xl text-xs font-bold text-slate-800 outline-none focus:bg-white focus:border-rose-500"
+              className="w-full px-3 py-2.5 bg-slate-950 border border-slate-800 rounded-xl text-xs font-bold text-white outline-none focus:bg-slate-900 focus:border-rose-500"
             >
               {projects.map(p => (
                 <option key={p.id} value={p.id}>{p.name}</option>
@@ -900,23 +900,23 @@ function InChatChangeOrderForm({
         )}
 
         <div>
-          <label className="block text-[11px] font-bold text-slate-700 mb-1">Tittel på endring *</label>
+          <label className="block text-[11px] font-bold text-slate-300 mb-1">Tittel på endring *</label>
           <input
             type="text"
             value={title}
             onChange={(e) => setTitle(e.target.value)}
             placeholder="F.eks. Tillegg for ekstra membran og avretting"
             required
-            className="w-full px-3 py-2.5 bg-slate-50 border border-slate-200 rounded-xl text-xs font-bold text-slate-900 outline-none focus:bg-white focus:border-rose-500"
+            className="w-full px-3 py-2.5 bg-slate-950 border border-slate-800 rounded-xl text-xs font-bold text-white placeholder:text-slate-500 outline-none focus:bg-slate-900 focus:border-rose-500"
           />
         </div>
 
         <div>
-          <label className="block text-[11px] font-bold text-slate-700 mb-1">Årsak / hjemmel</label>
+          <label className="block text-[11px] font-bold text-slate-300 mb-1">Årsak / hjemmel</label>
           <select
             value={cause}
             onChange={(e) => setCause(e.target.value)}
-            className="w-full px-3 py-2.5 bg-slate-50 border border-slate-200 rounded-xl text-xs font-bold text-slate-800 outline-none focus:bg-white focus:border-rose-500"
+            className="w-full px-3 py-2.5 bg-slate-950 border border-slate-800 rounded-xl text-xs font-bold text-white outline-none focus:bg-slate-900 focus:border-rose-500"
           >
             <option value="client_request">Byggherreendring / bestilling</option>
             <option value="unforeseen_conditions">Uforutsette grunn- eller bygningsforhold (NS 8406 § 23)</option>
@@ -927,41 +927,41 @@ function InChatChangeOrderForm({
 
         <div className="grid grid-cols-1 sm:grid-cols-2 gap-3">
           <div>
-            <label className="block text-[11px] font-bold text-slate-700 mb-1">Tilleggsvederlag (kr eks. mva)</label>
+            <label className="block text-[11px] font-bold text-slate-300 mb-1">Tilleggsvederlag (kr eks. mva)</label>
             <input
               type="number"
               min="0"
               step="100"
               value={amountExVat}
               onChange={(e) => setAmountExVat(Number(e.target.value))}
-              className="w-full px-3 py-2.5 bg-slate-50 border border-slate-200 rounded-xl text-xs font-bold text-slate-900 outline-none focus:bg-white focus:border-rose-500"
+              className="w-full px-3 py-2.5 bg-slate-950 border border-slate-800 rounded-xl text-xs font-bold text-white placeholder:text-slate-500 outline-none focus:bg-slate-900 focus:border-rose-500"
             />
           </div>
           <div>
-            <label className="block text-[11px] font-bold text-slate-700 mb-1">Fristforlengelse (dager)</label>
+            <label className="block text-[11px] font-bold text-slate-300 mb-1">Fristforlengelse (dager)</label>
             <input
               type="number"
               min="0"
               step="1"
               value={impactDays}
               onChange={(e) => setImpactDays(Number(e.target.value))}
-              className="w-full px-3 py-2.5 bg-slate-50 border border-slate-200 rounded-xl text-xs font-bold text-slate-900 outline-none focus:bg-white focus:border-rose-500"
+              className="w-full px-3 py-2.5 bg-slate-950 border border-slate-800 rounded-xl text-xs font-bold text-white placeholder:text-slate-500 outline-none focus:bg-slate-900 focus:border-rose-500"
             />
           </div>
         </div>
 
         <div>
-          <label className="block text-[11px] font-bold text-slate-700 mb-1">Begrunnelse & beskrivelse</label>
+          <label className="block text-[11px] font-bold text-slate-300 mb-1">Begrunnelse & beskrivelse</label>
           <textarea
             value={description}
             onChange={(e) => setDescription(e.target.value)}
             rows={3}
             placeholder="Beskriv hvorfor endringen oppsto og hvilke konsekvenser det har for fremdriften..."
-            className="w-full px-3 py-2 bg-slate-50 border border-slate-200 rounded-xl text-xs font-medium text-slate-900 outline-none focus:bg-white focus:border-rose-500 resize-none"
+            className="w-full px-3 py-2 bg-slate-950 border border-slate-800 rounded-xl text-xs font-medium text-white placeholder:text-slate-500 outline-none focus:bg-slate-900 focus:border-rose-500 resize-none"
           />
         </div>
 
-        <div className="p-3 rounded-xl bg-amber-50/70 border border-amber-200/80 text-[11px] text-amber-900 leading-relaxed font-medium">
+        <div className="p-3 rounded-xl bg-amber-950/30 border border-amber-500/20 text-[11px] text-amber-200 leading-relaxed font-medium">
           ⚖️ <strong>Varsling iht. NS 8406:</strong> Entreprenøren må varsle uten ugrunnet opphold for å unngå preklusjon (tap av rett til vederlagsjustering og fristforlengelse).
         </div>
       </div>
@@ -1090,16 +1090,16 @@ function InChatSJAForm({
         onApply={handleApplyAutofill}
       />
 
-      <div className="bg-white p-4 sm:p-5 rounded-2xl border border-slate-200/90 shadow-2xs space-y-3.5">
-        <h5 className="text-xs font-black uppercase tracking-wider text-slate-400">Sikker Jobb Analyse (SJA)</h5>
+      <div className="bg-[#131722] p-4 sm:p-5 rounded-2xl border border-slate-800 shadow-xl space-y-3.5 text-white">
+        <h5 className="text-xs font-black uppercase tracking-wider text-amber-400">Sikker Jobb Analyse (SJA)</h5>
 
         {projects.length > 0 && (
           <div>
-            <label className="block text-[11px] font-bold text-slate-700 mb-1">Prosjekt</label>
+            <label className="block text-[11px] font-bold text-slate-300 mb-1">Prosjekt</label>
             <select
               value={projectId}
               onChange={(e) => setProjectId(e.target.value)}
-              className="w-full px-3 py-2.5 bg-slate-50 border border-slate-200 rounded-xl text-xs font-bold text-slate-800 outline-none"
+              className="w-full px-3 py-2.5 bg-slate-950 border border-slate-800 rounded-xl text-xs font-bold text-white outline-none focus:border-amber-500"
             >
               {projects.map(p => (
                 <option key={p.id} value={p.id}>{p.name}</option>
@@ -1109,42 +1109,42 @@ function InChatSJAForm({
         )}
 
         <div>
-          <label className="block text-[11px] font-bold text-slate-700 mb-1">Arbeidsoperasjon som skal utføres *</label>
+          <label className="block text-[11px] font-bold text-slate-300 mb-1">Arbeidsoperasjon som skal utføres *</label>
           <input
             type="text"
             value={jobTitle}
             onChange={(e) => setJobTitle(e.target.value)}
             placeholder="F.eks. Rivearbeid bærekonstruksjon / Taktekking"
             required
-            className="w-full px-3 py-2.5 bg-slate-50 border border-slate-200 rounded-xl text-xs font-bold text-slate-900 outline-none focus:bg-white focus:border-amber-500"
+            className="w-full px-3 py-2.5 bg-slate-950 border border-slate-800 rounded-xl text-xs font-bold text-white placeholder:text-slate-500 outline-none focus:bg-slate-900 focus:border-amber-500"
           />
         </div>
 
         <div className="grid grid-cols-1 sm:grid-cols-2 gap-3">
           <div>
-            <label className="block text-[11px] font-bold text-slate-700 mb-1">Arbeidssted / lokasjon</label>
+            <label className="block text-[11px] font-bold text-slate-300 mb-1">Arbeidssted / lokasjon</label>
             <input
               type="text"
               value={location}
               onChange={(e) => setLocation(e.target.value)}
               placeholder="F.eks. Takplan nord / Stillas 3. etg"
-              className="w-full px-3 py-2 bg-slate-50 border border-slate-200 rounded-xl text-xs font-bold text-slate-900 outline-none"
+              className="w-full px-3 py-2 bg-slate-950 border border-slate-800 rounded-xl text-xs font-bold text-white placeholder:text-slate-500 outline-none focus:border-amber-500"
             />
           </div>
           <div>
-            <label className="block text-[11px] font-bold text-slate-700 mb-1">Deltakere / håndverkere</label>
+            <label className="block text-[11px] font-bold text-slate-300 mb-1">Deltakere / håndverkere</label>
             <input
               type="text"
               value={participants}
               onChange={(e) => setParticipants(e.target.value)}
               placeholder="Navn på de som skal utføre arbeidet"
-              className="w-full px-3 py-2 bg-slate-50 border border-slate-200 rounded-xl text-xs font-bold text-slate-900 outline-none"
+              className="w-full px-3 py-2 bg-slate-950 border border-slate-800 rounded-xl text-xs font-bold text-white placeholder:text-slate-500 outline-none focus:border-amber-500"
             />
           </div>
         </div>
 
         <div>
-          <label className="block text-[11px] font-bold text-slate-700 mb-1.5">Identifiserte risikofaktorer (klikk for å velge)</label>
+          <label className="block text-[11px] font-bold text-slate-300 mb-1.5">Identifiserte risikofaktorer (klikk for å velge)</label>
           <div className="flex flex-wrap gap-1.5">
             {commonHazards.map((h, i) => {
               const isChecked = hazards.includes(h);
@@ -1156,8 +1156,8 @@ function InChatSJAForm({
                   className={cn(
                     "px-2.5 py-1.5 rounded-xl text-xs font-bold border transition-all cursor-pointer flex items-center gap-1.5",
                     isChecked
-                      ? "bg-amber-500 text-white border-amber-600 shadow-xs"
-                      : "bg-slate-50 text-slate-700 border-slate-200 hover:bg-slate-100"
+                      ? "bg-amber-500 text-slate-950 font-black border-amber-400 shadow-xs"
+                      : "bg-slate-900 text-slate-300 border-slate-800 hover:bg-slate-850 hover:text-white"
                   )}
                 >
                   <Check size={12} className={isChecked ? "opacity-100" : "opacity-0"} />
@@ -1169,13 +1169,13 @@ function InChatSJAForm({
         </div>
 
         <div>
-          <label className="block text-[11px] font-bold text-slate-700 mb-1">Vernetiltak og sikring</label>
+          <label className="block text-[11px] font-bold text-slate-300 mb-1">Vernetiltak og sikring</label>
           <textarea
             value={mitigations.join('\n')}
             onChange={(e) => setMitigations(e.target.value.split('\n').filter(Boolean))}
             rows={3}
             placeholder="Skriv ett tiltak per linje (f.eks. sperreområde på bakkeplan, vernebriller)..."
-            className="w-full px-3 py-2 bg-slate-50 border border-slate-200 rounded-xl text-xs font-medium text-slate-900 outline-none focus:bg-white resize-none"
+            className="w-full px-3 py-2 bg-slate-950 border border-slate-800 rounded-xl text-xs font-medium text-white placeholder:text-slate-500 outline-none focus:bg-slate-900 focus:border-amber-500 resize-none"
           />
         </div>
       </div>
@@ -1277,16 +1277,16 @@ function InChatDeviationForm({
         onApply={handleApplyAutofill}
       />
 
-      <div className="bg-white p-4 sm:p-5 rounded-2xl border border-slate-200/90 shadow-2xs space-y-3.5">
-        <h5 className="text-xs font-black uppercase tracking-wider text-slate-400">Avviksregistrering (KS & HMS)</h5>
+      <div className="bg-[#131722] p-4 sm:p-5 rounded-2xl border border-slate-800 shadow-xl space-y-3.5 text-white">
+        <h5 className="text-xs font-black uppercase tracking-wider text-rose-400">Avviksregistrering (KS & HMS)</h5>
 
         {projects.length > 0 && (
           <div>
-            <label className="block text-[11px] font-bold text-slate-700 mb-1">Prosjekt *</label>
+            <label className="block text-[11px] font-bold text-slate-300 mb-1">Prosjekt *</label>
             <select
               value={projectId}
               onChange={(e) => setProjectId(e.target.value)}
-              className="w-full px-3 py-2.5 bg-slate-50 border border-slate-200 rounded-xl text-xs font-bold text-slate-800 outline-none"
+              className="w-full px-3 py-2.5 bg-slate-950 border border-slate-800 rounded-xl text-xs font-bold text-white outline-none focus:border-rose-500"
             >
               {projects.map(p => (
                 <option key={p.id} value={p.id}>{p.name}</option>
@@ -1296,24 +1296,24 @@ function InChatDeviationForm({
         )}
 
         <div>
-          <label className="block text-[11px] font-bold text-slate-700 mb-1">Kort tittel på avviket *</label>
+          <label className="block text-[11px] font-bold text-slate-300 mb-1">Kort tittel på avviket *</label>
           <input
             type="text"
             value={title}
             onChange={(e) => setTitle(e.target.value)}
             placeholder="F.eks. Skade på dampsperre ved rørgjennomføring"
             required
-            className="w-full px-3 py-2.5 bg-slate-50 border border-slate-200 rounded-xl text-xs font-bold text-slate-900 outline-none focus:bg-white focus:border-red-500"
+            className="w-full px-3 py-2.5 bg-slate-950 border border-slate-800 rounded-xl text-xs font-bold text-white placeholder:text-slate-500 outline-none focus:bg-slate-900 focus:border-rose-500"
           />
         </div>
 
         <div className="grid grid-cols-1 sm:grid-cols-2 gap-3">
           <div>
-            <label className="block text-[11px] font-bold text-slate-700 mb-1">Kategori</label>
+            <label className="block text-[11px] font-bold text-slate-300 mb-1">Kategori</label>
             <select
               value={category}
               onChange={(e) => setCategory(e.target.value)}
-              className="w-full px-3 py-2 bg-slate-50 border border-slate-200 rounded-xl text-xs font-bold text-slate-800 outline-none"
+              className="w-full px-3 py-2 bg-slate-950 border border-slate-800 rounded-xl text-xs font-bold text-white outline-none focus:border-rose-500"
             >
               <option value="quality">Kvalitet / Faglig utførelse</option>
               <option value="hms">HMS / Farlig forhold (RUH)</option>
@@ -1322,11 +1322,11 @@ function InChatDeviationForm({
             </select>
           </div>
           <div>
-            <label className="block text-[11px] font-bold text-slate-700 mb-1">Alvorlighetsgrad</label>
+            <label className="block text-[11px] font-bold text-slate-300 mb-1">Alvorlighetsgrad</label>
             <select
               value={severity}
               onChange={(e) => setSeverity(e.target.value)}
-              className="w-full px-3 py-2 bg-slate-50 border border-slate-200 rounded-xl text-xs font-bold text-slate-800 outline-none"
+              className="w-full px-3 py-2 bg-slate-950 border border-slate-800 rounded-xl text-xs font-bold text-white outline-none focus:border-rose-500"
             >
               <option value="low">Lav (Mindre betydning)</option>
               <option value="medium">Middels (Må utbedres)</option>
@@ -1337,25 +1337,25 @@ function InChatDeviationForm({
         </div>
 
         <div>
-          <label className="block text-[11px] font-bold text-slate-700 mb-1">Beskrivelse av hva som hendte *</label>
+          <label className="block text-[11px] font-bold text-slate-300 mb-1">Beskrivelse av hva som hendte *</label>
           <textarea
             value={description}
             onChange={(e) => setDescription(e.target.value)}
             rows={3}
             required
             placeholder="Beskriv avviket, årsak og hvilken konsekvens det medfører..."
-            className="w-full px-3 py-2 bg-slate-50 border border-slate-200 rounded-xl text-xs font-medium text-slate-900 outline-none focus:bg-white resize-none"
+            className="w-full px-3 py-2 bg-slate-950 border border-slate-800 rounded-xl text-xs font-medium text-white placeholder:text-slate-500 outline-none focus:bg-slate-900 focus:border-rose-500 resize-none"
           />
         </div>
 
         <div>
-          <label className="block text-[11px] font-bold text-slate-700 mb-1">Strakstiltak utført</label>
+          <label className="block text-[11px] font-bold text-slate-300 mb-1">Strakstiltak utført</label>
           <input
             type="text"
             value={actionTaken}
             onChange={(e) => setActionTaken(e.target.value)}
             placeholder="F.eks. Tettet midlertidig med tape, sperret av området"
-            className="w-full px-3 py-2 bg-slate-50 border border-slate-200 rounded-xl text-xs font-bold text-slate-900 outline-none"
+            className="w-full px-3 py-2 bg-slate-950 border border-slate-800 rounded-xl text-xs font-bold text-white placeholder:text-slate-500 outline-none focus:border-rose-500"
           />
         </div>
       </div>
@@ -1454,16 +1454,16 @@ function InChatTimeForm({
         onApply={handleApplyAutofill}
       />
 
-      <div className="bg-white p-4 sm:p-5 rounded-2xl border border-slate-200/90 shadow-2xs space-y-3.5">
-        <h5 className="text-xs font-black uppercase tracking-wider text-slate-400">Timeføring</h5>
+      <div className="bg-[#131722] p-4 sm:p-5 rounded-2xl border border-slate-800 shadow-xl space-y-3.5 text-white">
+        <h5 className="text-xs font-black uppercase tracking-wider text-blue-400">Timeføring</h5>
 
         {projects.length > 0 && (
           <div>
-            <label className="block text-[11px] font-bold text-slate-700 mb-1">Prosjekt *</label>
+            <label className="block text-[11px] font-bold text-slate-300 mb-1">Prosjekt *</label>
             <select
               value={projectId}
               onChange={(e) => setProjectId(e.target.value)}
-              className="w-full px-3 py-2.5 bg-slate-50 border border-slate-200 rounded-xl text-xs font-bold text-slate-800 outline-none"
+              className="w-full px-3 py-2.5 bg-slate-950 border border-slate-800 rounded-xl text-xs font-bold text-white outline-none focus:border-blue-500"
             >
               {projects.map(p => (
                 <option key={p.id} value={p.id}>{p.name}</option>
@@ -1474,33 +1474,33 @@ function InChatTimeForm({
 
         <div className="grid grid-cols-1 sm:grid-cols-2 gap-3">
           <div>
-            <label className="block text-[11px] font-bold text-slate-700 mb-1">Dato *</label>
+            <label className="block text-[11px] font-bold text-slate-300 mb-1">Dato *</label>
             <input
               type="date"
               value={date}
               onChange={(e) => setDate(e.target.value)}
-              className="w-full px-3 py-2 bg-slate-50 border border-slate-200 rounded-xl text-xs font-bold text-slate-900 outline-none"
+              className="w-full px-3 py-2 bg-slate-950 border border-slate-800 rounded-xl text-xs font-bold text-white outline-none focus:border-blue-500"
             />
           </div>
           <div>
-            <label className="block text-[11px] font-bold text-slate-700 mb-1">Antall timer *</label>
+            <label className="block text-[11px] font-bold text-slate-300 mb-1">Antall timer *</label>
             <input
               type="number"
               min="0.5"
               step="0.5"
               value={hours}
               onChange={(e) => setHours(Number(e.target.value))}
-              className="w-full px-3 py-2 bg-slate-50 border border-slate-200 rounded-xl text-xs font-bold text-slate-900 outline-none"
+              className="w-full px-3 py-2 bg-slate-950 border border-slate-800 rounded-xl text-xs font-bold text-white outline-none focus:border-blue-500"
             />
           </div>
         </div>
 
         <div>
-          <label className="block text-[11px] font-bold text-slate-700 mb-1">Type timer</label>
+          <label className="block text-[11px] font-bold text-slate-300 mb-1">Type timer</label>
           <select
             value={category}
             onChange={(e) => setCategory(e.target.value)}
-            className="w-full px-3 py-2 bg-slate-50 border border-slate-200 rounded-xl text-xs font-bold text-slate-800 outline-none"
+            className="w-full px-3 py-2 bg-slate-950 border border-slate-800 rounded-xl text-xs font-bold text-white outline-none focus:border-blue-500"
           >
             <option value="arbeid">Ordinært arbeid</option>
             <option value="overtid">Overtid 50%</option>
@@ -1510,13 +1510,13 @@ function InChatTimeForm({
         </div>
 
         <div>
-          <label className="block text-[11px] font-bold text-slate-700 mb-1">Arbeidsbeskrivelse</label>
+          <label className="block text-[11px] font-bold text-slate-300 mb-1">Arbeidsbeskrivelse</label>
           <textarea
             value={description}
             onChange={(e) => setDescription(e.target.value)}
             rows={2}
             placeholder="Hva har du jobbet med i dag? F.eks. Montering av gipsvegger og isolering..."
-            className="w-full px-3 py-2 bg-slate-50 border border-slate-200 rounded-xl text-xs font-medium text-slate-900 outline-none focus:bg-white resize-none"
+            className="w-full px-3 py-2 bg-slate-950 border border-slate-800 rounded-xl text-xs font-medium text-white placeholder:text-slate-500 outline-none focus:bg-slate-900 focus:border-blue-500 resize-none"
           />
         </div>
       </div>
@@ -1587,11 +1587,11 @@ function InChatToolboxMenu({
   ];
 
   return (
-    <div className="space-y-3">
-      <div className="p-3 bg-white rounded-2xl border border-slate-200 shadow-2xs">
-        <h5 className="text-xs font-black text-navy-900 mb-1">Systemets Verktøykasse i Chatten</h5>
-        <p className="text-[11px] text-slate-500 leading-relaxed">
-          Velg en funksjon under for å fylle ut skjemaet direkte inne i chatvinduet:
+    <div className="space-y-3 text-white">
+      <div className="p-4 bg-[#131722] rounded-2xl border border-slate-800 shadow-xl">
+        <h5 className="text-xs font-black text-white mb-1">Systemets Verktøykasse i Chatten</h5>
+        <p className="text-[11px] text-slate-400 leading-relaxed">
+          Velg en funksjon under for å fylle ut skjemaet direkte inne i arbeidsflaten:
         </p>
       </div>
 
@@ -1603,20 +1603,20 @@ function InChatToolboxMenu({
               key={t.id}
               type="button"
               onClick={() => onSelect(t.id as InChatFormType)}
-              className="p-3.5 bg-white hover:bg-slate-50 border border-slate-200/90 hover:border-slate-300 rounded-2xl text-left transition-all flex items-center gap-3.5 group cursor-pointer shadow-2xs active:scale-98"
+              className="p-3.5 bg-[#131722] hover:bg-slate-800/80 border border-slate-800 hover:border-slate-750 rounded-2xl text-left transition-all flex items-center gap-3.5 group cursor-pointer shadow-md active:scale-98"
             >
               <div className={cn("w-10 h-10 rounded-xl flex items-center justify-center shrink-0 shadow-xs", t.color)}>
                 <Icon size={20} />
               </div>
               <div className="flex-1 min-w-0">
-                <div className="text-xs font-black text-navy-900 group-hover:text-electric-700 transition-colors">
+                <div className="text-xs font-black text-white group-hover:text-purple-300 transition-colors">
                   {t.title}
                 </div>
-                <div className="text-[11px] text-slate-500 line-clamp-1">
+                <div className="text-[11px] text-slate-400 line-clamp-1">
                   {t.desc}
                 </div>
               </div>
-              <ChevronRight size={16} className="text-slate-300 group-hover:text-navy-900 transition-colors shrink-0" />
+              <ChevronRight size={16} className="text-slate-500 group-hover:text-white transition-colors shrink-0" />
             </button>
           );
         })}
@@ -1958,15 +1958,15 @@ function InChatTaskForm({
         onApply={handleApplyAutofill}
       />
 
-      <div className="bg-white p-4 sm:p-5 rounded-2xl border border-slate-200/90 shadow-2xs space-y-3.5">
-        <h5 className="text-xs font-black uppercase tracking-wider text-slate-400">Tildel Oppgave & Arbeidsordre</h5>
+      <div className="bg-[#131722] p-4 sm:p-5 rounded-2xl border border-slate-800 shadow-xl space-y-3.5 text-white">
+        <h5 className="text-xs font-black uppercase tracking-wider text-indigo-400">Tildel Oppgave & Arbeidsordre</h5>
 
         <div>
-          <label className="block text-[11px] font-bold text-slate-700 mb-1">Prosjekt *</label>
+          <label className="block text-[11px] font-bold text-slate-300 mb-1">Prosjekt *</label>
           <select
             value={projectId}
             onChange={(e) => setProjectId(e.target.value)}
-            className="w-full px-3 py-2.5 bg-slate-50 border border-slate-200 rounded-xl text-xs font-bold text-slate-800 outline-none focus:bg-white"
+            className="w-full px-3 py-2.5 bg-slate-950 border border-slate-800 rounded-xl text-xs font-bold text-white outline-none focus:border-indigo-400"
           >
             {projects.map(p => (
               <option key={p.id} value={p.id}>{p.name}</option>
@@ -1975,19 +1975,19 @@ function InChatTaskForm({
         </div>
 
         <div>
-          <label className="block text-[11px] font-bold text-slate-700 mb-1">Hva skal gjøres? (Oppgavetittel) *</label>
+          <label className="block text-[11px] font-bold text-slate-300 mb-1">Hva skal gjøres? (Oppgavetittel) *</label>
           <input
             type="text"
             value={title}
             onChange={(e) => setTitle(e.target.value)}
             placeholder="F.eks: Trekke kurser til kjøkken og montere stikk..."
-            className="w-full px-3 py-2.5 bg-slate-50 border border-slate-200 rounded-xl text-xs font-bold text-slate-900 outline-none focus:bg-white"
+            className="w-full px-3 py-2.5 bg-slate-950 border border-slate-800 rounded-xl text-xs font-bold text-white placeholder:text-slate-500 outline-none focus:bg-slate-900 focus:border-indigo-400"
           />
         </div>
 
         <div>
           <div className="flex items-center justify-between mb-1.5">
-            <label className="block text-[11px] font-bold text-slate-700">Tildel til person / fag *</label>
+            <label className="block text-[11px] font-bold text-slate-300">Tildel til person / fag *</label>
             {assignedTo.trim() && (
               <button
                 type="button"
@@ -1995,12 +1995,12 @@ function InChatTaskForm({
                 className={cn(
                   "text-[10px] font-bold flex items-center gap-1 transition-all px-2 py-0.5 rounded-lg border cursor-pointer",
                   isCurrentFavorite 
-                    ? "bg-amber-50 text-amber-800 border-amber-200 hover:bg-amber-100" 
-                    : "bg-slate-50 text-slate-500 border-slate-200 hover:bg-slate-100"
+                    ? "bg-amber-500/20 text-amber-300 border-amber-500/30 hover:bg-amber-500/30" 
+                    : "bg-slate-900 text-slate-400 border-slate-800 hover:bg-slate-850"
                 )}
                 title={isCurrentFavorite ? "Fjern fra hurtigfavoritter" : "Lagre som hurtigfavoritt"}
               >
-                <Star size={11} className={isCurrentFavorite ? "fill-amber-400 text-amber-500" : "text-slate-400"} />
+                <Star size={11} className={isCurrentFavorite ? "fill-amber-400 text-amber-400" : "text-slate-500"} />
                 <span>{isCurrentFavorite ? 'I favoritter' : 'Gjør til favoritt'}</span>
               </button>
             )}
@@ -2020,19 +2020,19 @@ function InChatTaskForm({
                   setAssignedTo(val);
                 }
               }}
-              className="w-full px-3 py-2.5 bg-slate-50 border border-slate-200 rounded-xl text-xs font-bold text-slate-900 outline-none focus:bg-white focus:border-indigo-400 transition-all cursor-pointer"
+              className="w-full px-3 py-2.5 bg-slate-950 border border-slate-800 rounded-xl text-xs font-bold text-white outline-none focus:border-indigo-500 transition-all cursor-pointer"
             >
               {registeredUsers.length === 0 ? (
-                <option value="" disabled>Laster registrerte personer...</option>
+                <option value="" disabled className="bg-slate-950 text-slate-400">Laster registrerte personer...</option>
               ) : (
                 <>
-                  <option value="" disabled>-- Velg registrert person / team --</option>
+                  <option value="" disabled className="bg-slate-950 text-slate-400">-- Velg registrert person / team --</option>
                   {registeredUsers.map(person => (
-                    <option key={person.id} value={person.name}>
+                    <option key={person.id} value={person.name} className="bg-slate-950 text-white">
                       👤 {person.name} {person.role ? `· ${person.role}` : ''}
                     </option>
                   ))}
-                  <option value="__custom__">✏️ Annen person / Ekstern håndverker (Fritekst)...</option>
+                  <option value="__custom__" className="bg-slate-950 text-amber-300">✏️ Annen person / Ekstern håndverker (Fritekst)...</option>
                 </>
               )}
             </select>
@@ -2045,7 +2045,7 @@ function InChatTaskForm({
                   value={assignedTo}
                   onChange={(e) => setAssignedTo(e.target.value)}
                   placeholder="Skriv inn navn på håndverker eller ekstern UE..."
-                  className="w-full px-3 py-2 bg-white border border-indigo-200 rounded-xl text-xs font-bold text-slate-900 outline-none focus:ring-2 focus:ring-indigo-100"
+                  className="w-full px-3 py-2 bg-slate-950 border border-indigo-500/50 rounded-xl text-xs font-bold text-white placeholder:text-slate-600 outline-none focus:ring-1 focus:ring-indigo-500"
                   autoFocus={isCustomPerson}
                 />
               </div>
@@ -2071,8 +2071,8 @@ function InChatTaskForm({
                     className={cn(
                       "px-2.5 py-1 rounded-lg text-[10px] font-bold transition-all border cursor-pointer flex items-center gap-1",
                       assignedTo === quick 
-                        ? "bg-indigo-50 text-indigo-700 border-indigo-300 shadow-xs" 
-                        : "bg-slate-50 text-slate-600 border-slate-200 hover:bg-slate-100"
+                        ? "bg-indigo-500/20 text-indigo-300 border-indigo-500/40 shadow-xs" 
+                        : "bg-slate-900 text-slate-400 border-slate-800 hover:bg-slate-800 hover:text-white"
                     )}
                   >
                     <span>{quick}</span>
@@ -2085,62 +2085,62 @@ function InChatTaskForm({
 
         <div className="grid grid-cols-1 sm:grid-cols-2 gap-3">
           <div>
-            <label className="block text-[11px] font-bold text-slate-700 mb-1">Prioritet</label>
+            <label className="block text-[11px] font-bold text-slate-300 mb-1">Prioritet</label>
             <select
               value={priority}
               onChange={(e: any) => setPriority(e.target.value)}
-              className="w-full px-3 py-2.5 bg-slate-50 border border-slate-200 rounded-xl text-xs font-bold text-slate-800 outline-none focus:bg-white"
+              className="w-full px-3 py-2.5 bg-slate-950 border border-slate-800 rounded-xl text-xs font-bold text-white outline-none focus:border-indigo-500"
             >
-              <option value="low">Lav</option>
-              <option value="medium">Normal</option>
-              <option value="high">Høy</option>
-              <option value="urgent">Kritisk / Haster</option>
+              <option value="low" className="bg-slate-950 text-white">Lav</option>
+              <option value="medium" className="bg-slate-950 text-white">Normal</option>
+              <option value="high" className="bg-slate-950 text-white">Høy</option>
+              <option value="urgent" className="bg-slate-950 text-white">Kritisk / Haster</option>
             </select>
           </div>
           <div>
-            <label className="block text-[11px] font-bold text-slate-700 mb-1">Frist *</label>
+            <label className="block text-[11px] font-bold text-slate-300 mb-1">Frist *</label>
             <input
               type="date"
               value={deadline}
               onChange={(e) => setDeadline(e.target.value)}
-              className="w-full px-3 py-2.5 bg-slate-50 border border-slate-200 rounded-xl text-xs font-bold text-slate-900 outline-none focus:bg-white"
+              className="w-full px-3 py-2.5 bg-slate-950 border border-slate-800 rounded-xl text-xs font-bold text-white outline-none focus:border-indigo-500 [color-scheme:dark]"
             />
           </div>
         </div>
 
         <div>
-          <label className="block text-[11px] font-bold text-slate-700 mb-1">Detaljert arbeidsinstruks / Merknad</label>
+          <label className="block text-[11px] font-bold text-slate-300 mb-1">Detaljert arbeidsinstruks / Merknad</label>
           <textarea
             value={description}
             onChange={(e) => setDescription(e.target.value)}
             rows={3}
             placeholder="Spesifiser plassering, materialer, forbehold eller sjekkpunkter..."
-            className="w-full px-3 py-2 bg-slate-50 border border-slate-200 rounded-xl text-xs font-medium text-slate-900 outline-none focus:bg-white resize-none"
+            className="w-full px-3 py-2 bg-slate-950 border border-slate-800 rounded-xl text-xs font-medium text-slate-200 placeholder:text-slate-600 outline-none focus:border-indigo-500 resize-none"
           />
         </div>
 
         {/* Omnichannel Section */}
-        <div className="p-3.5 bg-slate-50 rounded-2xl border border-slate-200/80 space-y-2.5">
+        <div className="p-3.5 bg-[#0B0F17]/90 rounded-2xl border border-slate-800 space-y-2.5">
           <div className="flex items-center justify-between">
-            <span className="text-[10px] font-black uppercase tracking-wider text-slate-500 block">
+            <span className="text-[10px] font-black uppercase tracking-wider text-slate-400 block">
               Varsling & Omnichannel (Håndverkere i felt)
             </span>
             <button
               type="button"
               onClick={handleOpenConfig}
-              className="text-[11px] font-bold text-indigo-600 hover:text-indigo-700 flex items-center gap-1 cursor-pointer transition-colors"
+              className="text-[11px] font-bold text-indigo-400 hover:text-indigo-300 flex items-center gap-1 cursor-pointer transition-colors"
             >
               <span>⚙️ Konfigurer kanaler</span>
             </button>
           </div>
 
-          <div className="grid grid-cols-1 sm:grid-cols-3 gap-2 text-xs font-medium text-slate-700">
+          <div className="grid grid-cols-1 sm:grid-cols-3 gap-2 text-xs font-medium text-slate-300">
             {/* Discord */}
             <label className={cn(
               "flex items-center justify-between p-2 rounded-xl border transition-all cursor-pointer",
               hasDiscord 
-                ? (notifyDiscord ? "bg-indigo-50/70 border-indigo-200 text-indigo-950" : "bg-white border-slate-200") 
-                : "bg-slate-100/70 border-dashed border-slate-200 text-slate-400 cursor-not-allowed opacity-80"
+                ? (notifyDiscord ? "bg-indigo-950/40 border-indigo-500/50 text-indigo-200" : "bg-slate-900 border-slate-800 text-slate-300 hover:border-slate-700") 
+                : "bg-slate-950/60 border-dashed border-slate-800/80 text-slate-600 cursor-not-allowed opacity-60"
             )}>
               <div className="flex items-center gap-2">
                 <input 
@@ -2148,13 +2148,13 @@ function InChatTaskForm({
                   disabled={!hasDiscord}
                   checked={notifyDiscord} 
                   onChange={(e) => setNotifyDiscord(e.target.checked)} 
-                  className="rounded text-indigo-600 focus:ring-0 disabled:opacity-50"
+                  className="rounded bg-slate-950 border-slate-700 text-indigo-500 focus:ring-0 disabled:opacity-50"
                 />
                 <span className="font-bold">Discord</span>
               </div>
               <span className={cn(
                 "text-[9px] font-black uppercase px-1.5 py-0.5 rounded-md",
-                hasDiscord ? "bg-emerald-100 text-emerald-700" : "bg-slate-200 text-slate-500"
+                hasDiscord ? "bg-emerald-500/20 text-emerald-400 border border-emerald-500/30" : "bg-slate-800 text-slate-500"
               )}>
                 {hasDiscord ? 'Tilkoblet' : 'Ikke tilkoblet'}
               </span>
@@ -2164,8 +2164,8 @@ function InChatTaskForm({
             <label className={cn(
               "flex items-center justify-between p-2 rounded-xl border transition-all cursor-pointer",
               hasSlack 
-                ? (notifySlack ? "bg-emerald-50/70 border-emerald-200 text-emerald-950" : "bg-white border-slate-200") 
-                : "bg-slate-100/70 border-dashed border-slate-200 text-slate-400 cursor-not-allowed opacity-80"
+                ? (notifySlack ? "bg-emerald-950/40 border-emerald-500/50 text-emerald-200" : "bg-slate-900 border-slate-800 text-slate-300 hover:border-slate-700") 
+                : "bg-slate-950/60 border-dashed border-slate-800/80 text-slate-600 cursor-not-allowed opacity-60"
             )}>
               <div className="flex items-center gap-2">
                 <input 
@@ -2173,13 +2173,13 @@ function InChatTaskForm({
                   disabled={!hasSlack}
                   checked={notifySlack} 
                   onChange={(e) => setNotifySlack(e.target.checked)} 
-                  className="rounded text-emerald-600 focus:ring-0 disabled:opacity-50"
+                  className="rounded bg-slate-950 border-slate-700 text-emerald-500 focus:ring-0 disabled:opacity-50"
                 />
                 <span className="font-bold">Slack</span>
               </div>
               <span className={cn(
                 "text-[9px] font-black uppercase px-1.5 py-0.5 rounded-md",
-                hasSlack ? "bg-emerald-100 text-emerald-700" : "bg-slate-200 text-slate-500"
+                hasSlack ? "bg-emerald-500/20 text-emerald-400 border border-emerald-500/30" : "bg-slate-800 text-slate-500"
               )}>
                 {hasSlack ? 'Tilkoblet' : 'Ikke tilkoblet'}
               </span>
@@ -2189,8 +2189,8 @@ function InChatTaskForm({
             <label className={cn(
               "flex items-center justify-between p-2 rounded-xl border transition-all cursor-pointer",
               hasTeams 
-                ? (notifyTeams ? "bg-blue-50/70 border-blue-200 text-blue-950" : "bg-white border-slate-200") 
-                : "bg-slate-100/70 border-dashed border-slate-200 text-slate-400 cursor-not-allowed opacity-80"
+                ? (notifyTeams ? "bg-blue-950/40 border-blue-500/50 text-blue-200" : "bg-slate-900 border-slate-800 text-slate-300 hover:border-slate-700") 
+                : "bg-slate-950/60 border-dashed border-slate-800/80 text-slate-600 cursor-not-allowed opacity-60"
             )}>
               <div className="flex items-center gap-2">
                 <input 
@@ -2198,13 +2198,13 @@ function InChatTaskForm({
                   disabled={!hasTeams}
                   checked={notifyTeams} 
                   onChange={(e) => setNotifyTeams(e.target.checked)} 
-                  className="rounded text-blue-600 focus:ring-0 disabled:opacity-50"
+                  className="rounded bg-slate-950 border-slate-700 text-blue-500 focus:ring-0 disabled:opacity-50"
                 />
                 <span className="font-bold">MS Teams</span>
               </div>
               <span className={cn(
                 "text-[9px] font-black uppercase px-1.5 py-0.5 rounded-md",
-                hasTeams ? "bg-emerald-100 text-emerald-700" : "bg-slate-200 text-slate-500"
+                hasTeams ? "bg-emerald-500/20 text-emerald-400 border border-emerald-500/30" : "bg-slate-800 text-slate-500"
               )}>
                 {hasTeams ? 'Tilkoblet' : 'Ikke tilkoblet'}
               </span>
@@ -2212,12 +2212,12 @@ function InChatTaskForm({
           </div>
           
           {!hasDiscord && !hasSlack && !hasTeams && (
-            <p className="text-[11px] text-slate-500 bg-amber-50/80 border border-amber-200/60 p-2 rounded-xl flex items-center justify-between">
+            <p className="text-[11px] text-amber-300 bg-amber-500/10 border border-amber-500/20 p-2.5 rounded-xl flex items-center justify-between">
               <span>💡 Ingen kanaler er koblet til. Håndverkere kan få oppgaver rett i sin kanal!</span>
               <button
                 type="button"
                 onClick={handleOpenConfig}
-                className="font-black text-amber-900 underline ml-2 cursor-pointer shrink-0"
+                className="font-black text-amber-400 hover:text-amber-300 underline ml-2 cursor-pointer shrink-0"
               >
                 Koble til nå
               </button>

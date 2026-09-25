@@ -696,7 +696,7 @@ export default function Settings() {
                   </div>
                   <p className="text-xs text-blue-700 mb-4">{t('integrations_desc', 'Koble til dine fagsystemer for automatisk dokumentoverføring.')}</p>
                   <div className="space-y-3">
-                    {['NOBB', 'Boligmappa', 'Tripletex', 'PowerOffice Go'].map((service) => {
+                    {['NOBB', 'Boligmappa', 'Tripletex', 'PowerOffice Go', 'Fiken'].map((service) => {
                       const isConnected = !!connectedServices[service];
                       return (
                         <div key={service} className="flex items-center justify-between p-3.5 bg-white rounded-xl border border-blue-200">
@@ -708,10 +708,16 @@ export default function Settings() {
                                   Varebase & FDV
                                 </span>
                               )}
+                              {service === 'Fiken' && (
+                                <span className="text-[9px] font-black uppercase tracking-wider bg-emerald-100 text-emerald-900 px-1.5 py-0.5 rounded">
+                                  Direkte API
+                                </span>
+                              )}
                             </div>
                             <span className="text-[11px] text-slate-500">
                               {service === 'NOBB' ? 'Direkte tilgang til Norsk Byggevarebase (1M+ varer, FDV, EPD og grossistpriser)' :
                                service === 'Boligmappa' ? 'Automatisk FDV- og samsvarserklæring' : 
+                               service === 'Fiken' ? 'Norges enkleste regnskap – direkte API-synk av foretak og faktura' :
                                'Sanntidssynk av timer, tillegg og fakturagrunnlag'}
                             </span>
                           </div>
@@ -1318,9 +1324,10 @@ export default function Settings() {
 
             <p className="text-xs text-slate-600 mb-3 leading-relaxed">
               {activeIntegrationModal === 'NOBB' && 'Lim inn din API Subscription Key fra Norsk Byggetjeneste (NOBB). VikingMester henter automatisk produktdata, FDV-dokumentasjon, EPD og grossistpriser direkte til prosjektene dine.'}
-              {activeIntegrationModal === 'Tripletex' && 'Lim inn din API-ansatt- eller sesjonstoken fra Tripletex. VikingMester synkroniserer automatisk godkjente tilleggsordrer og timelister direkte inn i prosjektet.'}
+              {activeIntegrationModal === 'Tripletex' && 'Lim inn din Employee Token fra Tripletex (genereres under Min profil ➔ API-tilgang). VikingMester knytter bedriften til Tripletex for automatisk time- og ordreoverføring, samt 1-klikk CSV-eksport.'}
               {activeIntegrationModal === 'Boligmappa' && 'Lim inn bedriftens API-nøkkel fra Boligmappa. Samsvarserklæringer, TEK17-bilder og ferdigattester lastes automatisk opp til eiendommens gårds- og bruksnummer.'}
-              {activeIntegrationModal === 'PowerOffice Go' && 'Lim inn Client Key eller Application Key fra PowerOffice Go for helautomatisk regnskapssynkronisering.'}
+              {activeIntegrationModal === 'PowerOffice Go' && 'Lim inn Client Key eller Application Key fra PowerOffice Go for regnskapssynkronisering og godkjente bilag.'}
+              {activeIntegrationModal === 'Fiken' && 'Lim inn Personal API Token fra Fiken (hentes under Brukerinnstillinger ➔ API på fiken.no). VikingMester verifiserer umiddelbart mot dine foretak for direkte overføring.'}
             </p>
 
             {/* 📖 Trinn-for-trinn veiledning */}
@@ -1331,7 +1338,8 @@ export default function Settings() {
                     activeIntegrationModal === 'NOBB' ? 'nobb' :
                     activeIntegrationModal === 'Boligmappa' ? 'boligmappa' :
                     activeIntegrationModal === 'Tripletex' ? 'tripletex' :
-                    activeIntegrationModal === 'PowerOffice Go' ? 'poweroffice' : 'nobb'
+                    activeIntegrationModal === 'PowerOffice Go' ? 'poweroffice' :
+                    activeIntegrationModal === 'Fiken' ? 'fiken' : 'nobb'
                   }
                   variant="light"
                   defaultExpanded={false}

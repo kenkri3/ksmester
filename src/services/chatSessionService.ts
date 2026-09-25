@@ -11,6 +11,14 @@ export interface ChatMessageItem {
     data?: any;
     prompt?: string;
   }>;
+  actions?: Array<{
+    id: string;
+    type: string;
+    label: string;
+    title?: string;
+    data?: any;
+    prompt?: string;
+  }>;
   followUpPrompts?: string[];
   quickReplies?: Array<{ title: string; payload: string }>;
   imageUrl?: string;

@@ -156,14 +156,13 @@ export function getOpenRouterKey(): string | null {
 
 /**
  * Intelligent modellruter (Kvalitet vs. Tokenkostnad).
- * Ruter oppgaver automatisk til de nyeste og mest kostnadseffektive flaggskipmodellene:
- * - Nettsøk: Gemini 2.5 Flash (med Google Search Grounding) / gpt-4o-mini
- * - Tekst / Rådgivning / Kalkyle / KS: DeepSeek-Chat (DeepSeek-V3, $0.14/1M) / gpt-4o-mini
- * - Kompleks resonnering / NS 8406 tvist: DeepSeek-Reasoner (DeepSeek-R1) / o3-mini / Gemini 2.5 Pro
- * - GDPR / Personopplysninger / Bilpark: gpt-4o-mini / mistral-large / Gemini 2.5 Flash (EU-hostet, 100% usladde data)
- * - SEO & E-E-A-T fagartikler: gpt-4o / Claude 3.5 Sonnet / DeepSeek-Chat
- * - SJA: DeepSeek-Chat / Gemini 2.5 Flash / gpt-4o-mini
- * - Vision / Bildeanalyse: Gemini 2.5 Flash ($0.075/1M, 1M context) med fallback til Gemini 2.5 Pro / gpt-4o
+ * Ruter oppgaver automatisk til de nyeste og skarpeste flaggskipmodellene:
+ * - Tekst / Rådgivning / Kalkyle / KS: DeepSeek-V4.1 Flash (deepseek-v4.1-flash / deepseek-v4-flash)
+ * - Bildeanalyse / Vision / TEK17 / Nettsøk: Gemini 3.8 Flash (gemini-3.8-flash)
+ * - Kompleks resonnering / NS 8406 tvist: DeepSeek-V4 Pro (deepseek-v4-pro / deepseek-reasoner) / o3-mini
+ * - GDPR / Personopplysninger / Bilpark: gpt-4o-mini / gemini-3.8-flash / mistral-large
+ * - SEO & E-E-A-T fagartikler: gpt-4o / Claude 3.5 Sonnet / deepseek-v4.1-flash
+ * - SJA: deepseek-v4.1-flash / gemini-3.8-flash
  */
 export function resolveOptimalModel(
   operation?: string,
@@ -174,21 +173,21 @@ export function resolveOptimalModel(
   const op = (operation || '').toLowerCase();
 
   // 🛡️ Hvis oppgaven er GDPR-beskyttet (personopplysninger, bilpark, ansatte):
-  // Bruker superraske, presise og ultrabillige gpt-4o-mini / Claude 3.5 Haiku / Mistral Large via 1min.ai eller Gemini 2.5 Flash EU
+  // Bruker superraske, presise og rimelige modeller via 1min.ai (gpt-4o-mini / mistral-large) eller Gemini 3.8 Flash EU
   if (gdprProtected || op.includes('gdpr') || op.includes('fleet') || op.includes('vehicle') || op.includes('bilpark') || op.includes('employee') || op.includes('hr')) {
     return {
       oneMinModel: process.env.ONE_MIN_AI_GDPR_MODEL || 'gpt-4o-mini',
-      geminiModel: process.env.GEMINI_MODEL || 'gemini-2.5-flash',
-      deepseekModel: 'deepseek-chat'
+      geminiModel: process.env.GEMINI_MODEL || 'gemini-3.8-flash',
+      deepseekModel: process.env.DEEPSEEK_MODEL || 'deepseek-v4.1-flash'
     };
   }
 
-  // Hvis webSearch er aktivert (1min.ai krever OpenAI for nettsøk):
+  // Hvis webSearch er aktivert (Gemini 3.8 Flash med Google Search Grounding eller gpt-4o-mini via 1min.ai):
   if (webSearch) {
     return {
       oneMinModel: process.env.ONE_MIN_AI_SEARCH_MODEL || 'gpt-4o-mini',
-      geminiModel: process.env.GEMINI_MODEL || 'gemini-2.5-flash',
-      deepseekModel: 'deepseek-chat'
+      geminiModel: process.env.GEMINI_MODEL || 'gemini-3.8-flash',
+      deepseekModel: process.env.DEEPSEEK_MODEL || 'deepseek-v4.1-flash'
     };
   }
 
@@ -198,81 +197,81 @@ export function resolveOptimalModel(
     if (reqLower.includes('reasoner') || reqLower.includes('r1') || reqLower.includes('pro') || reqLower.includes('o3') || reqLower.includes('o1')) {
       return {
         oneMinModel: 'o3-mini',
-        geminiModel: 'gemini-2.5-pro',
-        deepseekModel: 'deepseek-reasoner'
+        geminiModel: 'gemini-3.8-flash',
+        deepseekModel: 'deepseek-v4-pro'
       };
     }
     if (reqLower.includes('deepseek')) {
       return {
         oneMinModel: 'gpt-4o-mini',
-        geminiModel: 'gemini-2.5-flash',
-        deepseekModel: 'deepseek-chat'
+        geminiModel: 'gemini-3.8-flash',
+        deepseekModel: requestedModel
       };
     }
     if (reqLower.startsWith('gemini')) {
       return {
         oneMinModel: 'gpt-4o-mini',
         geminiModel: requestedModel,
-        deepseekModel: 'deepseek-chat'
+        deepseekModel: process.env.DEEPSEEK_MODEL || 'deepseek-v4.1-flash'
       };
     }
     return {
       oneMinModel: requestedModel,
-      geminiModel: 'gemini-2.5-flash',
-      deepseekModel: 'deepseek-chat'
+      geminiModel: 'gemini-3.8-flash',
+      deepseekModel: process.env.DEEPSEEK_MODEL || 'deepseek-v4.1-flash'
     };
   }
 
-  // 1. MesterAI Samtalepartner, Rådgivning, Tilbud & Kalkyle -> DeepSeek-Chat (V3) / gpt-4o-mini / Gemini 2.5 Flash
+  // 1. MesterAI Samtalepartner, Rådgivning, Tilbud & Kalkyle -> DeepSeek-V4.1 Flash (med Gemini 3.8 Flash som backup)
   if (op.includes('conversation') || op.includes('advisor') || op.includes('consultation') || op.includes('chat') || op.includes('offer') || op.includes('tilbud') || op.includes('kalkyle')) {
     return {
       oneMinModel: process.env.ONE_MIN_AI_CHAT_MODEL || 'gpt-4o-mini',
-      geminiModel: 'gemini-2.5-flash',
-      deepseekModel: 'deepseek-chat'
+      geminiModel: process.env.GEMINI_MODEL || 'gemini-3.8-flash',
+      deepseekModel: process.env.DEEPSEEK_MODEL || 'deepseek-v4.1-flash'
     };
   }
 
-  // 2. Juridisk, NS 8406, Tvister, Endringsordrer, Kontrakt -> DeepSeek-Reasoner (R1) / o3-mini / Gemini 2.5 Pro
+  // 2. Juridisk, NS 8406, Tvister, Endringsordrer, Kontrakt -> DeepSeek-V4 Pro / o3-mini / Gemini 3.8 Flash
   if (op.includes('change_order') || op.includes('contract') || op.includes('legal') || op.includes('ns8406') || op.includes('varsel') || op.includes('tvist') || op.includes('dispute')) {
     return {
       oneMinModel: process.env.ONE_MIN_AI_LEGAL_MODEL || 'o3-mini',
-      geminiModel: 'gemini-2.5-pro',
-      deepseekModel: 'deepseek-reasoner'
+      geminiModel: process.env.GEMINI_MODEL || 'gemini-3.8-flash',
+      deepseekModel: 'deepseek-v4-pro'
     };
   }
 
-  // 3. SEO & Faglige artikler -> gpt-4o / Claude 3.5 Sonnet / DeepSeek-Chat
+  // 3. SEO & Faglige artikler -> gpt-4o / Claude 3.5 Sonnet / deepseek-v4.1-flash
   if (op.includes('seo') || op.includes('article')) {
     return {
       oneMinModel: process.env.ONE_MIN_AI_SEO_MODEL || 'gpt-4o',
-      geminiModel: 'gemini-2.5-flash',
-      deepseekModel: 'deepseek-chat'
+      geminiModel: process.env.GEMINI_MODEL || 'gemini-3.8-flash',
+      deepseekModel: process.env.DEEPSEEK_MODEL || 'deepseek-v4.1-flash'
     };
   }
 
-  // 4. SJA (Sikker Jobb Analyse) -> DeepSeek-Chat / Gemini 2.5 Flash / gpt-4o-mini
+  // 4. SJA (Sikker Jobb Analyse) -> DeepSeek-V4.1 Flash / Gemini 3.8 Flash
   if (op.includes('sja')) {
     return {
       oneMinModel: process.env.ONE_MIN_AI_SJA_MODEL || 'gpt-4o-mini',
-      geminiModel: 'gemini-2.5-flash',
-      deepseekModel: 'deepseek-chat'
+      geminiModel: process.env.GEMINI_MODEL || 'gemini-3.8-flash',
+      deepseekModel: process.env.DEEPSEEK_MODEL || 'deepseek-v4.1-flash'
     };
   }
 
-  // 5. Bildeanalyse / TEK17 Vision / Skanning -> Gemini 2.5 Flash (verdensledende multimodalitet, lynrask og $0.075/1M)
+  // 5. Bildeanalyse / TEK17 Vision / Skanning -> Gemini 3.8 Flash (multimodal spissmodell)
   if (op.includes('vision') || op.includes('image') || op.includes('bilde') || op.includes('foto') || op.includes('scan')) {
     return {
       oneMinModel: process.env.ONE_MIN_AI_VISION_MODEL || 'gpt-4o',
-      geminiModel: process.env.GEMINI_MODEL || 'gemini-2.5-flash',
-      deepseekModel: 'deepseek-chat'
+      geminiModel: process.env.GEMINI_MODEL || 'gemini-3.8-flash',
+      deepseekModel: process.env.DEEPSEEK_MODEL || 'deepseek-v4.1-flash'
     };
   }
 
-  // 6. Standard / Byggedagbok / Oversettelse / Generelt -> DeepSeek-Chat / gpt-4o-mini / Gemini 2.5 Flash
+  // 6. Standard / Byggedagbok / Oversettelse / Generelt -> DeepSeek-V4.1 Flash / Gemini 3.8 Flash
   return {
     oneMinModel: process.env.ONE_MIN_AI_DEFAULT_MODEL || 'gpt-4o-mini',
-    geminiModel: process.env.GEMINI_MODEL || 'gemini-2.5-flash',
-    deepseekModel: 'deepseek-chat'
+    geminiModel: process.env.GEMINI_MODEL || 'gemini-3.8-flash',
+    deepseekModel: process.env.DEEPSEEK_MODEL || 'deepseek-v4.1-flash'
   };
 }
 
@@ -524,10 +523,12 @@ async function callGeminiBackup(
   const currentMonth = new Intl.DateTimeFormat('no-NO', { month: 'long', timeZone: 'Europe/Oslo' }).format(now);
   const dateContext = `Dagens reelle dato er ${dateStr} (kl. ${timeStr}, ${currentYear}). Måneden er ${currentMonth} (${currentYear}, høst), IKKE mai eller 17. mai.`;
 
-  // Prioriter Gemini 2.5 Flash som primær modell for bildeanalyse og lynrask multimodal inferens ($0.075/1M tokens)
+  // Prioriter Gemini 3.8 Flash som primær modell for bildeanalyse og lynrask multimodal inferens
   const candidateModels = [
     model && model.startsWith('gemini') ? model : null,
     process.env.GEMINI_MODEL,
+    'gemini-3.8-flash',
+    'gemini-3.5-flash',
     'gemini-2.5-flash',
     'gemini-2.5-pro',
     'gemini-2.0-flash',
@@ -892,52 +893,11 @@ export async function generateWithAiEngine(options: GenerateAiOptions): Promise<
 
   // ==========================================================================
   // CASE 1: SYN / BILDEANALYSE (Vision / TEK17 / Foto / Skanning)
-  // DeepSeek er en ren tekst-LLM uten synsstøtte.
-  // Gemini 2.5 Flash / 1.5 Pro er verdensledende på bildeanalyse og brukes primært her.
+  // 1min.AI er HOVEDMOTOR (støtter Gemini 3.8 Flash, GPT-4o osv. via Asset API).
+  // Google Gemini API direkte fungerer som pålitelig SISTE SITE-BACKUP.
   // ==========================================================================
   if (isVisionTask) {
-    // 1.1 Primær for bildeanalyse: Google Gemini API
-    if (geminiKey) {
-      try {
-        const res = await callGeminiBackup(
-          geminiKey,
-          geminiModel,
-          promptText,
-          options.systemInstruction,
-          imagesToProcess,
-          options.responseMimeType,
-          options.responseSchema,
-          false
-        );
-
-        trackTokenCost({
-          model: res.executedModel,
-          promptTokens: res.promptTokens,
-          completionTokens: res.completionTokens,
-          operation: options.operation || 'ai_generate_vision_gemini',
-          companyId: options.companyId,
-          companyName: options.companyName,
-          projectId: options.projectId,
-          notes: options.notes || `Gemini Vision (${res.executedModel})`,
-          service: 'gemini'
-        }).catch(() => {});
-
-        return {
-          text: res.text,
-          source: 'gemini_backup',
-          model: res.executedModel,
-          usage: {
-            promptTokens: res.promptTokens,
-            completionTokens: res.completionTokens,
-            totalTokens: res.promptTokens + res.completionTokens
-          }
-        };
-      } catch (gErr: any) {
-        console.warn(`[AI Engine - Vision] Gemini feilet (${gErr.message}), prøver 1min.AI...`);
-      }
-    }
-
-    // 1.2 Sekundær backup for bildeanalyse: 1min.AI Asset API
+    // 1.1 Primær for bildeanalyse: 1min.AI Asset API (kan kalle Gemini, GPT-4o osv.)
     if (oneMinKey) {
       try {
         const assetKeys: string[] = [];
@@ -965,7 +925,7 @@ export async function generateWithAiEngine(options: GenerateAiOptions): Promise<
             model: oneMinModel,
             promptTokens: res.promptTokens,
             completionTokens: res.completionTokens,
-            operation: options.operation || 'ai_generate_vision_1min',
+            operation: options.operation || 'ai_generate_vision_1min_primary',
             companyId: options.companyId,
             companyName: options.companyName,
             projectId: options.projectId,
@@ -985,18 +945,11 @@ export async function generateWithAiEngine(options: GenerateAiOptions): Promise<
           };
         }
       } catch (oneMinErr: any) {
-        console.warn(`[AI Engine - Vision] 1min.AI feilet (${oneMinErr.message})`);
+        console.warn(`[AI Engine - Vision] 1min.AI feilet (${oneMinErr.message}), kobler over til Gemini som site-backup...`);
       }
     }
 
-    throw new Error('Bildeanalyse krever en synsstøttet modell (Google Gemini eller 1min.AI), men ingen var tilgjengelig.');
-  }
-
-  // ==========================================================================
-  // CASE 2: LIVE NETTSØK (Google Search Grounding)
-  // Ved eksplisitt ønske om sanntidsnettsøk brukes Gemini Google Grounding primært.
-  // ==========================================================================
-  if (isWebSearch) {
+    // 1.2 Siste site-backup for bildeanalyse: Google Gemini API direkte
     if (geminiKey) {
       try {
         const res = await callGeminiBackup(
@@ -1007,18 +960,18 @@ export async function generateWithAiEngine(options: GenerateAiOptions): Promise<
           imagesToProcess,
           options.responseMimeType,
           options.responseSchema,
-          true
+          false
         );
 
         trackTokenCost({
           model: res.executedModel,
           promptTokens: res.promptTokens,
           completionTokens: res.completionTokens,
-          operation: options.operation || 'ai_generate_websearch_gemini',
+          operation: options.operation || 'ai_generate_vision_gemini_backup',
           companyId: options.companyId,
           companyName: options.companyName,
           projectId: options.projectId,
-          notes: options.notes || `Gemini Search Grounding (${res.executedModel})`,
+          notes: options.notes || `Gemini Vision Site Backup (${res.executedModel})`,
           service: 'gemini'
         }).catch(() => {});
 
@@ -1033,10 +986,19 @@ export async function generateWithAiEngine(options: GenerateAiOptions): Promise<
           }
         };
       } catch (gErr: any) {
-        console.warn(`[AI Engine - WebSearch] Gemini Google Grounding feilet (${gErr.message}), prøver 1min/DeepSeek...`);
+        console.warn(`[AI Engine - Vision] Gemini site-backup feilet (${gErr.message})`);
       }
     }
 
+    throw new Error('Bildeanalyse krever en synsstøttet modell (1min.AI eller Gemini API backup), men ingen var tilgjengelig.');
+  }
+
+  // ==========================================================================
+  // CASE 2: LIVE NETTSØK
+  // 1min.AI er HOVEDMOTOR for nettsøk, med Gemini Google Grounding som site-backup.
+  // ==========================================================================
+  if (isWebSearch) {
+    // 2.1 Primær for nettsøk: 1min.AI
     if (oneMinKey) {
       try {
         const res = await call1MinAi(
@@ -1054,7 +1016,7 @@ export async function generateWithAiEngine(options: GenerateAiOptions): Promise<
             model: oneMinModel,
             promptTokens: res.promptTokens,
             completionTokens: res.completionTokens,
-            operation: options.operation || 'ai_generate_websearch_1min',
+            operation: options.operation || 'ai_generate_websearch_1min_primary',
             companyId: options.companyId,
             companyName: options.companyName,
             projectId: options.projectId,
@@ -1074,7 +1036,48 @@ export async function generateWithAiEngine(options: GenerateAiOptions): Promise<
           };
         }
       } catch (oneMinErr: any) {
-        console.warn(`[AI Engine - WebSearch] 1min.AI feilet (${oneMinErr.message})`);
+        console.warn(`[AI Engine - WebSearch] 1min.AI feilet (${oneMinErr.message}), prøver Gemini site-backup...`);
+      }
+    }
+
+    // 2.2 Siste site-backup for nettsøk: Google Gemini Grounding
+    if (geminiKey) {
+      try {
+        const res = await callGeminiBackup(
+          geminiKey,
+          geminiModel,
+          promptText,
+          options.systemInstruction,
+          imagesToProcess,
+          options.responseMimeType,
+          options.responseSchema,
+          true
+        );
+
+        trackTokenCost({
+          model: res.executedModel,
+          promptTokens: res.promptTokens,
+          completionTokens: res.completionTokens,
+          operation: options.operation || 'ai_generate_websearch_gemini_backup',
+          companyId: options.companyId,
+          companyName: options.companyName,
+          projectId: options.projectId,
+          notes: options.notes || `Gemini Search Grounding Site Backup (${res.executedModel})`,
+          service: 'gemini'
+        }).catch(() => {});
+
+        return {
+          text: res.text,
+          source: 'gemini_backup',
+          model: res.executedModel,
+          usage: {
+            promptTokens: res.promptTokens,
+            completionTokens: res.completionTokens,
+            totalTokens: res.promptTokens + res.completionTokens
+          }
+        };
+      } catch (gErr: any) {
+        console.warn(`[AI Engine - WebSearch] Gemini site-backup feilet (${gErr.message})`);
       }
     }
   }

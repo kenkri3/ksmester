@@ -14,7 +14,7 @@ import {
 import { cn } from '@/src/lib/utils';
 import { toast } from 'sonner';
 
-export type IntegrationServiceType = 'nobb' | 'discord' | 'slack' | 'teams' | 'boligmappa' | 'tripletex' | 'poweroffice';
+export type IntegrationServiceType = 'nobb' | 'discord' | 'slack' | 'teams' | 'boligmappa' | 'tripletex' | 'poweroffice' | 'fiken';
 
 interface IntegrationGuideCardProps {
   service: IntegrationServiceType;
@@ -264,6 +264,36 @@ const GUIDES: Record<IntegrationServiceType, GuideContent> = {
     ],
     tip: 'PowerOffice Go oppdateres i sanntid når prosjektleder godkjenner materialforbruk.',
     troubleshooting: 'Kontakt bedriftens regnskapsfører dersom du mangler administratorrettigheter i PowerOffice Go.'
+  },
+  fiken: {
+    title: 'Slik kobler du til Fiken Regnskap',
+    subtitle: 'Norges enkleste regnskapsprogram for små og mellomstore håndverkerbedrifter.',
+    portalName: 'Fiken Innlogging',
+    portalUrl: 'https://fiken.no',
+    benefits: [
+      '100% automatisk overføring av godkjente tilleggsordrer til fakturautkast',
+      'Direkte opprettelse av kunder og prosjekter i Fiken uten dobbeltføring',
+      'Henter automatisk alle tilknyttede foretak på din Fiken-bruker'
+    ],
+    steps: [
+      {
+        number: 1,
+        title: 'Logg inn på Fiken',
+        description: 'Gå til fiken.no og logg inn med din vanlige bruker.'
+      },
+      {
+        number: 2,
+        title: 'Hent Personal API Token',
+        description: 'Klikk på navnet ditt øverst til høyre ➔ «Brukerinnstillinger» ➔ fanen «API» ➔ «Opprett ny API-nøkkel».'
+      },
+      {
+        number: 3,
+        title: 'Lim inn og verifiser',
+        description: 'Lim inn nøkkelen nedenfor. VikingMester sjekker umiddelbart mot Fikens API og henter dine foretak.'
+      }
+    ],
+    tip: 'Fiken krever ingen partneravtale – nøkkelen din gir umiddelbar tilgang!',
+    troubleshooting: 'Husk å gi nøkkelen skrive- og leserettigheter til selskapene du vil synkronisere.'
   }
 };
 
