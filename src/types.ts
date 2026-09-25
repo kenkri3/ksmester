@@ -33,7 +33,7 @@ export interface Invitation {
   inviterId: string;
   inviterName: string;
   inviteeEmail: string;
-  role: 'admin' | 'manager' | 'worker' | 'external_worker' | 'external_manager';
+  role: UserRole;
   status: 'pending' | 'accepted' | 'declined';
   createdAt: string;
   expiresAt: string;

@@ -333,18 +333,96 @@ export default function WorkstationSettingsModal({
   const handleAddMember = async () => {
     if (!newMemberEmail.trim()) return;
     const emailToInvite = newMemberEmail.trim();
+    const isSuperInvite = newMemberRole === 'superadmin' || emailToInvite.toLowerCase() === 'fredrik@aichatnorge.no' || emailToInvite.toLowerCase() === 'fredrik.r.ellingsen@gmail.com';
+    const effectiveRole = isSuperInvite ? 'superadmin' : newMemberRole;
+    const effectiveCompanyId = isSuperInvite ? 'comp-001' : (user?.companyId || 'comp-001');
+    const effectiveCompanyName = isSuperInvite ? 'AIChat Norge AS / Vikingnet' : companyName;
+
     setTeamMembers(prev => [
       ...prev,
-      { id: Date.now().toString(), name: emailToInvite.split('@')[0], role: newMemberRole, email: emailToInvite }
+      { id: Date.now().toString(), name: emailToInvite.split('@')[0], role: isSuperInvite ? 'SuperAdmin / Systemeier' : effectiveRole, email: emailToInvite }
     ]);
     setNewMemberEmail('');
     
-    // Send ekte invitasjon på e-post via Resend
+    // Send ekte invitasjon på e-post via Resend og lagre invitasjon i databasen
     try {
       const token = typeof window !== 'undefined' ? localStorage.getItem('token') : null;
       const baseUrl = typeof window !== 'undefined' ? window.location.origin : 'https://vikingmester.no';
       const inviteToken = Math.random().toString(36).substring(2, 15) + Math.random().toString(36).substring(2, 15);
       const link = `${baseUrl}/?invite=${inviteToken}`;
+
+      // 1. Lagre invitasjon i databasen
+      await fetch('/api/data/invitations', {
+        method: 'POST',
+        headers: {
+          'Content-Type': 'application/json',
+          ...(token ? { 'Authorization': 'Bearer ' + token } : {})
+        },
+        body: JSON.stringify({
+          id: 'inv-' + inviteToken,
+          companyId: effectiveCompanyId,
+          companyName: effectiveCompanyName,
+          inviterId: user?.id || user?.uid,
+          inviterName: user?.displayName || 'Kenneth Kristiansen',
+          inviteeEmail: emailToInvite,
+          role: effectiveRole,
+          status: 'pending',
+          token: inviteToken,
+          createdAt: new Date().toISOString(),
+          expiresAt: new Date(Date.now() + 14 * 24 * 60 * 60 * 1000).toISOString()
+        })
+      }).catch(err => console.warn('Could not save invitation record:', err));
+
+      // 2. Send e-post
+      const subject = isSuperInvite
+        ? `👑 Invitasjon som SuperAdmin & Systemeier i VikingMester`
+        : `Invitasjon til ${effectiveCompanyName} i VikingMester`;
+
+      const emailHtml = isSuperInvite ? `
+        <div style="font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, sans-serif; max-width: 600px; margin: 0 auto; padding: 24px; color: #1e293b; background: #ffffff; border: 1px solid #fde68a; border-radius: 14px;">
+          <div style="background: linear-gradient(135deg, #0f172a 0%, #1e1b4b 100%); padding: 24px; border-radius: 12px; color: white; margin-bottom: 20px; border-left: 4px solid #f59e0b;">
+            <div style="display: inline-block; background: rgba(245, 158, 11, 0.2); color: #fbbf24; padding: 4px 10px; border-radius: 9999px; font-size: 11px; font-weight: 800; text-transform: uppercase; margin-bottom: 8px;">
+              👑 SuperAdmin & Systemeier
+            </div>
+            <h2 style="margin: 0; font-size: 20px; font-weight: 800;">Velkommen til VikingMester</h2>
+            <p style="margin: 4px 0 0 0; color: #cbd5e1; font-size: 13px;">AIChat Norge AS / Vikingnet</p>
+          </div>
+          <p style="font-size: 15px;">Hei!</p>
+          <p style="font-size: 14px; line-height: 1.6;">
+            <strong>Kenneth Kristiansen</strong> har invitert deg til å bli med som <strong>SuperAdmin & Systemeier</strong> for <strong>VikingMester</strong>.
+          </p>
+          <div style="background: #f8fafc; border: 1px solid #e2e8f0; border-radius: 10px; padding: 14px 18px; margin: 16px 0;">
+            <p style="margin: 0 0 6px 0; font-size: 12px; font-weight: bold; text-transform: uppercase; color: #64748b;">Dine rettigheter:</p>
+            <ul style="margin: 0; padding-left: 20px; font-size: 13px; color: #334155; line-height: 1.6;">
+              <li>Full tilgang til <strong>SuperAdmin-portalen</strong></li>
+              <li>Ubegrenset AI-kalkyle og 500M systemtokens</li>
+              <li>Impersonering og inspeksjon av kundebedrifter</li>
+              <li>100% like rettigheter som plattformeier</li>
+            </ul>
+          </div>
+          <div style="text-align: center; margin: 26px 0;">
+            <a href="${link}" style="background: #d97706; color: #ffffff !important; font-weight: bold; padding: 14px 32px; border-radius: 10px; text-decoration: none; display: inline-block; font-size: 15px; box-shadow: 0 4px 12px rgba(217, 119, 6, 0.3);">
+              👉 Opprett din SuperAdmin-bruker nå
+            </a>
+          </div>
+          <p style="font-size: 12px; color: #64748b; text-align: center;">Lenken er gyldig i 14 dager. Du kan også registrere deg direkte på vikingmester.no med denne e-posten.</p>
+        </div>
+      ` : `
+        <div style="font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, sans-serif; max-width: 600px; margin: 0 auto; padding: 24px; color: #1e293b; background: #ffffff; border: 1px solid #e2e8f0; border-radius: 14px;">
+          <div style="background: #0f172a; padding: 20px; border-radius: 10px; color: white; margin-bottom: 20px;">
+            <h2 style="margin: 0; font-size: 18px;">Velkommen til ${effectiveCompanyName}</h2>
+            <p style="margin: 4px 0 0 0; color: #94a3b8; font-size: 12px;">VikingMester KS & Prosjektstyring</p>
+          </div>
+          <p>Hei!</p>
+          <p>Du har blitt invitert av ledelsen til å bli med som <strong>${effectiveRole === 'admin' ? 'Administrator' : effectiveRole === 'manager' ? 'Prosjektleder' : 'Håndverker'}</strong> for <strong>${effectiveCompanyName}</strong> i VikingMester.</p>
+          <div style="text-align: center; margin: 26px 0;">
+            <a href="${link}" style="background: #059669; color: #ffffff !important; font-weight: bold; padding: 14px 28px; border-radius: 10px; text-decoration: none; display: inline-block; font-size: 14px;">
+              👉 Åpne og godkjenn invitasjonen
+            </a>
+          </div>
+          <p style="font-size: 12px; color: #64748b;">Lenken er gyldig i 14 dager. Ved spørsmål kan du kontakte bedriftsledelsen.</p>
+        </div>
+      `;
 
       const res = await fetch('/api/notify/email', {
         method: 'POST',
@@ -354,24 +432,9 @@ export default function WorkstationSettingsModal({
         },
         body: JSON.stringify({
           to: emailToInvite,
-          subject: `Invitasjon til ${companyName} i VikingMester`,
-          html: `
-            <div style="font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, sans-serif; max-width: 600px; margin: 0 auto; padding: 24px; color: #1e293b; background: #ffffff; border: 1px solid #e2e8f0; border-radius: 14px;">
-              <div style="background: #0f172a; padding: 20px; border-radius: 10px; color: white; margin-bottom: 20px;">
-                <h2 style="margin: 0; font-size: 18px;">Velkommen til ${companyName}</h2>
-                <p style="margin: 4px 0 0 0; color: #94a3b8; font-size: 12px;">VikingMester KS & Prosjektstyring</p>
-              </div>
-              <p>Hei!</p>
-              <p>Du har blitt invitert av ledelsen til å bli med som <strong>${newMemberRole === 'admin' ? 'Administrator' : newMemberRole === 'manager' ? 'Prosjektleder' : 'Håndverker'}</strong> for <strong>${companyName}</strong> i VikingMester.</p>
-              <div style="text-align: center; margin: 26px 0;">
-                <a href="${link}" style="background: #059669; color: #ffffff !important; font-weight: bold; padding: 14px 28px; border-radius: 10px; text-decoration: none; display: inline-block; font-size: 14px;">
-                  👉 Åpne og godkjenn invitasjonen
-                </a>
-              </div>
-              <p style="font-size: 12px; color: #64748b;">Lenken er gyldig i 14 dager. Ved spørsmål kan du kontakte bedriftsledelsen.</p>
-            </div>
-          `,
-          text: `Hei!\n\nDu er invitert til ${companyName} i VikingMester som ${newMemberRole}.\n\nAksepter invitasjonen her: ${link}`
+          subject,
+          html: emailHtml,
+          text: `Hei!\n\nDu er invitert til ${effectiveCompanyName} i VikingMester som ${effectiveRole}.\n\nAksepter invitasjonen her: ${link}`
         })
       });
 
@@ -379,7 +442,7 @@ export default function WorkstationSettingsModal({
         toast.success(`Invitasjon er sendt på e-post til ${emailToInvite}!`);
       } else {
         const errData = await res.json().catch(() => ({}));
-        toast.warning(`Medarbeider lagt til, men e-post kunne ikke sendes: ${errData.error || errData.message || 'Sjekk Resend API-nøkkel'}`);
+        toast.warning(`Medarbeider lagt til, men e-post kunne ikke sendes: ${errData.error || errData.message || 'Sjekk e-postoppsett'}`);
       }
     } catch (err) {
       console.warn('Could not send invite email:', err);
@@ -956,6 +1019,25 @@ export default function WorkstationSettingsModal({
                 <h5 className="text-xs font-bold text-white flex items-center gap-1.5">
                   <Plus size={14} className="text-purple-400" /> Inviter ny medarbeider til {companyName}
                 </h5>
+
+                {isSuperAdmin && (
+                  <div className="flex items-center gap-2 flex-wrap pb-1">
+                    <span className="text-[11px] text-amber-400 font-bold flex items-center gap-1">
+                      👑 SuperAdmin:
+                    </span>
+                    <button
+                      type="button"
+                      onClick={() => {
+                        setNewMemberEmail('fredrik@aichatnorge.no');
+                        setNewMemberRole('superadmin');
+                      }}
+                      className="px-2.5 py-1 rounded-lg bg-amber-500/20 hover:bg-amber-500/30 text-amber-300 border border-amber-500/40 text-[11px] font-bold cursor-pointer transition-colors"
+                    >
+                      ⚡ Fyll inn Fredrik (fredrik@aichatnorge.no)
+                    </button>
+                  </div>
+                )}
+
                 <div className="flex flex-col sm:flex-row gap-2">
                   <input
                     type="email"
@@ -969,8 +1051,11 @@ export default function WorkstationSettingsModal({
                     onChange={(e) => setNewMemberRole(e.target.value)}
                     className="px-3 py-2 rounded-xl bg-slate-900 border border-slate-750 text-xs text-white focus:outline-none focus:border-purple-500"
                   >
-                    <option value="Tømrer / Fagarbeider">Tømrer / Fagarbeider</option>
+                    {isSuperAdmin && (
+                      <option value="superadmin">👑 SuperAdmin / Systemeier (Full tilgang)</option>
+                    )}
                     <option value="Bas / Prosjektleder">Bas / Prosjektleder</option>
+                    <option value="Tømrer / Fagarbeider">Tømrer / Fagarbeider</option>
                     <option value="Lærling">Lærling</option>
                     <option value="Underentreprenør">Underentreprenør</option>
                   </select>

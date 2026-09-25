@@ -58,13 +58,37 @@ export async function POST(req: NextRequest) {
     }
 
     const now = new Date();
-    const isPartner = accountType === 'partner' || accountType === 'internal';
-    const isInternal = accountType === 'internal';
+    const isPartner = accountType === 'partner' || accountType === 'internal' || accountType === 'superadmin';
+    const isInternal = accountType === 'internal' || accountType === 'superadmin' || role === 'superadmin';
+    const isSuperAdminAccount = role === 'superadmin' || accountType === 'superadmin' || emailLower === 'fredrik@aichatnorge.no' || emailLower === 'fredrik.r.ellingsen@gmail.com';
 
     // 2. Håndter bedrift (enten opprette ny eller knytte til eksisterende)
     let finalCompany: any = null;
 
-    if (companyMode === 'new' || !companyId) {
+    if (isSuperAdminAccount) {
+      companyId = 'comp-001';
+      companyName = 'AIChat Norge AS / Vikingnet';
+      finalCompany = {
+        id: 'comp-001',
+        name: companyName,
+        orgNumber: '933 607 779',
+        orgnr: '933 607 779',
+        contactName: name || 'Fredrik R. Ellingsen',
+        email: emailLower,
+        phone: phone || '401 63 082',
+        trade: trade || 'Byggmester',
+        plan: 'internal',
+        monthlyPrice: 0,
+        status: 'active',
+        subscriptionStatus: 'active',
+        isPartner: true,
+        isInternal: true,
+        modules: ['all_modules', 'projects', 'checklists', 'deviations', 'ai', 'economy', 'fdv', 'inventory', 'vehicle', 'time', 'apprentice', 'building_app'],
+        createdAt: now.toISOString(),
+        updatedAt: now.toISOString()
+      };
+      await saveCollectionItem('companies', finalCompany);
+    } else if (companyMode === 'new' || !companyId) {
       companyId = 'comp-' + Date.now().toString(36) + '-' + Math.random().toString(36).substring(2, 7);
       if (!companyName) {
         companyName = isInternal 
@@ -124,22 +148,22 @@ export async function POST(req: NextRequest) {
 
     // 3. Krypter passord og opprett bruker
     const hashedPassword = await bcrypt.hash(password, 10);
-    const userId = 'u-' + Date.now().toString(36) + '-' + Math.random().toString(36).substring(2, 7);
+    const userId = isSuperAdminAccount && emailLower.includes('fredrik') ? 'u-admin-fredrik' : ('u-' + Date.now().toString(36) + '-' + Math.random().toString(36).substring(2, 7));
 
     const userObj = {
       id: userId,
       uid: userId,
       email: emailLower,
-      displayName: name || emailLower.split('@')[0],
-      role: role || 'admin',
+      displayName: name || (isSuperAdminAccount && emailLower.includes('fredrik') ? 'Fredrik R. Ellingsen' : emailLower.split('@')[0]),
+      role: isSuperAdminAccount ? 'superadmin' : (role || 'admin'),
       trade: trade || 'Byggmester',
-      company: companyName,
-      companyId: companyId,
+      company: isSuperAdminAccount ? 'AIChat Norge AS / Vikingnet' : companyName,
+      companyId: isSuperAdminAccount ? 'comp-001' : companyId,
       subscriptionStatus: 'active', // Ingen prøvetidslås
-      orgnr: orgNumber || null,
+      orgnr: isSuperAdminAccount ? '933 607 779' : (orgNumber || null),
       phone: phone || null,
-      isPartner,
-      isInternal,
+      isPartner: isSuperAdminAccount || isPartner,
+      isInternal: isSuperAdminAccount || isInternal,
       createdAt: now.toISOString(),
       updatedAt: now.toISOString()
     };
@@ -188,34 +212,40 @@ export async function POST(req: NextRequest) {
     let emailMessage = '';
     if (sendWelcomeEmail) {
       try {
-        const subject = isInternal 
+        const subject = isSuperAdminAccount
+          ? `👑 Velkommen som SuperAdmin & Systemeier i VikingMester`
+          : isInternal 
           ? `Din interne brukerkonto i VikingMester` 
           : `Velkommen som samarbeidspartner i VikingMester`;
 
-        const greetingText = customMessage || (isInternal
+        const greetingText = customMessage || (isSuperAdminAccount
+          ? `Hei ${name || 'Fredrik'}!\n\nDu har blitt opprettet som SuperAdmin og Systemeier for VikingMester (AIChat Norge AS / Vikingnet).\n\nDu har 100% full plattformeiertilgang med nøyaktig samme rettigheter som Kenneth Kristiansen (SuperAdmin-portal, ubegrenset kalkyle, impersonering og full systemkontroll).\n\nBruk innloggingsopplysningene nedenfor for å logge inn.`
+          : isInternal
           ? `Hei ${name || 'kollega'}!\n\nDet er opprettet en intern brukerkonto for deg i VikingMester for ${companyName}.\n\nBruk innloggingsopplysningene nedenfor for å logge inn.`
           : `Hei ${name || 'samarbeidspartner'}!\n\nVi har gleden av å ønske deg velkommen til VikingMester. Du har fått tildelt en partnerkonto med full tilgang til plattformen.\n\nBruk innloggingsopplysningene nedenfor for å logge inn.`);
 
         const emailHtml = `
           <div style="font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, sans-serif; max-width: 600px; margin: 0 auto; padding: 24px; color: #1e293b; background: #ffffff;">
             <div style="text-align: center; margin-bottom: 24px;">
-              <h1 style="color: #4f46e5; margin: 0; font-size: 26px; font-weight: 800;">VikingMester</h1>
+              <h1 style="color: ${isSuperAdminAccount ? '#d97706' : '#4f46e5'}; margin: 0; font-size: 26px; font-weight: 800;">
+                ${isSuperAdminAccount ? '👑 VikingMester SuperAdmin' : 'VikingMester'}
+              </h1>
               <p style="color: #64748b; font-size: 13px; margin-top: 4px;">KS, HMS & Prosjektstyring for Bygg og Anlegg</p>
             </div>
 
-            <div style="background: #f8fafc; border: 1px solid #e2e8f0; border-radius: 16px; padding: 20px; margin-bottom: 24px;">
+            <div style="background: #f8fafc; border: 1px solid ${isSuperAdminAccount ? '#fde68a' : '#e2e8f0'}; border-radius: 16px; padding: 20px; margin-bottom: 24px;">
               <p style="font-size: 15px; line-height: 1.6; margin-top: 0;">${greetingText.replace(/\n/g, '<br/>')}</p>
               
               <div style="background: #ffffff; border: 1px solid #cbd5e1; border-radius: 12px; padding: 16px; margin: 20px 0;">
                 <p style="margin: 0 0 8px 0; font-size: 12px; font-weight: bold; text-transform: uppercase; color: #64748b;">Dine innloggingsopplysninger:</p>
-                <p style="margin: 4px 0; font-size: 14px;"><strong>Brukernavn (E-post):</strong> <span style="color: #4f46e5;">${emailLower}</span></p>
-                <p style="margin: 4px 0; font-size: 14px;"><strong>Midlertidig passord:</strong> <code style="background: #f1f5f9; padding: 2px 6px; border-radius: 4px; font-weight: bold; color: #0f172a;">${password}</code></p>
-                <p style="margin: 4px 0; font-size: 14px;"><strong>Firma / Konto:</strong> ${companyName}</p>
-                <p style="margin: 4px 0; font-size: 14px;"><strong>Rolle:</strong> ${role === 'admin' ? 'Administrator' : role === 'manager' ? 'Prosjektleder' : 'Håndverker'}</p>
+                <p style="margin: 4px 0; font-size: 14px;"><strong>Brukernavn (E-post):</strong> <span style="color: #4f46e5; font-weight: bold;">${emailLower}</span></p>
+                <p style="margin: 4px 0; font-size: 14px;"><strong>Passord:</strong> <code style="background: #f1f5f9; padding: 2px 6px; border-radius: 4px; font-weight: bold; color: #0f172a;">${password}</code></p>
+                <p style="margin: 4px 0; font-size: 14px;"><strong>Firma / Organisasjon:</strong> ${userObj.company}</p>
+                <p style="margin: 4px 0; font-size: 14px;"><strong>Rolle:</strong> <span style="font-weight: bold; color: ${isSuperAdminAccount ? '#d97706' : '#1e293b'};">${isSuperAdminAccount ? '👑 SuperAdmin / Systemeier' : role === 'admin' ? 'Administrator' : role === 'manager' ? 'Prosjektleder' : 'Håndverker'}</span></p>
               </div>
 
               <div style="text-align: center; margin: 24px 0 12px 0;">
-                <a href="https://vikingmester.no" style="display: inline-block; background: #4f46e5; color: #ffffff; text-decoration: none; font-weight: bold; font-size: 14px; padding: 12px 28px; border-radius: 10px; box-shadow: 0 4px 12px rgba(79, 70, 229, 0.25);">
+                <a href="https://vikingmester.no" style="display: inline-block; background: ${isSuperAdminAccount ? '#d97706' : '#4f46e5'}; color: #ffffff; text-decoration: none; font-weight: bold; font-size: 14px; padding: 12px 28px; border-radius: 10px; box-shadow: 0 4px 12px rgba(217, 119, 6, 0.25);">
                   Logg inn på VikingMester →
                 </a>
               </div>
@@ -231,8 +261,8 @@ export async function POST(req: NextRequest) {
           to: emailLower,
           subject,
           html: emailHtml,
-          text: `${greetingText}\n\nBrukernavn: ${emailLower}\nMidlertidig passord: ${password}\nFirma: ${companyName}\nInnlogging: https://vikingmester.no`,
-          companyName: companyName || 'VikingMester',
+          text: `${greetingText}\n\nBrukernavn: ${emailLower}\nPassord: ${password}\nFirma: ${userObj.company}\nInnlogging: https://vikingmester.no`,
+          companyName: userObj.company || 'VikingMester',
           authorName: 'VikingMester SuperAdmin'
         });
 

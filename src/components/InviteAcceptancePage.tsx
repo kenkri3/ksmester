@@ -147,12 +147,18 @@ const InviteAcceptancePage: React.FC<InviteAcceptancePageProps> = ({ token }) =>
         ? [...existingProjects, invitation.projectId]
         : (existingProjects.length > 0 ? existingProjects : (invitation.projectId ? [invitation.projectId] : []));
 
+      const isSuper = invitation.role === 'superadmin' || 
+        ['kenkri3@gmail.com', 'aichatnorge@gmail.com', 'kenneth@aichatnorge.no', 'fredrik.r.ellingsen@gmail.com', 'fredrik@aichatnorge.no'].includes((user.email || '').toLowerCase());
+      const assignedRole = isSuper ? 'superadmin' : invitation.role;
+      const assignedCompanyId = isSuper ? 'comp-001' : invitation.companyId;
+      const assignedCompanyName = isSuper ? 'AIChat Norge AS / Vikingnet' : invitation.companyName;
+
       const userProfile: Partial<UserProfile> = {
-        name: user.displayName || user.email?.split('@')[0] || 'Bruker',
+        name: user.displayName || user.email?.split('@')[0] || (user.email?.includes('fredrik') ? 'Fredrik R. Ellingsen' : 'Bruker'),
         email: user.email || '',
-        companyId: invitation.companyId,
-        companyName: invitation.companyName,
-        role: invitation.role,
+        companyId: assignedCompanyId,
+        companyName: assignedCompanyName,
+        role: assignedRole,
         accessibleProjects: updatedProjects,
         updatedAt: new Date().toISOString()
       };
@@ -162,9 +168,9 @@ const InviteAcceptancePage: React.FC<InviteAcceptancePageProps> = ({ token }) =>
       // 2. Update cached auth user in localStorage
       const updatedAuthUser = {
         ...user,
-        companyId: invitation.companyId,
-        company: invitation.companyName,
-        role: invitation.role,
+        companyId: assignedCompanyId,
+        company: assignedCompanyName,
+        role: assignedRole,
         accessibleProjects: updatedProjects
       };
       setCurrentAuthUser(updatedAuthUser);
@@ -290,7 +296,8 @@ const InviteAcceptancePage: React.FC<InviteAcceptancePageProps> = ({ token }) =>
               <div>
                 <p className="text-[11px] font-bold text-slate-400 uppercase tracking-wider">Rolle</p>
                 <p className="font-bold text-slate-800 text-sm capitalize">
-                  {invitation?.role === 'external_worker' ? 'Ekstern Håndverker' :
+                  {invitation?.role === 'superadmin' ? '👑 SuperAdmin / Systemeier (Full tilgang)' :
+                   invitation?.role === 'external_worker' ? 'Ekstern Håndverker' :
                    invitation?.role === 'external_manager' ? 'Prosjektleder' :
                    invitation?.role === 'worker' ? 'Fagmedarbeider' :
                    invitation?.role === 'manager' ? 'Driftsleder' :

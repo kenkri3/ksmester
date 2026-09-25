@@ -56,7 +56,8 @@ import {
   Bot,
   Lock,
   ShieldCheck,
-  Globe
+  Globe,
+  Crown
 } from 'lucide-react';
 import { PLANS, PLAN_MODULES, PlanId } from '../config/plans';
 import { generateAiContent } from '../services/aiClient';
@@ -105,7 +106,7 @@ export const isCompanyInternalAdmin = (c?: Partial<Company> | any): boolean => {
     name.includes('aichat norge') ||
     name.includes('vikingnet') ||
     name.includes('vikingmester') ||
-    ['kenkri3@gmail.com', 'aichatnorge@gmail.com', 'kenneth@aichatnorge.no', 'admin@vikingmester.no', 'post@vikingent.no'].includes(email)
+    ['kenkri3@gmail.com', 'aichatnorge@gmail.com', 'kenneth@aichatnorge.no', 'admin@vikingmester.no', 'post@vikingent.no', 'fredrik@aichatnorge.no', 'fredrik.r.ellingsen@gmail.com'].includes(email)
   );
 };
 
@@ -153,7 +154,7 @@ export const allModules = [
 export default function SuperAdmin({ onBackToDashboard }: { onBackToDashboard?: () => void } = {}) {
   const { user, startImpersonation, stopImpersonation, impersonatedCompanyId, isSuperAdmin: authIsSuperAdmin, isPlatformOwner, setSimulatedPlan } = useAuth();
   const [selectedProject, setSelectedProject] = useState<any | null>(null);
-  const isSuperAdmin = authIsSuperAdmin || isPlatformOwner || user?.role === 'admin' || user?.role === 'superadmin' || user?.email === 'kenkri3@gmail.com' || user?.email?.toLowerCase() === 'admin@vikingmester.no' || user?.email === 'aichatnorge@gmail.com' || user?.email === 'kenneth@aichatnorge.no' || user?.email === 'post@vikingent.no';
+  const isSuperAdmin = authIsSuperAdmin || isPlatformOwner || user?.role === 'admin' || user?.role === 'superadmin' || user?.email === 'kenkri3@gmail.com' || user?.email?.toLowerCase() === 'admin@vikingmester.no' || user?.email === 'aichatnorge@gmail.com' || user?.email === 'kenneth@aichatnorge.no' || user?.email === 'post@vikingent.no' || user?.email?.toLowerCase() === 'fredrik@aichatnorge.no' || user?.email?.toLowerCase() === 'fredrik.r.ellingsen@gmail.com';
 
   const formatDate = (date: any) => {
     if (!date) return '-';
@@ -208,12 +209,13 @@ export default function SuperAdmin({ onBackToDashboard }: { onBackToDashboard?: 
   const [isEditInfoModalOpen, setIsEditInfoModalOpen] = useState(false);
   const [isCreateModalOpen, setIsCreateModalOpen] = useState(false);
   const [isPartnerModalOpen, setIsPartnerModalOpen] = useState(false);
+  const [isSuperAdminInviteModalOpen, setIsSuperAdminInviteModalOpen] = useState(false);
   const [isUserModalOpen, setIsUserModalOpen] = useState(false);
   const [isAddingUser, setIsAddingUser] = useState(false);
   const [newUserName, setNewUserName] = useState('');
   const [newUserEmail, setNewUserEmail] = useState('');
   const [newUserPassword, setNewUserPassword] = useState('VM-Passord2026!');
-  const [newUserRole, setNewUserRole] = useState<'admin' | 'manager' | 'worker'>('worker');
+  const [newUserRole, setNewUserRole] = useState<'superadmin' | 'admin' | 'manager' | 'worker'>('worker');
   const [isCreatingUser, setIsCreatingUser] = useState(false);
   const [isOfferModalOpen, setIsOfferModalOpen] = useState(false);
   const [isResponseModalOpen, setIsResponseModalOpen] = useState(false);
@@ -1344,6 +1346,14 @@ Svar KUN med gyldig rå JSON (uten markdown \`\`\`json klammer):
             <span className="truncate">Send tilbud</span>
           </button>
           <button 
+            onClick={() => setIsSuperAdminInviteModalOpen(true)}
+            className="flex items-center justify-center gap-1.5 px-3.5 py-2.5 bg-amber-500/20 hover:bg-amber-500/30 text-amber-300 border border-amber-500/40 rounded-xl font-bold transition-all text-xs sm:text-sm cursor-pointer shadow-xs"
+            title="Inviter eller opprett ny SuperAdmin med 100% like rettigheter som deg (Ubegrenset tilgang, 500M tokens, plattformeier)"
+          >
+            <Crown size={16} className="shrink-0 text-amber-400" />
+            <span className="truncate">👑 Inviter SuperAdmin</span>
+          </button>
+          <button 
             onClick={() => setIsPartnerModalOpen(true)}
             className="flex items-center justify-center gap-1.5 px-3.5 py-2.5 bg-purple-950/60 hover:bg-purple-900/60 text-purple-200 border border-purple-500/40 rounded-xl font-bold transition-all text-xs sm:text-sm cursor-pointer shadow-xs"
             title="Opprett samarbeidspartner eller kollega som ikke regnes inn i omsetning (0 kr/mnd)"
@@ -1371,7 +1381,7 @@ Svar KUN med gyldig rå JSON (uten markdown \`\`\`json klammer):
         <div className="flex items-center gap-4 sm:gap-6 flex-wrap text-[11px] text-slate-300">
           <div className="flex items-center gap-1.5">
             <span className="w-2 h-2 rounded-full bg-emerald-400 inline-block" />
-            <span>1min.AI Multi-Model Router (Aktiv)</span>
+            <span>MesterAI Hybrid-motor: DeepSeek + Gemini (Aktiv)</span>
           </div>
           <div className="flex items-center gap-1.5">
             <span className="w-2 h-2 rounded-full bg-emerald-400 inline-block" />
@@ -1521,7 +1531,7 @@ Svar KUN med gyldig rå JSON (uten markdown \`\`\`json klammer):
           </div>
           <div className="text-xs font-bold text-slate-300 uppercase tracking-wider mt-1">AI API-kostnad (Mnd)</div>
           <p className="text-[11px] text-slate-400 mt-1">
-            {totalTokensThisMonth.toLocaleString('no-NO')} tokens · 1min.AI Multi-Model (GPT-4o / Claude / Gemini)
+            {totalTokensThisMonth.toLocaleString('no-NO')} tokens · DeepSeek &amp; Gemini Hybrid (DeepSeek-Flash / Gemini 3.8)
           </p>
         </div>
       </div>
@@ -2097,12 +2107,12 @@ Svar KUN med gyldig rå JSON (uten markdown \`\`\`json klammer):
                     <span className="animate-ping absolute inline-flex h-full w-full rounded-full bg-emerald-400 opacity-75"></span>
                     <span className="relative inline-flex rounded-full h-3 w-3 bg-emerald-500"></span>
                   </span>
-                  <span className="text-xs font-black uppercase tracking-widest text-purple-300">1min.AI Multi-Model Operativ</span>
+                  <span className="text-xs font-black uppercase tracking-widest text-purple-300">DeepSeek &amp; Gemini Hybrid Operativ</span>
                   <span className="text-xs px-2.5 py-0.5 rounded-full bg-purple-500/20 text-purple-200 border border-purple-500/30 font-mono">Multi-Agent Kjerne</span>
                 </div>
-                <h2 className="text-2xl sm:text-3xl font-black text-white mb-2 tracking-tight">AI Marginkontroll & Kvoteovervåking</h2>
+                <h2 className="text-2xl sm:text-3xl font-black text-white mb-2 tracking-tight">AI Marginkontroll &amp; Kvoteovervåking</h2>
                 <p className="text-sm text-neutral-300 max-w-2xl leading-relaxed">
-                  Sentral overvåking av 1min.AI Multi-Model API (GPT-4o-mini, Claude 3.5 Sonnet, Gemini 2.5 Flash & TTS) med Google Gemini backup. Server-side kvotekontroll beskytter 98%+ bruttomargin for hver bedrift og forhindrer overforbruk av tokens og credits.
+                  Sentral overvåking av MesterAI Hybrid-motor: DeepSeek (primærmotor for tekst, kalkyle, KS, SJA og jus) kombinert med Google Gemini 3.8 Flash (bildeanalyse og sanntidsnettsøk) og 1min.AI / OpenRouter som feiltolerant backup. Server-side kvotekontroll beskytter 98%+ bruttomargin for hver bedrift og forhindrer overforbruk av tokens.
                 </p>
               </div>
               <div className="flex flex-col sm:flex-row gap-3">
@@ -2120,7 +2130,7 @@ Svar KUN med gyldig rå JSON (uten markdown \`\`\`json klammer):
             {/* Admin Test Command Prompt */}
             <form onSubmit={handleAdminDispatch} className="mt-8 relative z-10">
               <label className="block text-xs font-bold uppercase tracking-widest text-purple-200 mb-2">
-                Send direkte test-instruks til Gemini-agenten
+                Send direkte test-instruks til MesterAI-kjernen (DeepSeek + Gemini)
               </label>
               <div className="flex flex-col sm:flex-row gap-3">
                 <input
@@ -2181,8 +2191,8 @@ Svar KUN med gyldig rå JSON (uten markdown \`\`\`json klammer):
                   <Cpu size={16} />
                 </div>
               </div>
-              <div className="text-xl sm:text-2xl font-black text-neutral-900">1min.AI Kjerne</div>
-              <p className="text-xs text-neutral-500 mt-1">Multi-Model med Gemini backup</p>
+              <div className="text-xl sm:text-2xl font-black text-neutral-900">DeepSeek &amp; Gemini</div>
+              <p className="text-xs text-neutral-500 mt-1">Hybrid-motor (DeepSeek + Gemini 3.8)</p>
             </div>
 
             <div className="bg-white rounded-[2rem] border border-neutral-200 p-6 shadow-sm">
@@ -2225,7 +2235,7 @@ Svar KUN med gyldig rå JSON (uten markdown \`\`\`json klammer):
             </div>
           </div>
 
-          {/* 1min.AI Ruting & Kreditt-informasjonspanel */}
+          {/* MesterAI Hybrid Ruting & Kostnadskontroll */}
           <div className="bg-white rounded-[2.5rem] border border-neutral-200 p-6 sm:p-8 shadow-sm space-y-6">
             <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-4 pb-4 border-b border-neutral-100">
               <div className="flex items-center gap-3">
@@ -2233,30 +2243,40 @@ Svar KUN med gyldig rå JSON (uten markdown \`\`\`json klammer):
                   <Bot size={20} />
                 </div>
                 <div>
-                  <h3 className="text-lg font-bold text-neutral-900">1min.AI Multi-Model Ruting & Kredittforbruk</h3>
-                  <p className="text-xs text-neutral-500">Oversikt over hvilke modeller vi kjører til hva, og hvordan 1min.AI-kreditter og tokens henger sammen.</p>
+                  <h3 className="text-lg font-bold text-neutral-900">MesterAI Hybrid Ruting &amp; Kostnadskontroll</h3>
+                  <p className="text-xs text-neutral-500">Oversikt over hvordan oppgaver rutes mellom DeepSeek, Gemini og backup-motorer for maksimal presisjon og minimal tokenkostnad.</p>
                 </div>
               </div>
               <div className="flex items-center gap-2">
+                <a
+                  href="https://platform.deepseek.com/usage"
+                  target="_blank"
+                  rel="noreferrer"
+                  className="px-3 py-2 bg-neutral-100 hover:bg-neutral-200 text-neutral-700 rounded-xl text-xs font-bold transition-all flex items-center gap-1.5"
+                  title="Åpne DeepSeek Platform for forbruk og saldo"
+                >
+                  <ExternalLink size={13} />
+                  <span>DeepSeek Saldo</span>
+                </a>
+                <a
+                  href="https://aistudio.google.com/"
+                  target="_blank"
+                  rel="noreferrer"
+                  className="px-3 py-2 bg-neutral-100 hover:bg-neutral-200 text-neutral-700 rounded-xl text-xs font-bold transition-all flex items-center gap-1.5"
+                  title="Åpne Google AI Studio"
+                >
+                  <ExternalLink size={13} />
+                  <span>Gemini Studio</span>
+                </a>
                 <a
                   href="https://app.1min.ai/members"
                   target="_blank"
                   rel="noreferrer"
                   className="px-3 py-2 bg-neutral-100 hover:bg-neutral-200 text-neutral-700 rounded-xl text-xs font-bold transition-all flex items-center gap-1.5"
-                  title="Åpne 1min.ai dashboard for å se team-credits"
+                  title="Åpne 1min.ai dashboard"
                 >
                   <ExternalLink size={13} />
-                  <span>Sjekk 1min.ai saldo</span>
-                </a>
-                <a
-                  href="https://docs.1min.ai/docs/api/intro"
-                  target="_blank"
-                  rel="noreferrer"
-                  className="px-3 py-2 bg-neutral-100 hover:bg-neutral-200 text-neutral-700 rounded-xl text-xs font-bold transition-all flex items-center gap-1.5"
-                  title="Åpne 1min.ai API dokumentasjon"
-                >
-                  <FileText size={13} />
-                  <span>API Docs</span>
+                  <span>1min.ai</span>
                 </a>
               </div>
             </div>
@@ -2265,38 +2285,38 @@ Svar KUN med gyldig rå JSON (uten markdown \`\`\`json klammer):
             <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-4">
               <div className="p-4 rounded-2xl bg-neutral-50 border border-neutral-200/80 space-y-1.5">
                 <div className="flex items-center justify-between">
-                  <span className="text-xs font-black uppercase tracking-wider text-neutral-700">MesterAI Chat & Kalkyle</span>
-                  <span className="px-2 py-0.5 rounded-md bg-blue-100 text-blue-800 text-[10px] font-bold">gpt-4o-mini</span>
+                  <span className="text-xs font-black uppercase tracking-wider text-neutral-700">MesterAI Chat &amp; Kalkyle</span>
+                  <span className="px-2 py-0.5 rounded-md bg-emerald-100 text-emerald-800 text-[10px] font-bold">DeepSeek-Flash</span>
                 </div>
-                <p className="text-xs text-neutral-600">Standard for dialog, kalkylespørsmål, sjekkliste-hjelp og byggedagbok. Ekstremt lav credit-kostnad og lynrask respons.</p>
-                <div className="text-[10px] text-neutral-400 font-mono">1min.ai UNIFY_CHAT_WITH_AI (~1 cr per 3-4 ord)</div>
+                <p className="text-xs text-neutral-600">Absolutt primærmotor for fagdialog, tilbudskalkyler, sjekklister og byggedagbok. Ekstremt lave tokenkostnader ($0.14/$0.28 per 1M tokens) og lynrask respons.</p>
+                <div className="text-[10px] text-neutral-400 font-mono">DeepSeek Direct API (~0,0015 kr per oppgave)</div>
               </div>
 
               <div className="p-4 rounded-2xl bg-neutral-50 border border-neutral-200/80 space-y-1.5">
                 <div className="flex items-center justify-between">
                   <span className="text-xs font-black uppercase tracking-wider text-neutral-700">Nettsøk i Sanntid</span>
-                  <span className="px-2 py-0.5 rounded-md bg-emerald-100 text-emerald-800 text-[10px] font-bold">gpt-4o-mini + Web</span>
+                  <span className="px-2 py-0.5 rounded-md bg-blue-100 text-blue-800 text-[10px] font-bold">Gemini 3.8 + Grounding</span>
                 </div>
-                <p className="text-xs text-neutral-600">Aktiveres når håndverkeren ber om eksterne priser, nye TEK-forskrifter eller leverandørdata. 1min.ai krever OpenAI for webSearch.</p>
-                <div className="text-[10px] text-neutral-400 font-mono">webSearchSettings: true (5 kilder)</div>
+                <p className="text-xs text-neutral-600">Aktiveres når håndverkeren ber om eksterne priser, nye TEK-forskrifter eller leverandørdata. Henter sanntidsdata med direkte kildehenvisninger.</p>
+                <div className="text-[10px] text-neutral-400 font-mono">Google Search Grounding (Live nettsøk)</div>
               </div>
 
               <div className="p-4 rounded-2xl bg-neutral-50 border border-neutral-200/80 space-y-1.5">
                 <div className="flex items-center justify-between">
-                  <span className="text-xs font-black uppercase tracking-wider text-neutral-700">NS 8406 & Juridisk</span>
-                  <span className="px-2 py-0.5 rounded-md bg-purple-100 text-purple-800 text-[10px] font-bold">claude-3-5-sonnet</span>
+                  <span className="text-xs font-black uppercase tracking-wider text-neutral-700">NS 8406 &amp; Juridisk</span>
+                  <span className="px-2 py-0.5 rounded-md bg-purple-100 text-purple-800 text-[10px] font-bold">DeepSeek-V4 Pro</span>
                 </div>
-                <p className="text-xs text-neutral-600">Høypresisjonsmodell for entrepriserett, endringsvarsler og fristforlengelse. Høyere credit-trekk, men sikrer juridisk vanntette krav.</p>
-                <div className="text-[10px] text-neutral-400 font-mono">Brukes kun ved juridisk / varsel</div>
+                <p className="text-xs text-neutral-600">Høypresisjons resonneringsmodell for entrepriserett, varsel om endringsordre, krav om fristforlengelse og tvistehåndtering (NS 8405 / NS 8406 / NS 8407).</p>
+                <div className="text-[10px] text-neutral-400 font-mono">DeepSeek Reasoner / Claude 3.7 backup</div>
               </div>
 
               <div className="p-4 rounded-2xl bg-neutral-50 border border-neutral-200/80 space-y-1.5">
                 <div className="flex items-center justify-between">
                   <span className="text-xs font-black uppercase tracking-wider text-neutral-700">TEK17 Vision / Avvik</span>
-                  <span className="px-2 py-0.5 rounded-md bg-amber-100 text-amber-800 text-[10px] font-bold">gemini-2.5-flash</span>
+                  <span className="px-2 py-0.5 rounded-md bg-amber-100 text-amber-800 text-[10px] font-bold">Gemini 3.8 Flash</span>
                 </div>
-                <p className="text-xs text-neutral-600">Bilder lastes opp via 1min.ai Asset API eller analyseres med Gemini Vision. Suveren på å oppdage feil i membran, fall og armering.</p>
-                <div className="text-[10px] text-neutral-400 font-mono">Knyttet til bildekvoten i pakken</div>
+                <p className="text-xs text-neutral-600">Multimodal bildeanalyse direkte på byggeplassen. Suveren på å oppdage feil i membran, fall mot sluk, klemring, dampsperre, armering og TEK17-krav.</p>
+                <div className="text-[10px] text-neutral-400 font-mono">Google Multimodal Vision API (Kvote per pakke)</div>
               </div>
 
               <div className="p-4 rounded-2xl bg-neutral-50 border border-neutral-200/80 space-y-1.5">
@@ -2304,17 +2324,17 @@ Svar KUN med gyldig rå JSON (uten markdown \`\`\`json klammer):
                   <span className="text-xs font-black uppercase tracking-wider text-neutral-700">Stemme (TTS) Mester</span>
                   <span className="px-2 py-0.5 rounded-md bg-indigo-100 text-indigo-800 text-[10px] font-bold">tts-1 (onyx)</span>
                 </div>
-                <p className="text-xs text-neutral-600">Genererer naturlig, autoritær norsk tale direkte på byggeplassen via 1min.ai Features API (OpenAI Audio).</p>
-                <div className="text-[10px] text-neutral-400 font-mono">1min.ai /api/features endpoint</div>
+                <p className="text-xs text-neutral-600">Genererer naturlig, autoritær norsk tale direkte på byggeplassen via serverens tts-bro (OpenAI Audio / 1min.ai).</p>
+                <div className="text-[10px] text-neutral-400 font-mono">OpenAI Audio TTS / 1min.ai Features API</div>
               </div>
 
               <div className="p-4 rounded-2xl bg-neutral-50 border border-neutral-200/80 space-y-1.5">
                 <div className="flex items-center justify-between">
                   <span className="text-xs font-black uppercase tracking-wider text-neutral-700">Failover / Sikkerhetsnett</span>
-                  <span className="px-2 py-0.5 rounded-md bg-rose-100 text-rose-800 text-[10px] font-bold">Gemini 2.5 Flash</span>
+                  <span className="px-2 py-0.5 rounded-md bg-rose-100 text-rose-800 text-[10px] font-bold">Multi-Provider Redundans</span>
                 </div>
-                <p className="text-xs text-neutral-600">Hvis 1min.AI skulle oppleve overbelastning eller nettverksbrudd, faller systemet automatisk og sømløst tilbake til direkte Google API.</p>
-                <div className="text-[10px] text-neutral-400 font-mono">100% oppetidsgaranti for kundene</div>
+                <p className="text-xs text-neutral-600">Hvis primærmotoren opplever overbelastning eller nettverksbrudd, faller systemet automatisk og sømløst tilbake til 1min.AI, OpenRouter eller Gemini.</p>
+                <div className="text-[10px] text-neutral-400 font-mono">100% oppetidsgaranti med kaskadekobling</div>
               </div>
             </div>
 
@@ -2325,10 +2345,10 @@ Svar KUN med gyldig rå JSON (uten markdown \`\`\`json klammer):
                 <span>Betingelser og kredittberegning: Hvorfor dette gir 98%+ bruttomargin</span>
               </div>
               <p>
-                <strong>1. 1min.AI Credits vs. Tokens:</strong> 1min.AI fakturerer ikke i rå tokens, men trekker <em>kreditter (credits)</em> fra fellespotten på din konto. Fordi vi bruker <strong>gpt-4o-mini</strong> til 90% av alle samtaler og oppgaver, er credit-trekket minimalt (ca. 1 credit per 3-4 ord). Med en standard 1min.AI-pakke (eller Lifetime deal) koster en hel måneds drift av hundrevis av håndverkere bare noen få dollar.
+                <strong>1. DeepSeek &amp; Gemini Token-effektivitet:</strong> DeepSeek fakturerer rå tokens til bransjens laveste priser ($0.14 input / $0.28 output per 1M tokens), mens Gemini 3.8 Flash håndterer bildeanalyser for brøkdeler av et øre. Dette reduserer de faktiske API-kostnadene med over 85% sammenlignet med eldre modeller. En håndverkerbedrift som genererer hundrevis av tilbud, sjekklister og dagbøker koster under 1–2 kr per måned i ren AI-inferens.
               </p>
               <p>
-                <strong>2. Hva viser tallene over?</strong> Tallet <strong>{totalTokensThisMonth.toLocaleString('no-NO')} tokens</strong> er den faktiske mengden tekst behandlet for kundene. Beløpet <strong>{totalCostNokThisMonth > 0 ? `${totalCostNokThisMonth.toFixed(2)} kr` : '0,07 kr'}</strong> er den reelle underliggende token-kostnaden. Mot en kundeinntekt på 690 kr til 2 990 kr per bedrift betyr dette at AI-kostnaden er under 1 % av inntekten din.
+                <strong>2. Hva viser tallene over?</strong> Tallet <strong>{totalTokensThisMonth.toLocaleString('no-NO')} tokens</strong> er den faktiske mengden tekst og instruksjoner behandlet for kundene. Beløpet <strong>{totalCostNokThisMonth > 0 ? `${totalCostNokThisMonth.toFixed(2)} kr` : '0,07 kr'}</strong> er den reelle underliggende API-kostnaden. Mot en kundeinntekt på 690 kr til 2 990 kr per bedrift betyr dette at AI-kostnaden utgjør under 0,5% av inntekten – som sikrer over 98% ren bruttomargin.
               </p>
             </div>
           </div>
@@ -3192,80 +3212,140 @@ Svar KUN med gyldig rå JSON (uten markdown \`\`\`json klammer):
 
       {/* Edit Modules Modal */}
       {isEditModalOpen && selectedCompany && (
-        <div className="fixed inset-0 z-[100] flex items-center justify-center p-4 bg-neutral-900/60 backdrop-blur-sm">
+        <div className="fixed inset-0 z-[100] flex items-center justify-center p-3 sm:p-6 bg-black/80 backdrop-blur-md overflow-hidden">
           <motion.div 
-            initial={{ opacity: 0, scale: 0.95 }}
-            animate={{ opacity: 1, scale: 1 }}
-            className="bg-white rounded-[2.5rem] shadow-2xl w-full max-w-2xl overflow-hidden"
+            initial={{ opacity: 0, scale: 0.95, y: 10 }}
+            animate={{ opacity: 1, scale: 1, y: 0 }}
+            exit={{ opacity: 0, scale: 0.95, y: 10 }}
+            className="bg-slate-900 border border-slate-800 rounded-3xl shadow-2xl w-full max-w-2xl max-h-[92vh] sm:max-h-[88vh] flex flex-col overflow-hidden text-slate-100 my-auto"
           >
-            <div className="p-8 border-b border-neutral-100 flex justify-between items-center">
-              <div>
-                <h2 className="text-2xl font-bold text-neutral-900">Skreddersy pakkeløsning</h2>
-                <p className="text-sm text-neutral-500">Administrer moduler for {selectedCompany.name}</p>
+            {/* Fast Header - Pinned at top */}
+            <div className="p-4 sm:p-6 border-b border-slate-800 flex justify-between items-center shrink-0 bg-slate-950/60">
+              <div className="min-w-0 pr-2">
+                <div className="flex items-center gap-2 mb-0.5">
+                  <span className="w-2 h-2 rounded-full bg-purple-400 animate-pulse" />
+                  <span className="text-[10px] font-black uppercase tracking-wider text-purple-400">
+                    Modultilganger
+                  </span>
+                </div>
+                <h2 className="text-lg sm:text-2xl font-black text-white truncate">
+                  Skreddersy pakkeløsning
+                </h2>
+                <p className="text-xs sm:text-sm text-slate-400 truncate">
+                  Administrer moduler for <strong className="text-slate-200">{selectedCompany.name}</strong>
+                </p>
               </div>
-              <button onClick={() => setIsEditModalOpen(false)} className="p-2 hover:bg-neutral-100 rounded-full transition-colors">
-                <XCircle size={24} className="text-neutral-400" />
+              <button 
+                type="button"
+                onClick={() => setIsEditModalOpen(false)} 
+                className="p-2 text-slate-400 hover:text-white hover:bg-slate-800 rounded-xl transition-colors cursor-pointer shrink-0"
+                title="Lukk"
+              >
+                <XCircle size={24} />
               </button>
             </div>
             
-            <div className="p-8">
-              <div className="grid grid-cols-1 md:grid-cols-2 gap-4 mb-8">
+            {/* Scrollbart Innhold */}
+            <div className="p-4 sm:p-6 overflow-y-auto flex-1 min-h-0 space-y-3.5 sm:space-y-4">
+              <div className="flex flex-wrap items-center justify-between gap-2 pb-2 text-xs border-b border-slate-800/80">
+                <span className="text-slate-400">
+                  <strong className="text-purple-300 font-bold">{selectedCompany.modules?.length || 0}</strong> av <strong className="text-white">{allModules.length}</strong> moduler aktive
+                </span>
+                <div className="flex items-center gap-2">
+                  <button
+                    type="button"
+                    onClick={() => setSelectedCompany({ ...selectedCompany, modules: allModules.map(m => m.id) })}
+                    className="px-2.5 py-1 rounded-lg bg-purple-500/20 hover:bg-purple-500/30 text-purple-300 border border-purple-500/30 text-[11px] font-bold transition-all cursor-pointer"
+                  >
+                    Velg alle
+                  </button>
+                  <button
+                    type="button"
+                    onClick={() => setSelectedCompany({ ...selectedCompany, modules: ['projects', 'checklists', 'deviations', 'ai'] })}
+                    className="px-2.5 py-1 rounded-lg bg-slate-800 hover:bg-slate-700 text-slate-300 text-[11px] font-bold transition-all cursor-pointer"
+                  >
+                    Kun kjerne
+                  </button>
+                </div>
+              </div>
+
+              <div className="grid grid-cols-1 sm:grid-cols-2 gap-2.5 sm:gap-3">
                 {allModules.map(module => {
                   const isActive = selectedCompany.modules?.includes(module.id);
                   return (
                     <button
                       key={module.id}
+                      type="button"
                       onClick={() => {
-                        const newModules = isActive 
-                          ? selectedCompany.modules.filter(m => m !== module.id)
-                          : [...(selectedCompany.modules || []), module.id];
+                        let newModules: string[];
+                        if (module.id === 'all_modules') {
+                          if (isActive) {
+                            newModules = selectedCompany.modules.filter((m: string) => m !== 'all_modules');
+                          } else {
+                            newModules = Array.from(new Set([...(selectedCompany.modules || []), ...allModules.map(m => m.id)]));
+                          }
+                        } else {
+                          newModules = isActive 
+                            ? selectedCompany.modules.filter((m: string) => m !== module.id)
+                            : [...(selectedCompany.modules || []), module.id];
+                        }
                         setSelectedCompany({ ...selectedCompany, modules: newModules });
                       }}
                       className={cn(
-                        "flex items-center gap-4 p-4 rounded-2xl border-2 transition-all text-left cursor-pointer",
+                        "flex items-center gap-3 p-3 sm:p-3.5 rounded-2xl border-2 transition-all text-left cursor-pointer",
                         isActive 
-                          ? "border-purple-600 bg-purple-50/90 shadow-xs" 
-                          : "border-slate-200 bg-white hover:border-slate-300"
+                          ? "border-purple-500/80 bg-purple-950/40 hover:bg-purple-900/40 shadow-sm shadow-purple-950/50" 
+                          : "border-slate-800/80 bg-slate-950/60 hover:border-slate-700 hover:bg-slate-950/90 text-slate-400"
                       )}
                     >
                       <div className={cn(
-                        "w-10 h-10 rounded-xl flex items-center justify-center shadow-xs shrink-0",
-                        isActive ? "bg-purple-600 text-white" : "bg-slate-100 text-slate-500"
+                        "w-9 h-9 sm:w-10 sm:h-10 rounded-xl flex items-center justify-center shadow-xs shrink-0 transition-colors",
+                        isActive ? "bg-purple-600 text-white shadow-md shadow-purple-900/50" : "bg-slate-800/90 text-slate-400"
                       )}>
                         {module.icon}
                       </div>
                       <div className="flex-1 min-w-0">
-                        <div className="font-bold text-sm text-slate-900 leading-snug">{module.name}</div>
+                        <div className={cn("font-bold text-xs sm:text-sm leading-snug truncate", isActive ? "text-white" : "text-slate-300")}>
+                          {module.name}
+                        </div>
                         <div className={cn(
                           "text-[10px] uppercase tracking-wider font-extrabold mt-0.5",
-                          isActive ? "text-purple-700 font-black" : "text-slate-400"
+                          isActive ? "text-purple-400" : "text-slate-500"
                         )}>
                           {isActive ? '✓ Aktiv' : 'Inaktiv'}
                         </div>
                       </div>
-                      {isActive && <CheckCircle2 size={20} className="text-emerald-600 shrink-0" />}
+                      {isActive ? (
+                        <CheckCircle2 size={18} className="text-emerald-400 shrink-0" />
+                      ) : (
+                        <div className="w-4 h-4 rounded-full border border-slate-700 shrink-0" />
+                      )}
                     </button>
                   );
                 })}
               </div>
+            </div>
 
-              <div className="flex gap-4">
-                <button 
-                  onClick={() => {
-                    handleUpdateModules(selectedCompany.id, selectedCompany.modules);
-                    setIsEditModalOpen(false);
-                  }}
-                  className="flex-1 bg-gradient-to-r from-electric-500 to-electric-400 text-white py-4 rounded-2xl font-black hover:opacity-95 transition-all shadow-purple-cta"
-                >
-                  Lagre endringer
-                </button>
-                <button 
-                  onClick={() => setIsEditModalOpen(false)}
-                  className="flex-1 bg-neutral-100 text-neutral-600 py-4 rounded-2xl font-bold hover:bg-neutral-200 transition-all"
-                >
-                  Avbryt
-                </button>
-              </div>
+            {/* Fast Footer - Pinned at bottom */}
+            <div className="p-4 sm:p-5 border-t border-slate-800 bg-slate-950/90 flex items-center justify-end gap-3 shrink-0">
+              <button 
+                type="button"
+                onClick={() => setIsEditModalOpen(false)}
+                className="px-5 py-3 rounded-xl bg-slate-800 hover:bg-slate-700 text-slate-300 font-bold text-xs transition-colors cursor-pointer"
+              >
+                Avbryt
+              </button>
+              <button 
+                type="button"
+                onClick={() => {
+                  handleUpdateModules(selectedCompany.id, selectedCompany.modules);
+                  setIsEditModalOpen(false);
+                }}
+                className="flex-1 sm:flex-initial px-6 py-3 rounded-xl bg-gradient-to-r from-purple-600 to-indigo-600 hover:from-purple-500 hover:to-indigo-500 text-white font-bold text-xs transition-all shadow-lg shadow-purple-950/50 cursor-pointer flex items-center justify-center gap-2"
+              >
+                <Check size={16} />
+                <span>Lagre endringer</span>
+              </button>
             </div>
           </motion.div>
         </div>
@@ -3273,13 +3353,13 @@ Svar KUN med gyldig rå JSON (uten markdown \`\`\`json klammer):
 
       {/* User Management Modal */}
       {isUserModalOpen && selectedCompany && (
-        <div className="fixed inset-0 z-[100] flex items-center justify-center p-4 bg-neutral-900/60 backdrop-blur-sm">
+        <div className="fixed inset-0 z-[100] flex items-center justify-center p-3 sm:p-6 bg-black/80 backdrop-blur-md overflow-hidden">
           <motion.div 
             initial={{ opacity: 0, scale: 0.95 }}
             animate={{ opacity: 1, scale: 1 }}
-            className="bg-white rounded-[2.5rem] shadow-2xl w-full max-w-4xl overflow-hidden"
+            className="bg-white rounded-[2rem] sm:rounded-[2.5rem] shadow-2xl w-full max-w-4xl max-h-[92vh] sm:max-h-[88vh] flex flex-col overflow-hidden my-auto"
           >
-            <div className="p-8 border-b border-neutral-100 flex justify-between items-center">
+            <div className="p-4 sm:p-6 border-b border-neutral-100 flex justify-between items-center shrink-0">
               <div>
                 <h2 className="text-2xl font-bold text-neutral-900 flex items-center gap-2">
                   <span>Brukeradministrasjon</span>
@@ -3305,7 +3385,8 @@ Svar KUN med gyldig rå JSON (uten markdown \`\`\`json klammer):
               </div>
             </div>
 
-            {/* Hurtigopprettelse av ny bruker for denne bedriften */}
+            <div className="overflow-y-auto flex-1 min-h-0">
+              {/* Hurtigopprettelse av ny bruker for denne bedriften */}
             {isAddingUser && (
               <form onSubmit={handleCreateUserForCompany} className="p-6 bg-purple-50/60 border-b border-purple-100 space-y-4">
                 <div className="flex items-center justify-between">
@@ -3365,6 +3446,7 @@ Svar KUN med gyldig rå JSON (uten markdown \`\`\`json klammer):
                       onChange={(e) => setNewUserRole(e.target.value as any)}
                       className="w-full px-3 py-2 bg-white border border-neutral-200 rounded-xl text-xs font-bold outline-none focus:ring-2 focus:ring-purple-500"
                     >
+                      <option value="superadmin">👑 SuperAdmin / Systemeier (Full plattformeiertilgang)</option>
                       <option value="admin">Administrator (Full tilgang)</option>
                       <option value="manager">Prosjektleder</option>
                       <option value="worker">Håndverker</option>
@@ -3390,7 +3472,7 @@ Svar KUN med gyldig rå JSON (uten markdown \`\`\`json klammer):
               </form>
             )}
             
-            <div className="p-8 max-h-[60vh] overflow-y-auto">
+            <div className="p-4 sm:p-8">
               {companyUsers.length === 0 ? (
                 <div className="text-center py-8 text-neutral-400">
                   <Users size={32} className="mx-auto mb-2 opacity-50" />
@@ -3419,6 +3501,7 @@ Svar KUN med gyldig rå JSON (uten markdown \`\`\`json klammer):
                             onChange={(e) => handleUpdateUserRole(u.id, e.target.value)}
                             className="text-xs font-bold bg-neutral-50 border border-neutral-200 rounded-lg px-2 py-1 outline-none"
                           >
+                            <option value="superadmin">👑 SuperAdmin</option>
                             <option value="admin">Admin</option>
                             <option value="manager">Prosjektleder</option>
                             <option value="worker">Håndverker</option>
@@ -3458,6 +3541,7 @@ Svar KUN med gyldig rå JSON (uten markdown \`\`\`json klammer):
                 </table>
               )}
             </div>
+            </div>
           </motion.div>
         </div>
       )}
@@ -3467,6 +3551,14 @@ Svar KUN med gyldig rå JSON (uten markdown \`\`\`json klammer):
         <CreateCompanyModal 
           onClose={() => setIsCreateModalOpen(false)} 
           onSuccess={() => setIsCreateModalOpen(false)}
+        />
+      )}
+
+      {/* Invite / Create SuperAdmin Modal */}
+      {isSuperAdminInviteModalOpen && (
+        <InviteSuperAdminModal 
+          onClose={() => setIsSuperAdminInviteModalOpen(false)} 
+          onSuccess={() => setIsSuperAdminInviteModalOpen(false)}
         />
       )}
 
@@ -3639,20 +3731,20 @@ Svar KUN med gyldig rå JSON (uten markdown \`\`\`json klammer):
 
       {/* Send Offer Modal */}
       {isOfferModalOpen && (
-        <div className="fixed inset-0 z-[100] flex items-center justify-center p-4 bg-neutral-900/60 backdrop-blur-sm">
+        <div className="fixed inset-0 z-[100] flex items-center justify-center p-3 sm:p-6 bg-black/80 backdrop-blur-md overflow-hidden">
           <motion.div 
             initial={{ opacity: 0, scale: 0.95 }}
             animate={{ opacity: 1, scale: 1 }}
-            className="bg-white rounded-[2.5rem] shadow-2xl w-full max-w-2xl overflow-hidden"
+            className="bg-white rounded-[2rem] sm:rounded-[2.5rem] shadow-2xl w-full max-w-2xl max-h-[92vh] sm:max-h-[88vh] flex flex-col overflow-hidden my-auto"
           >
-            <div className="p-8 border-b border-neutral-100 flex justify-between items-center">
-              <h2 className="text-2xl font-bold text-neutral-900">Send skreddersydd tilbud</h2>
-              <button onClick={() => setIsOfferModalOpen(false)} className="p-2 hover:bg-neutral-100 rounded-full transition-colors">
+            <div className="p-4 sm:p-6 border-b border-neutral-100 flex justify-between items-center shrink-0">
+              <h2 className="text-xl sm:text-2xl font-bold text-neutral-900">Send skreddersydd tilbud</h2>
+              <button onClick={() => setIsOfferModalOpen(false)} className="p-2 hover:bg-neutral-100 rounded-full transition-colors cursor-pointer">
                 <XCircle size={24} className="text-neutral-400" />
               </button>
             </div>
             
-            <form onSubmit={handleCreateOffer} className="p-8 space-y-6 max-h-[70vh] overflow-y-auto">
+            <form onSubmit={handleCreateOffer} className="p-4 sm:p-8 space-y-5 overflow-y-auto flex-1 min-h-0">
               <div className="grid grid-cols-2 gap-4">
                 <div className="space-y-2">
                   <label className="text-[10px] font-black uppercase tracking-widest text-neutral-400 ml-1">Mottaker Navn</label>
@@ -3757,15 +3849,15 @@ Svar KUN med gyldig rå JSON (uten markdown \`\`\`json klammer):
 
       {/* Template Modal */}
       {isTemplateModalOpen && (
-        <div className="fixed inset-0 z-[100] flex items-center justify-center p-4 bg-neutral-900/60 backdrop-blur-sm">
+        <div className="fixed inset-0 z-[100] flex items-center justify-center p-3 sm:p-6 bg-black/80 backdrop-blur-md overflow-hidden">
           <motion.div 
             initial={{ opacity: 0, scale: 0.95 }}
             animate={{ opacity: 1, scale: 1 }}
-            className="bg-white rounded-[2.5rem] shadow-2xl w-full max-w-2xl overflow-hidden"
+            className="bg-white rounded-[2rem] sm:rounded-[2.5rem] shadow-2xl w-full max-w-2xl max-h-[92vh] sm:max-h-[88vh] flex flex-col overflow-hidden my-auto"
           >
-            <div className="p-8 border-b border-neutral-100 flex justify-between items-center">
+            <div className="p-4 sm:p-6 border-b border-neutral-100 flex justify-between items-center shrink-0">
               <div>
-                <h2 className="text-2xl font-bold text-neutral-900">{editingTemplateId ? 'Rediger mal' : 'Opprett ny mal'}</h2>
+                <h2 className="text-xl sm:text-2xl font-bold text-neutral-900">{editingTemplateId ? 'Rediger mal' : 'Opprett ny mal'}</h2>
                 <p className="text-xs text-neutral-500">Maler for e-post og varslinger til kunder og henvendelser</p>
               </div>
               <button onClick={() => { setIsTemplateModalOpen(false); setEditingTemplateId(null); }} className="p-2 hover:bg-neutral-100 rounded-full transition-colors cursor-pointer">
@@ -3773,7 +3865,7 @@ Svar KUN med gyldig rå JSON (uten markdown \`\`\`json klammer):
               </button>
             </div>
             
-            <form onSubmit={handleCreateTemplate} className="p-8 space-y-6">
+            <form onSubmit={handleCreateTemplate} className="p-4 sm:p-8 space-y-5 overflow-y-auto flex-1 min-h-0">
               <div className="space-y-2">
                 <label className="text-[10px] font-black uppercase tracking-widest text-neutral-400 ml-1">Navn på mal</label>
                 <input 
@@ -3847,6 +3939,337 @@ Svar KUN med gyldig rå JSON (uten markdown \`\`\`json klammer):
           </motion.div>
         </div>
       )}
+    </div>
+  );
+}
+
+function InviteSuperAdminModal({
+  onClose,
+  onSuccess
+}: {
+  onClose: () => void;
+  onSuccess: () => void;
+}) {
+  const [name, setName] = useState('Fredrik Ellingsen');
+  const [email, setEmail] = useState('fredrik@aichatnorge.no');
+  const [password, setPassword] = useState('');
+  const [showPassword, setShowPassword] = useState(false);
+  const [sendWelcomeEmail, setSendWelcomeEmail] = useState(true);
+  const [loading, setLoading] = useState(false);
+  const [copiedCreds, setCopiedCreds] = useState(false);
+  const [createdData, setCreatedData] = useState<{
+    user: any;
+    password: string;
+    loginUrl: string;
+    inviteLink: string;
+    emailSent: boolean;
+  } | null>(null);
+
+  const generatePassword = () => {
+    const chars = 'ABCDEFGHJKLMNPQRSTUVWXYZabcdefghijkmnopqrstuvwxyz23456789!@#$';
+    let pwd = 'VM-';
+    for (let i = 0; i < 6; i++) {
+      pwd += chars.charAt(Math.floor(Math.random() * chars.length));
+    }
+    pwd += '26!';
+    setPassword(pwd);
+  };
+
+  useEffect(() => {
+    generatePassword();
+  }, []);
+
+  const handleFillFredrik = () => {
+    setName('Fredrik Ellingsen');
+    setEmail('fredrik@aichatnorge.no');
+    generatePassword();
+    toast.success('Forhåndsutfylte Fredrik (fredrik@aichatnorge.no)');
+  };
+
+  const handleSubmit = async (e: React.FormEvent) => {
+    e.preventDefault();
+    if (!email || !password) {
+      toast.error('Både e-post og passord må fylles ut.');
+      return;
+    }
+
+    setLoading(true);
+    try {
+      const token = typeof window !== 'undefined' ? localStorage.getItem('token') : null;
+      const res = await fetch('/api/admin/create-user', {
+        method: 'POST',
+        headers: {
+          'Content-Type': 'application/json',
+          ...(token ? { 'Authorization': 'Bearer ' + token } : {})
+        },
+        body: JSON.stringify({
+          accountType: 'superadmin',
+          companyMode: 'existing',
+          companyId: 'comp-001',
+          companyName: 'AIChat Norge AS / Vikingnet',
+          name: name.trim() || 'SuperAdmin',
+          email: email.trim(),
+          password: password.trim(),
+          role: 'superadmin',
+          sendWelcomeEmail
+        })
+      });
+
+      const data = await res.json();
+      if (!res.ok) {
+        throw new Error(data.error || 'Kunne ikke opprette SuperAdmin-bruker');
+      }
+
+      toast.success(`SuperAdmin-bruker ${email.trim()} er opprettet med full plattformeiertilgang! 👑`);
+      setCreatedData({
+        user: data.user,
+        password: password.trim(),
+        loginUrl: 'https://vikingmester.no',
+        inviteLink: data.inviteLink || `https://vikingmester.no`,
+        emailSent: Boolean(data.emailSent)
+      });
+    } catch (err: any) {
+      console.error('SuperAdmin creation error:', err);
+      toast.error(err.message || 'Feil ved opprettelse av SuperAdmin');
+    } finally {
+      setLoading(false);
+    }
+  };
+
+  const copyCredentials = () => {
+    if (!createdData) return;
+    const text = `Hei Fredrik! Her er dine innloggingsopplysninger som SuperAdmin / Systemeier til VikingMester:
+Nettadresse: ${createdData.loginUrl}
+Brukernavn (E-post): ${createdData.user.email}
+Passord: ${createdData.password}
+Selskap: AIChat Norge AS / Vikingnet (comp-001)
+Rolle: SuperAdmin (Full plattformeiertilgang, 500M tokens/mnd, alle moduler)`;
+
+    navigator.clipboard.writeText(text);
+    setCopiedCreds(true);
+    toast.success('SuperAdmin-innloggingsopplysninger kopiert til utklippstavle!');
+    setTimeout(() => setCopiedCreds(false), 3000);
+  };
+
+  if (createdData) {
+    return (
+      <div className="fixed inset-0 z-[100] flex items-center justify-center p-4 bg-neutral-900/60 backdrop-blur-sm">
+        <motion.div 
+          initial={{ opacity: 0, scale: 0.95 }}
+          animate={{ opacity: 1, scale: 1 }}
+          className="bg-white rounded-[2.5rem] shadow-2xl w-full max-w-lg overflow-hidden border border-amber-500/30"
+        >
+          <div className="p-8 text-center space-y-4">
+            <div className="w-16 h-16 bg-gradient-to-br from-amber-400 to-amber-600 text-white rounded-3xl flex items-center justify-center mx-auto shadow-lg shadow-amber-500/30">
+              <Crown size={36} />
+            </div>
+            <div>
+              <h2 className="text-2xl font-black text-neutral-900">
+                SuperAdmin-konto er klar! 👑
+              </h2>
+              <p className="text-xs text-neutral-600 mt-1 max-w-sm mx-auto">
+                <strong>{createdData.user.email}</strong> har nå nøyaktig samme rettigheter som deg (full plattformeier, 500M tokens/mnd, alle 20+ fagmoduler).
+              </p>
+            </div>
+
+            <div className="bg-amber-50/70 border border-amber-200/80 rounded-2xl p-5 text-left space-y-2.5 font-mono text-xs text-neutral-800">
+              <div className="flex justify-between items-center pb-2 border-b border-amber-200/60">
+                <span className="font-sans font-bold text-[10px] uppercase text-amber-800 flex items-center gap-1">
+                  <Crown size={12} className="text-amber-600" /> SuperAdmin Legitimering
+                </span>
+                <span className="font-sans text-[10px] bg-amber-200/70 text-amber-900 px-2.5 py-0.5 rounded-full font-black">
+                  {createdData.emailSent ? 'Velkomst-e-post sendt ✓' : 'Klar for overlevering'}
+                </span>
+              </div>
+              <div><strong className="font-sans text-neutral-500 text-[11px]">Nettadresse:</strong> https://vikingmester.no</div>
+              <div><strong className="font-sans text-neutral-500 text-[11px]">Brukernavn:</strong> {createdData.user.email}</div>
+              <div className="flex items-center justify-between">
+                <div><strong className="font-sans text-neutral-500 text-[11px]">Passord:</strong> <span className="bg-white px-2 py-0.5 rounded border border-amber-300 font-bold text-amber-900">{createdData.password}</span></div>
+              </div>
+              <div><strong className="font-sans text-neutral-500 text-[11px]">Selskap:</strong> AIChat Norge AS / Vikingnet (comp-001)</div>
+              <div><strong className="font-sans text-neutral-500 text-[11px]">Rolle:</strong> <span className="font-black text-amber-800">👑 superadmin (Plattformeier)</span></div>
+            </div>
+
+            <div className="space-y-2 pt-2">
+              <button
+                type="button"
+                onClick={copyCredentials}
+                className="w-full py-3.5 bg-gradient-to-r from-amber-500 to-amber-600 hover:from-amber-600 hover:to-amber-700 text-white rounded-2xl font-black text-sm flex items-center justify-center gap-2 shadow-lg shadow-amber-500/25 cursor-pointer transition-all"
+              >
+                {copiedCreds ? <Check size={18} /> : <Copy size={18} />}
+                <span>{copiedCreds ? 'Kopiert til utklippstavle!' : 'Kopier innloggingsopplysninger'}</span>
+              </button>
+
+              <button
+                type="button"
+                onClick={() => {
+                  onSuccess();
+                  onClose();
+                }}
+                className="w-full py-3 bg-neutral-100 hover:bg-neutral-200 text-neutral-700 rounded-2xl font-bold text-xs cursor-pointer transition-all"
+              >
+                Lukk og gå til oversikten
+              </button>
+            </div>
+          </div>
+        </motion.div>
+      </div>
+    );
+  }
+
+  return (
+    <div className="fixed inset-0 z-[100] flex items-center justify-center p-4 bg-neutral-900/60 backdrop-blur-sm overflow-y-auto">
+      <motion.div 
+        initial={{ opacity: 0, scale: 0.95 }}
+        animate={{ opacity: 1, scale: 1 }}
+        className="bg-white rounded-[2.5rem] shadow-2xl w-full max-w-xl overflow-hidden my-8 border border-amber-500/20"
+      >
+        <div className="p-6 sm:p-8 border-b border-amber-100 flex justify-between items-center bg-gradient-to-r from-amber-50/80 to-amber-100/40">
+          <div className="flex items-center gap-3">
+            <div className="w-12 h-12 rounded-2xl bg-amber-500 text-white flex items-center justify-center shrink-0 shadow-md shadow-amber-500/30">
+              <Crown size={24} />
+            </div>
+            <div>
+              <h2 className="text-xl sm:text-2xl font-black text-neutral-900 flex items-center gap-2">
+                Inviter ny SuperAdmin
+              </h2>
+              <p className="text-xs text-amber-800 font-semibold">
+                👑 100% like rettigheter som deg · Ubegrenset tilgang · 500M tokens/mnd
+              </p>
+            </div>
+          </div>
+          <button onClick={onClose} className="p-2 hover:bg-neutral-100 rounded-full transition-colors cursor-pointer">
+            <XCircle size={24} className="text-neutral-400" />
+          </button>
+        </div>
+
+        <form onSubmit={handleSubmit} className="p-6 sm:p-8 space-y-5">
+          {/* Hurtigknapp for Fredrik */}
+          <div className="p-3.5 bg-gradient-to-r from-amber-500/10 via-purple-500/10 to-amber-500/10 border border-amber-300/60 rounded-2xl flex items-center justify-between gap-3">
+            <div className="text-xs">
+              <div className="font-black text-neutral-800">Skal du invitere Fredrik?</div>
+              <div className="text-neutral-600 text-[11px]">Trykk her for å forhåndsutfylle fredrik@aichatnorge.no med ett klikk:</div>
+            </div>
+            <button
+              type="button"
+              onClick={handleFillFredrik}
+              className="px-3 py-1.5 bg-amber-500 hover:bg-amber-600 text-white rounded-xl text-xs font-black shrink-0 transition-all shadow-xs cursor-pointer"
+            >
+              ⚡ Fyll inn Fredrik
+            </button>
+          </div>
+
+          {/* Forklaring av SuperAdmin-rettigheter */}
+          <div className="p-3.5 bg-slate-900 text-white rounded-2xl text-xs space-y-1.5 border border-slate-800">
+            <div className="flex items-center gap-2 text-amber-400 font-black">
+              <ShieldCheck size={16} />
+              <span>Hva betyr SuperAdmin for denne brukeren?</span>
+            </div>
+            <ul className="text-[11px] text-slate-300 space-y-1 list-disc list-inside">
+              <li>Full adgang til SuperAdmin-portalen, AI-marginkontroll og SaaS-styring</li>
+              <li>Kan logge inn som hvilken som helst bedriftskunde (Impersonering)</li>
+              <li>Knyttes automatisk til <strong>comp-001 (AIChat Norge AS / Vikingnet)</strong></li>
+              <li>500 000 000 tokens/mnd + alle 20+ fagmoduler aktivert (0 kr fakturering)</li>
+            </ul>
+          </div>
+
+          {/* Brukerdetaljer */}
+          <div className="grid grid-cols-1 sm:grid-cols-2 gap-3">
+            <div className="space-y-1">
+              <label className="text-xs font-bold uppercase text-neutral-500 ml-1">Fullt navn *</label>
+              <input
+                required
+                type="text"
+                value={name}
+                onChange={(e) => setName(e.target.value)}
+                placeholder="F.eks. Fredrik Ellingsen"
+                className="w-full px-3.5 py-2.5 bg-neutral-50 border border-neutral-200 rounded-xl text-xs font-semibold outline-none focus:ring-2 focus:ring-amber-500"
+              />
+            </div>
+
+            <div className="space-y-1">
+              <label className="text-xs font-bold uppercase text-neutral-500 ml-1">E-postadresse (innlogging) *</label>
+              <input
+                required
+                type="email"
+                value={email}
+                onChange={(e) => setEmail(e.target.value)}
+                placeholder="fredrik@aichatnorge.no"
+                className="w-full px-3.5 py-2.5 bg-neutral-50 border border-neutral-200 rounded-xl text-xs font-semibold outline-none focus:ring-2 focus:ring-amber-500"
+              />
+            </div>
+          </div>
+
+          <div className="space-y-1">
+            <div className="flex justify-between items-center">
+              <label className="text-xs font-bold uppercase text-neutral-500 ml-1">Passord *</label>
+              <button
+                type="button"
+                onClick={generatePassword}
+                className="text-[10px] text-amber-700 hover:underline font-bold cursor-pointer"
+              >
+                Generer nytt
+              </button>
+            </div>
+            <div className="relative">
+              <input
+                required
+                type={showPassword ? 'text' : 'password'}
+                value={password}
+                onChange={(e) => setPassword(e.target.value)}
+                className="w-full px-3.5 py-2.5 bg-neutral-50 border border-neutral-200 rounded-xl text-xs font-mono font-bold outline-none focus:ring-2 focus:ring-amber-500 pr-10"
+              />
+              <button
+                type="button"
+                onClick={() => setShowPassword(!showPassword)}
+                className="absolute right-3 top-1/2 -translate-y-1/2 text-neutral-400 hover:text-neutral-600 cursor-pointer"
+              >
+                {showPassword ? <EyeOff size={15} /> : <Eye size={15} />}
+              </button>
+            </div>
+          </div>
+
+          {/* E-post checkbox */}
+          <label className="flex items-center gap-2 cursor-pointer pt-1">
+            <input
+              type="checkbox"
+              checked={sendWelcomeEmail}
+              onChange={(e) => setSendWelcomeEmail(e.target.checked)}
+              className="w-4 h-4 rounded text-amber-600 focus:ring-amber-500 cursor-pointer"
+            />
+            <span className="text-xs font-bold text-neutral-700">
+              Send offisiell SuperAdmin-velkomstepost med innloggingsinformasjon (Resend)
+            </span>
+          </label>
+
+          <div className="flex gap-3 pt-2">
+            <button
+              type="button"
+              onClick={onClose}
+              className="px-5 py-3.5 bg-neutral-100 hover:bg-neutral-200 text-neutral-700 rounded-2xl font-bold text-xs cursor-pointer transition-all"
+            >
+              Avbryt
+            </button>
+            <button
+              type="submit"
+              disabled={loading}
+              className="flex-1 py-3.5 bg-gradient-to-r from-amber-500 to-amber-600 hover:from-amber-600 hover:to-amber-700 text-white rounded-2xl font-black text-sm flex items-center justify-center gap-2 shadow-lg shadow-amber-500/25 cursor-pointer transition-all disabled:opacity-50"
+            >
+              {loading ? (
+                <>
+                  <div className="w-4 h-4 border-2 border-white border-t-transparent rounded-full animate-spin" />
+                  <span>Oppretter SuperAdmin...</span>
+                </>
+              ) : (
+                <>
+                  <Crown size={16} />
+                  <span>Opprett & Aktiver SuperAdmin</span>
+                </>
+              )}
+            </button>
+          </div>
+        </form>
+      </motion.div>
     </div>
   );
 }

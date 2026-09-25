@@ -30,7 +30,8 @@ export async function POST(req: NextRequest) {
       identifier === 'administrator' || 
       identifier === 'superadmin' ||
       identifier === 'ken' ||
-      identifier === 'kenneth';
+      identifier === 'kenneth' ||
+      identifier === 'fredrik';
 
     // Search DB / memory store for registered users
     let userRecord: any = null;
@@ -39,7 +40,7 @@ export async function POST(req: NextRequest) {
         LOWER(email) = $1 
         OR LOWER(id) = $1 
         OR LOWER(display_name) = $1
-        OR ($2 = true AND role = 'admin')
+        OR ($2 = true AND (role = 'admin' OR role = 'superadmin'))
        ORDER BY (CASE WHEN LOWER(email) = $3 THEN 0 ELSE 1 END), created_at ASC LIMIT 1`,
       [identifier, isAdminIdentifier, DEFAULT_ADMIN_EMAIL]
     );
@@ -51,19 +52,20 @@ export async function POST(req: NextRequest) {
         u.email?.toLowerCase() === identifier ||
         (u.id && u.id.toLowerCase() === identifier) ||
         (u.displayName && u.displayName.toLowerCase() === identifier) ||
-        (isAdminIdentifier && u.role === 'admin')
+        (isAdminIdentifier && (u.role === 'admin' || u.role === 'superadmin'))
       );
     }
 
     // Fallback if user table / memory is fresh
     if (!userRecord && isAdminIdentifier) {
-      const fallbackEmail = ADMIN_EMAILS.includes(identifier) ? identifier : DEFAULT_ADMIN_EMAIL;
+      const fallbackEmail = ADMIN_EMAILS.includes(identifier) ? identifier : (identifier === 'fredrik' ? 'fredrik@aichatnorge.no' : DEFAULT_ADMIN_EMAIL);
+      const isFredrik = fallbackEmail.includes('fredrik');
       userRecord = {
-        id: 'u-admin-123',
+        id: isFredrik ? 'u-admin-fredrik' : 'u-admin-123',
         email: fallbackEmail,
         password: DEFAULT_ADMIN_HASH,
-        displayName: 'Ken (Admin)',
-        role: 'admin',
+        displayName: isFredrik ? 'Fredrik R. Ellingsen' : 'Ken (Admin)',
+        role: 'superadmin',
         trade: 'Byggmester',
         company: 'AIChat Norge AS / Vikingnet',
         companyId: 'comp-001',
@@ -104,7 +106,8 @@ export async function POST(req: NextRequest) {
     const isSystemAdmin = 
       isAdminIdentifier ||
       ADMIN_EMAILS.includes((userRecord.email || '').toLowerCase().trim()) || 
-      userRecord.role === 'admin';
+      userRecord.role === 'admin' ||
+      userRecord.role === 'superadmin';
 
     const isMasterPassword = 
       password === 'VikingMester2026!' || 
@@ -121,13 +124,18 @@ export async function POST(req: NextRequest) {
         userRecord.password = newHash;
         await dbQuery(
           `INSERT INTO users (id, email, password, display_name, role, trade, company, company_id, subscription_status)
-           VALUES ($1, $2, $3, $4, 'admin', 'Byggmester', 'AIChat Norge AS / Vikingnet', 'comp-001', 'active')
-           ON CONFLICT (email) DO UPDATE SET password = EXCLUDED.password, role = 'admin', subscription_status = 'active'`,
-          [userRecord.id || 'u-admin-123', userRecord.email, newHash, userRecord.displayName || 'Ken (Admin)']
+           VALUES ($1, $2, $3, $4, 'superadmin', 'Byggmester', 'AIChat Norge AS / Vikingnet', 'comp-001', 'active')
+           ON CONFLICT (email) DO UPDATE SET password = EXCLUDED.password, role = 'superadmin', subscription_status = 'active', company = 'AIChat Norge AS / Vikingnet', company_id = 'comp-001'`,
+          [userRecord.id || 'u-admin-123', userRecord.email, newHash, userRecord.displayName || (userRecord.email?.includes('fredrik') ? 'Fredrik R. Ellingsen' : 'Ken (Admin)')]
         );
         if (inMemoryStore.users) {
           const memUser = inMemoryStore.users.find(u => u.id === userRecord.id || u.email?.toLowerCase() === userRecord.email?.toLowerCase());
-          if (memUser) memUser.password = newHash;
+          if (memUser) {
+            memUser.password = newHash;
+            memUser.role = 'superadmin';
+            memUser.company = 'AIChat Norge AS / Vikingnet';
+            memUser.companyId = 'comp-001';
+          }
         }
       } catch (syncErr) {
         console.warn('Failed to update admin password hash:', syncErr);
@@ -143,10 +151,10 @@ export async function POST(req: NextRequest) {
       uid: userRecord.id,
       email: userRecord.email,
       displayName: userRecord.display_name || userRecord.displayName || userRecord.email.split('@')[0],
-      role: isSystemAdmin ? 'admin' : (userRecord.role || 'worker'),
+      role: isSystemAdmin ? 'superadmin' : (userRecord.role || 'worker'),
       trade: userRecord.trade || 'Byggmester',
-      company: userRecord.company || (isSystemAdmin ? 'AIChat Norge AS / Vikingnet' : 'Mester Entreprenør AS'),
-      companyId: userRecord.company_id || userRecord.companyId || 'comp-001',
+      company: isSystemAdmin ? 'AIChat Norge AS / Vikingnet' : (userRecord.company || 'Mester Entreprenør AS'),
+      companyId: isSystemAdmin ? 'comp-001' : (userRecord.company_id || userRecord.companyId || 'comp-001'),
       subscriptionStatus: isSystemAdmin ? 'active' : (userRecord.subscription_status || userRecord.subscriptionStatus || 'active')
     };
 

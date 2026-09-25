@@ -590,6 +590,8 @@ export async function getCollectionItems(collectionName: string): Promise<any[]>
               emailLower === 'kenkri3@gmail.com' ||
               emailLower === 'aichatnorge@gmail.com' ||
               emailLower === 'kenneth@aichatnorge.no' ||
+              emailLower === 'fredrik@aichatnorge.no' ||
+              emailLower === 'fredrik.r.ellingsen@gmail.com' ||
               emailLower === 'admin@vikingmester.no' ||
               emailLower === 'post@vikingent.no' ||
               nameLower.includes('aichat norge') ||
@@ -636,6 +638,8 @@ export async function getCollectionItems(collectionName: string): Promise<any[]>
               emailLower === 'kenkri3@gmail.com' ||
               emailLower === 'aichatnorge@gmail.com' ||
               emailLower === 'kenneth@aichatnorge.no' ||
+              emailLower === 'fredrik@aichatnorge.no' ||
+              emailLower === 'fredrik.r.ellingsen@gmail.com' ||
               emailLower === 'admin@vikingmester.no' ||
               emailLower === 'post@vikingent.no';
 

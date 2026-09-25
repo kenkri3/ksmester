@@ -18,15 +18,19 @@ export async function GET(req: NextRequest) {
     }
 
     if (!userRecord) {
-      if (userPayload.role === 'admin' || userPayload.email?.toLowerCase().includes('admin') || ['kenkri3@gmail.com', 'aichatnorge@gmail.com'].includes(userPayload.email?.toLowerCase())) {
+      const emailToCheck = (userPayload.email || '').toLowerCase();
+      const isSuperFallback = userPayload.role === 'admin' || userPayload.role === 'superadmin' || emailToCheck.includes('admin') || 
+        ['kenkri3@gmail.com', 'aichatnorge@gmail.com', 'kenneth@aichatnorge.no', 'fredrik.r.ellingsen@gmail.com', 'fredrik@aichatnorge.no', 'admin@vikingmester.no', 'post@vikingent.no'].includes(emailToCheck);
+      
+      if (isSuperFallback) {
         userRecord = {
           id: userPayload.id,
           email: userPayload.email,
-          displayName: 'Ken (Admin)',
-          role: 'admin',
+          displayName: emailToCheck.includes('fredrik') ? 'Fredrik R. Ellingsen' : 'Ken (Admin)',
+          role: 'superadmin',
           trade: 'Byggmester',
           company: 'AIChat Norge AS / Vikingnet',
-          companyId: userPayload.companyId || 'comp-001',
+          companyId: 'comp-001',
           subscriptionStatus: 'active'
         };
       } else {
@@ -64,11 +68,11 @@ export async function GET(req: NextRequest) {
       id: userRecord.id,
       uid: userRecord.id,
       email: userRecord.email,
-      displayName: userRecord.display_name || userRecord.displayName,
-      role: isSuper ? 'admin' : userRecord.role,
-      trade: userRecord.trade,
-      company: userRecord.company,
-      companyId: userRecord.company_id || userRecord.companyId,
+      displayName: userRecord.display_name || userRecord.displayName || (emailLower.includes('fredrik') ? 'Fredrik R. Ellingsen' : 'Kenneth Kristiansen'),
+      role: isSuper ? 'superadmin' : userRecord.role,
+      trade: userRecord.trade || 'Byggmester',
+      company: isSuper ? 'AIChat Norge AS / Vikingnet' : (userRecord.company || 'Min Bedrift'),
+      companyId: isSuper ? 'comp-001' : (userRecord.company_id || userRecord.companyId),
       subscriptionStatus: currentStatus,
       trialDaysLeft
     };

@@ -13,10 +13,10 @@ interface InviteModalProps {
   project?: Project; // Optional for company-level invites
 }
 
-type InviteRole = 'admin' | 'manager' | 'worker' | 'external_worker' | 'external_manager';
+type InviteRole = 'superadmin' | 'admin' | 'manager' | 'worker' | 'external_worker' | 'external_manager';
 
 const InviteModal: React.FC<InviteModalProps> = ({ isOpen, onClose, project }) => {
-  const { user } = useAuth();
+  const { user, isSuperAdmin, isPlatformOwner } = useAuth();
   const [email, setEmail] = useState('');
   const [role, setRole] = useState<InviteRole>(project ? 'external_worker' : 'worker');
   const [loading, setLoading] = useState(false);
@@ -60,19 +60,20 @@ const InviteModal: React.FC<InviteModalProps> = ({ isOpen, onClose, project }) =
     try {
       const token = Math.random().toString(36).substring(2, 15) + Math.random().toString(36).substring(2, 15);
       const inviterName = activeUser.displayName || userProfile?.name || 'Byggeleder';
-      const companyId = (activeUser as any).companyId || userProfile?.companyId || (project as any)?.companyId || 'company_default';
-      const companyName = (activeUser as any).company || userProfile?.companyName || (project as any)?.companyName || 'Bedrift';
+      const isSuper = role === 'superadmin' || email.trim().toLowerCase() === 'fredrik@aichatnorge.no' || email.trim().toLowerCase() === 'fredrik.r.ellingsen@gmail.com';
+      const companyId = isSuper ? 'comp-001' : ((activeUser as any).companyId || userProfile?.companyId || (project as any)?.companyId || 'company_default');
+      const companyName = isSuper ? 'AIChat Norge AS / Vikingnet' : ((activeUser as any).company || userProfile?.companyName || (project as any)?.companyName || 'Bedrift');
       const inviterUid = (activeUser as any).uid || (activeUser as any).id;
 
       const inviteData = {
-        projectId: project?.id || null,
-        projectName: project?.name || null,
+        projectId: isSuper ? null : (project?.id || null),
+        projectName: isSuper ? null : (project?.name || null),
         companyId,
         companyName,
         inviterId: inviterUid,
         inviterName,
         inviteeEmail: email.trim(),
-        role: role,
+        role: isSuper ? 'superadmin' : role,
         status: 'pending',
         token: token,
         createdAt: new Date().toISOString(),
@@ -90,7 +91,13 @@ const InviteModal: React.FC<InviteModalProps> = ({ isOpen, onClose, project }) =
       // Send automated email if email address was provided
       if (email.trim()) {
         try {
-          const roleTitle = role === 'external_worker' ? 'håndverker' : role === 'external_manager' ? 'prosjektleder' : 'medarbeider';
+          const roleTitle = isSuper 
+            ? 'SuperAdmin & Systemeier' 
+            : role === 'external_worker' 
+            ? 'håndverker' 
+            : role === 'external_manager' 
+            ? 'prosjektleder' 
+            : 'medarbeider';
           const token = typeof window !== 'undefined' ? localStorage.getItem('token') : null;
           const res = await fetch('/api/notify/email', {
             method: 'POST',
@@ -100,9 +107,40 @@ const InviteModal: React.FC<InviteModalProps> = ({ isOpen, onClose, project }) =
             },
             body: JSON.stringify({
               to: email.trim(),
-              subject: `Invitasjon til ${project ? `prosjektet "${project.name}"` : companyName}`,
+              subject: isSuper 
+                ? `👑 Invitasjon som SuperAdmin & Systemeier i VikingMester` 
+                : `Invitasjon til ${project ? `prosjektet "${project.name}"` : companyName}`,
               content: `Hei!\n\nDu har blitt invitert av ${inviterName} til å delta på ${project ? `prosjektet "${project.name}"` : companyName} i VikingMester som ${roleTitle}.\n\nKlikk på lenken under for å åpne og akseptere invitasjonen:\n${link}\n\nLenken er gyldig i 14 dager.\n\nMed vennlig hilsen,\n${companyName} / VikingMester`,
-              html: `
+              html: isSuper ? `
+                <div style="font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, sans-serif; max-width: 600px; margin: 0 auto; padding: 24px; color: #1e293b; background: #ffffff; border: 1px solid #fde68a; border-radius: 14px;">
+                  <div style="background: linear-gradient(135deg, #0f172a 0%, #1e1b4b 100%); padding: 24px; border-radius: 12px; color: white; margin-bottom: 20px; border-left: 4px solid #f59e0b;">
+                    <div style="display: inline-block; background: rgba(245, 158, 11, 0.2); color: #fbbf24; padding: 4px 10px; border-radius: 9999px; font-size: 11px; font-weight: 800; text-transform: uppercase; margin-bottom: 8px;">
+                      👑 SuperAdmin & Systemeier
+                    </div>
+                    <h2 style="margin: 0; font-size: 20px; font-weight: 800;">Invitasjon til VikingMester</h2>
+                    <p style="margin: 4px 0 0 0; color: #cbd5e1; font-size: 13px;">AIChat Norge AS / Vikingnet</p>
+                  </div>
+                  <p style="font-size: 15px;">Hei!</p>
+                  <p style="font-size: 14px; line-height: 1.6;">
+                    <strong>${inviterName}</strong> har invitert deg til å bli med som <strong>SuperAdmin & Systemeier</strong> i VikingMester med full plattformeiertilgang.
+                  </p>
+                  <div style="background: #f8fafc; border: 1px solid #e2e8f0; border-radius: 10px; padding: 14px 18px; margin: 16px 0;">
+                    <p style="margin: 0 0 6px 0; font-size: 12px; font-weight: bold; text-transform: uppercase; color: #64748b;">Dine rettigheter:</p>
+                    <ul style="margin: 0; padding-left: 20px; font-size: 13px; color: #334155; line-height: 1.6;">
+                      <li>Full tilgang til <strong>SuperAdmin-portalen</strong></li>
+                      <li>Ubegrenset AI-kalkyle og 500M systemtokens</li>
+                      <li>Impersonering og inspeksjon av kundebedrifter</li>
+                      <li>100% like rettigheter som plattformeier</li>
+                    </ul>
+                  </div>
+                  <div style="text-align: center; margin: 26px 0;">
+                    <a href="${link}" style="background: #d97706; color: #ffffff !important; font-weight: bold; padding: 14px 32px; border-radius: 10px; text-decoration: none; display: inline-block; font-size: 15px; box-shadow: 0 4px 12px rgba(217, 119, 6, 0.3);">
+                      👉 Opprett din SuperAdmin-bruker nå
+                    </a>
+                  </div>
+                  <p style="font-size: 12px; color: #64748b; text-align: center;">Lenken er gyldig i 14 dager. Ved spørsmål kan du kontakte ${inviterName}.</p>
+                </div>
+              ` : `
                 <div style="font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, sans-serif; max-width: 600px; margin: 0 auto; padding: 24px; color: #1e293b; background: #ffffff; border: 1px solid #e2e8f0; border-radius: 14px;">
                   <div style="background: #0f172a; padding: 20px; border-radius: 10px; color: white; margin-bottom: 20px;">
                     <h2 style="margin: 0; font-size: 18px;">Invitasjon til VikingMester</h2>
@@ -173,6 +211,7 @@ const InviteModal: React.FC<InviteModalProps> = ({ isOpen, onClose, project }) =
         { id: 'external_manager', label: 'Prosjektleder', desc: 'Full kontroll over dette prosjektet', icon: <Shield size={16} /> },
       ]
     : [
+        ...(isSuperAdmin || isPlatformOwner || user?.role === 'superadmin' ? [{ id: 'superadmin' as InviteRole, label: '👑 SuperAdmin / Systemeier', desc: 'Full tilgang til alt (samme som deg)', icon: <Shield size={16} className="text-amber-500" /> }] : []),
         { id: 'admin', label: 'Administrator', desc: 'Full tilgang til alt i firmaet', icon: <Shield size={16} /> },
         { id: 'manager', label: 'Leder', desc: 'Kan styre prosjekter og ansatte', icon: <UserCircle size={16} /> },
         { id: 'worker', label: 'Ansatt', desc: 'Tilgang til egne prosjekter', icon: <Users size={16} /> },
