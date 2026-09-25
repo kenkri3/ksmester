@@ -29,7 +29,8 @@ import {
   Zap,
   CheckCircle2,
   RefreshCw,
-  Loader2
+  Loader2,
+  ExternalLink
 } from 'lucide-react';
 import { getDynamicReasoningFlow } from '@/src/lib/reasoningEngine';
 import ReactMarkdown from 'react-markdown';
@@ -39,6 +40,7 @@ import { toast } from 'sonner';
 import { useTranslation } from 'react-i18next';
 import { formatAiMarkdown } from '../lib/formatAiMarkdown';
 import { formatUserMessage } from './MesterAIAgentFrame';
+import MesterAIIcon from './MesterAIIcon';
 
 export interface CopilotMessage {
   id: string;
@@ -740,14 +742,14 @@ export default function MesterAICopilot({
         <motion.div
           initial={{ scale: 0.8, opacity: 0 }}
           animate={{ scale: 1, opacity: 1 }}
-          className="fixed bottom-5 right-5 z-50 flex items-center gap-2"
+          className="fixed bottom-5 right-5 z-50 flex items-center gap-2.5"
         >
           {lastLiveAction && (
             <motion.div
               initial={{ x: 20, opacity: 0 }}
               animate={{ x: 0, opacity: 1 }}
               exit={{ opacity: 0 }}
-              className="hidden sm:flex items-center gap-2 px-3 py-1.5 rounded-full bg-emerald-950/90 border border-emerald-500/40 text-emerald-300 text-xs font-bold shadow-lg backdrop-blur-md"
+              className="hidden sm:flex items-center gap-2 px-3.5 py-2 rounded-full bg-emerald-950/90 border border-emerald-500/40 text-emerald-300 text-xs font-bold shadow-lg backdrop-blur-md"
             >
               <span className="w-2 h-2 rounded-full bg-emerald-400 animate-ping" />
               <span>{lastLiveAction.title}</span>
@@ -760,16 +762,16 @@ export default function MesterAICopilot({
               setIsOpen(true);
               setIsMinimized(false);
             }}
-            className="group relative flex items-center gap-2 p-2.5 sm:px-4 sm:py-3 rounded-full bg-gradient-to-r from-electric-600 via-electric-500 to-indigo-600 hover:from-electric-500 hover:to-indigo-500 text-white font-black text-xs sm:text-sm shadow-2xl hover:shadow-electric-500/30 transition-all duration-300 cursor-pointer border border-electric-400/40"
-            title="Spør MesterAI Pilot (Ctrl+M)"
+            className="group relative flex items-center gap-3 px-4.5 py-3 rounded-full bg-[#1e1f20] hover:bg-[#282a2d] text-white font-bold text-[14px] sm:text-[15px] shadow-2xl hover:shadow-purple-500/25 transition-all duration-300 cursor-pointer border border-white/15 hover:border-white/30"
+            title="Spør MesterAI (Ctrl+M)"
           >
-            <span className="relative flex h-3 w-3">
+            <span className="relative flex h-2.5 w-2.5">
               <span className="animate-ping absolute inline-flex h-full w-full rounded-full bg-emerald-400 opacity-75" />
-              <span className="relative inline-flex rounded-full h-3 w-3 bg-emerald-400" />
+              <span className="relative inline-flex rounded-full h-2.5 w-2.5 bg-emerald-400" />
             </span>
-            <Sparkles size={16} className="text-amber-300 animate-pulse" />
-            <span className="hidden sm:inline tracking-wide">MesterAI Pilot</span>
-            <span className="hidden md:inline text-[10px] font-mono opacity-70 bg-black/30 px-1.5 py-0.5 rounded-md">
+            <MesterAIIcon size="sm" />
+            <span className="tracking-wide">MesterAI</span>
+            <span className="hidden md:inline text-[11px] font-mono opacity-70 bg-white/10 px-1.5 py-0.5 rounded-md">
               Ctrl+M
             </span>
           </button>
@@ -781,30 +783,30 @@ export default function MesterAICopilot({
         <motion.div
           initial={{ y: 20, opacity: 0 }}
           animate={{ y: 0, opacity: 1 }}
-          className="fixed bottom-5 right-5 z-50 flex items-center gap-2 p-2 bg-slate-900/95 border border-slate-700/80 rounded-2xl shadow-2xl backdrop-blur-xl"
+          className="fixed bottom-5 right-5 z-50 flex items-center gap-2 p-2 bg-[#0A101D]/95 border border-slate-700/80 rounded-2xl shadow-2xl backdrop-blur-xl"
         >
           <button
             type="button"
             onClick={() => setIsMinimized(false)}
-            className="flex items-center gap-2.5 px-3 py-2 rounded-xl bg-electric-600/20 hover:bg-electric-600/30 text-electric-300 text-xs font-bold transition-all cursor-pointer"
+            className="flex items-center gap-2.5 px-3.5 py-2 rounded-xl bg-[#161c28] hover:bg-[#1a2233] text-white text-xs sm:text-sm font-bold border border-slate-700/80 transition-all cursor-pointer"
           >
-            <Sparkles size={15} className="text-amber-400" />
-            <span>MesterAI Pilot</span>
+            <MesterAIIcon size="xs" />
+            <span>MesterAI</span>
             {currentProjName && (
-              <span className="text-[11px] text-slate-400 truncate max-w-[130px]">({currentProjName})</span>
+              <span className="text-[12px] text-slate-400 truncate max-w-[130px]">({currentProjName})</span>
             )}
           </button>
           <button
             type="button"
             onClick={() => setIsOpen(false)}
-            className="p-2 text-slate-400 hover:text-white rounded-lg hover:bg-slate-800 transition-all"
+            className="p-2 text-slate-400 hover:text-white rounded-xl hover:bg-white/10 transition-all cursor-pointer"
           >
-            <X size={15} />
+            <X size={16} />
           </button>
         </motion.div>
       )}
 
-      {/* 🚀 3. COPILOT HOVEDVINDU (Side-drawer / Floating Copilot) */}
+      {/* 🚀 3. COPILOT HOVEDVINDU (Side-drawer / Floating Copilot styled identical to Gemini chat) */}
       <AnimatePresence>
         {isOpen && !isMinimized && (
           <motion.div
@@ -816,26 +818,30 @@ export default function MesterAICopilot({
               "fixed z-50 bg-[#0A101D] shadow-2xl flex flex-col overflow-hidden backdrop-blur-2xl transition-all duration-300",
               isFullscreen
                 ? "inset-0 sm:inset-4 sm:rounded-3xl border-0 sm:border border-slate-800"
-                : "inset-0 sm:inset-auto sm:bottom-6 sm:right-6 sm:w-[500px] sm:h-[660px] sm:max-h-[calc(100vh-48px)] sm:rounded-3xl border-0 sm:border border-slate-800"
+                : "inset-0 sm:inset-auto sm:bottom-6 sm:right-6 sm:w-[540px] sm:h-[700px] sm:max-h-[calc(100vh-48px)] sm:rounded-3xl border-0 sm:border border-slate-800/90"
             )}
           >
-            {/* Header */}
+            {/* Header: Gemini Workstation style */}
             <div 
-              className="flex items-center justify-between px-4 py-3 bg-slate-900/95 border-b border-slate-800 shrink-0 select-none"
-              style={{ paddingTop: 'max(12px, env(safe-area-inset-top))' }}
+              className="h-16 px-4 sm:px-5 flex items-center justify-between border-b border-slate-800/80 shrink-0 bg-[#0A101D] select-none"
+              style={{ paddingTop: 'max(8px, env(safe-area-inset-top))' }}
             >
-              <div className="flex items-center gap-2.5 min-w-0">
-                <div className="w-8 h-8 rounded-xl bg-gradient-to-br from-electric-500 to-indigo-600 flex items-center justify-center text-white shadow-md shrink-0">
-                  <Sparkles size={16} />
-                </div>
+              <div className="flex items-center gap-3 min-w-0">
+                <MesterAIIcon size="md" />
                 <div className="min-w-0">
-                  <div className="flex items-center gap-1.5">
-                    <h3 className="text-sm font-black text-white truncate">MesterAI Pilot</h3>
-                    <span className="w-1.5 h-1.5 rounded-full bg-emerald-400" />
-                    <span className="text-[10px] font-bold uppercase tracking-wider text-emerald-400">Autonom</span>
+                  <div className="flex items-center gap-2">
+                    <h3 className="text-[16px] font-bold text-white tracking-tight truncate">MesterAI</h3>
+                    <span className="px-2 py-0.5 rounded-full text-[10px] font-black uppercase tracking-wider bg-purple-500/25 text-purple-200 border border-purple-500/40">
+                      AI
+                    </span>
+                    <span className="flex items-center gap-1 text-[11px] font-bold text-emerald-400">
+                      <span className="w-1.5 h-1.5 rounded-full bg-emerald-400 animate-pulse" />
+                      Autonom
+                    </span>
                   </div>
-                  <p className="text-[11px] text-slate-400 truncate">
-                    {currentProjName ? `Byggeplass: ${currentProjName}` : `Bedrift: ${companyName}`}
+                  <p className="text-[12px] text-slate-400 truncate flex items-center gap-1.5 mt-0.5">
+                    <Building2 size={13} className="text-slate-500 shrink-0" />
+                    <span className="truncate">{currentProjName ? currentProjName : companyName}</span>
                   </p>
                 </div>
               </div>
@@ -845,33 +851,33 @@ export default function MesterAICopilot({
                   type="button"
                   title="Nullstill samtale"
                   onClick={handleClearHistory}
-                  className="p-1.5 hover:text-white hover:bg-slate-800 rounded-lg transition-all"
+                  className="p-2 hover:text-white hover:bg-white/10 rounded-xl transition-all cursor-pointer"
                 >
-                  <RotateCcw size={14} />
+                  <RotateCcw size={16} />
                 </button>
                 <button
                   type="button"
                   title={isFullscreen ? "Minimer vindu" : "Fullskjerm"}
                   onClick={() => setIsFullscreen(prev => !prev)}
-                  className="p-1.5 hover:text-white hover:bg-slate-800 rounded-lg transition-all hidden sm:block"
+                  className="p-2 hover:text-white hover:bg-white/10 rounded-xl transition-all hidden sm:block cursor-pointer"
                 >
-                  {isFullscreen ? <Minimize2 size={14} /> : <Maximize2 size={14} />}
+                  {isFullscreen ? <Minimize2 size={16} /> : <Maximize2 size={16} />}
                 </button>
                 <button
                   type="button"
                   title="Minimer til dock"
                   onClick={() => setIsMinimized(true)}
-                  className="p-1.5 hover:text-white hover:bg-slate-800 rounded-lg transition-all"
+                  className="p-2 hover:text-white hover:bg-white/10 rounded-xl transition-all cursor-pointer"
                 >
-                  <Minus size={14} />
+                  <Minus size={16} />
                 </button>
                 <button
                   type="button"
                   title="Lukk MesterAI"
                   onClick={() => setIsOpen(false)}
-                  className="p-1.5 hover:text-rose-400 hover:bg-slate-800 rounded-lg transition-all cursor-pointer"
+                  className="p-2 hover:text-rose-400 hover:bg-white/10 rounded-xl transition-all cursor-pointer"
                 >
-                  <X size={15} />
+                  <X size={17} />
                 </button>
               </div>
             </div>
@@ -882,7 +888,7 @@ export default function MesterAICopilot({
               onWheel={handleUserScrollIntent}
               onTouchMove={handleUserScrollIntent}
               style={{ overflowAnchor: 'none' }}
-              className="flex-1 overflow-y-auto overscroll-contain p-4 space-y-4 custom-scrollbar [overflow-anchor:none]"
+              className="flex-1 overflow-y-auto overscroll-contain p-4 sm:p-5 space-y-5 custom-scrollbar [overflow-anchor:none] bg-[#0A101D]"
             >
               {messages.map((m, idx) => {
                 const isUser = m.role === 'user';
@@ -903,11 +909,11 @@ export default function MesterAICopilot({
                         : undefined
                     }
                     className={cn(
-                      "flex flex-col gap-1.5 scroll-mt-4 transition-all",
+                      "flex flex-col gap-1.5 scroll-mt-6 transition-all",
                       isUser ? "max-w-[88%] ml-auto items-end" : "w-full items-start"
                     )}
                   >
-                    <div className="flex items-center gap-1.5 text-[10px] text-slate-400 font-semibold px-1">
+                    <div className="flex items-center gap-1.5 text-[11px] text-slate-400 font-semibold px-1">
                       {isUser ? (
                         <>
                           <span>Du</span>
@@ -916,8 +922,8 @@ export default function MesterAICopilot({
                         </>
                       ) : (
                         <>
-                          <Sparkles size={11} className="text-amber-400" />
-                          <span className="text-slate-300">MesterAI</span>
+                          <MesterAIIcon size="xs" />
+                          <span className="text-slate-200 font-bold">MesterAI</span>
                           <span>•</span>
                           <span>{m.timestamp}</span>
                         </>
@@ -926,15 +932,15 @@ export default function MesterAICopilot({
 
                     <div
                       className={cn(
-                        "p-3.5 sm:p-4 rounded-2xl text-xs sm:text-sm leading-relaxed shadow-sm relative group",
+                        "w-full transition-all relative group",
                         isUser
-                          ? "bg-gradient-to-r from-purple-700 to-electric-600 text-white rounded-br-xs"
-                          : "bg-slate-900/90 text-slate-100 border border-slate-800 rounded-bl-xs w-full"
+                          ? "bg-[#24272a] text-white px-5 py-3.5 sm:px-6 sm:py-4 rounded-[26px] shadow-sm text-[16px] sm:text-[17px] font-medium leading-relaxed border border-white/5"
+                          : "bg-[#13161c]/90 border border-slate-800/80 rounded-3xl p-5 sm:p-6 shadow-lg backdrop-blur-md"
                       )}
                     >
                       {/* Bildevedlegg i meldingen */}
                       {m.imageUrl && (
-                        <div className="mb-2 rounded-xl overflow-hidden border border-white/20 max-w-[220px]">
+                        <div className="mb-3 rounded-2xl overflow-hidden border border-white/20 max-w-[260px] shadow-md">
                           <img src={m.imageUrl} alt="Vedlegg" className="w-full h-auto object-cover" />
                         </div>
                       )}
@@ -943,8 +949,68 @@ export default function MesterAICopilot({
                       {isUser ? (
                         <p className="whitespace-pre-wrap">{m.content}</p>
                       ) : (
-                        <div className="prose prose-invert prose-xs sm:prose-sm max-w-none space-y-2">
-                          <ReactMarkdown remarkPlugins={[remarkGfm]}>
+                        <div className="text-white">
+                          <ReactMarkdown 
+                            remarkPlugins={[remarkGfm]}
+                            components={{
+                              h1: ({ node, ...props }) => (
+                                <h2 className="text-[20px] sm:text-[22px] font-bold text-white mt-4 mb-2 tracking-tight border-b border-slate-800/80 pb-1.5 flex items-center gap-2" {...props} />
+                              ),
+                              h2: ({ node, ...props }) => (
+                                <h3 className="text-[18px] sm:text-[20px] font-bold text-white mt-3.5 mb-2 tracking-tight flex items-center gap-2" {...props} />
+                              ),
+                              h3: ({ node, ...props }) => (
+                                <h4 className="text-[16px] sm:text-[17px] font-bold text-emerald-400 mt-3 mb-1.5 uppercase tracking-wide flex items-center gap-2" {...props} />
+                              ),
+                              p: ({ node, ...props }) => (
+                                <p className="text-[15px] sm:text-[16px] text-white/95 leading-[1.65] font-normal mb-3 last:mb-0" {...props} />
+                              ),
+                              ul: ({ node, ...props }) => (
+                                <ul className="my-2.5 space-y-2 pl-1 list-none" {...props} />
+                              ),
+                              ol: ({ node, ...props }) => (
+                                <ol className="my-2.5 space-y-2 pl-5 list-decimal text-[15px] sm:text-[16px] text-white/95 leading-[1.65]" {...props} />
+                              ),
+                              li: ({ node, ...props }) => (
+                                <li className="text-[15px] sm:text-[16px] text-white/95 leading-[1.65] flex items-start gap-2.5">
+                                  <span className="w-2 h-2 rounded-full border-2 border-emerald-400/90 bg-emerald-400/40 mt-2 shrink-0 shadow-xs" />
+                                  <span className="flex-1 min-w-0">{props.children}</span>
+                                </li>
+                              ),
+                              strong: ({ node, ...props }) => (
+                                <strong className="font-bold text-white" {...props} />
+                              ),
+                              blockquote: ({ node, ...props }) => (
+                                <blockquote className="my-3 p-3.5 bg-emerald-950/30 border-l-4 border-emerald-500 rounded-r-2xl text-[14px] sm:text-[15px] text-emerald-200 leading-relaxed shadow-xs" {...props} />
+                              ),
+                              table: ({ node, ...props }) => (
+                                <div className="my-3 rounded-2xl border border-slate-800 overflow-x-auto text-[14px] sm:text-[15px] shadow-md bg-slate-950/80">
+                                  <table className="w-full text-left divide-y divide-slate-800" {...props} />
+                                </div>
+                              ),
+                              th: ({ node, ...props }) => (
+                                <th className="p-3 bg-slate-900 text-slate-300 font-bold text-[12px] uppercase tracking-wider" {...props} />
+                              ),
+                              td: ({ node, ...props }) => (
+                                <td className="p-3 text-white/90 border-b border-slate-800/60" {...props} />
+                              ),
+                              code: ({ node, inline, ...props }: any) => (
+                                <code className="px-2 py-0.5 rounded-lg bg-slate-800/90 text-amber-300 font-mono text-[14px] border border-slate-700/50" {...props} />
+                              ),
+                              a: ({ node, href, children, ...props }: any) => (
+                                <a
+                                  href={href}
+                                  target="_blank"
+                                  rel="noopener noreferrer"
+                                  className="inline-flex items-center gap-1.5 text-emerald-300 hover:text-white bg-emerald-500/15 hover:bg-emerald-500/25 px-3 py-1 rounded-xl border border-emerald-500/30 transition-all font-semibold text-[14px] no-underline group shadow-xs my-0.5 cursor-pointer"
+                                  {...props}
+                                >
+                                  <ExternalLink size={13} className="text-emerald-400 group-hover:text-emerald-300 shrink-0" />
+                                  <span className="underline decoration-emerald-400/40 group-hover:decoration-white">{children}</span>
+                                </a>
+                              )
+                            }}
+                          >
                             {formatAiMarkdown(m.content)}
                           </ReactMarkdown>
                         </div>
@@ -955,27 +1021,27 @@ export default function MesterAICopilot({
                         <button
                           type="button"
                           onClick={() => handleCopy(m.id, m.content)}
-                          className="absolute bottom-2 right-2 p-1 rounded-md bg-slate-800/80 hover:bg-slate-700 text-slate-400 hover:text-white opacity-0 group-hover:opacity-100 transition-opacity"
+                          className="absolute bottom-3 right-3 p-1.5 rounded-xl bg-slate-800/90 hover:bg-slate-700 text-slate-400 hover:text-white opacity-0 group-hover:opacity-100 transition-opacity cursor-pointer"
                           title="Kopier svar"
                         >
-                          {copiedId === m.id ? <Check size={12} className="text-emerald-400" /> : <Copy size={12} />}
+                          {copiedId === m.id ? <Check size={14} className="text-emerald-400" /> : <Copy size={14} />}
                         </button>
                       )}
                     </div>
 
-                    {/* Hurtigvalg (Quick Replies) */}
+                    {/* Hurtigvalg (Quick Replies / Foreslåtte oppgaver) - Styled identically to workstation suggestion cards */}
                     {m.quickReplies && m.quickReplies.length > 0 && (
-                      <div className="flex flex-wrap gap-1.5 mt-2">
+                      <div className="w-full space-y-2 pt-2">
                         {m.quickReplies.map((qr, i) => (
                           <button
                             key={i}
                             type="button"
                             disabled={isLoading}
                             onClick={() => handleSendMessage(qr.payload)}
-                            className="inline-flex items-center gap-1.5 px-3 py-1.5 rounded-xl bg-slate-800/90 hover:bg-electric-600/30 border border-slate-700 hover:border-electric-500/50 text-slate-200 hover:text-white text-xs font-semibold transition-all cursor-pointer shadow-xs disabled:opacity-50"
+                            className="w-full flex items-center justify-between gap-3 p-3.5 sm:p-4 rounded-2xl bg-[#1e1f20]/90 hover:bg-[#282a2d] border border-white/10 hover:border-white/20 text-left text-[14px] sm:text-[15px] font-medium text-slate-100 hover:text-white transition-all cursor-pointer group active:scale-98 shadow-sm disabled:opacity-50"
                           >
-                            <span>{qr.title}</span>
-                            <ArrowRight size={11} className="opacity-60" />
+                            <span className="truncate">{qr.title}</span>
+                            <ArrowRight size={16} className="text-slate-400 group-hover:text-white shrink-0 transition-transform group-hover:translate-x-1" />
                           </button>
                         ))}
                       </div>
@@ -1075,27 +1141,27 @@ export default function MesterAICopilot({
               <div ref={messagesEndRef} />
             </div>
 
-            {/* Input-seksjon */}
+            {/* Input-seksjon: 1:1 Gemini Prompt Box */}
             <div 
-              className="p-3 bg-slate-900/95 border-t border-slate-800 shrink-0 space-y-2"
-              style={{ paddingBottom: 'max(12px, env(safe-area-inset-bottom))' }}
+              className="p-3.5 bg-[#0A101D] border-t border-slate-800/80 shrink-0 space-y-2.5"
+              style={{ paddingBottom: 'max(14px, env(safe-area-inset-bottom))' }}
             >
               {/* Forhåndsvisning av vedlagt bilde */}
               {attachedImage && (
-                <div className="flex items-center gap-2 p-2 bg-slate-800 rounded-xl border border-slate-700 w-fit">
-                  <img src={attachedImage.preview} alt="Vedlegg" className="w-8 h-8 rounded-lg object-cover" />
-                  <span className="text-xs text-slate-300 truncate max-w-[150px]">{attachedImage.name}</span>
+                <div className="flex items-center gap-2 p-2 bg-slate-800/90 rounded-2xl border border-slate-700 w-fit">
+                  <img src={attachedImage.preview} alt="Vedlegg" className="w-9 h-9 rounded-xl object-cover" />
+                  <span className="text-xs text-slate-300 truncate max-w-[160px]">{attachedImage.name}</span>
                   <button
                     type="button"
                     onClick={() => setAttachedImage(null)}
-                    className="p-1 hover:text-rose-400 text-slate-400"
+                    className="p-1 hover:text-rose-400 text-slate-400 cursor-pointer"
                   >
-                    <X size={13} />
+                    <X size={14} />
                   </button>
                 </div>
               )}
 
-              <div className="flex items-center gap-1.5 bg-[#1e1f20] border border-white/10 focus-within:border-white/20 focus-within:ring-2 focus-within:ring-purple-500/20 rounded-full p-1.5 shadow-2xl transition-all">
+              <div className="flex items-center gap-2 bg-[#1e1f20] hover:bg-[#24272b] border border-white/10 focus-within:border-white/25 focus-within:ring-2 focus-within:ring-purple-500/25 rounded-[28px] p-2 sm:p-2.5 shadow-2xl transition-all">
                 {/* Kamera / Bildeopplasting */}
                 <input 
                   type="file" 
@@ -1109,9 +1175,9 @@ export default function MesterAICopilot({
                   title="Ta bilde eller last opp foto for TEK17-visjon"
                   disabled={isUploadingImage || isLoading}
                   onClick={() => fileInputRef.current?.click()}
-                  className="w-8 h-8 rounded-full bg-white/5 hover:bg-white/10 text-slate-400 hover:text-white flex items-center justify-center shrink-0 cursor-pointer transition-colors active:scale-95 disabled:opacity-50"
+                  className="w-9 h-9 sm:w-10 sm:h-10 rounded-full bg-white/5 hover:bg-white/10 text-slate-300 hover:text-white flex items-center justify-center shrink-0 cursor-pointer transition-colors active:scale-95 disabled:opacity-50"
                 >
-                  <Camera size={16} />
+                  <Camera size={18} />
                 </button>
 
                 {/* Mikrofon (Speech-to-text) */}
@@ -1120,13 +1186,13 @@ export default function MesterAICopilot({
                   title={isListeningMic ? "Lytter... Trykk for å stoppe" : "Snakk inn oppgaven (Mikrofon)"}
                   onClick={toggleMic}
                   className={cn(
-                    "w-8 h-8 rounded-full flex items-center justify-center shrink-0 cursor-pointer transition-all active:scale-95",
+                    "w-9 h-9 sm:w-10 sm:h-10 rounded-full flex items-center justify-center shrink-0 cursor-pointer transition-all active:scale-95",
                     isListeningMic 
                       ? "bg-rose-500 text-white animate-pulse" 
-                      : "bg-white/5 hover:bg-white/10 text-slate-400 hover:text-white"
+                      : "bg-white/5 hover:bg-white/10 text-slate-300 hover:text-white"
                   )}
                 >
-                  {isListeningMic ? <MicOff size={16} /> : <Mic size={16} />}
+                  {isListeningMic ? <MicOff size={18} /> : <Mic size={18} />}
                 </button>
 
                 {/* Tekstfelt */}
@@ -1153,7 +1219,7 @@ export default function MesterAICopilot({
                   }
                   rows={1}
                   disabled={isLoading}
-                  className="flex-1 bg-transparent px-2.5 py-1.5 text-xs sm:text-sm text-white placeholder:text-slate-400 focus:outline-none resize-none max-h-32 min-h-[38px] leading-relaxed no-scrollbar overflow-y-auto"
+                  className="flex-1 bg-transparent px-3 py-1.5 text-[15px] sm:text-[16px] text-white placeholder:text-slate-400 focus:outline-none resize-none max-h-36 min-h-[42px] leading-relaxed no-scrollbar overflow-y-auto"
                   style={{
                     scrollbarWidth: 'none',
                     msOverflowStyle: 'none'
@@ -1165,17 +1231,17 @@ export default function MesterAICopilot({
                   type="button"
                   disabled={(!inputVal.trim() && !attachedImage) || isLoading}
                   onClick={() => handleSendMessage(inputVal)}
-                  className="w-8 h-8 sm:w-9 sm:h-9 rounded-full bg-gradient-to-tr from-purple-600 to-blue-600 hover:from-purple-500 hover:to-blue-500 disabled:from-slate-800 disabled:to-slate-800 text-white disabled:text-slate-600 flex items-center justify-center shrink-0 cursor-pointer shadow-md shadow-purple-600/30 active:scale-95 transition-all disabled:opacity-40 disabled:shadow-none"
+                  className="w-9 h-9 sm:w-10 sm:h-10 rounded-full bg-gradient-to-tr from-purple-600 to-blue-600 hover:from-purple-500 hover:to-blue-500 disabled:from-slate-800 disabled:to-slate-800 text-white disabled:text-slate-600 flex items-center justify-center shrink-0 cursor-pointer shadow-md shadow-purple-600/30 active:scale-95 transition-all disabled:opacity-40 disabled:shadow-none"
                   title={t('ws_send', "Send")}
                 >
-                  <Send size={14} className="translate-x-0.5" />
+                  <Send size={16} className="translate-x-0.5" />
                 </button>
               </div>
 
-              <div className="flex items-center justify-between text-[10px] text-slate-500 px-1">
+              <div className="flex items-center justify-between text-[11px] text-slate-400 px-2">
                 <span>Enter for å sende • Shift+Enter for ny linje</span>
-                <span className="flex items-center gap-1">
-                  <Zap size={10} className="text-emerald-400" />
+                <span className="flex items-center gap-1.5 text-emerald-400 font-medium">
+                  <Zap size={11} className="text-emerald-400" />
                   100% Autonom
                 </span>
               </div>

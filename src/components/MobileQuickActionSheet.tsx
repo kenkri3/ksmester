@@ -124,7 +124,7 @@ export default function MobileQuickActionSheet({
           animate={{ opacity: 1 }}
           exit={{ opacity: 0 }}
           onClick={onClose}
-          className="absolute inset-0 bg-neutral-950/60 backdrop-blur-sm"
+          className="absolute inset-0 bg-black/80 backdrop-blur-md"
         />
 
         {/* Bottom Sheet Modal */}
@@ -133,30 +133,30 @@ export default function MobileQuickActionSheet({
           animate={{ y: 0 }}
           exit={{ y: '100%' }}
           transition={{ type: 'spring', damping: 28, stiffness: 320 }}
-          className="relative w-full bg-white rounded-t-[2.5rem] p-6 pb-[calc(env(safe-area-inset-bottom)+1.5rem)] shadow-2xl border-t border-neutral-200/90 max-h-[85vh] overflow-y-auto"
+          className="relative w-full bg-[#0B0F17] rounded-t-[2.5rem] p-6 pb-[calc(env(safe-area-inset-bottom)+1.5rem)] shadow-2xl border-t border-slate-800 text-white max-h-[85vh] overflow-y-auto custom-scrollbar"
         >
           {/* Grab Handle */}
-          <div className="w-12 h-1.5 bg-neutral-300 rounded-full mx-auto mb-4" />
+          <div className="w-12 h-1.5 bg-slate-700 rounded-full mx-auto mb-4" />
 
           {/* Header */}
           <div className="flex items-center justify-between mb-5">
             <div>
               <div className="flex items-center gap-2">
-                <div className="w-7 h-7 rounded-xl bg-electric-50 text-electric-600 flex items-center justify-center">
+                <div className="w-7 h-7 rounded-xl bg-purple-500/20 text-purple-300 border border-purple-500/30 flex items-center justify-center">
                   <Zap size={16} />
                 </div>
-                <h3 className="text-lg font-bold tracking-tight text-neutral-900">
+                <h3 className="text-lg font-bold tracking-tight text-white">
                   Hurtighandlinger
                 </h3>
               </div>
-              <p className="text-xs text-neutral-500 mt-0.5">
+              <p className="text-xs text-slate-400 mt-0.5">
                 Direkte tilgang til feltverktøy for byggeplassen
               </p>
             </div>
 
             <button
               onClick={onClose}
-              className="w-8 h-8 rounded-full bg-neutral-100 text-neutral-500 hover:text-neutral-900 flex items-center justify-center active:scale-95 transition-all"
+              className="w-8 h-8 rounded-full bg-slate-800 text-slate-400 hover:text-white hover:bg-slate-700 flex items-center justify-center active:scale-95 transition-all cursor-pointer"
             >
               <X size={18} />
             </button>
@@ -171,7 +171,7 @@ export default function MobileQuickActionSheet({
                   onAction(action.id);
                   onClose();
                 }}
-                className="flex items-center gap-3.5 p-3.5 rounded-2xl border border-neutral-200/80 bg-neutral-50/50 hover:bg-neutral-100/80 active:scale-[0.98] transition-all text-left group"
+                className="flex items-center gap-3.5 p-3.5 rounded-2xl border border-slate-800 bg-[#131722] hover:bg-[#181f2f] hover:border-slate-700 active:scale-[0.98] transition-all text-left group cursor-pointer"
               >
                 <div className={cn(
                   "w-12 h-12 rounded-2xl flex items-center justify-center shadow-md transition-transform group-hover:scale-105 shrink-0",
@@ -182,21 +182,21 @@ export default function MobileQuickActionSheet({
 
                 <div className="flex-1 min-w-0">
                   <div className="flex items-center gap-2">
-                    <span className="text-sm font-bold text-neutral-900 group-hover:text-electric-600 transition-colors">
+                    <span className="text-sm font-bold text-white group-hover:text-emerald-400 transition-colors">
                       {action.label}
                     </span>
                     {action.badge && (
-                      <span className="px-2 py-0.5 rounded-full text-[9px] font-black uppercase tracking-wider bg-electric-50 text-electric-700 border border-electric-200">
+                      <span className="px-2 py-0.5 rounded-full text-[9px] font-black uppercase tracking-wider bg-slate-800 text-slate-300 border border-slate-700">
                         {action.badge}
                       </span>
                     )}
                   </div>
-                  <p className="text-xs text-neutral-500 truncate mt-0.5">
+                  <p className="text-xs text-slate-400 truncate mt-0.5">
                     {action.sublabel}
                   </p>
                 </div>
 
-                <div className="w-8 h-8 rounded-xl bg-white border border-neutral-200/80 flex items-center justify-center text-neutral-400 group-hover:text-electric-600 group-hover:border-emerald-200 transition-all shrink-0">
+                <div className="w-8 h-8 rounded-xl bg-slate-900 border border-slate-700 flex items-center justify-center text-slate-400 group-hover:text-emerald-400 group-hover:border-emerald-500/50 transition-all shrink-0">
                   <Plus size={16} />
                 </div>
               </button>

@@ -1306,23 +1306,23 @@ export default function Settings() {
       </div>
       {/* Integration Setup Modal */}
       {activeIntegrationModal && (
-        <div className="fixed inset-0 z-50 flex items-center justify-center p-4 bg-navy-950/80 backdrop-blur-sm animate-in fade-in">
-          <div className="bg-white rounded-3xl max-w-md w-full p-6 shadow-2xl border border-slate-200">
+        <div className="fixed inset-0 z-50 flex items-center justify-center p-4 bg-black/80 backdrop-blur-md animate-in fade-in">
+          <div className="bg-[#0B0F17] rounded-3xl max-w-md w-full p-6 shadow-2xl border border-slate-800 text-white">
             <div className="flex items-center justify-between mb-4">
               <div className="flex items-center gap-2">
-                <Shield size={20} className="text-electric-500" />
-                <h3 className="text-lg font-bold text-slate-900">Koble til {activeIntegrationModal}</h3>
+                <Shield size={20} className="text-purple-400" />
+                <h3 className="text-lg font-bold text-white">Koble til {activeIntegrationModal}</h3>
               </div>
               <button 
                 type="button" 
                 onClick={() => setActiveIntegrationModal(null)}
-                className="text-slate-400 hover:text-slate-600 text-lg font-bold p-1 cursor-pointer"
+                className="text-slate-400 hover:text-white text-lg font-bold p-1 cursor-pointer transition-colors"
               >
                 ✕
               </button>
             </div>
 
-            <p className="text-xs text-slate-600 mb-3 leading-relaxed">
+            <p className="text-xs text-slate-300 mb-3 leading-relaxed">
               {activeIntegrationModal === 'NOBB' && 'Lim inn din API Subscription Key fra Norsk Byggetjeneste (NOBB). VikingMester henter automatisk produktdata, FDV-dokumentasjon, EPD og grossistpriser direkte til prosjektene dine.'}
               {activeIntegrationModal === 'Tripletex' && 'Lim inn din Employee Token fra Tripletex (genereres under Min profil ➔ API-tilgang). VikingMester knytter bedriften til Tripletex for automatisk time- og ordreoverføring, samt 1-klikk CSV-eksport.'}
               {activeIntegrationModal === 'Boligmappa' && 'Lim inn bedriftens API-nøkkel fra Boligmappa. Samsvarserklæringer, TEK17-bilder og ferdigattester lastes automatisk opp til eiendommens gårds- og bruksnummer.'}
@@ -1341,14 +1341,14 @@ export default function Settings() {
                     activeIntegrationModal === 'PowerOffice Go' ? 'poweroffice' :
                     activeIntegrationModal === 'Fiken' ? 'fiken' : 'nobb'
                   }
-                  variant="light"
+                  variant="dark"
                   defaultExpanded={false}
                 />
               </div>
             )}
 
             <div className="mb-4">
-              <label className="block text-[11px] font-black uppercase tracking-wider text-slate-700 mb-1.5">
+              <label className="block text-[11px] font-black uppercase tracking-wider text-slate-300 mb-1.5">
                 API-nøkkel / Hemmelighet (Secret Token)
               </label>
               <input
@@ -1356,18 +1356,18 @@ export default function Settings() {
                 value={integrationSecret}
                 onChange={(e) => setIntegrationSecret(e.target.value)}
                 placeholder={activeIntegrationModal === 'NOBB' ? 'f.eks. d3b07384d113edec49eaa6238ad5ff00 (Subscription Key)' : 'f.eks. eyJhbGciOiJIUzI1NiIsInR5cCI6...'}
-                className="w-full px-3.5 py-2.5 rounded-xl border border-slate-300 text-sm font-mono focus:border-electric-500 focus:ring-2 focus:ring-electric-500/20 outline-none"
+                className="w-full px-3.5 py-2.5 rounded-xl border border-slate-800 bg-slate-950 text-white placeholder:text-slate-500 text-sm font-mono focus:border-purple-500 focus:ring-2 focus:ring-purple-500/20 outline-none"
               />
               <span className="text-[10px] text-slate-400 mt-1 block">
                 Nøkkelen krypteres og lagres trygt på din isolerte bedriftsprofil.
               </span>
             </div>
 
-            <div className="flex gap-3 justify-end pt-3 border-t border-slate-100">
+            <div className="flex gap-3 justify-end pt-3 border-t border-slate-800">
               <button
                 type="button"
                 onClick={() => setActiveIntegrationModal(null)}
-                className="px-4 py-2 rounded-xl text-xs font-bold text-slate-600 hover:bg-slate-100 transition-colors cursor-pointer"
+                className="px-4 py-2 rounded-xl text-xs font-bold text-slate-300 hover:text-white hover:bg-slate-800 transition-colors cursor-pointer"
               >
                 Avbryt
               </button>
@@ -1398,7 +1398,7 @@ export default function Settings() {
                     toast.error(`Nettverksfeil ved lagring av integrasjon: ${err.message || 'Ukjent feil'}`);
                   }
                 }}
-                className="px-5 py-2 rounded-xl bg-gradient-to-r from-electric-500 to-electric-400 hover:from-electric-400 hover:to-electric-300 text-white text-xs font-bold shadow-purple-cta transition-all disabled:opacity-50 cursor-pointer"
+                className="px-5 py-2 rounded-xl bg-purple-600 hover:bg-purple-500 text-white text-xs font-bold transition-all disabled:opacity-50 cursor-pointer shadow-md shadow-purple-950/50"
               >
                 Lagre og aktiver
               </button>

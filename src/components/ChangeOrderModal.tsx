@@ -132,32 +132,32 @@ export default function ChangeOrderModal({
 
   return (
     <AnimatePresence>
-      <div className="fixed inset-0 z-50 flex items-center justify-center p-4 bg-black/60 backdrop-blur-sm overflow-y-auto">
+      <div className="fixed inset-0 z-50 flex items-center justify-center p-4 bg-black/80 backdrop-blur-md overflow-y-auto">
         <motion.div
           initial={{ opacity: 0, scale: 0.95 }}
           animate={{ opacity: 1, scale: 1 }}
           exit={{ opacity: 0, scale: 0.95 }}
-          className="bg-white rounded-3xl shadow-2xl max-w-4xl w-full p-4 sm:p-8 max-h-[90vh] flex flex-col border border-neutral-200"
+          className="bg-[#0B0F17] text-white rounded-3xl shadow-2xl max-w-4xl w-full p-4 sm:p-8 max-h-[90vh] flex flex-col border border-slate-800"
         >
           {/* Header */}
-          <div className="flex justify-between items-start pb-6 border-b border-neutral-100">
+          <div className="flex justify-between items-start pb-6 border-b border-slate-800">
             <div>
               <div className="flex items-center gap-2 mb-1">
-                <span className="p-2 bg-amber-500/10 text-amber-600 rounded-xl">
+                <span className="p-2 bg-amber-500/20 text-amber-400 border border-amber-500/30 rounded-xl">
                   <FileEdit size={20} />
                 </span>
-                <span className="text-xs font-black uppercase tracking-widest text-amber-600">
+                <span className="text-xs font-black uppercase tracking-widest text-amber-400">
                   NS 8406 / Håndverkertjenesteloven § 9
                 </span>
               </div>
-              <h2 className="text-2xl font-black text-neutral-900">{t('change_orders_modal_title', 'Endringsmeldinger & Tilleggsarbeid')}</h2>
-              <p className="text-xs text-neutral-500">
+              <h2 className="text-2xl font-black text-white">{t('change_orders_modal_title', 'Endringsmeldinger & Tilleggsarbeid')}</h2>
+              <p className="text-xs text-slate-400">
                 {t('project', 'Prosjekt')}: {project.name} | {t('change_order_agreement_guarantee', 'Sikrer skriftlig avtale før arbeid starter')}
               </p>
             </div>
             <button
               onClick={onClose}
-              className="p-2 text-neutral-400 hover:text-neutral-700 hover:bg-neutral-100 rounded-full transition-all"
+              className="p-2 text-slate-400 hover:text-white hover:bg-slate-800 rounded-full transition-all cursor-pointer"
             >
               <X size={20} />
             </button>
@@ -165,28 +165,28 @@ export default function ChangeOrderModal({
 
           {/* Quick Metrics Bar */}
           <div className="grid grid-cols-1 sm:grid-cols-3 gap-3 sm:gap-4 my-4 sm:my-6">
-            <div className="p-4 bg-neutral-50 rounded-2xl border border-neutral-100">
-              <div className="text-[10px] font-black uppercase tracking-widest text-neutral-400">{t('approved_addition', 'Godkjent tillegg')}</div>
-              <div className="text-xl font-black text-emerald-600">
+            <div className="p-4 bg-[#131722] rounded-2xl border border-slate-800">
+              <div className="text-[10px] font-black uppercase tracking-widest text-slate-400">{t('approved_addition', 'Godkjent tillegg')}</div>
+              <div className="text-xl font-black text-emerald-400">
                 {totalApproved.toLocaleString('no-NO')} kr
               </div>
-              <div className="text-[10px] text-neutral-400">eks. mva (+25% mva lagt til på sluttfaktura)</div>
+              <div className="text-[10px] text-slate-500">eks. mva (+25% mva lagt til på sluttfaktura)</div>
             </div>
-            <div className="p-4 bg-neutral-50 rounded-2xl border border-neutral-100">
-              <div className="text-[10px] font-black uppercase tracking-widest text-neutral-400">{t('waiting_for_customer', 'Venter på kunde')}</div>
-              <div className="text-xl font-black text-amber-600">
+            <div className="p-4 bg-[#131722] rounded-2xl border border-slate-800">
+              <div className="text-[10px] font-black uppercase tracking-widest text-slate-400">{t('waiting_for_customer', 'Venter på kunde')}</div>
+              <div className="text-xl font-black text-amber-400">
                 {totalPending.toLocaleString('no-NO')} kr
               </div>
-              <div className="text-[10px] text-neutral-400">{t('must_approve_before_start', 'Kunden må godkjenne før start')}</div>
+              <div className="text-[10px] text-slate-500">{t('must_approve_before_start', 'Kunden må godkjenne før start')}</div>
             </div>
-            <div className="p-4 bg-neutral-50 rounded-2xl border border-neutral-100 flex items-center justify-between">
+            <div className="p-4 bg-[#131722] rounded-2xl border border-slate-800 flex items-center justify-between">
               <div>
-                <div className="text-[10px] font-black uppercase tracking-widest text-neutral-400">{t('total_cases', 'Totalt antall')}</div>
-                <div className="text-xl font-black text-neutral-900">{orders.length} {t('cases_suffix', 'saker')}</div>
+                <div className="text-[10px] font-black uppercase tracking-widest text-slate-400">{t('total_cases', 'Totalt antall')}</div>
+                <div className="text-xl font-black text-white">{orders.length} {t('cases_suffix', 'saker')}</div>
               </div>
               <button
                 onClick={() => setIsCreating(true)}
-                className="px-3 py-2 bg-neutral-900 text-white rounded-xl text-xs font-bold flex items-center gap-1.5 hover:bg-neutral-800 transition-all"
+                className="px-3 py-2 bg-amber-600 hover:bg-amber-500 text-white rounded-xl text-xs font-bold flex items-center gap-1.5 transition-all shadow-md shadow-amber-950/50 cursor-pointer"
               >
                 <Plus size={14} /> {t('btn_new_change_short', 'Ny endring')}
               </button>
@@ -200,17 +200,17 @@ export default function ChangeOrderModal({
               animate={{ opacity: 1, height: 'auto' }}
               exit={{ opacity: 0, height: 0 }}
               onSubmit={handleCreateOrder}
-              className="bg-amber-500/5 p-6 rounded-2xl border border-amber-500/20 mb-6 space-y-4"
+              className="bg-[#131722] p-6 rounded-2xl border border-slate-800 mb-6 space-y-4"
             >
               <div className="flex justify-between items-center">
-                <h3 className="text-sm font-bold text-neutral-900 flex items-center gap-2">
-                  <Coins size={16} className="text-amber-600" />
+                <h3 className="text-sm font-bold text-white flex items-center gap-2">
+                  <Coins size={16} className="text-amber-400" />
                   {t('create_new_order_title', 'Opprett ny endringsordre (Tar under 1 minutt)')}
                 </h3>
                 <button
                   type="button"
                   onClick={() => setIsCreating(false)}
-                  className="text-neutral-400 hover:text-neutral-700 text-xs cursor-pointer"
+                  className="text-slate-400 hover:text-white text-xs cursor-pointer"
                 >
                   {t('cancel', 'Avbryt')}
                 </button>
@@ -218,7 +218,7 @@ export default function ChangeOrderModal({
 
               <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
                 <div>
-                  <label className="block text-xs font-bold text-neutral-700 mb-1">
+                  <label className="block text-xs font-bold text-slate-300 mb-1">
                     {t('change_scope_label', 'Hva gjelder tillegget? *')}
                   </label>
                   <input
@@ -227,30 +227,30 @@ export default function ChangeOrderModal({
                     placeholder="f.eks. Ekstra downlights i stue eller utskifting av bunnsvill"
                     value={title}
                     onChange={(e) => setTitle(e.target.value)}
-                    className="w-full px-3 py-2 bg-white rounded-xl border border-neutral-200 text-sm focus:outline-none focus:ring-2 focus:ring-amber-500"
+                    className="w-full px-3 py-2 bg-slate-950 rounded-xl border border-slate-800 text-white text-sm focus:outline-none focus:border-amber-500 placeholder:text-slate-600"
                   />
                 </div>
 
                 <div>
-                  <label className="block text-xs font-bold text-neutral-700 mb-1">
+                  <label className="block text-xs font-bold text-slate-300 mb-1">
                     {t('change_cause_label', 'Årsak til endringen')}
                   </label>
                   <select
                     value={cause}
                     onChange={(e) => setCause(e.target.value as any)}
-                    className="w-full px-3 py-2 bg-white rounded-xl border border-neutral-200 text-sm focus:outline-none focus:ring-2 focus:ring-amber-500"
+                    className="w-full px-3 py-2 bg-slate-950 rounded-xl border border-slate-800 text-white text-sm focus:outline-none focus:border-amber-500"
                   >
-                    <option value="kundetillegg">{t('change_cause_client', 'Kundeønske / Tilleggsbestilling')}</option>
-                    <option value="uforutsett_forhold">{t('change_cause_unforeseen', 'Uforutsett bygningsmessig forhold (f.eks. råte/skade)')}</option>
-                    <option value="prosjektering">{t('change_cause_engineering', 'Endring i prosjektering / arkitekt')}</option>
-                    <option value="myndighetskrav">{t('change_cause_authority', 'Pålegg fra kommune / brann / el-tilsyn')}</option>
-                    <option value="annet">{t('other', 'Annet')}</option>
+                    <option value="kundetillegg" className="bg-slate-950 text-white">{t('change_cause_client', 'Kundeønske / Tilleggsbestilling')}</option>
+                    <option value="uforutsett_forhold" className="bg-slate-950 text-white">{t('change_cause_unforeseen', 'Uforutsett bygningsmessig forhold (f.eks. råte/skade)')}</option>
+                    <option value="prosjektering" className="bg-slate-950 text-white">{t('change_cause_engineering', 'Endring i prosjektering / arkitekt')}</option>
+                    <option value="myndighetskrav" className="bg-slate-950 text-white">{t('change_cause_authority', 'Pålegg fra kommune / brann / el-tilsyn')}</option>
+                    <option value="annet" className="bg-slate-950 text-white">{t('other', 'Annet')}</option>
                   </select>
                 </div>
               </div>
 
               <div>
-                <label className="block text-xs font-bold text-neutral-700 mb-1">
+                <label className="block text-xs font-bold text-slate-300 mb-1">
                   {t('work_materials_desc', 'Beskrivelse av arbeidet og materialer')}
                 </label>
                 <textarea
@@ -258,13 +258,13 @@ export default function ChangeOrderModal({
                   placeholder="Spesifiser hva som skal gjøres, materialer som inngår og forutsetninger..."
                   value={description}
                   onChange={(e) => setDescription(e.target.value)}
-                  className="w-full px-3 py-2 bg-white rounded-xl border border-neutral-200 text-sm focus:outline-none focus:ring-2 focus:ring-amber-500"
+                  className="w-full px-3 py-2 bg-slate-950 rounded-xl border border-slate-800 text-white text-sm focus:outline-none focus:border-amber-500 placeholder:text-slate-600"
                 />
               </div>
 
               <div className="grid grid-cols-1 sm:grid-cols-3 gap-4">
                 <div>
-                  <label className="block text-xs font-bold text-neutral-700 mb-1">
+                  <label className="block text-xs font-bold text-slate-300 mb-1">
                     {t('price_ex_vat_label', 'Pris eks. mva (kr) *')}
                   </label>
                   <input
@@ -273,15 +273,15 @@ export default function ChangeOrderModal({
                     required
                     value={amountExVat || ''}
                     onChange={(e) => setAmountExVat(Number(e.target.value))}
-                    className="w-full px-3 py-2 bg-white rounded-xl border border-neutral-200 text-sm font-bold focus:outline-none focus:ring-2 focus:ring-amber-500"
+                    className="w-full px-3 py-2 bg-slate-950 rounded-xl border border-slate-800 text-white text-sm font-bold focus:outline-none focus:border-amber-500"
                   />
-                  <div className="text-[10px] text-neutral-400 mt-1">
+                  <div className="text-[10px] text-slate-400 mt-1">
                     Ink. mva: {Math.round(amountExVat * 1.25).toLocaleString('no-NO')} kr
                   </div>
                 </div>
 
                 <div>
-                  <label className="block text-xs font-bold text-neutral-700 mb-1">
+                  <label className="block text-xs font-bold text-slate-300 mb-1">
                     {t('progress_consequence_days', 'Fremdriftskonsekvens (+ dager)')}
                   </label>
                   <input
@@ -289,16 +289,16 @@ export default function ChangeOrderModal({
                     min="0"
                     value={impactDays}
                     onChange={(e) => setImpactDays(Number(e.target.value))}
-                    className="w-full px-3 py-2 bg-white rounded-xl border border-neutral-200 text-sm focus:outline-none focus:ring-2 focus:ring-amber-500"
+                    className="w-full px-3 py-2 bg-slate-950 rounded-xl border border-slate-800 text-white text-sm focus:outline-none focus:border-amber-500"
                   />
-                  <div className="text-[10px] text-neutral-400 mt-1">{t('extension_contractor', 'Fristforlengelse for entreprenør')}</div>
+                  <div className="text-[10px] text-slate-400 mt-1">{t('extension_contractor', 'Fristforlengelse for entreprenør')}</div>
                 </div>
 
                 <div className="flex items-end">
                   <button
                     type="submit"
                     disabled={isSubmitting}
-                    className="w-full py-2.5 bg-amber-600 hover:bg-amber-700 text-white rounded-xl text-xs font-bold flex items-center justify-center gap-2 shadow-md transition-all cursor-pointer"
+                    className="w-full py-2.5 bg-amber-600 hover:bg-amber-500 text-white rounded-xl text-xs font-bold flex items-center justify-center gap-2 shadow-md shadow-amber-950/50 transition-all cursor-pointer"
                   >
                     <Send size={14} />
                     {isSubmitting ? 'Sender...' : t('btn_create_prepare', 'Opprett & Klargjør')}
@@ -309,19 +309,19 @@ export default function ChangeOrderModal({
           )}
 
           {/* Orders List */}
-          <div className="flex-1 overflow-y-auto space-y-3 pr-1">
+          <div className="flex-1 overflow-y-auto space-y-3 pr-1 custom-scrollbar">
             {loading ? (
-              <div className="text-center py-12 text-neutral-400 text-sm">{t('loading_change_orders', 'Laster endringsmeldinger...')}</div>
+              <div className="text-center py-12 text-slate-400 text-sm">{t('loading_change_orders', 'Laster endringsmeldinger...')}</div>
             ) : orders.length === 0 ? (
-              <div className="text-center py-12 bg-neutral-50 rounded-2xl border border-dashed border-neutral-200">
-                <FileEdit size={32} className="mx-auto text-neutral-300 mb-2" />
-                <p className="text-sm font-bold text-neutral-700">{t('no_orders_yet', 'Ingen tilleggsordrer registrert ennå')}</p>
-                <p className="text-xs text-neutral-400 max-w-sm mx-auto mt-1 mb-4">
+              <div className="text-center py-12 bg-[#131722] rounded-2xl border border-dashed border-slate-800">
+                <FileEdit size={32} className="mx-auto text-slate-500 mb-2" />
+                <p className="text-sm font-bold text-slate-200">{t('no_orders_yet', 'Ingen tilleggsordrer registrert ennå')}</p>
+                <p className="text-xs text-slate-400 max-w-sm mx-auto mt-1 mb-4">
                   {t('no_orders_guidance', 'Registrer alltid tilleggsarbeid skriftlig før arbeidet starter for å sikre full betaling og unngå tvister.')}
                 </p>
                 <button
                   onClick={() => setIsCreating(true)}
-                  className="px-4 py-2 bg-neutral-900 text-white rounded-xl text-xs font-bold hover:bg-neutral-800 transition-all inline-flex items-center gap-1.5 cursor-pointer"
+                  className="px-4 py-2 bg-amber-600 hover:bg-amber-500 text-white rounded-xl text-xs font-bold transition-all inline-flex items-center gap-1.5 cursor-pointer shadow-md shadow-amber-950/50"
                 >
                   <Plus size={14} /> {t('btn_create_first_order', 'Opprett første endringsavtale')}
                 </button>
@@ -330,22 +330,22 @@ export default function ChangeOrderModal({
               orders.map((order) => (
                 <div
                   key={order.id}
-                  className="p-5 bg-white rounded-2xl border border-neutral-200 hover:border-neutral-300 shadow-sm transition-all"
+                  className="p-5 bg-[#131722] rounded-2xl border border-slate-800 hover:border-slate-700 shadow-sm transition-all"
                 >
                   <div className="flex flex-col sm:flex-row justify-between sm:items-center gap-3">
                     <div>
                       <div className="flex items-center gap-2">
-                        <span className="px-2 py-0.5 bg-neutral-100 text-neutral-700 text-xs font-black rounded-md">
+                        <span className="px-2 py-0.5 bg-slate-900 border border-slate-800 text-slate-300 text-xs font-black rounded-md">
                           #{order.changeNumber}
                         </span>
-                        <h4 className="font-bold text-neutral-900 text-sm">{order.title}</h4>
+                        <h4 className="font-bold text-white text-sm">{order.title}</h4>
                         <span
                           className={`text-[10px] font-black uppercase px-2 py-0.5 rounded-full ${
                             order.status === 'approved'
-                              ? 'bg-emerald-100 text-emerald-700'
+                              ? 'bg-emerald-500/20 text-emerald-400 border border-emerald-500/30'
                               : order.status === 'rejected'
-                              ? 'bg-rose-100 text-rose-700'
-                              : 'bg-amber-100 text-amber-700'
+                              ? 'bg-rose-500/20 text-rose-400 border border-rose-500/30'
+                              : 'bg-amber-500/20 text-amber-400 border border-amber-500/30'
                           }`}
                         >
                           {order.status === 'approved'
@@ -355,16 +355,16 @@ export default function ChangeOrderModal({
                             : t('waiting_approval', 'Venter på godkjenning')}
                         </span>
                       </div>
-                      <p className="text-xs text-neutral-500 mt-1 line-clamp-2">{order.description}</p>
-                      <div className="flex items-center gap-4 mt-2 text-[11px] text-neutral-400">
+                      <p className="text-xs text-slate-400 mt-1 line-clamp-2">{order.description}</p>
+                      <div className="flex items-center gap-4 mt-2 text-[11px] text-slate-500">
                         <span>{t('created_date_prefix', 'Opprettet:')} {new Date(order.createdAt).toLocaleDateString('no-NO')}</span>
                         {order.impactDays > 0 && (
-                          <span className="flex items-center gap-1 text-amber-600 font-semibold">
+                          <span className="flex items-center gap-1 text-amber-400 font-semibold">
                             <Clock size={12} /> +{order.impactDays} {t('days_extension', 'dager fristforlengelse')}
                           </span>
                         )}
                         {order.signedByClientAt && (
-                          <span className="flex items-center gap-1 text-emerald-600 font-semibold">
+                          <span className="flex items-center gap-1 text-emerald-400 font-semibold">
                             <CheckCircle2 size={12} /> {t('signed_prefix', 'Signert')} {new Date(order.signedByClientAt).toLocaleDateString('no-NO')}
                           </span>
                         )}
@@ -373,10 +373,10 @@ export default function ChangeOrderModal({
 
                     <div className="flex sm:flex-col items-end justify-between gap-2 shrink-0">
                       <div className="text-right">
-                        <div className="text-base font-black text-neutral-900">
+                        <div className="text-base font-black text-white">
                           {(Number(order.amountExVat ?? (order as any).amount) || 0).toLocaleString('no-NO')} kr
                         </div>
-                        <div className="text-[10px] text-neutral-400">
+                        <div className="text-[10px] text-slate-400">
                           ({(Number(order.totalAmount ?? (order as any).total ?? ((Number(order.amountExVat ?? (order as any).amount) || 0) * 1.25)) || 0).toLocaleString('no-NO')} kr {t('inc_vat', 'ink. mva')})
                         </div>
                       </div>
@@ -386,7 +386,7 @@ export default function ChangeOrderModal({
                           <button
                             onClick={() => copyShareLink(order.shareUrl)}
                             title={t('copy_share_link_title', 'Kopier godkjenningslenke for kunde')}
-                            className="p-2 text-neutral-500 hover:text-neutral-900 bg-neutral-50 hover:bg-neutral-100 rounded-lg text-xs font-bold transition-all cursor-pointer"
+                            className="p-2 text-slate-400 hover:text-white bg-slate-900 hover:bg-slate-800 border border-slate-800 rounded-lg text-xs font-bold transition-all cursor-pointer"
                           >
                             <Copy size={14} />
                           </button>
@@ -394,14 +394,14 @@ export default function ChangeOrderModal({
                         <button
                           onClick={() => pdfService.generateChangeOrderPDF(project, order)}
                           title={t('download_pdf_title', 'Last ned juridisk endringsavtale (PDF)')}
-                          className="p-2 text-neutral-500 hover:text-neutral-900 bg-neutral-50 hover:bg-neutral-100 rounded-lg text-xs font-bold transition-all cursor-pointer"
+                          className="p-2 text-slate-400 hover:text-white bg-slate-900 hover:bg-slate-800 border border-slate-800 rounded-lg text-xs font-bold transition-all cursor-pointer"
                         >
                           <Download size={14} />
                         </button>
                         <button
                           onClick={() => handleDeleteOrder(order)}
                           title={t('delete_order_title', 'Slett endringsordre')}
-                          className="p-2 text-neutral-400 hover:text-rose-600 hover:bg-rose-50 rounded-lg text-xs font-bold transition-all cursor-pointer"
+                          className="p-2 text-rose-400 hover:text-rose-300 hover:bg-rose-500/20 border border-slate-800 rounded-lg text-xs font-bold transition-all cursor-pointer"
                         >
                           <Trash2 size={14} />
                         </button>
@@ -414,13 +414,13 @@ export default function ChangeOrderModal({
           </div>
 
           {/* Footer */}
-          <div className="pt-6 border-t border-neutral-100 flex justify-between items-center">
-            <span className="text-xs text-neutral-400">
+          <div className="pt-6 border-t border-slate-800 flex justify-between items-center">
+            <span className="text-xs text-slate-500">
               {t('legal_binding_notice', 'Juridisk bindende iht. NS 8406 / Håndverkertjenesteloven')}
             </span>
             <button
               onClick={onClose}
-              className="px-5 py-2.5 bg-neutral-100 hover:bg-neutral-200 text-neutral-700 rounded-xl text-xs font-bold transition-all cursor-pointer"
+              className="px-5 py-2.5 bg-slate-900 hover:bg-slate-800 text-slate-300 hover:text-white border border-slate-800 rounded-xl text-xs font-bold transition-all cursor-pointer"
             >
               {t('close', 'Lukk')}
             </button>

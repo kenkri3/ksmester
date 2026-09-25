@@ -708,28 +708,28 @@ const DocumentationArchive: React.FC<DocumentationArchiveProps> = ({
 
   const content = (
     <div className={cn(
-      "bg-neutral-50 text-neutral-900 w-full overflow-hidden flex flex-col",
+      "bg-[#0B0F17] text-white w-full overflow-hidden flex flex-col",
       inline 
         ? "rounded-3xl border border-slate-800 shadow-xl min-h-[600px]" 
         : "max-w-5xl rounded-t-[2rem] sm:rounded-[2.5rem] shadow-2xl max-h-[92vh] sm:max-h-[90vh] pb-[env(safe-area-inset-bottom,0px)]"
     )}>
       {/* Mobile Grab Handle */}
-      {!inline && <div className="sm:hidden w-12 h-1.5 bg-neutral-300 rounded-full mx-auto mt-3 mb-1 shrink-0" />}
+      {!inline && <div className="sm:hidden w-12 h-1.5 bg-slate-700 rounded-full mx-auto mt-3 mb-1 shrink-0" />}
 
       {/* Header */}
-      <div className="p-4 sm:p-8 border-b border-neutral-200 flex items-center justify-between bg-white shrink-0">
+      <div className="p-4 sm:p-8 border-b border-slate-800 flex items-center justify-between bg-[#131722] shrink-0">
           <div className="flex items-center gap-3 sm:gap-4 min-w-0">
-            <div className="w-10 h-10 sm:w-12 sm:h-12 rounded-xl sm:rounded-2xl bg-neutral-900 flex items-center justify-center text-white shadow-lg shadow-neutral-200 shrink-0">
+            <div className="w-10 h-10 sm:w-12 sm:h-12 rounded-xl sm:rounded-2xl bg-purple-500/20 text-purple-300 border border-purple-500/30 flex items-center justify-center shadow-lg shadow-purple-950/40 shrink-0">
               <Library size={22} className="sm:w-6 sm:h-6" />
             </div>
             <div className="min-w-0">
               <div className="flex items-center gap-2">
-                <h2 className="text-lg sm:text-2xl font-bold tracking-tight text-neutral-900 truncate">FDV Arkiv & Dokumentasjon</h2>
-                <span className="hidden sm:inline-flex items-center gap-1 px-2 py-0.5 rounded-full text-[10px] font-black uppercase tracking-wider bg-emerald-100 text-emerald-800">
+                <h2 className="text-lg sm:text-2xl font-bold tracking-tight text-white truncate">FDV Arkiv & Dokumentasjon</h2>
+                <span className="hidden sm:inline-flex items-center gap-1 px-2 py-0.5 rounded-full text-[10px] font-black uppercase tracking-wider bg-emerald-500/20 text-emerald-300 border border-emerald-500/30">
                   <ShieldCheck size={12} /> TEK17 Godkjent
                 </span>
               </div>
-              <p className="text-neutral-500 text-xs sm:text-sm font-medium truncate">
+              <p className="text-slate-400 text-xs sm:text-sm font-medium truncate">
                 Automatisert FDV- og produktdokumentasjon for alle prosjekter
               </p>
             </div>
@@ -738,21 +738,21 @@ const DocumentationArchive: React.FC<DocumentationArchiveProps> = ({
             onClick={onClose} 
             aria-label="Lukk" 
             title="Lukk" 
-            className="p-2 text-neutral-500 hover:text-neutral-900 hover:bg-neutral-100 rounded-xl transition-colors shrink-0"
+            className="p-2 text-slate-400 hover:text-white hover:bg-slate-800 rounded-xl transition-colors shrink-0 cursor-pointer"
           >
             <X size={20} className="sm:w-6 sm:h-6" />
           </button>
         </div>
 
         {/* Project Selector & Actions Bar */}
-        <div className="p-4 sm:px-8 py-3 bg-neutral-100 border-b border-neutral-200 flex flex-wrap items-center justify-between gap-3 shrink-0">
+        <div className="p-4 sm:px-8 py-3 bg-[#0D131F] border-b border-slate-800 flex flex-wrap items-center justify-between gap-3 shrink-0">
           <div className="flex items-center gap-2 flex-1 min-w-[240px]">
-            <Building2 size={16} className="text-neutral-500 shrink-0" />
-            <span className="text-xs font-bold text-neutral-600 shrink-0">Prosjekt:</span>
+            <Building2 size={16} className="text-slate-400 shrink-0" />
+            <span className="text-xs font-bold text-slate-300 shrink-0">Prosjekt:</span>
             <select
               value={selectedProjectId}
               onChange={handleProjectSelect}
-              className="flex-1 max-w-xs px-3 py-1.5 bg-white border border-neutral-300 rounded-xl text-xs font-bold text-neutral-900 outline-none focus:ring-2 focus:ring-neutral-900"
+              className="flex-1 max-w-xs px-3 py-1.5 bg-slate-950 border border-slate-800 rounded-xl text-xs font-bold text-white outline-none focus:ring-2 focus:ring-purple-500/30 cursor-pointer"
             >
               <option value="">Alle byggeplasser ({documents.length} dok)</option>
               {projects.map(p => (
@@ -760,7 +760,7 @@ const DocumentationArchive: React.FC<DocumentationArchiveProps> = ({
               ))}
             </select>
             {activeProject?.category && (
-              <span className="hidden md:inline-block px-2 py-0.5 bg-blue-100 text-blue-800 rounded-md text-[11px] font-bold">
+              <span className="hidden md:inline-block px-2 py-0.5 bg-blue-500/20 text-blue-300 border border-blue-500/30 rounded-md text-[11px] font-bold">
                 {activeProject.category}
               </span>
             )}
@@ -770,7 +770,7 @@ const DocumentationArchive: React.FC<DocumentationArchiveProps> = ({
             <button
               onClick={handleGenerateAiFdv}
               disabled={isGeneratingAi || !selectedProjectId}
-              className="flex items-center gap-1.5 px-3 py-1.5 bg-indigo-600 text-white rounded-xl text-xs font-bold hover:bg-indigo-500 transition-all shadow-sm disabled:opacity-50"
+              className="flex items-center gap-1.5 px-3 py-1.5 bg-purple-600 hover:bg-purple-500 text-white rounded-xl text-xs font-bold transition-all shadow-sm disabled:opacity-50 cursor-pointer"
               title="Generer automatisk tilpassede FDV-blader for prosjektet"
             >
               {isGeneratingAi ? <RefreshCw className="animate-spin" size={14} /> : <Sparkles size={14} />}
@@ -779,7 +779,7 @@ const DocumentationArchive: React.FC<DocumentationArchiveProps> = ({
 
             <button
               onClick={handleOpenCombinedFdv}
-              className="flex items-center gap-1.5 px-3 py-1.5 bg-white border border-neutral-300 text-neutral-800 hover:text-neutral-900 rounded-xl text-xs font-bold hover:bg-neutral-50 transition-all shadow-sm"
+              className="flex items-center gap-1.5 px-3 py-1.5 bg-slate-800 hover:bg-slate-700 text-slate-200 border border-slate-700 rounded-xl text-xs font-bold transition-all shadow-sm cursor-pointer"
               title="Generer og skriv ut samlet FDV-perm for prosjektet"
             >
               <Printer size={14} />
@@ -791,7 +791,7 @@ const DocumentationArchive: React.FC<DocumentationArchiveProps> = ({
               <button
                 onClick={() => handleOpenEmailModal()}
                 disabled={isSendingEmail}
-                className="flex items-center gap-1.5 px-3 py-1.5 bg-white border border-neutral-300 text-neutral-800 hover:text-neutral-900 rounded-xl text-xs font-bold hover:bg-neutral-50 transition-all shadow-sm disabled:opacity-50 cursor-pointer"
+                className="flex items-center gap-1.5 px-3 py-1.5 bg-slate-800 hover:bg-slate-700 text-slate-200 border border-slate-700 rounded-xl text-xs font-bold transition-all shadow-sm disabled:opacity-50 cursor-pointer"
                 title="Send komplett FDV-perm til kunden på e-post"
               >
                 {isSendingEmail ? <RefreshCw className="animate-spin" size={14} /> : <Mail size={14} />}
@@ -802,16 +802,16 @@ const DocumentationArchive: React.FC<DocumentationArchiveProps> = ({
         </div>
 
         {/* Content */}
-        <div className="flex-1 overflow-y-auto p-4 sm:p-8 custom-scrollbar">
+        <div className="flex-1 overflow-y-auto p-4 sm:p-8 bg-[#0B0F17] custom-scrollbar">
           <div className="flex flex-col md:flex-row items-center justify-between gap-4 mb-6">
             <div className="relative w-full md:w-96">
-              <Search className="absolute left-4 top-1/2 -translate-y-1/2 text-neutral-400" size={18} />
+              <Search className="absolute left-4 top-1/2 -translate-y-1/2 text-slate-400" size={18} />
               <input 
                 type="text" 
                 placeholder="Søk i dokumenter, FDV, godkjenninger..."
                 value={searchTerm}
                 onChange={(e) => setSearchTerm(e.target.value)}
-                className="w-full pl-12 pr-4 py-2.5 bg-white text-neutral-900 placeholder:text-neutral-400 border border-neutral-200 rounded-2xl focus:ring-2 focus:ring-neutral-900 outline-none font-bold text-sm"
+                className="w-full pl-12 pr-4 py-2.5 bg-slate-950 text-white placeholder:text-slate-500 border border-slate-800 rounded-2xl focus:ring-2 focus:ring-purple-500/30 outline-none font-bold text-sm"
               />
             </div>
             
@@ -833,7 +833,7 @@ const DocumentationArchive: React.FC<DocumentationArchiveProps> = ({
               </button>
               <button 
                 onClick={() => fileInputRef.current?.click()}
-                className="flex-1 md:flex-none flex items-center justify-center gap-2 px-4 py-2.5 bg-white text-neutral-700 hover:text-neutral-900 border border-neutral-200 rounded-2xl text-xs font-bold hover:bg-neutral-50 transition-all cursor-pointer"
+                className="flex-1 md:flex-none flex items-center justify-center gap-2 px-4 py-2.5 bg-slate-800 text-slate-200 hover:text-white border border-slate-700 rounded-2xl text-xs font-bold hover:bg-slate-700 transition-all cursor-pointer"
               >
                 Last opp manuelt
               </button>
@@ -851,11 +851,12 @@ const DocumentationArchive: React.FC<DocumentationArchiveProps> = ({
               <button
                 key={cat.id}
                 onClick={() => setActiveCategory(cat.id as any)}
-                className={`px-3.5 py-1.5 rounded-xl text-xs font-bold transition-all whitespace-nowrap ${
+                className={cn(
+                  "px-3.5 py-1.5 rounded-xl text-xs font-bold transition-all whitespace-nowrap cursor-pointer",
                   activeCategory === cat.id 
-                    ? 'bg-neutral-900 text-white shadow-sm' 
-                    : 'bg-white border border-neutral-200 text-neutral-600 hover:border-neutral-400'
-                }`}
+                    ? 'bg-purple-600 text-white shadow-sm' 
+                    : 'bg-slate-900 border border-slate-800 text-slate-400 hover:border-slate-700 hover:text-white'
+                )}
               >
                 {cat.label}
               </button>
@@ -868,43 +869,43 @@ const DocumentationArchive: React.FC<DocumentationArchiveProps> = ({
                 layout
                 key={doc.id || doc.title}
                 onClick={() => setPreviewDoc(doc)}
-                className="bg-white p-5 rounded-3xl border border-neutral-200 hover:border-purple-400/80 hover:shadow-md transition-all group flex flex-col justify-between cursor-pointer"
+                className="bg-[#131722] p-5 rounded-3xl border border-slate-800 hover:border-slate-700 hover:shadow-md transition-all group flex flex-col justify-between cursor-pointer text-white"
               >
                 <div className="flex items-start gap-3">
-                  <div className="w-11 h-11 rounded-2xl bg-neutral-100 flex items-center justify-center group-hover:scale-105 group-hover:bg-purple-50 group-hover:text-purple-600 transition-all shrink-0">
+                  <div className="w-11 h-11 rounded-2xl bg-slate-950 border border-slate-800 flex items-center justify-center group-hover:scale-105 transition-all shrink-0">
                     {getIcon(doc.type)}
                   </div>
                   <div className="flex-1 min-w-0">
-                    <h3 className="font-bold text-neutral-900 group-hover:text-purple-900 transition-colors text-sm leading-snug break-words">{doc.title}</h3>
+                    <h3 className="font-bold text-white group-hover:text-purple-400 transition-colors text-sm leading-snug break-words">{doc.title}</h3>
                     <div className="flex flex-wrap items-center gap-2 mt-1">
-                      <span className="text-[10px] font-black uppercase tracking-wider text-neutral-500">{doc.category}</span>
+                      <span className="text-[10px] font-black uppercase tracking-wider text-slate-400">{doc.category}</span>
                       {doc.projectName && (
                         <>
-                          <span className="w-1 h-1 rounded-full bg-neutral-300" />
-                          <span className="text-[10px] font-bold text-neutral-600 truncate max-w-[120px]">{doc.projectName}</span>
+                          <span className="w-1 h-1 rounded-full bg-slate-700" />
+                          <span className="text-[10px] font-bold text-slate-300 truncate max-w-[120px]">{doc.projectName}</span>
                         </>
                       )}
-                      <span className="w-1 h-1 rounded-full bg-neutral-300" />
-                      <span className="text-[10px] font-bold text-neutral-400">
+                      <span className="w-1 h-1 rounded-full bg-slate-700" />
+                      <span className="text-[10px] font-bold text-slate-500">
                         {typeof doc.createdAt === 'string' ? doc.createdAt : (doc.createdAt as any)?.toDate?.()?.toLocaleDateString() || String(doc.createdAt)}
                       </span>
                     </div>
 
                     {(doc.supplier || doc.nobbNumber || (doc as any).sintefApproval) && (
-                      <div className="mt-2 text-xs text-neutral-600 space-y-0.5">
+                      <div className="mt-2 text-xs text-slate-400 space-y-0.5">
                         {(doc as any).sintefApproval && (
-                          <div className="text-[11px] font-bold text-emerald-700 flex items-center gap-1">
+                          <div className="text-[11px] font-bold text-emerald-400 flex items-center gap-1">
                             <span>✓ Godkjenning:</span> {(doc as any).sintefApproval}
                           </div>
                         )}
                         {doc.supplier && (
-                          <div className="text-[11px] text-neutral-500">
-                            Leverandør: <span className="font-semibold text-neutral-700">{doc.supplier}</span> {doc.nobbNumber ? `(NOBB: ${doc.nobbNumber})` : ''}
+                          <div className="text-[11px] text-slate-400">
+                            Leverandør: <span className="font-semibold text-slate-200">{doc.supplier}</span> {doc.nobbNumber ? `(NOBB: ${doc.nobbNumber})` : ''}
                           </div>
                         )}
                         {(doc as any).tek17Clause && (
-                          <div className="text-[11px] text-neutral-500">
-                            Hjemmel: <span className="font-medium text-neutral-700">{(doc as any).tek17Clause}</span>
+                          <div className="text-[11px] text-slate-400">
+                            Hjemmel: <span className="font-medium text-slate-300">{(doc as any).tek17Clause}</span>
                           </div>
                         )}
                       </div>
@@ -912,16 +913,16 @@ const DocumentationArchive: React.FC<DocumentationArchiveProps> = ({
 
                     <div className="flex items-center gap-2 mt-3 flex-wrap">
                       {doc.source === 'nobb' && (
-                        <span className="px-2 py-0.5 bg-blue-50 text-blue-700 border border-blue-200 rounded-full text-[9px] font-black uppercase tracking-wider">NOBB Byggevare</span>
+                        <span className="px-2 py-0.5 bg-blue-500/20 text-blue-300 border border-blue-500/30 rounded-full text-[9px] font-black uppercase tracking-wider">NOBB Byggevare</span>
                       )}
                       {doc.source === 'ai_engine' && (
-                        <span className="px-2 py-0.5 bg-purple-50 text-purple-700 border border-purple-200 rounded-full text-[9px] font-black uppercase tracking-wider">AI Prosjekt-FDV</span>
+                        <span className="px-2 py-0.5 bg-purple-500/20 text-purple-300 border border-purple-500/30 rounded-full text-[9px] font-black uppercase tracking-wider">AI Prosjekt-FDV</span>
                       )}
                       {doc.source === 'sintef' && (
-                        <span className="px-2 py-0.5 bg-emerald-50 text-emerald-700 border border-emerald-200 rounded-full text-[9px] font-black uppercase tracking-wider">SINTEF Verifisert</span>
+                        <span className="px-2 py-0.5 bg-emerald-500/20 text-emerald-300 border border-emerald-500/30 rounded-full text-[9px] font-black uppercase tracking-wider">SINTEF Verifisert</span>
                       )}
                       {doc.source === 'manual' && (
-                        <span className="px-2 py-0.5 bg-neutral-100 text-neutral-700 rounded-full text-[9px] font-black uppercase tracking-wider">Opplastet</span>
+                        <span className="px-2 py-0.5 bg-slate-800 text-slate-300 border border-slate-700 rounded-full text-[9px] font-black uppercase tracking-wider">Opplastet</span>
                       )}
                     </div>
                   </div>
@@ -932,7 +933,7 @@ const DocumentationArchive: React.FC<DocumentationArchiveProps> = ({
                       type="button"
                       onClick={() => setPreviewDoc(doc)}
                       title="Forhåndsvis FDV-dokument"
-                      className="p-1.5 text-neutral-400 hover:text-purple-600 hover:bg-purple-50 rounded-lg transition-all cursor-pointer"
+                      className="p-1.5 text-slate-400 hover:text-white hover:bg-slate-800 rounded-lg transition-all cursor-pointer"
                     >
                       <Eye size={16} />
                     </button>
@@ -940,7 +941,7 @@ const DocumentationArchive: React.FC<DocumentationArchiveProps> = ({
                       type="button"
                       onClick={() => handlePrintDoc(doc)}
                       title="Skriv ut / PDF"
-                      className="p-1.5 text-neutral-400 hover:text-neutral-900 hover:bg-neutral-100 rounded-lg transition-all cursor-pointer"
+                      className="p-1.5 text-slate-400 hover:text-white hover:bg-slate-800 rounded-lg transition-all cursor-pointer"
                     >
                       <Printer size={16} />
                     </button>
@@ -1011,16 +1012,16 @@ const DocumentationArchive: React.FC<DocumentationArchiveProps> = ({
 
       {/* NOBB BYOK Modal */}
       {showNobbByokModal && (
-        <div className="fixed inset-0 z-[110] flex items-center justify-center p-4 bg-black/75 backdrop-blur-sm animate-in fade-in">
-          <div className="bg-white rounded-3xl max-w-md w-full p-6 shadow-2xl border border-neutral-200">
+        <div className="fixed inset-0 z-[110] flex items-center justify-center p-4 bg-black/80 backdrop-blur-md animate-in fade-in">
+          <div className="bg-[#0B0F17] rounded-3xl max-w-md w-full p-6 shadow-2xl border border-slate-800 text-white">
             <div className="flex items-center justify-between mb-4">
               <div className="flex items-center gap-2.5">
-                <div className="p-2 bg-emerald-100 text-emerald-800 rounded-xl">
+                <div className="p-2 bg-purple-500/20 text-purple-300 border border-purple-500/30 rounded-xl">
                   <Sparkles size={18} />
                 </div>
                 <div>
-                  <h3 className="text-base font-bold text-neutral-900">NOBB Byggevarebase (BYOK)</h3>
-                  <span className="text-[10px] font-black uppercase tracking-wider bg-amber-100 text-amber-900 px-2 py-0.5 rounded">
+                  <h3 className="text-base font-bold text-white">NOBB Byggevarebase (BYOK)</h3>
+                  <span className="text-[10px] font-black uppercase tracking-wider bg-amber-500/20 text-amber-300 border border-amber-500/30 px-2 py-0.5 rounded">
                     Bring Your Own Key
                   </span>
                 </div>
@@ -1028,23 +1029,23 @@ const DocumentationArchive: React.FC<DocumentationArchiveProps> = ({
               <button 
                 type="button" 
                 onClick={() => setShowNobbByokModal(false)}
-                className="text-neutral-400 hover:text-neutral-600 p-1 cursor-pointer font-bold"
+                className="text-slate-400 hover:text-white p-1 cursor-pointer font-bold"
               >
                 ✕
               </button>
             </div>
 
-            <p className="text-xs text-neutral-600 mb-3 leading-relaxed">
+            <p className="text-xs text-slate-400 mb-3 leading-relaxed">
               Norsk Byggtjeneste AS krever at hver enkelt bedrift har egen lisensavtale for API-tilgang til Norsk Byggevarebase (NOBB). VikingMester henter offisielle FDV-blader, EPD og grossistpriser direkte på din bedrifts avtale.
             </p>
 
             {/* 📖 Trinn-for-trinn veiledning */}
             <div className="mb-4">
-              <IntegrationGuideCard service="nobb" variant="light" defaultExpanded={false} />
+              <IntegrationGuideCard service="nobb" variant="dark" defaultExpanded={false} />
             </div>
 
             <div className="mb-4">
-              <label className="block text-[11px] font-black uppercase tracking-wider text-neutral-700 mb-1.5">
+              <label className="block text-[11px] font-black uppercase tracking-wider text-slate-300 mb-1.5">
                 NOBB API-nøkkel (Subscription Key)
               </label>
               <input
@@ -1052,18 +1053,18 @@ const DocumentationArchive: React.FC<DocumentationArchiveProps> = ({
                 value={nobbKeyInput}
                 onChange={(e) => setNobbKeyInput(e.target.value)}
                 placeholder="f.eks. d3b07384d113edec49eaa6238ad5ff00"
-                className="w-full px-3.5 py-2.5 rounded-xl border border-neutral-300 text-sm font-mono focus:border-emerald-500 focus:ring-2 focus:ring-emerald-500/20 outline-none"
+                className="w-full px-3.5 py-2.5 rounded-xl bg-slate-950 border border-slate-800 text-white placeholder:text-slate-500 text-sm font-mono focus:border-purple-500 focus:ring-2 focus:ring-purple-500/20 outline-none"
               />
-              <span className="text-[10px] text-neutral-400 mt-1 block">
+              <span className="text-[10px] text-slate-500 mt-1 block">
                 Nøkkelen lagres trygt for din bedrift og benyttes for alle FDV-oppslag.
               </span>
             </div>
 
-            <div className="flex gap-2 justify-end pt-3 border-t border-neutral-100">
+            <div className="flex gap-2 justify-end pt-3 border-t border-slate-800">
               <button
                 type="button"
                 onClick={() => setShowNobbByokModal(false)}
-                className="px-3.5 py-2 rounded-xl text-xs font-bold text-neutral-600 hover:bg-neutral-100 transition-colors cursor-pointer"
+                className="px-3.5 py-2 rounded-xl text-xs font-bold text-slate-400 hover:text-white hover:bg-slate-800 transition-colors cursor-pointer"
               >
                 Avbryt
               </button>
@@ -1338,15 +1339,15 @@ const DocumentationArchive: React.FC<DocumentationArchiveProps> = ({
       {/* ✉️ INTERAKTIV MODAL: SEND FDV-DOKUMENTASJON TIL KUNDE */}
       {isSendModalOpen && (
         <div className="fixed inset-0 z-[120] flex items-center justify-center p-4 bg-black/80 backdrop-blur-md animate-in fade-in">
-          <div className="bg-white rounded-3xl max-w-lg w-full p-6 shadow-2xl border border-neutral-200 text-neutral-900">
-            <div className="flex items-center justify-between pb-4 border-b border-neutral-100 mb-4">
+          <div className="bg-[#0B0F17] rounded-3xl max-w-lg w-full p-6 shadow-2xl border border-slate-800 text-white">
+            <div className="flex items-center justify-between pb-4 border-b border-slate-800 mb-4">
               <div className="flex items-center gap-2.5">
-                <div className="p-2.5 bg-purple-100 text-purple-800 rounded-2xl">
+                <div className="p-2.5 bg-purple-500/20 text-purple-300 border border-purple-500/30 rounded-2xl">
                   <Mail size={20} />
                 </div>
                 <div>
-                  <h3 className="text-base font-black text-neutral-900">Send dokumentasjon til kunde</h3>
-                  <p className="text-xs text-neutral-500">
+                  <h3 className="text-base font-black text-white">Send dokumentasjon til kunde</h3>
+                  <p className="text-xs text-slate-400">
                     {emailMode === 'single' && selectedDocForEmail 
                       ? selectedDocForEmail.title 
                       : `Komplett FDV-perm for ${activeProject?.name || 'prosjektet'}`}
@@ -1356,7 +1357,7 @@ const DocumentationArchive: React.FC<DocumentationArchiveProps> = ({
               <button
                 type="button"
                 onClick={() => setIsSendModalOpen(false)}
-                className="text-neutral-400 hover:text-neutral-700 p-1.5 rounded-xl cursor-pointer"
+                className="text-slate-400 hover:text-white p-1.5 rounded-xl cursor-pointer"
               >
                 ✕
               </button>
@@ -1365,7 +1366,7 @@ const DocumentationArchive: React.FC<DocumentationArchiveProps> = ({
             <div className="space-y-4 text-xs">
               {/* Kundens e-post */}
               <div>
-                <label className="block text-xs font-bold text-neutral-700 mb-1">
+                <label className="block text-xs font-bold text-slate-300 mb-1">
                   Mottakers e-postadresse *
                 </label>
                 <input
@@ -1373,13 +1374,13 @@ const DocumentationArchive: React.FC<DocumentationArchiveProps> = ({
                   value={recipientEmailInput}
                   onChange={(e) => setRecipientEmailInput(e.target.value)}
                   placeholder="f.eks. kunde@eksempel.no"
-                  className="w-full px-3.5 py-2.5 bg-neutral-50 border border-neutral-300 rounded-xl text-sm text-neutral-900 focus:border-purple-600 focus:ring-2 focus:ring-purple-600/20 outline-none"
+                  className="w-full px-3.5 py-2.5 bg-slate-950 border border-slate-800 rounded-xl text-sm text-white placeholder:text-slate-500 focus:border-purple-500 focus:ring-2 focus:ring-purple-500/20 outline-none"
                 />
               </div>
 
               {/* Kundens navn */}
               <div>
-                <label className="block text-xs font-bold text-neutral-700 mb-1">
+                <label className="block text-xs font-bold text-slate-300 mb-1">
                   Kundens navn
                 </label>
                 <input
@@ -1387,29 +1388,29 @@ const DocumentationArchive: React.FC<DocumentationArchiveProps> = ({
                   value={clientNameInput}
                   onChange={(e) => setClientNameInput(e.target.value)}
                   placeholder="Ola Nordmann"
-                  className="w-full px-3.5 py-2 bg-neutral-50 border border-neutral-300 rounded-xl text-xs text-neutral-900 focus:border-purple-600 outline-none"
+                  className="w-full px-3.5 py-2 bg-slate-950 border border-slate-800 rounded-xl text-xs text-white placeholder:text-slate-500 focus:border-purple-500 outline-none"
                 />
               </div>
 
               {/* Følgebrev Forhåndsvisning */}
               <div>
-                <label className="block text-xs font-bold text-neutral-700 mb-1">
+                <label className="block text-xs font-bold text-slate-300 mb-1">
                   Forhåndsvisning av oversendelse
                 </label>
-                <div className="p-3 bg-neutral-50 border border-neutral-200 rounded-xl text-[11px] text-neutral-600 space-y-1 font-mono">
-                  <p><strong>Emne:</strong> 📁 FDV & Sluttdokumentasjon - {activeProject?.name || 'Prosjekt'}</p>
-                  <p className="pt-1 text-neutral-500">
+                <div className="p-3 bg-slate-900 border border-slate-800 rounded-xl text-[11px] text-slate-300 space-y-1 font-mono">
+                  <p><strong className="text-white">Emne:</strong> 📁 FDV & Sluttdokumentasjon - {activeProject?.name || 'Prosjekt'}</p>
+                  <p className="pt-1 text-slate-400">
                     «Hei {clientNameInput || 'kunde'}, her er offisiell FDV- og sluttdokumentasjon for {activeProject?.name || 'prosjektet'}, verifisert iht. TEK17.»
                   </p>
                 </div>
               </div>
             </div>
 
-            <div className="flex justify-end gap-2 pt-5 mt-4 border-t border-neutral-100">
+            <div className="flex justify-end gap-2 pt-5 mt-4 border-t border-slate-800">
               <button
                 type="button"
                 onClick={() => setIsSendModalOpen(false)}
-                className="px-4 py-2 text-xs font-bold text-neutral-600 hover:bg-neutral-100 rounded-xl transition-colors cursor-pointer"
+                className="px-4 py-2 text-xs font-bold text-slate-400 hover:text-white hover:bg-slate-800 rounded-xl transition-colors cursor-pointer"
               >
                 Avbryt
               </button>

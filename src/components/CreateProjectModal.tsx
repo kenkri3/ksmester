@@ -408,30 +408,30 @@ Tolk dette og returner KUN gyldig JSON i følgende format (uten markdown-formate
             animate={{ opacity: 1 }}
             exit={{ opacity: 0 }}
             onClick={onClose}
-            className="absolute inset-0 bg-navy-950/60 backdrop-blur-md"
+            className="absolute inset-0 bg-black/80 backdrop-blur-md"
           />
           
           <motion.div 
             initial={{ opacity: 0, scale: 0.98, y: 20 }}
             animate={{ opacity: 1, scale: 1, y: 0 }}
             exit={{ opacity: 0, scale: 0.98, y: 20 }}
-            className="relative w-full max-w-2xl bg-white rounded-t-[2.5rem] sm:rounded-3xl shadow-2xl border border-slate-200/80 overflow-hidden flex flex-col max-h-[92vh] sm:max-h-[calc(100vh-3rem)] pb-[env(safe-area-inset-bottom,0px)]"
+            className="relative w-full max-w-2xl bg-[#0B0F17] text-white rounded-t-[2.5rem] sm:rounded-3xl shadow-2xl border border-slate-800 overflow-hidden flex flex-col max-h-[92vh] sm:max-h-[calc(100vh-3rem)] pb-[env(safe-area-inset-bottom,0px)]"
           >
             {/* Mobile Grab Handle */}
-            <div className="sm:hidden w-12 h-1.5 bg-slate-300 rounded-full mx-auto mt-3 mb-1" />
+            <div className="sm:hidden w-12 h-1.5 bg-slate-700 rounded-full mx-auto mt-3 mb-1" />
 
             {/* 1. FAST HEADER I VIKINGMESTER-STIL */}
-            <div className="px-5 sm:px-8 py-4 sm:py-5 border-b border-slate-100 flex justify-between items-center bg-white shrink-0">
+            <div className="px-5 sm:px-8 py-4 sm:py-5 border-b border-slate-800 flex justify-between items-center bg-[#131722] shrink-0">
               <div className="flex items-center gap-3">
-                <div className="w-10 h-10 rounded-2xl bg-gradient-to-br from-electric-500 to-electric-600 text-white flex items-center justify-center font-bold shadow-md shadow-electric-500/20">
+                <div className="w-10 h-10 rounded-2xl bg-purple-500/20 text-purple-400 border border-purple-500/30 flex items-center justify-center font-bold shadow-md shadow-purple-950/50">
                   <Brain size={20} />
                 </div>
                 <div>
                   <div className="flex items-center gap-2">
-                    <h2 className="text-base sm:text-xl font-black text-navy-900 tracking-tight leading-tight">
+                    <h2 className="text-base sm:text-xl font-black text-white tracking-tight leading-tight">
                       Opprett prosjekt med MesterAI
                     </h2>
-                    <span className="hidden sm:inline-block px-2 py-0.5 rounded-full text-[10px] font-black uppercase tracking-wider bg-electric-50 text-electric-600 border border-electric-200">
+                    <span className="hidden sm:inline-block px-2 py-0.5 rounded-full text-[10px] font-black uppercase tracking-wider bg-purple-500/20 text-purple-300 border border-purple-500/30">
                       Autonom agent
                     </span>
                   </div>
@@ -444,7 +444,7 @@ Tolk dette og returner KUN gyldig JSON i følgende format (uten markdown-formate
                 type="button"
                 onClick={onClose} 
                 aria-label="Lukk" 
-                className="p-2 hover:bg-slate-100 text-slate-400 hover:text-slate-700 rounded-xl transition-colors cursor-pointer"
+                className="p-2 hover:bg-slate-800 text-slate-400 hover:text-white rounded-xl transition-colors cursor-pointer"
               >
                 <X size={20} />
               </button>
@@ -454,10 +454,10 @@ Tolk dette og returner KUN gyldig JSON i følgende format (uten markdown-formate
             <form id="create-project-form" onSubmit={handleSubmit} className="flex-1 overflow-y-auto custom-scrollbar p-5 sm:p-8 space-y-6 pb-12">
               
               {/* AUTONOM AGENT-PROMPT BOKS */}
-              <div className="p-4 sm:p-5 rounded-2xl bg-gradient-to-br from-electric-50/70 via-slate-50 to-white border border-electric-200 shadow-sm space-y-3">
+              <div className="p-4 sm:p-5 rounded-2xl bg-gradient-to-br from-purple-950/30 via-slate-900 to-[#131722] border border-purple-500/30 shadow-sm space-y-3">
                 <div className="flex items-center justify-between">
-                  <span className="text-xs font-black uppercase tracking-wider text-electric-700 flex items-center gap-1.5">
-                    <Sparkles size={14} className="text-electric-500" />
+                  <span className="text-xs font-black uppercase tracking-wider text-purple-300 flex items-center gap-1.5">
+                    <Sparkles size={14} className="text-purple-400" />
                     Fortell MesterAI hva du skal bygge (eller dikter)
                   </span>
                   <span className="text-[10px] font-bold text-slate-400">1-klikk utfylling</span>
@@ -469,17 +469,17 @@ Tolk dette og returner KUN gyldig JSON i følgende format (uten markdown-formate
                     onChange={(e) => setAiPrompt(e.target.value)}
                     placeholder="f.eks: Totalrenovering av bad og rør-i-rør i Storgata 14 for Per Hansen. Start 1. oktober..."
                     rows={2}
-                    className="w-full bg-white border border-slate-200 rounded-xl p-3 pr-24 text-xs sm:text-sm font-medium text-navy-900 focus:ring-2 focus:ring-electric-500/20 focus:border-electric-500 outline-none resize-none transition-all placeholder:text-slate-400"
+                    className="w-full bg-slate-950 border border-slate-800 rounded-xl p-3 pr-24 text-xs sm:text-sm font-medium text-white focus:border-purple-500 outline-none resize-none transition-all placeholder:text-slate-600"
                   />
                   <div className="absolute right-2 bottom-2.5 flex items-center gap-1.5">
                     <button
                       type="button"
                       onClick={toggleMic}
                       className={cn(
-                        "p-2 rounded-lg transition-all",
+                        "p-2 rounded-lg transition-all cursor-pointer",
                         isListeningMic 
                           ? "bg-rose-500 text-white animate-pulse" 
-                          : "bg-slate-100 hover:bg-slate-200 text-slate-600"
+                          : "bg-slate-800 hover:bg-slate-750 text-slate-300 hover:text-white"
                       )}
                       title="Dikter med stemme"
                     >
@@ -489,7 +489,7 @@ Tolk dette og returner KUN gyldig JSON i følgende format (uten markdown-formate
                       type="button"
                       onClick={handleMagicAiFill}
                       disabled={isAiGenerating || !aiPrompt.trim()}
-                      className="px-3 py-1.5 bg-gradient-to-r from-electric-500 to-electric-400 text-white rounded-lg text-xs font-black hover:opacity-95 transition-all shadow-sm flex items-center gap-1 disabled:opacity-50"
+                      className="px-3 py-1.5 bg-purple-600 hover:bg-purple-500 text-white rounded-lg text-xs font-black transition-all shadow-md shadow-purple-950/50 flex items-center gap-1 disabled:opacity-50 cursor-pointer"
                     >
                       {isAiGenerating ? <Loader2 size={13} className="animate-spin" /> : <Wand2 size={13} />}
                       <span>Fyll ut</span>
@@ -503,28 +503,28 @@ Tolk dette og returner KUN gyldig JSON i følgende format (uten markdown-formate
                   <button
                     type="button"
                     onClick={() => applyQuickTemplate('enebolig')}
-                    className="px-2.5 py-1 bg-white hover:bg-electric-50 hover:text-electric-700 hover:border-electric-200 border border-slate-200 rounded-lg text-[11px] font-bold text-slate-600 transition-all cursor-pointer shadow-xs"
+                    className="px-2.5 py-1 bg-slate-900 hover:bg-slate-800 hover:text-white border border-slate-800 rounded-lg text-[11px] font-bold text-slate-300 transition-all cursor-pointer shadow-xs"
                   >
                     🏠 Enebolig Nybygg
                   </button>
                   <button
                     type="button"
                     onClick={() => applyQuickTemplate('bad')}
-                    className="px-2.5 py-1 bg-white hover:bg-electric-50 hover:text-electric-700 hover:border-electric-200 border border-slate-200 rounded-lg text-[11px] font-bold text-slate-600 transition-all cursor-pointer shadow-xs"
+                    className="px-2.5 py-1 bg-slate-900 hover:bg-slate-800 hover:text-white border border-slate-800 rounded-lg text-[11px] font-bold text-slate-300 transition-all cursor-pointer shadow-xs"
                   >
                     🚿 Bad & Våtrom (BVN)
                   </button>
                   <button
                     type="button"
                     onClick={() => applyQuickTemplate('tilbygg')}
-                    className="px-2.5 py-1 bg-white hover:bg-electric-50 hover:text-electric-700 hover:border-electric-200 border border-slate-200 rounded-lg text-[11px] font-bold text-slate-600 transition-all cursor-pointer shadow-xs"
+                    className="px-2.5 py-1 bg-slate-900 hover:bg-slate-800 hover:text-white border border-slate-800 rounded-lg text-[11px] font-bold text-slate-300 transition-all cursor-pointer shadow-xs"
                   >
                     🔨 Tilbygg & Fasade
                   </button>
                   <button
                     type="button"
                     onClick={() => applyQuickTemplate('naering')}
-                    className="px-2.5 py-1 bg-white hover:bg-electric-50 hover:text-electric-700 hover:border-electric-200 border border-slate-200 rounded-lg text-[11px] font-bold text-slate-600 transition-all cursor-pointer shadow-xs"
+                    className="px-2.5 py-1 bg-slate-900 hover:bg-slate-800 hover:text-white border border-slate-800 rounded-lg text-[11px] font-bold text-slate-300 transition-all cursor-pointer shadow-xs"
                   >
                     ⚡ Næring / Kontor
                   </button>
@@ -536,17 +536,17 @@ Tolk dette og returner KUN gyldig JSON i følgende format (uten markdown-formate
                 
                 {/* Prosjektnavn */}
                 <div className="md:col-span-2">
-                  <label className="block text-xs font-bold uppercase tracking-wider text-slate-500 mb-1.5">
+                  <label className="block text-xs font-bold uppercase tracking-wider text-slate-400 mb-1.5">
                     Prosjektnavn *
                   </label>
                   <div className="relative">
-                    <HardHat className="absolute left-3.5 top-1/2 -translate-y-1/2 text-slate-400" size={18} />
+                    <HardHat className="absolute left-3.5 top-1/2 -translate-y-1/2 text-slate-500" size={18} />
                     <input 
                       required
                       type="text"
                       value={formData.name}
                       onChange={(e) => setFormData({ ...formData, name: e.target.value })}
-                      className="w-full bg-slate-50 border border-slate-200 rounded-xl py-3 pl-11 pr-4 text-sm font-semibold text-navy-900 focus:bg-white focus:ring-2 focus:ring-electric-500/20 focus:border-electric-500 outline-none transition-all"
+                      className="w-full bg-slate-950 border border-slate-800 rounded-xl py-3 pl-11 pr-4 text-sm font-semibold text-white focus:border-purple-500 outline-none transition-all placeholder:text-slate-600"
                       placeholder="f.eks. Enebolig Bjørklund"
                     />
                   </div>
@@ -554,45 +554,45 @@ Tolk dette og returner KUN gyldig JSON i følgende format (uten markdown-formate
 
                 {/* Prosjektkode */}
                 <div>
-                  <label className="block text-xs font-bold uppercase tracking-wider text-slate-500 mb-1.5">
+                  <label className="block text-xs font-bold uppercase tracking-wider text-slate-400 mb-1.5">
                     Prosjektkode
                   </label>
                   <input 
                     type="text"
                     value={formData.projectCode}
                     onChange={(e) => setFormData({ ...formData, projectCode: e.target.value })}
-                    className="w-full bg-slate-50 border border-slate-200 rounded-xl py-3 px-4 text-sm font-semibold text-navy-900 focus:bg-white focus:ring-2 focus:ring-electric-500/20 focus:border-electric-500 outline-none transition-all"
+                    className="w-full bg-slate-950 border border-slate-800 rounded-xl py-3 px-4 text-sm font-semibold text-white focus:border-purple-500 outline-none transition-all placeholder:text-slate-600"
                     placeholder="P2026-001"
                   />
                 </div>
 
                 {/* Prosjektfase */}
                 <div>
-                  <label className="block text-xs font-bold uppercase tracking-wider text-slate-500 mb-1.5">
+                  <label className="block text-xs font-bold uppercase tracking-wider text-slate-400 mb-1.5">
                     Prosjektfase
                   </label>
                   <select 
                     value={formData.stage}
                     onChange={(e) => setFormData({ ...formData, stage: e.target.value as any })}
-                    className="w-full bg-slate-50 border border-slate-200 rounded-xl py-3 px-4 text-sm font-semibold text-navy-900 focus:bg-white focus:ring-2 focus:ring-electric-500/20 focus:border-electric-500 outline-none transition-all cursor-pointer"
+                    className="w-full bg-slate-950 border border-slate-800 rounded-xl py-3 px-4 text-sm font-semibold text-white focus:border-purple-500 outline-none transition-all cursor-pointer"
                   >
-                    <option value="active">Gjennomføring (Aktiv)</option>
-                    <option value="offer">Tilbud / Befaring</option>
-                    <option value="contract">Kontrakt inngått</option>
-                    <option value="handover">Overlevering / Sluttbefaring</option>
-                    <option value="archived">Arkivert</option>
+                    <option value="active" className="bg-slate-950 text-white">Gjennomføring (Aktiv)</option>
+                    <option value="offer" className="bg-slate-950 text-white">Tilbud / Befaring</option>
+                    <option value="contract" className="bg-slate-950 text-white">Kontrakt inngått</option>
+                    <option value="handover" className="bg-slate-950 text-white">Overlevering / Sluttbefaring</option>
+                    <option value="archived" className="bg-slate-950 text-white">Arkivert</option>
                   </select>
                 </div>
 
                 {/* Beskrivelse */}
                 <div className="md:col-span-2">
-                  <label className="block text-xs font-bold uppercase tracking-wider text-slate-500 mb-1.5">
+                  <label className="block text-xs font-bold uppercase tracking-wider text-slate-400 mb-1.5">
                     Beskrivelse & Omfang
                   </label>
                   <textarea 
                     value={formData.description}
                     onChange={(e) => setFormData({ ...formData, description: e.target.value })}
-                    className="w-full bg-slate-50 border border-slate-200 rounded-xl p-3 text-sm font-medium text-navy-900 focus:bg-white focus:ring-2 focus:ring-electric-500/20 focus:border-electric-500 outline-none transition-all min-h-[85px] resize-none"
+                    className="w-full bg-slate-950 border border-slate-800 rounded-xl p-3 text-sm font-medium text-white focus:border-purple-500 outline-none transition-all min-h-[85px] resize-none placeholder:text-slate-600"
                     placeholder="Kort beskrivelse av arbeidet som skal utføres..."
                   />
                 </div>
@@ -600,47 +600,47 @@ Tolk dette og returner KUN gyldig JSON i følgende format (uten markdown-formate
                 {/* Lokasjon / Adresse */}
                 <div className="md:col-span-2 relative">
                   <div className="flex items-center justify-between mb-1.5">
-                    <label className="block text-xs font-bold uppercase tracking-wider text-slate-500">
+                    <label className="block text-xs font-bold uppercase tracking-wider text-slate-400">
                       Lokasjon / Adresse (Kartverket & Geonorge)
                     </label>
                     <button
                       type="button"
                       onClick={handleGetLocation}
                       disabled={isLocating}
-                      className="text-[11px] font-bold text-electric-600 hover:text-electric-700 flex items-center gap-1 transition-colors cursor-pointer disabled:opacity-50"
+                      className="text-[11px] font-bold text-purple-400 hover:text-purple-300 flex items-center gap-1 transition-colors cursor-pointer disabled:opacity-50"
                       title="Hent nåværende GPS-posisjon og finn adresse med GNR/BNR"
                     >
-                      {isLocating ? <Loader2 size={12} className="animate-spin text-electric-600" /> : <Navigation size={12} />}
+                      {isLocating ? <Loader2 size={12} className="animate-spin text-purple-400" /> : <Navigation size={12} />}
                       <span>{isLocating ? 'Henter GPS...' : 'Bruk min posisjon'}</span>
                     </button>
                   </div>
                   <div className="relative">
-                    <MapPin className="absolute left-3.5 top-1/2 -translate-y-1/2 text-slate-400" size={18} />
+                    <MapPin className="absolute left-3.5 top-1/2 -translate-y-1/2 text-slate-500" size={18} />
                     <input 
                       type="text"
                       value={addressSearch !== '' ? addressSearch : formData.location}
                       onChange={(e) => setAddressSearch(e.target.value)}
-                      className="w-full bg-slate-50 border border-slate-200 rounded-xl py-3 pl-11 pr-4 text-sm font-medium text-navy-900 focus:bg-white focus:ring-2 focus:ring-electric-500/20 focus:border-electric-500 outline-none transition-all"
+                      className="w-full bg-slate-950 border border-slate-800 rounded-xl py-3 pl-11 pr-4 text-sm font-medium text-white focus:border-purple-500 outline-none transition-all placeholder:text-slate-600"
                       placeholder="Søk gateadresse for å hente GNR/BNR automatisk..."
                     />
                     {isSearchingAddress && (
                       <div className="absolute right-3.5 top-1/2 -translate-y-1/2">
-                        <Loader2 className="animate-spin text-electric-500" size={16} />
+                        <Loader2 className="animate-spin text-purple-400" size={16} />
                       </div>
                     )}
                   </div>
 
                   {addressSuggestions.length > 0 && (
-                    <div className="absolute z-50 left-0 right-0 mt-1 bg-white border border-slate-200 rounded-xl shadow-xl overflow-hidden max-h-52 overflow-y-auto custom-scrollbar">
+                    <div className="absolute z-50 left-0 right-0 mt-1 bg-[#131722] border border-slate-800 rounded-xl shadow-xl overflow-hidden max-h-52 overflow-y-auto custom-scrollbar divide-y divide-slate-800">
                       {addressSuggestions.map((addr, i) => (
                         <button
                           key={i}
                           type="button"
                           onClick={() => selectAddress(addr)}
-                          className="w-full text-left p-3 hover:bg-slate-50 transition-colors border-b border-slate-100 last:border-0 cursor-pointer"
+                          className="w-full text-left p-3 hover:bg-slate-800 transition-colors cursor-pointer"
                         >
-                          <div className="text-xs sm:text-sm font-bold text-navy-900">{addr.address}</div>
-                          <div className="text-[10px] text-slate-500">
+                          <div className="text-xs sm:text-sm font-bold text-white">{addr.address}</div>
+                          <div className="text-[10px] text-slate-400">
                             {addr.postcode} {addr.city} {addr.gnr && `(GNR: ${addr.gnr}, BNR: ${addr.bnr})`}
                           </div>
                         </button>
@@ -651,26 +651,26 @@ Tolk dette og returner KUN gyldig JSON i følgende format (uten markdown-formate
 
                 {/* GNR & BNR */}
                 <div>
-                  <label className="block text-xs font-bold uppercase tracking-wider text-slate-500 mb-1.5">
+                  <label className="block text-xs font-bold uppercase tracking-wider text-slate-400 mb-1.5">
                     GNR (Gårdsnummer)
                   </label>
                   <input 
                     type="text"
                     value={formData.gnr}
                     onChange={(e) => setFormData({ ...formData, gnr: e.target.value })}
-                    className="w-full bg-slate-50 border border-slate-200 rounded-xl py-3 px-4 text-sm font-medium text-navy-900 focus:bg-white focus:ring-2 focus:ring-electric-500/20 focus:border-electric-500 outline-none transition-all"
+                    className="w-full bg-slate-950 border border-slate-800 rounded-xl py-3 px-4 text-sm font-medium text-white focus:border-purple-500 outline-none transition-all font-mono placeholder:text-slate-600"
                     placeholder="Gårdsnummer"
                   />
                 </div>
                 <div>
-                  <label className="block text-xs font-bold uppercase tracking-wider text-slate-500 mb-1.5">
+                  <label className="block text-xs font-bold uppercase tracking-wider text-slate-400 mb-1.5">
                     BNR (Bruksnummer)
                   </label>
                   <input 
                     type="text"
                     value={formData.bnr}
                     onChange={(e) => setFormData({ ...formData, bnr: e.target.value })}
-                    className="w-full bg-slate-50 border border-slate-200 rounded-xl py-3 px-4 text-sm font-medium text-navy-900 focus:bg-white focus:ring-2 focus:ring-electric-500/20 focus:border-electric-500 outline-none transition-all"
+                    className="w-full bg-slate-950 border border-slate-800 rounded-xl py-3 px-4 text-sm font-medium text-white focus:border-purple-500 outline-none transition-all font-mono placeholder:text-slate-600"
                     placeholder="Bruksnummer"
                   />
                 </div>
@@ -678,7 +678,7 @@ Tolk dette og returner KUN gyldig JSON i følgende format (uten markdown-formate
                 {/* Kunde & E-post */}
                 <div className="relative">
                   <div className="flex items-center justify-between mb-1.5">
-                    <label className="block text-xs font-bold uppercase tracking-wider text-slate-500">
+                    <label className="block text-xs font-bold uppercase tracking-wider text-slate-400">
                       Kunde (Byggherre / Bedrift)
                     </label>
                     <span className="text-[10px] font-bold text-slate-400 flex items-center gap-1">
@@ -691,33 +691,33 @@ Tolk dette og returner KUN gyldig JSON i følgende format (uten markdown-formate
                       type="text"
                       value={formData.clientName}
                       onChange={(e) => setFormData({ ...formData, clientName: e.target.value })}
-                      className="w-full bg-slate-50 border border-slate-200 rounded-xl py-3 px-4 text-sm font-medium text-navy-900 focus:bg-white focus:ring-2 focus:ring-electric-500/20 focus:border-electric-500 outline-none transition-all"
+                      className="w-full bg-slate-950 border border-slate-800 rounded-xl py-3 px-4 text-sm font-medium text-white focus:border-purple-500 outline-none transition-all placeholder:text-slate-600"
                       placeholder="Kundenavn eller søk firma / org.nr..."
                     />
                     {isSearchingCompany && (
                       <div className="absolute right-3.5 top-1/2 -translate-y-1/2">
-                        <Loader2 className="animate-spin text-electric-500" size={16} />
+                        <Loader2 className="animate-spin text-purple-400" size={16} />
                       </div>
                     )}
 
                     {companySuggestions.length > 0 && (
-                      <div className="absolute z-50 left-0 right-0 mt-1 bg-white border border-slate-200 rounded-xl shadow-xl overflow-hidden max-h-52 overflow-y-auto custom-scrollbar">
+                      <div className="absolute z-50 left-0 right-0 mt-1 bg-[#131722] border border-slate-800 rounded-xl shadow-xl overflow-hidden max-h-52 overflow-y-auto custom-scrollbar divide-y divide-slate-800">
                         {companySuggestions.map((c) => (
                           <button
                             key={c.orgnr}
                             type="button"
                             onClick={() => selectCompany(c)}
-                            className="w-full text-left p-3 hover:bg-slate-50 transition-colors border-b border-slate-100 last:border-0 cursor-pointer"
+                            className="w-full text-left p-3 hover:bg-slate-800 transition-colors cursor-pointer"
                           >
                             <div className="flex items-center justify-between">
-                              <div className="text-xs sm:text-sm font-bold text-navy-900">{c.name}</div>
+                              <div className="text-xs sm:text-sm font-bold text-white">{c.name}</div>
                               {c.isBankrupt ? (
-                                <span className="text-[10px] font-black text-rose-600 bg-rose-50 px-1.5 py-0.5 rounded">KONKURS</span>
+                                <span className="text-[10px] font-black text-rose-400 bg-rose-500/20 px-1.5 py-0.5 rounded border border-rose-500/30">KONKURS</span>
                               ) : (
                                 <span className="text-[10px] font-medium text-slate-400">{c.orgType}</span>
                               )}
                             </div>
-                            <div className="text-[10px] text-slate-500 mt-0.5">
+                            <div className="text-[10px] text-slate-400 mt-0.5">
                               Org.nr: {c.orgnr} {c.city && `• ${c.city}`} {c.isMvaRegistered && '• MVA'}
                             </div>
                           </button>
@@ -728,53 +728,53 @@ Tolk dette og returner KUN gyldig JSON i følgende format (uten markdown-formate
                 </div>
 
                 <div>
-                  <label className="block text-xs font-bold uppercase tracking-wider text-slate-500 mb-1.5">
+                  <label className="block text-xs font-bold uppercase tracking-wider text-slate-400 mb-1.5">
                     Kunde E-post (for portal & varsling)
                   </label>
                   <input 
                     type="email"
                     value={formData.clientEmail}
                     onChange={(e) => setFormData({ ...formData, clientEmail: e.target.value })}
-                    className="w-full bg-slate-50 border border-slate-200 rounded-xl py-3 px-4 text-sm font-medium text-navy-900 focus:bg-white focus:ring-2 focus:ring-electric-500/20 focus:border-electric-500 outline-none transition-all"
+                    className="w-full bg-slate-950 border border-slate-800 rounded-xl py-3 px-4 text-sm font-medium text-white focus:border-purple-500 outline-none transition-all placeholder:text-slate-600"
                     placeholder="kunde@eksempel.no"
                   />
                 </div>
 
                 {/* Startdato & Sluttdato */}
                 <div>
-                  <label className="block text-xs font-bold uppercase tracking-wider text-slate-500 mb-1.5">
+                  <label className="block text-xs font-bold uppercase tracking-wider text-slate-400 mb-1.5">
                     Startdato
                   </label>
                   <input 
                     type="date"
                     value={formData.startDate}
                     onChange={(e) => setFormData({ ...formData, startDate: e.target.value })}
-                    className="w-full bg-slate-50 border border-slate-200 rounded-xl py-3 px-4 text-sm font-medium text-navy-900 focus:bg-white focus:ring-2 focus:ring-electric-500/20 focus:border-electric-500 outline-none transition-all"
+                    className="w-full bg-slate-950 border border-slate-800 rounded-xl py-3 px-4 text-sm font-medium text-white focus:border-purple-500 outline-none transition-all [color-scheme:dark]"
                   />
                 </div>
 
                 <div>
-                  <label className="block text-xs font-bold uppercase tracking-wider text-slate-500 mb-1.5">
+                  <label className="block text-xs font-bold uppercase tracking-wider text-slate-400 mb-1.5">
                     Estimert ferdigstillelse
                   </label>
                   <input 
                     type="date"
                     value={formData.endDate}
                     onChange={(e) => setFormData({ ...formData, endDate: e.target.value })}
-                    className="w-full bg-slate-50 border border-slate-200 rounded-xl py-3 px-4 text-sm font-medium text-navy-900 focus:bg-white focus:ring-2 focus:ring-electric-500/20 focus:border-electric-500 outline-none transition-all"
+                    className="w-full bg-slate-950 border border-slate-800 rounded-xl py-3 px-4 text-sm font-medium text-white focus:border-purple-500 outline-none transition-all [color-scheme:dark]"
                   />
                 </div>
 
                 {/* Tagger */}
                 <div className="md:col-span-2">
-                  <label className="block text-xs font-bold uppercase tracking-wider text-slate-500 mb-1.5">
+                  <label className="block text-xs font-bold uppercase tracking-wider text-slate-400 mb-1.5">
                     Faggrupper & Nøkkelord (kommaseparert)
                   </label>
                   <input 
                     type="text"
                     value={formData.tags}
                     onChange={(e) => setFormData({ ...formData, tags: e.target.value })}
-                    className="w-full bg-slate-50 border border-slate-200 rounded-xl py-3 px-4 text-sm font-medium text-navy-900 focus:bg-white focus:ring-2 focus:ring-electric-500/20 focus:border-electric-500 outline-none transition-all"
+                    className="w-full bg-slate-950 border border-slate-800 rounded-xl py-3 px-4 text-sm font-medium text-white focus:border-purple-500 outline-none transition-all placeholder:text-slate-600"
                     placeholder="f.eks. tømrer, våtrom, elektro, rørlegger, tek17"
                   />
                 </div>
@@ -783,16 +783,16 @@ Tolk dette og returner KUN gyldig JSON i følgende format (uten markdown-formate
             </form>
 
             {/* 3. FAST BUNN-FOOTER (Ligger rent og pent under rullefeltet) */}
-            <div className="px-5 sm:px-8 py-4 bg-slate-50 border-t border-slate-200 shrink-0 flex items-center justify-between gap-3">
-              <span className="text-[11px] text-slate-500 hidden sm:inline-flex items-center gap-1.5">
-                <Brain size={14} className="text-electric-500" />
+            <div className="px-5 sm:px-8 py-4 bg-[#0B0F17] border-t border-slate-800 shrink-0 flex items-center justify-between gap-3">
+              <span className="text-[11px] text-slate-400 hidden sm:inline-flex items-center gap-1.5">
+                <Brain size={14} className="text-purple-400" />
                 Yr.no værsynk og TEK17-kontroll aktiveres ved opprettelse
               </span>
               <div className="flex items-center gap-3 w-full sm:w-auto justify-end">
                 <button
                   type="button"
                   onClick={onClose}
-                  className="px-4 py-2.5 rounded-xl text-xs font-bold text-slate-600 hover:bg-slate-200 transition-colors cursor-pointer"
+                  className="px-4 py-2.5 rounded-xl text-xs font-bold text-slate-400 hover:text-white hover:bg-slate-800 transition-colors cursor-pointer"
                 >
                   Avbryt
                 </button>
@@ -800,7 +800,7 @@ Tolk dette og returner KUN gyldig JSON i følgende format (uten markdown-formate
                   form="create-project-form"
                   type="submit"
                   disabled={loading}
-                  className="px-6 py-2.5 bg-gradient-to-r from-electric-500 to-electric-400 hover:opacity-95 text-white rounded-xl font-black text-xs sm:text-sm transition-all shadow-purple-cta flex items-center justify-center gap-2 disabled:opacity-50 cursor-pointer active:scale-95"
+                  className="px-6 py-2.5 bg-purple-600 hover:bg-purple-500 text-white rounded-xl font-black text-xs sm:text-sm transition-all shadow-lg shadow-purple-950/50 flex items-center justify-center gap-2 disabled:opacity-50 cursor-pointer active:scale-95"
                 >
                   {loading ? (
                     <>

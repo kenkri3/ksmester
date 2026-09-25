@@ -477,38 +477,38 @@ export default function ProjectActivityLog({ projectId, project, isCustomerView 
       {/* SJA Detail Modal */}
       <AnimatePresence>
         {selectedSja && (
-          <div className="fixed inset-0 z-50 flex items-center justify-center p-2 sm:p-4 bg-black/60 backdrop-blur-sm">
+          <div className="fixed inset-0 z-50 flex items-center justify-center p-2 sm:p-4 bg-black/80 backdrop-blur-md">
             <motion.div
               initial={{ opacity: 0, scale: 0.95 }}
               animate={{ opacity: 1, scale: 1 }}
               exit={{ opacity: 0, scale: 0.95 }}
-              className="bg-white w-full max-w-3xl rounded-3xl overflow-hidden shadow-2xl flex flex-col max-h-[92vh] border border-neutral-200"
+              className="bg-[#0B0F17] text-white w-full max-w-3xl rounded-3xl overflow-hidden shadow-2xl flex flex-col max-h-[92vh] border border-slate-800"
             >
               {/* Header */}
-              <div className="p-5 sm:p-6 border-b border-neutral-100 flex items-center justify-between shrink-0 bg-neutral-50/60">
+              <div className="p-5 sm:p-6 border-b border-slate-800 flex items-center justify-between shrink-0 bg-[#131722]">
                 <div className="flex items-center gap-3">
-                  <div className="p-2.5 bg-blue-100 text-blue-700 rounded-2xl shadow-sm">
+                  <div className="p-2.5 bg-blue-500/20 text-blue-400 border border-blue-500/30 rounded-2xl shadow-sm">
                     <ShieldCheck size={24} />
                   </div>
                   <div>
                     <div className="flex items-center gap-2 flex-wrap">
-                      <span className="text-[10px] font-black uppercase tracking-wider text-blue-700 bg-blue-50 border border-blue-200 px-2 py-0.5 rounded-md">
+                      <span className="text-[10px] font-black uppercase tracking-wider text-blue-300 bg-blue-500/20 border border-blue-500/30 px-2 py-0.5 rounded-md">
                         Sikker Jobb Analyse (SJA)
                       </span>
-                      <span className="text-[10px] font-bold text-neutral-500">
+                      <span className="text-[10px] font-bold text-slate-400">
                         {selectedSja.tek17Reference || 'Byggherreforskriften § 18'}
                       </span>
-                      <span className="text-[10px] font-black uppercase tracking-wider bg-emerald-100 text-emerald-800 border border-emerald-200 px-2 py-0.5 rounded-md flex items-center gap-1">
+                      <span className="text-[10px] font-black uppercase tracking-wider bg-emerald-500/20 text-emerald-300 border border-emerald-500/30 px-2 py-0.5 rounded-md flex items-center gap-1">
                         <CheckCircle2 size={11} />
                         {selectedSja.status === 'draft' ? 'Utkast' : 'Godkjent'}
                       </span>
                     </div>
-                    <h3 className="font-bold text-lg sm:text-xl text-neutral-900 mt-1">{selectedSja.title}</h3>
+                    <h3 className="font-bold text-lg sm:text-xl text-white mt-1">{selectedSja.title}</h3>
                   </div>
                 </div>
                 <button 
                   onClick={() => setSelectedSja(null)}
-                  className="p-2 hover:bg-neutral-200/70 rounded-xl transition-colors text-neutral-400 hover:text-neutral-700 cursor-pointer"
+                  className="p-2 hover:bg-slate-800 rounded-xl transition-colors text-slate-400 hover:text-white cursor-pointer"
                   title="Lukk"
                 >
                   <X size={20} />
@@ -520,52 +520,52 @@ export default function ProjectActivityLog({ projectId, project, isCustomerView 
                 
                 {/* Meta details grid */}
                 <div className="grid grid-cols-2 sm:grid-cols-4 gap-3">
-                  <div className="p-3 bg-neutral-50 rounded-2xl border border-neutral-100">
-                    <span className="font-bold uppercase tracking-wider text-[10px] text-neutral-400 block mb-1 flex items-center gap-1">
-                      <Building2 size={12} className="text-neutral-500" /> Prosjekt
+                  <div className="p-3 bg-[#131722] rounded-2xl border border-slate-800">
+                    <span className="font-bold uppercase tracking-wider text-[10px] text-slate-400 block mb-1 flex items-center gap-1">
+                      <Building2 size={12} className="text-slate-400" /> Prosjekt
                     </span>
-                    <p className="text-neutral-800 font-semibold truncate">{selectedSja.projectName || projectData?.name || 'Byggeprosjekt'}</p>
+                    <p className="text-slate-200 font-semibold truncate">{selectedSja.projectName || projectData?.name || 'Byggeprosjekt'}</p>
                   </div>
-                  <div className="p-3 bg-neutral-50 rounded-2xl border border-neutral-100">
-                    <span className="font-bold uppercase tracking-wider text-[10px] text-neutral-400 block mb-1">
+                  <div className="p-3 bg-[#131722] rounded-2xl border border-slate-800">
+                    <span className="font-bold uppercase tracking-wider text-[10px] text-slate-400 block mb-1">
                       Lokasjon
                     </span>
-                    <p className="text-neutral-800 font-semibold truncate">{selectedSja.location || projectData?.address || 'Byggeplass'}</p>
+                    <p className="text-slate-200 font-semibold truncate">{selectedSja.location || projectData?.address || 'Byggeplass'}</p>
                   </div>
-                  <div className="p-3 bg-neutral-50 rounded-2xl border border-neutral-100">
-                    <span className="font-bold uppercase tracking-wider text-[10px] text-neutral-400 block mb-1 flex items-center gap-1">
-                      <User size={12} className="text-neutral-500" /> Ansvarlig
+                  <div className="p-3 bg-[#131722] rounded-2xl border border-slate-800">
+                    <span className="font-bold uppercase tracking-wider text-[10px] text-slate-400 block mb-1 flex items-center gap-1">
+                      <User size={12} className="text-slate-400" /> Ansvarlig
                     </span>
-                    <p className="text-neutral-800 font-semibold truncate">{selectedSja.authorName || 'Fagansvarlig mester'}</p>
+                    <p className="text-slate-200 font-semibold truncate">{selectedSja.authorName || 'Fagansvarlig mester'}</p>
                   </div>
-                  <div className="p-3 bg-neutral-50 rounded-2xl border border-neutral-100">
-                    <span className="font-bold uppercase tracking-wider text-[10px] text-neutral-400 block mb-1 flex items-center gap-1">
-                      <Calendar size={12} className="text-neutral-500" /> Dato / Tid
+                  <div className="p-3 bg-[#131722] rounded-2xl border border-slate-800">
+                    <span className="font-bold uppercase tracking-wider text-[10px] text-slate-400 block mb-1 flex items-center gap-1">
+                      <Calendar size={12} className="text-slate-400" /> Dato / Tid
                     </span>
-                    <p className="text-neutral-800 font-semibold truncate">{formatModalDate(selectedSja.timestamp || selectedSja.createdAt)}</p>
+                    <p className="text-slate-200 font-semibold truncate">{formatModalDate(selectedSja.timestamp || selectedSja.createdAt)}</p>
                   </div>
                 </div>
 
                 {/* Deltakere if available */}
                 {selectedSja.participants && selectedSja.participants !== selectedSja.authorName && (
-                  <div className="px-4 py-2.5 bg-blue-50/50 rounded-xl border border-blue-100 text-neutral-700 flex items-center gap-2">
-                    <span className="font-bold text-[11px] text-blue-800 uppercase tracking-wider shrink-0">Deltakere på SJA:</span>
-                    <span className="text-neutral-800 font-medium">{selectedSja.participants}</span>
+                  <div className="px-4 py-2.5 bg-blue-950/40 rounded-xl border border-blue-900/60 text-slate-300 flex items-center gap-2">
+                    <span className="font-bold text-[11px] text-blue-300 uppercase tracking-wider shrink-0">Deltakere på SJA:</span>
+                    <span className="text-slate-200 font-medium">{selectedSja.participants}</span>
                   </div>
                 )}
 
                 {/* Arbeidsoppgave */}
-                <div className="p-4 bg-neutral-50 rounded-2xl border border-neutral-100">
-                  <span className="font-bold uppercase tracking-wider text-[10px] text-neutral-400 block mb-1.5">
+                <div className="p-4 bg-[#131722] rounded-2xl border border-slate-800">
+                  <span className="font-bold uppercase tracking-wider text-[10px] text-slate-400 block mb-1.5">
                     Arbeidsoppgave og omfang
                   </span>
-                  <p className="text-neutral-800 text-sm font-medium leading-relaxed">{selectedSja.task}</p>
+                  <p className="text-slate-200 text-sm font-medium leading-relaxed">{selectedSja.task}</p>
 
                   {selectedSja.weatherImpact && (
-                    <div className="mt-3 pt-3 border-t border-neutral-200/60 flex items-start gap-2 text-neutral-600">
-                      <Cloud size={15} className="text-sky-600 shrink-0 mt-0.5" />
+                    <div className="mt-3 pt-3 border-t border-slate-800 flex items-start gap-2 text-slate-400">
+                      <Cloud size={15} className="text-sky-400 shrink-0 mt-0.5" />
                       <div>
-                        <span className="font-bold text-[10px] uppercase tracking-wider text-sky-700 mr-1">Vær- og miljøforhold:</span>
+                        <span className="font-bold text-[10px] uppercase tracking-wider text-sky-300 mr-1">Vær- og miljøforhold:</span>
                         <span>{selectedSja.weatherImpact}</span>
                       </div>
                     </div>
@@ -575,24 +575,24 @@ export default function ProjectActivityLog({ projectId, project, isCustomerView 
                 {/* Vurderte Farer & Sikkerhetstiltak */}
                 <div>
                   <div className="flex items-center justify-between mb-2.5">
-                    <span className="font-bold uppercase tracking-wider text-[11px] text-neutral-600 flex items-center gap-1.5">
-                      <AlertTriangle size={14} className="text-amber-500" />
+                    <span className="font-bold uppercase tracking-wider text-[11px] text-slate-300 flex items-center gap-1.5">
+                      <AlertTriangle size={14} className="text-amber-400" />
                       Vurderte Farer & Sikkerhetstiltak ({selectedSja.risikoer?.length || 0})
                     </span>
-                    <span className="text-[10px] text-neutral-400">Byggherreforskriften § 18</span>
+                    <span className="text-[10px] text-slate-400">Byggherreforskriften § 18</span>
                   </div>
 
                   <div className="space-y-3">
                     {selectedSja.risikoer && selectedSja.risikoer.map((r, idx) => {
                       const levelColor = 
-                        r.riskLevel === 'Høy' ? 'bg-rose-100 text-rose-800 border-rose-200' :
-                        r.riskLevel === 'Middels' ? 'bg-amber-100 text-amber-800 border-amber-200' :
-                        'bg-blue-100 text-blue-800 border-blue-200';
+                        r.riskLevel === 'Høy' ? 'bg-rose-500/20 text-rose-300 border-rose-500/30' :
+                        r.riskLevel === 'Middels' ? 'bg-amber-500/20 text-amber-300 border-amber-500/30' :
+                        'bg-blue-500/20 text-blue-300 border-blue-500/30';
 
                       return (
-                        <div key={idx} className="p-4 bg-white rounded-2xl border border-neutral-200 shadow-sm space-y-2.5 hover:border-neutral-300 transition-colors">
-                          <div className="flex items-center justify-between border-b border-neutral-100 pb-2">
-                            <span className="font-bold text-neutral-900 text-xs sm:text-sm">
+                        <div key={idx} className="p-4 bg-[#131722] rounded-2xl border border-slate-800 space-y-2.5 hover:border-slate-700 transition-colors">
+                          <div className="flex items-center justify-between border-b border-slate-800 pb-2">
+                            <span className="font-bold text-white text-xs sm:text-sm">
                               {idx + 1}. {r.aktivitet || 'Aktivitet'}
                             </span>
                             <span className={cn("text-[9px] font-black uppercase tracking-wider px-2 py-0.5 rounded border", levelColor)}>
@@ -601,18 +601,18 @@ export default function ProjectActivityLog({ projectId, project, isCustomerView 
                           </div>
                           
                           <div className="grid grid-cols-1 sm:grid-cols-2 gap-3 pt-1">
-                            <div className="p-2.5 bg-rose-50/60 rounded-xl border border-rose-100">
-                              <span className="font-bold text-[10px] uppercase tracking-wider text-rose-700 flex items-center gap-1 mb-1">
+                            <div className="p-2.5 bg-rose-950/40 rounded-xl border border-rose-900/50">
+                              <span className="font-bold text-[10px] uppercase tracking-wider text-rose-300 flex items-center gap-1 mb-1">
                                 <AlertTriangle size={12} /> Fare / Hva kan gå galt
                               </span>
-                              <p className="text-neutral-800 font-medium text-xs leading-relaxed">{r.risiko}</p>
+                              <p className="text-slate-200 font-medium text-xs leading-relaxed">{r.risiko}</p>
                             </div>
 
-                            <div className="p-2.5 bg-emerald-50/70 rounded-xl border border-emerald-100">
-                              <span className="font-bold text-[10px] uppercase tracking-wider text-emerald-800 flex items-center gap-1 mb-1">
+                            <div className="p-2.5 bg-emerald-950/40 rounded-xl border border-emerald-900/50">
+                              <span className="font-bold text-[10px] uppercase tracking-wider text-emerald-300 flex items-center gap-1 mb-1">
                                 <ShieldCheck size={12} /> Påkrevd sikkerhetstiltak
                               </span>
-                              <p className="text-emerald-950 font-medium text-xs leading-relaxed">{r.tiltak}</p>
+                              <p className="text-emerald-100 font-medium text-xs leading-relaxed">{r.tiltak}</p>
                             </div>
                           </div>
                         </div>
@@ -623,15 +623,15 @@ export default function ProjectActivityLog({ projectId, project, isCustomerView 
 
                 {/* Påkrevd Verneutstyr */}
                 {selectedSja.utstyr && selectedSja.utstyr.length > 0 && (
-                  <div className="p-4 bg-amber-50/40 rounded-2xl border border-amber-100">
-                    <span className="font-bold uppercase tracking-wider text-[10px] text-amber-900 block mb-2 flex items-center gap-1.5">
-                      <HardHat size={14} className="text-amber-600" />
+                  <div className="p-4 bg-amber-950/30 rounded-2xl border border-amber-900/40">
+                    <span className="font-bold uppercase tracking-wider text-[10px] text-amber-300 block mb-2 flex items-center gap-1.5">
+                      <HardHat size={14} className="text-amber-400" />
                       Påkrevd Personlig Verneutstyr (PVU)
                     </span>
                     <div className="flex flex-wrap gap-2">
                       {selectedSja.utstyr.map((u: string, idx: number) => (
-                        <span key={idx} className="px-3 py-1 bg-white border border-amber-200 text-amber-950 rounded-xl text-xs font-bold shadow-xs flex items-center gap-1.5">
-                          <Check size={12} className="text-amber-600" />
+                        <span key={idx} className="px-3 py-1 bg-amber-900/30 border border-amber-700/50 text-amber-200 rounded-xl text-xs font-bold shadow-xs flex items-center gap-1.5">
+                          <Check size={12} className="text-amber-400" />
                           {u}
                         </span>
                       ))}
@@ -640,16 +640,16 @@ export default function ProjectActivityLog({ projectId, project, isCustomerView 
                 )}
 
                 {/* Compliance Footnote */}
-                <div className="p-3 bg-emerald-50/40 rounded-xl border border-emerald-100/70 flex items-start gap-2.5 text-neutral-600">
-                  <FileCheck2 size={16} className="text-emerald-600 shrink-0 mt-0.5" />
-                  <p className="text-[11px] leading-relaxed text-emerald-900">
-                    <strong>Lovpålagt HMS-dokumentasjon:</strong> Denne analysen er registrert i henhold til Byggherreforskriften § 18 og Internkontrollforskriften (IK-HMS). Alle berørte arbeidstakere skal informeres om tiltakene før igangsetting.
+                <div className="p-3 bg-emerald-950/30 rounded-xl border border-emerald-900/50 flex items-start gap-2.5 text-slate-300">
+                  <FileCheck2 size={16} className="text-emerald-400 shrink-0 mt-0.5" />
+                  <p className="text-[11px] leading-relaxed text-emerald-200">
+                    <strong className="text-emerald-300">Lovpålagt HMS-dokumentasjon:</strong> Denne analysen er registrert i henhold til Byggherreforskriften § 18 og Internkontrollforskriften (IK-HMS). Alle berørte arbeidstakere skal informeres om tiltakene før igangsetting.
                   </p>
                 </div>
               </div>
 
               {/* Modal Footer */}
-              <div className="p-4 sm:p-5 border-t border-neutral-100 flex flex-wrap justify-between items-center gap-2 bg-neutral-50/70 shrink-0">
+              <div className="p-4 sm:p-5 border-t border-slate-800 flex flex-wrap justify-between items-center gap-2 bg-[#131722] shrink-0">
                 <div className="flex items-center gap-2">
                   <button
                     type="button"
@@ -672,7 +672,7 @@ export default function ProjectActivityLog({ projectId, project, isCustomerView 
                   <button
                     type="button"
                     onClick={() => window.print()}
-                    className="px-3 py-2 bg-white hover:bg-neutral-100 text-neutral-700 border border-neutral-200 rounded-xl text-xs font-bold flex items-center gap-1.5 transition-colors cursor-pointer"
+                    className="px-3 py-2 bg-slate-800 hover:bg-slate-700 text-slate-200 border border-slate-700 rounded-xl text-xs font-bold flex items-center gap-1.5 transition-colors cursor-pointer"
                   >
                     <Printer size={14} />
                     Skriv ut
@@ -681,7 +681,7 @@ export default function ProjectActivityLog({ projectId, project, isCustomerView 
                 <button
                   type="button"
                   onClick={() => setSelectedSja(null)}
-                  className="px-5 py-2 bg-neutral-200 hover:bg-neutral-300 text-neutral-800 rounded-xl text-xs font-bold transition-colors cursor-pointer"
+                  className="px-5 py-2 bg-slate-800 hover:bg-slate-700 text-slate-200 rounded-xl text-xs font-bold transition-colors cursor-pointer"
                 >
                   Lukk
                 </button>
@@ -694,62 +694,62 @@ export default function ProjectActivityLog({ projectId, project, isCustomerView 
       {/* Checklist / Fagkontroll Detail Modal */}
       <AnimatePresence>
         {selectedChecklist && (
-          <div className="fixed inset-0 z-50 flex items-center justify-center p-2 sm:p-4 bg-black/60 backdrop-blur-sm">
+          <div className="fixed inset-0 z-50 flex items-center justify-center p-2 sm:p-4 bg-black/80 backdrop-blur-md">
             <motion.div
               initial={{ opacity: 0, scale: 0.95 }}
               animate={{ opacity: 1, scale: 1 }}
               exit={{ opacity: 0, scale: 0.95 }}
-              className="bg-white w-full max-w-2xl rounded-3xl overflow-hidden shadow-2xl flex flex-col max-h-[90vh]"
+              className="bg-[#0B0F17] text-white w-full max-w-2xl rounded-3xl overflow-hidden shadow-2xl flex flex-col max-h-[90vh] border border-slate-800"
             >
-              <div className="p-6 border-b border-neutral-100 flex items-center justify-between shrink-0">
+              <div className="p-6 border-b border-slate-800 flex items-center justify-between shrink-0 bg-[#131722]">
                 <div className="flex items-center gap-3 min-w-0">
-                  <div className="p-2.5 bg-emerald-50 text-emerald-600 rounded-xl shrink-0">
+                  <div className="p-2.5 bg-emerald-500/20 text-emerald-400 border border-emerald-500/30 rounded-xl shrink-0">
                     <ClipboardCheck size={22} />
                   </div>
                   <div className="min-w-0">
                     <div className="flex items-center gap-2">
-                      <span className="text-[10px] font-black uppercase tracking-widest text-emerald-600">
+                      <span className="text-[10px] font-black uppercase tracking-widest text-emerald-400">
                         Kvalitetssikring &amp; Fagkontroll (TEK17)
                       </span>
-                      <span className="text-[9px] font-black uppercase px-2 py-0.5 rounded bg-emerald-100 text-emerald-800">
+                      <span className="text-[9px] font-black uppercase px-2 py-0.5 rounded bg-emerald-500/20 text-emerald-300 border border-emerald-500/30">
                         {selectedChecklist.status || 'Godkjent'}
                       </span>
                     </div>
-                    <h3 className="font-bold text-base sm:text-lg text-neutral-900 truncate">
+                    <h3 className="font-bold text-base sm:text-lg text-white truncate">
                       {selectedChecklist.phaseTitle || selectedChecklist.title}
                     </h3>
                   </div>
                 </div>
                 <button 
                   onClick={() => setSelectedChecklist(null)}
-                  className="p-2 hover:bg-neutral-100 rounded-xl transition-colors text-neutral-400 hover:text-neutral-700 cursor-pointer shrink-0 ml-2"
+                  className="p-2 hover:bg-slate-800 rounded-xl transition-colors text-slate-400 hover:text-white cursor-pointer shrink-0 ml-2"
                 >
                   <X size={20} />
                 </button>
               </div>
 
               <div className="flex-1 overflow-y-auto p-6 space-y-4 text-xs">
-                <div className="grid grid-cols-2 sm:grid-cols-3 gap-3 p-3 bg-neutral-50 rounded-2xl border border-neutral-100">
+                <div className="grid grid-cols-2 sm:grid-cols-3 gap-3 p-3 bg-[#131722] rounded-2xl border border-slate-800">
                   <div>
-                    <span className="text-[10px] font-bold text-neutral-400 uppercase tracking-widest block">Ansvarlig</span>
-                    <span className="font-bold text-neutral-800">{selectedChecklist.signedBy || 'Fagleder / Mester'}</span>
+                    <span className="text-[10px] font-bold text-slate-400 uppercase tracking-widest block">Ansvarlig</span>
+                    <span className="font-bold text-slate-200">{selectedChecklist.signedBy || 'Fagleder / Mester'}</span>
                   </div>
                   <div>
-                    <span className="text-[10px] font-bold text-neutral-400 uppercase tracking-widest block">Dato</span>
-                    <span className="font-bold text-neutral-800">{formatModalDate(selectedChecklist.createdAt)}</span>
+                    <span className="text-[10px] font-bold text-slate-400 uppercase tracking-widest block">Dato</span>
+                    <span className="font-bold text-slate-200">{formatModalDate(selectedChecklist.createdAt)}</span>
                   </div>
                   <div>
-                    <span className="text-[10px] font-bold text-neutral-400 uppercase tracking-widest block">Standard</span>
-                    <span className="font-bold text-neutral-800">TEK17 / PBL § 29</span>
+                    <span className="text-[10px] font-bold text-slate-400 uppercase tracking-widest block">Standard</span>
+                    <span className="font-bold text-slate-200">TEK17 / PBL § 29</span>
                   </div>
                 </div>
 
                 <div>
                   <div className="flex items-center justify-between mb-2">
-                    <span className="font-bold uppercase tracking-wider text-[10px] text-neutral-400">
+                    <span className="font-bold uppercase tracking-wider text-[10px] text-slate-400">
                       Kontrollerte punkter ({selectedChecklist.items?.length || 0})
                     </span>
-                    <span className="text-[10px] font-bold text-emerald-600">
+                    <span className="text-[10px] font-bold text-emerald-400">
                       {selectedChecklist.items?.filter((i: any) => i.checked || i.status === 'passed').length || 0} fullført
                     </span>
                   </div>
@@ -776,28 +776,28 @@ export default function ProjectActivityLog({ projectId, project, isCustomerView 
                           className={cn(
                             "p-3.5 rounded-2xl border transition-all flex items-start gap-3 cursor-pointer group",
                             isChecked 
-                              ? "bg-emerald-50/50 border-emerald-200/70 text-neutral-800" 
-                              : "bg-neutral-50 border-neutral-200/70 hover:bg-neutral-100/70 text-neutral-600"
+                              ? "bg-emerald-950/30 border-emerald-800/60 text-slate-200" 
+                              : "bg-[#131722] border-slate-800 hover:border-slate-700 text-slate-400"
                           )}
                         >
                           <div className={cn(
                             "w-5 h-5 rounded-lg flex items-center justify-center shrink-0 mt-0.5 transition-colors",
-                            isChecked ? "bg-emerald-600 text-white" : "border-2 border-neutral-300 group-hover:border-emerald-500"
+                            isChecked ? "bg-emerald-600 text-white" : "border-2 border-slate-600 group-hover:border-emerald-500"
                           )}>
                             {isChecked && <CheckCircle2 size={13} />}
                           </div>
 
                           <div className="flex-1 min-w-0">
                             <div className="flex items-center justify-between gap-2">
-                              <span className="font-bold text-xs text-neutral-900 leading-snug">
+                              <span className="font-bold text-xs text-white leading-snug">
                                 {typeof item === 'string' ? item : (item.text || item.title)}
                               </span>
-                              <span className="text-[9px] font-bold uppercase tracking-widest px-1.5 py-0.5 rounded bg-white border border-neutral-200 text-neutral-500 shrink-0">
+                              <span className="text-[9px] font-bold uppercase tracking-widest px-1.5 py-0.5 rounded bg-slate-800 border border-slate-700 text-slate-300 shrink-0">
                                 {item.category || item.trade || 'TEK17'}
                               </span>
                             </div>
                             {item.comment && (
-                              <p className="text-[11px] text-neutral-500 mt-1 font-normal">
+                              <p className="text-[11px] text-slate-400 mt-1 font-normal">
                                 Merknad: {item.comment}
                               </p>
                             )}
@@ -809,7 +809,7 @@ export default function ProjectActivityLog({ projectId, project, isCustomerView 
                 </div>
               </div>
 
-              <div className="p-4 sm:p-6 border-t border-neutral-100 flex flex-wrap justify-between items-center gap-2 bg-neutral-50">
+              <div className="p-4 sm:p-6 border-t border-slate-800 flex flex-wrap justify-between items-center gap-2 bg-[#131722]">
                 <button
                   type="button"
                   onClick={handleDownloadChecklistPDF}
@@ -827,14 +827,14 @@ export default function ProjectActivityLog({ projectId, project, isCustomerView 
                       toast.success('Sjekkliste signert og bekreftet for prosjektet!');
                       setSelectedChecklist(null);
                     }}
-                    className="px-4 py-2.5 bg-neutral-900 hover:bg-neutral-800 text-white rounded-xl text-xs font-bold transition-colors cursor-pointer"
+                    className="px-4 py-2.5 bg-emerald-600 hover:bg-emerald-500 text-white rounded-xl text-xs font-bold transition-colors cursor-pointer"
                   >
                     Godkjenn sjekkliste
                   </button>
                   <button
                     type="button"
                     onClick={() => setSelectedChecklist(null)}
-                    className="px-4 py-2.5 bg-neutral-200 hover:bg-neutral-300 text-neutral-700 rounded-xl text-xs font-bold transition-colors cursor-pointer"
+                    className="px-4 py-2.5 bg-slate-800 hover:bg-slate-700 text-slate-300 rounded-xl text-xs font-bold transition-colors cursor-pointer"
                   >
                     Lukk
                   </button>
@@ -848,49 +848,49 @@ export default function ProjectActivityLog({ projectId, project, isCustomerView 
       {/* General Activity Detail Modal */}
       <AnimatePresence>
         {selectedGeneralActivity && (
-          <div className="fixed inset-0 z-50 flex items-center justify-center p-2 sm:p-4 bg-black/60 backdrop-blur-sm">
+          <div className="fixed inset-0 z-50 flex items-center justify-center p-2 sm:p-4 bg-black/80 backdrop-blur-md">
             <motion.div
               initial={{ opacity: 0, scale: 0.95 }}
               animate={{ opacity: 1, scale: 1 }}
               exit={{ opacity: 0, scale: 0.95 }}
-              className="bg-white w-full max-w-xl rounded-3xl overflow-hidden shadow-2xl flex flex-col max-h-[90vh]"
+              className="bg-[#0B0F17] text-white w-full max-w-xl rounded-3xl overflow-hidden shadow-2xl flex flex-col max-h-[90vh] border border-slate-800"
             >
-              <div className="p-6 border-b border-neutral-100 flex items-center justify-between shrink-0">
+              <div className="p-6 border-b border-slate-800 flex items-center justify-between shrink-0 bg-[#131722]">
                 <div className="flex items-center gap-3 min-w-0">
-                  <div className="p-2.5 bg-neutral-100 text-neutral-700 rounded-xl shrink-0">
+                  <div className="p-2.5 bg-slate-800 text-slate-300 rounded-xl shrink-0">
                     {getIcon(selectedGeneralActivity.type, selectedGeneralActivity.severity)}
                   </div>
                   <div className="min-w-0">
-                    <span className="text-[10px] font-black uppercase tracking-widest text-neutral-400">
+                    <span className="text-[10px] font-black uppercase tracking-widest text-slate-400">
                       Aktivitetsdetaljer
                     </span>
-                    <h3 className="font-bold text-base sm:text-lg text-neutral-900 truncate">
+                    <h3 className="font-bold text-base sm:text-lg text-white truncate">
                       {selectedGeneralActivity.title}
                     </h3>
                   </div>
                 </div>
                 <button 
                   onClick={() => setSelectedGeneralActivity(null)}
-                  className="p-2 hover:bg-neutral-100 rounded-xl transition-colors text-neutral-400 hover:text-neutral-700 cursor-pointer"
+                  className="p-2 hover:bg-slate-800 rounded-xl transition-colors text-slate-400 hover:text-white cursor-pointer"
                 >
                   <X size={20} />
                 </button>
               </div>
 
               <div className="flex-1 overflow-y-auto p-6 space-y-4 text-xs">
-                <div className="p-4 bg-neutral-50 rounded-2xl border border-neutral-100 space-y-2">
+                <div className="p-4 bg-[#131722] rounded-2xl border border-slate-800 space-y-2">
                   <div className="flex justify-between items-center">
-                    <span className="text-[10px] font-bold text-neutral-400 uppercase tracking-widest">Tidspunkt</span>
-                    <span className="font-semibold text-neutral-800">{formatModalDate(selectedGeneralActivity.timestamp)}</span>
+                    <span className="text-[10px] font-bold text-slate-400 uppercase tracking-widest">Tidspunkt</span>
+                    <span className="font-semibold text-slate-200">{formatModalDate(selectedGeneralActivity.timestamp)}</span>
                   </div>
                   <div className="flex justify-between items-center">
-                    <span className="text-[10px] font-bold text-neutral-400 uppercase tracking-widest">Registrert av</span>
-                    <span className="font-semibold text-neutral-800">{selectedGeneralActivity.authorName || 'System'}</span>
+                    <span className="text-[10px] font-bold text-slate-400 uppercase tracking-widest">Registrert av</span>
+                    <span className="font-semibold text-slate-200">{selectedGeneralActivity.authorName || 'System'}</span>
                   </div>
                   {selectedGeneralActivity.status && (
                     <div className="flex justify-between items-center">
-                      <span className="text-[10px] font-bold text-neutral-400 uppercase tracking-widest">Status</span>
-                      <span className="text-[9px] font-black uppercase px-2 py-0.5 rounded bg-emerald-100 text-emerald-700">
+                      <span className="text-[10px] font-bold text-slate-400 uppercase tracking-widest">Status</span>
+                      <span className="text-[9px] font-black uppercase px-2 py-0.5 rounded bg-emerald-500/20 text-emerald-300 border border-emerald-500/30">
                         {selectedGeneralActivity.status}
                       </span>
                     </div>
@@ -899,21 +899,21 @@ export default function ProjectActivityLog({ projectId, project, isCustomerView 
 
                 {selectedGeneralActivity.description && (
                   <div>
-                    <span className="text-[10px] font-bold text-neutral-400 uppercase tracking-widest block mb-1">
+                    <span className="text-[10px] font-bold text-slate-400 uppercase tracking-widest block mb-1">
                       Beskrivelse / Hendelsesforløp
                     </span>
-                    <p className="text-neutral-700 text-sm leading-relaxed p-4 bg-white rounded-2xl border border-neutral-200">
+                    <p className="text-slate-300 text-sm leading-relaxed p-4 bg-[#131722] rounded-2xl border border-slate-800">
                       {selectedGeneralActivity.description}
                     </p>
                   </div>
                 )}
               </div>
 
-              <div className="p-4 sm:p-6 border-t border-neutral-100 flex justify-end bg-neutral-50">
+              <div className="p-4 sm:p-6 border-t border-slate-800 flex justify-end bg-[#131722]">
                 <button
                   type="button"
                   onClick={() => setSelectedGeneralActivity(null)}
-                  className="px-5 py-2.5 bg-neutral-900 hover:bg-neutral-800 text-white rounded-xl text-xs font-bold transition-colors cursor-pointer"
+                  className="px-5 py-2.5 bg-slate-800 hover:bg-slate-700 text-white rounded-xl text-xs font-bold transition-colors cursor-pointer"
                 >
                   Lukk
                 </button>

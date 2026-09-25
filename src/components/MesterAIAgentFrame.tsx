@@ -23,6 +23,7 @@ import { toast } from 'sonner';
 import ReactMarkdown from 'react-markdown';
 import remarkGfm from 'remark-gfm';
 import { formatAiMarkdown } from '../lib/formatAiMarkdown';
+import MesterAIIcon from './MesterAIIcon';
 
 interface Message {
   id: string;
@@ -812,9 +813,7 @@ export default function MesterAIAgentFrame({
       {/* 🌟 MesterAI White-label Header */}
       <div className="px-4 py-2.5 bg-gradient-to-r from-slate-900 via-navy-950 to-slate-900 border-b border-white/10 flex items-center justify-between gap-3 shrink-0 text-white">
         <div className="flex items-center gap-2.5 min-w-0">
-          <div className="w-8 h-8 rounded-xl bg-gradient-to-tr from-electric-600 to-electric-500 text-white flex items-center justify-center shadow-xs shrink-0">
-            <Sparkles size={16} />
-          </div>
+          <MesterAIIcon size="sm" />
           <div className="min-w-0">
             <div className="flex items-center gap-2">
               <span className="text-xs sm:text-sm font-black text-white truncate">

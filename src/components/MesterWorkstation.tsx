@@ -93,6 +93,7 @@ import WeatherWidget from './WeatherWidget';
 import MesterAICopilot from './MesterAICopilot';
 import ProjectTeamChat from './ProjectTeamChat';
 import { VehicleFleetManager } from './VehicleFleetManager';
+import MesterAIIcon from './MesterAIIcon';
 
 interface MesterWorkstationProps {
   initialModuleTab?: string | null;
@@ -793,11 +794,125 @@ export default function MesterWorkstation({
   const [topSearchQuery, setTopSearchQuery] = useState('');
   const topSearchInputRef = useRef<HTMLInputElement>(null);
 
-  // 🧮 Hurtigkalkyle state for Tilbud & Kalkyle
-  const [calcHours, setCalcHours] = useState(45);
-  const [calcHourlyRate, setCalcHourlyRate] = useState(890);
-  const [calcMaterials, setCalcMaterials] = useState(28500);
-  const [calcMarkup, setCalcMarkup] = useState(15);
+  // 🧮 Hurtigkalkyle flerpost-modell for Tilbud & Kalkyle
+  interface QuickCalcLine {
+    id: string;
+    title: string;
+    hours: number;
+    hourlyRate: number;
+    materials: number;
+    markup: number;
+  }
+
+  const [calcLines, setCalcLines] = useState<QuickCalcLine[]>([
+    {
+      id: 'post-1',
+      title: 'Tømrer- og monteringsarbeid',
+      hours: 35,
+      hourlyRate: 890,
+      materials: 22000,
+      markup: 15
+    },
+    {
+      id: 'post-2',
+      title: 'Riving og forarbeid',
+      hours: 10,
+      hourlyRate: 890,
+      materials: 6500,
+      markup: 15
+    }
+  ]);
+
+  const handleAddCalcLine = (preset?: { title: string; hours: number; hourlyRate: number; materials: number; markup: number }) => {
+    const defaultRate = calcLines[0]?.hourlyRate || 890;
+    const defaultMarkup = calcLines[0]?.markup || 15;
+    const newLine: QuickCalcLine = preset ? {
+      id: `post-${Date.now()}-${Math.random().toString(36).substring(2, 6)}`,
+      ...preset
+    } : {
+      id: `post-${Date.now()}-${Math.random().toString(36).substring(2, 6)}`,
+      title: `Kalkylepost ${calcLines.length + 1}`,
+      hours: 8,
+      hourlyRate: defaultRate,
+      materials: 3500,
+      markup: defaultMarkup
+    };
+    setCalcLines(prev => [...prev, newLine]);
+    toast.success(`La til kalkylelinje: "${newLine.title}"`);
+  };
+
+  const handleUpdateCalcLine = (id: string, field: 'title' | 'hours' | 'hourlyRate' | 'materials' | 'markup', value: string | number) => {
+    setCalcLines(prev => prev.map(line => {
+      if (line.id !== id) return line;
+      return {
+        ...line,
+        [field]: field === 'title' ? String(value) : Math.max(0, Number(value) || 0)
+      };
+    }));
+  };
+
+  const handleDuplicateCalcLine = (id: string) => {
+    const target = calcLines.find(l => l.id === id);
+    if (!target) return;
+    const copy: QuickCalcLine = {
+      ...target,
+      id: `post-${Date.now()}-${Math.random().toString(36).substring(2, 6)}`,
+      title: `${target.title} (Kopi)`
+    };
+    const targetIndex = calcLines.findIndex(l => l.id === id);
+    setCalcLines(prev => {
+      const copyArr = [...prev];
+      copyArr.splice(targetIndex + 1, 0, copy);
+      return copyArr;
+    });
+    toast.success(`Dupliserte "${target.title}"`);
+  };
+
+  const handleRemoveCalcLine = (id: string) => {
+    if (calcLines.length <= 1) {
+      toast.error('Kalkylen må inneholde minst én linje');
+      return;
+    }
+    const target = calcLines.find(l => l.id === id);
+    setCalcLines(prev => prev.filter(l => l.id !== id));
+    if (target) {
+      toast.info(`Fjernet "${target.title}" fra kalkylen`);
+    }
+  };
+
+  const handleResetCalcLines = () => {
+    setCalcLines([
+      {
+        id: `post-${Date.now()}-1`,
+        title: 'Tømrer- og monteringsarbeid',
+        hours: 35,
+        hourlyRate: 890,
+        materials: 22000,
+        markup: 15
+      },
+      {
+        id: `post-${Date.now()}-2`,
+        title: 'Riving og forarbeid',
+        hours: 10,
+        hourlyRate: 890,
+        materials: 6500,
+        markup: 15
+      }
+    ]);
+    toast.info('Kalkylelinjer tilbakestilt');
+  };
+
+  // Bakoverkompatible beregninger og nøkkeltall for arbeidsstasjonen
+  const calcHours = useMemo(() => calcLines.reduce((acc, l) => acc + (Number(l.hours) || 0), 0), [calcLines]);
+  const calcHourlyRate = useMemo(() => {
+    if (calcLines.length === 0) return 890;
+    return calcLines[0].hourlyRate || 890;
+  }, [calcLines]);
+  const calcMaterials = useMemo(() => calcLines.reduce((acc, l) => acc + (Number(l.materials) || 0), 0), [calcLines]);
+  const calcMarkup = useMemo(() => {
+    if (calcLines.length === 0) return 15;
+    return calcLines[0].markup || 15;
+  }, [calcLines]);
 
   // ⚙️ Innstillinger-modal rett inne i arbeidsstasjonen ("liten boks med alle funksjoner")
   const [isSettingsModalOpen, setIsSettingsModalOpen] = useState(false);
@@ -1401,16 +1516,20 @@ export default function MesterWorkstation({
   // Tastatursnarvei ⌘K / Ctrl+K
   useEffect(() => {
     const handleWorkstationKey = (e: KeyboardEvent) => {
-      if ((e.metaKey || e.ctrlKey) && e.key === 'k') {
+      if ((e.metaKey || e.ctrlKey) && e.key.toLowerCase() === 'k') {
         e.preventDefault();
-        setIsTopSearchOpen(prev => !prev);
+        if (onOpenSmartSearch) {
+          onOpenSmartSearch();
+        } else {
+          setIsTopSearchOpen(prev => !prev);
+        }
       } else if (e.key === 'Escape' && isTopSearchOpen) {
         setIsTopSearchOpen(false);
       }
     };
     window.addEventListener('keydown', handleWorkstationKey);
     return () => window.removeEventListener('keydown', handleWorkstationKey);
-  }, [isTopSearchOpen]);
+  }, [isTopSearchOpen, onOpenSmartSearch]);
 
   // Lytt til select_chat_session custom event
   useEffect(() => {
@@ -1422,6 +1541,24 @@ export default function MesterWorkstation({
     window.addEventListener('select_chat_session', handleSelectSessionEvent);
     return () => window.removeEventListener('select_chat_session', handleSelectSessionEvent);
   }, [projects]);
+
+  // Lytt til select_project custom event
+  useEffect(() => {
+    const handleSelectProjectEvent = (e: any) => {
+      if (e.detail?.projectId || e.detail?.project) {
+        const proj = e.detail.project || userAccessibleProjects.find(p => p.id === e.detail.projectId);
+        if (proj) {
+          onSelectProject(proj);
+          if (e.detail.openDetails) {
+            setActiveModuleTab('project_details');
+            setViewMode('module');
+          }
+        }
+      }
+    };
+    window.addEventListener('select_project', handleSelectProjectEvent);
+    return () => window.removeEventListener('select_project', handleSelectProjectEvent);
+  }, [userAccessibleProjects, onSelectProject]);
 
   // 🔄 Initialiser eller synkroniser aktiv sesjon (isolerer strengt per kunde/bedrift)
   useEffect(() => {
@@ -1795,27 +1932,84 @@ export default function MesterWorkstation({
     }
   };
 
-  // 💰 Opprett tilbud direkte fra hurtigkalkyle
-  const handleCreateOfferFromCalc = async () => {
-    const labor = calcHours * calcHourlyRate;
-    const mats = Math.round(calcMaterials * (1 + calcMarkup / 100));
-    const total = labor + mats;
-    const items = [
-      {
-        description: `Tømrer- og fagmessig byggearbeid (${calcHours} timer)`,
-        quantity: calcHours,
-        unit: 'timer',
-        pricePerUnit: calcHourlyRate,
-        total: labor
-      },
-      {
-        description: `Byggematerialer og forbruksmateriell (inkl. ${calcMarkup}% påslag og svinn)`,
-        quantity: 1,
-        unit: 'stk',
-        pricePerUnit: mats,
-        total: mats
+  // 💰 Bygg tilbudsposter fra alle kalkylelinjer
+  const buildOfferItemsFromCalc = () => {
+    const items: Array<{
+      description: string;
+      quantity: number;
+      unit: string;
+      pricePerUnit: number;
+      total: number;
+    }> = [];
+
+    let totalLabor = 0;
+    let totalMaterialsWithMarkup = 0;
+    let totalHours = 0;
+
+    calcLines.forEach((line, index) => {
+      const hours = Number(line.hours) || 0;
+      const rate = Number(line.hourlyRate) || 0;
+      const matsCost = Number(line.materials) || 0;
+      const markup = Number(line.markup) || 0;
+      const title = line.title?.trim() || `Post ${index + 1}`;
+
+      const lineLabor = hours * rate;
+      const lineMats = Math.round(matsCost * (1 + markup / 100));
+
+      totalHours += hours;
+      totalLabor += lineLabor;
+      totalMaterialsWithMarkup += lineMats;
+
+      if (hours > 0 && lineMats > 0) {
+        items.push({
+          description: `${title}: Fagmessig arbeid (${hours} timer à kr ${rate})`,
+          quantity: hours,
+          unit: 'timer',
+          pricePerUnit: rate,
+          total: lineLabor
+        });
+        items.push({
+          description: `${title}: Materialer og forbruk (inkl. ${markup}% påslag)`,
+          quantity: 1,
+          unit: 'stk',
+          pricePerUnit: lineMats,
+          total: lineMats
+        });
+      } else if (hours > 0) {
+        items.push({
+          description: `${title}: Fagmessig arbeid (${hours} timer à kr ${rate})`,
+          quantity: hours,
+          unit: 'timer',
+          pricePerUnit: rate,
+          total: lineLabor
+        });
+      } else if (lineMats > 0) {
+        items.push({
+          description: `${title}: Materialer og utstyr (inkl. ${markup}% påslag)`,
+          quantity: 1,
+          unit: 'stk',
+          pricePerUnit: lineMats,
+          total: lineMats
+        });
+      } else {
+        items.push({
+          description: title,
+          quantity: 1,
+          unit: 'post',
+          pricePerUnit: 0,
+          total: 0
+        });
       }
-    ];
+    });
+
+    const total = totalLabor + totalMaterialsWithMarkup;
+    return { items, totalLabor, totalMaterialsWithMarkup, totalHours, total };
+  };
+
+  // 💰 Opprett tilbud direkte fra hurtigkalkyle med alle linjer
+  const handleCreateOfferFromCalc = async () => {
+    const { items, totalMaterialsWithMarkup, totalHours, total } = buildOfferItemsFromCalc();
+
     const newOffer = {
       title: `Tilbud: ${selectedProject?.name || 'Byggeoppdrag'}`,
       projectName: selectedProject?.name || 'Geitekleiva 12',
@@ -1824,18 +2018,39 @@ export default function MesterWorkstation({
       amount: total,
       totalPrice: total,
       totalAmount: total,
-      hours: calcHours,
-      materials: mats,
+      hours: totalHours,
+      materials: totalMaterialsWithMarkup,
       items,
       status: 'Sendt til kunde',
       createdAt: new Date().toISOString().split('T')[0]
     };
     try {
-      await addDoc(collection(db, 'offers'), newOffer);
+      const docRef = await addDoc(collection(db, 'offers'), newOffer);
+      const createdOffer = { id: docRef.id, ...newOffer };
+      setSelectedOfferForDetail(createdOffer);
       toast.success(`Opprettet pristilbud på kr ${total.toLocaleString('no-NO')} eks. mva med ${items.length} spesifiserte tilbudsposter!`);
     } catch (e) {
       toast.info(`Tilbud på kr ${total.toLocaleString('no-NO')} er klart i kalkylen!`);
     }
+  };
+
+  // 📝 Åpne i full tilbudsbygger med ferdigutfylte kalkyleposter
+  const handleOpenOfferBuilderFromCalc = () => {
+    const { items, totalMaterialsWithMarkup, totalHours, total } = buildOfferItemsFromCalc();
+
+    handleOpenCreateOffer({
+      title: `Tilbud: ${selectedProject?.name || 'Byggeoppdrag'}`,
+      projectName: selectedProject?.name || 'Geitekleiva 12',
+      projectId: selectedProject?.id || '',
+      clientName: selectedProject?.clientName || '',
+      clientEmail: selectedProject?.clientEmail || '',
+      amount: total,
+      totalPrice: total,
+      totalAmount: total,
+      hours: totalHours,
+      materials: totalMaterialsWithMarkup,
+      items
+    });
   };
 
   // 🪄 AI Autofyll for prosjektopprettelse
@@ -2508,7 +2723,8 @@ export default function MesterWorkstation({
           setIsOpenMobile(false);
         }}
         onOpenSmartSearch={() => {
-          setIsTopSearchOpen(true);
+          if (onOpenSmartSearch) onOpenSmartSearch();
+          else setIsTopSearchOpen(true);
           setIsOpenMobile(false);
         }}
         onOpenSettings={() => {
@@ -2529,7 +2745,7 @@ export default function MesterWorkstation({
       <main className="flex-1 flex flex-col h-full overflow-hidden bg-[#0A101D] relative">
         {/* Top Navigation Bar (Gemini & ChatGPT style) */}
         <header className={cn(
-          "relative h-14 px-3 sm:px-5 border-b border-slate-800/80 flex items-center justify-between gap-3 bg-[#0A101D]/90 backdrop-blur-md shrink-0",
+          "relative h-14 px-3 sm:px-5 border-b border-slate-800/80 flex items-center justify-between gap-3 bg-[#0A101D]/90 backdrop-blur-md shrink-0 overflow-x-clip min-w-0 w-full",
           isTopSearchOpen ? "z-50" : "z-40"
         )}>
           {isTopSearchOpen ? (
@@ -2575,26 +2791,26 @@ export default function MesterWorkstation({
           ) : (
             <>
               {/* 📱 MOBILE TOP BAR (1:1 Google Gemini App - Screenshot 3) */}
-              <div className="flex md:hidden items-center justify-between w-full">
+              <div className="flex md:hidden items-center justify-between w-full min-w-0 gap-1.5">
                 {/* Left: Hamburger Menu */}
                 <button
                   type="button"
                   onClick={() => setIsOpenMobile(true)}
-                  className="p-2 -ml-1 rounded-full text-slate-300 hover:text-white hover:bg-white/10 transition-colors cursor-pointer"
+                  className="p-1.5 -ml-1 rounded-full text-slate-300 hover:text-white hover:bg-white/10 transition-colors cursor-pointer shrink-0"
                   title={t('ws_open_menu', "Åpne meny")}
                 >
                   <Menu size={22} />
                 </button>
 
                 {/* Center: Model / Project Switcher Pill */}
-                <div ref={mobileProjectDropdownRef} className="relative">
+                <div ref={mobileProjectDropdownRef} className="relative min-w-0 max-w-[135px] xs:max-w-[170px] sm:max-w-[200px]">
                   <button
                     type="button"
                     onClick={() => setIsProjectDropdownOpen(!isProjectDropdownOpen)}
-                    className="flex items-center gap-1.5 px-3.5 py-1.5 rounded-full bg-[#1e1f20] border border-white/10 text-xs font-semibold text-white shadow-xs hover:border-white/20 transition-all cursor-pointer"
+                    className="flex items-center gap-1.5 px-3 py-1.5 rounded-full bg-[#1e1f20] border border-white/10 text-xs font-semibold text-white shadow-xs hover:border-white/20 transition-all cursor-pointer min-w-0 max-w-full"
                   >
                     <span className="w-2 h-2 rounded-full bg-emerald-400 animate-pulse shrink-0" />
-                    <span className="truncate max-w-[150px]">
+                    <span className="truncate block">
                       {selectedProject ? selectedProject.name : 'MesterAI v2.6'}
                     </span>
                     <ChevronDown size={14} className="text-slate-400 shrink-0" />
@@ -2688,15 +2904,15 @@ export default function MesterWorkstation({
                   )}
                 </div>
 
-                {/* Right: Tilbud 📝 + Compose ✏️ + Profile Avatar */}
-                <div className="flex items-center gap-1.5">
+                {/* Right: Tilbud 📝 (hidden on narrow mobile) + Compose ✏️ + Profile Avatar */}
+                <div className="flex items-center gap-1 shrink-0">
                   <button
                     type="button"
                     onClick={() => handleOpenCreateOffer()}
-                    className="p-2 rounded-full text-purple-300 hover:text-white hover:bg-purple-500/20 border border-purple-500/30 transition-colors cursor-pointer"
+                    className="hidden xs:flex p-1.5 rounded-full text-purple-300 hover:text-white hover:bg-purple-500/20 border border-purple-500/30 transition-colors cursor-pointer shrink-0"
                     title={t('ws_create_offer_title', "Opprett nytt tilbud")}
                   >
-                    <Calculator size={18} />
+                    <Calculator size={17} />
                   </button>
 
                   <button
@@ -2705,16 +2921,16 @@ export default function MesterWorkstation({
                       handleNewChat();
                       setViewMode('chat');
                     }}
-                    className="p-2 rounded-full text-slate-300 hover:text-white hover:bg-white/10 transition-colors cursor-pointer"
+                    className="p-1.5 rounded-full text-slate-300 hover:text-white hover:bg-white/10 transition-colors cursor-pointer shrink-0"
                     title={t('ws_new_chat', "Start ny samtale")}
                   >
-                    <SquarePen size={19} />
+                    <SquarePen size={18} />
                   </button>
 
                   <button
                     type="button"
                     onClick={() => setIsSettingsModalOpen(true)}
-                    className="w-8 h-8 rounded-full border border-white/20 overflow-hidden flex items-center justify-center bg-gradient-to-tr from-purple-600 to-blue-500 text-white font-bold text-xs shrink-0 active:scale-95 transition-transform"
+                    className="w-7 h-7 sm:w-8 sm:h-8 rounded-full border border-white/20 overflow-hidden flex items-center justify-center bg-gradient-to-tr from-purple-600 to-blue-500 text-white font-bold text-xs shrink-0 active:scale-95 transition-transform"
                     title={t('ws_settings_profile', "Innstillinger & Profil")}
                   >
                     {user?.photoURL ? (
@@ -2889,10 +3105,32 @@ export default function MesterWorkstation({
                     </button>
                   )}
 
+                  {/* 🔍 Prominent Global Search Bar (Linear / Gemini / Cloud Console style) */}
                   <button
                     type="button"
-                    onClick={() => setIsTopSearchOpen(true)}
-                    className="p-2 rounded-xl text-slate-400 hover:text-white hover:bg-slate-800/80 transition-colors cursor-pointer"
+                    onClick={() => {
+                      if (onOpenSmartSearch) onOpenSmartSearch();
+                      else setIsTopSearchOpen(true);
+                    }}
+                    className="hidden sm:flex items-center gap-2.5 px-3.5 py-1.5 rounded-full bg-[#13161c] hover:bg-[#1a1e28] text-slate-400 hover:text-white border border-slate-700/60 hover:border-purple-500/50 transition-all text-xs font-medium cursor-pointer shadow-xs max-w-xs md:max-w-sm lg:max-w-md w-full group"
+                    title={t('ws_search_placeholder', "Søk i hele systemet: samtaler, prosjekter, avvik, verktøy... (⌘K)")}
+                  >
+                    <Search size={14} className="text-purple-400 group-hover:scale-110 transition-transform shrink-0" />
+                    <span className="truncate text-slate-400 group-hover:text-slate-200">
+                      {t('ws_search_all_placeholder', "Søk i hele systemet: samtaler, prosjekter, verktøy...")}
+                    </span>
+                    <kbd className="ml-auto px-1.5 py-0.5 rounded bg-white/5 border border-white/10 text-[10px] text-slate-400 font-mono font-bold shrink-0">
+                      ⌘K
+                    </kbd>
+                  </button>
+
+                  <button
+                    type="button"
+                    onClick={() => {
+                      if (onOpenSmartSearch) onOpenSmartSearch();
+                      else setIsTopSearchOpen(true);
+                    }}
+                    className="sm:hidden p-2 rounded-xl text-slate-400 hover:text-white hover:bg-slate-800/80 transition-colors cursor-pointer"
                     title={t('ws_search_placeholder', "Søk i samtaler, prosjekter og moduler (⌘K)")}
                   >
                     <Search size={16} />
@@ -4005,7 +4243,8 @@ export default function MesterWorkstation({
 
                     {/* MesterAI Hurtigkalkulator */}
                     <div className="p-4 sm:p-5 rounded-2xl bg-gradient-to-br from-slate-950 via-slate-900 to-slate-950 border border-purple-500/30 shadow-lg space-y-3.5 sm:space-y-4">
-                      <div className="flex items-center justify-between gap-2">
+                      {/* Header */}
+                      <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-2.5">
                         <div className="flex items-center gap-2.5 min-w-0">
                           <div className="w-8 h-8 rounded-xl bg-purple-500/10 border border-purple-500/25 flex items-center justify-center shrink-0 text-purple-400">
                             <Calculator size={16} />
@@ -4017,114 +4256,284 @@ export default function MesterWorkstation({
                               </h4>
                               <span className="inline-flex items-center gap-1 px-1.5 py-0.5 rounded-full text-[9px] sm:text-[10px] font-bold bg-purple-500/15 text-purple-300 border border-purple-500/25 shrink-0">
                                 <span className="w-1.5 h-1.5 rounded-full bg-emerald-400 animate-pulse" />
-                                Live
+                                Live · Flerpostkalkyle
                               </span>
                             </div>
                             <p className="text-[10px] sm:text-[11px] text-slate-400 truncate">
-                              Sanntids pris- og tilbudsestimat
+                              Sanntids pris- og tilbudsestimat med fleksible linjer og fagposter
                             </p>
                           </div>
                         </div>
-                        <span className="text-[10px] font-bold text-slate-500 tracking-wider uppercase hidden sm:block shrink-0">
-                          Interaktiv
-                        </span>
-                      </div>
 
-                      <div className="grid grid-cols-2 sm:grid-cols-4 gap-2 sm:gap-3">
-                        <div className="bg-slate-900/90 border border-slate-800 focus-within:border-purple-500/80 focus-within:ring-1 focus-within:ring-purple-500/30 rounded-xl p-2.5 transition-all">
-                          <span className="text-[10px] font-bold uppercase tracking-wider text-slate-400 block mb-1">
-                            Arbeidstimer
-                          </span>
-                          <div className="flex items-center justify-between gap-1">
-                            <input
-                              type="number"
-                              value={calcHours}
-                              onChange={(e) => setCalcHours(Math.max(0, Number(e.target.value)))}
-                              className="w-full bg-transparent text-white font-black text-sm sm:text-base focus:outline-none"
-                            />
-                            <span className="text-[11px] text-slate-500 font-semibold shrink-0">t</span>
-                          </div>
-                        </div>
-
-                        <div className="bg-slate-900/90 border border-slate-800 focus-within:border-purple-500/80 focus-within:ring-1 focus-within:ring-purple-500/30 rounded-xl p-2.5 transition-all">
-                          <span className="text-[10px] font-bold uppercase tracking-wider text-slate-400 block mb-1">
-                            Timepris
-                          </span>
-                          <div className="flex items-center justify-between gap-1">
-                            <input
-                              type="number"
-                              value={calcHourlyRate}
-                              onChange={(e) => setCalcHourlyRate(Math.max(0, Number(e.target.value)))}
-                              className="w-full bg-transparent text-white font-black text-sm sm:text-base focus:outline-none"
-                            />
-                            <span className="text-[11px] text-slate-500 font-semibold shrink-0">kr/t</span>
-                          </div>
-                        </div>
-
-                        <div className="bg-slate-900/90 border border-slate-800 focus-within:border-purple-500/80 focus-within:ring-1 focus-within:ring-purple-500/30 rounded-xl p-2.5 transition-all">
-                          <span className="text-[10px] font-bold uppercase tracking-wider text-slate-400 block mb-1">
-                            Materiellkost
-                          </span>
-                          <div className="flex items-center justify-between gap-1">
-                            <input
-                              type="number"
-                              value={calcMaterials}
-                              onChange={(e) => setCalcMaterials(Math.max(0, Number(e.target.value)))}
-                              className="w-full bg-transparent text-white font-black text-sm sm:text-base focus:outline-none"
-                            />
-                            <span className="text-[11px] text-slate-500 font-semibold shrink-0">kr</span>
-                          </div>
-                        </div>
-
-                        <div className="bg-slate-900/90 border border-slate-800 focus-within:border-purple-500/80 focus-within:ring-1 focus-within:ring-purple-500/30 rounded-xl p-2.5 transition-all">
-                          <span className="text-[10px] font-bold uppercase tracking-wider text-slate-400 block mb-1">
-                            Påslag materiell
-                          </span>
-                          <div className="flex items-center justify-between gap-1">
-                            <input
-                              type="number"
-                              value={calcMarkup}
-                              onChange={(e) => setCalcMarkup(Math.max(0, Number(e.target.value)))}
-                              className="w-full bg-transparent text-white font-black text-sm sm:text-base focus:outline-none"
-                            />
-                            <span className="text-[11px] text-slate-500 font-semibold shrink-0">%</span>
-                          </div>
+                        <div className="flex items-center gap-2 self-start sm:self-auto">
+                          <button
+                            type="button"
+                            onClick={() => handleAddCalcLine()}
+                            className="inline-flex items-center gap-1 px-2.5 py-1 rounded-lg bg-purple-600/20 hover:bg-purple-600/40 text-purple-300 hover:text-white border border-purple-500/30 text-[11px] font-bold transition-all cursor-pointer shadow-xs"
+                          >
+                            <Plus size={12} />
+                            <span>Ny linje</span>
+                          </button>
+                          <button
+                            type="button"
+                            onClick={handleResetCalcLines}
+                            className="px-2 py-1 rounded-lg bg-slate-900 hover:bg-slate-800 text-slate-400 hover:text-slate-300 border border-slate-800 text-[10px] font-medium transition-all cursor-pointer"
+                            title="Tilbakestill kalkylelinjer"
+                          >
+                            Nullstill
+                          </button>
                         </div>
                       </div>
+
+                      {/* Hurtigvalg faggrupper / maler */}
+                      <div className="p-2 sm:p-2.5 rounded-xl bg-slate-950/70 border border-slate-800/80 space-y-1.5">
+                        <div className="flex items-center justify-between">
+                          <span className="text-[9px] sm:text-[10px] font-bold uppercase tracking-wider text-slate-400">
+                            Hurtigtillegg fagposter:
+                          </span>
+                          <span className="text-[9px] text-slate-400">Klikk for å legge til ferdig utfylt faglinje</span>
+                        </div>
+                        <div className="flex items-center gap-1.5 flex-wrap">
+                          <button
+                            type="button"
+                            onClick={() => handleAddCalcLine({ title: 'Tømrer- og snekkerarbeid', hours: 25, hourlyRate: 890, materials: 18000, markup: 15 })}
+                            className="px-2 py-1 rounded-lg bg-slate-900 hover:bg-purple-900/40 text-purple-300 hover:text-white border border-purple-500/20 text-[10px] sm:text-[11px] font-medium transition-all cursor-pointer flex items-center gap-1"
+                          >
+                            <Plus size={10} /> Tømrer
+                          </button>
+                          <button
+                            type="button"
+                            onClick={() => handleAddCalcLine({ title: 'Riving og avfallshåndtering', hours: 12, hourlyRate: 850, materials: 4500, markup: 12 })}
+                            className="px-2 py-1 rounded-lg bg-slate-900 hover:bg-purple-900/40 text-purple-300 hover:text-white border border-purple-500/20 text-[10px] sm:text-[11px] font-medium transition-all cursor-pointer flex items-center gap-1"
+                          >
+                            <Plus size={10} /> Riving
+                          </button>
+                          <button
+                            type="button"
+                            onClick={() => handleAddCalcLine({ title: 'Sparkling og malerarbeid', hours: 16, hourlyRate: 850, materials: 6500, markup: 15 })}
+                            className="px-2 py-1 rounded-lg bg-slate-900 hover:bg-purple-900/40 text-purple-300 hover:text-white border border-purple-500/20 text-[10px] sm:text-[11px] font-medium transition-all cursor-pointer flex items-center gap-1"
+                          >
+                            <Plus size={10} /> Maler
+                          </button>
+                          <button
+                            type="button"
+                            onClick={() => handleAddCalcLine({ title: 'Flis- og murerarbeid (Våtrom)', hours: 20, hourlyRate: 920, materials: 14000, markup: 15 })}
+                            className="px-2 py-1 rounded-lg bg-slate-900 hover:bg-purple-900/40 text-purple-300 hover:text-white border border-purple-500/20 text-[10px] sm:text-[11px] font-medium transition-all cursor-pointer flex items-center gap-1"
+                          >
+                            <Plus size={10} /> Murer/Flis
+                          </button>
+                          <button
+                            type="button"
+                            onClick={() => handleAddCalcLine({ title: 'Elektrikerarbeid (Underentreprenør)', hours: 10, hourlyRate: 1050, materials: 16000, markup: 12 })}
+                            className="px-2 py-1 rounded-lg bg-slate-900 hover:bg-purple-900/40 text-purple-300 hover:text-white border border-purple-500/20 text-[10px] sm:text-[11px] font-medium transition-all cursor-pointer flex items-center gap-1"
+                          >
+                            <Plus size={10} /> Elektro
+                          </button>
+                          <button
+                            type="button"
+                            onClick={() => handleAddCalcLine({ title: 'Rørleggerarbeid (Underentreprenør)', hours: 10, hourlyRate: 1100, materials: 18000, markup: 12 })}
+                            className="px-2 py-1 rounded-lg bg-slate-900 hover:bg-purple-900/40 text-purple-300 hover:text-white border border-purple-500/20 text-[10px] sm:text-[11px] font-medium transition-all cursor-pointer flex items-center gap-1"
+                          >
+                            <Plus size={10} /> Rørlegger
+                          </button>
+                        </div>
+                      </div>
+
+                      {/* Liste over kalkylelinjer */}
+                      <div className="space-y-2.5">
+                        {calcLines.map((line, idx) => {
+                          const lineLabor = (Number(line.hours) || 0) * (Number(line.hourlyRate) || 0);
+                          const lineMats = Math.round((Number(line.materials) || 0) * (1 + (Number(line.markup) || 0) / 100));
+                          const lineTotal = lineLabor + lineMats;
+
+                          return (
+                            <div
+                              key={line.id}
+                              className="p-3 sm:p-3.5 rounded-xl bg-slate-900/80 border border-slate-800 hover:border-purple-500/40 transition-all space-y-2.5 shadow-xs"
+                            >
+                              {/* Topplinje: Postnummer, Tittel/Beskrivelse, Handlinger & Sum */}
+                              <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-2">
+                                <div className="flex items-center gap-2 flex-1 min-w-0">
+                                  <span className="w-6 h-6 rounded-lg bg-purple-500/20 border border-purple-500/30 text-purple-300 text-[11px] font-black flex items-center justify-center shrink-0">
+                                    {idx + 1}
+                                  </span>
+                                  <input
+                                    type="text"
+                                    value={line.title}
+                                    onChange={(e) => handleUpdateCalcLine(line.id, 'title', e.target.value)}
+                                    placeholder="F.eks. Tømrerarbeid, Riving, Malerarbeid..."
+                                    className="w-full bg-slate-950/80 border border-slate-800 focus:border-purple-500/70 rounded-lg px-2.5 py-1 text-xs sm:text-sm font-semibold text-white placeholder-slate-500 focus:outline-none focus:ring-1 focus:ring-purple-500/30"
+                                  />
+                                </div>
+
+                                <div className="flex items-center justify-between sm:justify-end gap-2 shrink-0">
+                                  <div className="text-right">
+                                    <span className="text-[9px] sm:text-[10px] text-slate-400 font-medium block">
+                                      Linjesum eks. mva
+                                    </span>
+                                    <span className="text-xs sm:text-sm font-bold text-white">
+                                      kr {lineTotal.toLocaleString('no-NO')}
+                                    </span>
+                                  </div>
+
+                                  <div className="flex items-center gap-1 border-l border-slate-800 pl-2">
+                                    <button
+                                      type="button"
+                                      onClick={() => handleDuplicateCalcLine(line.id)}
+                                      title="Dupliser denne linjen"
+                                      className="p-1.5 rounded-lg text-slate-400 hover:text-purple-300 hover:bg-slate-800 transition-colors cursor-pointer"
+                                    >
+                                      <Copy size={13} />
+                                    </button>
+                                    <button
+                                      type="button"
+                                      onClick={() => handleRemoveCalcLine(line.id)}
+                                      disabled={calcLines.length <= 1}
+                                      title={calcLines.length <= 1 ? "Minst én linje må beholdes" : "Slett denne linjen"}
+                                      className="p-1.5 rounded-lg text-slate-400 hover:text-rose-400 hover:bg-slate-800 disabled:opacity-30 disabled:cursor-not-allowed transition-colors cursor-pointer"
+                                    >
+                                      <Trash2 size={13} />
+                                    </button>
+                                  </div>
+                                </div>
+                              </div>
+
+                              {/* 4 parameter-inputfelt */}
+                              <div className="grid grid-cols-2 sm:grid-cols-4 gap-2">
+                                <div className="bg-slate-950/90 border border-slate-800/90 focus-within:border-purple-500/70 rounded-lg p-2 transition-all">
+                                  <span className="text-[9px] font-bold uppercase tracking-wider text-slate-400 block mb-0.5">
+                                    Arbeidstimer
+                                  </span>
+                                  <div className="flex items-center justify-between gap-1">
+                                    <input
+                                      type="number"
+                                      value={line.hours}
+                                      onChange={(e) => handleUpdateCalcLine(line.id, 'hours', e.target.value)}
+                                      className="w-full bg-transparent text-white font-bold text-xs sm:text-sm focus:outline-none"
+                                    />
+                                    <span className="text-[10px] text-slate-500 font-semibold shrink-0">t</span>
+                                  </div>
+                                </div>
+
+                                <div className="bg-slate-950/90 border border-slate-800/90 focus-within:border-purple-500/70 rounded-lg p-2 transition-all">
+                                  <span className="text-[9px] font-bold uppercase tracking-wider text-slate-400 block mb-0.5">
+                                    Timepris
+                                  </span>
+                                  <div className="flex items-center justify-between gap-1">
+                                    <input
+                                      type="number"
+                                      value={line.hourlyRate}
+                                      onChange={(e) => handleUpdateCalcLine(line.id, 'hourlyRate', e.target.value)}
+                                      className="w-full bg-transparent text-white font-bold text-xs sm:text-sm focus:outline-none"
+                                    />
+                                    <span className="text-[10px] text-slate-500 font-semibold shrink-0">kr/t</span>
+                                  </div>
+                                </div>
+
+                                <div className="bg-slate-950/90 border border-slate-800/90 focus-within:border-purple-500/70 rounded-lg p-2 transition-all">
+                                  <span className="text-[9px] font-bold uppercase tracking-wider text-slate-400 block mb-0.5">
+                                    Materiellkost
+                                  </span>
+                                  <div className="flex items-center justify-between gap-1">
+                                    <input
+                                      type="number"
+                                      value={line.materials}
+                                      onChange={(e) => handleUpdateCalcLine(line.id, 'materials', e.target.value)}
+                                      className="w-full bg-transparent text-white font-bold text-xs sm:text-sm focus:outline-none"
+                                    />
+                                    <span className="text-[10px] text-slate-500 font-semibold shrink-0">kr</span>
+                                  </div>
+                                </div>
+
+                                <div className="bg-slate-950/90 border border-slate-800/90 focus-within:border-purple-500/70 rounded-lg p-2 transition-all">
+                                  <span className="text-[9px] font-bold uppercase tracking-wider text-slate-400 block mb-0.5">
+                                    Påslag materiell
+                                  </span>
+                                  <div className="flex items-center justify-between gap-1">
+                                    <input
+                                      type="number"
+                                      value={line.markup}
+                                      onChange={(e) => handleUpdateCalcLine(line.id, 'markup', e.target.value)}
+                                      className="w-full bg-transparent text-white font-bold text-xs sm:text-sm focus:outline-none"
+                                    />
+                                    <span className="text-[10px] text-slate-500 font-semibold shrink-0">%</span>
+                                  </div>
+                                </div>
+                              </div>
+
+                              {/* Linjens del-summer */}
+                              <div className="flex items-center justify-between text-[10px] text-slate-400 px-1 pt-0.5 border-t border-slate-800/40">
+                                <span>Arbeid: <strong className="text-slate-300">kr {lineLabor.toLocaleString('no-NO')}</strong> ({line.hours}t × {line.hourlyRate} kr)</span>
+                                <span>Materiell m/påslag: <strong className="text-slate-300">kr {lineMats.toLocaleString('no-NO')}</strong> ({line.markup}% påslag)</span>
+                              </div>
+                            </div>
+                          );
+                        })}
+                      </div>
+
+                      {/* Legg til linje knapp */}
+                      <button
+                        type="button"
+                        onClick={() => handleAddCalcLine()}
+                        className="w-full py-2.5 px-3 rounded-xl border border-dashed border-purple-500/30 hover:border-purple-500/60 bg-purple-950/20 hover:bg-purple-950/40 text-purple-300 hover:text-white text-xs font-bold transition-all cursor-pointer flex items-center justify-center gap-1.5 shadow-xs"
+                      >
+                        <Plus size={14} />
+                        <span>Legg til ny kalkylelinje / fagpost</span>
+                      </button>
 
                       {/* Kalkylesammendrag */}
                       {(() => {
-                        const labor = calcHours * calcHourlyRate;
-                        const mats = Math.round(calcMaterials * (1 + calcMarkup / 100));
-                        const totalExMva = labor + mats;
+                        let totalLabor = 0;
+                        let totalMats = 0;
+                        let totalHours = 0;
+
+                        calcLines.forEach((l) => {
+                          const h = Number(l.hours) || 0;
+                          const r = Number(l.hourlyRate) || 0;
+                          const m = Number(l.materials) || 0;
+                          const mk = Number(l.markup) || 0;
+                          totalHours += h;
+                          totalLabor += h * r;
+                          totalMats += Math.round(m * (1 + mk / 100));
+                        });
+
+                        const totalExMva = totalLabor + totalMats;
                         const mva = Math.round(totalExMva * 0.25);
                         const totalIncMva = totalExMva + mva;
 
                         return (
-                          <div className="p-3.5 sm:p-4 rounded-xl bg-slate-950/80 border border-slate-800/90 space-y-3.5">
-                            {/* 2 Del-summer: Arbeid og Materiell */}
-                            <div className="grid grid-cols-2 gap-2 text-xs">
-                              <div className="p-2.5 rounded-lg bg-slate-900/60 border border-slate-800/60">
-                                <span className="text-[10px] font-semibold text-slate-400 block uppercase tracking-wider">
-                                  Arbeid ({calcHours}t × {calcHourlyRate} kr)
+                          <div className="p-3.5 sm:p-4 rounded-xl bg-slate-950/90 border border-purple-500/30 space-y-3.5 shadow-md">
+                            {/* 3 Del-summer: Poster, Arbeid og Materiell */}
+                            <div className="grid grid-cols-3 gap-2 text-xs">
+                              <div className="p-2 sm:p-2.5 rounded-lg bg-slate-900/80 border border-slate-800/80">
+                                <span className="text-[9px] sm:text-[10px] font-semibold text-slate-400 block uppercase tracking-wider">
+                                  Kalkyleposter
                                 </span>
                                 <strong className="text-xs sm:text-sm font-bold text-white mt-0.5 block truncate">
-                                  kr {labor.toLocaleString('no-NO')}
+                                  {calcLines.length} poster ({totalHours}t)
                                 </strong>
                               </div>
-                              <div className="p-2.5 rounded-lg bg-slate-900/60 border border-slate-800/60">
-                                <span className="text-[10px] font-semibold text-slate-400 block uppercase tracking-wider truncate">
-                                  Materiell (+{calcMarkup}%)
+                              <div className="p-2 sm:p-2.5 rounded-lg bg-slate-900/80 border border-slate-800/80">
+                                <span className="text-[9px] sm:text-[10px] font-semibold text-slate-400 block uppercase tracking-wider">
+                                  Samlet arbeid
                                 </span>
                                 <strong className="text-xs sm:text-sm font-bold text-white mt-0.5 block truncate">
-                                  kr {mats.toLocaleString('no-NO')}
+                                  kr {totalLabor.toLocaleString('no-NO')}
+                                </strong>
+                              </div>
+                              <div className="p-2 sm:p-2.5 rounded-lg bg-slate-900/80 border border-slate-800/80">
+                                <span className="text-[9px] sm:text-[10px] font-semibold text-slate-400 block uppercase tracking-wider truncate">
+                                  Samlet materiell
+                                </span>
+                                <strong className="text-xs sm:text-sm font-bold text-white mt-0.5 block truncate">
+                                  kr {totalMats.toLocaleString('no-NO')}
                                 </strong>
                               </div>
                             </div>
 
                             <div className="h-px bg-slate-800/80" />
 
-                            {/* Totalsum og Opprett Tilbud-knapp */}
+                            {/* Totalsum og Knapper */}
                             <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-3">
                               <div className="flex items-center justify-between sm:justify-start sm:gap-5">
                                 <div>
@@ -4145,14 +4554,26 @@ export default function MesterWorkstation({
                                 </div>
                               </div>
 
-                              <button
-                                type="button"
-                                onClick={handleCreateOfferFromCalc}
-                                className="w-full sm:w-auto px-5 py-2.5 rounded-xl bg-gradient-to-r from-emerald-600 to-teal-600 hover:from-emerald-500 hover:to-teal-500 active:scale-[0.98] text-white text-xs font-bold transition-all shadow-md shadow-emerald-950/40 cursor-pointer flex items-center justify-center gap-1.5"
-                              >
-                                <Check size={14} className="text-white" />
-                                <span>Opprett tilbud fra kalkyle</span>
-                              </button>
+                              <div className="flex items-center gap-2 flex-wrap sm:flex-nowrap">
+                                <button
+                                  type="button"
+                                  onClick={handleOpenOfferBuilderFromCalc}
+                                  className="flex-1 sm:flex-none px-3.5 py-2.5 rounded-xl bg-slate-900 hover:bg-slate-800 border border-purple-500/30 text-purple-300 hover:text-white text-xs font-bold transition-all cursor-pointer flex items-center justify-center gap-1.5"
+                                  title="Åpne i full tilbudsbygger for å tilpasse NS-kontrakt, betalingsplan og vilkår"
+                                >
+                                  <FileSignature size={14} />
+                                  <span>Åpne i tilbudsbygger</span>
+                                </button>
+
+                                <button
+                                  type="button"
+                                  onClick={handleCreateOfferFromCalc}
+                                  className="flex-1 sm:flex-none px-5 py-2.5 rounded-xl bg-gradient-to-r from-emerald-600 to-teal-600 hover:from-emerald-500 hover:to-teal-500 active:scale-[0.98] text-white text-xs font-bold transition-all shadow-md shadow-emerald-950/40 cursor-pointer flex items-center justify-center gap-1.5"
+                                >
+                                  <Check size={14} className="text-white" />
+                                  <span>Opprett tilbud fra kalkyle</span>
+                                </button>
+                              </div>
                             </div>
                           </div>
                         );
@@ -6272,9 +6693,9 @@ export default function MesterWorkstation({
                             </div>
                           ) : (
                             <div>
-                              <div className="flex items-center gap-2 text-xs font-bold text-amber-400 mb-3 px-1">
-                                <Sparkles size={16} className="text-amber-400" />
-                                <span className="text-[13px] tracking-wide font-semibold text-white/90">{t('ws_mesterai_pilot', 'MesterAI Pilot')}</span>
+                              <div className="flex items-center gap-2.5 text-xs font-bold text-white mb-3 px-1">
+                                <MesterAIIcon size="xs" />
+                                <span className="text-[14px] tracking-wide font-bold text-white/95">MesterAI</span>
                                 <span className="text-[11px] text-slate-400 font-mono ml-auto">{msg.timestamp}</span>
                               </div>
 

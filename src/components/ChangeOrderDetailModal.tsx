@@ -588,61 +588,61 @@ export default function ChangeOrderDetailModal({
           <div className="flex-1 overflow-y-auto p-4 sm:p-6 bg-slate-950/60">
             {activeTab === 'preview' ? (
               /* TAB 1: ELEGANT A4 PREVIEW */
-              <div className="max-w-3xl mx-auto bg-white text-slate-900 rounded-2xl shadow-xl p-6 sm:p-10 border border-slate-200">
+              <div className="max-w-3xl mx-auto bg-[#0B0F17] text-white rounded-2xl shadow-xl p-6 sm:p-10 border border-slate-800 print:bg-white print:text-slate-900 print:border-slate-200">
                 {/* Brevhode */}
-                <div className="border-b-2 border-slate-900 pb-5 mb-6 flex flex-col sm:flex-row justify-between items-start gap-4">
+                <div className="border-b-2 border-slate-800 print:border-slate-900 pb-5 mb-6 flex flex-col sm:flex-row justify-between items-start gap-4">
                   <div>
-                    <div className="text-xs font-black tracking-wider uppercase text-purple-700 flex items-center gap-1.5">
+                    <div className="text-xs font-black tracking-wider uppercase text-purple-400 print:text-purple-700 flex items-center gap-1.5">
                       <ShieldCheck size={14} />
                       <span>VikingMester KS & Byggeledelse</span>
                     </div>
-                    <h1 className="text-xl sm:text-2xl font-black text-slate-900 tracking-tight mt-1">
+                    <h1 className="text-xl sm:text-2xl font-black text-white print:text-slate-900 tracking-tight mt-1">
                       VARSEL OM ENDRINGSORDRE
                     </h1>
-                    <p className="text-xs text-slate-500 mt-0.5">
+                    <p className="text-xs text-slate-400 print:text-slate-500 mt-0.5">
                       {legalHjemmel}
                     </p>
                   </div>
                   <div className="text-left sm:text-right">
-                    <span className="inline-block px-3 py-1 rounded-full text-xs font-black uppercase tracking-wider bg-slate-900 text-white">
+                    <span className="inline-block px-3 py-1 rounded-full text-xs font-black uppercase tracking-wider bg-purple-500/20 text-purple-300 border border-purple-500/30 print:bg-slate-900 print:text-white">
                       Endringsordre #{orderNumber}
                     </span>
-                    <div className="text-[11px] text-slate-500 mt-1.5 font-medium">
+                    <div className="text-[11px] text-slate-400 print:text-slate-500 mt-1.5 font-medium">
                       Dato: {new Date().toLocaleDateString('no-NO')}
                     </div>
                   </div>
                 </div>
 
                 {/* Prosjekt & Partinfo */}
-                <div className="grid grid-cols-1 sm:grid-cols-2 gap-4 p-4 bg-slate-50 rounded-xl border border-slate-200 mb-6 text-xs">
+                <div className="grid grid-cols-1 sm:grid-cols-2 gap-4 p-4 bg-[#131722] rounded-xl border border-slate-800 print:bg-slate-50 print:border-slate-200 mb-6 text-xs">
                   <div>
-                    <span className="font-extrabold text-[10px] uppercase tracking-wider text-slate-500 block mb-1">
+                    <span className="font-extrabold text-[10px] uppercase tracking-wider text-slate-400 print:text-slate-500 block mb-1">
                       Byggeplass / Prosjekt:
                     </span>
-                    <div className="font-bold text-slate-900 text-sm">{projectName}</div>
-                    <div className="text-slate-600 mt-0.5">{projectAddress}</div>
+                    <div className="font-bold text-white print:text-slate-900 text-sm">{projectName}</div>
+                    <div className="text-slate-400 print:text-slate-600 mt-0.5">{projectAddress}</div>
                   </div>
                   <div>
-                    <span className="font-extrabold text-[10px] uppercase tracking-wider text-slate-500 block mb-1">
+                    <span className="font-extrabold text-[10px] uppercase tracking-wider text-slate-400 print:text-slate-500 block mb-1">
                       Byggherre / Oppdragsgiver:
                     </span>
-                    <div className="font-bold text-slate-900 text-sm">{clientName || 'Kunde'}</div>
-                    <div className="text-slate-600 mt-0.5">{clientEmail || 'Ingen e-post oppgitt'}</div>
+                    <div className="font-bold text-white print:text-slate-900 text-sm">{clientName || 'Kunde'}</div>
+                    <div className="text-slate-400 print:text-slate-600 mt-0.5">{clientEmail || 'Ingen e-post oppgitt'}</div>
                   </div>
                 </div>
 
                 {/* Beskrivelse */}
                 <div className="mb-6">
-                  <h3 className="text-xs font-black uppercase tracking-wider text-slate-700 border-b border-slate-200 pb-1.5 mb-2">
+                  <h3 className="text-xs font-black uppercase tracking-wider text-slate-300 print:text-slate-700 border-b border-slate-800 print:border-slate-200 pb-1.5 mb-2">
                     Beskrivelse av endring og tilleggsarbeid
                   </h3>
-                  <div className="bg-slate-50/70 p-4 rounded-xl border border-slate-200 text-sm text-slate-800 leading-relaxed">
-                    <div className="font-bold text-slate-950 text-base mb-1">{title}</div>
-                    <p className="whitespace-pre-wrap text-slate-700">
+                  <div className="bg-[#131722] p-4 rounded-xl border border-slate-800 print:bg-slate-50/70 print:border-slate-200 text-sm text-slate-200 print:text-slate-800 leading-relaxed">
+                    <div className="font-bold text-white print:text-slate-950 text-base mb-1">{title}</div>
+                    <p className="whitespace-pre-wrap text-slate-300 print:text-slate-700">
                       {description || 'Arbeidet er avtalt eller krevet utført som tillegg til opprinnelig kontrakt.'}
                     </p>
-                    <div className="mt-3 pt-3 border-t border-slate-200 text-xs text-slate-500 flex items-center gap-2">
-                      <span className="font-bold text-slate-700">Årsak til kravet:</span>
+                    <div className="mt-3 pt-3 border-t border-slate-800 print:border-slate-200 text-xs text-slate-400 print:text-slate-500 flex items-center gap-2">
+                      <span className="font-bold text-slate-300 print:text-slate-700">Årsak til kravet:</span>
                       <span className="capitalize">{cause}</span>
                     </div>
                   </div>
@@ -650,39 +650,39 @@ export default function ChangeOrderDetailModal({
 
                 {/* Økonomisk tabell */}
                 <div className="mb-6">
-                  <h3 className="text-xs font-black uppercase tracking-wider text-slate-700 border-b border-slate-200 pb-1.5 mb-2">
+                  <h3 className="text-xs font-black uppercase tracking-wider text-slate-300 print:text-slate-700 border-b border-slate-800 print:border-slate-200 pb-1.5 mb-2">
                     Økonomisk oppstilling & fremdriftskonsekvens
                   </h3>
-                  <div className="border border-slate-200 rounded-xl overflow-hidden text-xs sm:text-sm">
+                  <div className="border border-slate-800 print:border-slate-200 rounded-xl overflow-hidden text-xs sm:text-sm">
                     <table className="w-full text-left">
-                      <thead className="bg-slate-100 text-slate-700 text-xs uppercase font-extrabold">
+                      <thead className="bg-[#131722] text-slate-300 print:bg-slate-100 print:text-slate-700 text-xs uppercase font-extrabold">
                         <tr>
                           <th className="p-3">Beskrivelse</th>
                           <th className="p-3 text-right">Beløp</th>
                         </tr>
                       </thead>
-                      <tbody className="divide-y divide-slate-200">
+                      <tbody className="divide-y divide-slate-800 print:divide-slate-200">
                         <tr>
-                          <td className="p-3 font-medium text-slate-800">Netto tilleggssum eks. mva</td>
-                          <td className="p-3 text-right font-bold text-slate-900">
+                          <td className="p-3 font-medium text-slate-300 print:text-slate-800">Netto tilleggssum eks. mva</td>
+                          <td className="p-3 text-right font-bold text-white print:text-slate-900">
                             kr {(Number(amountExVat) || 0).toLocaleString('no-NO')}
                           </td>
                         </tr>
                         <tr>
-                          <td className="p-3 font-medium text-slate-800">Merverdiavgift (25% mva)</td>
-                          <td className="p-3 text-right font-bold text-slate-900">
+                          <td className="p-3 font-medium text-slate-300 print:text-slate-800">Merverdiavgift (25% mva)</td>
+                          <td className="p-3 text-right font-bold text-white print:text-slate-900">
                             kr {(Number(vatAmount) || 0).toLocaleString('no-NO')}
                           </td>
                         </tr>
-                        <tr className="bg-purple-50/80 font-black text-purple-950 text-sm sm:text-base">
+                        <tr className="bg-purple-950/40 text-purple-300 print:bg-purple-50/80 print:text-purple-950 font-black text-sm sm:text-base border-t border-purple-500/20">
                           <td className="p-3">Total sum inkl. 25% mva</td>
-                          <td className="p-3 text-right text-purple-700">
+                          <td className="p-3 text-right text-purple-400 print:text-purple-700">
                             kr {(Number(totalAmount) || 0).toLocaleString('no-NO')}
                           </td>
                         </tr>
-                        <tr className="bg-amber-50/50">
-                          <td className="p-3 text-amber-900 font-bold">Fremdriftskonsekvens (fristforlengelse)</td>
-                          <td className="p-3 text-right font-extrabold text-amber-800">
+                        <tr className="bg-amber-950/30 text-amber-300 print:bg-amber-50/50 print:text-amber-900">
+                          <td className="p-3 font-bold">Fremdriftskonsekvens (fristforlengelse)</td>
+                          <td className="p-3 text-right font-extrabold text-amber-400 print:text-amber-800">
                             {impactDays > 0 ? `+${impactDays} virkedager` : 'Ingen forsinkelse'}
                           </td>
                         </tr>
@@ -692,31 +692,31 @@ export default function ChangeOrderDetailModal({
                 </div>
 
                 {/* Juridisk klausul */}
-                <div className="p-3.5 bg-slate-50 border border-slate-200 rounded-xl text-[11px] text-slate-600 leading-relaxed mb-6">
+                <div className="p-3.5 bg-[#131722] border border-slate-800 print:bg-slate-50 print:border-slate-200 rounded-xl text-[11px] text-slate-400 print:text-slate-600 leading-relaxed mb-6">
                   <strong>Juridisk merknad (NS 8406 pkt. 19.2):</strong> Entreprenøren varsler med dette formelt om krav på vederlagsjustering og eventuell fristforlengelse. Eventuelle innsigelser mot grunnlag eller vederlag må fremsettes uten ugrunnet opphold. Arbeidet igangsettes når skriftlig godkjenning eller bestilling foreligger.
                 </div>
 
                 {/* Signaturblokk */}
-                <div className="pt-4 border-t-2 border-dashed border-slate-200 grid grid-cols-1 sm:grid-cols-2 gap-6 text-xs">
+                <div className="pt-4 border-t-2 border-dashed border-slate-800 print:border-slate-200 grid grid-cols-1 sm:grid-cols-2 gap-6 text-xs">
                   <div>
                     <div className="text-[11px] text-slate-400 uppercase font-black tracking-wider mb-1">Utarbeidet av entreprenør</div>
-                    <div className="font-bold text-slate-900">VikingMester Byggeledelse</div>
-                    <div className="text-[11px] text-slate-500">Dato: {new Date().toLocaleDateString('no-NO')}</div>
+                    <div className="font-bold text-white print:text-slate-900">VikingMester Byggeledelse</div>
+                    <div className="text-[11px] text-slate-400 print:text-slate-500">Dato: {new Date().toLocaleDateString('no-NO')}</div>
                   </div>
                   <div>
                     <div className="text-[11px] text-slate-400 uppercase font-black tracking-wider mb-1">Byggherres godkjenning</div>
                     {isApproved ? (
-                      <div className="flex items-center gap-1.5 text-emerald-700 font-black">
+                      <div className="flex items-center gap-1.5 text-emerald-400 print:text-emerald-700 font-black">
                         <CheckCircle2 size={16} />
                         <span>Godkjent og attestert</span>
                       </div>
                     ) : (
-                      <div className="flex items-center gap-1.5 text-amber-700 font-bold">
+                      <div className="flex items-center gap-1.5 text-amber-400 print:text-amber-700 font-bold">
                         <Clock size={16} />
                         <span>Avventer digital signatur</span>
                       </div>
                     )}
-                    <div className="text-[11px] text-slate-500 mt-0.5">{clientName || 'Kunde'}</div>
+                    <div className="text-[11px] text-slate-400 print:text-slate-500 mt-0.5">{clientName || 'Kunde'}</div>
                   </div>
                 </div>
               </div>

@@ -260,37 +260,37 @@ export default function ChecklistModal({ isOpen, onClose, projectId, initialTrad
   return (
     <AnimatePresence>
       {isOpen && (
-        <motion.div key="checklist-backdrop" className="fixed inset-0 z-50 flex items-end sm:items-center justify-center p-0 sm:p-4 bg-black/70 backdrop-blur-sm">
+        <motion.div key="checklist-backdrop" className="fixed inset-0 z-50 flex items-end sm:items-center justify-center p-0 sm:p-4 bg-black/80 backdrop-blur-md">
           <motion.div
           initial={{ opacity: 0, scale: 0.98, y: 20 }}
           animate={{ opacity: 1, scale: 1, y: 0 }}
           exit={{ opacity: 0, scale: 0.98, y: 20 }}
-          className="bg-white w-full max-w-3xl rounded-t-[2.5rem] sm:rounded-[2.5rem] shadow-2xl overflow-hidden flex flex-col max-h-[94vh] sm:max-h-[90vh] pb-[env(safe-area-inset-bottom,0px)]"
+          className="bg-[#0B0F17] text-white border border-slate-800 w-full max-w-3xl rounded-t-[2.5rem] sm:rounded-[2.5rem] shadow-2xl overflow-hidden flex flex-col max-h-[94vh] sm:max-h-[90vh] pb-[env(safe-area-inset-bottom,0px)]"
         >
           {/* Mobile Grab Handle */}
-          <div className="sm:hidden w-12 h-1.5 bg-neutral-300 rounded-full mx-auto mt-3 mb-1" />
+          <div className="sm:hidden w-12 h-1.5 bg-slate-700 rounded-full mx-auto mt-3 mb-1" />
 
           {/* Header */}
-          <div className="p-4 sm:p-6 border-b border-neutral-100 flex justify-between items-center bg-neutral-50 shrink-0">
+          <div className="p-4 sm:p-6 border-b border-slate-800 flex justify-between items-center bg-[#131722] shrink-0">
             <div className="flex items-center gap-3 sm:gap-4">
-              <div className="p-2.5 bg-emerald-100 text-emerald-700 rounded-2xl">
+              <div className="p-2.5 bg-emerald-500/10 border border-emerald-500/20 text-emerald-400 rounded-2xl">
                 <ShieldCheck size={24} />
               </div>
               <div>
                 <div className="flex items-center gap-2">
-                  <span className="text-[10px] font-black uppercase tracking-widest text-emerald-600 bg-emerald-50 px-2 py-0.5 rounded border border-emerald-200">
+                  <span className="text-[10px] font-black uppercase tracking-widest text-emerald-400 bg-emerald-500/10 px-2 py-0.5 rounded border border-emerald-500/30">
                     Lovpålagt KS / TEK17
                   </span>
-                  <span className="text-[10px] text-neutral-400 font-bold">100% Redigerbar</span>
+                  <span className="text-[10px] text-slate-400 font-bold">100% Redigerbar</span>
                 </div>
-                <h2 className="text-base sm:text-xl font-bold text-neutral-900 truncate">
+                <h2 className="text-base sm:text-xl font-bold text-white truncate">
                   {currentChecklist?.phaseTitle || currentChecklist?.title || 'Kvalitetssikring & Sjekkliste'}
                 </h2>
               </div>
             </div>
             <button 
               onClick={onClose} 
-              className="p-2 hover:bg-neutral-200 rounded-full transition-colors text-neutral-500 hover:text-neutral-900"
+              className="p-2 hover:bg-slate-800 rounded-full transition-colors text-slate-400 hover:text-white"
             >
               <X size={20} />
             </button>
@@ -298,7 +298,7 @@ export default function ChecklistModal({ isOpen, onClose, projectId, initialTrad
 
           {/* Fasevelger tabs (HMS, Mottak, Fagkontroll, Sluttkontroll) */}
           {projectChecklists.length > 0 && (
-            <div className="flex items-center gap-1.5 p-2 bg-neutral-100 border-b border-neutral-200 overflow-x-auto whitespace-nowrap scrollbar-none">
+            <div className="flex items-center gap-1.5 p-2 bg-[#0D131F] border-b border-slate-800 overflow-x-auto whitespace-nowrap scrollbar-none">
               {projectChecklists.map((chk, idx) => {
                 const isPassed = chk.status === 'completed';
                 return (
@@ -308,13 +308,13 @@ export default function ChecklistModal({ isOpen, onClose, projectId, initialTrad
                     className={cn(
                       "flex items-center gap-1.5 px-3 py-2 rounded-xl text-xs font-bold transition-all shrink-0",
                       activePhaseIndex === idx 
-                        ? "bg-white text-emerald-700 shadow-sm border border-neutral-200" 
-                        : "text-neutral-600 hover:text-neutral-900"
+                        ? "bg-slate-800 text-emerald-400 shadow-sm border border-slate-700" 
+                        : "text-slate-400 hover:text-white"
                     )}
                   >
                     <span className={cn(
                       "w-2 h-2 rounded-full",
-                      isPassed ? "bg-emerald-500" : "bg-neutral-300"
+                      isPassed ? "bg-emerald-500" : "bg-slate-600"
                     )} />
                     {chk.phaseTitle?.split(':')[0] || `Fase ${idx + 1}`}
                   </button>
@@ -324,22 +324,22 @@ export default function ChecklistModal({ isOpen, onClose, projectId, initialTrad
           )}
 
           {/* Fremdriftslinje */}
-          <div className="px-6 py-3 bg-white border-b border-neutral-100 flex items-center justify-between gap-4">
+          <div className="px-6 py-3 bg-[#131722] border-b border-slate-800 flex items-center justify-between gap-4">
             <div className="flex items-center gap-3 flex-1">
-              <div className="h-2 flex-1 bg-neutral-100 rounded-full overflow-hidden">
+              <div className="h-2 flex-1 bg-slate-800 rounded-full overflow-hidden">
                 <motion.div 
                   initial={{ width: 0 }}
                   animate={{ width: `${progress}%` }}
                   className="h-full bg-emerald-500"
                 />
               </div>
-              <span className="text-xs font-black text-neutral-500 whitespace-nowrap">
+              <span className="text-xs font-black text-slate-400 whitespace-nowrap">
                 {completedItems} av {totalItems} utført ({Math.round(progress)}%)
               </span>
             </div>
             <button 
               onClick={() => setIsAddingCustom(true)}
-              className="flex items-center gap-1 px-3 py-1.5 bg-emerald-50 text-emerald-700 hover:bg-emerald-100 rounded-lg text-xs font-bold transition-colors shrink-0"
+              className="flex items-center gap-1 px-3 py-1.5 bg-emerald-500/10 text-emerald-400 border border-emerald-500/30 hover:bg-emerald-500/20 rounded-lg text-xs font-bold transition-colors shrink-0"
             >
               <Plus size={14} />
               <span>Legg til punkt</span>
@@ -347,23 +347,23 @@ export default function ChecklistModal({ isOpen, onClose, projectId, initialTrad
           </div>
 
           {/* Innhold / Sjekkpunkter */}
-          <div className="flex-1 overflow-y-auto p-4 sm:p-6 space-y-3 custom-scrollbar">
+          <div className="flex-1 overflow-y-auto p-4 sm:p-6 space-y-3 custom-scrollbar bg-[#0B0F17]">
             {/* Inputfelt for nytt sjekkpunkt */}
             {isAddingCustom && (
-              <div className="p-4 bg-emerald-50/70 border border-emerald-200 rounded-2xl space-y-3">
-                <span className="text-[10px] font-black uppercase tracking-widest text-emerald-700">Nytt Kontrollpunkt</span>
+              <div className="p-4 bg-[#131722] border border-emerald-500/30 rounded-2xl space-y-3">
+                <span className="text-[10px] font-black uppercase tracking-widest text-emerald-400">Nytt Kontrollpunkt</span>
                 <input 
                   type="text" 
                   value={newCustomItemText}
                   onChange={(e) => setNewCustomItemText(e.target.value)}
                   placeholder="F.eks. Kontroller ekstra forsterkning av bjelkelag iht. kundens ønske..."
-                  className="w-full p-3 bg-white border border-emerald-300 rounded-xl text-xs sm:text-sm font-medium outline-none focus:ring-2 focus:ring-emerald-500"
+                  className="w-full p-3 bg-slate-950 border border-slate-700 text-white placeholder:text-slate-600 rounded-xl text-xs sm:text-sm font-medium outline-none focus:ring-2 focus:ring-emerald-500"
                   autoFocus
                 />
                 <div className="flex justify-end gap-2">
                   <button 
                     onClick={() => { setIsAddingCustom(false); setNewCustomItemText(''); }}
-                    className="px-3 py-1.5 text-xs font-bold text-neutral-500 hover:text-neutral-800"
+                    className="px-3 py-1.5 text-xs font-bold text-slate-400 hover:text-white"
                   >
                     Avbryt
                   </button>
@@ -384,12 +384,12 @@ export default function ChecklistModal({ isOpen, onClose, projectId, initialTrad
                 className={cn(
                   "p-3 sm:p-4 rounded-2xl border transition-all space-y-2",
                   item.status === 'passed' 
-                    ? "bg-emerald-50/50 border-emerald-200" 
+                    ? "bg-emerald-950/20 border-emerald-800/40 text-emerald-200" 
                     : item.status === 'failed'
-                    ? "bg-rose-50/50 border-rose-200"
+                    ? "bg-rose-950/20 border-rose-800/40 text-rose-200"
                     : item.status === 'na'
-                    ? "bg-neutral-100/70 border-neutral-200 opacity-70"
-                    : "bg-white border-neutral-200 shadow-sm"
+                    ? "bg-slate-900/60 border-slate-800 opacity-60 text-slate-500"
+                    : "bg-[#131722] border-slate-800 shadow-sm text-slate-200"
                 )}
               >
                 <div className="flex items-start justify-between gap-3">
@@ -397,10 +397,10 @@ export default function ChecklistModal({ isOpen, onClose, projectId, initialTrad
                     {editingItemId === item.id ? (
                       <div className="flex items-center gap-2">
                         <input 
-                          type="text"
+                          type="text" 
                           value={editingText}
                           onChange={(e) => setEditingText(e.target.value)}
-                          className="w-full p-2 bg-white border border-neutral-300 rounded-lg text-xs sm:text-sm font-medium"
+                          className="w-full p-2 bg-slate-950 border border-slate-700 text-white rounded-lg text-xs sm:text-sm font-medium"
                           autoFocus
                         />
                         <button 
@@ -411,7 +411,7 @@ export default function ChecklistModal({ isOpen, onClose, projectId, initialTrad
                         </button>
                         <button 
                           onClick={() => setEditingItemId(null)}
-                          className="p-2 bg-neutral-200 text-neutral-600 rounded-lg hover:bg-neutral-300"
+                          className="p-2 bg-slate-800 text-slate-300 rounded-lg hover:bg-slate-700"
                         >
                           <X size={14} />
                         </button>
@@ -420,16 +420,16 @@ export default function ChecklistModal({ isOpen, onClose, projectId, initialTrad
                       <div className="flex items-start gap-2 group">
                         <span className={cn(
                           "text-xs sm:text-sm font-medium leading-relaxed",
-                          item.status === 'passed' ? "text-emerald-950 font-bold" : 
-                          item.status === 'failed' ? "text-rose-950 font-bold" : 
-                          item.status === 'na' ? "text-neutral-500 line-through" : 
-                          "text-neutral-800"
+                          item.status === 'passed' ? "text-emerald-300 font-bold" : 
+                          item.status === 'failed' ? "text-rose-300 font-bold" : 
+                          item.status === 'na' ? "text-slate-500 line-through" : 
+                          "text-slate-200"
                         )}>
                           {item.text}
                         </span>
                         <button 
                           onClick={() => startEditing(item)}
-                          className="opacity-0 group-hover:opacity-100 p-1 text-neutral-400 hover:text-neutral-700 transition-opacity"
+                          className="opacity-0 group-hover:opacity-100 p-1 text-slate-500 hover:text-white transition-opacity"
                           title="Rediger sjekkpunkt"
                         >
                           <Edit3 size={12} />
@@ -438,7 +438,7 @@ export default function ChecklistModal({ isOpen, onClose, projectId, initialTrad
                     )}
 
                     {item.category && (
-                      <span className="inline-block mt-1 text-[9px] font-bold uppercase tracking-wider text-neutral-400">
+                      <span className="inline-block mt-1 text-[9px] font-bold uppercase tracking-wider text-slate-400">
                         {item.category}
                       </span>
                     )}
@@ -448,7 +448,7 @@ export default function ChecklistModal({ isOpen, onClose, projectId, initialTrad
                   <div className="flex items-center gap-1.5 shrink-0">
                     <button
                       onClick={(e) => openCamera(e, item.id, item.text)}
-                      className="p-2 bg-neutral-100 text-neutral-600 hover:bg-emerald-100 hover:text-emerald-700 rounded-xl transition-colors"
+                      className="p-2 bg-slate-800 text-slate-300 hover:bg-emerald-600 hover:text-white rounded-xl transition-colors border border-slate-700"
                       title="Ta bilde for AI KS-verifisering (Bygningsdel)"
                     >
                       <Camera size={16} />
@@ -458,10 +458,10 @@ export default function ChecklistModal({ isOpen, onClose, projectId, initialTrad
                     <button
                       onClick={() => handleItemStatusChange(item.id, 'passed')}
                       className={cn(
-                        "p-2 rounded-xl text-xs font-bold transition-all flex items-center gap-1",
+                        "p-2 rounded-xl text-xs font-bold transition-all flex items-center gap-1 border",
                         item.status === 'passed'
-                          ? "bg-emerald-600 text-white shadow-md shadow-emerald-200"
-                          : "bg-neutral-100 text-neutral-500 hover:bg-emerald-50 hover:text-emerald-600"
+                          ? "bg-emerald-600 text-white shadow-md shadow-emerald-900/40 border-emerald-500"
+                          : "bg-slate-800 text-slate-400 hover:bg-emerald-500/20 hover:text-emerald-300 border-slate-700"
                       )}
                       title="Godkjenn kontrollpunkt"
                     >
@@ -473,10 +473,10 @@ export default function ChecklistModal({ isOpen, onClose, projectId, initialTrad
                     <button
                       onClick={() => handleItemStatusChange(item.id, 'failed')}
                       className={cn(
-                        "p-2 rounded-xl text-xs font-bold transition-all flex items-center gap-1",
+                        "p-2 rounded-xl text-xs font-bold transition-all flex items-center gap-1 border",
                         item.status === 'failed'
-                          ? "bg-rose-600 text-white shadow-md shadow-rose-200"
-                          : "bg-neutral-100 text-neutral-500 hover:bg-rose-50 hover:text-rose-600"
+                          ? "bg-rose-600 text-white shadow-md shadow-rose-900/40 border-rose-500"
+                          : "bg-slate-800 text-slate-400 hover:bg-rose-500/20 hover:text-rose-300 border-slate-700"
                       )}
                       title="Flagg som avvik"
                     >
@@ -488,10 +488,10 @@ export default function ChecklistModal({ isOpen, onClose, projectId, initialTrad
                     <button
                       onClick={() => handleItemStatusChange(item.id, 'na')}
                       className={cn(
-                        "p-2 rounded-xl text-xs font-bold transition-all",
+                        "p-2 rounded-xl text-xs font-bold transition-all border",
                         item.status === 'na'
-                          ? "bg-neutral-600 text-white"
-                          : "bg-neutral-100 text-neutral-400 hover:bg-neutral-200"
+                          ? "bg-slate-700 text-white border-slate-600"
+                          : "bg-slate-800 text-slate-400 hover:bg-slate-700 border-slate-700"
                       )}
                       title="Ikke relevant (N/A)"
                     >
@@ -503,18 +503,18 @@ export default function ChecklistModal({ isOpen, onClose, projectId, initialTrad
             ))}
 
             {(!currentChecklist || currentChecklist.items.length === 0) && (
-              <div className="p-8 text-center text-neutral-400 text-xs">
+              <div className="p-8 text-center text-slate-500 text-xs">
                 Ingen sjekkpunkter i denne fasen. Klikk «Legg til punkt» for å opprette.
               </div>
             )}
           </div>
 
           {/* Footer navigering mellom faser */}
-          <div className="p-4 sm:p-6 border-t border-neutral-100 bg-neutral-50 flex justify-between items-center shrink-0">
+          <div className="p-4 sm:p-6 border-t border-slate-800 bg-[#131722] flex justify-between items-center shrink-0">
             <button
               onClick={() => setActivePhaseIndex(prev => Math.max(0, prev - 1))}
               disabled={activePhaseIndex === 0}
-              className="flex items-center gap-1.5 px-4 py-2.5 text-xs font-bold text-neutral-600 hover:text-neutral-900 disabled:opacity-30"
+              className="flex items-center gap-1.5 px-4 py-2.5 text-xs font-bold text-slate-400 hover:text-white disabled:opacity-30"
             >
               <ChevronLeft size={16} />
               <span>Forrige fase</span>
@@ -523,7 +523,7 @@ export default function ChecklistModal({ isOpen, onClose, projectId, initialTrad
             {activePhaseIndex < projectChecklists.length - 1 ? (
               <button
                 onClick={() => setActivePhaseIndex(prev => prev + 1)}
-                className="flex items-center gap-1.5 px-5 py-2.5 bg-emerald-600 hover:bg-emerald-500 text-white rounded-xl text-xs font-bold transition-all shadow-md shadow-emerald-100"
+                className="flex items-center gap-1.5 px-5 py-2.5 bg-emerald-600 hover:bg-emerald-500 text-white rounded-xl text-xs font-bold transition-all shadow-md shadow-emerald-900/30"
               >
                 <span>Neste fase</span>
                 <ChevronRight size={16} />
@@ -534,7 +534,7 @@ export default function ChecklistModal({ isOpen, onClose, projectId, initialTrad
                   toast.success('Alle kontrollfaser gjennomgått og lagret i prosjektet!');
                   onClose();
                 }}
-                className="flex items-center gap-1.5 px-6 py-2.5 bg-emerald-600 hover:bg-emerald-500 text-white rounded-xl text-xs font-bold transition-all shadow-md shadow-emerald-100"
+                className="flex items-center gap-1.5 px-6 py-2.5 bg-emerald-600 hover:bg-emerald-500 text-white rounded-xl text-xs font-bold transition-all shadow-md shadow-emerald-900/30"
               >
                 <CheckCircle2 size={16} />
                 <span>Fullfør sjekklister</span>

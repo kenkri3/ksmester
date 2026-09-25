@@ -1282,6 +1282,7 @@ export default function Dashboard({
         onNavigate={handleSmartSearchNavigate}
         projects={projects}
         deviations={deviations}
+        changeOrders={dashboardChangeOrders}
         recentActivities={recentActivities}
       />
       <PreCloseInspectorModal

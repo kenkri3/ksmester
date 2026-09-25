@@ -288,25 +288,25 @@ export default function VoiceSJAModal({
   if (!isOpen) return null;
 
   return (
-    <div className="fixed inset-0 z-[100] flex items-center justify-center p-3 sm:p-4 bg-navy-950/70 backdrop-blur-md overflow-y-auto">
+    <div className="fixed inset-0 z-[100] flex items-center justify-center p-3 sm:p-4 bg-black/80 backdrop-blur-md overflow-y-auto">
       <motion.div
         initial={{ opacity: 0, scale: 0.95, y: 15 }}
         animate={{ opacity: 1, scale: 1, y: 0 }}
         exit={{ opacity: 0, scale: 0.95, y: 15 }}
-        className="relative w-full max-w-2xl bg-white rounded-3xl shadow-2xl border border-slate-200 overflow-hidden my-auto flex flex-col max-h-[92vh]"
+        className="relative w-full max-w-2xl bg-[#0B0F17] text-white rounded-3xl shadow-2xl border border-slate-800 overflow-hidden my-auto flex flex-col max-h-[92vh]"
       >
         {/* Header */}
-        <div className="px-6 py-5 bg-gradient-to-r from-purple-700 via-indigo-700 to-navy-900 text-white flex items-center justify-between shrink-0">
+        <div className="px-6 py-5 bg-[#131722] border-b border-slate-800 text-white flex items-center justify-between shrink-0">
           <div className="flex items-center gap-3.5">
-            <div className="w-11 h-11 rounded-2xl bg-white/10 text-white flex items-center justify-center shrink-0 border border-white/20 shadow-inner">
-              <Mic size={22} className={isListening ? 'animate-pulse text-rose-300' : 'text-purple-200'} />
+            <div className="w-11 h-11 rounded-2xl bg-purple-500/10 text-purple-400 flex items-center justify-center shrink-0 border border-purple-500/20 shadow-inner">
+              <Mic size={22} className={isListening ? 'animate-pulse text-rose-400' : 'text-purple-400'} />
             </div>
             <div>
               <div className="flex items-center gap-2">
-                <span className="px-2 py-0.5 rounded-full text-[10px] font-black uppercase tracking-wider bg-white/15 text-purple-100 border border-white/20">
+                <span className="px-2 py-0.5 rounded-full text-[10px] font-black uppercase tracking-wider bg-purple-500/10 text-purple-300 border border-purple-500/30">
                   AI Taleassistent
                 </span>
-                <span className="text-xs text-purple-200 font-medium">Byggherreforskriften § 18</span>
+                <span className="text-xs text-purple-300 font-medium">Byggherreforskriften § 18</span>
               </div>
               <h2 className="text-lg sm:text-xl font-black text-white tracking-tight">
                 Tale til SJA (Sikker Jobb Analyse)
@@ -316,29 +316,29 @@ export default function VoiceSJAModal({
 
           <button
             onClick={onClose}
-            className="w-9 h-9 rounded-full bg-white/10 hover:bg-white/20 text-white flex items-center justify-center transition-all cursor-pointer"
+            className="w-9 h-9 rounded-full bg-slate-800 hover:bg-slate-700 text-slate-400 hover:text-white flex items-center justify-center transition-all cursor-pointer"
           >
             <X size={18} />
           </button>
         </div>
 
         {/* Modal Body */}
-        <div className="p-6 space-y-5 overflow-y-auto flex-1">
+        <div className="p-6 space-y-5 overflow-y-auto flex-1 bg-[#0B0F17]">
           {/* Project & Trade Selector */}
           <div className="grid grid-cols-1 sm:grid-cols-2 gap-3">
             <div>
-              <label className="block text-xs font-bold text-slate-500 uppercase tracking-wider mb-1.5">
+              <label className="block text-xs font-bold text-slate-400 uppercase tracking-wider mb-1.5">
                 Velg Prosjekt
               </label>
               <div className="relative">
-                <Building2 size={16} className="absolute left-3.5 top-1/2 -translate-y-1/2 text-slate-400" />
+                <Building2 size={16} className="absolute left-3.5 top-1/2 -translate-y-1/2 text-slate-500" />
                 <select
                   value={selectedProjectId}
                   onChange={(e) => setSelectedProjectId(e.target.value)}
-                  className="w-full pl-10 pr-4 py-2.5 bg-slate-50 border border-slate-200 rounded-xl text-xs sm:text-sm font-semibold text-slate-800 focus:ring-2 focus:ring-purple-500/20 focus:border-purple-500"
+                  className="w-full pl-10 pr-4 py-2.5 bg-slate-950 border border-slate-800 rounded-xl text-xs sm:text-sm font-semibold text-white focus:ring-2 focus:ring-purple-500/20 focus:border-purple-500"
                 >
                   {projects.map((p) => (
-                    <option key={p.id} value={p.id}>
+                    <option key={p.id} value={p.id} className="bg-slate-900 text-white">
                       {p.name}
                     </option>
                   ))}
@@ -347,18 +347,18 @@ export default function VoiceSJAModal({
             </div>
 
             <div>
-              <label className="block text-xs font-bold text-slate-500 uppercase tracking-wider mb-1.5">
+              <label className="block text-xs font-bold text-slate-400 uppercase tracking-wider mb-1.5">
                 Fagområde
               </label>
               <div className="relative">
-                <Wrench size={16} className="absolute left-3.5 top-1/2 -translate-y-1/2 text-slate-400" />
+                <Wrench size={16} className="absolute left-3.5 top-1/2 -translate-y-1/2 text-slate-500" />
                 <select
                   value={selectedTrade}
                   onChange={(e) => setSelectedTrade(e.target.value)}
-                  className="w-full pl-10 pr-4 py-2.5 bg-slate-50 border border-slate-200 rounded-xl text-xs sm:text-sm font-semibold text-slate-800 focus:ring-2 focus:ring-purple-500/20 focus:border-purple-500"
+                  className="w-full pl-10 pr-4 py-2.5 bg-slate-950 border border-slate-800 rounded-xl text-xs sm:text-sm font-semibold text-white focus:ring-2 focus:ring-purple-500/20 focus:border-purple-500"
                 >
                   {TRADES.map((t) => (
-                    <option key={t} value={t}>
+                    <option key={t} value={t} className="bg-slate-900 text-white">
                       {t}
                     </option>
                   ))}
@@ -368,12 +368,12 @@ export default function VoiceSJAModal({
           </div>
 
           {/* Voice Input Section with Visual Microphone */}
-          <div className="p-5 bg-gradient-to-b from-purple-50/60 to-slate-50 rounded-2xl border border-purple-100 flex flex-col items-center text-center relative overflow-hidden">
+          <div className="p-5 bg-gradient-to-b from-purple-950/20 to-slate-900/60 rounded-2xl border border-purple-800/30 flex flex-col items-center text-center relative overflow-hidden">
             {isListening && (
               <motion.div
                 animate={{ scale: [1, 1.4, 1], opacity: [0.3, 0.6, 0.3] }}
                 transition={{ repeat: Infinity, duration: 1.6 }}
-                className="absolute w-36 h-36 bg-purple-400/20 rounded-full pointer-events-none"
+                className="absolute w-36 h-36 bg-purple-500/20 rounded-full pointer-events-none"
               />
             )}
 
@@ -382,18 +382,18 @@ export default function VoiceSJAModal({
               onClick={toggleListening}
               className={`relative z-10 w-20 h-20 rounded-full flex items-center justify-center transition-all shadow-lg active:scale-95 cursor-pointer ${
                 isListening
-                  ? 'bg-rose-500 text-white shadow-rose-300 ring-4 ring-rose-200 animate-pulse'
-                  : 'bg-gradient-to-tr from-purple-600 to-indigo-600 text-white shadow-purple-200 hover:scale-105'
+                  ? 'bg-rose-600 text-white shadow-rose-900/50 ring-4 ring-rose-500/30 animate-pulse'
+                  : 'bg-gradient-to-tr from-purple-600 to-indigo-600 text-white shadow-purple-900/40 hover:scale-105'
               }`}
             >
               {isListening ? <MicOff size={32} /> : <Mic size={32} />}
             </button>
 
             <div className="mt-3 relative z-10">
-              <span className={`text-xs font-bold uppercase tracking-wider ${isListening ? 'text-rose-600' : 'text-purple-900'}`}>
+              <span className={`text-xs font-bold uppercase tracking-wider ${isListening ? 'text-rose-400' : 'text-purple-300'}`}>
                 {isListening ? '● Lytter nå... Snakk fritt' : 'Trykk på mikrofonen for å snakke'}
               </span>
-              <p className="text-[11px] text-slate-500 mt-0.5">
+              <p className="text-[11px] text-slate-400 mt-0.5">
                 Beskriv oppgaven du skal utføre, høyder, verktøy eller potensielle faremomenter.
               </p>
             </div>
@@ -402,15 +402,15 @@ export default function VoiceSJAModal({
           {/* Transcript / Text Area */}
           <div>
             <div className="flex items-center justify-between mb-1.5">
-              <label className="text-xs font-bold text-slate-600 flex items-center gap-1.5">
-                <FileText size={14} className="text-purple-600" />
+              <label className="text-xs font-bold text-slate-300 flex items-center gap-1.5">
+                <FileText size={14} className="text-purple-400" />
                 Oppgave- og risikobeskrivelse
               </label>
               {transcript && (
                 <button
                   type="button"
                   onClick={() => setTranscript('')}
-                  className="text-[11px] text-slate-400 hover:text-rose-600 font-semibold transition-colors"
+                  className="text-[11px] text-slate-500 hover:text-rose-400 font-semibold transition-colors"
                 >
                   Tøm felt
                 </button>
@@ -422,7 +422,7 @@ export default function VoiceSJAModal({
               onChange={(e) => setTranscript(e.target.value)}
               placeholder="F.eks: 'Vi skal montere stillas i 3. etasje, det blåser litt i dag og det er fare for fall og misting av verktøy...'"
               rows={4}
-              className="w-full p-4 bg-slate-50 border border-slate-200 rounded-2xl text-sm font-medium text-slate-800 placeholder:text-slate-400 focus:outline-none focus:ring-2 focus:ring-purple-500/20 focus:border-purple-500 leading-relaxed resize-none"
+              className="w-full p-4 bg-slate-950 border border-slate-800 rounded-2xl text-sm font-medium text-white placeholder:text-slate-600 focus:outline-none focus:ring-2 focus:ring-purple-500/20 focus:border-purple-500 leading-relaxed resize-none"
             />
           </div>
 
@@ -441,10 +441,10 @@ export default function VoiceSJAModal({
                     setTranscript(prompt.text);
                     toast.info(`Lagt til forslag for ${prompt.label}`);
                   }}
-                  className="p-2.5 rounded-xl border border-slate-200 hover:border-purple-300 hover:bg-purple-50/50 bg-white text-left transition-all group cursor-pointer"
+                  className="p-2.5 rounded-xl border border-slate-800 hover:border-purple-500/50 hover:bg-slate-800/80 bg-[#131722] text-left transition-all group cursor-pointer"
                 >
                   <span className="text-base block mb-0.5">{prompt.icon}</span>
-                  <span className="text-xs font-bold text-slate-800 group-hover:text-purple-700 block truncate">
+                  <span className="text-xs font-bold text-slate-200 group-hover:text-purple-300 block truncate">
                     {prompt.label}
                   </span>
                   <span className="text-[10px] text-slate-400 block truncate">
@@ -457,9 +457,9 @@ export default function VoiceSJAModal({
         </div>
 
         {/* Footer Actions */}
-        <div className="p-4 sm:p-6 bg-slate-50 border-t border-slate-100 flex flex-col sm:flex-row items-center justify-between gap-3 shrink-0">
-          <div className="flex items-center gap-2 text-xs text-slate-500">
-            <ShieldCheck size={16} className="text-emerald-600 shrink-0" />
+        <div className="p-4 sm:p-6 bg-[#131722] border-t border-slate-800 flex flex-col sm:flex-row items-center justify-between gap-3 shrink-0">
+          <div className="flex items-center gap-2 text-xs text-slate-400">
+            <ShieldCheck size={16} className="text-emerald-400 shrink-0" />
             <span>Automatisk TEK17 & Byggherreforskriften verifisering</span>
           </div>
 
@@ -467,7 +467,7 @@ export default function VoiceSJAModal({
             <button
               type="button"
               onClick={onClose}
-              className="flex-1 sm:flex-none px-4 py-2.5 rounded-xl text-xs font-bold text-slate-600 hover:bg-slate-200 transition-all cursor-pointer"
+              className="flex-1 sm:flex-none px-4 py-2.5 rounded-xl text-xs font-bold text-slate-400 hover:text-white hover:bg-slate-800 transition-all cursor-pointer"
             >
               Avbryt
             </button>
@@ -476,7 +476,7 @@ export default function VoiceSJAModal({
               type="button"
               disabled={isGenerating || !transcript.trim()}
               onClick={handleGenerateSJA}
-              className="flex-1 sm:flex-none px-6 py-3 bg-gradient-to-r from-purple-600 to-indigo-600 hover:from-purple-500 hover:to-indigo-500 text-white rounded-xl text-xs sm:text-sm font-bold flex items-center justify-center gap-2 shadow-lg shadow-purple-200 active:scale-95 transition-all disabled:opacity-50 cursor-pointer"
+              className="flex-1 sm:flex-none px-6 py-3 bg-gradient-to-r from-purple-600 to-indigo-600 hover:from-purple-500 hover:to-indigo-500 text-white rounded-xl text-xs sm:text-sm font-bold flex items-center justify-center gap-2 shadow-lg shadow-purple-900/30 active:scale-95 transition-all disabled:opacity-50 cursor-pointer"
             >
               {isGenerating ? (
                 <>

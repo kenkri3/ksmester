@@ -144,25 +144,25 @@ export default function ProjectContactsModal({
   };
 
   return (
-    <div className="fixed inset-0 z-[100] flex items-center justify-center p-3 sm:p-4 bg-navy-950/70 backdrop-blur-md overflow-y-auto">
+    <div className="fixed inset-0 z-[100] flex items-center justify-center p-3 sm:p-4 bg-black/80 backdrop-blur-md overflow-y-auto">
       <motion.div
         initial={{ opacity: 0, scale: 0.95, y: 15 }}
         animate={{ opacity: 1, scale: 1, y: 0 }}
         exit={{ opacity: 0, scale: 0.95, y: 15 }}
-        className="relative w-full max-w-2xl bg-white rounded-3xl shadow-2xl border border-slate-200 overflow-hidden my-auto flex flex-col max-h-[92vh]"
+        className="relative w-full max-w-2xl bg-[#0B0F17] text-white rounded-3xl shadow-2xl border border-slate-800 overflow-hidden my-auto flex flex-col max-h-[92vh]"
       >
         {/* Header */}
-        <div className="px-6 py-5 bg-gradient-to-r from-cyan-700 via-blue-700 to-navy-900 text-white flex items-center justify-between shrink-0">
+        <div className="px-6 py-5 bg-[#131722] border-b border-slate-800 text-white flex items-center justify-between shrink-0">
           <div className="flex items-center gap-3.5">
-            <div className="w-11 h-11 rounded-2xl bg-white/10 text-white flex items-center justify-center shrink-0 border border-white/20 shadow-inner">
-              <Users size={22} className="text-cyan-200" />
+            <div className="w-11 h-11 rounded-2xl bg-cyan-500/10 text-cyan-400 flex items-center justify-center shrink-0 border border-cyan-500/20 shadow-inner">
+              <Users size={22} className="text-cyan-400" />
             </div>
             <div>
               <div className="flex items-center gap-2">
-                <span className="px-2 py-0.5 rounded-full text-[10px] font-black uppercase tracking-wider bg-white/15 text-cyan-100 border border-white/20">
+                <span className="px-2 py-0.5 rounded-full text-[10px] font-black uppercase tracking-wider bg-cyan-500/10 text-cyan-300 border border-cyan-500/30">
                   Byggeplass & Team
                 </span>
-                <span className="text-xs text-cyan-200 font-medium">1-klikk oppringning</span>
+                <span className="text-xs text-cyan-300 font-medium">1-klikk oppringning</span>
               </div>
               <h2 className="text-lg sm:text-xl font-black text-white tracking-tight">
                 Telefonliste {project ? `– ${project.name}` : ''}
@@ -172,22 +172,22 @@ export default function ProjectContactsModal({
 
           <button
             onClick={onClose}
-            className="w-9 h-9 rounded-full bg-white/10 hover:bg-white/20 text-white flex items-center justify-center transition-all cursor-pointer"
+            className="w-9 h-9 rounded-full bg-slate-800 hover:bg-slate-700 text-slate-400 hover:text-white flex items-center justify-center transition-all cursor-pointer"
           >
             <X size={18} />
           </button>
         </div>
 
         {/* Search & Filter Bar */}
-        <div className="p-4 border-b border-slate-100 bg-slate-50 flex flex-col sm:flex-row items-stretch sm:items-center justify-between gap-3 shrink-0">
+        <div className="p-4 border-b border-slate-800 bg-[#0D131F] flex flex-col sm:flex-row items-stretch sm:items-center justify-between gap-3 shrink-0">
           <div className="relative flex-1">
-            <Search size={16} className="absolute left-3.5 top-1/2 -translate-y-1/2 text-slate-400" />
+            <Search size={16} className="absolute left-3.5 top-1/2 -translate-y-1/2 text-slate-500" />
             <input
               type="text"
               value={searchQuery}
               onChange={(e) => setSearchQuery(e.target.value)}
               placeholder="Søk etter navn, rolle, firma eller telefon..."
-              className="w-full pl-10 pr-4 py-2 bg-white border border-slate-200 rounded-xl text-xs sm:text-sm font-medium focus:ring-2 focus:ring-cyan-500/20 focus:border-cyan-500"
+              className="w-full pl-10 pr-4 py-2 bg-slate-950 border border-slate-800 text-white placeholder:text-slate-600 rounded-xl text-xs sm:text-sm font-medium focus:ring-2 focus:ring-cyan-500/20 focus:border-cyan-500"
             />
           </div>
 
@@ -198,7 +198,7 @@ export default function ProjectContactsModal({
               className={`px-3 py-1.5 rounded-lg text-xs font-bold transition-all ${
                 filter === 'all'
                   ? 'bg-cyan-600 text-white shadow-xs'
-                  : 'bg-white text-slate-600 hover:bg-slate-100 border border-slate-200'
+                  : 'bg-slate-800 text-slate-300 hover:bg-slate-700 border border-slate-700'
               }`}
             >
               Alle ({contacts.length})
@@ -209,7 +209,7 @@ export default function ProjectContactsModal({
               className={`px-3 py-1.5 rounded-lg text-xs font-bold transition-all ${
                 filter === 'on_site'
                   ? 'bg-emerald-600 text-white shadow-xs'
-                  : 'bg-white text-slate-600 hover:bg-slate-100 border border-slate-200'
+                  : 'bg-slate-800 text-slate-300 hover:bg-slate-700 border border-slate-700'
               }`}
             >
               På plassen i dag
@@ -217,7 +217,7 @@ export default function ProjectContactsModal({
             <button
               type="button"
               onClick={() => setIsAdding(prev => !prev)}
-              className="px-3 py-1.5 bg-slate-900 hover:bg-slate-800 text-white rounded-lg text-xs font-bold flex items-center gap-1.5 ml-1 transition-all cursor-pointer"
+              className="px-3 py-1.5 bg-cyan-600 hover:bg-cyan-500 text-white rounded-lg text-xs font-bold flex items-center gap-1.5 ml-1 transition-all cursor-pointer shadow-xs"
             >
               <Plus size={14} />
               Legg til
@@ -233,7 +233,7 @@ export default function ProjectContactsModal({
               animate={{ height: 'auto', opacity: 1 }}
               exit={{ height: 0, opacity: 0 }}
               onSubmit={handleAddContact}
-              className="p-4 bg-cyan-50/70 border-b border-cyan-100 grid grid-cols-1 sm:grid-cols-4 gap-2.5 overflow-hidden"
+              className="p-4 bg-[#131722] border-b border-slate-800 grid grid-cols-1 sm:grid-cols-4 gap-2.5 overflow-hidden"
             >
               <input
                 type="text"
@@ -241,21 +241,21 @@ export default function ProjectContactsModal({
                 placeholder="Fullt navn *"
                 value={newName}
                 onChange={(e) => setNewName(e.target.value)}
-                className="p-2.5 bg-white border border-cyan-200 rounded-xl text-xs font-medium focus:ring-2 focus:ring-cyan-500"
+                className="p-2.5 bg-slate-950 border border-slate-800 text-white placeholder:text-slate-600 rounded-xl text-xs font-medium focus:ring-2 focus:ring-cyan-500"
               />
               <input
                 type="text"
                 placeholder="Rolle / Fag (f.eks. Tømrer bas)"
                 value={newRole}
                 onChange={(e) => setNewRole(e.target.value)}
-                className="p-2.5 bg-white border border-cyan-200 rounded-xl text-xs font-medium focus:ring-2 focus:ring-cyan-500"
+                className="p-2.5 bg-slate-950 border border-slate-800 text-white placeholder:text-slate-600 rounded-xl text-xs font-medium focus:ring-2 focus:ring-cyan-500"
               />
               <input
                 type="text"
                 placeholder="Firma"
                 value={newCompany}
                 onChange={(e) => setNewCompany(e.target.value)}
-                className="p-2.5 bg-white border border-cyan-200 rounded-xl text-xs font-medium focus:ring-2 focus:ring-cyan-500"
+                className="p-2.5 bg-slate-950 border border-slate-800 text-white placeholder:text-slate-600 rounded-xl text-xs font-medium focus:ring-2 focus:ring-cyan-500"
               />
               <div className="flex gap-2">
                 <input
@@ -264,7 +264,7 @@ export default function ProjectContactsModal({
                   placeholder="Telefonnummer *"
                   value={newPhone}
                   onChange={(e) => setNewPhone(e.target.value)}
-                  className="flex-1 p-2.5 bg-white border border-cyan-200 rounded-xl text-xs font-medium focus:ring-2 focus:ring-cyan-500"
+                  className="flex-1 p-2.5 bg-slate-950 border border-slate-800 text-white placeholder:text-slate-600 rounded-xl text-xs font-medium focus:ring-2 focus:ring-cyan-500"
                 />
                 <button
                   type="submit"
@@ -278,40 +278,40 @@ export default function ProjectContactsModal({
         </AnimatePresence>
 
         {/* Contacts List */}
-        <div className="p-6 space-y-3 overflow-y-auto flex-1">
+        <div className="p-6 space-y-3 overflow-y-auto flex-1 bg-[#0B0F17]">
           {filtered.length === 0 ? (
-            <div className="text-center py-10 text-slate-400">
+            <div className="text-center py-10 text-slate-500">
               <Users size={36} className="mx-auto mb-2 opacity-40" />
-              <p className="text-sm font-semibold">Ingen kontakter funnet</p>
-              <p className="text-xs">Prøv et annet søkeord eller legg til en ny person.</p>
+              <p className="text-sm font-semibold text-slate-300">Ingen kontakter funnet</p>
+              <p className="text-xs text-slate-500">Prøv et annet søkeord eller legg til en ny person.</p>
             </div>
           ) : (
             filtered.map((c) => (
               <div
                 key={c.id}
-                className="p-4 bg-white hover:bg-slate-50 border border-slate-200/90 rounded-2xl flex flex-col sm:flex-row sm:items-center justify-between gap-3 transition-all shadow-xs"
+                className="p-4 bg-[#131722] hover:bg-slate-800/60 border border-slate-800 rounded-2xl flex flex-col sm:flex-row sm:items-center justify-between gap-3 transition-all shadow-xs"
               >
                 <div className="flex items-center gap-3.5 min-w-0">
-                  <div className="w-11 h-11 rounded-2xl bg-gradient-to-tr from-cyan-600 to-blue-600 text-white flex items-center justify-center font-bold text-sm shrink-0 shadow-xs">
+                  <div className="w-11 h-11 rounded-2xl bg-cyan-500/20 border border-cyan-500/30 text-cyan-400 flex items-center justify-center font-bold text-sm shrink-0 shadow-xs">
                     {c.name.charAt(0)}
                   </div>
                   <div className="min-w-0">
                     <div className="flex items-center gap-2 flex-wrap">
-                      <h4 className="font-bold text-slate-900 text-sm truncate">{c.name}</h4>
+                      <h4 className="font-bold text-white text-sm truncate">{c.name}</h4>
                       {c.isKeyPersonnel && (
-                        <span className="px-2 py-0.5 rounded-md text-[10px] font-bold bg-amber-100 text-amber-800">
+                        <span className="px-2 py-0.5 rounded-md text-[10px] font-bold bg-amber-950/40 text-amber-300 border border-amber-800/50">
                           Nøkkelperson
                         </span>
                       )}
                       {c.isOnSiteToday && (
-                        <span className="inline-flex items-center gap-1 text-[10px] font-bold text-emerald-600 bg-emerald-50 px-2 py-0.5 rounded-md">
-                          <span className="w-1.5 h-1.5 rounded-full bg-emerald-500 animate-pulse" />
+                        <span className="inline-flex items-center gap-1 text-[10px] font-bold text-emerald-400 bg-emerald-950/40 border border-emerald-800/40 px-2 py-0.5 rounded-md">
+                          <span className="w-1.5 h-1.5 rounded-full bg-emerald-400 animate-pulse" />
                           På plassen
                         </span>
                       )}
                     </div>
-                    <p className="text-xs font-medium text-slate-600 mt-0.5">{c.role} • <span className="text-slate-400">{c.company}</span></p>
-                    <p className="text-xs font-bold text-slate-800 mt-0.5">{c.phone}</p>
+                    <p className="text-xs font-medium text-slate-300 mt-0.5">{c.role} • <span className="text-slate-400">{c.company}</span></p>
+                    <p className="text-xs font-bold text-cyan-400 mt-0.5">{c.phone}</p>
                   </div>
                 </div>
 
@@ -339,25 +339,25 @@ export default function ProjectContactsModal({
           )}
 
           {/* Emergency Numbers Card */}
-          <div className="mt-4 p-4 rounded-2xl bg-gradient-to-r from-red-50 to-orange-50 border border-red-200 flex flex-col sm:flex-row items-center justify-between gap-3">
+          <div className="mt-4 p-4 rounded-2xl bg-red-950/30 border border-red-800/50 flex flex-col sm:flex-row items-center justify-between gap-3">
             <div className="flex items-center gap-3">
               <div className="w-10 h-10 rounded-xl bg-red-600 text-white flex items-center justify-center shrink-0">
                 <Siren size={20} />
               </div>
               <div>
-                <h4 className="text-xs font-bold text-red-950 uppercase tracking-wider">Nødetater & Akutthjelp</h4>
-                <p className="text-xs text-red-800 font-medium">Ved akutt skade på byggeplass: Ring 113</p>
+                <h4 className="text-xs font-bold text-red-300 uppercase tracking-wider">Nødetater & Akutthjelp</h4>
+                <p className="text-xs text-red-200 font-medium">Ved akutt skade på byggeplass: Ring 113</p>
               </div>
             </div>
 
             <div className="flex items-center gap-2">
-              <a href="tel:113" className="px-3 py-1.5 bg-red-600 text-white rounded-lg text-xs font-bold shadow-xs">
+              <a href="tel:113" className="px-3 py-1.5 bg-red-600 hover:bg-red-500 text-white rounded-lg text-xs font-bold shadow-xs">
                 Ambulanse (113)
               </a>
-              <a href="tel:110" className="px-3 py-1.5 bg-slate-900 text-white rounded-lg text-xs font-bold">
+              <a href="tel:110" className="px-3 py-1.5 bg-slate-800 hover:bg-slate-700 text-white rounded-lg text-xs font-bold border border-slate-700">
                 Brann (110)
               </a>
-              <a href="tel:112" className="px-3 py-1.5 bg-slate-900 text-white rounded-lg text-xs font-bold">
+              <a href="tel:112" className="px-3 py-1.5 bg-slate-800 hover:bg-slate-700 text-white rounded-lg text-xs font-bold border border-slate-700">
                 Politi (112)
               </a>
             </div>
@@ -365,14 +365,14 @@ export default function ProjectContactsModal({
         </div>
 
         {/* Footer */}
-        <div className="p-4 sm:p-5 bg-slate-50 border-t border-slate-100 flex items-center justify-between shrink-0">
-          <span className="text-xs text-slate-500 font-medium">
+        <div className="p-4 sm:p-5 bg-[#131722] border-t border-slate-800 flex items-center justify-between shrink-0">
+          <span className="text-xs text-slate-400 font-medium">
             Telefonliste synkroniseres automatisk med mannskapslisten på byggeplassen.
           </span>
           <button
             type="button"
             onClick={onClose}
-            className="px-5 py-2 bg-slate-900 hover:bg-slate-800 text-white rounded-xl text-xs font-bold transition-all cursor-pointer"
+            className="px-5 py-2 bg-slate-800 hover:bg-slate-700 text-slate-200 rounded-xl text-xs font-bold transition-all cursor-pointer"
           >
             Lukk
           </button>

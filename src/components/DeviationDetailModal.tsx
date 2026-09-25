@@ -248,46 +248,46 @@ export default function DeviationDetailModal({
 
   return (
     <AnimatePresence>
-      <div className="fixed inset-0 z-50 flex items-end sm:items-center justify-center p-0 sm:p-4 bg-black/70 backdrop-blur-sm">
+      <div className="fixed inset-0 z-50 flex items-end sm:items-center justify-center p-0 sm:p-4 bg-black/80 backdrop-blur-md">
         <motion.div
           initial={{ opacity: 0, scale: 0.96, y: 20 }}
           animate={{ opacity: 1, scale: 1, y: 0 }}
           exit={{ opacity: 0, scale: 0.96, y: 20 }}
-          className="bg-white w-full max-w-3xl rounded-t-[2rem] sm:rounded-[2.5rem] shadow-2xl overflow-hidden flex flex-col max-h-[92vh] sm:max-h-[90vh] pb-[env(safe-area-inset-bottom,0px)] border border-neutral-100"
+          className="bg-[#0B0F17] text-white w-full max-w-3xl rounded-t-[2rem] sm:rounded-[2.5rem] shadow-2xl overflow-hidden flex flex-col max-h-[92vh] sm:max-h-[90vh] pb-[env(safe-area-inset-bottom,0px)] border border-slate-800"
         >
           {/* Mobile Handle */}
-          <div className="sm:hidden w-12 h-1.5 bg-neutral-300 rounded-full mx-auto mt-3 mb-1 shrink-0" />
+          <div className="sm:hidden w-12 h-1.5 bg-slate-700 rounded-full mx-auto mt-3 mb-1 shrink-0" />
 
           {/* Modal Header */}
-          <div className="p-5 sm:p-7 border-b border-neutral-100 flex items-start justify-between bg-white shrink-0">
+          <div className="p-4 sm:p-6 border-b border-slate-800 flex items-start justify-between bg-[#131722] shrink-0">
             <div className="flex items-start gap-4 min-w-0">
               <div className={cn(
-                "w-12 h-12 rounded-2xl flex items-center justify-center shrink-0 shadow-sm",
+                "w-12 h-12 rounded-2xl flex items-center justify-center shrink-0 shadow-sm border",
                 severity === 'critical' || severity === 'high' 
-                  ? "bg-rose-50 text-rose-600 border border-rose-100" 
+                  ? "bg-rose-950/40 text-rose-400 border-rose-800/50" 
                   : severity === 'medium'
-                  ? "bg-amber-50 text-amber-600 border border-amber-100"
-                  : "bg-blue-50 text-blue-600 border border-blue-100"
+                  ? "bg-amber-950/40 text-amber-400 border-amber-800/50"
+                  : "bg-blue-950/40 text-blue-400 border-blue-800/50"
               )}>
                 <AlertTriangle size={24} />
               </div>
               <div className="min-w-0">
                 <div className="flex flex-wrap items-center gap-2 mb-1">
-                  <span className="text-[10px] font-black uppercase tracking-widest text-neutral-400">
+                  <span className="text-[10px] font-black uppercase tracking-widest text-slate-400">
                     Avvik / RUH
                   </span>
                   {isAiDetected && (
-                    <span className="inline-flex items-center gap-1 text-[10px] font-black uppercase tracking-wider px-2 py-0.5 rounded-full bg-indigo-50 text-indigo-700 border border-indigo-100">
+                    <span className="inline-flex items-center gap-1 text-[10px] font-black uppercase tracking-wider px-2 py-0.5 rounded-full bg-indigo-950/40 text-indigo-300 border border-indigo-800/50">
                       <Sparkles size={10} />
                       MesterAI Vision
                     </span>
                   )}
-                  <span className="text-[10px] text-neutral-400 flex items-center gap-1">
+                  <span className="text-[10px] text-slate-400 flex items-center gap-1">
                     <Clock size={10} />
                     {formatTimestamp(currentDev.timestamp || currentDev.createdAt)}
                   </span>
                 </div>
-                <h2 className="text-lg sm:text-xl font-bold text-neutral-900 tracking-tight leading-snug">
+                <h2 className="text-lg sm:text-xl font-bold text-white tracking-tight leading-snug">
                   {currentDev.title}
                 </h2>
               </div>
@@ -296,24 +296,24 @@ export default function DeviationDetailModal({
             <button 
               onClick={onClose} 
               aria-label="Lukk"
-              className="p-2 hover:bg-neutral-100 rounded-xl transition-colors shrink-0 text-neutral-400 hover:text-neutral-700"
+              className="p-2 hover:bg-slate-800 rounded-xl transition-colors shrink-0 text-slate-400 hover:text-white"
             >
               <X size={20} />
             </button>
           </div>
 
           {/* Scrollable Modal Body */}
-          <div className="flex-1 overflow-y-auto p-5 sm:p-7 space-y-6 custom-scrollbar bg-neutral-50/50">
+          <div className="flex-1 overflow-y-auto p-4 sm:p-6 space-y-6 custom-scrollbar bg-[#0B0F17]">
 
             {/* Status & Quick Action Banner */}
-            <div className="bg-white p-4 sm:p-5 rounded-2xl border border-neutral-200/80 shadow-sm flex flex-col sm:flex-row sm:items-center justify-between gap-4">
+            <div className="bg-[#131722] p-4 sm:p-5 rounded-2xl border border-slate-800 shadow-sm flex flex-col sm:flex-row sm:items-center justify-between gap-4">
               <div className="flex items-center gap-3">
-                <span className="text-xs font-bold text-neutral-500">Status:</span>
+                <span className="text-xs font-bold text-slate-400">Status:</span>
                 <span className={cn(
-                  "text-xs font-black uppercase tracking-wider px-3 py-1 rounded-full flex items-center gap-1.5",
-                  status === 'closed' ? "bg-emerald-100 text-emerald-800" :
-                  status === 'in-progress' ? "bg-blue-100 text-blue-800" :
-                  "bg-amber-100 text-amber-800"
+                  "text-xs font-black uppercase tracking-wider px-3 py-1 rounded-full flex items-center gap-1.5 border",
+                  status === 'closed' ? "bg-emerald-950/40 text-emerald-300 border-emerald-800/50" :
+                  status === 'in-progress' ? "bg-blue-950/40 text-blue-300 border-blue-800/50" :
+                  "bg-amber-950/40 text-amber-300 border-amber-800/50"
                 )}>
                   {status === 'closed' ? (
                     <><CheckCircle2 size={13} /> Lukket / Utbedret</>
@@ -330,7 +330,7 @@ export default function DeviationDetailModal({
                   <button
                     disabled={isSaving}
                     onClick={() => handleUpdateStatus('in-progress')}
-                    className="px-3.5 py-1.5 bg-blue-50 hover:bg-blue-100 text-blue-700 rounded-xl text-xs font-bold transition-all border border-blue-200/60"
+                    className="px-3.5 py-1.5 bg-blue-950/40 hover:bg-blue-900/40 text-blue-300 rounded-xl text-xs font-bold transition-all border border-blue-800/50"
                   >
                     Start behandling
                   </button>
@@ -349,7 +349,7 @@ export default function DeviationDetailModal({
                   <button
                     disabled={isSaving}
                     onClick={() => handleUpdateStatus('open')}
-                    className="px-3.5 py-1.5 bg-amber-50 hover:bg-amber-100 text-amber-800 rounded-xl text-xs font-bold transition-all border border-amber-200/60"
+                    className="px-3.5 py-1.5 bg-amber-950/40 hover:bg-amber-900/40 text-amber-300 rounded-xl text-xs font-bold transition-all border border-amber-800/50"
                   >
                     Gjenåpne avvik
                   </button>
@@ -360,14 +360,14 @@ export default function DeviationDetailModal({
             {/* Metadata Badges (Severity, Reported By, Location) */}
             <div className="grid grid-cols-1 sm:grid-cols-3 gap-3">
               {/* Severity */}
-              <div className="bg-white p-3.5 rounded-2xl border border-neutral-200/80 shadow-sm">
-                <label className="block text-[10px] font-black uppercase tracking-widest text-neutral-400 mb-1">
+              <div className="bg-[#131722] p-3.5 rounded-2xl border border-slate-800 shadow-sm">
+                <label className="block text-[10px] font-black uppercase tracking-widest text-slate-400 mb-1">
                   Alvorlighetsgrad
                 </label>
                 <select
                   value={severity}
                   onChange={(e) => setSeverity(e.target.value as any)}
-                  className="w-full bg-neutral-50 border-none rounded-xl px-2.5 py-1.5 text-xs font-bold text-neutral-800 focus:ring-2 focus:ring-emerald-500/20"
+                  className="w-full bg-slate-950 border border-slate-800 rounded-xl px-2.5 py-1.5 text-xs font-bold text-white focus:ring-2 focus:ring-emerald-500/20"
                 >
                   <option value="low">Lav</option>
                   <option value="medium">Middels</option>
@@ -377,48 +377,48 @@ export default function DeviationDetailModal({
               </div>
 
               {/* Reported By */}
-              <div className="bg-white p-3.5 rounded-2xl border border-neutral-200/80 shadow-sm flex flex-col justify-center">
-                <span className="text-[10px] font-black uppercase tracking-widest text-neutral-400 mb-1">
+              <div className="bg-[#131722] p-3.5 rounded-2xl border border-slate-800 shadow-sm flex flex-col justify-center">
+                <span className="text-[10px] font-black uppercase tracking-widest text-slate-400 mb-1">
                   Rapportert av
                 </span>
-                <span className="text-xs font-bold text-neutral-800 flex items-center gap-1.5 truncate">
-                  <HardHat size={14} className="text-neutral-400 shrink-0" />
+                <span className="text-xs font-bold text-white flex items-center gap-1.5 truncate">
+                  <HardHat size={14} className="text-slate-400 shrink-0" />
                   {currentDev.reportedBy || currentDev.authorName || 'System'}
                 </span>
               </div>
 
               {/* Location */}
-              <div className="bg-white p-3.5 rounded-2xl border border-neutral-200/80 shadow-sm flex flex-col justify-center">
-                <span className="text-[10px] font-black uppercase tracking-widest text-neutral-400 mb-1">
+              <div className="bg-[#131722] p-3.5 rounded-2xl border border-slate-800 shadow-sm flex flex-col justify-center">
+                <span className="text-[10px] font-black uppercase tracking-widest text-slate-400 mb-1">
                   Lokasjon / Bygg
                 </span>
-                <span className="text-xs font-bold text-neutral-800 flex items-center gap-1.5 truncate">
-                  <MapPin size={14} className="text-neutral-400 shrink-0" />
+                <span className="text-xs font-bold text-white flex items-center gap-1.5 truncate">
+                  <MapPin size={14} className="text-slate-400 shrink-0" />
                   {currentDev.location || project?.name || 'Ikke spesifisert'}
                 </span>
               </div>
             </div>
 
             {/* Description Card */}
-            <div className="bg-white p-5 rounded-2xl border border-neutral-200/80 shadow-sm space-y-2">
-              <h4 className="text-xs font-black uppercase tracking-widest text-neutral-400 flex items-center gap-1.5">
+            <div className="bg-[#131722] p-5 rounded-2xl border border-slate-800 shadow-sm space-y-2">
+              <h4 className="text-xs font-black uppercase tracking-widest text-slate-400 flex items-center gap-1.5">
                 <FileText size={14} />
                 Observasjon & Beskrivelse
               </h4>
-              <p className="text-sm text-neutral-700 leading-relaxed whitespace-pre-line font-normal">
+              <p className="text-sm text-slate-300 leading-relaxed whitespace-pre-line font-normal">
                 {currentDev.description || 'Ingen utfyllende beskrivelse tilgjengelig.'}
               </p>
             </div>
 
             {/* Photo Section */}
-            <div className="bg-white p-5 rounded-2xl border border-neutral-200/80 shadow-sm space-y-4">
+            <div className="bg-[#131722] p-5 rounded-2xl border border-slate-800 shadow-sm space-y-4">
               <div className="flex items-center justify-between">
-                <h4 className="text-xs font-black uppercase tracking-widest text-neutral-400 flex items-center gap-1.5">
+                <h4 className="text-xs font-black uppercase tracking-widest text-slate-400 flex items-center gap-1.5">
                   <Camera size={14} />
                   Fotodokumentasjon
                 </h4>
                 {photoUrl && (
-                  <span className="text-[11px] font-bold text-emerald-600 bg-emerald-50 px-2 py-0.5 rounded-md">
+                  <span className="text-[11px] font-bold text-emerald-400 bg-emerald-950/40 border border-emerald-800/40 px-2 py-0.5 rounded-md">
                     1 bilde registrert
                   </span>
                 )}
@@ -427,54 +427,54 @@ export default function DeviationDetailModal({
               <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
                 {/* Original Photo */}
                 <div>
-                  <span className="block text-[10px] font-black uppercase tracking-wider text-neutral-400 mb-2">
+                  <span className="block text-[10px] font-black uppercase tracking-wider text-slate-400 mb-2">
                     Opprinnelig bilde (Avvik):
                   </span>
                   {photoUrl ? (
                     <div 
                       onClick={() => setIsImageZoomed(true)}
-                      className="relative rounded-xl overflow-hidden border border-neutral-200 bg-neutral-100 group cursor-pointer aspect-video flex items-center justify-center"
+                      className="relative rounded-xl overflow-hidden border border-slate-800 bg-slate-950 group cursor-pointer aspect-video flex items-center justify-center"
                     >
                       <img 
                         src={photoUrl} 
                         alt="Avviksfoto" 
                         className="w-full h-full object-cover transition-transform group-hover:scale-105"
                       />
-                      <div className="absolute inset-0 bg-black/40 opacity-0 group-hover:opacity-100 transition-opacity flex items-center justify-center text-white font-bold text-xs gap-1.5">
+                      <div className="absolute inset-0 bg-black/60 opacity-0 group-hover:opacity-100 transition-opacity flex items-center justify-center text-white font-bold text-xs gap-1.5">
                         <Maximize2 size={16} />
                         Klikk for å forstørre
                       </div>
                     </div>
                   ) : (
-                    <div className="rounded-xl border border-dashed border-neutral-200 bg-neutral-50 p-6 text-center">
-                      <Camera size={24} className="mx-auto text-neutral-300 mb-2" />
-                      <p className="text-xs text-neutral-400">Ingen bilde vedlagt ved registrering.</p>
+                    <div className="rounded-xl border border-dashed border-slate-800 bg-slate-950 p-6 text-center">
+                      <Camera size={24} className="mx-auto text-slate-600 mb-2" />
+                      <p className="text-xs text-slate-400">Ingen bilde vedlagt ved registrering.</p>
                     </div>
                   )}
                 </div>
 
                 {/* Resolved Photo (Etter utbedring) */}
                 <div>
-                  <span className="block text-[10px] font-black uppercase tracking-wider text-neutral-400 mb-2">
+                  <span className="block text-[10px] font-black uppercase tracking-wider text-slate-400 mb-2">
                     Dokumentasjon etter utbedring:
                   </span>
                   {resolvedPhotoUrl ? (
-                    <div className="relative rounded-xl overflow-hidden border border-emerald-200 bg-emerald-50 aspect-video flex items-center justify-center group">
+                    <div className="relative rounded-xl overflow-hidden border border-emerald-800/40 bg-emerald-950/20 aspect-video flex items-center justify-center group">
                       <img 
                         src={resolvedPhotoUrl} 
                         alt="Utbedret bilde" 
                         className="w-full h-full object-cover"
                       />
-                      <label className="absolute bottom-2 right-2 px-2 py-1 bg-white/90 backdrop-blur-sm text-[10px] font-bold text-neutral-700 rounded-lg shadow cursor-pointer hover:bg-white">
+                      <label className="absolute bottom-2 right-2 px-2 py-1 bg-slate-900/90 border border-slate-700 backdrop-blur-sm text-[10px] font-bold text-white rounded-lg shadow cursor-pointer hover:bg-slate-800">
                         Endre bilde
                         <input type="file" accept="image/*" onChange={handleResolvedPhotoUpload} className="hidden" />
                       </label>
                     </div>
                   ) : (
-                    <label className="rounded-xl border-2 border-dashed border-neutral-200 hover:border-emerald-500 bg-neutral-50 hover:bg-emerald-50/40 p-6 text-center cursor-pointer transition-all block aspect-video flex flex-col items-center justify-center">
-                      <Camera size={24} className="mx-auto text-neutral-300 group-hover:text-emerald-500 mb-1" />
-                      <p className="text-xs font-bold text-neutral-600">Last opp bilde etter utbedring</p>
-                      <p className="text-[10px] text-neutral-400 mt-0.5">Vis at feilen er rettet fagmessig</p>
+                    <label className="rounded-xl border-2 border-dashed border-slate-800 hover:border-emerald-500 bg-slate-950 hover:bg-emerald-950/20 p-6 text-center cursor-pointer transition-all block aspect-video flex flex-col items-center justify-center">
+                      <Camera size={24} className="mx-auto text-slate-600 group-hover:text-emerald-400 mb-1" />
+                      <p className="text-xs font-bold text-slate-300">Last opp bilde etter utbedring</p>
+                      <p className="text-[10px] text-slate-500 mt-0.5">Vis at feilen er rettet fagmessig</p>
                       <input type="file" accept="image/*" onChange={handleResolvedPhotoUpload} className="hidden" />
                     </label>
                   )}
@@ -483,9 +483,9 @@ export default function DeviationDetailModal({
             </div>
 
             {/* Corrective Measures & AI Recommendation */}
-            <div className="bg-white p-5 rounded-2xl border border-neutral-200/80 shadow-sm space-y-4">
+            <div className="bg-[#131722] p-5 rounded-2xl border border-slate-800 shadow-sm space-y-4">
               <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-2">
-                <h4 className="text-xs font-black uppercase tracking-widest text-neutral-400 flex items-center gap-1.5">
+                <h4 className="text-xs font-black uppercase tracking-widest text-slate-400 flex items-center gap-1.5">
                   <Wrench size={14} />
                   Korrigerende Tiltak & Faglig Utbedring
                 </h4>
@@ -509,29 +509,29 @@ export default function DeviationDetailModal({
                 <motion.div
                   initial={{ opacity: 0, y: -10 }}
                   animate={{ opacity: 1, y: 0 }}
-                  className="p-4 rounded-xl bg-teal-50/80 border border-teal-200/80 text-teal-950 space-y-2.5 text-xs"
+                  className="p-4 rounded-xl bg-teal-950/30 border border-teal-800/50 text-teal-200 space-y-2.5 text-xs"
                 >
                   <div className="flex items-center justify-between">
-                    <span className="font-bold flex items-center gap-1 text-teal-800">
-                      <Sparkles size={14} className="text-teal-600" />
+                    <span className="font-bold flex items-center gap-1 text-teal-300">
+                      <Sparkles size={14} className="text-teal-400" />
                       Faglig anbefaling ({aiSuggestion.tek17Ref || 'TEK17'})
                     </span>
                     <button
                       type="button"
                       onClick={handleApplyAiAction}
-                      className="px-2.5 py-1 bg-teal-600 hover:bg-teal-700 text-white rounded-lg text-[10px] font-black uppercase tracking-wider flex items-center gap-1 transition-colors"
+                      className="px-2.5 py-1 bg-teal-600 hover:bg-teal-500 text-white rounded-lg text-[10px] font-black uppercase tracking-wider flex items-center gap-1 transition-colors"
                     >
                       <Check size={10} />
                       Bruk som tiltak
                     </button>
                   </div>
 
-                  <p className="leading-relaxed font-medium">
+                  <p className="leading-relaxed font-medium text-slate-200">
                     {aiSuggestion.recommendedAction}
                   </p>
 
                   {aiSuggestion.preventiveAction && (
-                    <div className="pt-2 border-t border-teal-200/60 text-[11px] text-teal-800">
+                    <div className="pt-2 border-t border-teal-800/40 text-[11px] text-teal-300">
                       <span className="font-bold">Forebyggende tiltak: </span>
                       {aiSuggestion.preventiveAction}
                     </div>
@@ -540,7 +540,7 @@ export default function DeviationDetailModal({
                   {aiSuggestion.requiredMaterials && aiSuggestion.requiredMaterials.length > 0 && (
                     <div className="flex flex-wrap gap-1 pt-1">
                       {aiSuggestion.requiredMaterials.map((mat, i) => (
-                        <span key={i} className="px-2 py-0.5 bg-white text-teal-900 rounded-md border border-teal-200 text-[10px] font-bold">
+                        <span key={i} className="px-2 py-0.5 bg-slate-900 text-teal-300 rounded-md border border-teal-800/50 text-[10px] font-bold">
                           {mat}
                         </span>
                       ))}
@@ -551,14 +551,14 @@ export default function DeviationDetailModal({
 
               {/* Action Text Area */}
               <div>
-                <label className="block text-[10px] font-black uppercase tracking-widest text-neutral-400 mb-1.5">
+                <label className="block text-[10px] font-black uppercase tracking-widest text-slate-400 mb-1.5">
                   Beskrivelse av utført tiltak
                 </label>
                 <textarea
                   value={actionText}
                   onChange={(e) => setActionText(e.target.value)}
                   rows={4}
-                  className="w-full bg-neutral-50 border border-neutral-200 rounded-xl p-3 text-xs font-medium focus:ring-2 focus:ring-emerald-500/20 focus:border-emerald-500 transition-all text-neutral-800 leading-relaxed"
+                  className="w-full bg-slate-950 border border-slate-800 rounded-xl p-3 text-xs font-medium focus:ring-2 focus:ring-emerald-500/20 focus:border-emerald-500 transition-all text-white placeholder:text-slate-600 leading-relaxed"
                   placeholder="Beskriv hvilke tiltak som er gjort eller planlagt for å lukke avviket..."
                 />
               </div>
@@ -567,12 +567,12 @@ export default function DeviationDetailModal({
           </div>
 
           {/* Modal Footer */}
-          <div className="p-4 sm:p-6 border-t border-neutral-100 flex flex-wrap items-center justify-between gap-3 bg-white shrink-0">
+          <div className="p-4 sm:p-6 border-t border-slate-800 flex flex-wrap items-center justify-between gap-3 bg-[#131722] shrink-0">
             <div className="flex items-center gap-2">
               <button
                 type="button"
                 onClick={handleDownloadPDF}
-                className="px-4 py-2.5 bg-neutral-100 hover:bg-neutral-200 text-neutral-700 rounded-xl text-xs font-bold flex items-center gap-1.5 transition-colors"
+                className="px-4 py-2.5 bg-slate-800 hover:bg-slate-700 text-slate-200 rounded-xl text-xs font-bold flex items-center gap-1.5 transition-colors"
                 title="Last ned offisiell avviksrapport (PDF)"
               >
                 <Download size={14} />
@@ -583,7 +583,7 @@ export default function DeviationDetailModal({
                 type="button"
                 onClick={handleDelete}
                 disabled={isDeleting}
-                className="p-2.5 text-rose-600 hover:bg-rose-50 rounded-xl transition-colors"
+                className="p-2.5 text-rose-400 hover:bg-rose-950/30 rounded-xl transition-colors"
                 title="Slett avvik"
               >
                 {isDeleting ? <Loader2 size={16} className="animate-spin" /> : <Trash2 size={16} />}
@@ -594,7 +594,7 @@ export default function DeviationDetailModal({
               <button
                 type="button"
                 onClick={onClose}
-                className="px-4 py-2.5 bg-neutral-100 hover:bg-neutral-200 text-neutral-600 rounded-xl text-xs font-bold transition-colors"
+                className="px-4 py-2.5 bg-slate-800 hover:bg-slate-700 text-slate-300 rounded-xl text-xs font-bold transition-colors"
               >
                 Lukk
               </button>
@@ -603,7 +603,7 @@ export default function DeviationDetailModal({
                 type="button"
                 disabled={isSaving}
                 onClick={handleSaveDetails}
-                className="px-5 py-2.5 bg-emerald-600 hover:bg-emerald-500 text-white rounded-xl text-xs font-bold flex items-center gap-1.5 transition-all shadow-md shadow-emerald-200 disabled:opacity-50"
+                className="px-5 py-2.5 bg-emerald-600 hover:bg-emerald-500 text-white rounded-xl text-xs font-bold flex items-center gap-1.5 transition-all shadow-md shadow-emerald-900/30 disabled:opacity-50"
               >
                 {isSaving ? <Loader2 size={14} className="animate-spin" /> : <Save size={14} />}
                 <span>Lagre endringer</span>

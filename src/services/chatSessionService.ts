@@ -218,6 +218,27 @@ class ChatSessionService {
     const scope = explicitScope || getActiveTenantScope();
     const storageKey = getStorageKey(scope);
     const activeKey = getActiveSessionKey(scope);
+    const sessions = this.getSessions(scope);
+
+    // Sjekk om aktiv sesjon allerede er helt tom. Hvis ja, gjenbruk den for å unngå duplikat-rot i menyen!
+    const activeId = this.getActiveSessionId(scope);
+    const activeSession = sessions.find(s => s.id === activeId);
+    if (
+      activeSession &&
+      (!activeSession.messages || activeSession.messages.length === 0) &&
+      (!options?.initialMessages || options.initialMessages.length === 0)
+    ) {
+      if (options?.projectName) activeSession.projectName = options.projectName;
+      if (options?.projectId) activeSession.projectId = options.projectId;
+      if (options?.title) activeSession.title = options.title;
+      else if (options?.projectName) activeSession.title = `Oppgave: ${options.projectName}`;
+      this.saveSessionMessages(activeSession.id, [], {
+        projectName: options?.projectName,
+        projectId: options?.projectId
+      }, scope);
+      return activeSession;
+    }
+
     const now = new Date().toISOString();
     const newSession: ChatSession = {
       id: `session_${Date.now()}_${Math.random().toString(36).substring(2, 7)}`,
@@ -229,7 +250,6 @@ class ChatSessionService {
       messages: options?.initialMessages || []
     };
 
-    const sessions = this.getSessions(scope);
     const updated = [newSession, ...sessions];
 
     if (typeof window !== 'undefined') {
@@ -243,6 +263,36 @@ class ChatSessionService {
 
     this.notify();
     return newSession;
+  }
+
+  public cleanupEmptySessions(explicitScope?: string): number {
+    if (typeof window === 'undefined') return 0;
+    const scope = explicitScope || getActiveTenantScope();
+    const storageKey = getStorageKey(scope);
+    const activeKey = getActiveSessionKey(scope);
+    const sessions = this.getSessions(scope);
+    const activeId = this.getActiveSessionId(scope);
+
+    // Behold samtaler med meldinger, samt maksimalt den aktive samtalen
+    const cleaned = sessions.filter(s => (s.messages && s.messages.length > 0) || s.id === activeId);
+    const removedCount = sessions.length - cleaned.length;
+
+    if (removedCount > 0) {
+      try {
+        localStorage.setItem(storageKey, JSON.stringify(cleaned));
+        if (activeId && !cleaned.some(s => s.id === activeId)) {
+          if (cleaned.length > 0) {
+            localStorage.setItem(activeKey, cleaned[0].id);
+          } else {
+            localStorage.removeItem(activeKey);
+          }
+        }
+        this.notify();
+      } catch (e) {
+        console.warn('Could not clean up empty sessions:', e);
+      }
+    }
+    return removedCount;
   }
 
   public saveSessionMessages(
@@ -282,7 +332,7 @@ class ChatSessionService {
 
       if (
         options?.autoTitle &&
-        (target.title === 'Ny samtale' || target.title.startsWith('Oppgave:'))
+        (target.title === 'Ny samtale' || target.title.startsWith('Oppgave:') || target.title.startsWith('Ny oppgave'))
       ) {
         target.title = this.deriveSmartTitle(messages, target.projectName);
       }
@@ -387,15 +437,18 @@ class ChatSessionService {
   public groupSessions(sessions: ChatSession[]): {
     pinned: ChatSession[];
     today: ChatSession[];
+    yesterday: ChatSession[];
     last7Days: ChatSession[];
     older: ChatSession[];
   } {
     const now = new Date();
     const startOfToday = new Date(now.getFullYear(), now.getMonth(), now.getDate()).getTime();
+    const startOfYesterday = startOfToday - 24 * 60 * 60 * 1000;
     const sevenDaysAgo = startOfToday - 7 * 24 * 60 * 60 * 1000;
 
     const pinned: ChatSession[] = [];
     const today: ChatSession[] = [];
+    const yesterday: ChatSession[] = [];
     const last7Days: ChatSession[] = [];
     const older: ChatSession[] = [];
 
@@ -407,6 +460,8 @@ class ChatSessionService {
       const time = new Date(s.updatedAt || s.createdAt).getTime();
       if (time >= startOfToday) {
         today.push(s);
+      } else if (time >= startOfYesterday) {
+        yesterday.push(s);
       } else if (time >= sevenDaysAgo) {
         last7Days.push(s);
       } else {
@@ -414,7 +469,69 @@ class ChatSessionService {
       }
     });
 
-    return { pinned, today, last7Days, older };
+    return { pinned, today, yesterday, last7Days, older };
+  }
+
+  public groupSessionsByProject(sessions: ChatSession[], projects: { id: string; name: string }[] = []): Array<{
+    projectId: string;
+    projectName: string;
+    sessions: ChatSession[];
+  }> {
+    const projectMap = new Map<string, { projectId: string; projectName: string; sessions: ChatSession[] }>();
+
+    // Registrer kjente prosjekter først
+    projects.forEach(p => {
+      projectMap.set(p.id, {
+        projectId: p.id,
+        projectName: p.name,
+        sessions: []
+      });
+    });
+
+    const unassigned: ChatSession[] = [];
+
+    sessions.forEach(s => {
+      if (s.projectId && projectMap.has(s.projectId)) {
+        projectMap.get(s.projectId)!.sessions.push(s);
+      } else if (s.projectName) {
+        const found = Array.from(projectMap.values()).find(
+          entry => entry.projectName.toLowerCase() === s.projectName?.toLowerCase()
+        );
+        if (found) {
+          found.sessions.push(s);
+        } else {
+          const key = s.projectId || s.projectName;
+          if (!projectMap.has(key)) {
+            projectMap.set(key, {
+              projectId: key,
+              projectName: s.projectName,
+              sessions: []
+            });
+          }
+          projectMap.get(key)!.sessions.push(s);
+        }
+      } else {
+        unassigned.push(s);
+      }
+    });
+
+    // Fjern prosjekter uten samtaler og sorter etter nyeste oppdaterte samtale
+    const result = Array.from(projectMap.values()).filter(g => g.sessions.length > 0);
+    result.sort((a, b) => {
+      const timeA = Math.max(...a.sessions.map(s => new Date(s.updatedAt || s.createdAt).getTime()));
+      const timeB = Math.max(...b.sessions.map(s => new Date(s.updatedAt || s.createdAt).getTime()));
+      return timeB - timeA;
+    });
+
+    if (unassigned.length > 0) {
+      result.push({
+        projectId: 'unassigned',
+        projectName: 'Generelt & Uten prosjekt',
+        sessions: unassigned
+      });
+    }
+
+    return result;
   }
 }
 

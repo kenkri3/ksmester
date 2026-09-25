@@ -83,13 +83,13 @@ export const NotificationBell: React.FC<NotificationBellProps> = ({ className, d
               initial={{ opacity: 0, y: 10, scale: 0.95 }}
               animate={{ opacity: 1, y: 0, scale: 1 }}
               exit={{ opacity: 0, y: 10, scale: 0.95 }}
-              className="absolute right-0 mt-2 w-84 sm:w-96 bg-white rounded-2xl shadow-2xl border border-neutral-200 z-50 overflow-hidden text-neutral-900"
+              className="absolute right-0 mt-2 w-84 sm:w-96 bg-[#0B0F17] rounded-2xl shadow-2xl border border-slate-800 z-50 overflow-hidden text-white"
             >
-              <div className="p-4 border-b border-neutral-100 flex items-center justify-between bg-neutral-50/50">
+              <div className="p-4 border-b border-slate-800 flex items-center justify-between bg-[#131722]">
                 <div className="flex items-center gap-2">
-                  <h3 className="text-sm font-bold text-neutral-900">{t('notifications', 'Varslinger')}</h3>
+                  <h3 className="text-sm font-bold text-white">{t('notifications', 'Varslinger')}</h3>
                   {unreadCount > 0 && (
-                    <span className="px-2 py-0.5 rounded-full text-[10px] font-black bg-rose-100 text-rose-700">
+                    <span className="px-2 py-0.5 rounded-full text-[10px] font-black bg-rose-500/20 text-rose-300 border border-rose-500/30">
                       {unreadCount} nye
                     </span>
                   )}
@@ -97,30 +97,30 @@ export const NotificationBell: React.FC<NotificationBellProps> = ({ className, d
                 {unreadCount > 0 && (
                   <button 
                     onClick={markAllAsRead}
-                    className="text-[10px] font-black uppercase tracking-widest text-emerald-600 hover:underline cursor-pointer"
+                    className="text-[10px] font-black uppercase tracking-widest text-emerald-400 hover:underline cursor-pointer"
                   >
                     {t('mark_all_read', 'Marker alle som lest')}
                   </button>
                 )}
               </div>
 
-              <div className="max-h-96 overflow-y-auto">
+              <div className="max-h-96 overflow-y-auto custom-scrollbar">
                 {notifications.length === 0 ? (
                   <div className="p-8 text-center">
-                    <div className="w-12 h-12 bg-neutral-50 rounded-full flex items-center justify-center mx-auto mb-3">
-                      <Bell size={20} className="text-neutral-300" />
+                    <div className="w-12 h-12 bg-slate-900 border border-slate-800 rounded-full flex items-center justify-center mx-auto mb-3">
+                      <Bell size={20} className="text-slate-500" />
                     </div>
-                    <p className="text-xs text-neutral-400 font-medium">{t('no_notifications', 'Ingen nye varslinger')}</p>
+                    <p className="text-xs text-slate-400 font-medium">{t('no_notifications', 'Ingen nye varslinger')}</p>
                   </div>
                 ) : (
-                  <div className="divide-y divide-neutral-50">
+                  <div className="divide-y divide-slate-800/80">
                     {notifications.map((notification) => (
                       <div 
                         key={notification.id}
                         onClick={() => handleNotificationClick(notification)}
                         className={cn(
-                          "p-4 transition-colors hover:bg-neutral-50 relative group cursor-pointer text-left",
-                          !notification.read && "bg-purple-50/30"
+                          "p-4 transition-colors hover:bg-slate-800/60 relative group cursor-pointer text-left",
+                          !notification.read && "bg-purple-950/20"
                         )}
                       >
                         <div className="flex gap-3">
@@ -129,33 +129,33 @@ export const NotificationBell: React.FC<NotificationBellProps> = ({ className, d
                           </div>
                           <div className="flex-1 min-w-0">
                             <div className="flex items-center justify-between gap-2 mb-1">
-                              <span className="text-xs font-bold text-neutral-900 truncate">
+                              <span className="text-xs font-bold text-white truncate">
                                 {notification.title}
                               </span>
-                              <span className="text-[10px] text-neutral-400 shrink-0">
+                              <span className="text-[10px] text-slate-500 shrink-0">
                                 {new Date(notification.createdAt).toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' })}
                               </span>
                             </div>
-                            <p className="text-[11px] text-neutral-600 leading-relaxed line-clamp-2">
+                            <p className="text-[11px] text-slate-400 leading-relaxed line-clamp-2">
                               {notification.message}
                             </p>
 
                             {/* Tags for spesielle meldinger */}
                             <div className="mt-2 flex flex-wrap items-center gap-1.5">
                               {notification.category === 'chat' && (
-                                <span className="inline-flex items-center gap-1 px-2 py-0.5 rounded-md text-[9px] font-bold bg-purple-100 text-purple-700">
+                                <span className="inline-flex items-center gap-1 px-2 py-0.5 rounded-md text-[9px] font-bold bg-purple-500/20 text-purple-300 border border-purple-500/30">
                                   <MessageSquare size={10} />
                                   Kundeportal
                                 </span>
                               )}
                               {notification.hasAiDraft && (
-                                <span className="inline-flex items-center gap-1 px-2 py-0.5 rounded-md text-[9px] font-bold bg-amber-100 text-amber-800 border border-amber-300/40">
-                                  <Sparkles size={10} className="text-amber-600" />
+                                <span className="inline-flex items-center gap-1 px-2 py-0.5 rounded-md text-[9px] font-bold bg-amber-500/20 text-amber-300 border border-amber-500/30">
+                                  <Sparkles size={10} className="text-amber-400" />
                                   ✨ MesterAI utkast klart til godkjenning
                                 </span>
                               )}
                               {Boolean(notification.projectId || notification.category === 'chat') && (
-                                <span className="text-[9px] font-semibold text-purple-600 group-hover:underline ml-auto">
+                                <span className="text-[9px] font-semibold text-purple-400 group-hover:underline ml-auto">
                                   Åpne samtale →
                                 </span>
                               )}
@@ -170,7 +170,7 @@ export const NotificationBell: React.FC<NotificationBellProps> = ({ className, d
                               e.stopPropagation();
                               markAsRead(notification.id);
                             }}
-                            className="absolute top-4 right-4 w-2 h-2 bg-purple-500 rounded-full opacity-0 group-hover:opacity-100 transition-opacity"
+                            className="absolute top-4 right-4 w-2 h-2 bg-purple-500 rounded-full opacity-0 group-hover:opacity-100 transition-opacity cursor-pointer"
                             title={t('mark_as_read', 'Marker som lest')}
                             aria-label={t('mark_as_read', 'Marker som lest')}
                           />
@@ -182,11 +182,11 @@ export const NotificationBell: React.FC<NotificationBellProps> = ({ className, d
               </div>
 
               {notifications.length > 0 && (
-                <div className="p-3 bg-neutral-50 border-t border-neutral-100 text-center">
+                <div className="p-3 bg-[#131722] border-t border-slate-800 text-center">
                   <button 
                     type="button"
                     onClick={() => setIsOpen(false)}
-                    className="text-[10px] font-black uppercase tracking-widest text-neutral-500 hover:text-neutral-700 transition-colors cursor-pointer"
+                    className="text-[10px] font-black uppercase tracking-widest text-slate-400 hover:text-white transition-colors cursor-pointer"
                   >
                     Lukk varsler
                   </button>

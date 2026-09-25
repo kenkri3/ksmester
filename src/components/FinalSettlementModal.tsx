@@ -95,101 +95,101 @@ export default function FinalSettlementModal({
 
   return (
     <AnimatePresence>
-      <div className="fixed inset-0 z-50 flex items-end sm:items-center justify-center p-0 sm:p-4 bg-black/60 backdrop-blur-sm">
+      <div className="fixed inset-0 z-50 flex items-end sm:items-center justify-center p-0 sm:p-4 bg-black/80 backdrop-blur-md">
         <motion.div
           initial={{ opacity: 0, y: 20 }}
           animate={{ opacity: 1, y: 0 }}
           exit={{ opacity: 0, y: 20 }}
-          className="bg-white rounded-t-[2rem] sm:rounded-3xl shadow-2xl max-w-3xl w-full p-5 sm:p-8 max-h-[92vh] sm:max-h-[90vh] flex flex-col border border-neutral-200 pb-[env(safe-area-inset-bottom,1.25rem)] sm:pb-8"
+          className="bg-[#0B0F17] text-white rounded-t-[2rem] sm:rounded-3xl shadow-2xl max-w-3xl w-full p-5 sm:p-8 max-h-[92vh] sm:max-h-[90vh] flex flex-col border border-slate-800 pb-[env(safe-area-inset-bottom,1.25rem)] sm:pb-8"
         >
           {/* Mobile grab handle */}
-          <div className="sm:hidden w-12 h-1.5 bg-neutral-300 rounded-full mx-auto mb-3 shrink-0" />
+          <div className="sm:hidden w-12 h-1.5 bg-slate-700 rounded-full mx-auto mb-3 shrink-0" />
 
           {/* Header */}
-          <div className="flex justify-between items-start pb-4 sm:pb-6 border-b border-neutral-100">
+          <div className="flex justify-between items-start pb-4 sm:pb-6 border-b border-slate-800">
             <div>
               <div className="flex items-center gap-2 mb-1">
-                <span className="p-2 bg-emerald-500/10 text-emerald-600 rounded-xl">
+                <span className="p-2 bg-emerald-500/20 text-emerald-400 border border-emerald-500/30 rounded-xl">
                   <Coins size={20} />
                 </span>
-                <span className="text-xs font-black uppercase tracking-widest text-emerald-600">
+                <span className="text-xs font-black uppercase tracking-widest text-emerald-400">
                   Norsk Standard NS 8406 pkt. 26
                 </span>
               </div>
-              <h2 className="text-2xl font-black text-neutral-900">Formelt Sluttoppgjør</h2>
-              <p className="text-xs text-neutral-500">
+              <h2 className="text-2xl font-black text-white">Formelt Sluttoppgjør</h2>
+              <p className="text-xs text-slate-400">
                 Prosjekt: {project.name} | Avregning av kontrakt, godkjente tillegg og innestående
               </p>
             </div>
             <button
               onClick={onClose}
-              className="p-2 text-neutral-400 hover:text-neutral-700 hover:bg-neutral-100 rounded-full transition-all"
+              className="p-2 text-slate-400 hover:text-white hover:bg-slate-800 rounded-full transition-all cursor-pointer"
             >
               <X size={20} />
             </button>
           </div>
 
           {/* Body */}
-          <div className="my-6 flex-1 overflow-y-auto space-y-6 pr-1">
+          <div className="my-6 flex-1 overflow-y-auto space-y-6 pr-1 custom-scrollbar">
             {loading || !settlement ? (
-              <div className="text-center py-16 text-neutral-400 text-sm">
+              <div className="text-center py-16 text-slate-500 text-sm">
                 Beregner sluttoppgjør og henter godkjente tillegg...
               </div>
             ) : (
               <>
                 {/* Economic Breakdown */}
-                <div className="bg-neutral-50 rounded-2xl p-6 border border-neutral-200/80 space-y-4">
-                  <div className="flex justify-between items-center pb-3 border-b border-neutral-200">
-                    <span className="text-xs font-bold text-neutral-600">Opprinnelig kontraktssum</span>
-                    <span className="text-sm font-black text-neutral-900">
+                <div className="bg-[#131722] rounded-2xl p-6 border border-slate-800 space-y-4">
+                  <div className="flex justify-between items-center pb-3 border-b border-slate-800">
+                    <span className="text-xs font-bold text-slate-400">Opprinnelig kontraktssum</span>
+                    <span className="text-sm font-black text-white">
                       {settlement.originalContractAmount.toLocaleString('no-NO')} kr
                     </span>
                   </div>
 
-                  <div className="flex justify-between items-center pb-3 border-b border-neutral-200">
+                  <div className="flex justify-between items-center pb-3 border-b border-slate-800">
                     <div>
-                      <div className="text-xs font-bold text-neutral-600">Godkjente endringsmeldinger / tillegg</div>
-                      <div className="text-[10px] text-emerald-600">Signert skriftlig av byggherre</div>
+                      <div className="text-xs font-bold text-slate-400">Godkjente endringsmeldinger / tillegg</div>
+                      <div className="text-[10px] text-emerald-400">Signert skriftlig av byggherre</div>
                     </div>
-                    <span className="text-sm font-black text-emerald-600">
+                    <span className="text-sm font-black text-emerald-400">
                       +{settlement.approvedChangeOrdersAmount.toLocaleString('no-NO')} kr
                     </span>
                   </div>
 
-                  <div className="flex justify-between items-center pb-3 border-b border-neutral-200">
-                    <span className="text-xs font-bold text-neutral-900">Total justert entreprisesum (eks. mva)</span>
-                    <span className="text-base font-black text-neutral-900">
+                  <div className="flex justify-between items-center pb-3 border-b border-slate-800">
+                    <span className="text-xs font-bold text-white">Total justert entreprisesum (eks. mva)</span>
+                    <span className="text-base font-black text-white">
                       {settlement.totalOrderAmount.toLocaleString('no-NO')} kr
                     </span>
                   </div>
 
-                  <div className="flex justify-between items-center pb-3 border-b border-neutral-200">
+                  <div className="flex justify-between items-center pb-3 border-b border-slate-800">
                     <div>
-                      <div className="text-xs font-bold text-neutral-600">Tidligere a-konto fakturert</div>
-                      <div className="text-[10px] text-neutral-400">Innbetalt / delfakturert underveis</div>
+                      <div className="text-xs font-bold text-slate-400">Tidligere a-konto fakturert</div>
+                      <div className="text-[10px] text-slate-500">Innbetalt / delfakturert underveis</div>
                     </div>
-                    <span className="text-sm font-black text-neutral-600">
+                    <span className="text-sm font-black text-slate-300">
                       -{settlement.invoicedAmount.toLocaleString('no-NO')} kr
                     </span>
                   </div>
 
-                  <div className="flex justify-between items-center pb-3 border-b border-neutral-200">
-                    <span className="text-xs font-bold text-neutral-600">Innestående garantibeløp (5% iht. NS 8406)</span>
-                    <span className="text-sm font-bold text-neutral-500">
+                  <div className="flex justify-between items-center pb-3 border-b border-slate-800">
+                    <span className="text-xs font-bold text-slate-400">Innestående garantibeløp (5% iht. NS 8406)</span>
+                    <span className="text-sm font-bold text-slate-400">
                       {(settlement.retentionGuaranteeAmount || 0).toLocaleString('no-NO')} kr
                     </span>
                   </div>
 
                   <div className="flex justify-between items-center pt-2">
                     <div>
-                      <div className="text-xs font-black uppercase tracking-widest text-neutral-400">
+                      <div className="text-xs font-black uppercase tracking-widest text-slate-400">
                         Netto sluttkrav til utbetaling
                       </div>
-                      <div className="text-[11px] text-neutral-500">
+                      <div className="text-[11px] text-slate-400">
                         Inkludert 25% mva ({settlement.vatAmount.toLocaleString('no-NO')} kr)
                       </div>
                     </div>
-                    <div className="text-2xl font-black text-emerald-600">
+                    <div className="text-2xl font-black text-emerald-400">
                       {settlement.totalSettlementIncVat.toLocaleString('no-NO')} kr
                     </div>
                   </div>
@@ -197,28 +197,28 @@ export default function FinalSettlementModal({
 
                 {/* Deadlines & Preclusion Clause */}
                 <div className="grid grid-cols-1 sm:grid-cols-2 gap-3 sm:gap-4">
-                  <div className="p-4 bg-neutral-50 rounded-xl border border-neutral-200">
-                    <div className="text-[10px] font-black uppercase tracking-widest text-neutral-400">
+                  <div className="p-4 bg-[#131722] rounded-xl border border-slate-800">
+                    <div className="text-[10px] font-black uppercase tracking-widest text-slate-400">
                       Forfallsdato
                     </div>
-                    <div className="text-sm font-bold text-neutral-900 mt-1">
+                    <div className="text-sm font-bold text-white mt-1">
                       {settlement.invoiceDueDate} (14 dager)
                     </div>
                   </div>
-                  <div className="p-4 bg-amber-50 rounded-xl border border-amber-200">
-                    <div className="text-[10px] font-black uppercase tracking-widest text-amber-700">
+                  <div className="p-4 bg-amber-950/30 rounded-xl border border-amber-900/50">
+                    <div className="text-[10px] font-black uppercase tracking-widest text-amber-400">
                       Innsigelsesfrist byggherre
                     </div>
-                    <div className="text-sm font-bold text-amber-900 mt-1">
+                    <div className="text-sm font-bold text-amber-200 mt-1">
                       {settlement.objectionDeadline} (2 måneder)
                     </div>
                   </div>
                 </div>
 
                 {/* Legal warning */}
-                <div className="p-4 bg-neutral-100 rounded-xl text-xs text-neutral-600 leading-relaxed border border-neutral-200">
-                  <strong className="text-neutral-800">Viktig rettsvirkning etter NS 8406 pkt. 26.2:</strong>
-                  <p className="mt-1 text-[11px]">
+                <div className="p-4 bg-slate-900/80 rounded-xl text-xs text-slate-300 leading-relaxed border border-slate-800">
+                  <strong className="text-white">Viktig rettsvirkning etter NS 8406 pkt. 26.2:</strong>
+                  <p className="mt-1 text-[11px] text-slate-400">
                     Krav som ikke er medtatt i sluttoppgjøret tapes. Byggherren har 2 måneders frist fra mottak til å fremme eventuelle motkrav eller innsigelser. Innsigelser som ikke fremsettes innen fristen, tapes automatisk.
                   </p>
                 </div>
@@ -227,8 +227,8 @@ export default function FinalSettlementModal({
           </div>
 
           {/* Footer Actions */}
-          <div className="pt-6 border-t border-neutral-100 flex flex-col sm:flex-row justify-between items-center gap-3">
-            <span className="text-xs text-neutral-400">
+          <div className="pt-6 border-t border-slate-800 flex flex-col sm:flex-row justify-between items-center gap-3">
+            <span className="text-xs text-slate-400">
               Status: {settlement?.status === 'sent' ? 'Sendt til byggherre' : 'Kladd / Utsendingsklar'}
             </span>
 
@@ -236,7 +236,7 @@ export default function FinalSettlementModal({
               {settlement && (
                 <button
                   onClick={() => pdfService.generateFinalSettlementPDF(project, settlement)}
-                  className="flex-1 sm:flex-none px-4 py-2.5 bg-neutral-100 hover:bg-neutral-200 text-neutral-700 rounded-xl text-xs font-bold flex items-center justify-center gap-1.5 transition-all"
+                  className="flex-1 sm:flex-none px-4 py-2.5 bg-slate-800 hover:bg-slate-700 text-slate-200 border border-slate-700 rounded-xl text-xs font-bold flex items-center justify-center gap-1.5 transition-all cursor-pointer"
                 >
                   <Download size={14} /> Last ned PDF
                 </button>
@@ -245,7 +245,7 @@ export default function FinalSettlementModal({
               <button
                 onClick={handleSendToClient}
                 disabled={isSending || !settlement}
-                className="flex-1 sm:flex-none px-5 py-2.5 bg-neutral-900 hover:bg-neutral-800 text-white rounded-xl text-xs font-bold flex items-center justify-center gap-1.5 shadow-md transition-all cursor-pointer"
+                className="flex-1 sm:flex-none px-5 py-2.5 bg-emerald-600 hover:bg-emerald-500 text-white rounded-xl text-xs font-bold flex items-center justify-center gap-1.5 shadow-md transition-all cursor-pointer disabled:opacity-50"
               >
                 <Send size={14} />
                 {isSending ? 'Sender...' : 'Send formelt sluttoppgjør'}

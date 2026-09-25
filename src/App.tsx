@@ -1667,24 +1667,24 @@ function AppContent() {
 
       {/* Kundeportal Modal */}
       {isPortalModalOpen && (
-        <div className="fixed inset-0 z-[120] flex items-center justify-center p-4 bg-neutral-900/60 backdrop-blur-sm">
+        <div className="fixed inset-0 z-[120] flex items-center justify-center p-4 bg-black/80 backdrop-blur-md">
           <motion.div
             initial={{ opacity: 0, scale: 0.95 }}
             animate={{ opacity: 1, scale: 1 }}
             exit={{ opacity: 0, scale: 0.95 }}
-            className="bg-white rounded-3xl p-6 md:p-8 max-w-md w-full shadow-2xl border border-neutral-100 relative"
+            className="bg-[#0B0F17] text-white rounded-3xl p-6 md:p-8 max-w-md w-full shadow-2xl border border-slate-800 relative"
           >
             <button
               onClick={() => setIsPortalModalOpen(false)}
-              className="absolute top-5 right-5 w-8 h-8 rounded-full bg-white/5 hover:bg-neutral-200 text-slate-400 flex items-center justify-center transition-colors cursor-pointer text-sm"
+              className="absolute top-5 right-5 w-8 h-8 rounded-full bg-slate-800 hover:bg-slate-700 text-slate-400 hover:text-white flex items-center justify-center transition-colors cursor-pointer text-sm"
               aria-label="Lukk"
             >
               ✕
             </button>
-            <div className="w-12 h-12 rounded-2xl bg-emerald-100 text-emerald-700 flex items-center justify-center mb-4">
+            <div className="w-12 h-12 rounded-2xl bg-emerald-500/20 text-emerald-400 border border-emerald-500/30 flex items-center justify-center mb-4">
               <Users size={24} />
             </div>
-            <h3 className="text-xl font-bold text-navy-900 mb-2">Kundeportal for byggherre</h3>
+            <h3 className="text-xl font-bold text-white mb-2">Kundeportal for byggherre</h3>
             <p className="text-slate-400 text-xs md:text-sm mb-6 leading-relaxed">
               Er du oppdragsgiver eller byggherre? Tast inn din prosjektkode eller prosjekt-ID for direkte innsyn i fremdrift, KS-dokumentasjon, bilder og FDV-arkiv.
             </p>
@@ -1696,7 +1696,7 @@ function AppContent() {
               }
             }} className="space-y-4">
               <div>
-                <label className="block text-[11px] font-black text-neutral-700 mb-1.5 uppercase tracking-wider">
+                <label className="block text-[11px] font-black text-slate-400 mb-1.5 uppercase tracking-wider">
                   Prosjektkode eller ID
                 </label>
                 <input
@@ -1704,7 +1704,7 @@ function AppContent() {
                   value={portalModalCode}
                   onChange={(e) => setPortalModalCode(e.target.value)}
                   placeholder="f.eks. P-2025-01 eller portal-token"
-                  className="w-full px-4 py-3 bg-neutral-50 border border-neutral-200 rounded-xl text-navy-900 font-medium text-sm focus:outline-none focus:ring-2 focus:ring-emerald-500 focus:bg-white transition-all"
+                  className="w-full px-4 py-3 bg-slate-950 border border-slate-800 rounded-xl text-white font-medium text-sm placeholder:text-slate-500 focus:outline-none focus:ring-2 focus:ring-emerald-500/40 focus:border-emerald-500 transition-all"
                   autoFocus
                 />
               </div>
@@ -1712,14 +1712,14 @@ function AppContent() {
                 <button
                   type="button"
                   onClick={() => setIsPortalModalOpen(false)}
-                  className="flex-1 py-3 bg-white/5 hover:bg-neutral-200 text-neutral-700 text-xs font-bold rounded-xl transition-all cursor-pointer"
+                  className="flex-1 py-3 bg-slate-800 hover:bg-slate-700 text-slate-300 hover:text-white border border-slate-700 text-xs font-bold rounded-xl transition-all cursor-pointer"
                 >
                   Avbryt
                 </button>
                 <button
                   type="submit"
                   disabled={!portalModalCode.trim()}
-                  className="flex-1 py-3 bg-emerald-600 hover:bg-slate-500 disabled:opacity-50 text-navy-900 text-xs font-bold rounded-xl shadow-lg shadow-emerald-600/20 transition-all cursor-pointer"
+                  className="flex-1 py-3 bg-emerald-600 hover:bg-emerald-500 disabled:opacity-50 text-white text-xs font-bold rounded-xl shadow-lg shadow-emerald-950/50 transition-all cursor-pointer"
                 >
                   Åpne portal
                 </button>

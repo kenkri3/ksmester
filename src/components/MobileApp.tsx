@@ -1625,13 +1625,13 @@ export default function MobileApp({ initialScreen, onScreenChange }: MobileAppPr
       />
       {/* Trade Selector Modal (First time) */}
       {showTradeSelector && (
-        <div className="fixed inset-0 z-50 bg-neutral-900/60 backdrop-blur-sm flex items-center justify-center p-4">
+        <div className="fixed inset-0 z-50 bg-black/80 backdrop-blur-md flex items-center justify-center p-4">
           <motion.div 
             initial={{ scale: 0.9, opacity: 0 }}
             animate={{ scale: 1, opacity: 1 }}
-            className="bg-white rounded-3xl p-6 w-full max-w-xs shadow-2xl"
+            className="bg-[#0B0F17] border border-slate-800 text-white rounded-3xl p-6 w-full max-w-xs shadow-2xl"
           >
-            <h3 className="text-lg font-bold mb-4">{t('select_your_trade', 'Velg ditt fag')}</h3>
+            <h3 className="text-lg font-bold mb-4 text-white">{t('select_your_trade', 'Velg ditt fag')}</h3>
             <div className="grid grid-cols-2 gap-3">
               {(['carpenter', 'plumber', 'electrician', 'mason', 'painter', 'general'] as Trade[]).map((trade) => (
                 <button
@@ -1644,7 +1644,7 @@ export default function MobileApp({ initialScreen, onScreenChange }: MobileAppPr
                       setShowTradeSelector(false);
                     }
                   }}
-                  className="p-3 bg-neutral-50 rounded-2xl border border-neutral-100 text-xs font-bold hover:bg-emerald-50 hover:border-emerald-100 transition-colors"
+                  className="p-3 bg-slate-900 border border-slate-800 text-slate-200 rounded-2xl text-xs font-bold hover:bg-emerald-500/20 hover:border-emerald-500/40 hover:text-emerald-300 transition-colors cursor-pointer"
                 >
                   {t(`trade_${trade}`, trade.charAt(0).toUpperCase() + trade.slice(1))}
                 </button>

@@ -174,41 +174,41 @@ export default function PreCloseInspectorModal({
   };
 
   return (
-    <div className="fixed inset-0 z-[100] flex items-center justify-center p-3 sm:p-4 bg-navy-950/70 backdrop-blur-md overflow-y-auto">
+    <div className="fixed inset-0 z-[100] flex items-center justify-center p-3 sm:p-4 bg-black/80 backdrop-blur-md overflow-y-auto">
       <motion.div
         initial={{ opacity: 0, scale: 0.95, y: 10 }}
         animate={{ opacity: 1, scale: 1, y: 0 }}
         exit={{ opacity: 0, scale: 0.95, y: 10 }}
-        className="relative w-full max-w-2xl bg-white rounded-3xl shadow-2xl border border-slate-200 overflow-hidden my-auto"
+        className="relative w-full max-w-2xl bg-[#0B0F17] text-white rounded-3xl shadow-2xl border border-slate-800 overflow-hidden my-auto"
       >
         {/* Status Header Banner */}
         <div className={cn(
           "px-6 py-5 border-b flex items-start justify-between gap-4",
           currentZone.status === 'GREEN' 
-            ? "bg-emerald-50/80 border-emerald-100" 
-            : "bg-rose-50/80 border-rose-100"
+            ? "bg-emerald-950/30 border-emerald-800/40" 
+            : "bg-rose-950/30 border-rose-800/40"
         )}>
           <div className="flex items-start gap-3.5">
             <div className={cn(
-              "w-12 h-12 rounded-2xl flex items-center justify-center shrink-0 shadow-sm",
-              currentZone.status === 'GREEN' ? "bg-emerald-600 text-white" : "bg-rose-600 text-white"
+              "w-12 h-12 rounded-2xl flex items-center justify-center shrink-0 shadow-sm border",
+              currentZone.status === 'GREEN' ? "bg-emerald-600 text-white border-emerald-500" : "bg-rose-600 text-white border-rose-500"
             )}>
               {currentZone.status === 'GREEN' ? <Unlock size={24} /> : <Lock size={24} />}
             </div>
             <div>
               <div className="flex items-center gap-2 flex-wrap">
                 <span className={cn(
-                  "px-2.5 py-0.5 rounded-full text-[10px] font-black uppercase tracking-wider",
-                  currentZone.status === 'GREEN' ? "bg-emerald-200 text-emerald-950" : "bg-rose-200 text-rose-950"
+                  "px-2.5 py-0.5 rounded-full text-[10px] font-black uppercase tracking-wider border",
+                  currentZone.status === 'GREEN' ? "bg-emerald-950/60 text-emerald-300 border-emerald-800/60" : "bg-rose-950/60 text-rose-300 border-rose-800/60"
                 )}>
                   {currentZone.status === 'GREEN' ? 'GRØNT LYS – LUKKING TILLATT' : 'RØD SPERRE – LUKKING FORBUDT'}
                 </span>
-                <span className="text-xs font-bold text-slate-500">• {currentZone.project}</span>
+                <span className="text-xs font-bold text-slate-400">• {currentZone.project}</span>
               </div>
-              <h3 className="text-lg font-black text-navy-900 mt-1">
+              <h3 className="text-lg font-black text-white mt-1">
                 {currentZone.room}
               </h3>
-              <p className="text-xs text-slate-600 mt-0.5 leading-relaxed">
+              <p className="text-xs text-slate-300 mt-0.5 leading-relaxed">
                 {currentZone.detail}
               </p>
             </div>
@@ -216,19 +216,19 @@ export default function PreCloseInspectorModal({
 
           <button
             onClick={onClose}
-            className="w-9 h-9 rounded-full bg-white/80 hover:bg-white text-slate-500 hover:text-navy-900 flex items-center justify-center transition-all shadow-xs shrink-0"
+            className="w-9 h-9 rounded-full bg-slate-800/80 hover:bg-slate-700 text-slate-400 hover:text-white flex items-center justify-center transition-all shadow-xs shrink-0"
           >
             <X size={18} />
           </button>
         </div>
 
         {/* Modal Body */}
-        <div className="p-6 space-y-6 max-h-[70vh] overflow-y-auto">
+        <div className="p-6 space-y-6 max-h-[70vh] overflow-y-auto bg-[#0B0F17]">
           {/* TEK17 & Forskrifter Info Box */}
-          <div className="p-4 rounded-2xl bg-slate-50 border border-slate-200/80 flex items-start gap-3 text-xs text-slate-600">
-            <Info size={18} className="text-electric-600 shrink-0 mt-0.5" />
+          <div className="p-4 rounded-2xl bg-[#131722] border border-slate-800 flex items-start gap-3 text-xs text-slate-300">
+            <Info size={18} className="text-cyan-400 shrink-0 mt-0.5" />
             <p className="leading-relaxed">
-              <strong>Tverrfaglig lukkesperre</strong> sikrer at vegger, sjakter og bjelkelag ikke plates eller flislegges før alle fag har godkjent sine skjulte installasjoner iht. <strong>TEK17 § 13-15</strong> og <strong>BVN 31.205</strong>.
+              <strong className="text-white">Tverrfaglig lukkesperre</strong> sikrer at vegger, sjakter og bjelkelag ikke plates eller flislegges før alle fag har godkjent sine skjulte installasjoner iht. <strong className="text-white">TEK17 § 13-15</strong> og <strong className="text-white">BVN 31.205</strong>.
             </p>
           </div>
 
@@ -236,7 +236,7 @@ export default function PreCloseInspectorModal({
           <div>
             <h4 className="text-xs font-black uppercase tracking-wider text-slate-400 mb-3 flex items-center justify-between">
               <span>Obligatoriske Sjekkpunkter for lukking</span>
-              <span className="text-[11px] font-bold text-electric-600">
+              <span className="text-[11px] font-bold text-emerald-400">
                 {Object.values(checks).filter(Boolean).length} av 4 godkjent
               </span>
             </h4>
@@ -248,29 +248,29 @@ export default function PreCloseInspectorModal({
                 className={cn(
                   "p-4 rounded-2xl border transition-all cursor-pointer flex items-center justify-between gap-3 group",
                   checks.plumbing 
-                    ? "bg-emerald-50/50 border-emerald-200 hover:border-emerald-300" 
-                    : "bg-white border-slate-200 hover:border-slate-300"
+                    ? "bg-emerald-950/20 border-emerald-800/40 hover:border-emerald-700" 
+                    : "bg-[#131722] border-slate-800 hover:border-slate-700"
                 )}
               >
                 <div className="flex items-start gap-3">
                   <div className={cn(
                     "w-6 h-6 rounded-lg flex items-center justify-center shrink-0 mt-0.5 transition-colors",
-                    checks.plumbing ? "bg-emerald-600 text-white" : "border-2 border-slate-300 bg-white"
+                    checks.plumbing ? "bg-emerald-600 text-white" : "border-2 border-slate-700 bg-slate-950"
                   )}>
                     {checks.plumbing && <Check size={14} strokeWidth={3} />}
                   </div>
                   <div>
-                    <h5 className="text-xs font-bold text-navy-900 group-hover:text-electric-600 transition-colors">
+                    <h5 className="text-xs font-bold text-white group-hover:text-emerald-400 transition-colors">
                       Rørlegger: Trykktestrapport & Rør-i-rør fordelerskap
                     </h5>
-                    <p className="text-[11px] text-slate-500 mt-0.5">
+                    <p className="text-[11px] text-slate-400 mt-0.5">
                       TEK17 § 13-15: Lekkasjesikre installasjoner, varerør og avløp til sluk dokumentert.
                     </p>
                   </div>
                 </div>
                 <span className={cn(
-                  "text-[10px] font-black uppercase px-2 py-0.5 rounded-full shrink-0",
-                  checks.plumbing ? "bg-emerald-100 text-emerald-800" : "bg-slate-100 text-slate-500"
+                  "text-[10px] font-black uppercase px-2 py-0.5 rounded-full shrink-0 border",
+                  checks.plumbing ? "bg-emerald-950/40 text-emerald-300 border-emerald-800/50" : "bg-slate-800 text-slate-400 border-slate-700"
                 )}>
                   {checks.plumbing ? 'Godkjent' : 'Mangler'}
                 </span>
@@ -282,29 +282,29 @@ export default function PreCloseInspectorModal({
                 className={cn(
                   "p-4 rounded-2xl border transition-all cursor-pointer flex items-center justify-between gap-3 group",
                   checks.electric 
-                    ? "bg-emerald-50/50 border-emerald-200 hover:border-emerald-300" 
-                    : "bg-white border-slate-200 hover:border-slate-300"
+                    ? "bg-emerald-950/20 border-emerald-800/40 hover:border-emerald-700" 
+                    : "bg-[#131722] border-slate-800 hover:border-slate-700"
                 )}
               >
                 <div className="flex items-start gap-3">
                   <div className={cn(
                     "w-6 h-6 rounded-lg flex items-center justify-center shrink-0 mt-0.5 transition-colors",
-                    checks.electric ? "bg-emerald-600 text-white" : "border-2 border-slate-300 bg-white"
+                    checks.electric ? "bg-emerald-600 text-white" : "border-2 border-slate-700 bg-slate-950"
                   )}>
                     {checks.electric && <Check size={14} strokeWidth={3} />}
                   </div>
                   <div>
-                    <h5 className="text-xs font-bold text-navy-900 group-hover:text-electric-600 transition-colors">
+                    <h5 className="text-xs font-bold text-white group-hover:text-emerald-400 transition-colors">
                       Elektriker: Skjultanlegg & Rørkurs fotografert
                     </h5>
-                    <p className="text-[11px] text-slate-500 mt-0.5">
+                    <p className="text-[11px] text-slate-400 mt-0.5">
                       NEK 400:2022: K-rør, koblingsbokser og trekkrør verifisert uten klemfare.
                     </p>
                   </div>
                 </div>
                 <span className={cn(
-                  "text-[10px] font-black uppercase px-2 py-0.5 rounded-full shrink-0",
-                  checks.electric ? "bg-emerald-100 text-emerald-800" : "bg-slate-100 text-slate-500"
+                  "text-[10px] font-black uppercase px-2 py-0.5 rounded-full shrink-0 border",
+                  checks.electric ? "bg-emerald-950/40 text-emerald-300 border-emerald-800/50" : "bg-slate-800 text-slate-400 border-slate-700"
                 )}>
                   {checks.electric ? 'Godkjent' : 'Mangler'}
                 </span>
@@ -316,29 +316,29 @@ export default function PreCloseInspectorModal({
                 className={cn(
                   "p-4 rounded-2xl border transition-all cursor-pointer flex items-center justify-between gap-3 group",
                   checks.vaporBarrier 
-                    ? "bg-emerald-50/50 border-emerald-200 hover:border-emerald-300" 
-                    : "bg-white border-slate-200 hover:border-slate-300"
+                    ? "bg-emerald-950/20 border-emerald-800/40 hover:border-emerald-700" 
+                    : "bg-[#131722] border-slate-800 hover:border-slate-700"
                 )}
               >
                 <div className="flex items-start gap-3">
                   <div className={cn(
                     "w-6 h-6 rounded-lg flex items-center justify-center shrink-0 mt-0.5 transition-colors",
-                    checks.vaporBarrier ? "bg-emerald-600 text-white" : "border-2 border-slate-300 bg-white"
+                    checks.vaporBarrier ? "bg-emerald-600 text-white" : "border-2 border-slate-700 bg-slate-950"
                   )}>
                     {checks.vaporBarrier && <Check size={14} strokeWidth={3} />}
                   </div>
                   <div>
-                    <h5 className="text-xs font-bold text-navy-900 group-hover:text-electric-600 transition-colors">
+                    <h5 className="text-xs font-bold text-white group-hover:text-emerald-400 transition-colors">
                       Dampsperre: Klemte skjøter & mansjetter
                     </h5>
-                    <p className="text-[11px] text-slate-500 mt-0.5">
+                    <p className="text-[11px] text-slate-400 mt-0.5">
                       BVN 31.205 & TEK17: Dampsperre er uavbrutt og alle rørgjennomføringer er tapet med godkjent mansjett.
                     </p>
                   </div>
                 </div>
                 <span className={cn(
-                  "text-[10px] font-black uppercase px-2 py-0.5 rounded-full shrink-0",
-                  checks.vaporBarrier ? "bg-emerald-100 text-emerald-800" : "bg-slate-100 text-slate-500"
+                  "text-[10px] font-black uppercase px-2 py-0.5 rounded-full shrink-0 border",
+                  checks.vaporBarrier ? "bg-emerald-950/40 text-emerald-300 border-emerald-800/50" : "bg-slate-800 text-slate-400 border-slate-700"
                 )}>
                   {checks.vaporBarrier ? 'Godkjent' : 'Mangler'}
                 </span>
@@ -350,29 +350,29 @@ export default function PreCloseInspectorModal({
                 className={cn(
                   "p-4 rounded-2xl border transition-all cursor-pointer flex items-center justify-between gap-3 group",
                   checks.insulation 
-                    ? "bg-emerald-50/50 border-emerald-200 hover:border-emerald-300" 
-                    : "bg-white border-slate-200 hover:border-slate-300"
+                    ? "bg-emerald-950/20 border-emerald-800/40 hover:border-emerald-700" 
+                    : "bg-[#131722] border-slate-800 hover:border-slate-700"
                 )}
               >
                 <div className="flex items-start gap-3">
                   <div className={cn(
                     "w-6 h-6 rounded-lg flex items-center justify-center shrink-0 mt-0.5 transition-colors",
-                    checks.insulation ? "bg-emerald-600 text-white" : "border-2 border-slate-300 bg-white"
+                    checks.insulation ? "bg-emerald-600 text-white" : "border-2 border-slate-700 bg-slate-950"
                   )}>
                     {checks.insulation && <Check size={14} strokeWidth={3} />}
                   </div>
                   <div>
-                    <h5 className="text-xs font-bold text-navy-900 group-hover:text-electric-600 transition-colors">
+                    <h5 className="text-xs font-bold text-white group-hover:text-emerald-400 transition-colors">
                       Isolasjon & Lyd: Fullisolert uten kuldebroer
                     </h5>
-                    <p className="text-[11px] text-slate-500 mt-0.5">
+                    <p className="text-[11px] text-slate-400 mt-0.5">
                       TEK17 § 11-12 & § 14-2: Mineralull fyller hulrom bak rør og kasser uten komprimering.
                     </p>
                   </div>
                 </div>
                 <span className={cn(
-                  "text-[10px] font-black uppercase px-2 py-0.5 rounded-full shrink-0",
-                  checks.insulation ? "bg-emerald-100 text-emerald-800" : "bg-slate-100 text-slate-500"
+                  "text-[10px] font-black uppercase px-2 py-0.5 rounded-full shrink-0 border",
+                  checks.insulation ? "bg-emerald-950/40 text-emerald-300 border-emerald-800/50" : "bg-slate-800 text-slate-400 border-slate-700"
                 )}>
                   {checks.insulation ? 'Godkjent' : 'Mangler'}
                 </span>
@@ -381,13 +381,13 @@ export default function PreCloseInspectorModal({
           </div>
 
           {/* AI Vision & Bevisføring */}
-          <div className="p-4 rounded-2xl bg-gradient-to-r from-blue-50 to-indigo-50 border border-blue-200/80 flex flex-col sm:flex-row sm:items-center justify-between gap-3">
+          <div className="p-4 rounded-2xl bg-blue-950/30 border border-blue-800/50 flex flex-col sm:flex-row sm:items-center justify-between gap-3">
             <div>
-              <div className="flex items-center gap-1.5 text-xs font-extrabold text-blue-900 mb-0.5">
-                <Sparkles size={14} className="text-blue-600" />
+              <div className="flex items-center gap-1.5 text-xs font-extrabold text-blue-300 mb-0.5">
+                <Sparkles size={14} className="text-blue-400" />
                 <span>AI-Fotokontroll med TEK17-sjekk</span>
               </div>
-              <p className="text-[11px] text-blue-700">
+              <p className="text-[11px] text-blue-200">
                 Ta bilde av veggen før kledning. AI identifiserer rør-i-rør, dampsperre og klemte skjøter.
               </p>
             </div>
@@ -396,7 +396,7 @@ export default function PreCloseInspectorModal({
                 onClose();
                 onOpenAIVision?.(currentZone.room);
               }}
-              className="px-4 py-2 bg-blue-600 hover:bg-blue-700 text-white rounded-xl text-xs font-bold transition-all flex items-center justify-center gap-1.5 shadow-sm active:scale-95 shrink-0 cursor-pointer"
+              className="px-4 py-2 bg-blue-600 hover:bg-blue-500 text-white rounded-xl text-xs font-bold transition-all flex items-center justify-center gap-1.5 shadow-sm active:scale-95 shrink-0 cursor-pointer"
             >
               <Camera size={14} />
               <span>Ta bilde med AI</span>
@@ -405,12 +405,12 @@ export default function PreCloseInspectorModal({
         </div>
 
         {/* Modal Actions Footer */}
-        <div className="p-6 bg-slate-50 border-t border-slate-200/80 flex flex-col sm:flex-row sm:items-center justify-between gap-3">
+        <div className="p-6 bg-[#131722] border-t border-slate-800 flex flex-col sm:flex-row sm:items-center justify-between gap-3">
           <div className="flex items-center gap-2">
             <button
               type="button"
               onClick={() => window.print()}
-              className="px-3 py-2 bg-white hover:bg-slate-100 text-slate-700 border border-slate-200 rounded-xl text-xs font-bold transition-all flex items-center gap-1.5 cursor-pointer"
+              className="px-3 py-2 bg-slate-800 hover:bg-slate-700 text-slate-200 border border-slate-700 rounded-xl text-xs font-bold transition-all flex items-center gap-1.5 cursor-pointer"
               title="Skriv ut kontrollseddel"
             >
               <Printer size={14} />
@@ -426,7 +426,7 @@ export default function PreCloseInspectorModal({
               <button
                 type="button"
                 onClick={handleForceLock}
-                className="px-4 py-2 bg-rose-100 hover:bg-rose-200 text-rose-800 rounded-xl text-xs font-bold transition-all flex items-center gap-1.5 cursor-pointer"
+                className="px-4 py-2 bg-rose-950/40 hover:bg-rose-900/40 text-rose-300 border border-rose-800/50 rounded-xl text-xs font-bold transition-all flex items-center gap-1.5 cursor-pointer"
               >
                 <Lock size={14} />
                 <span>Aktiver Lukkesperre</span>
@@ -435,7 +435,7 @@ export default function PreCloseInspectorModal({
               <button
                 type="button"
                 onClick={handleForceApprove}
-                className="px-4 py-2 bg-emerald-600 hover:bg-emerald-700 text-white rounded-xl text-xs font-black transition-all flex items-center gap-1.5 shadow-md active:scale-95 cursor-pointer"
+                className="px-4 py-2 bg-emerald-600 hover:bg-emerald-500 text-white rounded-xl text-xs font-black transition-all flex items-center gap-1.5 shadow-md active:scale-95 cursor-pointer"
               >
                 <Check size={14} />
                 <span>Godkjenn & Gi Grønt Lys</span>
@@ -445,7 +445,7 @@ export default function PreCloseInspectorModal({
             <button
               type="button"
               onClick={onClose}
-              className="px-4 py-2 bg-navy-900 hover:bg-navy-800 text-white rounded-xl text-xs font-bold transition-all cursor-pointer"
+              className="px-4 py-2 bg-slate-800 hover:bg-slate-700 text-slate-200 rounded-xl text-xs font-bold transition-all cursor-pointer"
             >
               Lukk
             </button>

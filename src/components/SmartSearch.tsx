@@ -4,7 +4,7 @@ import {
   Search, X, Command, Brain, Building2, AlertTriangle, FileText, ArrowRight, 
   Loader2, Sparkles, CheckSquare, Clock, ShieldCheck, DollarSign, Camera, 
   Truck, Package, ExternalLink, HardHat, Info, Wrench, ChevronRight, CornerDownLeft,
-  CheckCircle2, MapPin, MessageSquare, Plus, FolderKanban
+  CheckCircle2, MapPin, MessageSquare, Plus, FolderKanban, Users
 } from 'lucide-react';
 import { useDebounce } from '../hooks/useDebounce';
 import { generateAiContent } from '../services/aiClient';
@@ -16,7 +16,7 @@ import { chatSessionService, ChatSession } from '../services/chatSessionService'
 
 export interface SmartSearchItem {
   id?: string;
-  category: 'chat' | 'action' | 'project' | 'deviation' | 'route' | 'status' | 'ai';
+  category: 'chat' | 'action' | 'project' | 'deviation' | 'change_order' | 'vehicle' | 'contact' | 'route' | 'status' | 'ai';
   title: string;
   description: string;
   badge?: string;
@@ -32,6 +32,9 @@ interface SmartSearchProps {
   onNavigate: (actionType: string, id?: string, extra?: any) => void;
   projects?: Project[];
   deviations?: Deviation[];
+  changeOrders?: any[];
+  vehicles?: any[];
+  contacts?: any[];
   recentActivities?: any[];
 }
 
@@ -294,7 +297,10 @@ export default function SmartSearch({
   onClose, 
   onNavigate,
   projects: initialProjects = [],
-  deviations: initialDeviations = []
+  deviations: initialDeviations = [],
+  changeOrders: initialChangeOrders = [],
+  vehicles: initialVehicles = [],
+  contacts: initialContacts = []
 }: SmartSearchProps) {
   const { t } = useTranslation();
   const [queryText, setQueryText] = useState('');
@@ -302,8 +308,12 @@ export default function SmartSearch({
   const [aiInsight, setAiInsight] = useState<{ answer: string; suggestedAction?: SmartSearchItem } | null>(null);
   const [liveProjects, setLiveProjects] = useState<Project[]>(initialProjects);
   const [liveDeviations, setLiveDeviations] = useState<Deviation[]>(initialDeviations);
+  const [liveChangeOrders, setLiveChangeOrders] = useState<any[]>(initialChangeOrders);
+  const [liveVehicles, setLiveVehicles] = useState<any[]>(initialVehicles);
+  const [liveContacts, setLiveContacts] = useState<any[]>(initialContacts);
   const [chatSessions, setChatSessions] = useState<ChatSession[]>([]);
   const [selectedIndex, setSelectedIndex] = useState(0);
+  const [selectedCategory, setSelectedCategory] = useState<string>('all');
 
   const inputRef = useRef<HTMLInputElement>(null);
   const debouncedQuery = useDebounce(queryText, 450);
@@ -344,12 +354,46 @@ export default function SmartSearch({
     }
   }, [initialDeviations, isOpen]);
 
+  useEffect(() => {
+    if (initialChangeOrders && initialChangeOrders.length > 0) {
+      setLiveChangeOrders(initialChangeOrders);
+    } else if (isOpen) {
+      try {
+        const cached = localStorage.getItem('ks_change_orders_cache');
+        if (cached) setLiveChangeOrders(JSON.parse(cached));
+      } catch {}
+    }
+  }, [initialChangeOrders, isOpen]);
+
+  useEffect(() => {
+    if (initialVehicles && initialVehicles.length > 0) {
+      setLiveVehicles(initialVehicles);
+    } else if (isOpen) {
+      try {
+        const cached = localStorage.getItem('ks_vehicles_cache');
+        if (cached) setLiveVehicles(JSON.parse(cached));
+      } catch {}
+    }
+  }, [initialVehicles, isOpen]);
+
+  useEffect(() => {
+    if (initialContacts && initialContacts.length > 0) {
+      setLiveContacts(initialContacts);
+    } else if (isOpen) {
+      try {
+        const cached = localStorage.getItem('ks_contacts_cache');
+        if (cached) setLiveContacts(JSON.parse(cached));
+      } catch {}
+    }
+  }, [initialContacts, isOpen]);
+
   // Focus input and reset state on open
   useEffect(() => {
     if (isOpen) {
       setQueryText('');
       setAiInsight(null);
       setSelectedIndex(0);
+      setSelectedCategory('all');
       setTimeout(() => inputRef.current?.focus(), 80);
     }
   }, [isOpen]);
@@ -483,8 +527,97 @@ export default function SmartSearch({
       }
     }
 
+    // 6. Search in Live Change Orders (Endringsordrer NS 8406)
+    for (const co of liveChangeOrders) {
+      const titleMatch = (co.title || '').toLowerCase().includes(q);
+      const numMatch = (co.orderNumber || co.number || '').toLowerCase().includes(q);
+      const descMatch = (co.description || '').toLowerCase().includes(q);
+
+      if (titleMatch || numMatch || descMatch) {
+        const proj = liveProjects.find(p => p.id === co.projectId);
+        matches.push({
+          id: co.id,
+          category: 'change_order',
+          title: `Endringsordre: ${co.title || co.orderNumber || 'NS 8406'}`,
+          description: `${proj ? `Prosjekt: ${proj.name} • ` : ''}${co.amount ? `${Number(co.amount).toLocaleString('no-NO')} kr eks. mva • ` : ''}Status: ${co.status === 'approved' ? 'Godkjent' : 'Venter aksept'}`,
+          badge: co.amount ? `${Number(co.amount).toLocaleString('no-NO')} kr` : 'NS 8406',
+          badgeColor: 'purple',
+          icon: DollarSign,
+          actionType: 'change_order',
+          metadata: { changeOrder: co }
+        });
+      }
+    }
+
+    // 7. Search in Vehicles (Bilpark & Kjørebok)
+    for (const v of liveVehicles) {
+      const nameMatch = (v.name || v.model || '').toLowerCase().includes(q);
+      const plateMatch = (v.licensePlate || v.plate || '').toLowerCase().includes(q);
+      const driverMatch = (v.driver || v.assignedDriver || '').toLowerCase().includes(q);
+
+      if (nameMatch || plateMatch || driverMatch) {
+        matches.push({
+          id: v.id,
+          category: 'vehicle',
+          title: `Kjøretøy: ${v.name || v.model || 'Firmabil'}`,
+          description: `Skilt: ${v.licensePlate || v.plate || '-'} • Sjåfør: ${v.driver || v.assignedDriver || 'Felles'} • Km: ${v.mileage || v.odometer || 'Logget'}`,
+          badge: v.licensePlate || 'Bilpark',
+          badgeColor: 'amber',
+          icon: Truck,
+          actionType: 'vehicle',
+          metadata: { vehicle: v }
+        });
+      }
+    }
+
+    // 8. Search in Contacts & Team
+    for (const c of liveContacts) {
+      const nameMatch = (c.name || '').toLowerCase().includes(q);
+      const roleMatch = (c.role || '').toLowerCase().includes(q);
+      const compMatch = (c.company || '').toLowerCase().includes(q);
+      const phoneMatch = (c.phone || '').toLowerCase().includes(q);
+
+      if (nameMatch || roleMatch || compMatch || phoneMatch) {
+        matches.push({
+          id: c.id,
+          category: 'contact',
+          title: `Kontakt: ${c.name}`,
+          description: `${c.role || 'Rolle'} • ${c.company || 'Firma'} • Tlf: ${c.phone || '-'}`,
+          badge: c.role || 'Kontakt',
+          badgeColor: 'cyan',
+          icon: Users,
+          actionType: 'contacts',
+          metadata: { contact: c }
+        });
+      }
+    }
+
     return matches;
-  }, [queryText, chatSessions, liveProjects, liveDeviations]);
+  }, [queryText, chatSessions, liveProjects, liveDeviations, liveChangeOrders, liveVehicles, liveContacts]);
+
+  // Kategori-filtrering for søkeresultatene
+  const filteredResults = useMemo(() => {
+    if (selectedCategory === 'all') return instantResults;
+    if (selectedCategory === 'chat') return instantResults.filter(r => r.category === 'chat');
+    if (selectedCategory === 'project') return instantResults.filter(r => r.category === 'project' || r.category === 'status');
+    if (selectedCategory === 'deviation_order') return instantResults.filter(r => r.category === 'deviation' || r.category === 'change_order');
+    if (selectedCategory === 'tools') return instantResults.filter(r => r.category === 'action' || r.category === 'route');
+    if (selectedCategory === 'contact') return instantResults.filter(r => r.category === 'contact');
+    if (selectedCategory === 'vehicle') return instantResults.filter(r => r.category === 'vehicle');
+    return instantResults;
+  }, [instantResults, selectedCategory]);
+
+  const categoryCounts = useMemo(() => {
+    return {
+      all: instantResults.length,
+      chat: instantResults.filter(r => r.category === 'chat').length,
+      project: instantResults.filter(r => r.category === 'project' || r.category === 'status').length,
+      deviation_order: instantResults.filter(r => r.category === 'deviation' || r.category === 'change_order').length,
+      tools: instantResults.filter(r => r.category === 'action' || r.category === 'route').length,
+      contact: instantResults.filter(r => r.category === 'contact').length,
+      vehicle: instantResults.filter(r => r.category === 'vehicle').length,
+    };
+  }, [instantResults]);
 
   // AI Semantic Fallback & Question Answering
   useEffect(() => {
@@ -595,6 +728,33 @@ Svar i JSON-format:
       onClose();
       return;
     }
+    if (item.category === 'project' || item.actionType === 'nav_project' || item.actionType === 'project') {
+      if (item.id) {
+        window.dispatchEvent(new CustomEvent('select_project', { detail: { projectId: item.id, project: item.metadata?.project, openDetails: true } }));
+      }
+      onNavigate('nav_project', item.id, item.metadata);
+      window.dispatchEvent(new CustomEvent('switch_mester_tab', { detail: { tab: 'projects' } }));
+      onClose();
+      return;
+    }
+    if (item.category === 'vehicle' || item.actionType === 'vehicle') {
+      window.dispatchEvent(new CustomEvent('switch_mester_tab', { detail: { tab: 'vehicle' } }));
+      onNavigate('vehicle', item.id, item.metadata);
+      onClose();
+      return;
+    }
+    if (item.category === 'change_order' || item.actionType === 'change_order') {
+      window.dispatchEvent(new CustomEvent('switch_mester_tab', { detail: { tab: 'admin' } }));
+      onNavigate('change_order', item.id, item.metadata);
+      onClose();
+      return;
+    }
+    if (item.category === 'contact' || item.actionType === 'contact' || item.actionType === 'contacts') {
+      window.dispatchEvent(new CustomEvent('switch_mester_tab', { detail: { tab: 'contacts' } }));
+      onNavigate('contacts', item.id, item.metadata);
+      onClose();
+      return;
+    }
     if (item.actionType === 'route') {
       if (typeof window !== 'undefined' && item.id) {
         window.location.href = item.id;
@@ -617,14 +777,14 @@ Svar i JSON-format:
       onClose();
     } else if (e.key === 'ArrowDown') {
       e.preventDefault();
-      setSelectedIndex(prev => (prev + 1) % Math.max(1, instantResults.length));
+      setSelectedIndex(prev => (prev + 1) % Math.max(1, filteredResults.length));
     } else if (e.key === 'ArrowUp') {
       e.preventDefault();
-      setSelectedIndex(prev => (prev - 1 + instantResults.length) % Math.max(1, instantResults.length));
+      setSelectedIndex(prev => (prev - 1 + filteredResults.length) % Math.max(1, filteredResults.length));
     } else if (e.key === 'Enter') {
       e.preventDefault();
-      if (instantResults[selectedIndex]) {
-        handleItemClick(instantResults[selectedIndex]);
+      if (filteredResults[selectedIndex]) {
+        handleItemClick(filteredResults[selectedIndex]);
       } else if (aiInsight?.suggestedAction) {
         handleItemClick(aiInsight.suggestedAction);
       }
@@ -650,6 +810,9 @@ Svar i JSON-format:
     if (category === 'status') return 'bg-emerald-500/20 text-emerald-400';
     if (category === 'project') return 'bg-blue-500/20 text-blue-400';
     if (category === 'deviation') return 'bg-rose-500/20 text-rose-400';
+    if (category === 'change_order') return 'bg-purple-500/20 text-purple-400';
+    if (category === 'vehicle') return 'bg-amber-500/20 text-amber-400';
+    if (category === 'contact') return 'bg-cyan-500/20 text-cyan-400';
     if (badgeColor === 'purple') return 'bg-purple-500/20 text-purple-400';
     if (badgeColor === 'amber') return 'bg-amber-500/20 text-amber-400';
     return 'bg-emerald-500/20 text-emerald-400';
@@ -738,53 +901,152 @@ Svar i JSON-format:
 
               {/* Instant Search Results */}
               {instantResults.length > 0 ? (
-                <div className="space-y-1.5 sm:space-y-2">
-                  <div className="px-2 py-1 flex items-center justify-between text-[10px] font-bold uppercase tracking-wider text-neutral-400">
-                    <span>Resultater ({instantResults.length})</span>
-                    <span className="text-[9px] text-neutral-500">Bruk piltaster ↑↓ og Enter</span>
-                  </div>
-                  {instantResults.map((item, i) => {
-                    const IconComponent = item.icon || Building2;
-                    const isSelected = selectedIndex === i;
-                    return (
+                <div className="space-y-2">
+                  {/* Category Filter Pills */}
+                  <div className="flex items-center gap-1.5 overflow-x-auto py-1 px-1 no-scrollbar border-b border-white/5 shrink-0">
+                    <button
+                      type="button"
+                      onClick={() => { setSelectedCategory('all'); setSelectedIndex(0); }}
+                      className={cn(
+                        "px-2.5 py-1 rounded-lg text-xs font-semibold shrink-0 transition-colors cursor-pointer",
+                        selectedCategory === 'all' ? "bg-purple-600 text-white shadow-xs" : "bg-white/5 text-neutral-400 hover:text-white"
+                      )}
+                    >
+                      Alle ({categoryCounts.all})
+                    </button>
+                    {categoryCounts.chat > 0 && (
                       <button
-                        key={`${item.actionType}-${item.id || i}`}
-                        onClick={() => handleItemClick(item)}
-                        onMouseEnter={() => setSelectedIndex(i)}
+                        type="button"
+                        onClick={() => { setSelectedCategory('chat'); setSelectedIndex(0); }}
                         className={cn(
-                          "w-full flex items-center gap-3 sm:gap-4 p-2.5 sm:p-3.5 rounded-xl sm:rounded-2xl transition-all group text-left border cursor-pointer",
-                          isSelected
-                            ? "bg-white/10 border-purple-500/40 shadow-lg shadow-purple-500/5"
-                            : "hover:bg-white/5 border-transparent hover:border-white/10"
+                          "px-2.5 py-1 rounded-lg text-xs font-semibold shrink-0 transition-colors cursor-pointer flex items-center gap-1.5",
+                          selectedCategory === 'chat' ? "bg-purple-600 text-white shadow-xs" : "bg-white/5 text-neutral-400 hover:text-white"
                         )}
                       >
-                        <div className={cn(
-                          "p-2.5 sm:p-3 rounded-xl shrink-0 transition-transform group-hover:scale-105",
-                          getIconContainerClasses(item.category, item.badgeColor)
-                        )}>
-                          <IconComponent size={18} className="sm:w-5 sm:h-5" />
-                        </div>
-                        <div className="flex-1 min-w-0">
-                          <div className="flex items-center gap-2 mb-0.5">
-                            <h4 className="text-white font-bold truncate text-xs sm:text-sm">{item.title}</h4>
-                            {item.badge && (
-                              <span className={cn(
-                                "px-1.5 py-0.5 rounded text-[9px] sm:text-[10px] font-semibold border shrink-0",
-                                getBadgeClasses(item.badgeColor)
-                              )}>
-                                {item.badge}
-                              </span>
-                            )}
-                          </div>
-                          <p className="text-[11px] sm:text-xs text-neutral-400 truncate font-medium">{item.description}</p>
-                        </div>
-                        <div className="flex items-center gap-1 shrink-0 text-neutral-500 group-hover:text-purple-400 transition-colors">
-                          <CornerDownLeft size={13} className={cn("hidden sm:inline transition-opacity", isSelected ? "opacity-100 text-purple-400" : "opacity-0")} />
-                          <ChevronRight size={16} />
-                        </div>
+                        <MessageSquare size={12} />
+                        <span>Samtaler ({categoryCounts.chat})</span>
                       </button>
-                    );
-                  })}
+                    )}
+                    {categoryCounts.project > 0 && (
+                      <button
+                        type="button"
+                        onClick={() => { setSelectedCategory('project'); setSelectedIndex(0); }}
+                        className={cn(
+                          "px-2.5 py-1 rounded-lg text-xs font-semibold shrink-0 transition-colors cursor-pointer flex items-center gap-1.5",
+                          selectedCategory === 'project' ? "bg-blue-600 text-white shadow-xs" : "bg-white/5 text-neutral-400 hover:text-white"
+                        )}
+                      >
+                        <Building2 size={12} />
+                        <span>Prosjekter ({categoryCounts.project})</span>
+                      </button>
+                    )}
+                    {categoryCounts.deviation_order > 0 && (
+                      <button
+                        type="button"
+                        onClick={() => { setSelectedCategory('deviation_order'); setSelectedIndex(0); }}
+                        className={cn(
+                          "px-2.5 py-1 rounded-lg text-xs font-semibold shrink-0 transition-colors cursor-pointer flex items-center gap-1.5",
+                          selectedCategory === 'deviation_order' ? "bg-rose-600 text-white shadow-xs" : "bg-white/5 text-neutral-400 hover:text-white"
+                        )}
+                      >
+                        <AlertTriangle size={12} />
+                        <span>Avvik & Krav ({categoryCounts.deviation_order})</span>
+                      </button>
+                    )}
+                    {categoryCounts.tools > 0 && (
+                      <button
+                        type="button"
+                        onClick={() => { setSelectedCategory('tools'); setSelectedIndex(0); }}
+                        className={cn(
+                          "px-2.5 py-1 rounded-lg text-xs font-semibold shrink-0 transition-colors cursor-pointer flex items-center gap-1.5",
+                          selectedCategory === 'tools' ? "bg-emerald-600 text-white shadow-xs" : "bg-white/5 text-neutral-400 hover:text-white"
+                        )}
+                      >
+                        <Wrench size={12} />
+                        <span>Verktøy ({categoryCounts.tools})</span>
+                      </button>
+                    )}
+                    {categoryCounts.contact > 0 && (
+                      <button
+                        type="button"
+                        onClick={() => { setSelectedCategory('contact'); setSelectedIndex(0); }}
+                        className={cn(
+                          "px-2.5 py-1 rounded-lg text-xs font-semibold shrink-0 transition-colors cursor-pointer flex items-center gap-1.5",
+                          selectedCategory === 'contact' ? "bg-cyan-600 text-white shadow-xs" : "bg-white/5 text-neutral-400 hover:text-white"
+                        )}
+                      >
+                        <Users size={12} />
+                        <span>Kontakter ({categoryCounts.contact})</span>
+                      </button>
+                    )}
+                    {categoryCounts.vehicle > 0 && (
+                      <button
+                        type="button"
+                        onClick={() => { setSelectedCategory('vehicle'); setSelectedIndex(0); }}
+                        className={cn(
+                          "px-2.5 py-1 rounded-lg text-xs font-semibold shrink-0 transition-colors cursor-pointer flex items-center gap-1.5",
+                          selectedCategory === 'vehicle' ? "bg-amber-600 text-white shadow-xs" : "bg-white/5 text-neutral-400 hover:text-white"
+                        )}
+                      >
+                        <Truck size={12} />
+                        <span>Bilpark ({categoryCounts.vehicle})</span>
+                      </button>
+                    )}
+                  </div>
+
+                  <div className="px-2 py-0.5 flex items-center justify-between text-[10px] font-bold uppercase tracking-wider text-neutral-400">
+                    <span>{filteredResults.length} treff</span>
+                    <span className="text-[9px] text-neutral-500">Bruk piltaster ↑↓ og Enter</span>
+                  </div>
+
+                  {filteredResults.length === 0 ? (
+                    <div className="py-6 text-center text-xs text-neutral-400">
+                      Ingen treff i valgt kategori. <button type="button" onClick={() => setSelectedCategory('all')} className="text-purple-400 hover:underline ml-1">Vis alle ({categoryCounts.all})</button>
+                    </div>
+                  ) : (
+                    filteredResults.map((item, i) => {
+                      const IconComponent = item.icon || Building2;
+                      const isSelected = selectedIndex === i;
+                      return (
+                        <button
+                          key={`${item.actionType}-${item.id || i}`}
+                          onClick={() => handleItemClick(item)}
+                          onMouseEnter={() => setSelectedIndex(i)}
+                          className={cn(
+                            "w-full flex items-center gap-3 sm:gap-4 p-2.5 sm:p-3.5 rounded-xl sm:rounded-2xl transition-all group text-left border cursor-pointer",
+                            isSelected
+                              ? "bg-white/10 border-purple-500/40 shadow-lg shadow-purple-500/5"
+                              : "hover:bg-white/5 border-transparent hover:border-white/10"
+                          )}
+                        >
+                          <div className={cn(
+                            "p-2.5 sm:p-3 rounded-xl shrink-0 transition-transform group-hover:scale-105",
+                            getIconContainerClasses(item.category, item.badgeColor)
+                          )}>
+                            <IconComponent size={18} className="sm:w-5 sm:h-5" />
+                          </div>
+                          <div className="flex-1 min-w-0">
+                            <div className="flex items-center gap-2 mb-0.5">
+                              <h4 className="text-white font-bold truncate text-xs sm:text-sm">{item.title}</h4>
+                              {item.badge && (
+                                <span className={cn(
+                                  "px-1.5 py-0.5 rounded text-[9px] sm:text-[10px] font-semibold border shrink-0",
+                                  getBadgeClasses(item.badgeColor)
+                                )}>
+                                  {item.badge}
+                                </span>
+                              )}
+                            </div>
+                            <p className="text-[11px] sm:text-xs text-neutral-400 truncate font-medium">{item.description}</p>
+                          </div>
+                          <div className="flex items-center gap-1 shrink-0 text-neutral-500 group-hover:text-purple-400 transition-colors">
+                            <CornerDownLeft size={13} className={cn("hidden sm:inline transition-opacity", isSelected ? "opacity-100 text-purple-400" : "opacity-0")} />
+                            <ChevronRight size={16} />
+                          </div>
+                        </button>
+                      );
+                    })
+                  )}
                 </div>
               ) : queryText.trim().length > 1 ? (
                 <div className="py-10 text-center space-y-3">

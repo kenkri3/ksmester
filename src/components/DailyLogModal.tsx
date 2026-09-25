@@ -134,29 +134,29 @@ export default function DailyLogModal({
 
   return (
     <AnimatePresence>
-      <div className="fixed inset-0 z-50 flex items-end sm:items-center justify-center p-0 sm:p-4 bg-black/60 backdrop-blur-sm">
+      <div className="fixed inset-0 z-50 flex items-end sm:items-center justify-center p-0 sm:p-4 bg-black/80 backdrop-blur-md">
         <motion.div
           initial={{ opacity: 0, scale: 0.98, y: 20 }}
           animate={{ opacity: 1, scale: 1, y: 0 }}
           exit={{ opacity: 0, scale: 0.98, y: 20 }}
-          className="bg-white rounded-t-[2rem] sm:rounded-3xl shadow-2xl max-w-4xl w-full max-h-[92vh] sm:max-h-[90vh] flex flex-col border border-neutral-200 overflow-hidden pb-[env(safe-area-inset-bottom,0px)]"
+          className="bg-[#0B0F17] rounded-t-[2rem] sm:rounded-3xl shadow-2xl max-w-4xl w-full max-h-[92vh] sm:max-h-[90vh] flex flex-col border border-slate-800 text-white overflow-hidden pb-[env(safe-area-inset-bottom,0px)]"
         >
           {/* Mobile Grab Handle */}
-          <div className="sm:hidden w-12 h-1.5 bg-neutral-300 rounded-full mx-auto mt-3 mb-1 shrink-0" />
+          <div className="sm:hidden w-12 h-1.5 bg-slate-700 rounded-full mx-auto mt-3 mb-1 shrink-0" />
 
           {/* Header */}
-          <div className="p-4 sm:p-8 pb-4 sm:pb-6 border-b border-neutral-100 flex justify-between items-start shrink-0">
+          <div className="p-4 sm:p-6 bg-[#131722] border-b border-slate-800 flex justify-between items-start shrink-0">
             <div className="min-w-0">
               <div className="flex items-center gap-2 mb-1">
-                <span className="p-1.5 sm:p-2 bg-sky-500/10 text-sky-600 rounded-xl shrink-0">
+                <span className="p-1.5 sm:p-2 bg-sky-500/10 text-sky-400 rounded-xl shrink-0 border border-sky-500/20">
                   <CloudSun size={18} className="sm:w-5 sm:h-5" />
                 </span>
-                <span className="text-[10px] sm:text-xs font-black uppercase tracking-widest text-sky-600 truncate">
+                <span className="text-[10px] sm:text-xs font-black uppercase tracking-widest text-sky-400 truncate">
                   Byggherreforskriften § 15 &amp; NS 8405/8406
                 </span>
               </div>
-              <h2 className="text-lg sm:text-2xl font-black text-neutral-900 truncate">Automatisk Byggedagbok</h2>
-              <p className="text-xs text-neutral-500 truncate">
+              <h2 className="text-lg sm:text-2xl font-black text-white truncate">Automatisk Byggedagbok</h2>
+              <p className="text-xs text-slate-400 truncate">
                 Prosjekt: {project.name} | Dokumenterer værforhold, mannskap og produksjon
               </p>
             </div>
@@ -165,7 +165,7 @@ export default function DailyLogModal({
               <button
                 onClick={handleCompileToday}
                 disabled={isCompiling}
-                className="px-3 sm:px-3.5 py-2 bg-sky-50 text-sky-700 hover:bg-sky-100 rounded-xl text-xs font-bold flex items-center gap-1.5 transition-all active:scale-95"
+                className="px-3 sm:px-3.5 py-2 bg-sky-500/10 text-sky-400 hover:bg-sky-500/20 border border-sky-500/30 rounded-xl text-xs font-bold flex items-center gap-1.5 transition-all active:scale-95"
               >
                 <RefreshCw size={13} className={isCompiling ? 'animate-spin' : ''} />
                 <span className="hidden sm:inline">{isCompiling ? 'Oppdaterer...' : 'Kompiler i dag'}</span>
@@ -174,7 +174,7 @@ export default function DailyLogModal({
               <button
                 onClick={onClose}
                 aria-label="Lukk"
-                className="p-2 text-neutral-400 hover:text-neutral-700 hover:bg-neutral-100 rounded-full transition-all"
+                className="p-2 text-slate-400 hover:text-white hover:bg-slate-800 rounded-full transition-all"
               >
                 <X size={20} />
               </button>
@@ -186,15 +186,15 @@ export default function DailyLogModal({
             <div className="grid grid-cols-1 md:grid-cols-3 gap-4 sm:gap-6 mb-4">
             {/* Left: Date selector */}
             <div className="space-y-2">
-              <div className="text-[10px] font-black uppercase tracking-widest text-neutral-400 mb-2">
+              <div className="text-[10px] font-black uppercase tracking-widest text-slate-400 mb-2">
                 Tidligere dagsrapporter
               </div>
               {logs.length === 0 ? (
-                <div className="text-xs text-neutral-400 p-4 bg-neutral-50 rounded-xl text-center">
+                <div className="text-xs text-slate-400 p-4 bg-[#131722] border border-slate-800 rounded-xl text-center">
                   {isCompiling || loading ? (
                     <div className="flex flex-col items-center gap-2 py-4">
-                      <RefreshCw size={18} className="animate-spin text-sky-500" />
-                      <span className="text-neutral-600 font-medium">Henter vær og timeføring...</span>
+                      <RefreshCw size={18} className="animate-spin text-sky-400" />
+                      <span className="text-slate-300 font-medium">Henter vær og timeføring...</span>
                     </div>
                   ) : (
                     'Ingen dagslogger ennå. Klikk «Kompiler i dag».'
@@ -207,15 +207,15 @@ export default function DailyLogModal({
                     onClick={() => setActiveLog(l)}
                     className={`w-full text-left p-3 rounded-2xl border transition-all flex items-center justify-between ${
                       activeLog?.id === l.id
-                        ? 'bg-sky-50 border-sky-300 text-sky-950 font-bold'
-                        : 'bg-neutral-50 border-neutral-100 text-neutral-600 hover:bg-neutral-100'
+                        ? 'bg-sky-500/20 border-sky-500/40 text-sky-200 font-bold'
+                        : 'bg-[#131722] border-slate-800 text-slate-300 hover:bg-slate-800/60'
                     }`}
                   >
                     <div>
-                      <div className="text-xs font-bold">{new Date(l.date).toLocaleDateString('no-NO', { weekday: 'short', day: 'numeric', month: 'short' })}</div>
-                      <div className="text-[10px] text-neutral-400">{l.weatherCondition || 'Normalt'} | {l.crewCount} mann</div>
+                      <div className="text-xs font-bold text-white">{new Date(l.date).toLocaleDateString('no-NO', { weekday: 'short', day: 'numeric', month: 'short' })}</div>
+                      <div className="text-[10px] text-slate-400">{l.weatherCondition || 'Normalt'} | {l.crewCount} mann</div>
                     </div>
-                    <span className="text-[11px] font-bold text-sky-600">{l.totalHoursWorked}t</span>
+                    <span className="text-[11px] font-bold text-sky-400">{l.totalHoursWorked}t</span>
                   </button>
                 ))
               )}
@@ -229,29 +229,29 @@ export default function DailyLogModal({
                   <div className="p-5 bg-gradient-to-r from-sky-500/10 via-blue-500/10 to-transparent rounded-2xl border border-sky-500/20">
                     <div className="flex items-center justify-between">
                       <div className="flex items-center gap-3">
-                        <div className="p-3 bg-white rounded-xl shadow-sm text-sky-600">
+                        <div className="p-3 bg-slate-900 border border-slate-700 rounded-xl shadow-sm text-sky-400">
                           <CloudSun size={24} />
                         </div>
                         <div>
-                          <div className="text-sm font-bold text-neutral-900">
+                          <div className="text-sm font-bold text-white">
                             Værforhold {new Date(activeLog.date).toLocaleDateString('no-NO')}
                           </div>
-                          <div className="text-xs text-neutral-500">
+                          <div className="text-xs text-slate-400">
                             {activeLog.weatherDescription || 'Normalt norsk byggvær'}
                           </div>
                         </div>
                       </div>
                       <div className="text-right">
-                        <div className="text-base font-black text-sky-700">
+                        <div className="text-base font-black text-sky-400">
                           {activeLog.temperatureMin ?? '-'}°C til {activeLog.temperatureMax ?? '-'}°C
                         </div>
-                        <div className="text-[10px] text-neutral-400">
+                        <div className="text-[10px] text-slate-400">
                           Vind: {activeLog.windSpeedMax ?? 0} m/s | Nedbør: {activeLog.precipitationMm ?? 0} mm
                         </div>
                       </div>
                     </div>
                     {activeLog.workAdvice && (
-                      <div className="mt-3 pt-3 border-t border-sky-200/40 text-xs font-semibold text-sky-800">
+                      <div className="mt-3 pt-3 border-t border-sky-500/20 text-xs font-semibold text-sky-300">
                         Håndverksråd: {activeLog.workAdvice}
                       </div>
                     )}
@@ -259,45 +259,45 @@ export default function DailyLogModal({
 
                   {/* Crew & Hours */}
                   <div className="grid grid-cols-1 sm:grid-cols-2 gap-3 sm:gap-4">
-                    <div className="p-3 sm:p-4 bg-neutral-50 rounded-2xl border border-neutral-100">
-                      <div className="flex items-center gap-2 text-neutral-700 font-bold text-xs mb-2">
-                        <Users size={14} className="text-sky-600" />
+                    <div className="p-3 sm:p-4 bg-[#131722] rounded-2xl border border-slate-800">
+                      <div className="flex items-center gap-2 text-slate-200 font-bold text-xs mb-2">
+                        <Users size={14} className="text-sky-400" />
                         Mannskapsliste (elektronisk logg)
                       </div>
                       <div className="space-y-1">
                         {(activeLog.crewMembers || []).map((name, i) => (
-                          <div key={i} className="text-xs text-neutral-600 flex items-center justify-between">
+                          <div key={i} className="text-xs text-slate-300 flex items-center justify-between">
                             <span>{name}</span>
-                            <span className="text-[10px] text-emerald-600 font-bold">Til stede</span>
+                            <span className="text-[10px] text-emerald-400 font-bold">Til stede</span>
                           </div>
                         ))}
                       </div>
                     </div>
 
-                    <div className="p-3 sm:p-4 bg-neutral-50 rounded-2xl border border-neutral-100">
-                      <div className="flex items-center gap-2 text-neutral-700 font-bold text-xs mb-2">
-                        <Clock size={14} className="text-sky-600" />
+                    <div className="p-3 sm:p-4 bg-[#131722] rounded-2xl border border-slate-800">
+                      <div className="flex items-center gap-2 text-slate-200 font-bold text-xs mb-2">
+                        <Clock size={14} className="text-sky-400" />
                         Arbeidstimer i dag
                       </div>
-                      <div className="text-xl sm:text-2xl font-black text-neutral-900">
+                      <div className="text-xl sm:text-2xl font-black text-white">
                         {activeLog.totalHoursWorked} timer
                       </div>
-                      <div className="text-[10px] text-neutral-400 mt-1">
+                      <div className="text-[10px] text-slate-400 mt-1">
                         {activeLog.crewCount} personer registrert i timeføringen
                       </div>
                     </div>
                   </div>
 
                   {/* Production & Checklists */}
-                  <div className="p-4 bg-neutral-50 rounded-2xl border border-neutral-100 space-y-2">
-                    <div className="flex items-center gap-2 text-neutral-700 font-bold text-xs">
-                      <CheckSquare size={14} className="text-emerald-600" />
+                  <div className="p-4 bg-[#131722] rounded-2xl border border-slate-800 space-y-2">
+                    <div className="flex items-center gap-2 text-slate-200 font-bold text-xs">
+                      <CheckSquare size={14} className="text-emerald-400" />
                       Dagens produksjon og sjekklister
                     </div>
                     <div className="space-y-1">
                       {(activeLog.completedTasks || []).map((task, i) => (
-                        <div key={i} className="text-xs text-neutral-600 flex items-start gap-1.5">
-                          <span className="text-emerald-500 font-bold">•</span>
+                        <div key={i} className="text-xs text-slate-300 flex items-start gap-1.5">
+                          <span className="text-emerald-400 font-bold">•</span>
                           <span>{task}</span>
                         </div>
                       ))}
@@ -306,14 +306,14 @@ export default function DailyLogModal({
 
                   {/* Deviations if any */}
                   {activeLog.deviationsRegistered && activeLog.deviationsRegistered.length > 0 && (
-                    <div className="p-4 bg-rose-50 rounded-2xl border border-rose-200 space-y-2">
-                      <div className="flex items-center gap-2 text-rose-800 font-bold text-xs">
-                        <AlertTriangle size={14} className="text-rose-600" />
+                    <div className="p-4 bg-rose-950/30 rounded-2xl border border-rose-800/50 space-y-2">
+                      <div className="flex items-center gap-2 text-rose-300 font-bold text-xs">
+                        <AlertTriangle size={14} className="text-rose-400" />
                         Registrerte avvik på byggeplass i dag
                       </div>
                       <div className="space-y-1">
                         {activeLog.deviationsRegistered.map((dev, i) => (
-                          <div key={i} className="text-xs text-rose-700">
+                          <div key={i} className="text-xs text-rose-300">
                             • {dev}
                           </div>
                         ))}
@@ -322,10 +322,10 @@ export default function DailyLogModal({
                   )}
 
                   {/* Delivery Notes & General Notes */}
-                  <div className="p-4 bg-neutral-50 rounded-2xl border border-neutral-100 space-y-3">
+                  <div className="p-4 bg-[#131722] rounded-2xl border border-slate-800 space-y-3">
                     <div className="flex items-center justify-between">
-                      <div className="flex items-center gap-2 text-neutral-700 font-bold text-xs">
-                        <FileText size={14} className="text-sky-600" />
+                      <div className="flex items-center gap-2 text-slate-200 font-bold text-xs">
+                        <FileText size={14} className="text-sky-400" />
                         Vareleveranser og byggelederens notater
                       </div>
                       <button
@@ -338,7 +338,7 @@ export default function DailyLogModal({
                     </div>
                     <div className="space-y-2">
                       <div>
-                        <label className="block text-[10px] font-bold uppercase tracking-wider text-neutral-400 mb-1">
+                        <label className="block text-[10px] font-bold uppercase tracking-wider text-slate-400 mb-1">
                           Vareleveranser / Mottakskontroll
                         </label>
                         <input
@@ -346,11 +346,11 @@ export default function DailyLogModal({
                           value={deliveryNotes}
                           onChange={(e) => setDeliveryNotes(e.target.value)}
                           placeholder="F.eks: Leveranse av trelast og isolasjon, kontrollert uten fuktskader..."
-                          className="w-full px-3 py-2 bg-white border border-neutral-200 rounded-xl text-xs text-neutral-800 outline-none focus:border-sky-500 font-medium"
+                          className="w-full px-3 py-2 bg-slate-950 border border-slate-800 rounded-xl text-xs text-white placeholder:text-slate-600 outline-none focus:border-sky-500 font-medium"
                         />
                       </div>
                       <div>
-                        <label className="block text-[10px] font-bold uppercase tracking-wider text-neutral-400 mb-1">
+                        <label className="block text-[10px] font-bold uppercase tracking-wider text-slate-400 mb-1">
                           Observasjoner / Byggelederens notater
                         </label>
                         <textarea
@@ -358,7 +358,7 @@ export default function DailyLogModal({
                           value={generalNotes}
                           onChange={(e) => setGeneralNotes(e.target.value)}
                           placeholder="F.eks: Normal fremdrift. Ingen HMS-avvik registrert i dag..."
-                          className="w-full px-3 py-2 bg-white border border-neutral-200 rounded-xl text-xs text-neutral-800 outline-none focus:border-sky-500 resize-none font-medium"
+                          className="w-full px-3 py-2 bg-slate-950 border border-slate-800 rounded-xl text-xs text-white placeholder:text-slate-600 outline-none focus:border-sky-500 resize-none font-medium"
                         />
                       </div>
                     </div>
@@ -370,7 +370,7 @@ export default function DailyLogModal({
                       type="button"
                       onClick={handleDownloadPDF}
                       disabled={isExportingPdf || !activeLog}
-                      className="px-4 py-2.5 bg-neutral-900 hover:bg-neutral-800 text-white rounded-xl text-xs font-bold flex items-center gap-2 shadow-md transition-all cursor-pointer disabled:opacity-50"
+                      className="px-4 py-2.5 bg-sky-600 hover:bg-sky-500 text-white rounded-xl text-xs font-bold flex items-center gap-2 shadow-md transition-all cursor-pointer disabled:opacity-50"
                     >
                       <Download size={14} className={isExportingPdf ? 'animate-bounce' : ''} />
                       {isExportingPdf ? 'Laster ned...' : 'Last ned Byggedagbok (PDF)'}
@@ -378,7 +378,7 @@ export default function DailyLogModal({
                   </div>
                 </div>
               ) : (
-                <div className="text-center py-16 text-neutral-400 text-sm">
+                <div className="text-center py-16 text-slate-400 text-sm">
                   Velg en dato for å se byggedagboken.
                 </div>
               )}
@@ -387,14 +387,14 @@ export default function DailyLogModal({
         </div>
 
           {/* Footer */}
-          <div className="pt-6 border-t border-neutral-100 flex justify-between items-center">
-            <span className="text-xs text-neutral-400 flex items-center gap-1">
-              <ShieldCheck size={13} className="text-emerald-500" />
+          <div className="p-4 sm:p-6 bg-[#0B0F17] border-t border-slate-800 flex justify-between items-center shrink-0">
+            <span className="text-xs text-slate-400 flex items-center gap-1">
+              <ShieldCheck size={13} className="text-emerald-400" />
               Oppfyller Byggherreforskriften &amp; dokumenterer eventuell force majeure
             </span>
             <button
               onClick={onClose}
-              className="px-5 py-2.5 bg-neutral-100 hover:bg-neutral-200 text-neutral-700 rounded-xl text-xs font-bold transition-all"
+              className="px-5 py-2.5 bg-slate-800 hover:bg-slate-700 text-slate-200 rounded-xl text-xs font-bold transition-all"
             >
               Lukk
             </button>

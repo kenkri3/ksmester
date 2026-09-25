@@ -34,11 +34,16 @@ import {
   Lock,
   ArrowLeft,
   Pin,
-  Car
+  Car,
+  Folder,
+  FolderOpen,
+  ChevronDown,
+  Filter
 } from 'lucide-react';
 import { cn } from '@/src/lib/utils';
 import { chatSessionService, ChatSession } from '../services/chatSessionService';
 import { Project } from '../types';
+import MesterAIIcon from './MesterAIIcon';
 import { toast } from 'sonner';
 import { useTranslation } from 'react-i18next';
 import { getStandardLang } from '../i18n';
@@ -112,7 +117,84 @@ export default function WorkstationSidebar({
     return () => unsub();
   }, [impersonatedCompanyId]);
 
-  const { pinned, today, last7Days, older } = chatSessionService.groupSessions(sessions);
+  // 🗂️ Sorterings- og organiseringsvalg for samtaler
+  const [viewGrouping, setViewGrouping] = useState<'time' | 'project'>(() => {
+    if (typeof window !== 'undefined') {
+      return (localStorage.getItem('mester_sidebar_grouping') as 'time' | 'project') || 'time';
+    }
+    return 'time';
+  });
+  const [filterOnlyActiveProject, setFilterOnlyActiveProject] = useState(false);
+  const [sidebarChatFilter, setSidebarChatFilter] = useState('');
+  const [expandedProjects, setExpandedProjects] = useState<Record<string, boolean>>({});
+  const [collapsedBuckets, setCollapsedBuckets] = useState<Record<string, boolean>>({});
+  const [showAllInBucket, setShowAllInBucket] = useState<Record<string, boolean>>({});
+
+  const handleSetViewGrouping = (grouping: 'time' | 'project') => {
+    setViewGrouping(grouping);
+    if (typeof window !== 'undefined') {
+      localStorage.setItem('mester_sidebar_grouping', grouping);
+    }
+  };
+
+  const handleCleanupEmptySessions = (e: React.MouseEvent) => {
+    e.stopPropagation();
+    const removed = chatSessionService.cleanupEmptySessions();
+    if (removed > 0) {
+      toast.success(t('ws_cleaned_sessions', `Ryddet opp: ${removed} tomme samtaler fjernet`));
+    } else {
+      toast.info(t('ws_no_empty_sessions', 'Ingen tomme samtaler å rydde opp i'));
+    }
+  };
+
+  // Filtrer samtaler basert på aktivt prosjekt og lokalt søk
+  const filteredSessions = React.useMemo(() => {
+    return sessions.filter(session => {
+      // 1. Prosjekt-filter
+      if (filterOnlyActiveProject && selectedProject) {
+        const matchesProjId = session.projectId === selectedProject.id;
+        const matchesProjName = session.projectName?.toLowerCase() === selectedProject.name.toLowerCase();
+        if (!matchesProjId && !matchesProjName) return false;
+      }
+
+      // 2. Søk/filter i tittel eller prosjektnavn
+      if (sidebarChatFilter.trim()) {
+        const q = sidebarChatFilter.trim().toLowerCase();
+        const matchesTitle = (session.title || '').toLowerCase().includes(q);
+        const matchesProj = (session.projectName || '').toLowerCase().includes(q);
+        return matchesTitle || matchesProj;
+      }
+
+      return true;
+    });
+  }, [sessions, filterOnlyActiveProject, selectedProject, sidebarChatFilter]);
+
+  const { pinned, today, yesterday, last7Days, older } = React.useMemo(() => {
+    return chatSessionService.groupSessions(filteredSessions);
+  }, [filteredSessions]);
+
+  const projectGroups = React.useMemo(() => {
+    return chatSessionService.groupSessionsByProject(filteredSessions, projects);
+  }, [filteredSessions, projects]);
+
+  // Sørg for at aktivt prosjekt alltid er foldet ut i prosjektvisning
+  useEffect(() => {
+    if (selectedProject?.id) {
+      setExpandedProjects(prev => ({ ...prev, [selectedProject.id]: true }));
+    }
+  }, [selectedProject?.id]);
+
+  const toggleBucketCollapse = (bucketKey: string) => {
+    setCollapsedBuckets(prev => ({ ...prev, [bucketKey]: !prev[bucketKey] }));
+  };
+
+  const toggleShowAllInBucket = (bucketKey: string) => {
+    setShowAllInBucket(prev => ({ ...prev, [bucketKey]: !prev[bucketKey] }));
+  };
+
+  const toggleProjectExpand = (projId: string) => {
+    setExpandedProjects(prev => ({ ...prev, [projId]: !prev[projId] }));
+  };
 
   const handleTogglePinSession = (e: React.MouseEvent, id: string) => {
     e.stopPropagation();
@@ -182,31 +264,29 @@ export default function WorkstationSidebar({
         )}
       </AnimatePresence>
 
-      {/* 🖥️ Sidebar Container (Styled identically to Gemini Mobile & Desktop Workstation) */}
+      {/* 🖥️ Sidebar Container (Styled identically to Gemini / Chat Workstation) */}
       <aside
         className={cn(
           "text-slate-200 border-r border-slate-800/80 flex flex-col z-50 transition-all duration-300 ease-in-out shrink-0 select-none",
-          // Mobile: OLED Black Gemini Drawer
-          "fixed inset-y-0 left-0 h-full w-[85vw] max-w-[320px] bg-[#000000] border-r border-white/10 shadow-2xl",
+          // Mobile: Rich Navy/Slate Drawer matching chat aesthetic
+          "fixed inset-y-0 left-0 h-full w-[88vw] max-w-[360px] sm:max-w-[380px] bg-[#0A101D] border-r border-slate-800/90 shadow-2xl",
           isOpenMobile ? "translate-x-0" : "-translate-x-full",
           // Desktop: Static in-flow sidebar
-          "md:static md:translate-x-0 md:h-[100dvh] md:bg-[#090D16] md:border-slate-800/80",
-          isCollapsedDesktop ? "md:w-[68px]" : "md:w-[260px] lg:w-[280px]"
+          "md:static md:translate-x-0 md:h-[100dvh] md:bg-[#0A101D] md:border-slate-800/80",
+          isCollapsedDesktop ? "md:w-[72px]" : "md:w-[290px] lg:w-[320px]"
         )}
       >
         {/* 1. Header: Gemini style with brand & close/collapse toggle */}
-        <div className="h-14 px-4 flex items-center justify-between border-b border-white/10 md:border-slate-800/80 shrink-0 bg-[#000000] md:bg-transparent">
-          <div className="flex items-center gap-2.5 min-w-0">
-            {/* Multi-color glowing Gemini-style star */}
-            <div className="w-8 h-8 rounded-xl bg-gradient-to-tr from-blue-500 via-purple-500 to-pink-500 flex items-center justify-center text-white shadow-md shadow-purple-500/20 shrink-0">
-              <Sparkles size={17} className="text-white fill-white/20" />
-            </div>
+        <div className="h-16 px-4 sm:px-5 flex items-center justify-between border-b border-slate-800/80 shrink-0 bg-[#0A101D]">
+          <div className="flex items-center gap-3 min-w-0">
+            {/* 🛡️ Offisielt VikingMester AI Merkevare-ikon */}
+            <MesterAIIcon size="md" />
             {!isCollapsedDesktop && (
-              <div className="min-w-0 flex items-center gap-1.5">
-                <span className="font-bold text-sm tracking-tight text-white truncate">
+              <div className="min-w-0 flex items-center gap-2">
+                <span className="font-bold text-[17px] tracking-tight text-white truncate">
                   VikingMester
                 </span>
-                <span className="px-1.5 py-0.5 rounded-full text-[9px] font-black uppercase tracking-wider bg-purple-500/20 text-purple-300 border border-purple-500/30">
+                <span className="px-2 py-0.5 rounded-full text-[10px] font-black uppercase tracking-wider bg-purple-500/25 text-purple-200 border border-purple-500/40">
                   AI
                 </span>
               </div>
@@ -217,25 +297,25 @@ export default function WorkstationSidebar({
           <button
             type="button"
             onClick={onToggleCollapseDesktop}
-            className="hidden md:flex p-1.5 rounded-lg text-slate-400 hover:text-white hover:bg-slate-800/70 transition-colors cursor-pointer"
+            className="hidden md:flex p-2 rounded-xl text-slate-400 hover:text-white hover:bg-slate-800/70 transition-colors cursor-pointer"
             title={isCollapsedDesktop ? "Åpne sidemeny" : "Lukk sidemeny"}
           >
-            {isCollapsedDesktop ? <PanelLeftOpen size={17} /> : <PanelLeftClose size={17} />}
+            {isCollapsedDesktop ? <PanelLeftOpen size={19} /> : <PanelLeftClose size={19} />}
           </button>
 
           {/* Mobile close button (Gemini round X) */}
           <button
             type="button"
             onClick={onCloseMobile}
-            className="md:hidden p-2 rounded-full text-slate-400 hover:text-white hover:bg-white/10 transition-colors cursor-pointer"
+            className="md:hidden p-2 rounded-full text-slate-300 hover:text-white hover:bg-white/10 transition-colors cursor-pointer"
             title="Lukk meny"
           >
-            <X size={19} />
+            <X size={20} />
           </button>
         </div>
 
-        {/* 2. Top Primary Action: "+ Ny samtale" (Gemini Mobile rounded pill style) */}
-        <div className="p-3 border-b border-white/10 md:border-slate-800/60 shrink-0 space-y-2">
+        {/* 2. Top Primary Action: "+ Ny samtale" (Gemini / Chat matching pill style) */}
+        <div className="p-3.5 border-b border-slate-800/80 shrink-0 space-y-2.5">
           <button
             type="button"
             onClick={() => {
@@ -243,13 +323,13 @@ export default function WorkstationSidebar({
               onNewChat();
             }}
             className={cn(
-              "w-full flex items-center gap-3 py-3 px-4 rounded-full font-semibold text-xs sm:text-sm text-white transition-all shadow-sm active:scale-98 cursor-pointer",
-              "bg-[#1e1f20] hover:bg-[#282a2d] border border-white/10 hover:border-white/20",
-              isCollapsedDesktop && "md:p-2.5 md:justify-center md:rounded-xl"
+              "w-full flex items-center gap-3.5 py-3.5 px-4.5 rounded-[22px] font-semibold text-[15px] sm:text-[16px] text-white transition-all shadow-sm active:scale-98 cursor-pointer",
+              "bg-[#1e1f20] hover:bg-[#282a2d] border border-white/15 hover:border-white/25",
+              isCollapsedDesktop && "md:p-2.5 md:justify-center md:rounded-2xl"
             )}
             title={t('ws_start_new_chat_title', "Start en ny samtale eller oppgave")}
           >
-            <Plus size={18} className="text-white shrink-0" />
+            <Plus size={20} className="text-white shrink-0" />
             {!isCollapsedDesktop && <span className="truncate">{t('ws_new_chat', "Ny samtale")}</span>}
           </button>
 
@@ -261,23 +341,23 @@ export default function WorkstationSidebar({
                 onCloseMobile();
                 onOpenSmartSearch();
               }}
-              className="w-full flex items-center justify-between px-3.5 py-2 rounded-full text-xs text-slate-300 hover:text-white bg-white/5 hover:bg-white/10 border border-transparent hover:border-white/10 transition-all cursor-pointer"
+              className="w-full flex items-center justify-between px-4 py-2.5 rounded-full text-[14px] sm:text-[15px] font-medium text-slate-300 hover:text-white bg-[#13161c] hover:bg-[#1a1e28] border border-white/10 hover:border-white/20 transition-all cursor-pointer"
             >
               <div className="flex items-center gap-2.5 min-w-0">
-                <Search size={14} className="text-slate-400 shrink-0" />
+                <Search size={16} className="text-slate-400 shrink-0" />
                 <span className="truncate">{t('ws_search_placeholder', "Søk i samtaler & prosjekter")}</span>
               </div>
-              <kbd className="px-1.5 py-0.5 rounded bg-white/10 text-[10px] text-slate-400 font-mono shrink-0">⌘K</kbd>
+              <kbd className="px-1.5 py-0.5 rounded bg-white/10 text-[11px] text-slate-400 font-mono shrink-0">⌘K</kbd>
             </button>
           )}
         </div>
 
         {/* 3. Scrollable Middle Area: Moduler, Prosjekter og Samtalehistorikk */}
-        <div className="flex-1 overflow-y-auto overscroll-y-contain custom-scrollbar p-2 space-y-4 [touch-action:pan-y]">
+        <div className="flex-1 overflow-y-auto overscroll-y-contain no-scrollbar md:custom-scrollbar p-3 space-y-4 [touch-action:pan-y]">
           {/* Seksjon A: Verktøy & Moduler (Quick access) */}
-          <div className="space-y-0.5">
+          <div className="space-y-1">
             {!isCollapsedDesktop && (
-              <div className="px-2.5 py-1 text-[11px] font-bold text-slate-400 flex items-center justify-between">
+              <div className="px-3 pt-1 pb-1.5 text-[12px] sm:text-[13px] font-bold uppercase tracking-wider text-slate-400/90 flex items-center justify-between">
                 <span>{t('ws_modules_heading', "Moduler & Fagsystem")}</span>
               </div>
             )}
@@ -303,24 +383,24 @@ export default function WorkstationSidebar({
                       onOpenModule(mod.id);
                     }}
                     className={cn(
-                      "w-full flex items-center justify-between gap-2 px-2.5 py-1.5 rounded-xl text-xs font-medium transition-colors cursor-pointer text-left group",
+                      "w-full flex items-center justify-between gap-3 px-3.5 py-2.5 sm:py-3 rounded-2xl text-[15px] sm:text-[16px] font-semibold transition-all cursor-pointer text-left group",
                       isCurrentTab
-                        ? "bg-slate-800 text-white font-bold"
+                        ? "bg-[#161c28] text-white font-bold border border-slate-700/80 shadow-md ring-1 ring-white/10"
                         : isAllowed 
-                          ? "text-slate-300 hover:text-white hover:bg-slate-850" 
-                          : "text-slate-500 hover:bg-slate-900/60 opacity-65",
-                      isCollapsedDesktop && "justify-center px-2 py-2"
+                          ? "text-slate-200 hover:text-white hover:bg-[#131822] border border-transparent hover:border-white/10" 
+                          : "text-slate-500 hover:bg-slate-900/40 opacity-60",
+                      isCollapsedDesktop && "justify-center px-2 py-2.5"
                     )}
                     title={isAllowed ? label : `${label} (Låst i gjeldende pakke)`}
                   >
-                    <div className="flex items-center gap-2.5 min-w-0">
-                      <IconComponent size={16} className={cn(isAllowed ? mod.color : "text-slate-600", "shrink-0 transition-transform group-hover:scale-110")} />
+                    <div className="flex items-center gap-3 min-w-0">
+                      <IconComponent size={20} className={cn(isAllowed ? mod.color : "text-slate-600", "shrink-0 transition-transform group-hover:scale-110")} />
                       {!isCollapsedDesktop && (
                         <span className="truncate">{label}</span>
                       )}
                     </div>
                     {!isCollapsedDesktop && !isAllowed && (
-                      <Lock size={12} className="text-slate-500 shrink-0" />
+                      <Lock size={14} className="text-slate-500 shrink-0" />
                     )}
                   </button>
 
@@ -334,10 +414,10 @@ export default function WorkstationSidebar({
                         if (onOpenCreateOffer) onOpenCreateOffer();
                         else onOpenModule('offers');
                       }}
-                      className="absolute right-1.5 p-1 rounded-lg text-slate-400 hover:text-white hover:bg-slate-700/80 transition-all opacity-80 hover:opacity-100 cursor-pointer"
+                      className="absolute right-2 p-1.5 rounded-xl bg-purple-500/20 hover:bg-purple-500/30 text-purple-300 border border-purple-500/30 transition-all opacity-85 hover:opacity-100 cursor-pointer"
                       title={t('ws_create_offer_title', "Opprett nytt tilbud")}
                     >
-                      <Plus size={13} className="text-purple-400 hover:scale-110 transition-transform" />
+                      <Plus size={15} className="text-purple-300 hover:scale-110 transition-transform" />
                     </button>
                   )}
                 </div>
@@ -354,17 +434,17 @@ export default function WorkstationSidebar({
                   else window.dispatchEvent(new CustomEvent("navigate_view", { detail: { view: "super-admin" } }));
                 }}
                 className={cn(
-                  "w-full flex items-center gap-2.5 px-2.5 py-2 rounded-xl text-xs font-bold transition-all cursor-pointer text-left group mt-1.5",
+                  "w-full flex items-center gap-3 px-3.5 py-2.5 sm:py-3 rounded-2xl text-[15px] sm:text-[16px] font-bold transition-all cursor-pointer text-left group mt-2",
                   "bg-gradient-to-r from-amber-500/15 via-yellow-500/10 to-amber-600/15 border border-amber-500/40 text-amber-300 hover:text-white hover:bg-amber-500/25 hover:border-amber-400 shadow-xs",
-                  isCollapsedDesktop && "justify-center px-2 py-2"
+                  isCollapsedDesktop && "justify-center px-2 py-2.5"
                 )}
                 title={t('ws_superadmin_portal', "SuperAdmin Portal")}
               >
-                <Crown size={16} className="text-amber-400 shrink-0 group-hover:scale-110 group-hover:rotate-6 transition-transform" />
+                <Crown size={20} className="text-amber-400 shrink-0 group-hover:scale-110 group-hover:rotate-6 transition-transform" />
                 {!isCollapsedDesktop && (
                   <div className="flex items-center justify-between w-full min-w-0">
                     <span className="truncate">{t('ws_superadmin_portal', "SuperAdmin Portal")}</span>
-                    <span className="text-[9px] px-1.5 py-0.5 rounded-full bg-amber-400/20 text-amber-200 font-mono font-black border border-amber-400/30">SYS</span>
+                    <span className="text-[10px] px-2 py-0.5 rounded-full bg-amber-400/20 text-amber-200 font-mono font-black border border-amber-400/30">SYS</span>
                   </div>
                 )}
               </button>
@@ -382,13 +462,13 @@ export default function WorkstationSidebar({
                   else window.dispatchEvent(new CustomEvent("navigate_view", { detail: { view: "super-admin" } }));
                 }}
                 className={cn(
-                  "w-full flex items-center gap-2 px-2.5 py-2 rounded-xl text-xs font-black transition-all cursor-pointer text-left group mt-1.5",
+                  "w-full flex items-center gap-3 px-3.5 py-2.5 sm:py-3 rounded-2xl text-[15px] sm:text-[16px] font-black transition-all cursor-pointer text-left group mt-2",
                   "bg-amber-500 text-neutral-950 hover:bg-amber-400 shadow-md",
-                  isCollapsedDesktop && "justify-center px-2 py-2"
+                  isCollapsedDesktop && "justify-center px-2 py-2.5"
                 )}
                 title={t('ws_back_to_superadmin', "← Tilbake til SuperAdmin")}
               >
-                <ArrowLeft size={14} className="shrink-0" />
+                <ArrowLeft size={16} className="shrink-0" />
                 {!isCollapsedDesktop && (
                   <span className="truncate">{t('ws_back_to_superadmin', "← Tilbake til SuperAdmin")}</span>
                 )}
@@ -397,9 +477,9 @@ export default function WorkstationSidebar({
           </div>
 
           {/* Seksjon B: Prosjekter (Gemini: "Notatbøker") */}
-          <div className="space-y-1 pt-2 border-t border-slate-800/80">
+          <div className="space-y-1.5 pt-3 border-t border-slate-800/80">
             {!isCollapsedDesktop && (
-              <div className="px-2.5 py-1 flex items-center justify-between text-[11px] font-bold text-slate-400">
+              <div className="px-3 py-1 flex items-center justify-between text-[12px] sm:text-[13px] font-bold uppercase tracking-wider text-slate-400/90">
                 <button
                   type="button"
                   onClick={() => {
@@ -407,10 +487,10 @@ export default function WorkstationSidebar({
                     onSelectProject(null);
                     onOpenModule('all_projects');
                   }}
-                  className="flex items-center gap-1.5 hover:text-white transition-colors cursor-pointer text-left group"
+                  className="flex items-center gap-2 hover:text-white transition-colors cursor-pointer text-left group"
                   title={t('ws_all_sites', "Alle byggeplasser")}
                 >
-                  <Building2 size={13} className="text-electric-400 group-hover:text-electric-300" /> 
+                  <Building2 size={15} className="text-electric-400 group-hover:text-electric-300" /> 
                   <span className="group-hover:underline">{t('ws_projects_heading', "Prosjekter")}</span>
                 </button>
                 <button
@@ -419,15 +499,15 @@ export default function WorkstationSidebar({
                     onCloseMobile();
                     onOpenCreateProject();
                   }}
-                  className="p-1 rounded text-slate-400 hover:text-white hover:bg-slate-800 cursor-pointer active:scale-95 transition-transform"
+                  className="p-1.5 rounded-lg text-slate-400 hover:text-white hover:bg-slate-800 cursor-pointer active:scale-95 transition-transform"
                   title={t('ws_create_project_title', "Opprett nytt prosjekt")}
                 >
-                  <Plus size={13} />
+                  <Plus size={15} />
                 </button>
               </div>
             )}
 
-            <div className="space-y-0.5">
+            <div className="space-y-1">
               {/* Alle prosjekter (Standard / Global fokus) */}
               <button
                 type="button"
@@ -437,15 +517,15 @@ export default function WorkstationSidebar({
                   onOpenModule('all_projects');
                 }}
                 className={cn(
-                  "w-full flex items-center gap-2.5 px-2.5 py-1.5 rounded-xl text-xs font-medium transition-colors cursor-pointer text-left",
+                  "w-full flex items-center gap-3 px-3.5 py-2.5 sm:py-3 rounded-2xl text-[15px] sm:text-[16px] font-semibold transition-all cursor-pointer text-left",
                   (!selectedProject && currentActiveTab === 'all_projects')
-                    ? "bg-slate-800 text-white font-bold"
-                    : "text-slate-300 hover:text-white hover:bg-slate-850",
-                  isCollapsedDesktop && "justify-center px-2 py-2"
+                    ? "bg-[#161c28] text-white font-bold border border-slate-700/80 shadow-md ring-1 ring-white/10"
+                    : "text-slate-200 hover:text-white hover:bg-[#131822] border border-transparent hover:border-white/10",
+                  isCollapsedDesktop && "justify-center px-2 py-2.5"
                 )}
                 title={t('ws_all_sites', "Alle byggeplasser")}
               >
-                <HardHat size={15} className={(!selectedProject && currentActiveTab === 'all_projects') ? "text-amber-400 shrink-0" : "text-slate-400 shrink-0"} />
+                <HardHat size={20} className={(!selectedProject && currentActiveTab === 'all_projects') ? "text-amber-400 shrink-0" : "text-slate-400 shrink-0"} />
                 {!isCollapsedDesktop && (
                   <span className="truncate">{t('ws_all_sites', "Alle byggeplasser")}</span>
                 )}
@@ -463,25 +543,25 @@ export default function WorkstationSidebar({
                       onOpenModule('project_details');
                     }}
                     className={cn(
-                      "w-full flex items-center justify-between gap-2 px-2.5 py-1.5 rounded-xl text-xs font-medium transition-colors cursor-pointer text-left group",
+                      "w-full flex items-center justify-between gap-3 px-3.5 py-2.5 sm:py-3 rounded-2xl text-[15px] sm:text-[16px] font-semibold transition-all cursor-pointer text-left group",
                       isSelected
-                        ? "bg-electric-950/70 border border-electric-500/40 text-white font-bold"
-                        : "text-slate-300 hover:text-white hover:bg-slate-850",
-                      isCollapsedDesktop && "justify-center px-2 py-2"
+                        ? "bg-[#131d30] border border-electric-500/50 text-white font-bold shadow-md ring-1 ring-electric-500/20"
+                        : "text-slate-200 hover:text-white hover:bg-[#131822] border border-transparent hover:border-white/10",
+                      isCollapsedDesktop && "justify-center px-2 py-2.5"
                     )}
                     title={`${proj.name} (${proj.clientName || 'Byggeplass'})`}
                   >
-                    <div className="flex items-center gap-2 min-w-0">
+                    <div className="flex items-center gap-2.5 min-w-0">
                       <span className={cn(
-                        "w-2 h-2 rounded-full shrink-0",
-                        isSelected ? "bg-emerald-400 animate-pulse" : "bg-slate-500 group-hover:bg-slate-300"
+                        "w-2.5 h-2.5 rounded-full shrink-0",
+                        isSelected ? "bg-emerald-400 animate-pulse ring-2 ring-emerald-500/30" : "bg-slate-500 group-hover:bg-slate-300"
                       )} />
                       {!isCollapsedDesktop && (
                         <span className="truncate">{proj.name}</span>
                       )}
                     </div>
                     {!isCollapsedDesktop && proj.progress !== undefined && (
-                      <span className="text-[10px] text-slate-500 font-mono shrink-0">
+                      <span className="text-[11px] font-mono font-bold px-2 py-0.5 rounded-full bg-slate-800/90 text-slate-300 border border-slate-700/60 shrink-0">
                         {proj.progress}%
                       </span>
                     )}
@@ -491,35 +571,230 @@ export default function WorkstationSidebar({
             </div>
           </div>
 
-          {/* Seksjon C: Nylige (Gemini: "Nylige" samtaler) */}
-          <div className="space-y-1 pt-2 border-t border-slate-800/80">
+          {/* Seksjon C: Samtaler & Oppgaver (Smart Sortering, Prosjektmapper & Fast Filter) */}
+          <div className="space-y-2 pt-3 border-t border-slate-800/80">
             {!isCollapsedDesktop && (
-              <div className="px-2.5 py-1 text-[11px] font-bold text-slate-400 flex items-center justify-between">
-                <span>{t('ws_recent_chats', "Nylige samtaler")}</span>
-                <span className="text-[10px] text-slate-500 font-bold">{sessions.length}</span>
+              <div className="px-2 space-y-2">
+                {/* Header med tittel, antall, og visningsmodus-knapper */}
+                <div className="flex items-center justify-between gap-1">
+                  <div className="flex items-center gap-1.5 min-w-0">
+                    <span className="text-[12px] sm:text-[13px] font-bold uppercase tracking-wider text-slate-400/90 truncate">
+                      {t('ws_recent_chats', "Samtaler")}
+                    </span>
+                    <span className="text-[10px] text-slate-400 font-mono font-bold bg-white/5 px-2 py-0.5 rounded-full border border-white/5">
+                      {filteredSessions.length}
+                    </span>
+                  </div>
+
+                  {/* Sorteringsmodus: Tid vs Prosjekt + Rydd opp-knapp */}
+                  <div className="flex items-center gap-1 shrink-0">
+                    <div className="bg-[#13161c] p-0.5 rounded-lg border border-white/10 flex items-center">
+                      <button
+                        type="button"
+                        onClick={() => handleSetViewGrouping('time')}
+                        className={cn(
+                          "px-2 py-1 rounded-md text-[10px] font-bold transition-all cursor-pointer flex items-center gap-1",
+                          viewGrouping === 'time'
+                            ? "bg-purple-600 text-white shadow-xs"
+                            : "text-slate-400 hover:text-white"
+                        )}
+                        title="Kronologisk sortering (I dag, I går, osv.)"
+                      >
+                        <Clock size={11} />
+                        <span className="hidden sm:inline">Tid</span>
+                      </button>
+                      <button
+                        type="button"
+                        onClick={() => handleSetViewGrouping('project')}
+                        className={cn(
+                          "px-2 py-1 rounded-md text-[10px] font-bold transition-all cursor-pointer flex items-center gap-1",
+                          viewGrouping === 'project'
+                            ? "bg-purple-600 text-white shadow-xs"
+                            : "text-slate-400 hover:text-white"
+                        )}
+                        title="Grupper samtaler per byggeprosjekt i mapper"
+                      >
+                        <Folder size={11} />
+                        <span className="hidden sm:inline">Prosjekt</span>
+                      </button>
+                    </div>
+
+                    <button
+                      type="button"
+                      onClick={handleCleanupEmptySessions}
+                      className="p-1.5 rounded-lg text-slate-400 hover:text-white hover:bg-slate-800/80 transition-colors cursor-pointer"
+                      title="Rydd opp: Fjern tomme samtaler"
+                    >
+                      <Sparkles size={12} className="text-purple-400" />
+                    </button>
+                  </div>
+                </div>
+
+                {/* Hurtig-filter i samtaler */}
+                <div className="relative">
+                  <Search size={13} className="absolute left-2.5 top-1/2 -translate-y-1/2 text-slate-500 pointer-events-none" />
+                  <input
+                    type="text"
+                    value={sidebarChatFilter}
+                    onChange={(e) => setSidebarChatFilter(e.target.value)}
+                    placeholder="Filtrer samtaler..."
+                    className="w-full bg-[#13161c] border border-white/10 focus:border-purple-500/50 rounded-xl pl-7 pr-7 py-1 text-[11px] text-white placeholder:text-slate-500 focus:outline-none transition-colors"
+                  />
+                  {sidebarChatFilter && (
+                    <button
+                      type="button"
+                      onClick={() => setSidebarChatFilter('')}
+                      className="absolute right-2 top-1/2 -translate-y-1/2 text-slate-400 hover:text-white"
+                    >
+                      <X size={11} />
+                    </button>
+                  )}
+                </div>
+
+                {/* Valgt prosjekt hurtigfilter (hvis et prosjekt er valgt) */}
+                {selectedProject && (
+                  <div className="flex items-center gap-1 pt-0.5">
+                    <button
+                      type="button"
+                      onClick={() => setFilterOnlyActiveProject(false)}
+                      className={cn(
+                        "px-2 py-0.5 rounded-md text-[10px] font-bold transition-all cursor-pointer",
+                        !filterOnlyActiveProject
+                          ? "bg-white/10 text-white border border-white/15"
+                          : "text-slate-500 hover:text-slate-300"
+                      )}
+                    >
+                      Alle samtaler
+                    </button>
+                    <button
+                      type="button"
+                      onClick={() => setFilterOnlyActiveProject(true)}
+                      className={cn(
+                        "px-2 py-0.5 rounded-md text-[10px] font-bold transition-all cursor-pointer flex items-center gap-1 truncate max-w-[170px]",
+                        filterOnlyActiveProject
+                          ? "bg-emerald-500/20 text-emerald-300 border border-emerald-500/40"
+                          : "text-slate-500 hover:text-slate-300"
+                      )}
+                      title={`Vis kun samtaler for ${selectedProject.name}`}
+                    >
+                      <span className="w-1.5 h-1.5 rounded-full bg-emerald-400 shrink-0" />
+                      <span className="truncate">Kun {selectedProject.name}</span>
+                    </button>
+                  </div>
+                )}
               </div>
             )}
 
-            {sessions.length === 0 ? (
+            {filteredSessions.length === 0 ? (
               !isCollapsedDesktop && (
-                <p className="px-2.5 py-2 text-xs text-slate-500 italic">
-                  {t('ws_no_chats', "Ingen tidligere samtaler ennå.")}
-                </p>
+                <div className="px-3 py-4 text-center space-y-1">
+                  <p className="text-xs text-slate-500 italic">
+                    {sidebarChatFilter
+                      ? `Ingen samtaler matcher «${sidebarChatFilter}»`
+                      : filterOnlyActiveProject
+                        ? `Ingen samtaler for ${selectedProject?.name} ennå.`
+                        : t('ws_no_chats', "Ingen tidligere samtaler ennå.")}
+                  </p>
+                  {sidebarChatFilter && (
+                    <button
+                      type="button"
+                      onClick={() => setSidebarChatFilter('')}
+                      className="text-[11px] text-purple-400 hover:underline"
+                    >
+                      Nullstill filter
+                    </button>
+                  )}
+                </div>
               )
+            ) : viewGrouping === 'project' ? (
+              /* 📁 VISNING: Gruppert per prosjekt (Mappevisning) */
+              <div className="space-y-1.5">
+                {projectGroups.map(group => {
+                  const isExpanded = expandedProjects[group.projectId] ?? (selectedProject?.id === group.projectId);
+                  const isCurrentActiveProject = selectedProject?.id === group.projectId;
+                  return (
+                    <div key={group.projectId} className="space-y-1">
+                      {!isCollapsedDesktop && (
+                        <button
+                          type="button"
+                          onClick={() => toggleProjectExpand(group.projectId)}
+                          className={cn(
+                            "w-full flex items-center justify-between px-2.5 py-1.5 rounded-xl transition-all text-left cursor-pointer group border",
+                            isCurrentActiveProject
+                              ? "bg-emerald-950/30 border-emerald-500/30 text-emerald-200"
+                              : "bg-[#13161c]/60 hover:bg-[#161c28] border-white/5 hover:border-white/10 text-slate-300 hover:text-white"
+                          )}
+                        >
+                          <div className="flex items-center gap-2 min-w-0">
+                            {isExpanded ? (
+                              <FolderOpen size={14} className={isCurrentActiveProject ? "text-emerald-400 shrink-0" : "text-amber-400 shrink-0"} />
+                            ) : (
+                              <Folder size={14} className={isCurrentActiveProject ? "text-emerald-400 shrink-0" : "text-amber-400/80 shrink-0"} />
+                            )}
+                            <span className="text-xs font-bold truncate">{group.projectName}</span>
+                          </div>
+                          <div className="flex items-center gap-1.5 shrink-0">
+                            <span className="text-[10px] font-mono px-1.5 py-0.2 rounded-full bg-white/5 text-slate-400 font-bold border border-white/5">
+                              {group.sessions.length}
+                            </span>
+                            <ChevronDown size={13} className={cn("text-slate-400 transition-transform", isExpanded ? "rotate-0" : "-rotate-90")} />
+                          </div>
+                        </button>
+                      )}
+
+                      {(isExpanded || isCollapsedDesktop) && (
+                        <div className={cn("space-y-1", !isCollapsedDesktop && "ml-2.5 pl-2 border-l border-slate-800/80 my-1")}>
+                          {group.sessions.map(session => (
+                            <SessionItem
+                              key={session.id}
+                              session={session}
+                              isActive={activeSessionId === session.id}
+                              isCollapsed={isCollapsedDesktop}
+                              isEditing={editingSessionId === session.id}
+                              editingTitle={editingTitle}
+                              onSetEditingTitle={setEditingTitle}
+                              onSaveRename={() => handleSaveRename(session.id)}
+                              onCancelRename={() => setEditingSessionId(null)}
+                              onStartRename={(e) => handleStartRename(e, session)}
+                              onTogglePin={(e) => handleTogglePinSession(e, session.id)}
+                              onSelect={() => {
+                                onCloseMobile();
+                                onSelectSession(session.id);
+                              }}
+                              onDelete={(e) => handleDeleteSession(e, session.id, session.title)}
+                            />
+                          ))}
+                        </div>
+                      )}
+                    </div>
+                  );
+                })}
+              </div>
             ) : (
-              <div className="space-y-0.5">
+              /* 🕒 VISNING: Kronologisk (I dag, I går, Siste 7 dager, Eldre med grenser) */
+              <div className="space-y-1.5">
+                {/* 📌 Festede samtaler */}
                 {pinned.length > 0 && (
-                  <div className="space-y-0.5 pb-1 mb-1 border-b border-white/5">
+                  <div className="space-y-1 pb-1.5 mb-1 border-b border-white/5">
                     {!isCollapsedDesktop && (
-                      <p className="px-2.5 pt-1 pb-0.5 text-[10px] font-bold text-amber-400 flex items-center gap-1.5 uppercase tracking-wider">
-                        <Pin size={10} className="fill-amber-400" />
-                        <span>{t('ws_pinned_chats', "Festede samtaler")}</span>
-                        <span className="text-[9px] px-1.5 py-0.2 rounded-full bg-amber-400/20 text-amber-300 font-mono ml-auto">
-                          {pinned.length}
+                      <button
+                        type="button"
+                        onClick={() => toggleBucketCollapse('pinned')}
+                        className="w-full flex items-center justify-between px-2 pt-1 pb-1 text-[11px] font-bold text-amber-400 uppercase tracking-wider cursor-pointer hover:text-amber-300"
+                      >
+                        <span className="flex items-center gap-1.5">
+                          <Pin size={11} className="fill-amber-400" />
+                          <span>{t('ws_pinned_chats', "Festede samtaler")}</span>
                         </span>
-                      </p>
+                        <div className="flex items-center gap-1">
+                          <span className="text-[10px] px-1.5 py-0.2 rounded-full bg-amber-400/20 text-amber-300 font-mono">
+                            {pinned.length}
+                          </span>
+                          <ChevronDown size={11} className={cn("transition-transform", collapsedBuckets['pinned'] ? "-rotate-90" : "rotate-0")} />
+                        </div>
+                      </button>
                     )}
-                    {pinned.map(session => (
+                    {!collapsedBuckets['pinned'] && pinned.map(session => (
                       <SessionItem
                         key={session.id}
                         session={session}
@@ -527,6 +802,7 @@ export default function WorkstationSidebar({
                         isCollapsed={isCollapsedDesktop}
                         isEditing={editingSessionId === session.id}
                         editingTitle={editingTitle}
+                        showProjectBadge={true}
                         onSetEditingTitle={setEditingTitle}
                         onSaveRename={() => handleSaveRename(session.id)}
                         onCancelRename={() => setEditingSessionId(null)}
@@ -542,88 +818,224 @@ export default function WorkstationSidebar({
                   </div>
                 )}
 
+                {/* ⚡ I dag */}
                 {today.length > 0 && (
-                  <>
+                  <div className="space-y-1">
                     {!isCollapsedDesktop && (
-                      <p className="px-2.5 pt-1 pb-0.5 text-[10px] font-bold text-slate-500">{t('ws_today', "I dag")}</p>
+                      <button
+                        type="button"
+                        onClick={() => toggleBucketCollapse('today')}
+                        className="w-full flex items-center justify-between px-2 pt-1 pb-1 text-[11px] font-bold text-slate-400 uppercase tracking-wider cursor-pointer hover:text-white"
+                      >
+                        <span>{t('ws_today', "I dag")}</span>
+                        <div className="flex items-center gap-1">
+                          <span className="text-[10px] px-1.5 py-0.2 rounded-full bg-white/5 text-slate-400 font-mono">
+                            {today.length}
+                          </span>
+                          <ChevronDown size={11} className={cn("transition-transform", collapsedBuckets['today'] ? "-rotate-90" : "rotate-0")} />
+                        </div>
+                      </button>
                     )}
-                    {today.map(session => (
-                      <SessionItem
-                        key={session.id}
-                        session={session}
-                        isActive={activeSessionId === session.id}
-                        isCollapsed={isCollapsedDesktop}
-                        isEditing={editingSessionId === session.id}
-                        editingTitle={editingTitle}
-                        onSetEditingTitle={setEditingTitle}
-                        onSaveRename={() => handleSaveRename(session.id)}
-                        onCancelRename={() => setEditingSessionId(null)}
-                        onStartRename={(e) => handleStartRename(e, session)}
-                        onTogglePin={(e) => handleTogglePinSession(e, session.id)}
-                        onSelect={() => {
-                          onCloseMobile();
-                          onSelectSession(session.id);
-                        }}
-                        onDelete={(e) => handleDeleteSession(e, session.id, session.title)}
-                      />
-                    ))}
-                  </>
+                    {!collapsedBuckets['today'] && (
+                      <>
+                        {(showAllInBucket['today'] ? today : today.slice(0, 5)).map(session => (
+                          <SessionItem
+                            key={session.id}
+                            session={session}
+                            isActive={activeSessionId === session.id}
+                            isCollapsed={isCollapsedDesktop}
+                            isEditing={editingSessionId === session.id}
+                            editingTitle={editingTitle}
+                            showProjectBadge={true}
+                            onSetEditingTitle={setEditingTitle}
+                            onSaveRename={() => handleSaveRename(session.id)}
+                            onCancelRename={() => setEditingSessionId(null)}
+                            onStartRename={(e) => handleStartRename(e, session)}
+                            onTogglePin={(e) => handleTogglePinSession(e, session.id)}
+                            onSelect={() => {
+                              onCloseMobile();
+                              onSelectSession(session.id);
+                            }}
+                            onDelete={(e) => handleDeleteSession(e, session.id, session.title)}
+                          />
+                        ))}
+                        {!isCollapsedDesktop && today.length > 5 && (
+                          <button
+                            type="button"
+                            onClick={() => toggleShowAllInBucket('today')}
+                            className="w-full py-1 text-center text-[10px] font-bold text-purple-400 hover:text-purple-300 transition-colors cursor-pointer"
+                          >
+                            {showAllInBucket['today'] ? 'Vis færre ↑' : `+ Vis ${today.length - 5} flere fra i dag...`}
+                          </button>
+                        )}
+                      </>
+                    )}
+                  </div>
                 )}
 
+                {/* 📅 I går */}
+                {yesterday.length > 0 && (
+                  <div className="space-y-1">
+                    {!isCollapsedDesktop && (
+                      <button
+                        type="button"
+                        onClick={() => toggleBucketCollapse('yesterday')}
+                        className="w-full flex items-center justify-between px-2 pt-1 pb-1 text-[11px] font-bold text-slate-400 uppercase tracking-wider cursor-pointer hover:text-white"
+                      >
+                        <span>{t('ws_yesterday', "I går")}</span>
+                        <div className="flex items-center gap-1">
+                          <span className="text-[10px] px-1.5 py-0.2 rounded-full bg-white/5 text-slate-400 font-mono">
+                            {yesterday.length}
+                          </span>
+                          <ChevronDown size={11} className={cn("transition-transform", collapsedBuckets['yesterday'] ? "-rotate-90" : "rotate-0")} />
+                        </div>
+                      </button>
+                    )}
+                    {!collapsedBuckets['yesterday'] && (
+                      <>
+                        {(showAllInBucket['yesterday'] ? yesterday : yesterday.slice(0, 5)).map(session => (
+                          <SessionItem
+                            key={session.id}
+                            session={session}
+                            isActive={activeSessionId === session.id}
+                            isCollapsed={isCollapsedDesktop}
+                            isEditing={editingSessionId === session.id}
+                            editingTitle={editingTitle}
+                            showProjectBadge={true}
+                            onSetEditingTitle={setEditingTitle}
+                            onSaveRename={() => handleSaveRename(session.id)}
+                            onCancelRename={() => setEditingSessionId(null)}
+                            onStartRename={(e) => handleStartRename(e, session)}
+                            onTogglePin={(e) => handleTogglePinSession(e, session.id)}
+                            onSelect={() => {
+                              onCloseMobile();
+                              onSelectSession(session.id);
+                            }}
+                            onDelete={(e) => handleDeleteSession(e, session.id, session.title)}
+                          />
+                        ))}
+                        {!isCollapsedDesktop && yesterday.length > 5 && (
+                          <button
+                            type="button"
+                            onClick={() => toggleShowAllInBucket('yesterday')}
+                            className="w-full py-1 text-center text-[10px] font-bold text-purple-400 hover:text-purple-300 transition-colors cursor-pointer"
+                          >
+                            {showAllInBucket['yesterday'] ? 'Vis færre ↑' : `+ Vis ${yesterday.length - 5} flere fra i går...`}
+                          </button>
+                        )}
+                      </>
+                    )}
+                  </div>
+                )}
+
+                {/* 🗓️ Siste 7 dager */}
                 {last7Days.length > 0 && (
-                  <>
+                  <div className="space-y-1">
                     {!isCollapsedDesktop && (
-                      <p className="px-2.5 pt-2 pb-0.5 text-[10px] font-bold text-slate-500">{t('ws_last_7_days', "Siste 7 dager")}</p>
+                      <button
+                        type="button"
+                        onClick={() => toggleBucketCollapse('last7Days')}
+                        className="w-full flex items-center justify-between px-2 pt-1 pb-1 text-[11px] font-bold text-slate-400 uppercase tracking-wider cursor-pointer hover:text-white"
+                      >
+                        <span>{t('ws_last_7_days', "Siste 7 dager")}</span>
+                        <div className="flex items-center gap-1">
+                          <span className="text-[10px] px-1.5 py-0.2 rounded-full bg-white/5 text-slate-400 font-mono">
+                            {last7Days.length}
+                          </span>
+                          <ChevronDown size={11} className={cn("transition-transform", collapsedBuckets['last7Days'] ? "-rotate-90" : "rotate-0")} />
+                        </div>
+                      </button>
                     )}
-                    {last7Days.map(session => (
-                      <SessionItem
-                        key={session.id}
-                        session={session}
-                        isActive={activeSessionId === session.id}
-                        isCollapsed={isCollapsedDesktop}
-                        isEditing={editingSessionId === session.id}
-                        editingTitle={editingTitle}
-                        onSetEditingTitle={setEditingTitle}
-                        onSaveRename={() => handleSaveRename(session.id)}
-                        onCancelRename={() => setEditingSessionId(null)}
-                        onStartRename={(e) => handleStartRename(e, session)}
-                        onTogglePin={(e) => handleTogglePinSession(e, session.id)}
-                        onSelect={() => {
-                          onCloseMobile();
-                          onSelectSession(session.id);
-                        }}
-                        onDelete={(e) => handleDeleteSession(e, session.id, session.title)}
-                      />
-                    ))}
-                  </>
+                    {!collapsedBuckets['last7Days'] && (
+                      <>
+                        {(showAllInBucket['last7Days'] ? last7Days : last7Days.slice(0, 5)).map(session => (
+                          <SessionItem
+                            key={session.id}
+                            session={session}
+                            isActive={activeSessionId === session.id}
+                            isCollapsed={isCollapsedDesktop}
+                            isEditing={editingSessionId === session.id}
+                            editingTitle={editingTitle}
+                            showProjectBadge={true}
+                            onSetEditingTitle={setEditingTitle}
+                            onSaveRename={() => handleSaveRename(session.id)}
+                            onCancelRename={() => setEditingSessionId(null)}
+                            onStartRename={(e) => handleStartRename(e, session)}
+                            onTogglePin={(e) => handleTogglePinSession(e, session.id)}
+                            onSelect={() => {
+                              onCloseMobile();
+                              onSelectSession(session.id);
+                            }}
+                            onDelete={(e) => handleDeleteSession(e, session.id, session.title)}
+                          />
+                        ))}
+                        {!isCollapsedDesktop && last7Days.length > 5 && (
+                          <button
+                            type="button"
+                            onClick={() => toggleShowAllInBucket('last7Days')}
+                            className="w-full py-1 text-center text-[10px] font-bold text-purple-400 hover:text-purple-300 transition-colors cursor-pointer"
+                          >
+                            {showAllInBucket['last7Days'] ? 'Vis færre ↑' : `+ Vis ${last7Days.length - 5} flere...`}
+                          </button>
+                        )}
+                      </>
+                    )}
+                  </div>
                 )}
 
+                {/* 🗃️ Eldre samtaler */}
                 {older.length > 0 && (
-                  <>
+                  <div className="space-y-1">
                     {!isCollapsedDesktop && (
-                      <p className="px-2.5 pt-2 pb-0.5 text-[10px] font-bold text-slate-500">{t('ws_older', "Tidligere")}</p>
+                      <button
+                        type="button"
+                        onClick={() => toggleBucketCollapse('older')}
+                        className="w-full flex items-center justify-between px-2 pt-1 pb-1 text-[11px] font-bold text-slate-400 uppercase tracking-wider cursor-pointer hover:text-white"
+                      >
+                        <span>{t('ws_older', "Tidligere")}</span>
+                        <div className="flex items-center gap-1">
+                          <span className="text-[10px] px-1.5 py-0.2 rounded-full bg-white/5 text-slate-400 font-mono">
+                            {older.length}
+                          </span>
+                          <ChevronDown size={11} className={cn("transition-transform", collapsedBuckets['older'] ? "-rotate-90" : "rotate-0")} />
+                        </div>
+                      </button>
                     )}
-                    {older.map(session => (
-                      <SessionItem
-                        key={session.id}
-                        session={session}
-                        isActive={activeSessionId === session.id}
-                        isCollapsed={isCollapsedDesktop}
-                        isEditing={editingSessionId === session.id}
-                        editingTitle={editingTitle}
-                        onSetEditingTitle={setEditingTitle}
-                        onSaveRename={() => handleSaveRename(session.id)}
-                        onCancelRename={() => setEditingSessionId(null)}
-                        onStartRename={(e) => handleStartRename(e, session)}
-                        onTogglePin={(e) => handleTogglePinSession(e, session.id)}
-                        onSelect={() => {
-                          onCloseMobile();
-                          onSelectSession(session.id);
-                        }}
-                        onDelete={(e) => handleDeleteSession(e, session.id, session.title)}
-                      />
-                    ))}
-                  </>
+                    {!collapsedBuckets['older'] && (
+                      <>
+                        {(showAllInBucket['older'] ? older : older.slice(0, 5)).map(session => (
+                          <SessionItem
+                            key={session.id}
+                            session={session}
+                            isActive={activeSessionId === session.id}
+                            isCollapsed={isCollapsedDesktop}
+                            isEditing={editingSessionId === session.id}
+                            editingTitle={editingTitle}
+                            showProjectBadge={true}
+                            onSetEditingTitle={setEditingTitle}
+                            onSaveRename={() => handleSaveRename(session.id)}
+                            onCancelRename={() => setEditingSessionId(null)}
+                            onStartRename={(e) => handleStartRename(e, session)}
+                            onTogglePin={(e) => handleTogglePinSession(e, session.id)}
+                            onSelect={() => {
+                              onCloseMobile();
+                              onSelectSession(session.id);
+                            }}
+                            onDelete={(e) => handleDeleteSession(e, session.id, session.title)}
+                          />
+                        ))}
+                        {!isCollapsedDesktop && older.length > 5 && (
+                          <button
+                            type="button"
+                            onClick={() => toggleShowAllInBucket('older')}
+                            className="w-full py-1 text-center text-[10px] font-bold text-purple-400 hover:text-purple-300 transition-colors cursor-pointer"
+                          >
+                            {showAllInBucket['older'] ? 'Vis færre ↑' : `+ Vis ${older.length - 5} flere...`}
+                          </button>
+                        )}
+                      </>
+                    )}
+                  </div>
                 )}
               </div>
             )}
@@ -631,14 +1043,14 @@ export default function WorkstationSidebar({
         </div>
 
         {/* 4. Footer: Gemini-style user profile card with location, settings & logout */}
-        <div className="p-3 border-t border-white/10 md:border-slate-800/80 shrink-0 bg-[#000000] md:bg-[#070A11] space-y-2">
-          <div className={cn("p-2 rounded-2xl bg-[#131314] border border-white/10 flex items-center justify-between gap-2 transition-all", isCollapsedDesktop && "justify-center p-1.5 bg-transparent border-transparent")}>
-            <div className="flex items-center gap-2.5 min-w-0">
+        <div className="p-3.5 border-t border-slate-800/80 shrink-0 bg-[#0A101D] space-y-2.5">
+          <div className={cn("p-2.5 rounded-2xl bg-[#13161c] border border-white/10 flex items-center justify-between gap-2.5 transition-all shadow-md", isCollapsedDesktop && "justify-center p-1.5 bg-transparent border-transparent shadow-none")}>
+            <div className="flex items-center gap-3 min-w-0">
               {user?.photoURL ? (
                 <img 
                   src={user.photoURL} 
                   alt={user.displayName || 'Profil'} 
-                  className="w-8 h-8 rounded-full border border-white/20 object-cover shrink-0 aspect-square"
+                  className="w-9 h-9 sm:w-10 sm:h-10 rounded-full border border-white/20 object-cover shrink-0 aspect-square"
                 />
               ) : (
                 <div 
@@ -649,7 +1061,7 @@ export default function WorkstationSidebar({
                     }
                   }}
                   className={cn(
-                    "w-8 h-8 rounded-full flex items-center justify-center text-white font-black text-xs shrink-0 ring-2",
+                    "w-9 h-9 sm:w-10 sm:h-10 rounded-full flex items-center justify-center text-white font-black text-sm shrink-0 ring-2",
                     impersonatedCompanyId
                       ? "bg-gradient-to-tr from-amber-600 to-amber-400 ring-amber-500/30"
                       : "bg-gradient-to-tr from-purple-600 to-blue-500 ring-purple-500/30",
@@ -668,17 +1080,17 @@ export default function WorkstationSidebar({
               )}
               {!isCollapsedDesktop && (
                 <div className="min-w-0">
-                  <p className="text-xs font-bold text-white truncate">
+                  <p className="text-[14px] sm:text-[15px] font-bold text-white truncate">
                     {impersonatedCompanyId === 'comp-demo-fjellheim' 
                       ? 'Lars Fjellheim' 
                       : (impersonatedCompanyId ? `Kunde: ${impersonatedCompanyId}` : (user?.displayName || 'Kenneth Glosli Kristiansen'))}
                   </p>
                   <div className="flex items-center gap-1.5 mt-0.5">
-                    <span className="px-1.5 py-0.2 rounded-full text-[9px] font-black uppercase tracking-wider bg-gradient-to-r from-purple-500/20 to-blue-500/20 text-purple-300 border border-purple-500/30">
+                    <span className="px-2 py-0.5 rounded-full text-[10px] font-black uppercase tracking-wider bg-purple-500/25 text-purple-200 border border-purple-500/40">
                       MESTER PRO
                     </span>
                     {isSuperAdmin && (
-                      <span className="text-[9px] font-bold text-amber-400">👑 Sys</span>
+                      <span className="text-[10px] font-bold text-amber-400">👑 Sys</span>
                     )}
                   </div>
                 </div>
@@ -686,7 +1098,7 @@ export default function WorkstationSidebar({
             </div>
 
             {!isCollapsedDesktop && (
-              <div className="flex items-center gap-0.5 shrink-0">
+              <div className="flex items-center gap-1 shrink-0">
                 {isSuperAdmin && (
                   <button
                     type="button"
@@ -695,10 +1107,10 @@ export default function WorkstationSidebar({
                       if (onOpenSuperAdmin) onOpenSuperAdmin();
                       else window.dispatchEvent(new CustomEvent("navigate_view", { detail: { view: "super-admin" } }));
                     }}
-                    className="p-1.5 rounded-lg text-amber-400 hover:text-white hover:bg-amber-500/20 transition-colors cursor-pointer"
+                    className="p-2 rounded-xl text-amber-400 hover:text-white hover:bg-amber-500/20 transition-colors cursor-pointer"
                     title="SuperAdmin Portal"
                   >
-                    <Crown size={15} />
+                    <Crown size={17} />
                   </button>
                 )}
                 <button
@@ -707,10 +1119,10 @@ export default function WorkstationSidebar({
                     onCloseMobile();
                     onOpenSettings();
                   }}
-                  className="p-1.5 rounded-lg text-slate-400 hover:text-white hover:bg-white/10 transition-colors cursor-pointer"
+                  className="p-2 rounded-xl text-slate-400 hover:text-white hover:bg-white/10 transition-colors cursor-pointer"
                   title={t('settings', "Innstillinger")}
                 >
-                  <Settings size={15} />
+                  <Settings size={17} />
                 </button>
                 <button
                   type="button"
@@ -718,27 +1130,27 @@ export default function WorkstationSidebar({
                     onCloseMobile();
                     onLogout();
                   }}
-                  className="p-1.5 rounded-lg text-slate-400 hover:text-rose-400 hover:bg-rose-500/15 transition-colors cursor-pointer"
+                  className="p-2 rounded-xl text-slate-400 hover:text-rose-400 hover:bg-rose-500/15 transition-colors cursor-pointer"
                   title={t('logout', "Logg ut")}
                 >
-                  <LogOut size={15} />
+                  <LogOut size={17} />
                 </button>
               </div>
             )}
           </div>
 
           {!isCollapsedDesktop && (
-            <div className="pt-1 flex items-center justify-between text-[10px] text-slate-500 border-t border-slate-850">
-              <span className="flex items-center gap-1 truncate">
-                <MapPin size={11} className="text-slate-500 shrink-0" />
+            <div className="pt-1 flex items-center justify-between text-[11px] sm:text-[12px] text-slate-400 border-t border-slate-800/80">
+              <span className="flex items-center gap-1.5 truncate">
+                <MapPin size={13} className="text-slate-500 shrink-0" />
                 <span className="truncate">{t('ws_location_display', "Tønsberg, Norge")}</span>
               </span>
-              <div className="flex items-center gap-1">
-                <Globe size={11} className="text-slate-500" />
+              <div className="flex items-center gap-1.5">
+                <Globe size={13} className="text-slate-500" />
                 <select
                   value={getStandardLang(i18n.language)}
                   onChange={(e) => changeLanguage(e.target.value)}
-                  className="text-[10px] font-bold bg-transparent border-none text-slate-400 hover:text-slate-200 focus:outline-none cursor-pointer uppercase [&>option]:bg-slate-900"
+                  className="text-[11px] font-bold bg-transparent border-none text-slate-300 hover:text-white focus:outline-none cursor-pointer uppercase [&>option]:bg-slate-900"
                 >
                   <option value="no">NO</option>
                   <option value="en">EN</option>
@@ -765,6 +1177,7 @@ function SessionItem({
   onCancelRename,
   onStartRename,
   onTogglePin,
+  showProjectBadge,
   onSelect,
   onDelete
 }: {
@@ -773,6 +1186,7 @@ function SessionItem({
   isCollapsed: boolean;
   isEditing: boolean;
   editingTitle: string;
+  showProjectBadge?: boolean;
   onSetEditingTitle: (v: string) => void;
   onSaveRename: () => void;
   onCancelRename: () => void;
@@ -794,7 +1208,7 @@ function SessionItem({
           }}
           onBlur={onSaveRename}
           autoFocus
-          className="w-full px-2 py-1 text-xs bg-slate-900 border border-electric-500 rounded text-white focus:outline-none"
+          className="w-full px-3 py-2 text-[14px] bg-[#161c28] border border-electric-500 rounded-xl text-white focus:outline-none"
         />
       </div>
     );
@@ -805,26 +1219,33 @@ function SessionItem({
       type="button"
       onClick={onSelect}
       className={cn(
-        "w-full flex items-center justify-between gap-2 px-2.5 py-1.5 rounded-xl text-xs font-medium transition-all cursor-pointer text-left group",
+        "w-full flex items-center justify-between gap-3 px-3 py-2 sm:py-2.5 rounded-2xl text-[14px] sm:text-[15px] font-medium transition-all cursor-pointer text-left group",
         isActive
-          ? "bg-slate-800 text-white font-bold shadow-xs"
-          : "text-slate-400 hover:text-slate-200 hover:bg-slate-850",
-        session.isPinned && !isActive && "border-l-2 border-amber-400/80 bg-slate-900/40",
-        isCollapsed && "justify-center px-2 py-2"
+          ? "bg-[#161c28] text-white font-bold border border-slate-700/80 shadow-md ring-1 ring-white/10"
+          : "text-slate-300 hover:text-white hover:bg-[#131822] border border-transparent hover:border-white/10",
+        session.isPinned && !isActive && "border-l-2 border-amber-400/80 bg-[#161c28]/40",
+        isCollapsed && "justify-center px-2 py-2.5"
       )}
       title={session.isPinned ? `📌 (Festet) ${session.title}` : session.title}
     >
-      <div className="flex items-center gap-2 min-w-0">
-        <MessageSquare size={13} className={isActive ? "text-purple-400 shrink-0" : session.isPinned ? "text-amber-400 shrink-0" : "text-slate-500 shrink-0"} />
+      <div className="flex items-center gap-2.5 min-w-0 flex-1">
+        <MessageSquare size={16} className={isActive ? "text-purple-400 shrink-0" : session.isPinned ? "text-amber-400 shrink-0" : "text-slate-400 shrink-0"} />
         {!isCollapsed && (
-          <span className="truncate">{session.title}</span>
+          <div className="min-w-0 flex-1">
+            <span className="truncate block leading-tight">{session.title}</span>
+            {showProjectBadge && session.projectName && (
+              <span className="text-[10px] text-slate-500 font-normal truncate block mt-0.5">
+                {session.projectName}
+              </span>
+            )}
+          </div>
         )}
       </div>
 
       {!isCollapsed && (
         <div className="flex items-center gap-1 shrink-0">
           {session.isPinned && (
-            <Pin size={11} className="text-amber-400 fill-amber-400 shrink-0 group-hover:hidden" />
+            <Pin size={13} className="text-amber-400 fill-amber-400 shrink-0 group-hover:hidden" />
           )}
           <div className="hidden group-hover:flex items-center gap-1">
             <span
@@ -833,34 +1254,34 @@ function SessionItem({
               onClick={onTogglePin}
               onKeyDown={(e) => e.key === 'Enter' && onTogglePin(e as any)}
               className={cn(
-                "p-1 rounded cursor-pointer transition-colors",
+                "p-1.5 rounded-lg cursor-pointer transition-colors",
                 session.isPinned
                   ? "text-amber-400 hover:text-amber-300 hover:bg-amber-500/20"
                   : "text-slate-400 hover:text-white hover:bg-slate-700"
               )}
               title={session.isPinned ? "Løsne samtale" : "Fest samtale øverst"}
             >
-              <Pin size={11} className={session.isPinned ? "fill-amber-400" : ""} />
+              <Pin size={13} className={session.isPinned ? "fill-amber-400" : ""} />
             </span>
             <span
               role="button"
               tabIndex={0}
               onClick={onStartRename}
               onKeyDown={(e) => e.key === 'Enter' && onStartRename(e as any)}
-              className="p-1 text-slate-400 hover:text-white hover:bg-slate-700 rounded cursor-pointer"
+              className="p-1.5 text-slate-400 hover:text-white hover:bg-slate-700 rounded-lg cursor-pointer"
               title="Endre tittel"
             >
-              <Edit2 size={11} />
+              <Edit2 size={13} />
             </span>
             <span
               role="button"
               tabIndex={0}
               onClick={onDelete}
               onKeyDown={(e) => e.key === 'Enter' && onDelete(e as any)}
-              className="p-1 text-slate-400 hover:text-red-400 hover:bg-red-500/20 rounded cursor-pointer"
+              className="p-1.5 text-slate-400 hover:text-red-400 hover:bg-red-500/20 rounded-lg cursor-pointer"
               title="Slett samtale"
             >
-              <Trash2 size={11} />
+              <Trash2 size={13} />
             </span>
           </div>
         </div>
