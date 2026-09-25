@@ -1261,22 +1261,22 @@ function AppContent() {
                 /* Authenticated App Mobile Menu */
                 <div className="flex flex-col gap-3">
                   {/* User profile header */}
-                  <div className="flex items-center justify-between p-3.5 bg-neutral-50 rounded-2xl border border-neutral-100">
+                  <div className="flex items-center justify-between p-3.5 bg-slate-900/90 rounded-2xl border border-slate-800">
                     <div className="flex items-center gap-3 min-w-0">
                       {user.photoURL ? (
                         <img 
                           src={user.photoURL} 
                           alt={user.displayName || 'User'} 
-                          className="w-10 h-10 rounded-full border border-neutral-200 object-cover shrink-0 aspect-square"
+                          className="w-10 h-10 rounded-full border border-slate-700 object-cover shrink-0 aspect-square"
                           referrerPolicy="no-referrer"
                         />
                       ) : (
-                        <div className="w-10 h-10 bg-emerald-100 text-emerald-800 font-black rounded-full flex items-center justify-center shrink-0">
+                        <div className="w-10 h-10 bg-emerald-500/20 text-emerald-400 font-black rounded-full flex items-center justify-center shrink-0 border border-emerald-500/30">
                           {user.displayName?.[0] || 'U'}
                         </div>
                       )}
                       <div className="min-w-0">
-                        <p className="text-sm font-bold text-navy-900 truncate">{user.displayName || 'Mester Bruker'}</p>
+                        <p className="text-sm font-bold text-white truncate">{user.displayName || 'Mester Bruker'}</p>
                         <p className="text-xs text-slate-400 truncate">{user.email}</p>
                       </div>
                     </div>
@@ -1286,7 +1286,7 @@ function AppContent() {
                         aria-label="Innstillinger"
                         className={cn(
                           "p-2 rounded-xl transition-colors cursor-pointer",
-                          view === 'settings' ? "bg-emerald-100 text-emerald-700" : "text-slate-400 hover:bg-neutral-200"
+                          view === 'settings' ? "bg-emerald-500/20 text-emerald-400" : "text-slate-400 hover:bg-slate-800 hover:text-white"
                         )}
                       >
                         <Settings size={18} />
@@ -1294,7 +1294,7 @@ function AppContent() {
                       <button 
                         onClick={() => { logout(); setIsMenuOpen(false); }}
                         aria-label="Logg ut"
-                        className="p-2 text-neutral-400 hover:text-red-500 rounded-xl hover:bg-neutral-200 transition-colors cursor-pointer"
+                        className="p-2 text-slate-400 hover:text-red-400 rounded-xl hover:bg-slate-800 transition-colors cursor-pointer"
                       >
                         <LogOut size={18} />
                       </button>
@@ -1323,7 +1323,7 @@ function AppContent() {
 
                   {/* Main App Modules */}
                   <div>
-                    <div className="text-[10px] font-black uppercase tracking-wider text-neutral-400 px-1 mb-2">
+                    <div className="text-[10px] font-black uppercase tracking-wider text-slate-400 px-1 mb-2">
                       MesterAI Arbeidsstasjon
                     </div>
                     <div className="grid grid-cols-2 gap-2">
@@ -1344,21 +1344,21 @@ function AppContent() {
                           className={cn(
                             "flex items-center justify-between p-3 rounded-xl text-left text-xs font-bold transition-all border cursor-pointer",
                             view === 'dashboard' && dashboardTab === m.tab
-                              ? "bg-electric-50 border-electric-300 text-electric-700 shadow-xs"
-                              : "bg-white border-slate-200 text-slate-700 hover:bg-slate-50"
+                              ? "bg-purple-950/60 border-purple-500/80 text-white shadow-xs"
+                              : "bg-slate-900/80 border-slate-800 text-slate-300 hover:bg-slate-800 hover:text-white"
                           )}
                         >
                           <div className="flex items-center gap-2.5 min-w-0">
                             <span className={cn(
                               "p-1.5 rounded-lg shrink-0",
-                              view === 'dashboard' && dashboardTab === m.tab ? "bg-electric-500 text-white" : "bg-slate-100 text-slate-600"
+                              view === 'dashboard' && dashboardTab === m.tab ? "bg-purple-600 text-white" : "bg-slate-800 text-slate-400"
                             )}>
                               {m.icon}
                             </span>
                             <span className="truncate">{m.label}</span>
                           </div>
                           {m.badge && (
-                            <span className="text-[9px] font-black px-1.5 py-0.5 rounded bg-electric-100 text-electric-800 shrink-0">
+                            <span className="text-[9px] font-black px-1.5 py-0.5 rounded bg-purple-900/60 text-purple-300 border border-purple-700/50 shrink-0">
                               {m.badge}
                             </span>
                           )}
@@ -1369,7 +1369,7 @@ function AppContent() {
 
                   {/* Field Tools Direct Launch */}
                   <div>
-                    <div className="text-[10px] font-black uppercase tracking-wider text-neutral-400 px-1 mb-2">
+                    <div className="text-[10px] font-black uppercase tracking-wider text-slate-400 px-1 mb-2">
                       Feltverktøy & Hurtighandlinger
                     </div>
                     <div className="grid grid-cols-2 sm:grid-cols-3 gap-2">
@@ -1378,7 +1378,7 @@ function AppContent() {
                           handleMobileAction('time_registration');
                           setIsMenuOpen(false);
                         }}
-                        className="flex items-center gap-2.5 p-3 rounded-xl text-left text-xs font-bold bg-neutral-50 border border-neutral-200/80 text-neutral-800 hover:bg-slate-50 transition-all cursor-pointer"
+                        className="flex items-center gap-2.5 p-3 rounded-xl text-left text-xs font-bold bg-slate-900/80 border border-slate-800 text-slate-200 hover:bg-slate-800 transition-all cursor-pointer"
                       >
                         <span className="p-1.5 rounded-lg bg-emerald-600 text-white shrink-0">
                           <Clock size={16} />
@@ -1391,7 +1391,7 @@ function AppContent() {
                           handleMobileAction('take_photo');
                           setIsMenuOpen(false);
                         }}
-                        className="flex items-center gap-2.5 p-3 rounded-xl text-left text-xs font-bold bg-neutral-50 border border-neutral-200/80 text-neutral-800 hover:bg-slate-50 transition-all cursor-pointer"
+                        className="flex items-center gap-2.5 p-3 rounded-xl text-left text-xs font-bold bg-slate-900/80 border border-slate-800 text-slate-200 hover:bg-slate-800 transition-all cursor-pointer"
                       >
                         <span className="p-1.5 rounded-lg bg-rose-500 text-white shrink-0">
                           <Camera size={16} />
@@ -1404,7 +1404,7 @@ function AppContent() {
                           handleMobileAction('voice_sja');
                           setIsMenuOpen(false);
                         }}
-                        className="flex items-center gap-2.5 p-3 rounded-xl text-left text-xs font-bold bg-neutral-50 border border-neutral-200/80 text-neutral-800 hover:bg-slate-50 transition-all cursor-pointer"
+                        className="flex items-center gap-2.5 p-3 rounded-xl text-left text-xs font-bold bg-slate-900/80 border border-slate-800 text-slate-200 hover:bg-slate-800 transition-all cursor-pointer"
                       >
                         <span className="p-1.5 rounded-lg bg-amber-500 text-white shrink-0">
                           <Mic size={16} />
@@ -1417,7 +1417,7 @@ function AppContent() {
                           handleMobileAction('start_checklist');
                           setIsMenuOpen(false);
                         }}
-                        className="flex items-center gap-2.5 p-3 rounded-xl text-left text-xs font-bold bg-neutral-50 border border-neutral-200/80 text-neutral-800 hover:bg-slate-50 transition-all cursor-pointer"
+                        className="flex items-center gap-2.5 p-3 rounded-xl text-left text-xs font-bold bg-slate-900/80 border border-slate-800 text-slate-200 hover:bg-slate-800 transition-all cursor-pointer"
                       >
                         <span className="p-1.5 rounded-lg bg-teal-600 text-white shrink-0">
                           <FileCheck size={16} />
@@ -1430,9 +1430,9 @@ function AppContent() {
                           handleMobileAction('vehicle');
                           setIsMenuOpen(false);
                         }}
-                        className="flex items-center gap-2.5 p-3 rounded-xl text-left text-xs font-bold bg-neutral-50 border border-neutral-200/80 text-neutral-800 hover:bg-slate-50 transition-all cursor-pointer"
+                        className="flex items-center gap-2.5 p-3 rounded-xl text-left text-xs font-bold bg-slate-900/80 border border-slate-800 text-slate-200 hover:bg-slate-800 transition-all cursor-pointer"
                       >
-                        <span className="p-1.5 rounded-lg bg-slate-800 text-white shrink-0">
+                        <span className="p-1.5 rounded-lg bg-slate-700 text-white shrink-0">
                           <Car size={16} />
                         </span>
                         <span className="truncate">Kjørebok</span>
@@ -1443,7 +1443,7 @@ function AppContent() {
                           handleMobileAction('inventory');
                           setIsMenuOpen(false);
                         }}
-                        className="flex items-center gap-2.5 p-3 rounded-xl text-left text-xs font-bold bg-neutral-50 border border-neutral-200/80 text-neutral-800 hover:bg-slate-50 transition-all cursor-pointer"
+                        className="flex items-center gap-2.5 p-3 rounded-xl text-left text-xs font-bold bg-slate-900/80 border border-slate-800 text-slate-200 hover:bg-slate-800 transition-all cursor-pointer"
                       >
                         <span className="p-1.5 rounded-lg bg-blue-600 text-white shrink-0">
                           <Package size={16} />
@@ -1454,11 +1454,11 @@ function AppContent() {
                   </div>
 
                   {/* App Views & Admin */}
-                  <div className="pt-2 border-t border-neutral-100 space-y-2">
+                  <div className="pt-2 border-t border-slate-800 space-y-2">
                     <div className="grid grid-cols-2 gap-2">
                       <button 
                         onClick={() => { setView('mobile'); setIsMenuOpen(false); }} 
-                        className={cn("flex items-center gap-2 p-2.5 rounded-xl text-xs font-bold cursor-pointer", view === 'mobile' ? "bg-emerald-50 text-emerald-700" : "text-neutral-600 hover:bg-neutral-50")}
+                        className={cn("flex items-center gap-2 p-2.5 rounded-xl text-xs font-bold cursor-pointer transition-colors border", view === 'mobile' ? "bg-emerald-500/20 text-emerald-300 border-emerald-500/40" : "bg-slate-900/80 text-slate-300 hover:bg-slate-800 border-slate-800 hover:text-white")}
                       >
                         <Smartphone size={15} />
                         <span>Mobil Feltapp</span>
@@ -1466,7 +1466,7 @@ function AppContent() {
 
                       <button 
                         onClick={() => { setView('settings'); setIsMenuOpen(false); }} 
-                        className={cn("flex items-center gap-2 p-2.5 rounded-xl text-xs font-bold cursor-pointer", view === 'settings' ? "bg-emerald-50 text-emerald-700" : "text-neutral-600 hover:bg-neutral-50")}
+                        className={cn("flex items-center gap-2 p-2.5 rounded-xl text-xs font-bold cursor-pointer transition-colors border", view === 'settings' ? "bg-emerald-500/20 text-emerald-300 border-emerald-500/40" : "bg-slate-900/80 text-slate-300 hover:bg-slate-800 border-slate-800 hover:text-white")}
                       >
                         <Settings size={15} />
                         <span>Innstillinger</span>
@@ -1475,7 +1475,7 @@ function AppContent() {
                       {isSuperAdmin && (
                         <button 
                           onClick={() => { setView('super-admin'); setIsMenuOpen(false); }} 
-                          className={cn("col-span-2 flex items-center justify-center gap-2 p-2.5 rounded-xl text-xs font-bold cursor-pointer transition-all", view === 'super-admin' ? "bg-rose-50 text-rose-600 border border-rose-200" : "bg-neutral-900 text-white hover:bg-neutral-800")}
+                          className={cn("col-span-2 flex items-center justify-center gap-2 p-2.5 rounded-xl text-xs font-bold cursor-pointer transition-all border", view === 'super-admin' ? "bg-rose-500/20 text-rose-300 border-rose-500/50" : "bg-slate-900/90 text-white hover:bg-slate-800 border-slate-800")}
                         >
                           <Shield size={15} className="text-rose-400" />
                           <span>SuperAdmin & Autonom Agent</span>
@@ -1485,7 +1485,7 @@ function AppContent() {
 
                     <button 
                       onClick={() => { handleInstallApp(); setIsMenuOpen(false); }} 
-                      className="w-full flex items-center justify-center gap-2 py-3 px-3 bg-emerald-600 text-navy-900 rounded-xl text-xs font-bold shadow-md hover:bg-slate-500 transition-all cursor-pointer"
+                      className="w-full flex items-center justify-center gap-2 py-3 px-3 bg-emerald-600 hover:bg-emerald-500 text-white rounded-xl text-xs font-bold shadow-md transition-all cursor-pointer"
                     >
                       <Smartphone size={16} />
                       <span>{t('nav_download_app', 'Installer som app på mobilen')}</span>
@@ -1493,21 +1493,21 @@ function AppContent() {
                   </div>
 
                   {/* Language Selector */}
-                  <div className="flex items-center justify-between px-4 py-3 bg-neutral-50 rounded-xl border border-neutral-100 mt-1">
+                  <div className="flex items-center justify-between px-4 py-3 bg-slate-900/90 rounded-xl border border-slate-800 mt-1">
                     <div className="flex items-center gap-2">
-                      <Globe size={16} className="text-emerald-600" />
+                      <Globe size={16} className="text-emerald-400" />
                       <select 
                         onChange={(e) => { changeLanguage(e.target.value); setIsMenuOpen(false); }}
                         value={getStandardLang(i18n.language)}
-                        className="text-xs font-black bg-transparent border-none focus:ring-0 cursor-pointer uppercase text-neutral-800"
+                        className="text-xs font-black bg-transparent border-none focus:ring-0 cursor-pointer uppercase text-white"
                       >
-                        <option value="no">Norsk (NO)</option>
-                        <option value="en">English (EN)</option>
-                        <option value="pl">Polski (PL)</option>
-                        <option value="lt">Lietuvių (LT)</option>
+                        <option value="no" className="bg-slate-900 text-white">Norsk (NO)</option>
+                        <option value="en" className="bg-slate-900 text-white">English (EN)</option>
+                        <option value="pl" className="bg-slate-900 text-white">Polski (PL)</option>
+                        <option value="lt" className="bg-slate-900 text-white">Lietuvių (LT)</option>
                       </select>
                     </div>
-                    <span className="text-[10px] font-black uppercase text-emerald-700 bg-emerald-100/60 px-2 py-0.5 rounded">
+                    <span className="text-[10px] font-black uppercase text-emerald-400 bg-emerald-950/60 border border-emerald-800/60 px-2 py-0.5 rounded">
                       {t('export_standard_note', 'Eksport: Norsk')}
                     </span>
                   </div>

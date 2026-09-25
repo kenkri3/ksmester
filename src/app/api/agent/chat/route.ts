@@ -1719,13 +1719,21 @@ export async function POST(req: NextRequest) {
     if (rawImage && typeof rawImage === 'string') {
       try {
         if (rawImage.startsWith('data:')) {
-          const match = rawImage.match(/^data:(image\/[a-zA-Z0-9.-]+);base64,(.+)$/);
-          if (match) {
+          const commaIdx = rawImage.indexOf(',');
+          if (commaIdx !== -1) {
+            const header = rawImage.substring(0, commaIdx);
+            const data = rawImage.substring(commaIdx + 1).replace(/\s+/g, '');
+            const mimeMatch = header.match(/data:([^;]+)/);
             imageAttachment = {
-              mimeType: match[1],
-              data: match[2]
+              mimeType: mimeMatch ? mimeMatch[1] : 'image/jpeg',
+              data
             };
           }
+        } else if (rawImage.length > 200 && !rawImage.startsWith('http') && !rawImage.startsWith('/')) {
+          imageAttachment = {
+            data: rawImage.replace(/\s+/g, ''),
+            mimeType: 'image/jpeg'
+          };
         } else if (rawImage.startsWith('/api/uploads/') || rawImage.startsWith('/uploads/')) {
           const uploadsDir = process.env.UPLOADS_PATH || path.join(process.cwd(), 'uploads');
           const cleanName = rawImage.replace(/^\/api\/uploads\//, '').replace(/^\/uploads\//, '');
@@ -1974,7 +1982,7 @@ Når brukeren ber deg sende en e-post og du har mottakers adresse:
         prompt: safeEnrichedMessage,
         systemInstruction: MASTER_SYSTEM_PROMPT,
         images: imageAttachment ? [{ inlineData: imageAttachment }] : undefined,
-        model: hasImage ? 'gemini-2.5-flash' : undefined,
+        model: hasImage ? 'gemini-3.8-flash' : undefined,
         webSearch: wantsWebSearch,
         gdprProtected: isGdprSensitive,
         companyId: effectiveCompanyId,

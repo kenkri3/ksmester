@@ -3513,76 +3513,76 @@ Svar KUN med gyldig rå JSON (uten markdown \`\`\`json klammer):
           <motion.div 
             initial={{ opacity: 0, scale: 0.95 }}
             animate={{ opacity: 1, scale: 1 }}
-            className="bg-white rounded-[2rem] sm:rounded-[2.5rem] shadow-2xl w-full max-w-4xl max-h-[92vh] sm:max-h-[88vh] flex flex-col overflow-hidden my-auto"
+            className="bg-[#0B0F17] border border-slate-800 text-white rounded-[2rem] sm:rounded-[2.5rem] shadow-2xl w-full max-w-4xl max-h-[92vh] sm:max-h-[88vh] flex flex-col overflow-hidden my-auto"
           >
-            <div className="p-4 sm:p-6 border-b border-neutral-100 flex justify-between items-center shrink-0">
+            <div className="p-4 sm:p-6 border-b border-slate-800 bg-[#131722] flex justify-between items-center shrink-0">
               <div>
-                <h2 className="text-2xl font-bold text-neutral-900 flex items-center gap-2">
+                <h2 className="text-2xl font-bold text-white flex items-center gap-2">
                   <span>Brukeradministrasjon</span>
                   {isCompanyFreeTier(selectedCompany) && (
-                    <span className="px-2.5 py-0.5 rounded-full bg-purple-100 text-purple-800 text-[10px] font-black uppercase">
+                    <span className="px-2.5 py-0.5 rounded-full bg-purple-500/20 text-purple-300 border border-purple-500/30 text-[10px] font-black uppercase">
                       Samarbeidspartner / Kollega (0 kr)
                     </span>
                   )}
                 </h2>
-                <p className="text-sm text-neutral-500">Administrer brukere og tilganger for {selectedCompany.name}</p>
+                <p className="text-sm text-slate-400">Administrer brukere og tilganger for {selectedCompany.name}</p>
               </div>
               <div className="flex items-center gap-2">
                 <button 
                   onClick={() => setIsAddingUser(!isAddingUser)}
-                  className="flex items-center gap-1.5 px-3.5 py-2 bg-purple-100 hover:bg-purple-200 text-purple-900 border border-purple-200 rounded-xl text-xs font-bold transition-all cursor-pointer shadow-2xs"
+                  className="flex items-center gap-1.5 px-3.5 py-2 bg-purple-600/20 hover:bg-purple-600/30 text-purple-300 border border-purple-500/30 rounded-xl text-xs font-bold transition-all cursor-pointer shadow-2xs"
                 >
-                  <UserPlus size={15} className="text-purple-700" />
+                  <UserPlus size={15} className="text-purple-400" />
                   <span>{isAddingUser ? 'Lukk skjema' : '+ Legg til bruker'}</span>
                 </button>
-                <button onClick={() => { setIsUserModalOpen(false); setIsAddingUser(false); }} className="p-2 hover:bg-neutral-100 rounded-full transition-colors cursor-pointer">
-                  <XCircle size={24} className="text-neutral-400" />
+                <button onClick={() => { setIsUserModalOpen(false); setIsAddingUser(false); }} className="p-2 hover:bg-slate-800 rounded-full transition-colors cursor-pointer text-slate-400 hover:text-white">
+                  <XCircle size={24} />
                 </button>
               </div>
             </div>
 
-            <div className="overflow-y-auto flex-1 min-h-0">
+            <div className="overflow-y-auto flex-1 min-h-0 bg-[#0B0F17]">
               {/* Hurtigopprettelse av ny bruker for denne bedriften */}
             {isAddingUser && (
-              <form onSubmit={handleCreateUserForCompany} className="p-6 bg-purple-50/60 border-b border-purple-100 space-y-4">
+              <form onSubmit={handleCreateUserForCompany} className="p-6 bg-slate-900/60 border-b border-slate-800 space-y-4">
                 <div className="flex items-center justify-between">
-                  <h3 className="text-xs font-black uppercase tracking-wider text-purple-900 flex items-center gap-1.5">
+                  <h3 className="text-xs font-black uppercase tracking-wider text-purple-300 flex items-center gap-1.5">
                     <UserPlus size={14} /> Opprett ny bruker for {selectedCompany.name}
                   </h3>
-                  <span className="text-[11px] text-neutral-500">
+                  <span className="text-[11px] text-slate-400">
                     Brukeren opprettes i systemet og kan logge inn umiddelbart.
                   </span>
                 </div>
                 <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-3">
                   <div className="space-y-1">
-                    <label className="text-[10px] font-bold uppercase text-neutral-600">Fullt navn *</label>
+                    <label className="text-[10px] font-bold uppercase text-slate-400">Fullt navn *</label>
                     <input 
                       required
                       type="text"
                       value={newUserName}
                       onChange={(e) => setNewUserName(e.target.value)}
                       placeholder="F.eks. Ola Kollega"
-                      className="w-full px-3 py-2 bg-white border border-neutral-200 rounded-xl text-xs font-semibold outline-none focus:ring-2 focus:ring-purple-500"
+                      className="w-full px-3 py-2 bg-slate-950 border border-slate-800 text-white placeholder:text-slate-500 rounded-xl text-xs font-semibold outline-none focus:ring-2 focus:ring-purple-500"
                     />
                   </div>
                   <div className="space-y-1">
-                    <label className="text-[10px] font-bold uppercase text-neutral-600">E-postadresse (innlogging) *</label>
+                    <label className="text-[10px] font-bold uppercase text-slate-400">E-postadresse (innlogging) *</label>
                     <input 
                       required
                       type="email"
                       value={newUserEmail}
                       onChange={(e) => setNewUserEmail(e.target.value)}
                       placeholder="ola@firma.no"
-                      className="w-full px-3 py-2 bg-white border border-neutral-200 rounded-xl text-xs font-semibold outline-none focus:ring-2 focus:ring-purple-500"
+                      className="w-full px-3 py-2 bg-slate-950 border border-slate-800 text-white placeholder:text-slate-500 rounded-xl text-xs font-semibold outline-none focus:ring-2 focus:ring-purple-500"
                     />
                   </div>
                   <div className="space-y-1">
                     <div className="flex justify-between items-center">
-                      <label className="text-[10px] font-bold uppercase text-neutral-600">Passord *</label>
+                      <label className="text-[10px] font-bold uppercase text-slate-400">Passord *</label>
                       <button 
                         type="button" 
                         onClick={() => setNewUserPassword('VM-' + Math.random().toString(36).substring(2, 7) + '26!')}
-                        className="text-[10px] text-purple-700 hover:underline font-bold cursor-pointer"
+                        className="text-[10px] text-purple-400 hover:underline font-bold cursor-pointer"
                       >
                         Generer nytt
                       </button>
@@ -3592,15 +3592,15 @@ Svar KUN med gyldig rå JSON (uten markdown \`\`\`json klammer):
                       type="text"
                       value={newUserPassword}
                       onChange={(e) => setNewUserPassword(e.target.value)}
-                      className="w-full px-3 py-2 bg-white border border-neutral-200 rounded-xl text-xs font-mono font-bold outline-none focus:ring-2 focus:ring-purple-500"
+                      className="w-full px-3 py-2 bg-slate-950 border border-slate-800 text-white placeholder:text-slate-500 rounded-xl text-xs font-mono font-bold outline-none focus:ring-2 focus:ring-purple-500"
                     />
                   </div>
                   <div className="space-y-1">
-                    <label className="text-[10px] font-bold uppercase text-neutral-600">Rolle</label>
+                    <label className="text-[10px] font-bold uppercase text-slate-400">Rolle</label>
                     <select
                       value={newUserRole}
                       onChange={(e) => setNewUserRole(e.target.value as any)}
-                      className="w-full px-3 py-2 bg-white border border-neutral-200 rounded-xl text-xs font-bold outline-none focus:ring-2 focus:ring-purple-500"
+                      className="w-full px-3 py-2 bg-slate-950 border border-slate-800 text-white rounded-xl text-xs font-bold outline-none focus:ring-2 focus:ring-purple-500"
                     >
                       <option value="superadmin">👑 SuperAdmin / Systemeier (Full plattformeiertilgang)</option>
                       <option value="admin">Administrator (Full tilgang)</option>
@@ -3613,14 +3613,14 @@ Svar KUN med gyldig rå JSON (uten markdown \`\`\`json klammer):
                   <button 
                     type="button"
                     onClick={() => setIsAddingUser(false)}
-                    className="px-4 py-2 bg-neutral-200 text-neutral-700 rounded-xl text-xs font-bold hover:bg-neutral-300 transition-all cursor-pointer"
+                    className="px-4 py-2 bg-slate-800 text-slate-300 rounded-xl text-xs font-bold hover:bg-slate-700 hover:text-white border border-slate-700 transition-all cursor-pointer"
                   >
                     Avbryt
                   </button>
                   <button 
                     type="submit"
                     disabled={isCreatingUser}
-                    className="px-5 py-2 bg-purple-700 hover:bg-purple-800 text-white rounded-xl text-xs font-bold transition-all shadow-sm cursor-pointer disabled:opacity-50"
+                    className="px-5 py-2 bg-purple-600 hover:bg-purple-500 text-white rounded-xl text-xs font-bold transition-all shadow-sm cursor-pointer disabled:opacity-50"
                   >
                     {isCreatingUser ? 'Oppretter...' : 'Opprett bruker nå'}
                   </button>
@@ -3630,7 +3630,7 @@ Svar KUN med gyldig rå JSON (uten markdown \`\`\`json klammer):
             
             <div className="p-4 sm:p-8">
               {companyUsers.length === 0 ? (
-                <div className="text-center py-8 text-neutral-400">
+                <div className="text-center py-8 text-slate-500">
                   <Users size={32} className="mx-auto mb-2 opacity-50" />
                   <p className="text-sm font-semibold">Ingen brukere registrert for denne bedriften ennå.</p>
                   <p className="text-xs mt-1">Klikk på "+ Legg til bruker" ovenfor for å opprette en bruker.</p>
@@ -3638,24 +3638,24 @@ Svar KUN med gyldig rå JSON (uten markdown \`\`\`json klammer):
               ) : (
                 <table className="w-full text-left">
                   <thead>
-                    <tr className="border-b border-neutral-100">
-                      <th className="pb-4 text-xs font-black uppercase tracking-widest text-neutral-400">Navn</th>
-                      <th className="pb-4 text-xs font-black uppercase tracking-widest text-neutral-400">Rolle</th>
-                      <th className="pb-4 text-xs font-black uppercase tracking-widest text-neutral-400">Handlinger</th>
+                    <tr className="border-b border-slate-800">
+                      <th className="pb-4 text-xs font-black uppercase tracking-widest text-slate-400">Navn</th>
+                      <th className="pb-4 text-xs font-black uppercase tracking-widest text-slate-400">Rolle</th>
+                      <th className="pb-4 text-xs font-black uppercase tracking-widest text-slate-400">Handlinger</th>
                     </tr>
                   </thead>
-                  <tbody className="divide-y divide-neutral-50">
+                  <tbody className="divide-y divide-slate-800">
                     {companyUsers.map(u => (
                       <tr key={u.id}>
                         <td className="py-4">
-                          <div className="font-bold">{u.displayName}</div>
-                          <div className="text-xs text-neutral-400">{u.email}</div>
+                          <div className="font-bold text-white">{u.displayName}</div>
+                          <div className="text-xs text-slate-400">{u.email}</div>
                         </td>
                         <td className="py-4">
                           <select 
                             value={u.role}
                             onChange={(e) => handleUpdateUserRole(u.id, e.target.value)}
-                            className="text-xs font-bold bg-neutral-50 border border-neutral-200 rounded-lg px-2 py-1 outline-none"
+                            className="text-xs font-bold bg-slate-950 border border-slate-800 text-white rounded-lg px-2 py-1 outline-none"
                           >
                             <option value="superadmin">👑 SuperAdmin</option>
                             <option value="admin">Admin</option>
@@ -3678,14 +3678,14 @@ Svar KUN med gyldig rå JSON (uten markdown \`\`\`json klammer):
                                 setIsUserModalOpen(false);
                                 window.dispatchEvent(new CustomEvent('navigate_view', { detail: { view: 'dashboard' } }));
                               }}
-                              className="flex items-center gap-1 text-[10px] font-black uppercase tracking-widest text-blue-600 hover:text-blue-700 hover:underline cursor-pointer"
+                              className="flex items-center gap-1 text-[10px] font-black uppercase tracking-widest text-blue-400 hover:text-blue-300 hover:underline cursor-pointer"
                             >
                               <ExternalLink size={12} />
                               Logg inn som
                             </button>
                             <button 
                               onClick={() => handleDeleteUser(u.id)}
-                              className="p-2 text-neutral-400 hover:text-red-600 hover:bg-red-50 rounded-lg transition-all"
+                              className="p-2 text-slate-400 hover:text-red-400 hover:bg-red-500/10 rounded-lg transition-all cursor-pointer"
                             >
                               <Trash2 size={12} />
                             </button>
@@ -3759,62 +3759,62 @@ Svar KUN med gyldig rå JSON (uten markdown \`\`\`json klammer):
 
       {/* Response Modal */}
       {isResponseModalOpen && selectedLead && (
-        <div className="fixed inset-0 z-[100] flex items-center justify-center p-4 bg-neutral-900/60 backdrop-blur-sm">
+        <div className="fixed inset-0 z-[100] flex items-center justify-center p-4 bg-black/80 backdrop-blur-md">
           <motion.div
             initial={{ opacity: 0, scale: 0.9, y: 20 }}
             animate={{ opacity: 1, scale: 1, y: 0 }}
-            className="bg-white w-full max-w-2xl rounded-[3rem] shadow-2xl overflow-hidden max-h-[90vh] flex flex-col"
+            className="bg-[#0B0F17] border border-slate-800 text-white w-full max-w-2xl rounded-[3rem] shadow-2xl overflow-hidden max-h-[90vh] flex flex-col"
           >
             <div className="p-8 sm:p-10 overflow-y-auto">
               <div className="flex items-center justify-between mb-6">
                 <div>
-                  <h2 className="text-2xl sm:text-3xl font-black text-neutral-900">Svar på henvendelse</h2>
-                  <p className="text-neutral-500 text-sm">Sender svar til {selectedLead.name || selectedLead.company} ({selectedLead.email})</p>
+                  <h2 className="text-2xl sm:text-3xl font-black text-white">Svar på henvendelse</h2>
+                  <p className="text-slate-400 text-sm">Sender svar til {selectedLead.name || selectedLead.company} ({selectedLead.email})</p>
                 </div>
-                <button onClick={() => setIsResponseModalOpen(false)} className="p-3 bg-neutral-100 text-neutral-600 rounded-2xl hover:bg-neutral-200 transition-all cursor-pointer">
+                <button onClick={() => setIsResponseModalOpen(false)} className="p-3 bg-slate-800 text-slate-400 hover:text-white rounded-2xl hover:bg-slate-700 transition-all cursor-pointer">
                   <X size={20} />
                 </button>
               </div>
 
               <div className="space-y-6">
                 {/* Lead Summary Info Card */}
-                <div className="p-5 bg-neutral-50 rounded-[2rem] border border-neutral-100 space-y-3">
+                <div className="p-5 bg-[#131722] rounded-[2rem] border border-slate-800 space-y-3">
                   <div className="flex items-center justify-between">
-                    <p className="text-xs font-black uppercase text-neutral-400">Henvendelse & Behov</p>
+                    <p className="text-xs font-black uppercase text-slate-400">Henvendelse & Behov</p>
                     {selectedLead.phone && (
-                      <span className="text-xs text-neutral-500">Tlf: <strong className="text-neutral-700">{selectedLead.phone}</strong></span>
+                      <span className="text-xs text-slate-400">Tlf: <strong className="text-white">{selectedLead.phone}</strong></span>
                     )}
                   </div>
                   
                   {selectedLead.message ? (
-                    <p className="text-sm text-neutral-700 italic bg-white p-3.5 rounded-xl border border-neutral-200/60">
+                    <p className="text-sm text-slate-200 italic bg-slate-950 p-3.5 rounded-xl border border-slate-800">
                       "{selectedLead.message}"
                     </p>
                   ) : null}
 
                   <div className="grid grid-cols-2 sm:grid-cols-4 gap-2 pt-1">
                     {selectedLead.company && (
-                      <div className="bg-white p-2.5 rounded-xl border border-neutral-100">
-                        <div className="text-[10px] uppercase font-bold text-neutral-400">Firma</div>
-                        <div className="text-xs font-bold text-neutral-800 truncate">{selectedLead.company}</div>
+                      <div className="bg-slate-950 p-2.5 rounded-xl border border-slate-800">
+                        <div className="text-[10px] uppercase font-bold text-slate-400">Firma</div>
+                        <div className="text-xs font-bold text-white truncate">{selectedLead.company}</div>
                       </div>
                     )}
                     {selectedLead.trade && (
-                      <div className="bg-white p-2.5 rounded-xl border border-neutral-100">
-                        <div className="text-[10px] uppercase font-bold text-neutral-400">Fagområde</div>
-                        <div className="text-xs font-bold text-neutral-800 truncate">{selectedLead.trade}</div>
+                      <div className="bg-slate-950 p-2.5 rounded-xl border border-slate-800">
+                        <div className="text-[10px] uppercase font-bold text-slate-400">Fagområde</div>
+                        <div className="text-xs font-bold text-white truncate">{selectedLead.trade}</div>
                       </div>
                     )}
                     {selectedLead.plan && (
-                      <div className="bg-white p-2.5 rounded-xl border border-neutral-100">
-                        <div className="text-[10px] uppercase font-bold text-neutral-400">Ønsket pakke</div>
-                        <div className="text-xs font-bold text-purple-700 truncate">{selectedLead.plan}</div>
+                      <div className="bg-slate-950 p-2.5 rounded-xl border border-slate-800">
+                        <div className="text-[10px] uppercase font-bold text-slate-400">Ønsket pakke</div>
+                        <div className="text-xs font-bold text-purple-400 truncate">{selectedLead.plan}</div>
                       </div>
                     )}
                     {selectedLead.workers && (
-                      <div className="bg-white p-2.5 rounded-xl border border-neutral-100">
-                        <div className="text-[10px] uppercase font-bold text-neutral-400">Ansatte</div>
-                        <div className="text-xs font-bold text-neutral-800">{selectedLead.workers}</div>
+                      <div className="bg-slate-950 p-2.5 rounded-xl border border-slate-800">
+                        <div className="text-[10px] uppercase font-bold text-slate-400">Ansatte</div>
+                        <div className="text-xs font-bold text-white">{selectedLead.workers}</div>
                       </div>
                     )}
                   </div>
@@ -3823,14 +3823,14 @@ Svar KUN med gyldig rå JSON (uten markdown \`\`\`json klammer):
                 {/* Svartekst-felt */}
                 <div>
                   <div className="flex items-center justify-between mb-2">
-                    <label className="text-xs font-black uppercase text-neutral-600 flex items-center gap-1.5">
+                    <label className="text-xs font-black uppercase text-slate-300 flex items-center gap-1.5">
                       <Mail size={14} /> Din svarmelding
                     </label>
                     <button
                       type="button"
                       onClick={() => handleAnalyzeLead(selectedLead)}
                       disabled={isAnalyzingLead === selectedLead.id}
-                      className="text-xs font-bold text-purple-600 hover:text-purple-700 flex items-center gap-1 cursor-pointer"
+                      className="text-xs font-bold text-purple-400 hover:text-purple-300 flex items-center gap-1 cursor-pointer"
                     >
                       <Sparkles size={14} />
                       {isAnalyzingLead === selectedLead.id ? 'Genererer AI-svar...' : 'Generer AI-forslag'}
@@ -3841,7 +3841,7 @@ Svar KUN med gyldig rå JSON (uten markdown \`\`\`json klammer):
                     value={replyMessage}
                     onChange={(e) => setReplyMessage(e.target.value)}
                     placeholder="Skriv svar her..."
-                    className="w-full p-4 bg-white border border-neutral-200 rounded-2xl text-sm text-neutral-800 outline-none focus:ring-2 focus:ring-purple-500 transition-all resize-none shadow-inner"
+                    className="w-full p-4 bg-slate-950 border border-slate-800 rounded-2xl text-sm text-white placeholder:text-slate-500 outline-none focus:ring-2 focus:ring-purple-500 transition-all resize-none shadow-inner"
                   />
                 </div>
 
@@ -3849,7 +3849,7 @@ Svar KUN med gyldig rå JSON (uten markdown \`\`\`json klammer):
                   <button
                     type="button"
                     onClick={() => setIsResponseModalOpen(false)}
-                    className="px-5 py-3.5 bg-neutral-100 text-neutral-700 rounded-2xl font-bold hover:bg-neutral-200 transition-all text-sm cursor-pointer"
+                    className="px-5 py-3.5 bg-slate-800 text-slate-300 hover:text-white rounded-2xl font-bold hover:bg-slate-700 border border-slate-700 transition-all text-sm cursor-pointer"
                   >
                     Avbryt
                   </button>
@@ -3859,7 +3859,7 @@ Svar KUN med gyldig rå JSON (uten markdown \`\`\`json klammer):
                       setIsResponseModalOpen(false);
                       handleOpenConvertModal(selectedLead);
                     }}
-                    className="px-5 py-3.5 bg-emerald-600 hover:bg-emerald-700 text-white rounded-2xl font-bold flex items-center justify-center gap-2 text-sm shadow-md shadow-emerald-600/20 cursor-pointer transition-all"
+                    className="px-5 py-3.5 bg-emerald-600 hover:bg-emerald-500 text-white rounded-2xl font-bold flex items-center justify-center gap-2 text-sm shadow-md shadow-emerald-950/50 cursor-pointer transition-all"
                     title="Gjør om dette leadet direkte til en bedriftskunde"
                   >
                     <UserPlus size={16} />
@@ -3869,7 +3869,7 @@ Svar KUN med gyldig rå JSON (uten markdown \`\`\`json klammer):
                     type="button"
                     onClick={handleSendReplyEmail}
                     disabled={isSendingReply || !replyMessage.trim()}
-                    className="flex-1 py-3.5 bg-neutral-900 text-white rounded-2xl font-bold hover:bg-neutral-800 transition-all flex items-center justify-center gap-2 text-sm disabled:opacity-50 cursor-pointer shadow-md"
+                    className="flex-1 py-3.5 bg-purple-600 hover:bg-purple-500 text-white rounded-2xl font-bold transition-all flex items-center justify-center gap-2 text-sm disabled:opacity-50 cursor-pointer shadow-md shadow-purple-950/50"
                   >
                     {isSendingReply ? (
                       <div className="w-4 h-4 border-2 border-white border-t-transparent rounded-full animate-spin" />
@@ -3891,52 +3891,52 @@ Svar KUN med gyldig rå JSON (uten markdown \`\`\`json klammer):
           <motion.div 
             initial={{ opacity: 0, scale: 0.95 }}
             animate={{ opacity: 1, scale: 1 }}
-            className="bg-white rounded-[2rem] sm:rounded-[2.5rem] shadow-2xl w-full max-w-2xl max-h-[92vh] sm:max-h-[88vh] flex flex-col overflow-hidden my-auto"
+            className="bg-[#0B0F17] border border-slate-800 text-white rounded-[2rem] sm:rounded-[2.5rem] shadow-2xl w-full max-w-2xl max-h-[92vh] sm:max-h-[88vh] flex flex-col overflow-hidden my-auto"
           >
-            <div className="p-4 sm:p-6 border-b border-neutral-100 flex justify-between items-center shrink-0">
-              <h2 className="text-xl sm:text-2xl font-bold text-neutral-900">Send skreddersydd tilbud</h2>
-              <button onClick={() => setIsOfferModalOpen(false)} className="p-2 hover:bg-neutral-100 rounded-full transition-colors cursor-pointer">
-                <XCircle size={24} className="text-neutral-400" />
+            <div className="p-4 sm:p-6 border-b border-slate-800 bg-[#131722] flex justify-between items-center shrink-0">
+              <h2 className="text-xl sm:text-2xl font-bold text-white">Send skreddersydd tilbud</h2>
+              <button onClick={() => setIsOfferModalOpen(false)} className="p-2 hover:bg-slate-800 rounded-full transition-colors cursor-pointer text-slate-400 hover:text-white">
+                <XCircle size={24} />
               </button>
             </div>
             
-            <form onSubmit={handleCreateOffer} className="p-4 sm:p-8 space-y-5 overflow-y-auto flex-1 min-h-0">
+            <form onSubmit={handleCreateOffer} className="p-4 sm:p-8 space-y-5 overflow-y-auto flex-1 min-h-0 bg-[#0B0F17]">
               <div className="grid grid-cols-2 gap-4">
                 <div className="space-y-2">
-                  <label className="text-[10px] font-black uppercase tracking-widest text-neutral-400 ml-1">Mottaker Navn</label>
+                  <label className="text-[10px] font-black uppercase tracking-widest text-slate-400 ml-1">Mottaker Navn</label>
                   <input 
                     required
                     type="text"
                     value={offerForm.recipientName}
                     onChange={(e) => setOfferForm({ ...offerForm, recipientName: e.target.value })}
-                    className="w-full px-4 py-3 bg-neutral-50 border border-neutral-200 rounded-2xl focus:ring-2 focus:ring-blue-500 outline-none transition-all"
+                    className="w-full px-4 py-3 bg-slate-950 border border-slate-800 rounded-2xl text-white placeholder:text-slate-500 focus:ring-2 focus:ring-blue-500 outline-none transition-all"
                   />
                 </div>
                 <div className="space-y-2">
-                  <label className="text-[10px] font-black uppercase tracking-widest text-neutral-400 ml-1">Mottaker E-post</label>
+                  <label className="text-[10px] font-black uppercase tracking-widest text-slate-400 ml-1">Mottaker E-post</label>
                   <input 
                     required
                     type="email"
                     value={offerForm.recipientEmail}
                     onChange={(e) => setOfferForm({ ...offerForm, recipientEmail: e.target.value })}
-                    className="w-full px-4 py-3 bg-neutral-50 border border-neutral-200 rounded-2xl focus:ring-2 focus:ring-blue-500 outline-none transition-all"
+                    className="w-full px-4 py-3 bg-slate-950 border border-slate-800 rounded-2xl text-white placeholder:text-slate-500 focus:ring-2 focus:ring-blue-500 outline-none transition-all"
                   />
                 </div>
               </div>
 
               <div className="space-y-2">
-                <label className="text-[10px] font-black uppercase tracking-widest text-neutral-400 ml-1">Bedriftsnavn</label>
+                <label className="text-[10px] font-black uppercase tracking-widest text-slate-400 ml-1">Bedriftsnavn</label>
                 <input 
                   required
                   type="text"
                   value={offerForm.companyName}
                   onChange={(e) => setOfferForm({ ...offerForm, companyName: e.target.value })}
-                  className="w-full px-4 py-3 bg-neutral-50 border border-neutral-200 rounded-2xl focus:ring-2 focus:ring-blue-500 outline-none transition-all"
+                  className="w-full px-4 py-3 bg-slate-950 border border-slate-800 rounded-2xl text-white placeholder:text-slate-500 focus:ring-2 focus:ring-blue-500 outline-none transition-all"
                 />
               </div>
 
               <div className="space-y-2">
-                <label className="text-[10px] font-black uppercase tracking-widest text-neutral-400 ml-1">Velg moduler</label>
+                <label className="text-[10px] font-black uppercase tracking-widest text-slate-400 ml-1">Velg moduler</label>
                 <div className="grid grid-cols-2 gap-2">
                   {allModules.map(m => (
                     <button
@@ -3949,8 +3949,8 @@ Svar KUN med gyldig rå JSON (uten markdown \`\`\`json klammer):
                         setOfferForm({ ...offerForm, modules: newModules });
                       }}
                       className={cn(
-                        "flex items-center gap-2 p-3 rounded-xl border transition-all text-xs font-bold",
-                        offerForm.modules.includes(m.id) ? "bg-blue-50 border-blue-200 text-blue-700" : "bg-white border-neutral-100 text-neutral-400"
+                        "flex items-center gap-2 p-3 rounded-xl border transition-all text-xs font-bold cursor-pointer",
+                        offerForm.modules.includes(m.id) ? "bg-blue-600/20 border-blue-500/30 text-blue-300" : "bg-slate-950 border-slate-800 text-slate-400 hover:text-white"
                       )}
                     >
                       {m.icon}
@@ -3962,39 +3962,39 @@ Svar KUN med gyldig rå JSON (uten markdown \`\`\`json klammer):
 
               <div className="grid grid-cols-2 gap-4">
                 <div className="space-y-2">
-                  <label className="text-[10px] font-black uppercase tracking-widest text-neutral-400 ml-1">Prøveperiode (dager)</label>
+                  <label className="text-[10px] font-black uppercase tracking-widest text-slate-400 ml-1">Prøveperiode (dager)</label>
                   <input 
                     type="number"
                     value={offerForm.trialDays}
                     onChange={(e) => setOfferForm({ ...offerForm, trialDays: parseInt(e.target.value) })}
-                    className="w-full px-4 py-3 bg-neutral-50 border border-neutral-200 rounded-2xl focus:ring-2 focus:ring-blue-500 outline-none transition-all"
+                    className="w-full px-4 py-3 bg-slate-950 border border-slate-800 rounded-2xl text-white placeholder:text-slate-500 focus:ring-2 focus:ring-blue-500 outline-none transition-all"
                   />
                 </div>
                 <div className="space-y-2">
-                  <label className="text-[10px] font-black uppercase tracking-widest text-neutral-400 ml-1">Skreddersydd pris (NOK/mnd)</label>
+                  <label className="text-[10px] font-black uppercase tracking-widest text-slate-400 ml-1">Skreddersydd pris (NOK/mnd)</label>
                   <input 
                     type="number"
                     value={offerForm.customPrice}
                     onChange={(e) => setOfferForm({ ...offerForm, customPrice: parseInt(e.target.value) })}
-                    className="w-full px-4 py-3 bg-neutral-50 border border-neutral-200 rounded-2xl focus:ring-2 focus:ring-blue-500 outline-none transition-all"
+                    className="w-full px-4 py-3 bg-slate-950 border border-slate-800 rounded-2xl text-white placeholder:text-slate-500 focus:ring-2 focus:ring-blue-500 outline-none transition-all"
                   />
                 </div>
               </div>
 
               <div className="space-y-2">
-                <label className="text-[10px] font-black uppercase tracking-widest text-neutral-400 ml-1">Personlig melding</label>
+                <label className="text-[10px] font-black uppercase tracking-widest text-slate-400 ml-1">Personlig melding</label>
                 <textarea 
                   rows={4}
                   value={offerForm.message}
                   onChange={(e) => setOfferForm({ ...offerForm, message: e.target.value })}
-                  className="w-full px-4 py-3 bg-neutral-50 border border-neutral-200 rounded-2xl focus:ring-2 focus:ring-blue-500 outline-none transition-all resize-none"
+                  className="w-full px-4 py-3 bg-slate-950 border border-slate-800 rounded-2xl text-white placeholder:text-slate-500 focus:ring-2 focus:ring-blue-500 outline-none transition-all resize-none"
                   placeholder="Skriv en hyggelig melding til kunden..."
                 />
               </div>
 
               <button 
                 type="submit"
-                className="w-full bg-blue-600 text-white py-4 rounded-2xl font-bold hover:bg-blue-500 transition-all shadow-lg shadow-blue-100"
+                className="w-full bg-blue-600 hover:bg-blue-500 text-white py-4 rounded-2xl font-bold transition-all shadow-lg shadow-blue-950/50 cursor-pointer"
               >
                 Generer og send tilbud
               </button>
@@ -4009,38 +4009,38 @@ Svar KUN med gyldig rå JSON (uten markdown \`\`\`json klammer):
           <motion.div 
             initial={{ opacity: 0, scale: 0.95 }}
             animate={{ opacity: 1, scale: 1 }}
-            className="bg-white rounded-[2rem] sm:rounded-[2.5rem] shadow-2xl w-full max-w-2xl max-h-[92vh] sm:max-h-[88vh] flex flex-col overflow-hidden my-auto"
+            className="bg-[#0B0F17] border border-slate-800 text-white rounded-[2rem] sm:rounded-[2.5rem] shadow-2xl w-full max-w-2xl max-h-[92vh] sm:max-h-[88vh] flex flex-col overflow-hidden my-auto"
           >
-            <div className="p-4 sm:p-6 border-b border-neutral-100 flex justify-between items-center shrink-0">
+            <div className="p-4 sm:p-6 border-b border-slate-800 bg-[#131722] flex justify-between items-center shrink-0">
               <div>
-                <h2 className="text-xl sm:text-2xl font-bold text-neutral-900">{editingTemplateId ? 'Rediger mal' : 'Opprett ny mal'}</h2>
-                <p className="text-xs text-neutral-500">Maler for e-post og varslinger til kunder og henvendelser</p>
+                <h2 className="text-xl sm:text-2xl font-bold text-white">{editingTemplateId ? 'Rediger mal' : 'Opprett ny mal'}</h2>
+                <p className="text-xs text-slate-400">Maler for e-post og varslinger til kunder og henvendelser</p>
               </div>
-              <button onClick={() => { setIsTemplateModalOpen(false); setEditingTemplateId(null); }} className="p-2 hover:bg-neutral-100 rounded-full transition-colors cursor-pointer">
-                <XCircle size={24} className="text-neutral-400" />
+              <button onClick={() => { setIsTemplateModalOpen(false); setEditingTemplateId(null); }} className="p-2 hover:bg-slate-800 rounded-full transition-colors cursor-pointer text-slate-400 hover:text-white">
+                <XCircle size={24} />
               </button>
             </div>
             
-            <form onSubmit={handleCreateTemplate} className="p-4 sm:p-8 space-y-5 overflow-y-auto flex-1 min-h-0">
+            <form onSubmit={handleCreateTemplate} className="p-4 sm:p-8 space-y-5 overflow-y-auto flex-1 min-h-0 bg-[#0B0F17]">
               <div className="space-y-2">
-                <label className="text-[10px] font-black uppercase tracking-widest text-neutral-400 ml-1">Navn på mal</label>
+                <label className="text-[10px] font-black uppercase tracking-widest text-slate-400 ml-1">Navn på mal</label>
                 <input 
                   required
                   type="text"
                   value={templateForm.name}
                   onChange={(e) => setTemplateForm({ ...templateForm, name: e.target.value })}
-                  className="w-full px-4 py-3 bg-neutral-50 border border-neutral-200 rounded-2xl focus:ring-2 focus:ring-blue-500 outline-none transition-all"
+                  className="w-full px-4 py-3 bg-slate-950 border border-slate-800 rounded-2xl text-white placeholder:text-slate-500 focus:ring-2 focus:ring-blue-500 outline-none transition-all"
                   placeholder="F.eks. Velkomst-epost"
                 />
               </div>
 
               <div className="grid grid-cols-2 gap-4">
                 <div className="space-y-2">
-                  <label className="text-[10px] font-black uppercase tracking-widest text-neutral-400 ml-1">Type</label>
+                  <label className="text-[10px] font-black uppercase tracking-widest text-slate-400 ml-1">Type</label>
                   <select 
                     value={templateForm.type}
                     onChange={(e) => setTemplateForm({ ...templateForm, type: e.target.value as any })}
-                    className="w-full px-4 py-3 bg-neutral-50 border border-neutral-200 rounded-2xl focus:ring-2 focus:ring-blue-500 outline-none transition-all"
+                    className="w-full px-4 py-3 bg-slate-950 border border-slate-800 rounded-2xl text-white focus:ring-2 focus:ring-blue-500 outline-none transition-all"
                   >
                     <option value="email">E-post</option>
                     <option value="teams">Microsoft Teams</option>
@@ -4048,11 +4048,11 @@ Svar KUN med gyldig rå JSON (uten markdown \`\`\`json klammer):
                   </select>
                 </div>
                 <div className="space-y-2">
-                  <label className="text-[10px] font-black uppercase tracking-widest text-neutral-400 ml-1">Kategori</label>
+                  <label className="text-[10px] font-black uppercase tracking-widest text-slate-400 ml-1">Kategori</label>
                   <select 
                     value={templateForm.category}
                     onChange={(e) => setTemplateForm({ ...templateForm, category: e.target.value })}
-                    className="w-full px-4 py-3 bg-neutral-50 border border-neutral-200 rounded-2xl focus:ring-2 focus:ring-blue-500 outline-none transition-all"
+                    className="w-full px-4 py-3 bg-slate-950 border border-slate-800 rounded-2xl text-white focus:ring-2 focus:ring-blue-500 outline-none transition-all"
                   >
                     <option value="offer">Tilbud</option>
                     <option value="onboarding">Onboarding</option>
@@ -4063,31 +4063,31 @@ Svar KUN med gyldig rå JSON (uten markdown \`\`\`json klammer):
               </div>
 
               <div className="space-y-2">
-                <label className="text-[10px] font-black uppercase tracking-widest text-neutral-400 ml-1">Emnefelt</label>
+                <label className="text-[10px] font-black uppercase tracking-widest text-slate-400 ml-1">Emnefelt</label>
                 <input 
                   required
                   type="text"
                   value={templateForm.subject}
                   onChange={(e) => setTemplateForm({ ...templateForm, subject: e.target.value })}
-                  className="w-full px-4 py-3 bg-neutral-50 border border-neutral-200 rounded-2xl focus:ring-2 focus:ring-blue-500 outline-none transition-all"
+                  className="w-full px-4 py-3 bg-slate-950 border border-slate-800 rounded-2xl text-white placeholder:text-slate-500 focus:ring-2 focus:ring-blue-500 outline-none transition-all"
                 />
               </div>
 
               <div className="space-y-2">
-                <label className="text-[10px] font-black uppercase tracking-widest text-neutral-400 ml-1">Innhold</label>
+                <label className="text-[10px] font-black uppercase tracking-widest text-slate-400 ml-1">Innhold</label>
                 <textarea 
                   required
                   rows={8}
                   value={templateForm.body}
                   onChange={(e) => setTemplateForm({ ...templateForm, body: e.target.value })}
-                  className="w-full px-4 py-3 bg-neutral-50 border border-neutral-200 rounded-2xl focus:ring-2 focus:ring-blue-500 outline-none transition-all resize-none"
+                  className="w-full px-4 py-3 bg-slate-950 border border-slate-800 rounded-2xl text-white placeholder:text-slate-500 focus:ring-2 focus:ring-blue-500 outline-none transition-all resize-none"
                   placeholder="Bruk {{name}}, {{company}} etc. for variabler..."
                 />
               </div>
 
               <button 
                 type="submit"
-                className="w-full bg-neutral-900 text-white py-4 rounded-2xl font-bold hover:bg-neutral-800 transition-all shadow-lg cursor-pointer"
+                className="w-full bg-slate-800 hover:bg-slate-700 text-white border border-slate-700 py-4 rounded-2xl font-bold transition-all shadow-lg cursor-pointer"
               >
                 {editingTemplateId ? 'Oppdater mal' : 'Lagre mal'}
               </button>
@@ -4475,48 +4475,48 @@ Rolle: SuperAdmin (Full plattformeiertilgang, 500M tokens/mnd, alle moduler)`;
 
   if (createdData) {
     return (
-      <div className="fixed inset-0 z-[100] flex items-center justify-center p-4 bg-neutral-900/60 backdrop-blur-sm">
+      <div className="fixed inset-0 z-[100] flex items-center justify-center p-4 bg-black/80 backdrop-blur-md">
         <motion.div 
           initial={{ opacity: 0, scale: 0.95 }}
           animate={{ opacity: 1, scale: 1 }}
-          className="bg-white rounded-[2.5rem] shadow-2xl w-full max-w-lg overflow-hidden border border-amber-500/30"
+          className="bg-[#0B0F17] text-white rounded-[2.5rem] shadow-2xl w-full max-w-lg overflow-hidden border border-amber-500/30"
         >
           <div className="p-8 text-center space-y-4">
             <div className="w-16 h-16 bg-gradient-to-br from-amber-400 to-amber-600 text-white rounded-3xl flex items-center justify-center mx-auto shadow-lg shadow-amber-500/30">
               <Crown size={36} />
             </div>
             <div>
-              <h2 className="text-2xl font-black text-neutral-900">
+              <h2 className="text-2xl font-black text-white">
                 SuperAdmin-konto er klar! 👑
               </h2>
-              <p className="text-xs text-neutral-600 mt-1 max-w-sm mx-auto">
+              <p className="text-xs text-slate-300 mt-1 max-w-sm mx-auto">
                 <strong>{createdData.user.email}</strong> har nå nøyaktig samme rettigheter som deg (full plattformeier, 500M tokens/mnd, alle 20+ fagmoduler).
               </p>
             </div>
 
-            <div className="bg-amber-50/70 border border-amber-200/80 rounded-2xl p-5 text-left space-y-2.5 font-mono text-xs text-neutral-800">
-              <div className="flex justify-between items-center pb-2 border-b border-amber-200/60">
-                <span className="font-sans font-bold text-[10px] uppercase text-amber-800 flex items-center gap-1">
-                  <Crown size={12} className="text-amber-600" /> SuperAdmin Legitimering
+            <div className="bg-[#131722] border border-slate-800 rounded-2xl p-5 text-left space-y-2.5 font-mono text-xs text-slate-200">
+              <div className="flex justify-between items-center pb-2 border-b border-slate-800">
+                <span className="font-sans font-bold text-[10px] uppercase text-amber-400 flex items-center gap-1">
+                  <Crown size={12} className="text-amber-400" /> SuperAdmin Legitimering
                 </span>
-                <span className="font-sans text-[10px] bg-amber-200/70 text-amber-900 px-2.5 py-0.5 rounded-full font-black">
+                <span className="font-sans text-[10px] bg-amber-500/20 text-amber-300 border border-amber-500/30 px-2.5 py-0.5 rounded-full font-black">
                   {createdData.emailSent ? 'Velkomst-e-post sendt ✓' : 'Klar for overlevering'}
                 </span>
               </div>
-              <div><strong className="font-sans text-neutral-500 text-[11px]">Nettadresse:</strong> https://vikingmester.no</div>
-              <div><strong className="font-sans text-neutral-500 text-[11px]">Brukernavn:</strong> {createdData.user.email}</div>
+              <div><strong className="font-sans text-slate-400 text-[11px]">Nettadresse:</strong> https://vikingmester.no</div>
+              <div><strong className="font-sans text-slate-400 text-[11px]">Brukernavn:</strong> {createdData.user.email}</div>
               <div className="flex items-center justify-between">
-                <div><strong className="font-sans text-neutral-500 text-[11px]">Passord:</strong> <span className="bg-white px-2 py-0.5 rounded border border-amber-300 font-bold text-amber-900">{createdData.password}</span></div>
+                <div><strong className="font-sans text-slate-400 text-[11px]">Passord:</strong> <span className="bg-slate-950 px-2 py-0.5 rounded border border-amber-500/30 font-bold text-amber-300">{createdData.password}</span></div>
               </div>
-              <div><strong className="font-sans text-neutral-500 text-[11px]">Selskap:</strong> AIChat Norge AS / Vikingnet (comp-001)</div>
-              <div><strong className="font-sans text-neutral-500 text-[11px]">Rolle:</strong> <span className="font-black text-amber-800">👑 superadmin (Plattformeier)</span></div>
+              <div><strong className="font-sans text-slate-400 text-[11px]">Selskap:</strong> AIChat Norge AS / Vikingnet (comp-001)</div>
+              <div><strong className="font-sans text-slate-400 text-[11px]">Rolle:</strong> <span className="font-black text-amber-400">👑 superadmin (Plattformeier)</span></div>
             </div>
 
             <div className="space-y-2 pt-2">
               <button
                 type="button"
                 onClick={copyCredentials}
-                className="w-full py-3.5 bg-gradient-to-r from-amber-500 to-amber-600 hover:from-amber-600 hover:to-amber-700 text-white rounded-2xl font-black text-sm flex items-center justify-center gap-2 shadow-lg shadow-amber-500/25 cursor-pointer transition-all"
+                className="w-full py-3.5 bg-gradient-to-r from-amber-500 to-amber-600 hover:from-amber-600 hover:to-amber-700 text-white rounded-2xl font-black text-sm flex items-center justify-center gap-2 shadow-lg shadow-amber-950/50 cursor-pointer transition-all"
               >
                 {copiedCreds ? <Check size={18} /> : <Copy size={18} />}
                 <span>{copiedCreds ? 'Kopiert til utklippstavle!' : 'Kopier innloggingsopplysninger'}</span>
@@ -4542,7 +4542,7 @@ Rolle: SuperAdmin (Full plattformeiertilgang, 500M tokens/mnd, alle moduler)`;
                   onSuccess();
                   onClose();
                 }}
-                className="w-full py-3 bg-neutral-100 hover:bg-neutral-200 text-neutral-700 rounded-2xl font-bold text-xs cursor-pointer transition-all"
+                className="w-full py-3 bg-slate-800 hover:bg-slate-700 text-slate-300 border border-slate-700 rounded-2xl font-bold text-xs cursor-pointer transition-all"
               >
                 Lukk og gå til oversikten
               </button>
@@ -4554,49 +4554,49 @@ Rolle: SuperAdmin (Full plattformeiertilgang, 500M tokens/mnd, alle moduler)`;
   }
 
   return (
-    <div className="fixed inset-0 z-[100] flex items-center justify-center p-4 bg-neutral-900/60 backdrop-blur-sm overflow-y-auto">
+    <div className="fixed inset-0 z-[100] flex items-center justify-center p-4 bg-black/80 backdrop-blur-md overflow-y-auto">
       <motion.div 
         initial={{ opacity: 0, scale: 0.95 }}
         animate={{ opacity: 1, scale: 1 }}
-        className="bg-white rounded-[2.5rem] shadow-2xl w-full max-w-xl overflow-hidden my-8 border border-amber-500/20"
+        className="bg-[#0B0F17] text-white rounded-[2.5rem] shadow-2xl w-full max-w-xl overflow-hidden my-8 border border-amber-500/20"
       >
-        <div className="p-6 sm:p-8 border-b border-amber-100 flex justify-between items-center bg-gradient-to-r from-amber-50/80 to-amber-100/40">
+        <div className="p-6 sm:p-8 border-b border-slate-800 flex justify-between items-center bg-[#131722]">
           <div className="flex items-center gap-3">
-            <div className="w-12 h-12 rounded-2xl bg-amber-500 text-white flex items-center justify-center shrink-0 shadow-md shadow-amber-500/30">
+            <div className="w-12 h-12 rounded-2xl bg-amber-500/20 border border-amber-500/30 text-amber-400 flex items-center justify-center shrink-0 shadow-md">
               <Crown size={24} />
             </div>
             <div>
-              <h2 className="text-xl sm:text-2xl font-black text-neutral-900 flex items-center gap-2">
+              <h2 className="text-xl sm:text-2xl font-black text-white flex items-center gap-2">
                 Inviter ny SuperAdmin
               </h2>
-              <p className="text-xs text-amber-800 font-semibold">
+              <p className="text-xs text-amber-400 font-semibold">
                 👑 100% like rettigheter som deg · Ubegrenset tilgang · 500M tokens/mnd
               </p>
             </div>
           </div>
-          <button onClick={onClose} className="p-2 hover:bg-neutral-100 rounded-full transition-colors cursor-pointer">
-            <XCircle size={24} className="text-neutral-400" />
+          <button onClick={onClose} className="p-2 hover:bg-slate-800 rounded-full transition-colors cursor-pointer text-slate-400 hover:text-white">
+            <XCircle size={24} />
           </button>
         </div>
 
-        <form onSubmit={handleSubmit} className="p-6 sm:p-8 space-y-5">
+        <form onSubmit={handleSubmit} className="p-6 sm:p-8 space-y-5 bg-[#0B0F17]">
           {/* Hurtigknapp for Fredrik */}
-          <div className="p-3.5 bg-gradient-to-r from-amber-500/10 via-purple-500/10 to-amber-500/10 border border-amber-300/60 rounded-2xl flex items-center justify-between gap-3">
+          <div className="p-3.5 bg-gradient-to-r from-amber-950/30 via-purple-950/30 to-amber-950/30 border border-amber-500/30 rounded-2xl flex items-center justify-between gap-3">
             <div className="text-xs">
-              <div className="font-black text-neutral-800">Skal du invitere Fredrik?</div>
-              <div className="text-neutral-600 text-[11px]">Trykk her for å forhåndsutfylle fredrik@aichatnorge.no med ett klikk:</div>
+              <div className="font-black text-white">Skal du invitere Fredrik?</div>
+              <div className="text-slate-300 text-[11px]">Trykk her for å forhåndsutfylle fredrik@aichatnorge.no med ett klikk:</div>
             </div>
             <button
               type="button"
               onClick={handleFillFredrik}
-              className="px-3 py-1.5 bg-amber-500 hover:bg-amber-600 text-white rounded-xl text-xs font-black shrink-0 transition-all shadow-xs cursor-pointer"
+              className="px-3 py-1.5 bg-amber-600 hover:bg-amber-500 text-white rounded-xl text-xs font-black shrink-0 transition-all shadow-xs cursor-pointer"
             >
               ⚡ Fyll inn Fredrik
             </button>
           </div>
 
           {/* Forklaring av SuperAdmin-rettigheter */}
-          <div className="p-3.5 bg-slate-900 text-white rounded-2xl text-xs space-y-1.5 border border-slate-800">
+          <div className="p-3.5 bg-slate-950 text-white rounded-2xl text-xs space-y-1.5 border border-slate-800">
             <div className="flex items-center gap-2 text-amber-400 font-black">
               <ShieldCheck size={16} />
               <span>Hva betyr SuperAdmin for denne brukeren?</span>
@@ -4612,37 +4612,37 @@ Rolle: SuperAdmin (Full plattformeiertilgang, 500M tokens/mnd, alle moduler)`;
           {/* Brukerdetaljer */}
           <div className="grid grid-cols-1 sm:grid-cols-2 gap-3">
             <div className="space-y-1">
-              <label className="text-xs font-bold uppercase text-slate-700 ml-1">Fullt navn *</label>
+              <label className="text-xs font-bold uppercase text-slate-400 ml-1">Fullt navn *</label>
               <input
                 required
                 type="text"
                 value={name}
                 onChange={(e) => setName(e.target.value)}
                 placeholder="F.eks. Fredrik Ellingsen"
-                className="w-full px-3.5 py-2.5 bg-white border border-slate-300 rounded-xl text-xs font-semibold text-slate-900 placeholder:text-slate-400 outline-none focus:ring-2 focus:ring-amber-500/20 focus:border-amber-500 transition-all shadow-2xs"
+                className="w-full px-3.5 py-2.5 bg-slate-950 border border-slate-800 rounded-xl text-xs font-semibold text-white placeholder:text-slate-500 outline-none focus:ring-2 focus:ring-amber-500/30 focus:border-amber-500 transition-all shadow-2xs"
               />
             </div>
 
             <div className="space-y-1">
-              <label className="text-xs font-bold uppercase text-slate-700 ml-1">E-postadresse (innlogging) *</label>
+              <label className="text-xs font-bold uppercase text-slate-400 ml-1">E-postadresse (innlogging) *</label>
               <input
                 required
                 type="email"
                 value={email}
                 onChange={(e) => setEmail(e.target.value)}
                 placeholder="fredrik@aichatnorge.no"
-                className="w-full px-3.5 py-2.5 bg-white border border-slate-300 rounded-xl text-xs font-semibold text-slate-900 placeholder:text-slate-400 outline-none focus:ring-2 focus:ring-amber-500/20 focus:border-amber-500 transition-all shadow-2xs"
+                className="w-full px-3.5 py-2.5 bg-slate-950 border border-slate-800 rounded-xl text-xs font-semibold text-white placeholder:text-slate-500 outline-none focus:ring-2 focus:ring-amber-500/30 focus:border-amber-500 transition-all shadow-2xs"
               />
             </div>
           </div>
 
           <div className="space-y-1">
             <div className="flex justify-between items-center">
-              <label className="text-xs font-bold uppercase text-slate-700 ml-1">Passord *</label>
+              <label className="text-xs font-bold uppercase text-slate-400 ml-1">Passord *</label>
               <button
                 type="button"
                 onClick={generatePassword}
-                className="text-[10px] text-amber-700 hover:underline font-bold cursor-pointer"
+                className="text-[10px] text-amber-400 hover:underline font-bold cursor-pointer"
               >
                 Generer nytt
               </button>
@@ -4654,12 +4654,12 @@ Rolle: SuperAdmin (Full plattformeiertilgang, 500M tokens/mnd, alle moduler)`;
                 value={password}
                 onChange={(e) => setPassword(e.target.value)}
                 placeholder="Passord"
-                className="w-full px-3.5 py-2.5 bg-white border border-slate-300 rounded-xl text-xs font-mono font-bold text-slate-900 placeholder:text-slate-400 outline-none focus:ring-2 focus:ring-amber-500/20 focus:border-amber-500 pr-10 transition-all shadow-2xs"
+                className="w-full px-3.5 py-2.5 bg-slate-950 border border-slate-800 rounded-xl text-xs font-mono font-bold text-white placeholder:text-slate-500 outline-none focus:ring-2 focus:ring-amber-500/30 focus:border-amber-500 pr-10 transition-all shadow-2xs"
               />
               <button
                 type="button"
                 onClick={() => setShowPassword(!showPassword)}
-                className="absolute right-3 top-1/2 -translate-y-1/2 text-neutral-400 hover:text-neutral-600 cursor-pointer"
+                className="absolute right-3 top-1/2 -translate-y-1/2 text-slate-400 hover:text-white cursor-pointer"
               >
                 {showPassword ? <EyeOff size={15} /> : <Eye size={15} />}
               </button>
@@ -4674,7 +4674,7 @@ Rolle: SuperAdmin (Full plattformeiertilgang, 500M tokens/mnd, alle moduler)`;
               onChange={(e) => setSendWelcomeEmail(e.target.checked)}
               className="w-4 h-4 rounded text-amber-600 focus:ring-amber-500 cursor-pointer"
             />
-            <span className="text-xs font-bold text-neutral-700">
+            <span className="text-xs font-bold text-slate-300">
               Send offisiell SuperAdmin-velkomstepost med innloggingsinformasjon (Resend)
             </span>
           </label>
@@ -4683,14 +4683,14 @@ Rolle: SuperAdmin (Full plattformeiertilgang, 500M tokens/mnd, alle moduler)`;
             <button
               type="button"
               onClick={onClose}
-              className="px-5 py-3.5 bg-neutral-100 hover:bg-neutral-200 text-neutral-700 rounded-2xl font-bold text-xs cursor-pointer transition-all"
+              className="px-5 py-3.5 bg-slate-800 hover:bg-slate-700 text-slate-300 border border-slate-700 rounded-2xl font-bold text-xs cursor-pointer transition-all"
             >
               Avbryt
             </button>
             <button
               type="submit"
               disabled={loading}
-              className="flex-1 py-3.5 bg-gradient-to-r from-amber-500 to-amber-600 hover:from-amber-600 hover:to-amber-700 text-white rounded-2xl font-black text-sm flex items-center justify-center gap-2 shadow-lg shadow-amber-500/25 cursor-pointer transition-all disabled:opacity-50"
+              className="flex-1 py-3.5 bg-gradient-to-r from-amber-500 to-amber-600 hover:from-amber-600 hover:to-amber-700 text-white rounded-2xl font-black text-sm flex items-center justify-center gap-2 shadow-lg shadow-amber-950/50 cursor-pointer transition-all disabled:opacity-50"
             >
               {loading ? (
                 <>
@@ -4833,46 +4833,46 @@ Rolle: ${createdData.user.role === 'admin' ? 'Administrator' : createdData.user.
 
   if (createdData) {
     return (
-      <div className="fixed inset-0 z-[100] flex items-center justify-center p-4 bg-neutral-900/60 backdrop-blur-sm">
+      <div className="fixed inset-0 z-[100] flex items-center justify-center p-4 bg-black/80 backdrop-blur-md">
         <motion.div 
           initial={{ opacity: 0, scale: 0.95 }}
           animate={{ opacity: 1, scale: 1 }}
-          className="bg-white rounded-[2.5rem] shadow-2xl w-full max-w-lg overflow-hidden"
+          className="bg-[#0B0F17] text-white border border-slate-800 rounded-[2.5rem] shadow-2xl w-full max-w-lg overflow-hidden"
         >
           <div className="p-8 text-center space-y-4">
-            <div className="w-16 h-16 bg-purple-100 text-purple-700 rounded-full flex items-center justify-center mx-auto">
+            <div className="w-16 h-16 bg-purple-500/20 text-purple-400 border border-purple-500/30 rounded-full flex items-center justify-center mx-auto">
               <CheckCircle2 size={36} />
             </div>
             <div>
-              <h2 className="text-2xl font-black text-neutral-900">
+              <h2 className="text-2xl font-black text-white">
                 {partnerType === 'internal' ? 'Kollega-konto opprettet!' : 'Samarbeidspartner opprettet!'}
               </h2>
-              <p className="text-xs text-neutral-500 mt-1">
+              <p className="text-xs text-slate-300 mt-1">
                 Kontoen er aktiv, koster <strong>0 kr/mnd</strong> og telles <strong>ikke</strong> med i SaaS-omsetningen din (MRR).
               </p>
             </div>
 
-            <div className="bg-purple-50/80 border border-purple-200 rounded-2xl p-5 text-left space-y-2.5 font-mono text-xs text-neutral-800">
-              <div className="flex justify-between items-center pb-2 border-b border-purple-200/60">
-                <span className="font-sans font-bold text-[10px] uppercase text-purple-700">Innloggingsopplysninger</span>
-                <span className="font-sans text-[10px] bg-purple-200/70 text-purple-900 px-2 py-0.5 rounded-full font-bold">
+            <div className="bg-[#131722] border border-slate-800 rounded-2xl p-5 text-left space-y-2.5 font-mono text-xs text-slate-200">
+              <div className="flex justify-between items-center pb-2 border-b border-slate-800">
+                <span className="font-sans font-bold text-[10px] uppercase text-purple-400">Innloggingsopplysninger</span>
+                <span className="font-sans text-[10px] bg-purple-500/20 text-purple-300 border border-purple-500/30 px-2 py-0.5 rounded-full font-bold">
                   {createdData.emailSent ? 'E-post sendt ✓' : 'Klar for overlevering'}
                 </span>
               </div>
-              <div><strong className="font-sans text-neutral-500 text-[11px]">Nettadresse:</strong> https://vikingmester.no</div>
-              <div><strong className="font-sans text-neutral-500 text-[11px]">Brukernavn:</strong> {createdData.user.email}</div>
+              <div><strong className="font-sans text-slate-400 text-[11px]">Nettadresse:</strong> https://vikingmester.no</div>
+              <div><strong className="font-sans text-slate-400 text-[11px]">Brukernavn:</strong> {createdData.user.email}</div>
               <div className="flex items-center justify-between">
-                <div><strong className="font-sans text-neutral-500 text-[11px]">Passord:</strong> <span className="bg-white px-2 py-0.5 rounded border border-purple-200 font-bold">{createdData.password}</span></div>
+                <div><strong className="font-sans text-slate-400 text-[11px]">Passord:</strong> <span className="bg-slate-950 px-2 py-0.5 rounded border border-purple-500/30 font-bold text-purple-300">{createdData.password}</span></div>
               </div>
-              <div><strong className="font-sans text-neutral-500 text-[11px]">Firma:</strong> {createdData.company?.name}</div>
-              <div><strong className="font-sans text-neutral-500 text-[11px]">Rolle:</strong> {createdData.user.role}</div>
+              <div><strong className="font-sans text-slate-400 text-[11px]">Firma:</strong> {createdData.company?.name}</div>
+              <div><strong className="font-sans text-slate-400 text-[11px]">Rolle:</strong> {createdData.user.role}</div>
             </div>
 
             <div className="space-y-2 pt-2">
               <button
                 type="button"
                 onClick={copyCredentials}
-                className="w-full py-3.5 bg-purple-700 hover:bg-purple-800 text-white rounded-2xl font-bold text-sm flex items-center justify-center gap-2 shadow-md shadow-purple-200 cursor-pointer transition-all"
+                className="w-full py-3.5 bg-purple-600 hover:bg-purple-500 text-white rounded-2xl font-bold text-sm flex items-center justify-center gap-2 shadow-md shadow-purple-950/50 cursor-pointer transition-all"
               >
                 {copied ? <Check size={18} /> : <Copy size={18} />}
                 <span>{copied ? 'Kopiert til utklippstavle!' : 'Kopier innloggingsdetaljer'}</span>
@@ -4884,7 +4884,7 @@ Rolle: ${createdData.user.role === 'admin' ? 'Administrator' : createdData.user.
                   onSuccess();
                   onClose();
                 }}
-                className="w-full py-3 bg-neutral-100 hover:bg-neutral-200 text-neutral-700 rounded-2xl font-bold text-xs cursor-pointer transition-all"
+                className="w-full py-3 bg-slate-800 hover:bg-slate-700 text-slate-300 border border-slate-700 rounded-2xl font-bold text-xs cursor-pointer transition-all"
               >
                 Lukk og gå til oversikten
               </button>
@@ -4900,29 +4900,29 @@ Rolle: ${createdData.user.role === 'admin' ? 'Administrator' : createdData.user.
       <motion.div 
         initial={{ opacity: 0, scale: 0.95 }}
         animate={{ opacity: 1, scale: 1 }}
-        className="bg-white rounded-[2rem] sm:rounded-[2.5rem] shadow-2xl w-full max-w-xl max-h-[92vh] sm:max-h-[88vh] flex flex-col overflow-hidden my-auto"
+        className="bg-[#0B0F17] border border-slate-800 text-white rounded-[2rem] sm:rounded-[2.5rem] shadow-2xl w-full max-w-xl max-h-[92vh] sm:max-h-[88vh] flex flex-col overflow-hidden my-auto"
       >
-        <div className="p-5 sm:p-6 border-b border-neutral-100 flex justify-between items-center bg-purple-50/40 shrink-0">
+        <div className="p-5 sm:p-6 border-b border-slate-800 flex justify-between items-center bg-[#131722] shrink-0">
           <div className="flex items-center gap-3">
-            <div className="w-12 h-12 rounded-2xl bg-purple-100 text-purple-700 flex items-center justify-center shrink-0 shadow-2xs">
+            <div className="w-12 h-12 rounded-2xl bg-purple-500/20 text-purple-400 border border-purple-500/30 flex items-center justify-center shrink-0 shadow-2xs">
               <UserCheck size={24} />
             </div>
             <div>
-              <h2 className="text-xl sm:text-2xl font-black text-neutral-900">Ny Samarbeidspartner / Kollega</h2>
-              <p className="text-xs text-purple-800 font-medium">
+              <h2 className="text-xl sm:text-2xl font-black text-white">Ny Samarbeidspartner / Kollega</h2>
+              <p className="text-xs text-purple-300 font-medium">
                 0 kr/mnd · Friplass · Blir IKKE regnet med i inntekt (MRR)
               </p>
             </div>
           </div>
-          <button onClick={onClose} className="p-2 hover:bg-neutral-100 rounded-full transition-colors cursor-pointer">
-            <XCircle size={24} className="text-neutral-400" />
+          <button onClick={onClose} className="p-2 hover:bg-slate-800 rounded-full transition-colors cursor-pointer text-slate-400 hover:text-white">
+            <XCircle size={24} />
           </button>
         </div>
 
-        <form onSubmit={handleSubmit} className="p-5 sm:p-8 space-y-5 overflow-y-auto flex-1 min-h-0">
+        <form onSubmit={handleSubmit} className="p-5 sm:p-8 space-y-5 overflow-y-auto flex-1 min-h-0 bg-[#0B0F17]">
           {/* Kontotype velger */}
           <div className="space-y-1.5">
-            <label className="text-xs font-bold uppercase tracking-wider text-slate-700 ml-1">Type konto</label>
+            <label className="text-xs font-bold uppercase tracking-wider text-slate-400 ml-1">Type konto</label>
             <div className="grid grid-cols-2 gap-2">
               <button
                 type="button"
@@ -4930,8 +4930,8 @@ Rolle: ${createdData.user.role === 'admin' ? 'Administrator' : createdData.user.
                 className={cn(
                   "py-3 px-4 rounded-2xl font-bold text-xs flex items-center justify-center gap-2 transition-all cursor-pointer border-2",
                   partnerType === 'partner'
-                    ? "bg-purple-100 text-purple-900 border-purple-300 shadow-2xs"
-                    : "bg-neutral-50 text-neutral-600 border-neutral-200 hover:bg-neutral-100"
+                    ? "bg-purple-600/20 text-purple-300 border-purple-500/40 shadow-2xs"
+                    : "bg-slate-900 text-slate-400 border-slate-800 hover:text-white"
                 )}
               >
                 <span>🤝 Samarbeidspartner</span>
@@ -4942,8 +4942,8 @@ Rolle: ${createdData.user.role === 'admin' ? 'Administrator' : createdData.user.
                 className={cn(
                   "py-3 px-4 rounded-2xl font-bold text-xs flex items-center justify-center gap-2 transition-all cursor-pointer border-2",
                   partnerType === 'internal'
-                    ? "bg-purple-100 text-purple-900 border-purple-300 shadow-2xs"
-                    : "bg-neutral-50 text-neutral-600 border-neutral-200 hover:bg-neutral-100"
+                    ? "bg-purple-600/20 text-purple-300 border-purple-500/40 shadow-2xs"
+                    : "bg-slate-900 text-slate-400 border-slate-800 hover:text-white"
                 )}
               >
                 <span>💼 Kollega / Internt</span>
@@ -4952,21 +4952,21 @@ Rolle: ${createdData.user.role === 'admin' ? 'Administrator' : createdData.user.
           </div>
 
           {/* Selskapstilknytning */}
-          <div className="space-y-2.5 p-4 bg-slate-50 rounded-2xl border border-slate-200">
+          <div className="space-y-2.5 p-4 bg-[#131722] rounded-2xl border border-slate-800">
             <div className="flex items-center justify-between">
-              <label className="text-xs font-bold uppercase tracking-wider text-slate-700">Bedrift / Organisasjon</label>
-              <div className="flex gap-1 bg-white p-0.5 rounded-lg border border-slate-200 text-[11px] font-bold">
+              <label className="text-xs font-bold uppercase tracking-wider text-slate-300">Bedrift / Organisasjon</label>
+              <div className="flex gap-1 bg-slate-950 p-0.5 rounded-lg border border-slate-800 text-[11px] font-bold">
                 <button
                   type="button"
                   onClick={() => setCompanyMode('new')}
-                  className={cn("px-2.5 py-1 rounded-md transition-all cursor-pointer", companyMode === 'new' ? "bg-purple-600 text-white" : "text-neutral-500 hover:text-neutral-900")}
+                  className={cn("px-2.5 py-1 rounded-md transition-all cursor-pointer", companyMode === 'new' ? "bg-purple-600 text-white" : "text-slate-400 hover:text-white")}
                 >
                   Ny bedrift
                 </button>
                 <button
                   type="button"
                   onClick={() => setCompanyMode('existing')}
-                  className={cn("px-2.5 py-1 rounded-md transition-all cursor-pointer", companyMode === 'existing' ? "bg-purple-600 text-white" : "text-neutral-500 hover:text-neutral-900")}
+                  className={cn("px-2.5 py-1 rounded-md transition-all cursor-pointer", companyMode === 'existing' ? "bg-purple-600 text-white" : "text-slate-400 hover:text-white")}
                 >
                   Eksisterende
                 </button>
@@ -4976,35 +4976,35 @@ Rolle: ${createdData.user.role === 'admin' ? 'Administrator' : createdData.user.
             {companyMode === 'new' ? (
               <div className="grid grid-cols-1 sm:grid-cols-2 gap-2.5 pt-1">
                 <div className="space-y-1">
-                  <label className="text-[11px] font-bold uppercase text-slate-700">Firmanavn / Organisasjon *</label>
+                  <label className="text-[11px] font-bold uppercase text-slate-400">Firmanavn / Organisasjon *</label>
                   <input
                     required
                     type="text"
                     value={companyName}
                     onChange={(e) => setCompanyName(e.target.value)}
                     placeholder={partnerType === 'internal' ? 'VikingMester Internt' : 'F.eks. Rørleggermester Hansen'}
-                    className="w-full px-3.5 py-2.5 bg-white border border-slate-300 rounded-xl text-xs font-semibold text-slate-900 placeholder:text-slate-400 outline-none focus:ring-2 focus:ring-purple-500/20 focus:border-purple-600 transition-all shadow-2xs"
+                    className="w-full px-3.5 py-2.5 bg-slate-950 border border-slate-800 rounded-xl text-xs font-semibold text-white placeholder:text-slate-500 outline-none focus:ring-2 focus:ring-purple-500/30 focus:border-purple-600 transition-all shadow-2xs"
                   />
                 </div>
                 <div className="space-y-1">
-                  <label className="text-[11px] font-bold uppercase text-slate-700">Org.nummer (valgfritt)</label>
+                  <label className="text-[11px] font-bold uppercase text-slate-400">Org.nummer (valgfritt)</label>
                   <input
                     type="text"
                     value={orgNumber}
                     onChange={(e) => setOrgNumber(e.target.value)}
                     placeholder="9 siffer (valgfritt)"
-                    className="w-full px-3.5 py-2.5 bg-white border border-slate-300 rounded-xl text-xs font-semibold text-slate-900 placeholder:text-slate-400 outline-none focus:ring-2 focus:ring-purple-500/20 focus:border-purple-600 transition-all shadow-2xs"
+                    className="w-full px-3.5 py-2.5 bg-slate-950 border border-slate-800 rounded-xl text-xs font-semibold text-white placeholder:text-slate-500 outline-none focus:ring-2 focus:ring-purple-500/30 focus:border-purple-600 transition-all shadow-2xs"
                   />
                 </div>
               </div>
             ) : (
               <div className="pt-1">
-                <label className="text-[11px] font-bold uppercase text-slate-700 block mb-1">Velg bedrift</label>
+                <label className="text-[11px] font-bold uppercase text-slate-400 block mb-1">Velg bedrift</label>
                 <select
                   required
                   value={selectedCompanyId}
                   onChange={(e) => setSelectedCompanyId(e.target.value)}
-                  className="w-full px-3.5 py-2.5 bg-white border border-slate-300 rounded-xl text-xs font-semibold text-slate-900 outline-none focus:ring-2 focus:ring-purple-500/20 focus:border-purple-600 cursor-pointer shadow-2xs"
+                  className="w-full px-3.5 py-2.5 bg-slate-950 border border-slate-800 rounded-xl text-xs font-semibold text-white outline-none focus:ring-2 focus:ring-purple-500/30 focus:border-purple-600 cursor-pointer shadow-2xs"
                 >
                   <option value="">-- Velg eksisterende bedrift --</option>
                   {companies.map(c => (
@@ -5020,26 +5020,26 @@ Rolle: ${createdData.user.role === 'admin' ? 'Administrator' : createdData.user.
           {/* Brukerdetaljer */}
           <div className="grid grid-cols-1 sm:grid-cols-2 gap-3">
             <div className="space-y-1">
-              <label className="text-xs font-bold uppercase text-slate-700 ml-1">Fullt navn *</label>
+              <label className="text-xs font-bold uppercase text-slate-400 ml-1">Fullt navn *</label>
               <input
                 required
                 type="text"
                 value={name}
                 onChange={(e) => setName(e.target.value)}
                 placeholder="F.eks. Petter Partner"
-                className="w-full px-3.5 py-2.5 bg-white border border-slate-300 rounded-xl text-xs font-semibold text-slate-900 placeholder:text-slate-400 outline-none focus:ring-2 focus:ring-purple-500/20 focus:border-purple-600 transition-all shadow-2xs"
+                className="w-full px-3.5 py-2.5 bg-slate-950 border border-slate-800 rounded-xl text-xs font-semibold text-white placeholder:text-slate-500 outline-none focus:ring-2 focus:ring-purple-500/30 focus:border-purple-600 transition-all shadow-2xs"
               />
             </div>
 
             <div className="space-y-1">
-              <label className="text-xs font-bold uppercase text-slate-700 ml-1">E-postadresse (innlogging) *</label>
+              <label className="text-xs font-bold uppercase text-slate-400 ml-1">E-postadresse (innlogging) *</label>
               <input
                 required
                 type="email"
                 value={email}
                 onChange={(e) => setEmail(e.target.value)}
                 placeholder="petter@partner.no"
-                className="w-full px-3.5 py-2.5 bg-white border border-slate-300 rounded-xl text-xs font-semibold text-slate-900 placeholder:text-slate-400 outline-none focus:ring-2 focus:ring-purple-500/20 focus:border-purple-600 transition-all shadow-2xs"
+                className="w-full px-3.5 py-2.5 bg-slate-950 border border-slate-800 rounded-xl text-xs font-semibold text-white placeholder:text-slate-500 outline-none focus:ring-2 focus:ring-purple-500/30 focus:border-purple-600 transition-all shadow-2xs"
               />
             </div>
           </div>
@@ -5047,11 +5047,11 @@ Rolle: ${createdData.user.role === 'admin' ? 'Administrator' : createdData.user.
           <div className="grid grid-cols-1 sm:grid-cols-2 gap-3">
             <div className="space-y-1">
               <div className="flex justify-between items-center">
-                <label className="text-xs font-bold uppercase text-slate-700 ml-1">Passord *</label>
+                <label className="text-xs font-bold uppercase text-slate-400 ml-1">Passord *</label>
                 <button
                   type="button"
                   onClick={generatePassword}
-                  className="text-[10px] text-purple-700 hover:underline font-bold cursor-pointer"
+                  className="text-[10px] text-purple-400 hover:underline font-bold cursor-pointer"
                 >
                   Generer nytt
                 </button>
@@ -5063,12 +5063,12 @@ Rolle: ${createdData.user.role === 'admin' ? 'Administrator' : createdData.user.
                   value={password}
                   onChange={(e) => setPassword(e.target.value)}
                   placeholder="Minst 8 tegn"
-                  className="w-full px-3.5 py-2.5 bg-white border border-slate-300 rounded-xl text-xs font-mono font-bold text-slate-900 placeholder:text-slate-400 outline-none focus:ring-2 focus:ring-purple-500/20 focus:border-purple-600 pr-10 transition-all shadow-2xs"
+                  className="w-full px-3.5 py-2.5 bg-slate-950 border border-slate-800 rounded-xl text-xs font-mono font-bold text-white placeholder:text-slate-500 outline-none focus:ring-2 focus:ring-purple-500/30 focus:border-purple-600 pr-10 transition-all shadow-2xs"
                 />
                 <button
                   type="button"
                   onClick={() => setShowPassword(!showPassword)}
-                  className="absolute right-3 top-1/2 -translate-y-1/2 text-neutral-400 hover:text-neutral-600 cursor-pointer"
+                  className="absolute right-3 top-1/2 -translate-y-1/2 text-slate-400 hover:text-white cursor-pointer"
                 >
                   {showPassword ? <EyeOff size={15} /> : <Eye size={15} />}
                 </button>
@@ -5076,11 +5076,11 @@ Rolle: ${createdData.user.role === 'admin' ? 'Administrator' : createdData.user.
             </div>
 
             <div className="space-y-1">
-              <label className="text-xs font-bold uppercase text-slate-700 ml-1">Rolle</label>
+              <label className="text-xs font-bold uppercase text-slate-400 ml-1">Rolle</label>
               <select
                 value={role}
                 onChange={(e) => setRole(e.target.value as any)}
-                className="w-full px-3.5 py-2.5 bg-white border border-slate-300 rounded-xl text-xs font-bold text-slate-900 outline-none focus:ring-2 focus:ring-purple-500/20 focus:border-purple-600 cursor-pointer shadow-2xs"
+                className="w-full px-3.5 py-2.5 bg-slate-950 border border-slate-800 rounded-xl text-xs font-bold text-white outline-none focus:ring-2 focus:ring-purple-500/30 focus:border-purple-600 cursor-pointer shadow-2xs"
               >
                 <option value="admin">Administrator (Full tilgang)</option>
                 <option value="manager">Prosjektleder</option>
@@ -5090,11 +5090,11 @@ Rolle: ${createdData.user.role === 'admin' ? 'Administrator' : createdData.user.
           </div>
 
           {/* Infoboks om 0 kr inntekt */}
-          <div className="p-3.5 bg-purple-50 border border-purple-200 rounded-2xl text-xs text-purple-900 flex items-start gap-2.5">
-            <Shield size={18} className="text-purple-700 shrink-0 mt-0.5" />
+          <div className="p-3.5 bg-purple-950/30 border border-purple-500/30 rounded-2xl text-xs text-purple-300 flex items-start gap-2.5">
+            <Shield size={18} className="text-purple-400 shrink-0 mt-0.5" />
             <div>
-              <p className="font-bold">Ekskludert fra inntekt & regnskap</p>
-              <p className="text-[11px] text-purple-800/90 mt-0.5 leading-relaxed">
+              <p className="font-bold text-white">Ekskludert fra inntekt & regnskap</p>
+              <p className="text-[11px] text-purple-300 mt-0.5 leading-relaxed">
                 Kontoen tildeles 15M AI-tokens/mnd og ubegrenset driftstid, men belastes 0 kr/mnd. Den blir aldri regnet med i månedlig SaaS-omsetning (MRR).
               </p>
             </div>
@@ -5108,7 +5108,7 @@ Rolle: ${createdData.user.role === 'admin' ? 'Administrator' : createdData.user.
               onChange={(e) => setSendWelcomeEmail(e.target.checked)}
               className="w-4 h-4 rounded text-purple-600 focus:ring-purple-500 cursor-pointer"
             />
-            <span className="text-xs font-bold text-slate-700">
+            <span className="text-xs font-bold text-slate-300">
               Send automatisk velkomst-e-post med innloggingsopplysninger
             </span>
           </label>
@@ -5117,14 +5117,14 @@ Rolle: ${createdData.user.role === 'admin' ? 'Administrator' : createdData.user.
             <button
               type="button"
               onClick={onClose}
-              className="px-5 py-3.5 bg-neutral-100 hover:bg-neutral-200 text-neutral-700 rounded-2xl font-bold text-xs cursor-pointer transition-all"
+              className="px-5 py-3.5 bg-slate-800 hover:bg-slate-700 text-slate-300 border border-slate-700 rounded-2xl font-bold text-xs cursor-pointer transition-all"
             >
               Avbryt
             </button>
             <button
               type="submit"
               disabled={loading}
-              className="flex-1 py-3.5 bg-purple-700 hover:bg-purple-800 text-white rounded-2xl font-black text-sm flex items-center justify-center gap-2 shadow-md shadow-purple-200 cursor-pointer transition-all disabled:opacity-50"
+              className="flex-1 py-3.5 bg-purple-600 hover:bg-purple-500 text-white rounded-2xl font-black text-sm flex items-center justify-center gap-2 shadow-md shadow-purple-950/50 cursor-pointer transition-all disabled:opacity-50"
             >
               {loading ? (
                 <>
@@ -5164,46 +5164,46 @@ function EditCompanyInfoModal({ company, onClose, onSuccess }: { company: Compan
   };
 
   return (
-    <div className="fixed inset-0 z-[100] flex items-center justify-center p-4 bg-neutral-900/60 backdrop-blur-sm">
+    <div className="fixed inset-0 z-[100] flex items-center justify-center p-4 bg-black/80 backdrop-blur-md">
       <motion.div 
         initial={{ opacity: 0, scale: 0.95 }}
         animate={{ opacity: 1, scale: 1 }}
-        className="bg-white rounded-[2.5rem] shadow-2xl w-full max-w-md overflow-hidden"
+        className="bg-[#0B0F17] border border-slate-800 text-white rounded-[2.5rem] shadow-2xl w-full max-w-md overflow-hidden"
       >
-        <div className="p-8 border-b border-neutral-100 flex justify-between items-center">
-          <h2 className="text-2xl font-bold text-neutral-900">Rediger kundeinfo</h2>
-          <button onClick={onClose} className="p-2 hover:bg-neutral-100 rounded-full transition-colors cursor-pointer">
-            <XCircle size={24} className="text-neutral-400" />
+        <div className="p-6 sm:p-8 border-b border-slate-800 bg-[#131722] flex justify-between items-center">
+          <h2 className="text-2xl font-bold text-white">Rediger kundeinfo</h2>
+          <button onClick={onClose} className="p-2 hover:bg-slate-800 rounded-full transition-colors cursor-pointer text-slate-400 hover:text-white">
+            <XCircle size={24} />
           </button>
         </div>
         
-        <form onSubmit={handleSubmit} className="p-8 space-y-6">
+        <form onSubmit={handleSubmit} className="p-6 sm:p-8 space-y-6 bg-[#0B0F17]">
           <div className="space-y-2">
-            <label className="text-xs font-black uppercase tracking-widest text-neutral-400 ml-1">Kundenavn</label>
+            <label className="text-xs font-black uppercase tracking-widest text-slate-400 ml-1">Kundenavn</label>
             <input 
               required
               type="text"
               value={name}
               onChange={(e) => setName(e.target.value)}
-              className="w-full px-4 py-3 bg-neutral-50 border border-neutral-200 rounded-2xl focus:ring-2 focus:ring-blue-500 outline-none transition-all"
+              className="w-full px-4 py-3 bg-slate-950 border border-slate-800 rounded-2xl text-white placeholder:text-slate-500 focus:ring-2 focus:ring-blue-500 outline-none transition-all"
             />
           </div>
           <div className="space-y-2">
-            <label className="text-xs font-black uppercase tracking-widest text-neutral-400 ml-1">Organisasjonsnummer</label>
+            <label className="text-xs font-black uppercase tracking-widest text-slate-400 ml-1">Organisasjonsnummer</label>
             <input 
               type="text"
               value={orgNumber}
               onChange={(e) => setOrgNumber(e.target.value)}
-              className="w-full px-4 py-3 bg-neutral-50 border border-neutral-200 rounded-2xl focus:ring-2 focus:ring-blue-500 outline-none transition-all"
+              className="w-full px-4 py-3 bg-slate-950 border border-slate-800 rounded-2xl text-white placeholder:text-slate-500 focus:ring-2 focus:ring-blue-500 outline-none transition-all"
             />
           </div>
 
           <div className="space-y-2">
-            <label className="text-xs font-black uppercase tracking-widest text-neutral-400 ml-1">Abonnementsplan</label>
+            <label className="text-xs font-black uppercase tracking-widest text-slate-400 ml-1">Abonnementsplan</label>
             <select
               value={plan}
               onChange={(e) => setPlan(e.target.value as any)}
-              className="w-full px-4 py-3 bg-neutral-50 border border-neutral-200 rounded-2xl focus:ring-2 focus:ring-blue-500 outline-none transition-all font-medium text-sm text-neutral-800"
+              className="w-full px-4 py-3 bg-slate-950 border border-slate-800 rounded-2xl focus:ring-2 focus:ring-blue-500 outline-none transition-all font-medium text-sm text-white"
             >
               <option value="internal">👑 SuperAdmin / System Eier (0 kr · Ubegrenset)</option>
               <option value="solo">Solo (690 kr/mnd · 2.5M tokens)</option>
@@ -5217,14 +5217,14 @@ function EditCompanyInfoModal({ company, onClose, onSuccess }: { company: Compan
             <button 
               type="submit"
               disabled={loading}
-              className="flex-1 bg-blue-600 text-white py-4 rounded-2xl font-bold hover:bg-blue-500 transition-all shadow-lg shadow-blue-100 disabled:opacity-50"
+              className="flex-1 bg-blue-600 hover:bg-blue-500 text-white py-4 rounded-2xl font-bold transition-all shadow-lg shadow-blue-950/50 disabled:opacity-50 cursor-pointer"
             >
               {loading ? 'Lagrer...' : 'Lagre endringer'}
             </button>
             <button 
               type="button"
               onClick={onClose}
-              className="flex-1 bg-neutral-100 text-neutral-600 py-4 rounded-2xl font-bold hover:bg-neutral-200 transition-all"
+              className="flex-1 bg-slate-800 hover:bg-slate-700 text-slate-300 border border-slate-700 py-4 rounded-2xl font-bold transition-all cursor-pointer"
             >
               Avbryt
             </button>
@@ -5271,48 +5271,48 @@ function CreateCompanyModal({ onClose, onSuccess }: { onClose: () => void, onSuc
   };
 
   return (
-    <div className="fixed inset-0 z-[100] flex items-center justify-center p-4 bg-neutral-900/60 backdrop-blur-sm">
+    <div className="fixed inset-0 z-[100] flex items-center justify-center p-4 bg-black/80 backdrop-blur-md">
       <motion.div 
         initial={{ opacity: 0, scale: 0.95 }}
         animate={{ opacity: 1, scale: 1 }}
-        className="bg-white rounded-[2.5rem] shadow-2xl w-full max-w-md overflow-hidden"
+        className="bg-[#0B0F17] border border-slate-800 text-white rounded-[2.5rem] shadow-2xl w-full max-w-md overflow-hidden"
       >
-        <div className="p-8 border-b border-neutral-100 flex justify-between items-center">
-          <h2 className="text-2xl font-bold text-neutral-900">Opprett ny kunde</h2>
-          <button onClick={onClose} className="p-2 hover:bg-neutral-100 rounded-full transition-colors">
-            <XCircle size={24} className="text-neutral-400" />
+        <div className="p-6 sm:p-8 border-b border-slate-800 bg-[#131722] flex justify-between items-center">
+          <h2 className="text-2xl font-bold text-white">Opprett ny kunde</h2>
+          <button onClick={onClose} className="p-2 hover:bg-slate-800 rounded-full transition-colors cursor-pointer text-slate-400 hover:text-white">
+            <XCircle size={24} />
           </button>
         </div>
         
-        <form onSubmit={handleSubmit} className="p-8 space-y-6">
+        <form onSubmit={handleSubmit} className="p-6 sm:p-8 space-y-6 bg-[#0B0F17]">
           <div className="space-y-2">
-            <label className="text-xs font-black uppercase tracking-widest text-neutral-400 ml-1">Kundenavn</label>
+            <label className="text-xs font-black uppercase tracking-widest text-slate-400 ml-1">Kundenavn</label>
             <input 
               required
               type="text"
               value={name}
               onChange={(e) => setName(e.target.value)}
-              className="w-full px-4 py-3 bg-neutral-50 border border-neutral-200 rounded-2xl focus:ring-2 focus:ring-electric-500 outline-none transition-all"
+              className="w-full px-4 py-3 bg-slate-950 border border-slate-800 rounded-2xl text-white placeholder:text-slate-500 focus:ring-2 focus:ring-purple-500 outline-none transition-all"
               placeholder="F.eks. Mesterbygg AS"
             />
           </div>
           <div className="space-y-2">
-            <label className="text-xs font-black uppercase tracking-widest text-neutral-400 ml-1">Organisasjonsnummer</label>
+            <label className="text-xs font-black uppercase tracking-widest text-slate-400 ml-1">Organisasjonsnummer</label>
             <input 
               type="text"
               value={orgNumber}
               onChange={(e) => setOrgNumber(e.target.value)}
-              className="w-full px-4 py-3 bg-neutral-50 border border-neutral-200 rounded-2xl focus:ring-2 focus:ring-electric-500 outline-none transition-all"
+              className="w-full px-4 py-3 bg-slate-950 border border-slate-800 rounded-2xl text-white placeholder:text-slate-500 focus:ring-2 focus:ring-purple-500 outline-none transition-all"
               placeholder="9 siffer"
             />
           </div>
 
           <div className="space-y-2">
-            <label className="text-xs font-black uppercase tracking-widest text-neutral-400 ml-1">Abonnementsplan (Kvote & Marginvern)</label>
+            <label className="text-xs font-black uppercase tracking-widest text-slate-400 ml-1">Abonnementsplan (Kvote & Marginvern)</label>
             <select
               value={plan}
               onChange={(e) => setPlan(e.target.value as any)}
-              className="w-full px-4 py-3 bg-neutral-50 border border-neutral-200 rounded-2xl focus:ring-2 focus:ring-electric-500 outline-none transition-all font-medium text-sm text-neutral-800"
+              className="w-full px-4 py-3 bg-slate-950 border border-slate-800 rounded-2xl focus:ring-2 focus:ring-purple-500 outline-none transition-all font-medium text-sm text-white"
             >
               <option value="internal">👑 SuperAdmin / System Eier (Ubegrenset tokens - 0 kr/mnd)</option>
               <option value="solo">Solo (2.5M tokens/mnd - kr 690,-)</option>
@@ -5323,14 +5323,14 @@ function CreateCompanyModal({ onClose, onSuccess }: { onClose: () => void, onSuc
           </div>
 
           <div className="space-y-2">
-            <label className="text-xs font-black uppercase tracking-widest text-neutral-400 ml-1">Status</label>
+            <label className="text-xs font-black uppercase tracking-widest text-slate-400 ml-1">Status</label>
             <div className="grid grid-cols-2 gap-2">
               <button
                 type="button"
                 onClick={() => setStatus('trial')}
                 className={cn(
-                  "py-3 rounded-xl font-bold text-sm transition-all",
-                  status === 'trial' ? "bg-orange-100 text-orange-700 border-2 border-orange-200" : "bg-neutral-50 text-neutral-400 border-2 border-transparent"
+                  "py-3 rounded-xl font-bold text-sm transition-all cursor-pointer border-2",
+                  status === 'trial' ? "bg-amber-500/20 text-amber-300 border-amber-500/40" : "bg-slate-950 text-slate-400 border-slate-800 hover:text-white"
                 )}
               >
                 Prøveperiode
@@ -5339,8 +5339,8 @@ function CreateCompanyModal({ onClose, onSuccess }: { onClose: () => void, onSuc
                 type="button"
                 onClick={() => setStatus('active')}
                 className={cn(
-                  "py-3 rounded-xl font-bold text-sm transition-all",
-                  status === 'active' ? "bg-emerald-100 text-emerald-700 border-2 border-emerald-200" : "bg-neutral-50 text-neutral-400 border-2 border-transparent"
+                  "py-3 rounded-xl font-bold text-sm transition-all cursor-pointer border-2",
+                  status === 'active' ? "bg-emerald-500/20 text-emerald-300 border-emerald-500/40" : "bg-slate-950 text-slate-400 border-slate-800 hover:text-white"
                 )}
               >
                 Aktiv
@@ -5350,7 +5350,7 @@ function CreateCompanyModal({ onClose, onSuccess }: { onClose: () => void, onSuc
 
           <button 
             disabled={loading}
-            className="w-full bg-gradient-to-r from-electric-500 to-electric-400 text-white py-4 rounded-2xl font-black hover:opacity-95 transition-all shadow-purple-cta disabled:opacity-50"
+            className="w-full bg-purple-600 hover:bg-purple-500 text-white py-4 rounded-2xl font-black transition-all shadow-md shadow-purple-950/50 disabled:opacity-50 cursor-pointer"
           >
             {loading ? 'Oppretter...' : 'Opprett kunde'}
           </button>
@@ -5497,40 +5497,40 @@ function ConvertLeadModal({
   // Suksess-skjerm
   if (resultData) {
     return (
-      <div className="fixed inset-0 z-[100] flex items-center justify-center p-4 bg-neutral-900/60 backdrop-blur-sm">
+      <div className="fixed inset-0 z-[100] flex items-center justify-center p-4 bg-black/80 backdrop-blur-md">
         <motion.div
           initial={{ opacity: 0, scale: 0.95 }}
           animate={{ opacity: 1, scale: 1 }}
-          className="bg-white rounded-[2.5rem] shadow-2xl w-full max-w-lg overflow-hidden"
+          className="bg-[#0B0F17] rounded-[2.5rem] shadow-2xl border border-slate-800 text-white w-full max-w-lg overflow-hidden"
         >
-          <div className="p-8 text-center bg-gradient-to-b from-emerald-50/80 to-white border-b border-emerald-100">
-            <div className="w-16 h-16 bg-emerald-100 text-emerald-600 rounded-3xl flex items-center justify-center mx-auto mb-4 shadow-sm">
+          <div className="p-8 text-center bg-[#131722] border-b border-slate-800">
+            <div className="w-16 h-16 bg-emerald-500/20 text-emerald-400 border border-emerald-500/30 rounded-3xl flex items-center justify-center mx-auto mb-4 shadow-sm">
               <CheckCircle2 size={36} />
             </div>
-            <h2 className="text-2xl font-black text-neutral-900">Kunde opprettet!</h2>
-            <p className="text-sm text-neutral-600 mt-1">
-              <strong>{companyName}</strong> er nå lagret som <strong>{plan.toUpperCase()}</strong>-kunde ({status === 'trial' ? `${trialDays} dagers prøveperiode` : 'Aktiv'}).
+            <h2 className="text-2xl font-black text-white">Kunde opprettet!</h2>
+            <p className="text-sm text-slate-400 mt-1">
+              <strong className="text-slate-200">{companyName}</strong> er nå lagret som <strong className="text-purple-300">{plan.toUpperCase()}</strong>-kunde ({status === 'trial' ? `${trialDays} dagers prøveperiode` : 'Aktiv'}).
             </p>
           </div>
 
           <div className="p-8 space-y-4 text-left">
-            <div className="p-4 bg-neutral-50 rounded-2xl border border-neutral-200/80 space-y-2.5 text-xs">
+            <div className="p-4 bg-slate-950 rounded-2xl border border-slate-800 space-y-2.5 text-xs text-slate-300">
               <div className="flex justify-between items-center">
-                <span className="font-bold text-neutral-500 uppercase text-[10px]">Brukernavn / E-post:</span>
-                <span className="font-mono font-bold text-neutral-800">{email || 'Ikke oppgitt'}</span>
+                <span className="font-bold text-slate-500 uppercase text-[10px]">Brukernavn / E-post:</span>
+                <span className="font-mono font-bold text-slate-200">{email || 'Ikke oppgitt'}</span>
               </div>
               {resultData.tempPassword && (
                 <div className="flex justify-between items-center">
-                  <span className="font-bold text-neutral-500 uppercase text-[10px]">Midlertidig passord:</span>
+                  <span className="font-bold text-slate-500 uppercase text-[10px]">Midlertidig passord:</span>
                   <div className="flex items-center gap-2">
-                    <span className="font-mono font-black text-purple-700 bg-purple-50 px-2 py-0.5 rounded">{resultData.tempPassword}</span>
+                    <span className="font-mono font-black text-purple-300 bg-purple-950/60 border border-purple-800/60 px-2 py-0.5 rounded">{resultData.tempPassword}</span>
                     <button
                       type="button"
                       onClick={() => {
                         navigator.clipboard.writeText(resultData.tempPassword || '');
                         toast.success('Passord kopiert til utklippstavle!');
                       }}
-                      className="p-1 hover:bg-neutral-200 rounded text-neutral-500 cursor-pointer"
+                      className="p-1 hover:bg-slate-800 rounded text-slate-400 hover:text-slate-200 cursor-pointer transition-colors"
                       title="Kopier passord"
                     >
                       <Copy size={12} />
@@ -5539,28 +5539,28 @@ function ConvertLeadModal({
                 </div>
               )}
               {resultData.inviteLink && (
-                <div className="pt-2 border-t border-neutral-200/60">
+                <div className="pt-2 border-t border-slate-800">
                   <div className="flex justify-between items-center mb-1">
-                    <span className="font-bold text-neutral-500 uppercase text-[10px]">Direkte aktiveringslenke:</span>
+                    <span className="font-bold text-slate-500 uppercase text-[10px]">Direkte aktiveringslenke:</span>
                     <button
                       type="button"
                       onClick={() => {
                         navigator.clipboard.writeText(resultData.inviteLink);
                         toast.success('Aktiveringslenke kopiert til utklippstavle!');
                       }}
-                      className="text-xs font-bold text-purple-600 hover:text-purple-700 flex items-center gap-1 cursor-pointer"
+                      className="text-xs font-bold text-purple-400 hover:text-purple-300 flex items-center gap-1 cursor-pointer transition-colors"
                     >
                       <Copy size={12} /> Kopier lenke
                     </button>
                   </div>
-                  <div className="font-mono text-[11px] text-neutral-600 truncate bg-white p-2 rounded-lg border border-neutral-200">
+                  <div className="font-mono text-[11px] text-slate-300 truncate bg-slate-900 p-2 rounded-lg border border-slate-800">
                     {resultData.inviteLink}
                   </div>
                 </div>
               )}
               <div className="flex justify-between items-center pt-1 text-[11px]">
-                <span className="text-neutral-500">Velkomst-e-post:</span>
-                <span className={cn("font-bold", resultData.emailSent ? "text-emerald-600" : "text-neutral-400")}>
+                <span className="text-slate-500">Velkomst-e-post:</span>
+                <span className={cn("font-bold", resultData.emailSent ? "text-emerald-400" : "text-slate-500")}>
                   {resultData.emailSent ? 'Sendt via Resend' : sendWelcomeEmail ? 'Klar for utsendelse' : 'Ikke sendt'}
                 </span>
               </div>
@@ -5581,7 +5581,7 @@ function ConvertLeadModal({
                   onClose();
                   window.dispatchEvent(new CustomEvent('navigate_view', { detail: { view: 'dashboard' } }));
                 }}
-                className="w-full py-3.5 bg-emerald-600 hover:bg-emerald-700 text-white rounded-2xl font-black text-sm flex items-center justify-center gap-2 shadow-md shadow-emerald-600/20 cursor-pointer transition-all"
+                className="w-full py-3.5 bg-emerald-600 hover:bg-emerald-500 text-white rounded-2xl font-black text-sm flex items-center justify-center gap-2 shadow-lg shadow-emerald-900/30 cursor-pointer transition-all"
               >
                 <ExternalLink size={16} />
                 <span>Logg inn som denne kunden nå</span>
@@ -5593,7 +5593,7 @@ function ConvertLeadModal({
                   onNavigateToCompany(resultData.company.id);
                   onClose();
                 }}
-                className="w-full py-3 bg-neutral-900 hover:bg-neutral-800 text-white rounded-2xl font-bold text-xs flex items-center justify-center gap-1.5 cursor-pointer transition-all"
+                className="w-full py-3 bg-slate-800 hover:bg-slate-700 text-white rounded-2xl font-bold text-xs flex items-center justify-center gap-1.5 cursor-pointer transition-all border border-slate-700"
               >
                 <Building2 size={14} />
                 <span>Se kunden i bedriftsoversikten</span>
@@ -5602,7 +5602,7 @@ function ConvertLeadModal({
               <button
                 type="button"
                 onClick={onClose}
-                className="w-full py-2.5 bg-neutral-100 hover:bg-neutral-200 text-neutral-600 rounded-2xl font-bold text-xs cursor-pointer transition-all"
+                className="w-full py-2.5 bg-slate-900 hover:bg-slate-800 text-slate-400 hover:text-slate-200 rounded-2xl font-bold text-xs cursor-pointer transition-all border border-slate-800"
               >
                 Lukk vindu
               </button>
@@ -5615,26 +5615,26 @@ function ConvertLeadModal({
 
   // Redigerings- og opprettelsesskjema
   return (
-    <div className="fixed inset-0 z-[100] flex items-center justify-center p-4 bg-neutral-900/60 backdrop-blur-sm overflow-y-auto">
+    <div className="fixed inset-0 z-[100] flex items-center justify-center p-4 bg-black/80 backdrop-blur-md overflow-y-auto">
       <motion.div
         initial={{ opacity: 0, scale: 0.95 }}
         animate={{ opacity: 1, scale: 1 }}
-        className="bg-white rounded-[2.5rem] shadow-2xl w-full max-w-2xl overflow-hidden my-8 max-h-[90vh] flex flex-col"
+        className="bg-[#0B0F17] rounded-[2.5rem] shadow-2xl border border-slate-800 text-white w-full max-w-2xl overflow-hidden my-8 max-h-[90vh] flex flex-col"
       >
-        <div className="p-6 sm:p-8 border-b border-neutral-100 flex justify-between items-center shrink-0 bg-neutral-50/50">
+        <div className="p-6 sm:p-8 border-b border-slate-800 flex justify-between items-center shrink-0 bg-[#131722]">
           <div className="flex items-center gap-3">
-            <div className="w-12 h-12 rounded-2xl bg-emerald-100 text-emerald-700 flex items-center justify-center shrink-0">
+            <div className="w-12 h-12 rounded-2xl bg-emerald-500/20 border border-emerald-500/30 text-emerald-400 flex items-center justify-center shrink-0">
               <UserPlus size={24} />
             </div>
             <div>
-              <h2 className="text-xl sm:text-2xl font-black text-neutral-900">Gjør om henvendelse til kunde</h2>
-              <p className="text-xs text-neutral-500">
+              <h2 className="text-xl sm:text-2xl font-black text-white">Gjør om henvendelse til kunde</h2>
+              <p className="text-xs text-slate-400">
                 Oppretter bedrift, administratorkonto og sender velkomst-e-post for {lead.name || lead.company}
               </p>
             </div>
           </div>
-          <button onClick={onClose} className="p-2 hover:bg-neutral-200 rounded-full transition-colors cursor-pointer">
-            <X size={20} className="text-neutral-400" />
+          <button onClick={onClose} className="p-2 hover:bg-slate-800 text-slate-400 hover:text-white rounded-full transition-colors cursor-pointer">
+            <X size={20} />
           </button>
         </div>
 
@@ -5642,14 +5642,14 @@ function ConvertLeadModal({
           {/* Seksjon 1: Bedriftsinformasjon */}
           <div className="space-y-3">
             <div className="flex items-center justify-between">
-              <h3 className="text-xs font-black uppercase tracking-wider text-neutral-400 flex items-center gap-1.5">
+              <h3 className="text-xs font-black uppercase tracking-wider text-slate-400 flex items-center gap-1.5">
                 <Building2 size={14} /> 1. Bedriftsinformasjon
               </h3>
               <button
                 type="button"
                 onClick={handleBrregSearch}
                 disabled={isSearchingBrreg}
-                className="text-[11px] font-bold text-blue-600 hover:text-blue-700 flex items-center gap-1 cursor-pointer"
+                className="text-[11px] font-bold text-blue-400 hover:text-blue-300 flex items-center gap-1 cursor-pointer transition-colors"
               >
                 <Search size={12} />
                 {isSearchingBrreg ? 'Søker Brønnøysund...' : 'Søk i Brønnøysund'}
@@ -5657,39 +5657,39 @@ function ConvertLeadModal({
             </div>
 
             {brregStatus && (
-              <div className="p-2.5 rounded-xl bg-blue-50 border border-blue-200/60 text-xs text-blue-800 font-medium">
+              <div className="p-2.5 rounded-xl bg-blue-950/60 border border-blue-800/60 text-xs text-blue-300 font-medium">
                 {brregStatus}
               </div>
             )}
 
             <div className="grid grid-cols-1 sm:grid-cols-2 gap-3">
               <div className="space-y-1">
-                <label className="text-[10px] font-bold uppercase text-neutral-500 ml-1">Firmanavn / Kundenavn *</label>
+                <label className="text-[10px] font-bold uppercase text-slate-400 ml-1">Firmanavn / Kundenavn *</label>
                 <input
                   required
                   type="text"
                   value={companyName}
                   onChange={(e) => setCompanyName(e.target.value)}
-                  className="w-full px-4 py-2.5 bg-neutral-50 border border-neutral-200 rounded-xl text-sm font-semibold focus:ring-2 focus:ring-emerald-500 outline-none"
+                  className="w-full px-4 py-2.5 bg-slate-950 border border-slate-800 rounded-xl text-sm font-semibold text-white placeholder:text-slate-500 focus:ring-2 focus:ring-emerald-500/30 focus:border-emerald-600 outline-none"
                   placeholder="F.eks. Mester Bygg AS"
                 />
               </div>
 
               <div className="space-y-1">
-                <label className="text-[10px] font-bold uppercase text-neutral-500 ml-1">Org.nummer (9 siffer)</label>
+                <label className="text-[10px] font-bold uppercase text-slate-400 ml-1">Org.nummer (9 siffer)</label>
                 <div className="flex gap-2">
                   <input
                     type="text"
                     value={orgNumber}
                     onChange={(e) => setOrgNumber(e.target.value)}
-                    className="w-full px-4 py-2.5 bg-neutral-50 border border-neutral-200 rounded-xl text-sm focus:ring-2 focus:ring-emerald-500 outline-none"
+                    className="w-full px-4 py-2.5 bg-slate-950 border border-slate-800 rounded-xl text-sm text-white placeholder:text-slate-500 focus:ring-2 focus:ring-emerald-500/30 focus:border-emerald-600 outline-none"
                     placeholder="9 siffer"
                   />
                   <button
                     type="button"
                     onClick={handleBrregSearch}
                     disabled={isSearchingBrreg}
-                    className="px-3 py-2 bg-neutral-100 hover:bg-neutral-200 text-neutral-700 text-xs font-bold rounded-xl shrink-0 cursor-pointer"
+                    className="px-3 py-2 bg-slate-800 hover:bg-slate-700 text-slate-200 text-xs font-bold rounded-xl shrink-0 cursor-pointer border border-slate-700 transition-colors"
                     title="Slå opp i Brønnøysundregistrene"
                   >
                     Slå opp
@@ -5699,11 +5699,11 @@ function ConvertLeadModal({
             </div>
 
             <div className="space-y-1">
-              <label className="text-[10px] font-bold uppercase text-neutral-500 ml-1">Fagområde</label>
+              <label className="text-[10px] font-bold uppercase text-slate-400 ml-1">Fagområde</label>
               <select
                 value={trade}
                 onChange={(e) => setTrade(e.target.value)}
-                className="w-full px-4 py-2.5 bg-neutral-50 border border-neutral-200 rounded-xl text-sm font-medium focus:ring-2 focus:ring-emerald-500 outline-none"
+                className="w-full px-4 py-2.5 bg-slate-950 border border-slate-800 rounded-xl text-sm font-medium text-white focus:ring-2 focus:ring-emerald-500/30 focus:border-emerald-600 outline-none"
               >
                 <option value="Byggmester / Tømrer">Byggmester / Tømrer</option>
                 <option value="Rørlegger">Rørlegger</option>
@@ -5718,56 +5718,56 @@ function ConvertLeadModal({
           </div>
 
           {/* Seksjon 2: Kontaktperson og Innlogging */}
-          <div className="space-y-3 pt-2 border-t border-neutral-100">
-            <h3 className="text-xs font-black uppercase tracking-wider text-neutral-400 flex items-center gap-1.5">
+          <div className="space-y-3 pt-2 border-t border-slate-800">
+            <h3 className="text-xs font-black uppercase tracking-wider text-slate-400 flex items-center gap-1.5">
               <Users size={14} /> 2. Kontaktperson & Innlogging
             </h3>
 
             <div className="grid grid-cols-1 sm:grid-cols-3 gap-3">
               <div className="space-y-1">
-                <label className="text-[10px] font-bold uppercase text-neutral-500 ml-1">Kontaktperson</label>
+                <label className="text-[10px] font-bold uppercase text-slate-400 ml-1">Kontaktperson</label>
                 <input
                   type="text"
                   value={contactName}
                   onChange={(e) => setContactName(e.target.value)}
-                  className="w-full px-4 py-2.5 bg-neutral-50 border border-neutral-200 rounded-xl text-sm focus:ring-2 focus:ring-emerald-500 outline-none"
+                  className="w-full px-4 py-2.5 bg-slate-950 border border-slate-800 rounded-xl text-sm text-white placeholder:text-slate-500 focus:ring-2 focus:ring-emerald-500/30 focus:border-emerald-600 outline-none"
                   placeholder="Navn"
                 />
               </div>
 
               <div className="space-y-1">
-                <label className="text-[10px] font-bold uppercase text-neutral-500 ml-1">E-postadresse *</label>
+                <label className="text-[10px] font-bold uppercase text-slate-400 ml-1">E-postadresse *</label>
                 <input
                   required
                   type="email"
                   value={email}
                   onChange={(e) => setEmail(e.target.value)}
-                  className="w-full px-4 py-2.5 bg-neutral-50 border border-neutral-200 rounded-xl text-sm font-semibold focus:ring-2 focus:ring-emerald-500 outline-none"
+                  className="w-full px-4 py-2.5 bg-slate-950 border border-slate-800 rounded-xl text-sm font-semibold text-white placeholder:text-slate-500 focus:ring-2 focus:ring-emerald-500/30 focus:border-emerald-600 outline-none"
                   placeholder="post@bedrift.no"
                 />
               </div>
 
               <div className="space-y-1">
-                <label className="text-[10px] font-bold uppercase text-neutral-500 ml-1">Telefon</label>
+                <label className="text-[10px] font-bold uppercase text-slate-400 ml-1">Telefon</label>
                 <input
                   type="tel"
                   value={phone}
                   onChange={(e) => setPhone(e.target.value)}
-                  className="w-full px-4 py-2.5 bg-neutral-50 border border-neutral-200 rounded-xl text-sm focus:ring-2 focus:ring-emerald-500 outline-none"
+                  className="w-full px-4 py-2.5 bg-slate-950 border border-slate-800 rounded-xl text-sm text-white placeholder:text-slate-500 focus:ring-2 focus:ring-emerald-500/30 focus:border-emerald-600 outline-none"
                   placeholder="+47..."
                 />
               </div>
             </div>
 
-            <div className="p-4 bg-purple-50/70 border border-purple-100 rounded-2xl space-y-2">
+            <div className="p-4 bg-purple-950/40 border border-purple-900/60 rounded-2xl space-y-2">
               <label className="flex items-center gap-2 cursor-pointer">
                 <input
                   type="checkbox"
                   checked={createAdminUser}
                   onChange={(e) => setCreateAdminUser(e.target.checked)}
-                  className="w-4 h-4 rounded text-purple-600 focus:ring-purple-500 cursor-pointer"
+                  className="w-4 h-4 rounded text-purple-600 focus:ring-purple-500 cursor-pointer accent-purple-600"
                 />
-                <span className="text-xs font-bold text-neutral-800">
+                <span className="text-xs font-bold text-slate-200">
                   Opprett administratorkonto for kunden umiddelbart
                 </span>
               </label>
@@ -5775,18 +5775,18 @@ function ConvertLeadModal({
               {createAdminUser && (
                 <div className="pt-2 flex items-center gap-2">
                   <div className="flex-1 space-y-1">
-                    <label className="text-[10px] font-bold uppercase text-neutral-500 ml-1">Midlertidig passord</label>
+                    <label className="text-[10px] font-bold uppercase text-slate-400 ml-1">Midlertidig passord</label>
                     <input
                       type="text"
                       value={tempPassword}
                       onChange={(e) => setTempPassword(e.target.value)}
-                      className="w-full px-3 py-2 bg-white border border-purple-200 rounded-xl text-xs font-mono font-bold text-purple-900 outline-none"
+                      className="w-full px-3 py-2 bg-slate-950 border border-purple-800/80 rounded-xl text-xs font-mono font-bold text-purple-300 outline-none"
                     />
                   </div>
                   <button
                     type="button"
                     onClick={generateNewPassword}
-                    className="px-3 py-2 mt-5 bg-white border border-purple-200 hover:bg-purple-100 text-purple-700 text-xs font-bold rounded-xl shrink-0 cursor-pointer transition-colors"
+                    className="px-3 py-2 mt-5 bg-purple-900/40 border border-purple-700 hover:bg-purple-800/50 text-purple-200 text-xs font-bold rounded-xl shrink-0 cursor-pointer transition-colors"
                   >
                     Nytt passord
                   </button>
@@ -5796,8 +5796,8 @@ function ConvertLeadModal({
           </div>
 
           {/* Seksjon 3: Abonnement og Prøveperiode */}
-          <div className="space-y-3 pt-2 border-t border-neutral-100">
-            <h3 className="text-xs font-black uppercase tracking-wider text-neutral-400 flex items-center gap-1.5">
+          <div className="space-y-3 pt-2 border-t border-slate-800">
+            <h3 className="text-xs font-black uppercase tracking-wider text-slate-400 flex items-center gap-1.5">
               <Tag size={14} /> 3. Abonnement & Status
             </h3>
 
@@ -5814,27 +5814,27 @@ function ConvertLeadModal({
                   className={cn(
                     "p-3 rounded-2xl border text-left transition-all cursor-pointer",
                     plan === p.id 
-                      ? "bg-purple-50 border-purple-400 text-purple-900 shadow-sm" 
-                      : "bg-white border-neutral-200 text-neutral-600 hover:bg-neutral-50"
+                      ? "bg-purple-950/60 border-purple-500 text-white shadow-sm ring-1 ring-purple-500/30" 
+                      : "bg-slate-950 border-slate-800 text-slate-400 hover:bg-slate-900 hover:text-slate-200"
                   )}
                 >
                   <div className="font-bold text-xs">{p.name}</div>
-                  <div className="text-[10px] font-black text-purple-700">{p.price}</div>
-                  <div className="text-[9px] text-neutral-400 mt-0.5">{p.desc}</div>
+                  <div className="text-[10px] font-black text-purple-400">{p.price}</div>
+                  <div className="text-[9px] text-slate-500 mt-0.5">{p.desc}</div>
                 </button>
               ))}
             </div>
 
             <div className="grid grid-cols-2 gap-3 pt-1">
               <div className="space-y-1">
-                <label className="text-[10px] font-bold uppercase text-neutral-500 ml-1">Status</label>
+                <label className="text-[10px] font-bold uppercase text-slate-400 ml-1">Status</label>
                 <div className="grid grid-cols-2 gap-2">
                   <button
                     type="button"
                     onClick={() => setStatus('trial')}
                     className={cn(
-                      "py-2.5 rounded-xl font-bold text-xs transition-all cursor-pointer",
-                      status === 'trial' ? "bg-amber-100 text-amber-800 border-2 border-amber-300" : "bg-neutral-50 text-neutral-500"
+                      "py-2.5 rounded-xl font-bold text-xs transition-all cursor-pointer border",
+                      status === 'trial' ? "bg-amber-950/50 text-amber-300 border-amber-500/50" : "bg-slate-950 text-slate-400 border-slate-800 hover:text-slate-200"
                     )}
                   >
                     Prøveperiode
@@ -5843,8 +5843,8 @@ function ConvertLeadModal({
                     type="button"
                     onClick={() => setStatus('active')}
                     className={cn(
-                      "py-2.5 rounded-xl font-bold text-xs transition-all cursor-pointer",
-                      status === 'active' ? "bg-emerald-100 text-emerald-800 border-2 border-emerald-300" : "bg-neutral-50 text-neutral-500"
+                      "py-2.5 rounded-xl font-bold text-xs transition-all cursor-pointer border",
+                      status === 'active' ? "bg-emerald-950/50 text-emerald-300 border-emerald-500/50" : "bg-slate-950 text-slate-400 border-slate-800 hover:text-slate-200"
                     )}
                   >
                     Aktiv kunde
@@ -5854,12 +5854,12 @@ function ConvertLeadModal({
 
               {status === 'trial' && (
                 <div className="space-y-1">
-                  <label className="text-[10px] font-bold uppercase text-neutral-500 ml-1">Prøvetid (dager)</label>
+                  <label className="text-[10px] font-bold uppercase text-slate-400 ml-1">Prøvetid (dager)</label>
                   <input
                     type="number"
                     value={trialDays}
                     onChange={(e) => setTrialDays(Number(e.target.value))}
-                    className="w-full px-4 py-2 bg-neutral-50 border border-neutral-200 rounded-xl text-sm font-bold focus:ring-2 focus:ring-emerald-500 outline-none"
+                    className="w-full px-4 py-2 bg-slate-950 border border-slate-800 rounded-xl text-sm font-bold text-white focus:ring-2 focus:ring-emerald-500/30 focus:border-emerald-600 outline-none"
                   />
                 </div>
               )}
@@ -5867,44 +5867,44 @@ function ConvertLeadModal({
           </div>
 
           {/* Seksjon 4: Velkomst-e-post */}
-          <div className="space-y-3 pt-2 border-t border-neutral-100">
+          <div className="space-y-3 pt-2 border-t border-slate-800">
             <label className="flex items-center gap-2 cursor-pointer">
               <input
                 type="checkbox"
                 checked={sendWelcomeEmail}
                 onChange={(e) => setSendWelcomeEmail(e.target.checked)}
-                className="w-4 h-4 rounded text-emerald-600 focus:ring-emerald-500 cursor-pointer"
+                className="w-4 h-4 rounded text-emerald-600 focus:ring-emerald-500 cursor-pointer accent-emerald-600"
               />
-              <span className="text-xs font-bold text-neutral-800">
+              <span className="text-xs font-bold text-slate-200">
                 Send automatisk velkomst-e-post med innlogging til kunden
               </span>
             </label>
 
             {sendWelcomeEmail && (
               <div className="space-y-1">
-                <label className="text-[10px] font-bold uppercase text-neutral-400 ml-1">Personlig velkomsthilsen</label>
+                <label className="text-[10px] font-bold uppercase text-slate-400 ml-1">Personlig velkomsthilsen</label>
                 <textarea
                   rows={3}
                   value={customMessage}
                   onChange={(e) => setCustomMessage(e.target.value)}
-                  className="w-full p-3 bg-neutral-50 border border-neutral-200 rounded-xl text-xs text-neutral-700 outline-none focus:ring-2 focus:ring-emerald-500 resize-none"
+                  className="w-full p-3 bg-slate-950 border border-slate-800 rounded-xl text-xs text-slate-200 placeholder:text-slate-500 outline-none focus:ring-2 focus:ring-emerald-500/30 focus:border-emerald-600 resize-none"
                 />
               </div>
             )}
           </div>
 
-          <div className="flex gap-3 pt-4 border-t border-neutral-100">
+          <div className="flex gap-3 pt-4 border-t border-slate-800">
             <button
               type="button"
               onClick={onClose}
-              className="px-6 py-3.5 bg-neutral-100 text-neutral-700 rounded-2xl font-bold hover:bg-neutral-200 transition-all text-xs cursor-pointer"
+              className="px-6 py-3.5 bg-slate-800 hover:bg-slate-700 text-slate-300 hover:text-white border border-slate-700 rounded-2xl font-bold transition-all text-xs cursor-pointer"
             >
               Avbryt
             </button>
             <button
               type="submit"
               disabled={loading}
-              className="flex-1 py-3.5 bg-gradient-to-r from-emerald-600 to-emerald-500 text-white rounded-2xl font-black text-sm hover:opacity-95 transition-all shadow-lg shadow-emerald-600/25 flex items-center justify-center gap-2 cursor-pointer disabled:opacity-50"
+              className="flex-1 py-3.5 bg-gradient-to-r from-emerald-600 to-emerald-500 text-white rounded-2xl font-black text-sm hover:opacity-95 transition-all shadow-lg shadow-emerald-900/30 flex items-center justify-center gap-2 cursor-pointer disabled:opacity-50"
             >
               {loading ? (
                 <>

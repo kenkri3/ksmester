@@ -163,11 +163,41 @@ export async function POST(req: NextRequest) {
       history = [], 
       projectId, 
       projectName, 
-      leadData 
+      leadData,
+      imageUrl,
+      imageBase64,
+      image,
+      images
     } = body;
 
+    let imageAttachment: { data: string; mimeType: string } | null = null;
+    const rawImage = imageBase64 || image || imageUrl;
+    if (rawImage && typeof rawImage === 'string') {
+      try {
+        if (rawImage.startsWith('data:')) {
+          const commaIdx = rawImage.indexOf(',');
+          if (commaIdx !== -1) {
+            const header = rawImage.substring(0, commaIdx);
+            const data = rawImage.substring(commaIdx + 1).replace(/\s+/g, '');
+            const mimeMatch = header.match(/data:([^;]+)/);
+            imageAttachment = {
+              mimeType: mimeMatch ? mimeMatch[1] : 'image/jpeg',
+              data
+            };
+          }
+        } else if (rawImage.length > 200 && !rawImage.startsWith('http') && !rawImage.startsWith('/')) {
+          imageAttachment = {
+            data: rawImage.replace(/\s+/g, ''),
+            mimeType: 'image/jpeg'
+          };
+        }
+      } catch (e) {
+        console.warn('[api/chat] Kunne ikke parse bilde:', e);
+      }
+    }
+
     const userText = sanitize(text || '');
-    if (!userText && (!messages || messages.length === 0)) {
+    if (!userText && (!messages || messages.length === 0) && !imageAttachment) {
       return NextResponse.json({ error: 'Mangler meldingstekst.' }, { status: 400 });
     }
 
@@ -523,7 +553,9 @@ INSTRUKSJON FOR SVAR:
       const aiRes = await generateWithAiEngine({
         prompt: promptContext,
         systemInstruction: agentSystemPrompt,
-        operation: isOfferIntent ? 'mester_ai_offer' : isChangeOrderIntent ? 'mester_ai_change_order' : 'mester_ai_conversation',
+        images: imageAttachment ? [{ inlineData: imageAttachment }] : undefined,
+        model: imageAttachment ? 'gemini-3.8-flash' : undefined,
+        operation: imageAttachment ? 'mester_ai_vision' : (isOfferIntent ? 'mester_ai_offer' : isChangeOrderIntent ? 'mester_ai_change_order' : 'mester_ai_conversation'),
         projectId: resolvedProjectId,
         companyId: userCompanyId,
         notes: `Agent interaction on project ${resolvedProjectName}`

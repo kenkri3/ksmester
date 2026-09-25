@@ -210,7 +210,7 @@ export function resolveOptimalModel(
     }
     if (reqLower.startsWith('gemini')) {
       return {
-        oneMinModel: 'gpt-4o-mini',
+        oneMinModel: 'gemini-2.5-flash',
         geminiModel: requestedModel,
         deepseekModel: process.env.DEEPSEEK_MODEL || 'deepseek-v4.1-flash'
       };
@@ -280,9 +280,9 @@ export function resolveOptimalModel(
  */
 async function uploadAssetTo1MinAi(apiKey: string, base64Data: string, mimeType = 'image/jpeg'): Promise<string | null> {
   try {
-    const cleanBase64 = base64Data.includes(',') ? base64Data.split(',')[1] : base64Data;
+    const cleanBase64 = (base64Data.includes(',') ? base64Data.split(',')[1] : base64Data).replace(/\s+/g, '');
     const buffer = Buffer.from(cleanBase64, 'base64');
-    const ext = mimeType.split('/')[1] || 'jpg';
+    const ext = mimeType.split('/')[1]?.split(';')[0] || 'jpg';
     const filename = `upload-${Date.now()}.${ext}`;
 
     const formData = new FormData();
@@ -292,7 +292,8 @@ async function uploadAssetTo1MinAi(apiKey: string, base64Data: string, mimeType 
     const res = await fetch('https://api.1min.ai/api/assets', {
       method: 'POST',
       headers: {
-        'API-KEY': apiKey
+        'API-KEY': apiKey,
+        'Authorization': `Bearer ${apiKey}`
       },
       body: formData,
       signal: AbortSignal.timeout(15000)
@@ -304,7 +305,7 @@ async function uploadAssetTo1MinAi(apiKey: string, base64Data: string, mimeType 
     }
 
     const data = await res.json();
-    const assetKey = data.asset?.key || data.fileContent?.path;
+    const assetKey = data.asset?.key || data.fileContent?.path || data.data?.key || data.key || data.path;
     return assetKey || null;
   } catch (err: any) {
     console.warn('[1min.AI Asset Upload] Feil ved opplasting:', err.message);
@@ -551,21 +552,43 @@ async function callGeminiBackup(
 
     for (const img of images) {
       if (img.inlineData) {
-        parts.push(img);
-      } else if (img.data && img.mimeType) {
+        const rawData = img.inlineData.data || '';
+        const cleanData = (rawData.includes(',') ? rawData.split(',')[1] : rawData).replace(/\s+/g, '');
         parts.push({
           inlineData: {
-            mimeType: img.mimeType,
-            data: img.data.includes(',') ? img.data.split(',')[1] : img.data
+            mimeType: img.inlineData.mimeType || 'image/jpeg',
+            data: cleanData
           }
         });
-      } else if (typeof img === 'string' && (img as string).startsWith('data:')) {
-        const match = (img as string).match(/^data:(image\/\w+);base64,(.+)$/);
-        if (match) {
+      } else if (img.data && img.mimeType) {
+        const rawData = img.data || '';
+        const cleanData = (rawData.includes(',') ? rawData.split(',')[1] : rawData).replace(/\s+/g, '');
+        parts.push({
+          inlineData: {
+            mimeType: img.mimeType || 'image/jpeg',
+            data: cleanData
+          }
+        });
+      } else if (typeof img === 'string') {
+        const str = img as string;
+        if (str.startsWith('data:')) {
+          const commaIdx = str.indexOf(',');
+          if (commaIdx !== -1) {
+            const header = str.substring(5, commaIdx);
+            const mime = header.split(';')[0] || 'image/jpeg';
+            const cleanData = str.substring(commaIdx + 1).replace(/\s+/g, '');
+            parts.push({
+              inlineData: {
+                mimeType: mime,
+                data: cleanData
+              }
+            });
+          }
+        } else if (str.length > 200 && !str.startsWith('http') && !str.startsWith('/')) {
           parts.push({
             inlineData: {
-              mimeType: match[1],
-              data: match[2]
+              mimeType: 'image/jpeg',
+              data: str.replace(/\s+/g, '')
             }
           });
         }
@@ -910,9 +933,22 @@ export async function generateWithAiEngine(options: GenerateAiOptions): Promise<
           }
         }
 
+        // 🛡️ SIKKERHETSVENTIL:
+        // Dersom brukeren sendte med bilde(r), men opplasting til 1min.AI feilet/ikke ga nøkler:
+        // IKKE send som ren tekst til 1min.AI! Det vil gi standardavslag ("Jeg kan ikke se bildet").
+        // Kast feil umiddelbart for å aktivere Gemini Vision site-backup!
+        if (imagesToProcess.length > 0 && assetKeys.length === 0) {
+          throw new Error('1min.AI Asset Upload ga ingen asset-nøkkel, kobler over til Gemini Vision backup');
+        }
+
+        // Velg en ekte visjonsmodell for 1min.ai
+        const visionOneMinModel = (oneMinModel && !oneMinModel.includes('mini') && !oneMinModel.includes('chat') && !oneMinModel.includes('reasoner'))
+          ? oneMinModel
+          : (process.env.ONE_MIN_AI_VISION_MODEL || 'gpt-4o');
+
         const res = await call1MinAi(
           oneMinKey,
-          oneMinModel,
+          visionOneMinModel,
           promptText,
           options.systemInstruction,
           assetKeys,
@@ -921,22 +957,29 @@ export async function generateWithAiEngine(options: GenerateAiOptions): Promise<
         );
 
         if (res.text && res.text.trim().length > 0) {
+          // 🛡️ SJEKK OM MODELLEN LIKEVEL NEKTET/IKKE SÅ BILDET:
+          const isRefusal = /kan (?:dessverre )?ikke se|ikke se eller analysere|kan ikke analysere innholdet|kan ikke analysere bildet|kan dessverre ikke åpne|mangler bilde|klarer ikke å se bildet|cannot see (?:the|this|any)? image|unable to (?:view|see|analyze) (?:the|this|any)? image|no image (?:was )?provided/i.test(res.text);
+
+          if (isRefusal && imagesToProcess.length > 0) {
+            throw new Error(`1min.AI modell avviste bildet ("${res.text.slice(0, 80)}..."), kobler over til Gemini Vision site-backup`);
+          }
+
           trackTokenCost({
-            model: oneMinModel,
+            model: visionOneMinModel,
             promptTokens: res.promptTokens,
             completionTokens: res.completionTokens,
             operation: options.operation || 'ai_generate_vision_1min_primary',
             companyId: options.companyId,
             companyName: options.companyName,
             projectId: options.projectId,
-            notes: options.notes || `1min.ai Vision (${oneMinModel})`,
+            notes: options.notes || `1min.ai Vision (${visionOneMinModel})`,
             service: '1min.ai'
           }).catch(() => {});
 
           return {
             text: res.text,
             source: '1min.ai',
-            model: oneMinModel,
+            model: visionOneMinModel,
             usage: {
               promptTokens: res.promptTokens,
               completionTokens: res.completionTokens,

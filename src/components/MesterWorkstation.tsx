@@ -2197,7 +2197,7 @@ export default function MesterWorkstation({
     }
   };
 
-  // 📷 Bildeopplasting
+  // 📷 Bildeopplasting med garantert base64-konvertering for bildeanalyse
   const handleImageSelect = async (e: React.ChangeEvent<HTMLInputElement>) => {
     const file = e.target.files?.[0];
     if (!file) return;
@@ -2210,23 +2210,26 @@ export default function MesterWorkstation({
     setIsUploadingImage(true);
     const localPreview = URL.createObjectURL(file);
 
-    // Vis bildet umiddelbart så brukeren slipper ventetid, og les inn base64 parallelt
-    setAttachedImage({
-      url: localPreview,
-      preview: localPreview,
-      name: file.name
-    });
-
-    const reader = new FileReader();
-    reader.onload = () => {
-      const b64 = reader.result as string;
-      setAttachedImage(prev => prev ? { ...prev, base64: b64 } : { url: localPreview, preview: localPreview, name: file.name, base64: b64 });
-    };
-    reader.readAsDataURL(file);
-
-    toast.info('Behandler bilde...');
-
     try {
+      // 1. Les inn Base64 umiddelbart og garantert (for lynrask og feilsikker bildeanalyse)
+      const base64Data = await new Promise<string>((resolve, reject) => {
+        const reader = new FileReader();
+        reader.onload = () => resolve(reader.result as string);
+        reader.onerror = (err) => reject(err);
+        reader.readAsDataURL(file);
+      });
+
+      // Sett attachedImage med komplett base64 umiddelbart så brukeren kan sende med én gang
+      setAttachedImage({
+        url: localPreview,
+        preview: localPreview,
+        name: file.name,
+        base64: base64Data
+      });
+
+      toast.success('Bilde klart for analyse!');
+
+      // 2. Parallell bakgrunnsopplasting til server (for prosjektgalleri og lagring på disk)
       const formData = new FormData();
       formData.append('file', file);
 
@@ -2236,27 +2239,23 @@ export default function MesterWorkstation({
         headers['Authorization'] = `Bearer ${token}`;
       }
 
-      const res = await fetch('/api/upload', {
+      fetch('/api/upload', {
         method: 'POST',
         headers,
         body: formData
-      });
-
-      if (res.ok) {
-        const data = await res.json();
-        setAttachedImage(prev => ({
-          url: data.url || localPreview,
-          preview: localPreview,
-          name: file.name,
-          base64: prev?.base64
-        }));
-        toast.success('Bilde klart for analyse!');
-      } else {
-        toast.success('Bilde klart for analyse!');
-      }
+      })
+        .then(res => res.ok ? res.json() : null)
+        .then(data => {
+          if (data?.url) {
+            setAttachedImage(prev => prev ? { ...prev, url: data.url, base64: prev.base64 || base64Data } : null);
+          }
+        })
+        .catch(err => {
+          console.warn('Bakgrunnsopplasting til server feilet, bruker lokal base64:', err);
+        });
     } catch (err: any) {
       console.warn('Opplasting via server feilet, bruker lokal base64:', err);
-      toast.success('Bilde klart for analyse!');
+      toast.error('Kunne ikke lese inn bilde');
     } finally {
       setIsUploadingImage(false);
       if (fileInputRef.current) fileInputRef.current.value = '';
@@ -2682,6 +2681,273 @@ export default function MesterWorkstation({
     setTimeout(() => setCopiedId(null), 2000);
   };
 
+  const renderPromptBar = (isHeroCentered = false) => {
+    return (
+      <div className={cn("w-full space-y-2 relative pointer-events-auto", isHeroCentered ? "max-w-2xl mx-auto" : "max-w-3xl mx-auto")}>
+        {/* Forhåndsvisning av vedlagt bilde */}
+        {attachedImage && (
+          <div className="flex items-center gap-2.5 p-2 bg-[#1b2230] rounded-2xl border border-white/15 shadow-md w-fit">
+            <img src={attachedImage.preview} alt="Vedlegg" className="w-9 h-9 rounded-lg object-cover" />
+            <span className="text-xs font-medium text-slate-200 truncate max-w-[200px]">{attachedImage.name}</span>
+            <button
+              type="button"
+              onClick={() => setAttachedImage(null)}
+              className="p-1 text-slate-400 hover:text-rose-400 rounded-lg cursor-pointer"
+            >
+              <X size={14} />
+            </button>
+          </div>
+        )}
+
+        {/* Pill Container (Rounded-full bg-[#171d27]/95) */}
+        <form
+          onSubmit={(e) => {
+            e.preventDefault();
+            handleSendMessage(inputVal);
+          }}
+          className={cn(
+            "relative flex items-center bg-[#171d27]/95 border border-white/10 hover:border-white/20 focus-within:border-white/30 focus-within:ring-2 focus-within:ring-purple-500/15 rounded-full p-1.5 sm:p-2 shadow-2xl backdrop-blur-xl transition-all",
+            isHeroCentered ? "shadow-2xl shadow-purple-950/30 ring-1 ring-white/10" : "shadow-xl"
+          )}
+        >
+          {/* File inputs using sr-only */}
+          <input
+            id={`mester-file-input-${isHeroCentered ? 'hero' : 'dock'}`}
+            type="file"
+            ref={fileInputRef}
+            onChange={handleImageSelect}
+            accept="image/*"
+            className="sr-only"
+          />
+          <input
+            id={`mester-camera-input-${isHeroCentered ? 'hero' : 'dock'}`}
+            type="file"
+            ref={cameraInputRef}
+            onChange={handleImageSelect}
+            accept="image/*"
+            capture="environment"
+            className="sr-only"
+          />
+          <input
+            id={`mester-doc-input-${isHeroCentered ? 'hero' : 'dock'}`}
+            type="file"
+            ref={docInputRef}
+            onChange={(e) => {
+              const file = e.target.files?.[0];
+              if (file) {
+                toast.success(`Dokument vedlagt: ${file.name}`);
+                setInputVal(prev => prev ? `${prev} (Vedlagt fil: ${file.name})` : `Analyser vedlagt dokument: ${file.name}`);
+              }
+            }}
+            accept=".pdf,.dwg,.doc,.docx,.xlsx,.txt"
+            className="sr-only"
+          />
+
+          {/* Left: + circular button with direct popover */}
+          <div className="relative shrink-0">
+            <button
+              type="button"
+              onClick={(e) => {
+                e.stopPropagation();
+                setIsAttachmentMenuOpen(!isAttachmentMenuOpen);
+              }}
+              disabled={isUploadingImage || isLoading}
+              className="w-9 h-9 sm:w-10 sm:h-10 rounded-full bg-white/5 hover:bg-white/10 text-slate-300 hover:text-white flex items-center justify-center shrink-0 cursor-pointer transition-colors active:scale-95"
+              title="Legg ved bilde, ta foto eller last opp tegning"
+            >
+              <Plus size={20} className={cn("transition-transform duration-200", isAttachmentMenuOpen && "rotate-45")} />
+            </button>
+
+            <AnimatePresence>
+              {isAttachmentMenuOpen && (
+                <>
+                  <div 
+                    className="fixed inset-0 z-40" 
+                    onClick={(e) => {
+                      e.stopPropagation();
+                      setIsAttachmentMenuOpen(false);
+                    }} 
+                  />
+                  <motion.div
+                    initial={{ opacity: 0, y: 8, scale: 0.95 }}
+                    animate={{ opacity: 1, y: 0, scale: 1 }}
+                    exit={{ opacity: 0, y: 8, scale: 1 }}
+                    transition={{ duration: 0.15 }}
+                    className="absolute bottom-full left-0 mb-3 z-50 bg-[#161c28] border border-white/15 rounded-3xl p-2 shadow-2xl w-64 space-y-1 backdrop-blur-xl"
+                  >
+                    <label
+                      htmlFor={`mester-camera-input-${isHeroCentered ? 'hero' : 'dock'}`}
+                      onClick={() => setIsAttachmentMenuOpen(false)}
+                      className="w-full flex items-center gap-3 p-2.5 rounded-2xl hover:bg-white/10 text-xs font-semibold text-white transition-colors cursor-pointer text-left group"
+                    >
+                      <div className="w-8 h-8 rounded-full bg-rose-500/20 text-rose-400 border border-rose-500/30 flex items-center justify-center shrink-0 group-hover:scale-105 transition-transform">
+                        <Camera size={16} />
+                      </div>
+                      <div>
+                        <p className="font-bold">{t('ws_attach_camera', "Ta bilde med kamera")}</p>
+                        <p className="text-[10px] text-slate-400">{t('ws_attach_camera_desc', "TEK17 våtrom & slukkontroll")}</p>
+                      </div>
+                    </label>
+
+                    <label
+                      htmlFor={`mester-file-input-${isHeroCentered ? 'hero' : 'dock'}`}
+                      onClick={() => setIsAttachmentMenuOpen(false)}
+                      className="w-full flex items-center gap-3 p-2.5 rounded-2xl hover:bg-white/10 text-xs font-semibold text-white transition-colors cursor-pointer text-left group"
+                    >
+                      <div className="w-8 h-8 rounded-full bg-blue-500/20 text-blue-400 border border-blue-500/30 flex items-center justify-center shrink-0 group-hover:scale-105 transition-transform">
+                        <ImageIcon size={16} />
+                      </div>
+                      <div>
+                        <p className="font-bold">{t('ws_attach_photo', "Bildegalleri")}</p>
+                        <p className="text-[10px] text-slate-400">{t('ws_attach_photo_desc', "Last opp eksisterende bilder")}</p>
+                      </div>
+                    </label>
+
+                    <label
+                      htmlFor={`mester-doc-input-${isHeroCentered ? 'hero' : 'dock'}`}
+                      onClick={() => setIsAttachmentMenuOpen(false)}
+                      className="w-full flex items-center gap-3 p-2.5 rounded-2xl hover:bg-white/10 text-xs font-semibold text-white transition-colors cursor-pointer text-left group"
+                    >
+                      <div className="w-8 h-8 rounded-full bg-emerald-500/20 text-emerald-400 border border-emerald-500/30 flex items-center justify-center shrink-0 group-hover:scale-105 transition-transform">
+                        <Paperclip size={16} />
+                      </div>
+                      <div>
+                        <p className="font-bold">{t('ws_attach_doc', "Tegning & FDV")}</p>
+                        <p className="text-[10px] text-slate-400">{t('ws_attach_doc_desc', "PDF, DWG eller Word-dokument")}</p>
+                      </div>
+                    </label>
+
+                    <button
+                      type="button"
+                      onClick={() => {
+                        setIsAttachmentMenuOpen(false);
+                        handleOpenCreateOffer();
+                      }}
+                      className="w-full flex items-center gap-3 p-2.5 rounded-2xl hover:bg-white/10 text-xs font-semibold text-white transition-colors cursor-pointer text-left group"
+                    >
+                      <div className="w-8 h-8 rounded-full bg-purple-500/20 text-purple-400 border border-purple-500/30 flex items-center justify-center shrink-0 group-hover:scale-105 transition-transform">
+                        <Calculator size={16} />
+                      </div>
+                      <div>
+                        <p className="font-bold text-purple-300 group-hover:text-purple-200">{t('ws_create_offer_action', "Nytt tilbud & kalkyle")}</p>
+                        <p className="text-[10px] text-slate-400">{t('ws_create_offer_desc', "NS 8406, materiell og PDF")}</p>
+                      </div>
+                    </button>
+                  </motion.div>
+                </>
+              )}
+            </AnimatePresence>
+          </div>
+
+          {/* Center: Expanding textarea */}
+          <textarea
+            ref={textareaRef}
+            rows={1}
+            value={inputVal}
+            onChange={(e) => setInputVal(e.target.value)}
+            onKeyDown={(e) => {
+              if (e.key === 'Enter' && !e.shiftKey) {
+                if (typeof window !== 'undefined' && window.innerWidth >= 768) {
+                  e.preventDefault();
+                  handleSendMessage(inputVal);
+                }
+              }
+            }}
+            placeholder={t('ws_ask_mesterai', "Spør MesterAI om prosjekt, NS 8406, TEK17, kalkyler...")}
+            disabled={isLoading}
+            onPaste={(e) => {
+              const items = e.clipboardData?.items;
+              if (items) {
+                for (let i = 0; i < items.length; i++) {
+                  if (items[i].type.startsWith('image/')) {
+                    const file = items[i].getAsFile();
+                    if (file) {
+                      e.preventDefault();
+                      const fakeEvent = { target: { files: [file] } } as any;
+                      handleImageSelect(fakeEvent);
+                      break;
+                    }
+                  }
+                }
+              }
+            }}
+            className="flex-1 bg-transparent px-3 py-2 text-sm sm:text-[15px] text-white placeholder:text-slate-400 focus:outline-none resize-none max-h-32 min-h-[38px] leading-relaxed no-scrollbar overflow-y-auto"
+          />
+
+          {/* Right controls: Model Pill + Mic + Send */}
+          <div className="flex items-center gap-1.5 shrink-0 pr-1">
+            {/* ⚡ Clean Model Pill (Gemini style) */}
+            <div 
+              className="hidden sm:inline-flex items-center gap-1.5 px-2.5 py-1 rounded-full bg-white/5 border border-white/10 text-[11px] font-semibold text-slate-300 hover:text-white select-none transition-colors"
+              title="MesterAI 4.5 Turbo: Topp ytelse med TEK17, NS 8406 og NOBB"
+            >
+              <span className="w-1.5 h-1.5 rounded-full bg-emerald-400" />
+              <span>MesterAI Pro</span>
+              <ChevronDown size={11} className="text-slate-400" />
+            </div>
+
+            {/* Regular Mic Dictation */}
+            <button
+              type="button"
+              onClick={toggleMic}
+              className={cn(
+                "p-2 rounded-full transition-all cursor-pointer",
+                isListeningMic
+                  ? "bg-rose-500 text-white animate-pulse"
+                  : "text-slate-400 hover:text-white hover:bg-white/10"
+              )}
+              title={isListeningMic ? t('ws_mic_listening', "Lytter... Trykk for å stoppe") : t('ws_mic_speak', "Snakk inn instruks")}
+            >
+              {isListeningMic ? <MicOff size={18} /> : <Mic size={18} />}
+            </button>
+
+            {/* If text or image is present, show Send button */}
+            {(inputVal.trim() || attachedImage) ? (
+              <button
+                type="submit"
+                disabled={isLoading}
+                className="w-9 h-9 sm:w-10 sm:h-10 rounded-full bg-gradient-to-tr from-purple-600 to-blue-600 hover:from-purple-500 hover:to-blue-500 text-white flex items-center justify-center shrink-0 cursor-pointer shadow-md shadow-purple-600/30 active:scale-95 transition-all"
+                title={t('ws_send', "Send")}
+              >
+                <Send size={15} className="translate-x-0.5" />
+              </button>
+            ) : (
+              /* 🔵 Live Voice Gemini button */
+              <button
+                type="button"
+                onClick={() => {
+                  const next = !isLiveVoiceActive;
+                  setIsLiveVoiceActive(next);
+                  if (next) {
+                    toast.info(t('ws_live_voice_enabled', '🎙️ Live Voice samtale aktivert. Snakk fritt!'));
+                    if (!isListeningMic) toggleMic();
+                  } else {
+                    toast.info(t('ws_live_voice_disabled', 'Live Voice deaktivert.'));
+                    if (isListeningMic) toggleMic();
+                  }
+                }}
+                className={cn(
+                  "w-9 h-9 sm:w-10 sm:h-10 rounded-full flex items-center justify-center text-white shrink-0 cursor-pointer shadow-md transition-all active:scale-95",
+                  isLiveVoiceActive
+                    ? "bg-gradient-to-tr from-blue-600 via-indigo-600 to-purple-600 ring-2 ring-blue-400/50 shadow-blue-500/40 animate-pulse"
+                    : "bg-[#1a73e8] hover:bg-[#1557b0] shadow-blue-500/25"
+                )}
+                title={isLiveVoiceActive ? t('ws_live_voice_active', "Avslutt Live Voice samtale") : t('ws_live_voice_start', "Start Live Voice samtale (handsfree)")}
+              >
+                <div className="flex items-center gap-[2.5px] h-4">
+                  <span className={cn("w-[2.5px] rounded-full bg-white transition-all duration-200", isLiveVoiceActive || isListeningMic ? "h-4 animate-bounce" : "h-2")} />
+                  <span className={cn("w-[2.5px] rounded-full bg-white transition-all duration-200 delay-75", isLiveVoiceActive || isListeningMic ? "h-5 animate-bounce" : "h-3.5")} />
+                  <span className={cn("w-[2.5px] rounded-full bg-white transition-all duration-200 delay-150", isLiveVoiceActive || isListeningMic ? "h-3.5 animate-bounce" : "h-2.5")} />
+                  <span className={cn("w-[2.5px] rounded-full bg-white transition-all duration-200 delay-100", isLiveVoiceActive || isListeningMic ? "h-4.5 animate-bounce" : "h-1.5")} />
+                </div>
+              </button>
+            )}
+          </div>
+        </form>
+      </div>
+    );
+  };
+
   return (
     <div className="fixed inset-0 md:static flex h-[100dvh] w-full bg-[#0A101D] text-slate-100 overflow-hidden font-sans overscroll-none">
       {/* 1. Left Sidebar (Collapsible Desktop + Mobile Drawer) */}
@@ -2742,10 +3008,15 @@ export default function MesterWorkstation({
       />
 
       {/* 2. Main Workstation Center Stage */}
-      <main className="flex-1 flex flex-col h-full overflow-hidden bg-[#0A101D] relative">
+      <main 
+        className="flex-1 flex flex-col h-full overflow-hidden bg-[#0A101D] relative"
+        style={{
+          backgroundImage: 'radial-gradient(ellipse 80% 50% at 50% -20%, rgba(30, 48, 80, 0.22), transparent 70%), radial-gradient(ellipse 60% 40% at 50% 50%, rgba(18, 28, 48, 0.25), transparent 80%)'
+        }}
+      >
         {/* Top Navigation Bar (Gemini & ChatGPT style) */}
         <header className={cn(
-          "relative h-14 px-3 sm:px-5 border-b border-slate-800/80 flex items-center justify-between gap-3 bg-[#0A101D]/90 backdrop-blur-md shrink-0 overflow-x-clip min-w-0 w-full",
+          "relative h-14 px-3 sm:px-5 border-b border-slate-800/60 flex items-center justify-between gap-3 bg-[#0A101D]/80 backdrop-blur-md shrink-0 overflow-x-clip min-w-0 w-full",
           isTopSearchOpen ? "z-50" : "z-40"
         )}>
           {isTopSearchOpen ? (
@@ -6584,68 +6855,57 @@ export default function MesterWorkstation({
             /* 🤖 THE DEFAULT CHAT INTERFACE (ChatGPT / Gemini / Antigravity style) */
             <div className="flex-1 flex flex-col justify-between max-w-4xl mx-auto w-full px-3 sm:px-6 pt-4 pb-32">
               {messages.length === 0 ? (
-                /* Centered Welcome Hero (1:1 Google Gemini Mobile - Screenshot 3) */
-                <div className="my-auto py-8 sm:py-14 text-center space-y-6 animate-in fade-in duration-300">
-                  {/* Glowing 4-point Gemini star */}
-                  <div className="relative inline-flex items-center justify-center">
-                    <div className="absolute inset-0 rounded-full blur-2xl bg-gradient-to-tr from-blue-500/30 via-purple-500/40 to-pink-500/30 scale-150 animate-pulse" />
-                    <svg viewBox="0 0 48 48" className="w-14 h-14 sm:w-16 sm:h-16 relative z-10 drop-shadow-[0_0_24px_rgba(168,85,247,0.45)]" fill="none" xmlns="http://www.w3.org/2000/svg">
-                      <defs>
-                        <linearGradient id="geminiStarGrad" x1="0%" y1="0%" x2="100%" y2="100%">
-                          <stop offset="0%" stopColor="#4285F4" />
-                          <stop offset="35%" stopColor="#9B72CF" />
-                          <stop offset="70%" stopColor="#D96570" />
-                          <stop offset="100%" stopColor="#F4B400" />
-                        </linearGradient>
-                      </defs>
-                      <path d="M24 0C24 13.2548 13.2548 24 0 24C13.2548 24 24 34.7452 24 48C24 34.7452 34.7452 24 48 24C34.7452 24 24 13.2548 24 0Z" fill="url(#geminiStarGrad)" />
-                    </svg>
+                /* Centered Welcome Hero (Clean Gemini style with VikingMester brand) */
+                <div className="my-auto py-8 sm:py-16 text-center max-w-2xl mx-auto w-full space-y-6 sm:space-y-8 animate-in fade-in duration-300">
+                  <div className="flex flex-col items-center justify-center space-y-3">
+                    <MesterAIIcon size="lg" />
+                    <h2 className="text-3xl sm:text-4xl md:text-5xl font-semibold tracking-tight text-white mt-2">
+                      {t('ws_hero_greeting', 'Hva kan MesterAI bistå med i dag?')}
+                    </h2>
+                    <p className="text-xs sm:text-sm text-slate-400 font-normal">
+                      {selectedProject ? (
+                        <span className="inline-flex items-center gap-1.5 px-3 py-1 rounded-full bg-white/5 border border-white/10 text-slate-300">
+                          <span className="w-1.5 h-1.5 rounded-full bg-emerald-400 animate-pulse" />
+                          <span>{t('ws_active_site_prefix', 'Aktiv byggeplass:')} <strong className="text-white font-medium">{selectedProject.name}</strong></span>
+                        </span>
+                      ) : (
+                        <span className="text-slate-400">{t('ws_ready_to_assist', 'Klar til å bistå på tvers av alle dine byggeprosjekter, kalkyler og NS-krav')}</span>
+                      )}
+                    </p>
                   </div>
 
-                  {/* Personalized Greeting (Screenshot 3: "Mikrofonen er din, Kenneth") */}
-                  {(() => {
-                    const rawName = user?.displayName || 'Kenneth';
-                    const firstName = rawName.trim().split(' ')[0] || 'Kenneth';
-                    return (
-                      <div className="space-y-1.5 max-w-xl mx-auto px-4">
-                        <h2 className="text-2xl sm:text-4xl font-semibold tracking-tight text-white">
-                          {t('ws_mic_is_yours', 'Mikrofonen er din, {{name}}', { name: firstName })}
-                        </h2>
-                        <p className="text-xs sm:text-sm text-slate-400 font-normal">
-                          {t('ws_active_site_prefix', 'Aktiv byggeplass:')} <strong className="text-slate-200">{selectedProject?.name || t('ws_all_sites', 'Alle byggeplasser')}</strong>
-                        </p>
-                      </div>
-                    );
-                  })()}
+                  {/* ✦ The Floating Center Input Capsule */}
+                  <div className="w-full px-1">
+                    {renderPromptBar(true)}
+                  </div>
 
-                  {/* 4 Quick Suggestions with curvy arrow ↳ (1:1 Screenshot 3) */}
-                  <div className="space-y-2 max-w-xl mx-auto w-full px-2 pt-2">
+                  {/* ✦ 4 Subtle Minimalist Suggestion Chips (Gemini style) */}
+                  <div className="flex flex-wrap items-center justify-center gap-2 max-w-xl mx-auto px-2">
                     {[
                       { 
-                        text: t('ws_quick_change_order', "Opprett endringsordre for ekstraarbeid (NS 8406)"), 
+                        text: t('ws_quick_change_order', "Opprett endringsordre (NS 8406)"), 
                         action: t('ws_quick_change_order_action', "Varsle endringsordre iht. NS 8406 for ekstraarbeid") 
                       },
                       { 
-                        text: t('ws_quick_tek17_check', "Ta TEK17 bildekontroll av sluk og membran"), 
+                        text: t('ws_quick_tek17_check', "TEK17 våtroms- og slukkontroll"), 
                         action: t('ws_quick_tek17_action', "Hva er TEK17-kravene til sluk, klemring og membran på bad?") 
                       },
                       { 
-                        text: t('ws_quick_daily_log', "Snakk inn byggedagbok med Yr-sanntidsvær"), 
+                        text: t('ws_quick_daily_log', "Før dagens byggedagbok"), 
                         action: t('ws_quick_daily_log_action', "Før dagens byggedagbok med mannskapsliste og Yr-sanntidsvær") 
                       },
                       { 
-                        text: t('ws_quick_lukkesperre', "Sjekk om sone bad er klar for lukking"), 
-                        action: t('ws_quick_lukkesperre_action', "Sjekk sjekkliste og lukkesperre for bad før plating") 
+                        text: t('ws_quick_calc', "Hurtigkalkyle for tilbud"), 
+                        action: t('ws_quick_calc_action', "Hjelp meg å beregne en hurtigkalkyle for et oppdrag med timer og materiell") 
                       }
                     ].map((item, idx) => (
                       <button
                         key={idx}
                         type="button"
                         onClick={() => handleSendMessage(item.action)}
-                        className="w-full flex items-center justify-between gap-3 p-3.5 sm:p-4 rounded-2xl bg-[#1e1f20]/70 hover:bg-[#1e1f20] border border-white/10 hover:border-white/20 text-left text-xs sm:text-sm text-slate-200 hover:text-white transition-all cursor-pointer group active:scale-98 shadow-sm"
+                        className="inline-flex items-center gap-1.5 px-3.5 py-2 rounded-full bg-white/5 hover:bg-white/10 border border-white/10 hover:border-white/20 text-xs font-medium text-slate-300 hover:text-white transition-all cursor-pointer shadow-xs active:scale-95"
                       >
-                        <span className="truncate font-normal">{item.text}</span>
-                        <CornerDownLeft size={16} className="text-slate-400 group-hover:text-white shrink-0 transition-transform group-hover:-translate-x-0.5" />
+                        <span>{item.text}</span>
                       </button>
                     ))}
                   </div>
@@ -6672,15 +6932,15 @@ export default function MesterWorkstation({
                         className={cn(
                           "flex flex-col gap-2 scroll-mt-6 sm:scroll-mt-8 transition-all",
                           msg.role === 'user'
-                            ? "max-w-[90%] sm:max-w-[80%] ml-auto items-end"
+                            ? "max-w-[85%] sm:max-w-[75%] ml-auto items-end"
                             : "w-full items-start"
                         )}
                       >
                         <div className={cn(
                           "w-full transition-all",
                           msg.role === 'user'
-                            ? "bg-[#24272a] text-white px-5 py-3.5 sm:px-6 sm:py-4 rounded-[26px] shadow-sm text-[17px] sm:text-[19px] font-semibold leading-relaxed"
-                            : "bg-[#13161c]/80 sm:bg-[#13161c]/60 border border-slate-800/80 rounded-3xl p-5 sm:p-7 shadow-lg backdrop-blur-md"
+                            ? "bg-[#24272a] text-white px-5 py-3 sm:px-6 sm:py-3.5 rounded-[22px] shadow-xs text-[15px] sm:text-[16px] font-normal leading-relaxed"
+                            : "bg-[#131722]/50 border border-white/5 rounded-3xl p-4 sm:p-6 shadow-sm backdrop-blur-md"
                         )}>
                           {msg.role === 'user' ? (
                             <div className="whitespace-pre-wrap font-medium">
@@ -6944,244 +7204,14 @@ export default function MesterWorkstation({
         </div>
       )}
 
-        {/* 4. Floating Rounded-Full Input Box (1:1 Google Gemini App - Screenshot 2 & 3) */}
-        {viewMode === 'chat' && (
+        {/* 4. Floating Rounded-Full Input Box (when conversation is active) */}
+        {viewMode === 'chat' && messages.length > 0 && (
           <div 
-            className="absolute bottom-0 inset-x-0 bg-gradient-to-t from-[#0A101D] via-[#0A101D]/90 to-transparent pt-6 px-3 sm:px-6 z-20 pointer-events-none"
+            className="absolute bottom-0 inset-x-0 bg-gradient-to-t from-[#0A101D] via-[#0A101D]/95 to-transparent pt-6 px-3 sm:px-6 z-20 pointer-events-none"
             style={{ paddingBottom: 'max(12px, env(safe-area-inset-bottom))' }}
           >
             <div className="max-w-3xl mx-auto w-full space-y-2 relative pointer-events-auto">
-              {/* Forhåndsvisning av vedlagt bilde */}
-              {attachedImage && (
-                <div className="flex items-center gap-2.5 p-2 bg-[#1e1f20] rounded-2xl border border-white/15 shadow-md w-fit">
-                  <img src={attachedImage.preview} alt="Vedlegg" className="w-9 h-9 rounded-lg object-cover" />
-                  <span className="text-xs font-medium text-slate-200 truncate max-w-[200px]">{attachedImage.name}</span>
-                  <button
-                    type="button"
-                    onClick={() => setAttachedImage(null)}
-                    className="p-1 text-slate-400 hover:text-rose-400 rounded-lg cursor-pointer"
-                  >
-                    <X size={14} />
-                  </button>
-                </div>
-              )}
-
-              {/* Pill Container (Rounded-full bg-[#1e1f20]) */}
-              <form
-                onSubmit={(e) => {
-                  e.preventDefault();
-                  handleSendMessage(inputVal);
-                }}
-                className="relative flex items-center bg-[#1e1f20] border border-white/10 focus-within:border-white/20 focus-within:ring-2 focus-within:ring-purple-500/20 rounded-full p-1.5 sm:p-2 shadow-2xl transition-all"
-              >
-                {/* File inputs using sr-only for bulletproof programmatic and label activation */}
-                <input
-                  id="mester-file-input"
-                  type="file"
-                  ref={fileInputRef}
-                  onChange={handleImageSelect}
-                  accept="image/*"
-                  className="sr-only"
-                />
-                <input
-                  id="mester-camera-input"
-                  type="file"
-                  ref={cameraInputRef}
-                  onChange={handleImageSelect}
-                  accept="image/*"
-                  capture="environment"
-                  className="sr-only"
-                />
-                <input
-                  id="mester-doc-input"
-                  type="file"
-                  ref={docInputRef}
-                  onChange={(e) => {
-                    const file = e.target.files?.[0];
-                    if (file) {
-                      toast.success(`Dokument vedlagt: ${file.name}`);
-                      setInputVal(prev => prev ? `${prev} (Vedlagt fil: ${file.name})` : `Analyser vedlagt dokument: ${file.name}`);
-                    }
-                  }}
-                  accept=".pdf,.dwg,.doc,.docx,.xlsx,.txt"
-                  className="sr-only"
-                />
-
-                {/* Left: + circular button with direct popover */}
-                <div className="relative shrink-0">
-                  <button
-                    type="button"
-                    onClick={(e) => {
-                      e.stopPropagation();
-                      setIsAttachmentMenuOpen(!isAttachmentMenuOpen);
-                    }}
-                    disabled={isUploadingImage || isLoading}
-                    className="w-9 h-9 sm:w-10 sm:h-10 rounded-full bg-white/5 hover:bg-white/10 text-slate-300 hover:text-white flex items-center justify-center shrink-0 cursor-pointer transition-colors active:scale-95"
-                    title="Legg ved bilde, ta foto eller last opp tegning"
-                  >
-                    <Plus size={20} className={cn("transition-transform duration-200", isAttachmentMenuOpen && "rotate-45")} />
-                  </button>
-
-                  <AnimatePresence>
-                    {isAttachmentMenuOpen && (
-                      <>
-                        <div 
-                          className="fixed inset-0 z-40" 
-                          onClick={(e) => {
-                            e.stopPropagation();
-                            setIsAttachmentMenuOpen(false);
-                          }} 
-                        />
-                        <motion.div
-                          initial={{ opacity: 0, y: 8, scale: 0.95 }}
-                          animate={{ opacity: 1, y: 0, scale: 1 }}
-                          exit={{ opacity: 0, y: 8, scale: 1 }}
-                          transition={{ duration: 0.15 }}
-                          className="absolute bottom-full left-0 mb-3 z-50 bg-[#1e1f20] border border-white/15 rounded-3xl p-2 shadow-2xl w-64 space-y-1 backdrop-blur-xl"
-                        >
-                          <label
-                            htmlFor="mester-camera-input"
-                            onClick={() => setIsAttachmentMenuOpen(false)}
-                            className="w-full flex items-center gap-3 p-2.5 rounded-2xl hover:bg-white/10 text-xs font-semibold text-white transition-colors cursor-pointer text-left group"
-                          >
-                            <div className="w-8 h-8 rounded-full bg-rose-500/20 text-rose-400 border border-rose-500/30 flex items-center justify-center shrink-0 group-hover:scale-105 transition-transform">
-                              <Camera size={16} />
-                            </div>
-                            <div>
-                              <p className="font-bold">{t('ws_attach_camera', "Ta bilde med kamera")}</p>
-                              <p className="text-[10px] text-slate-400">{t('ws_attach_camera_desc', "TEK17 våtrom & slukkontroll")}</p>
-                            </div>
-                          </label>
-
-                          <label
-                            htmlFor="mester-file-input"
-                            onClick={() => setIsAttachmentMenuOpen(false)}
-                            className="w-full flex items-center gap-3 p-2.5 rounded-2xl hover:bg-white/10 text-xs font-semibold text-white transition-colors cursor-pointer text-left group"
-                          >
-                            <div className="w-8 h-8 rounded-full bg-blue-500/20 text-blue-400 border border-blue-500/30 flex items-center justify-center shrink-0 group-hover:scale-105 transition-transform">
-                              <ImageIcon size={16} />
-                            </div>
-                            <div>
-                              <p className="font-bold">{t('ws_attach_photo', "Bildegalleri")}</p>
-                              <p className="text-[10px] text-slate-400">{t('ws_attach_photo_desc', "Last opp eksisterende bilder")}</p>
-                            </div>
-                          </label>
-
-                          <label
-                            htmlFor="mester-doc-input"
-                            onClick={() => setIsAttachmentMenuOpen(false)}
-                            className="w-full flex items-center gap-3 p-2.5 rounded-2xl hover:bg-white/10 text-xs font-semibold text-white transition-colors cursor-pointer text-left group"
-                          >
-                            <div className="w-8 h-8 rounded-full bg-emerald-500/20 text-emerald-400 border border-emerald-500/30 flex items-center justify-center shrink-0 group-hover:scale-105 transition-transform">
-                              <Paperclip size={16} />
-                            </div>
-                            <div>
-                              <p className="font-bold">{t('ws_attach_doc', "Tegning & FDV")}</p>
-                              <p className="text-[10px] text-slate-400">{t('ws_attach_doc_desc', "PDF, DWG eller Word-dokument")}</p>
-                            </div>
-                          </label>
-
-                          <button
-                            type="button"
-                            onClick={() => {
-                              setIsAttachmentMenuOpen(false);
-                              handleOpenCreateOffer();
-                            }}
-                            className="w-full flex items-center gap-3 p-2.5 rounded-2xl hover:bg-white/10 text-xs font-semibold text-white transition-colors cursor-pointer text-left group"
-                          >
-                            <div className="w-8 h-8 rounded-full bg-purple-500/20 text-purple-400 border border-purple-500/30 flex items-center justify-center shrink-0 group-hover:scale-105 transition-transform">
-                              <Calculator size={16} />
-                            </div>
-                            <div>
-                              <p className="font-bold text-purple-300 group-hover:text-purple-200">{t('ws_create_offer_action', "Nytt tilbud & kalkyle")}</p>
-                              <p className="text-[10px] text-slate-400">{t('ws_create_offer_desc', "NS 8406, materiell og PDF")}</p>
-                            </div>
-                          </button>
-                        </motion.div>
-                      </>
-                    )}
-                  </AnimatePresence>
-                </div>
-
-                {/* Center: Expanding textarea */}
-                <textarea
-                  ref={textareaRef}
-                  rows={1}
-                  value={inputVal}
-                  onChange={(e) => setInputVal(e.target.value)}
-                  onKeyDown={(e) => {
-                    if (e.key === 'Enter' && !e.shiftKey) {
-                      if (typeof window !== 'undefined' && window.innerWidth >= 768) {
-                        e.preventDefault();
-                        handleSendMessage(inputVal);
-                      }
-                    }
-                  }}
-                  placeholder={t('ws_ask_mesterai', "Spør MesterAI...")}
-                  disabled={isLoading}
-                  className="flex-1 bg-transparent px-3 py-2 text-sm text-white placeholder:text-slate-400 focus:outline-none resize-none max-h-32 min-h-[38px] leading-relaxed no-scrollbar overflow-y-auto"
-                />
-
-                {/* Right controls: Mic & Live Voice Button */}
-                <div className="flex items-center gap-1.5 shrink-0 pr-1">
-                  {/* Regular Mic Dictation */}
-                  <button
-                    type="button"
-                    onClick={toggleMic}
-                    className={cn(
-                      "p-2 rounded-full transition-all cursor-pointer",
-                      isListeningMic
-                        ? "bg-rose-500 text-white animate-pulse"
-                        : "text-slate-400 hover:text-white hover:bg-white/10"
-                    )}
-                    title={isListeningMic ? t('ws_mic_listening', "Lytter... Trykk for å stoppe") : t('ws_mic_speak', "Snakk inn instruks")}
-                  >
-                    {isListeningMic ? <MicOff size={19} /> : <Mic size={19} />}
-                  </button>
-
-                  {/* If text or image is present, show Send button */}
-                  {(inputVal.trim() || attachedImage) ? (
-                    <button
-                      type="submit"
-                      disabled={isLoading}
-                      className="w-9 h-9 sm:w-10 sm:h-10 rounded-full bg-gradient-to-tr from-purple-600 to-blue-600 hover:from-purple-500 hover:to-blue-500 text-white flex items-center justify-center shrink-0 cursor-pointer shadow-md shadow-purple-600/30 active:scale-95 transition-all"
-                      title={t('ws_send', "Send")}
-                    >
-                      <Send size={15} className="translate-x-0.5" />
-                    </button>
-                  ) : (
-                    /* 🔵 Live Voice Gemini button (Deep rich blue with vertical sound wave bars - Screenshot 2 & 3) */
-                    <button
-                      type="button"
-                      onClick={() => {
-                        const next = !isLiveVoiceActive;
-                        setIsLiveVoiceActive(next);
-                        if (next) {
-                          toast.info(t('ws_live_voice_enabled', '🎙️ Live Voice samtale aktivert. Snakk fritt!'));
-                          if (!isListeningMic) toggleMic();
-                        } else {
-                          toast.info(t('ws_live_voice_disabled', 'Live Voice deaktivert.'));
-                          if (isListeningMic) toggleMic();
-                        }
-                      }}
-                      className={cn(
-                        "w-9 h-9 sm:w-10 sm:h-10 rounded-full flex items-center justify-center text-white shrink-0 cursor-pointer shadow-md transition-all active:scale-95",
-                        isLiveVoiceActive
-                          ? "bg-gradient-to-tr from-blue-600 via-indigo-600 to-purple-600 ring-2 ring-blue-400/50 shadow-blue-500/40 animate-pulse"
-                          : "bg-[#1a73e8] hover:bg-[#1557b0] shadow-blue-500/25"
-                      )}
-                      title={isLiveVoiceActive ? t('ws_live_voice_active', "Avslutt Live Voice samtale") : t('ws_live_voice_start', "Start Live Voice samtale (handsfree)")}
-                    >
-                      <div className="flex items-center gap-[2.5px] h-4">
-                        <span className={cn("w-[2.5px] rounded-full bg-white transition-all duration-200", isLiveVoiceActive || isListeningMic ? "h-4 animate-bounce" : "h-2")} />
-                        <span className={cn("w-[2.5px] rounded-full bg-white transition-all duration-200 delay-75", isLiveVoiceActive || isListeningMic ? "h-5 animate-bounce" : "h-3.5")} />
-                        <span className={cn("w-[2.5px] rounded-full bg-white transition-all duration-200 delay-150", isLiveVoiceActive || isListeningMic ? "h-3.5 animate-bounce" : "h-2.5")} />
-                        <span className={cn("w-[2.5px] rounded-full bg-white transition-all duration-200 delay-100", isLiveVoiceActive || isListeningMic ? "h-4.5 animate-bounce" : "h-1.5")} />
-                      </div>
-                    </button>
-                  )}
-                </div>
-              </form>
+              {renderPromptBar(false)}
 
               {/* Disclaimer footer */}
               <p className="text-[11px] text-slate-500 text-center">

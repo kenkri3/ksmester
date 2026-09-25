@@ -314,8 +314,8 @@ export default function WorkstationSidebar({
           </button>
         </div>
 
-        {/* 2. Top Primary Action: "+ Ny samtale" (Gemini / Chat matching pill style) */}
-        <div className="p-3.5 border-b border-slate-800/80 shrink-0 space-y-2.5">
+        {/* 2. Top Primary Action: "+ Ny samtale" (Clean pill style) */}
+        <div className="p-3 border-b border-slate-800/60 shrink-0 space-y-2">
           <button
             type="button"
             onClick={() => {
@@ -323,17 +323,17 @@ export default function WorkstationSidebar({
               onNewChat();
             }}
             className={cn(
-              "w-full flex items-center gap-3.5 py-3.5 px-4.5 rounded-[22px] font-semibold text-[15px] sm:text-[16px] text-white transition-all shadow-sm active:scale-98 cursor-pointer",
-              "bg-[#1e1f20] hover:bg-[#282a2d] border border-white/15 hover:border-white/25",
+              "w-full flex items-center gap-3 py-2.5 px-4 rounded-full font-medium text-[14px] sm:text-[15px] text-white transition-all shadow-sm active:scale-98 cursor-pointer",
+              "bg-[#1c2230] hover:bg-[#242c3d] border border-white/10 hover:border-white/20",
               isCollapsedDesktop && "md:p-2.5 md:justify-center md:rounded-2xl"
             )}
             title={t('ws_start_new_chat_title', "Start en ny samtale eller oppgave")}
           >
-            <Plus size={20} className="text-white shrink-0" />
+            <Plus size={18} className="text-white shrink-0" />
             {!isCollapsedDesktop && <span className="truncate">{t('ws_new_chat', "Ny samtale")}</span>}
           </button>
 
-          {/* 🔍 Søk i samtaler (Gemini pill style) */}
+          {/* 🔍 Søk i samtaler (Clean pill style) */}
           {!isCollapsedDesktop && (
             <button
               type="button"
@@ -341,13 +341,13 @@ export default function WorkstationSidebar({
                 onCloseMobile();
                 onOpenSmartSearch();
               }}
-              className="w-full flex items-center justify-between px-4 py-2.5 rounded-full text-[14px] sm:text-[15px] font-medium text-slate-300 hover:text-white bg-[#13161c] hover:bg-[#1a1e28] border border-white/10 hover:border-white/20 transition-all cursor-pointer"
+              className="w-full flex items-center justify-between px-3.5 py-2 rounded-full text-[13px] font-normal text-slate-400 hover:text-white bg-[#111622] hover:bg-[#181e2c] border border-white/5 hover:border-white/10 transition-all cursor-pointer"
             >
               <div className="flex items-center gap-2.5 min-w-0">
-                <Search size={16} className="text-slate-400 shrink-0" />
+                <Search size={14} className="text-slate-400 shrink-0" />
                 <span className="truncate">{t('ws_search_placeholder', "Søk i samtaler & prosjekter")}</span>
               </div>
-              <kbd className="px-1.5 py-0.5 rounded bg-white/10 text-[11px] text-slate-400 font-mono shrink-0">⌘K</kbd>
+              <kbd className="px-1.5 py-0.5 rounded bg-white/5 text-[10px] text-slate-400 font-mono shrink-0">⌘K</kbd>
             </button>
           )}
         </div>
@@ -1219,17 +1219,17 @@ function SessionItem({
       type="button"
       onClick={onSelect}
       className={cn(
-        "w-full flex items-center justify-between gap-3 px-3 py-2 sm:py-2.5 rounded-2xl text-[14px] sm:text-[15px] font-medium transition-all cursor-pointer text-left group",
+        "w-full flex items-center justify-between gap-2.5 px-3 py-2 rounded-xl text-[13px] sm:text-[14px] font-normal transition-all cursor-pointer text-left group",
         isActive
-          ? "bg-[#161c28] text-white font-bold border border-slate-700/80 shadow-md ring-1 ring-white/10"
-          : "text-slate-300 hover:text-white hover:bg-[#131822] border border-transparent hover:border-white/10",
-        session.isPinned && !isActive && "border-l-2 border-amber-400/80 bg-[#161c28]/40",
-        isCollapsed && "justify-center px-2 py-2.5"
+          ? "bg-white/10 text-white font-medium shadow-xs"
+          : "text-slate-300 hover:text-white hover:bg-white/5",
+        session.isPinned && !isActive && "text-slate-200",
+        isCollapsed && "justify-center px-2 py-2"
       )}
       title={session.isPinned ? `📌 (Festet) ${session.title}` : session.title}
     >
       <div className="flex items-center gap-2.5 min-w-0 flex-1">
-        <MessageSquare size={16} className={isActive ? "text-purple-400 shrink-0" : session.isPinned ? "text-amber-400 shrink-0" : "text-slate-400 shrink-0"} />
+        <MessageSquare size={15} className={isActive ? "text-purple-400 shrink-0" : session.isPinned ? "text-amber-400 shrink-0" : "text-slate-500 shrink-0 group-hover:text-slate-300"} />
         {!isCollapsed && (
           <div className="min-w-0 flex-1">
             <span className="truncate block leading-tight">{session.title}</span>
@@ -1243,45 +1243,45 @@ function SessionItem({
       </div>
 
       {!isCollapsed && (
-        <div className="flex items-center gap-1 shrink-0">
+        <div className="flex items-center gap-0.5 shrink-0">
           {session.isPinned && (
-            <Pin size={13} className="text-amber-400 fill-amber-400 shrink-0 group-hover:hidden" />
+            <Pin size={12} className="text-amber-400 fill-amber-400 shrink-0 group-hover:hidden" />
           )}
-          <div className="hidden group-hover:flex items-center gap-1">
+          <div className="hidden group-hover:flex items-center gap-0.5">
             <span
               role="button"
               tabIndex={0}
               onClick={onTogglePin}
               onKeyDown={(e) => e.key === 'Enter' && onTogglePin(e as any)}
               className={cn(
-                "p-1.5 rounded-lg cursor-pointer transition-colors",
+                "p-1 rounded-md cursor-pointer transition-colors",
                 session.isPinned
-                  ? "text-amber-400 hover:text-amber-300 hover:bg-amber-500/20"
-                  : "text-slate-400 hover:text-white hover:bg-slate-700"
+                  ? "text-amber-400 hover:text-amber-300 hover:bg-white/10"
+                  : "text-slate-400 hover:text-white hover:bg-white/10"
               )}
               title={session.isPinned ? "Løsne samtale" : "Fest samtale øverst"}
             >
-              <Pin size={13} className={session.isPinned ? "fill-amber-400" : ""} />
+              <Pin size={12} className={session.isPinned ? "fill-amber-400" : ""} />
             </span>
             <span
               role="button"
               tabIndex={0}
               onClick={onStartRename}
               onKeyDown={(e) => e.key === 'Enter' && onStartRename(e as any)}
-              className="p-1.5 text-slate-400 hover:text-white hover:bg-slate-700 rounded-lg cursor-pointer"
+              className="p-1 text-slate-400 hover:text-white hover:bg-white/10 rounded-md cursor-pointer"
               title="Endre tittel"
             >
-              <Edit2 size={13} />
+              <Edit2 size={12} />
             </span>
             <span
               role="button"
               tabIndex={0}
               onClick={onDelete}
               onKeyDown={(e) => e.key === 'Enter' && onDelete(e as any)}
-              className="p-1.5 text-slate-400 hover:text-red-400 hover:bg-red-500/20 rounded-lg cursor-pointer"
+              className="p-1 text-slate-400 hover:text-rose-400 hover:bg-white/10 rounded-md cursor-pointer"
               title="Slett samtale"
             >
-              <Trash2 size={13} />
+              <Trash2 size={12} />
             </span>
           </div>
         </div>
