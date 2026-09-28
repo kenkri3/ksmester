@@ -109,7 +109,7 @@ interface DashboardProps {
 
 export default function Dashboard({ 
   initialTab = 'cockpit', 
-  initialWorkstationTab,
+  initialWorkstationTab = 'all_projects',
   isDemo = false,
   onTabChange,
   onOpenPortal,
@@ -149,17 +149,15 @@ export default function Dashboard({
     if (projects && projects.length > 0) {
       if (!hasAutoSelectedRef.current) {
         hasAutoSelectedRef.current = true;
-        if (!selectedProject) {
-          setSelectedProject(projects[0]);
-        }
+        // Bruker ønsker å starte på "Alle byggeplasser" som standard, så selectedProject forblir null ved oppstart
       } else if (selectedProject && !projects.some(p => p.id === selectedProject.id)) {
         // Valgt prosjekt finnes ikke lenger (f.eks. slettet eller byttet bedrift)
-        setSelectedProject(projects[0]);
+        setSelectedProject(null);
       }
     } else if (projects && projects.length === 0) {
       setSelectedProject(null);
     }
-  }, [projects]);
+  }, [projects, selectedProject]);
 
   // Modals state
   const [isCreateModalOpen, setIsCreateModalOpen] = useState(false);

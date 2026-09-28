@@ -462,10 +462,9 @@ export default function MesterWorkstation({
 
   // 🎯 View Mode: 'chat' | 'module' | 'form'
   const [viewMode, setViewMode] = useState<'chat' | 'module' | 'form'>(() => {
-    if (initialModuleTab) return 'module';
-    return 'chat';
+    return 'module'; // Standard oppstart på 'all_projects' iht. brukerens ønske!
   });
-  const [activeModuleTab, setActiveModuleTab] = useState<string | null>(initialModuleTab || null);
+  const [activeModuleTab, setActiveModuleTab] = useState<string | null>(initialModuleTab || 'all_projects');
   const [showModuleGuide, setShowModuleGuide] = useState(false);
   const [activeForm, setActiveForm] = useState<{ type: InChatFormType; data?: any } | null>(null);
 
