@@ -1183,6 +1183,18 @@ export default function WorkstationSidebar({
                   onClick={() => {
                     safeCloseAllModals();
                     onCloseMobile();
+                    window.dispatchEvent(new CustomEvent('open_onboarding_guide'));
+                  }}
+                  className="p-2 rounded-xl text-amber-400 hover:text-white hover:bg-amber-500/20 transition-colors cursor-pointer"
+                  title="Kom i gang-veileder / Omvisning"
+                >
+                  <Sparkles size={17} />
+                </button>
+                <button
+                  type="button"
+                  onClick={() => {
+                    safeCloseAllModals();
+                    onCloseMobile();
                     onOpenSettings();
                   }}
                   className="p-2 rounded-xl text-slate-400 hover:text-white hover:bg-white/10 transition-colors cursor-pointer"

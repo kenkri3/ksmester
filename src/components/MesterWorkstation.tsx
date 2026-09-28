@@ -102,6 +102,9 @@ import ProjectTeamChat from './ProjectTeamChat';
 import SendToTeamChatModal from './SendToTeamChatModal';
 import { VehicleFleetManager } from './VehicleFleetManager';
 import MesterAIIcon from './MesterAIIcon';
+import QuickStartGuide from './QuickStartGuide';
+import OnboardingWelcomeModal from './OnboardingWelcomeModal';
+import MobileInstallGuideModal from './MobileInstallGuideModal';
 
 interface MesterWorkstationProps {
   initialModuleTab?: string | null;
@@ -504,6 +507,22 @@ export default function MesterWorkstation({
   // Lokal tilbuds-modal state som fallback
   const [isLocalOfferModalOpen, setIsLocalOfferModalOpen] = useState(false);
   const [localOfferInitialData, setLocalOfferInitialData] = useState<any>(null);
+
+  // 🚀 Onboarding & Velkomst for nye kunder (og for administrator/bruker)
+  const [isOnboardingWelcomeOpen, setIsOnboardingWelcomeOpen] = useState<boolean>(() => {
+    if (typeof window !== 'undefined') {
+      const shown = localStorage.getItem('viking_onboarding_shown');
+      return !shown;
+    }
+    return false;
+  });
+  const [isMobileGuideOpen, setIsMobileGuideOpen] = useState(false);
+
+  useEffect(() => {
+    const handleOpenOnboarding = () => setIsOnboardingWelcomeOpen(true);
+    window.addEventListener('open_onboarding_guide', handleOpenOnboarding);
+    return () => window.removeEventListener('open_onboarding_guide', handleOpenOnboarding);
+  }, []);
 
   // 🔗 Privat MesterAI-rådgivning fra TeamChat
   const [activeTeamChatConsult, setActiveTeamChatConsult] = useState<TeamChatConsultContext | null>(() => {
@@ -3531,6 +3550,17 @@ export default function MesterWorkstation({
                     <span>+ Nytt tilbud</span>
                   </button>
 
+                  {/* 🚀 Kom i gang / Hurtigstart knapp */}
+                  <button
+                    type="button"
+                    onClick={() => setIsOnboardingWelcomeOpen(true)}
+                    className="inline-flex items-center gap-1.5 px-3 py-1.5 rounded-xl bg-amber-500/15 hover:bg-amber-500/25 border border-amber-500/35 text-amber-300 hover:text-white text-xs font-bold transition-all shadow-xs cursor-pointer group active:scale-95 shrink-0 whitespace-nowrap"
+                    title="Åpne Kom i gang-veileder for nye kunder"
+                  >
+                    <Sparkles size={13} className="text-amber-400 group-hover:rotate-12 transition-transform" />
+                    <span>Kom i gang</span>
+                  </button>
+
                   {/* Status: 100% Autonom (Vises på brede skjermer så den aldri kolliderer) */}
                   <span className="hidden 2xl:inline-flex items-center gap-1.5 px-2.5 py-1 rounded-full text-[11px] font-bold bg-emerald-500/10 text-emerald-400 border border-emerald-500/20 shrink-0 whitespace-nowrap">
                     <span className="w-1.5 h-1.5 rounded-full bg-emerald-400" />
@@ -4281,6 +4311,22 @@ export default function MesterWorkstation({
               {/* 0B. 🏢 ALLE BYGGEPLASSER & PROSJEKTER */}
               {activeModuleTab === 'all_projects' && (
                 <div className="space-y-4">
+                  {/* 🌟 Hurtigstart & Onboarding for nye og eksisterende brukere */}
+                  <QuickStartGuide
+                    projectsCount={userAccessibleProjects.length}
+                    onOpenAction={(actionId) => {
+                      if (actionId === 'chat') {
+                        setViewMode('chat');
+                        setActiveModuleTab(null);
+                      } else {
+                        handleModuleCardClick(actionId);
+                      }
+                    }}
+                    onOpenAllModules={() => handleModuleCardClick('all_modules')}
+                    onOpenTour={() => setIsOnboardingWelcomeOpen(true)}
+                    onOpenMobileGuide={() => setIsMobileGuideOpen(true)}
+                  />
+
                   <div className="bg-slate-900 border border-slate-800 rounded-3xl p-5 sm:p-6 space-y-5 shadow-xl">
                     <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-3 pb-4 border-b border-slate-800">
                       <div>
@@ -7741,6 +7787,42 @@ export default function MesterWorkstation({
           }}
         />
       )}
+
+      {/* 🚀 Onboarding Velkomstmodal for førstegangsbrukere */}
+      <OnboardingWelcomeModal
+        isOpen={isOnboardingWelcomeOpen}
+        onClose={() => {
+          setIsOnboardingWelcomeOpen(false);
+          try {
+            localStorage.setItem('viking_onboarding_shown', 'true');
+          } catch {}
+        }}
+        userName={user?.displayName || (user as any)?.name}
+        companyName={(user as any)?.company || (user as any)?.companyName}
+        onStartProject={() => {
+          setActiveModuleTab('create_project');
+          setViewMode('module');
+        }}
+        onStartChat={(prompt) => {
+          setViewMode('chat');
+          setActiveModuleTab(null);
+          if (prompt) {
+            setTimeout(() => handleSendMessage(prompt), 100);
+          }
+        }}
+        onOpenChecklists={() => {
+          handleModuleCardClick('checklists');
+        }}
+        onOpenMobileGuide={() => {
+          setIsMobileGuideOpen(true);
+        }}
+      />
+
+      {/* 📱 Mobil PWA installasjonsveileder */}
+      <MobileInstallGuideModal
+        isOpen={isMobileGuideOpen}
+        onClose={() => setIsMobileGuideOpen(false)}
+      />
     </div>
   );
 }
