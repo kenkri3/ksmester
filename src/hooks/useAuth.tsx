@@ -6,6 +6,7 @@ import { setCurrentAuthUser } from '../services/dbAdapter';
 import { chatSessionService } from '../services/chatSessionService';
 
 import { isModuleAllowedForPlan, PlanId } from '../config/plans';
+import { db, doc, onSnapshot } from '../services/firebase';
 
 export const SUPERADMIN_EMAILS = [
   'kenkri3@gmail.com',
@@ -40,7 +41,7 @@ interface AuthContextType {
   loading: boolean;
   login: () => Promise<void>;
   loginWithEmail: (email: string, pass: string) => Promise<void>;
-  registerWithEmail: (email: string, pass: string, name: string, company: string, gdprConsent?: boolean, orgnr?: string) => Promise<void>;
+  registerWithEmail: (email: string, pass: string, name: string, company: string, gdprConsent?: boolean, orgnr?: string, companyId?: string, role?: string) => Promise<void>;
   resetPassword: (email: string) => Promise<void>;
   logout: () => Promise<void>;
   isAuthReady: boolean;
@@ -136,13 +137,18 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
             trade: u.trade || 'Byggmester',
             company: u.company || (isSuper ? 'AIChat Norge AS / Vikingnet' : 'Min Bedrift'),
             companyId: u.companyId || (isSuper ? 'comp-001' : `comp-${u.id || 'user'}`),
-            subscriptionStatus: u.subscriptionStatus || 'active'
+            subscriptionStatus: u.subscriptionStatus || 'active',
+            plan: u.plan,
+            modules: u.modules
           };
           setUser(userObj);
           setCurrentAuthUser(userObj);
           setRole(computedRole);
           setTrade(u.trade || 'Byggmester');
           setCompany(userObj.company || 'Min Bedrift');
+          if (Array.isArray(u.modules)) {
+            setCompanyModules(u.modules);
+          }
           setSubscriptionStatus(u.subscriptionStatus || 'active');
           setTrialDaysLeft(typeof u.trialDaysLeft === 'number' ? u.trialDaysLeft : null);
           setTotalTrialDays(typeof u.totalTrialDays === 'number' ? u.totalTrialDays : null);
@@ -183,21 +189,35 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
         trade: u.trade || 'Tømrer',
         company: u.company || 'Mester Entreprenør AS',
         companyId: u.companyId || 'comp-001',
-        subscriptionStatus: u.subscriptionStatus || 'active'
+        subscriptionStatus: u.subscriptionStatus || 'active',
+        plan: u.plan,
+        modules: u.modules
       };
       setUser(userObj);
       setCurrentAuthUser(userObj);
       setRole(u.role || 'worker');
       setCompany(u.company || 'Mester Entreprenør AS');
       setTrade(u.trade || 'Tømrer');
+      if (Array.isArray(u.modules)) {
+        setCompanyModules(u.modules);
+      }
       setSubscriptionStatus(u.subscriptionStatus || 'active');
     } else {
       throw new Error('Kunne ikke logge inn.');
     }
   };
 
-  const registerWithEmail = async (email: string, pass: string, name: string, company: string, gdprConsent: boolean = true, orgnr?: string) => {
-    const res = await api.register({ email, password: pass, name, company, orgnr, gdprConsent });
+  const registerWithEmail = async (
+    email: string,
+    pass: string,
+    name: string,
+    company: string,
+    gdprConsent: boolean = true,
+    orgnr?: string,
+    companyId?: string,
+    role?: string
+  ) => {
+    const res = await api.register({ email, password: pass, name, company, orgnr, gdprConsent, companyId, role });
     if (res && res.user) {
       const u = res.user;
       const userObj: User = {
@@ -205,19 +225,24 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
         id: u.id || u.uid,
         email: u.email,
         displayName: u.displayName || name || u.email.split('@')[0],
-        role: u.role || 'leader',
+        role: u.role || role || 'leader',
         trade: u.trade || 'Byggmester',
         company: u.company || company,
-        companyId: u.companyId,
-        subscriptionStatus: u.subscriptionStatus || 'trial'
+        companyId: u.companyId || companyId,
+        subscriptionStatus: u.subscriptionStatus || 'trial',
+        plan: u.plan,
+        modules: u.modules
       };
       setUser(userObj);
       setCurrentAuthUser(userObj);
-      setRole(u.role || 'leader');
+      setRole(u.role || role || 'leader');
       setCompany(u.company || company);
       setTrade(u.trade || 'Byggmester');
       setSubscriptionStatus(u.subscriptionStatus || 'trial');
-      setTrialDaysLeft(14);
+      setTrialDaysLeft(u.totalTrialDays || 14);
+      if (u.modules && Array.isArray(u.modules)) {
+        setCompanyModules(u.modules);
+      }
     } else {
       throw new Error('Kunne ikke registrere bruker.');
     }
@@ -270,6 +295,40 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
     }
   };
 
+  const activeCompanyId = impersonatedCompanyId || user?.companyId;
+
+  // 🔄 Sanntidssynkronisering av bedriftens moduler og plan direkte fra Firestore
+  useEffect(() => {
+    if (!activeCompanyId) return;
+    try {
+      const unsub = onSnapshot(doc(db, 'companies', activeCompanyId), (snap) => {
+        if (snap.exists()) {
+          const data = snap.data();
+          if (data) {
+            if (Array.isArray(data.modules)) {
+              setCompanyModules(data.modules);
+              if (impersonatedCompanyId) {
+                setImpersonatedCompanyModules(data.modules);
+                try { localStorage.setItem('impersonatedCompanyModules', JSON.stringify(data.modules)); } catch {}
+              }
+            }
+            if (data.plan) {
+              if (impersonatedCompanyId) {
+                setImpersonatedCompanyPlan(data.plan);
+                try { localStorage.setItem('impersonatedCompanyPlan', data.plan); } catch {}
+              }
+            }
+          }
+        }
+      }, (err) => {
+        console.warn('Realtime company modules subscription warning:', err);
+      });
+      return () => unsub();
+    } catch (e) {
+      console.warn('Could not establish company modules snapshot:', e);
+    }
+  }, [activeCompanyId, impersonatedCompanyId]);
+
   useEffect(() => {
     const handlePlanUpdated = (e: any) => {
       const { companyId, plan, modules } = e.detail || {};
@@ -279,6 +338,7 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
           try { localStorage.setItem('impersonatedCompanyPlan', plan); } catch {}
         }
         if (modules) {
+          setCompanyModules(modules);
           setImpersonatedCompanyModules(modules);
           try { localStorage.setItem('impersonatedCompanyModules', JSON.stringify(modules)); } catch {}
         }
@@ -290,17 +350,23 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
 
   const hasModuleAccess = (moduleId: string): boolean => {
     if (isSuperAdminUI) return true;
-    if (
-      impersonatedCompanyId?.toLowerCase().includes('demo') ||
-      impersonatedCompanyPlan === 'demo' ||
-      impersonatedCompanyPlan === 'enterprise' ||
-      impersonatedCompanyPlan === 'internal'
-    ) {
-      return true;
-    }
-    const effectivePlan = (simulatedPlan || impersonatedCompanyPlan || user?.plan || user?.subscriptionStatus || 'solo') as PlanId;
+
+    const effectivePlan = (simulatedPlan || impersonatedCompanyPlan || user?.plan || user?.subscriptionStatus || 'solo') as string;
     const effectiveModules = impersonatedCompanyModules || companyModules || user?.modules || null;
-    return isModuleAllowedForPlan(moduleId, effectivePlan, effectiveModules);
+
+    // Hvis kunden IKKE har en skreddersydd modulliste, tillat standard åpne planer
+    if (!effectiveModules || effectiveModules.length === 0) {
+      if (
+        impersonatedCompanyId?.toLowerCase().includes('demo') ||
+        effectivePlan === 'demo' ||
+        effectivePlan === 'enterprise' ||
+        effectivePlan === 'internal'
+      ) {
+        return true;
+      }
+    }
+
+    return isModuleAllowedForPlan(moduleId, effectivePlan as PlanId, effectiveModules);
   };
 
   const startImpersonation = (companyId: string, role: string, plan?: string, modules?: string[]) => {

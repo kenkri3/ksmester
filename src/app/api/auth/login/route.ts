@@ -8,7 +8,8 @@ import {
   DEFAULT_ADMIN_HASH, 
   DEMO_USER_EMAIL,
   DEMO_USER_PASSWORD,
-  DEMO_USER_HASH
+  DEMO_USER_HASH,
+  getCollectionItemById
 } from '@/src/lib/server/db';
 import { signToken } from '@/src/lib/server/auth';
 
@@ -101,6 +102,18 @@ export async function POST(req: NextRequest) {
     }
 
     const isSystemAdmin = ADMIN_EMAILS.includes((userRecord.email || '').toLowerCase().trim());
+    const finalCompanyId = isSystemAdmin ? 'comp-001' : (userRecord.company_id || userRecord.companyId || 'comp-001');
+
+    let companyPlan = isSystemAdmin ? 'internal' : (userRecord.plan || 'solo');
+    let companyModules: string[] = isSystemAdmin ? ['all_modules'] : (userRecord.modules || []);
+
+    if (finalCompanyId) {
+      const comp = await getCollectionItemById('companies', finalCompanyId).catch(() => null);
+      if (comp) {
+        if (!isSystemAdmin && comp.plan) companyPlan = comp.plan;
+        if (!isSystemAdmin && Array.isArray(comp.modules)) companyModules = comp.modules;
+      }
+    }
 
     const userObj = {
       id: userRecord.id,
@@ -110,8 +123,10 @@ export async function POST(req: NextRequest) {
       role: isSystemAdmin ? 'superadmin' : (userRecord.role || 'worker'),
       trade: userRecord.trade || 'Byggmester',
       company: isSystemAdmin ? (userRecord.company || 'AIChat Norge AS / Vikingnet') : (userRecord.company || 'Mester Entreprenør AS'),
-      companyId: isSystemAdmin ? (userRecord.company_id || userRecord.companyId || 'comp-001') : (userRecord.company_id || userRecord.companyId || 'comp-001'),
-      subscriptionStatus: isSystemAdmin ? 'active' : (userRecord.subscription_status || userRecord.subscriptionStatus || 'active')
+      companyId: finalCompanyId,
+      subscriptionStatus: isSystemAdmin ? 'active' : (userRecord.subscription_status || userRecord.subscriptionStatus || 'active'),
+      plan: companyPlan,
+      modules: companyModules
     };
 
     const token = signToken({ id: userObj.id, email: userObj.email, role: userObj.role, companyId: userObj.companyId, company: userObj.company });

@@ -74,7 +74,7 @@ import { cn } from '@/src/lib/utils';
 import { toast } from 'sonner';
 import { useTranslation } from 'react-i18next';
 import { useAuth } from '../hooks/useAuth';
-import { Project, Deviation } from '../types';
+import { Project, Deviation, TeamChatConsultContext } from '../types';
 import { chatSessionService, ChatSession, ChatMessageItem } from '../services/chatSessionService';
 import WorkstationSidebar from './WorkstationSidebar';
 import { NotificationBell } from './NotificationBell';
@@ -92,6 +92,7 @@ import { formatAiMarkdown } from '../lib/formatAiMarkdown';
 import WeatherWidget from './WeatherWidget';
 import MesterAICopilot from './MesterAICopilot';
 import ProjectTeamChat from './ProjectTeamChat';
+import SendToTeamChatModal from './SendToTeamChatModal';
 import { VehicleFleetManager } from './VehicleFleetManager';
 import MesterAIIcon from './MesterAIIcon';
 
@@ -413,6 +414,48 @@ export default function MesterWorkstation({
   // Lokal tilbuds-modal state som fallback
   const [isLocalOfferModalOpen, setIsLocalOfferModalOpen] = useState(false);
   const [localOfferInitialData, setLocalOfferInitialData] = useState<any>(null);
+
+  // 🔗 Privat MesterAI-rådgivning fra TeamChat
+  const [activeTeamChatConsult, setActiveTeamChatConsult] = useState<TeamChatConsultContext | null>(() => {
+    if (typeof window !== 'undefined') {
+      try {
+        const stored = localStorage.getItem('mesterai_active_teamchat_consult');
+        return stored ? JSON.parse(stored) : null;
+      } catch {}
+    }
+    return null;
+  });
+
+  const [sendToChatModalOpen, setSendToChatModalOpen] = useState(false);
+  const [sendToChatContent, setSendToChatContent] = useState('');
+
+  const handleStartTeamChatConsult = (consultContext: TeamChatConsultContext) => {
+    setActiveTeamChatConsult(consultContext);
+    try {
+      localStorage.setItem('mesterai_active_teamchat_consult', JSON.stringify(consultContext));
+    } catch {}
+
+    // Bytt til MesterAI Chat
+    setViewMode('chat');
+    setActiveModuleTab(null);
+
+    // Send henvendelsen med samtalekontekst inn til MesterAI
+    if (consultContext.initialPrompt) {
+      setTimeout(() => {
+        handleSendMessage(consultContext.initialPrompt!);
+      }, 150);
+    }
+  };
+
+  useEffect(() => {
+    const handleConsultEvent = (e: any) => {
+      if (e.detail) {
+        handleStartTeamChatConsult(e.detail);
+      }
+    };
+    window.addEventListener('mesterai:consult-teamchat', handleConsultEvent as EventListener);
+    return () => window.removeEventListener('mesterai:consult-teamchat', handleConsultEvent as EventListener);
+  }, []);
 
   const handleOpenCreateOffer = (initialData?: any) => {
     const data = initialData || (selectedProject ? {
@@ -3633,6 +3676,9 @@ export default function MesterWorkstation({
               onBackToWorkstation={() => {
                 setViewMode('chat');
                 setActiveModuleTab(null);
+              }}
+              onConsultMesterAi={(consult) => {
+                handleStartTeamChatConsult(consult);
               }}
             />
           </div>
@@ -6918,6 +6964,54 @@ export default function MesterWorkstation({
                 </div>
               ) : (
                 <div className="space-y-6 pt-2 pb-6">
+                  {/* 🔗 Privat rådgivning banner for TeamChat */}
+                  {activeTeamChatConsult && (
+                    <div className="w-full px-4 py-3 rounded-2xl bg-gradient-to-r from-purple-950/80 via-slate-900/90 to-indigo-950/80 border border-purple-500/40 shadow-xl flex items-center justify-between gap-3 animate-in fade-in">
+                      <div className="flex items-center gap-3 min-w-0">
+                        <div className="w-8 h-8 rounded-xl bg-purple-500/20 text-purple-300 border border-purple-500/30 flex items-center justify-center shrink-0">
+                          <Bot size={16} className="text-purple-300" />
+                        </div>
+                        <div className="min-w-0">
+                          <div className="flex items-center gap-2">
+                            <span className="text-xs font-bold text-white truncate">Privat rådgivning: {activeTeamChatConsult.channelName}</span>
+                            <span className="px-2 py-0.5 rounded-full text-[9px] font-black uppercase tracking-wider bg-emerald-500/20 text-emerald-300 border border-emerald-500/30">
+                              100% Skjult for teamet
+                            </span>
+                          </div>
+                          <p className="text-[11px] text-slate-400 truncate">
+                            Du kan diskutere og finne løsningen her. Trykk «Send svar til {activeTeamChatConsult.channelName}» under AI-svaret for å dele.
+                          </p>
+                        </div>
+                      </div>
+                      <div className="flex items-center gap-2 shrink-0">
+                        <button
+                          type="button"
+                          onClick={() => {
+                            setViewMode('module');
+                            setActiveModuleTab('teamchat');
+                            window.dispatchEvent(new CustomEvent('open_project_chat', {
+                              detail: { channelId: activeTeamChatConsult.channelId, projectId: activeTeamChatConsult.projectId }
+                            }));
+                          }}
+                          className="px-3 py-1.5 rounded-xl bg-slate-800 hover:bg-slate-700 text-slate-200 text-xs font-bold transition-colors cursor-pointer"
+                        >
+                          Til chatten
+                        </button>
+                        <button
+                          type="button"
+                          onClick={() => {
+                            setActiveTeamChatConsult(null);
+                            try { localStorage.removeItem('mesterai_active_teamchat_consult'); } catch {}
+                          }}
+                          className="p-1.5 hover:bg-white/10 text-slate-400 hover:text-white rounded-lg transition-colors cursor-pointer"
+                          title="Lukk privat sesjon"
+                        >
+                          <X size={15} />
+                        </button>
+                      </div>
+                    </div>
+                  )}
+
                   {messages.map((msg, idx) => {
                     const isLatest = idx === messages.length - 1;
                     const isPromptForLatest = 
@@ -7105,6 +7199,18 @@ export default function MesterWorkstation({
                               {isSpeaking ? <VolumeX size={13} className="text-amber-400" /> : <Volume2 size={13} />}
                               <span>{isSpeaking ? 'Stopp' : 'Les opp'}</span>
                             </button>
+                            <button
+                              type="button"
+                              onClick={() => {
+                                setSendToChatContent(msg.content);
+                                setSendToChatModalOpen(true);
+                              }}
+                              className="inline-flex items-center gap-1.5 px-3 py-1 rounded-lg bg-purple-600/25 hover:bg-purple-600 text-purple-200 hover:text-white border border-purple-500/40 transition-all cursor-pointer text-xs font-semibold shadow-xs active:scale-95"
+                              title={activeTeamChatConsult ? `Send dette svaret inn i ${activeTeamChatConsult.channelName}` : "Send svar til en team-chat kanal"}
+                            >
+                              <Send size={12} className="text-purple-300" />
+                              <span>{activeTeamChatConsult ? `Send svar til ${activeTeamChatConsult.channelName}` : 'Send til team-chat'}</span>
+                            </button>
                           </div>
                         )}
                       </div>
@@ -7277,6 +7383,20 @@ export default function MesterWorkstation({
           setLocalOfferInitialData(null);
         }}
         initialData={localOfferInitialData}
+      />
+
+      {/* 💬 Send svar fra MesterAI til TeamChat Modal */}
+      <SendToTeamChatModal
+        isOpen={sendToChatModalOpen}
+        onClose={() => setSendToChatModalOpen(false)}
+        initialText={sendToChatContent}
+        consultContext={activeTeamChatConsult}
+        projects={projects}
+        user={user}
+        onSuccess={(channelId, channelName) => {
+          setViewMode('module');
+          setActiveModuleTab('teamchat');
+        }}
       />
 
       {/* 🤖 Universell MesterAI Copilot (Kun tilgjengelig i fagmoduler, aldri over chattefeltet) */}

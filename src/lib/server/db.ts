@@ -1,6 +1,11 @@
 import { Pool } from 'pg';
 import bcrypt from 'bcrypt';
 import { randomBytes } from 'crypto';
+import fs from 'fs';
+import path from 'path';
+
+const LOCAL_STORE_DIR = path.resolve(process.cwd(), '.data');
+const LOCAL_STORE_FILE = path.join(LOCAL_STORE_DIR, 'local_store.json');
 
 const DATABASE_URL = process.env.DATABASE_URL || process.env.POSTGRES_URL || process.env.POSTGRES_PRISMA_URL;
 
@@ -45,6 +50,50 @@ if (DATABASE_URL) {
   pool.on('error', (err) => {
     console.error('⚠️ [PostgreSQL Pool Warning] Uventet feil på ledig databaseklient:', err.message);
   });
+}
+
+/**
+ * 💾 Sikrer at lokal in-memory-database persisteres til disk under lokal utvikling,
+ * slik at tilbud, kontrakter og avvik ikke forsvinner ved Next.js hot-reload eller mellom ulike worker-prosesser.
+ */
+export function ensureLocalStoreLoaded() {
+  if (pool) return;
+  try {
+    if (fs.existsSync(LOCAL_STORE_FILE)) {
+      const content = fs.readFileSync(LOCAL_STORE_FILE, 'utf-8');
+      const parsed = JSON.parse(content);
+      if (parsed && typeof parsed === 'object') {
+        for (const key of Object.keys(parsed)) {
+          if (Array.isArray(parsed[key])) {
+            if (!inMemoryStore[key] || inMemoryStore[key].length === 0) {
+              inMemoryStore[key] = parsed[key];
+            } else {
+              const existingIds = new Set(inMemoryStore[key].map((x: any) => x.id));
+              for (const item of parsed[key]) {
+                if (!existingIds.has(item.id)) {
+                  inMemoryStore[key].push(item);
+                }
+              }
+            }
+          }
+        }
+      }
+    }
+  } catch (err) {
+    console.warn('[DB] Kunne ikke laste lokal store fil:', err);
+  }
+}
+
+export function persistLocalStore() {
+  if (pool) return;
+  try {
+    if (!fs.existsSync(LOCAL_STORE_DIR)) {
+      fs.mkdirSync(LOCAL_STORE_DIR, { recursive: true });
+    }
+    fs.writeFileSync(LOCAL_STORE_FILE, JSON.stringify(inMemoryStore, null, 2), 'utf-8');
+  } catch (err) {
+    console.warn('[DB] Kunne ikke lagre lokal store fil:', err);
+  }
 }
 
 export const inMemoryStore: Record<string, any[]> = {
@@ -427,6 +476,9 @@ export const inMemoryStore: Record<string, any[]> = {
 let dbInitialized = false;
 
 export async function initDb() {
+  if (!pool) {
+    ensureLocalStoreLoaded();
+  }
   if (dbInitialized) return;
   if (!pool) {
     dbInitialized = true;
@@ -784,6 +836,9 @@ export async function getCollectionItems(collectionName: string): Promise<any[]>
   // tom – og disse ble deretter vist/rapportert som om de var ekte, gjeldende produksjonsdata
   // (dashboard, daglig KS/HMS-revisjon, /api/agent/dispatch). Eksempeldata skal kun brukes når
   // INGEN database i det hele tatt er konfigurert (lokal utvikling uten DATABASE_URL).
+  if (!pool) {
+    ensureLocalStoreLoaded();
+  }
   return pool ? [] : (inMemoryStore[collectionName] || []);
 }
 
@@ -833,12 +888,18 @@ export async function getCollectionItemById(collectionName: string, id: string):
 
   // FIX (11.09.2026): Se tilsvarende fiks i getCollectionItems() over – ikke server falske
   // eksempeldata når en database faktisk er tilkoblet, men fikk null/tomt treff.
+  if (!pool) {
+    ensureLocalStoreLoaded();
+  }
   const items = pool ? [] : (inMemoryStore[collectionName] || []);
   return items.find((i: any) => i.id === id || (collectionName === 'users' && i.email?.toLowerCase() === id.toLowerCase())) || null;
 }
 
 export async function saveCollectionItem(collectionName: string, item: any): Promise<any> {
   await initDb();
+  if (!pool) {
+    ensureLocalStoreLoaded();
+  }
   const id = item.id || 'item-' + Math.random().toString(36).substring(2, 9);
   const fullItem = { id, ...item, createdAt: item.createdAt || new Date().toISOString() };
 
@@ -848,6 +909,10 @@ export async function saveCollectionItem(collectionName: string, item: any): Pro
     inMemoryStore[collectionName][existingIdx] = { ...inMemoryStore[collectionName][existingIdx], ...fullItem };
   } else {
     inMemoryStore[collectionName].unshift(fullItem);
+  }
+
+  if (!pool) {
+    persistLocalStore();
   }
 
   if (pool) {
@@ -892,6 +957,9 @@ export async function saveCollectionItem(collectionName: string, item: any): Pro
 
 export async function updateCollectionItem(collectionName: string, id: string, data: any): Promise<any> {
   await initDb();
+  if (!pool) {
+    ensureLocalStoreLoaded();
+  }
 
   // 🛡️ Load existing item from DB or in-memory store so no fields are lost
   let existingItem: any = null;
@@ -939,6 +1007,10 @@ export async function updateCollectionItem(collectionName: string, id: string, d
     inMemoryStore[collectionName][idx] = updatedItem;
   } else {
     inMemoryStore[collectionName].unshift(updatedItem);
+  }
+
+  if (!pool) {
+    persistLocalStore();
   }
 
   if (pool) {
@@ -998,6 +1070,9 @@ export async function deleteCollectionItem(collectionName: string, id: string): 
   await initDb();
   if (inMemoryStore[collectionName]) {
     inMemoryStore[collectionName] = inMemoryStore[collectionName].filter(i => i.id !== id);
+  }
+  if (!pool) {
+    persistLocalStore();
   }
 
   if (pool) {

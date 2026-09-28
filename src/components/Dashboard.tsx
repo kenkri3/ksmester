@@ -1,6 +1,6 @@
 'use client';
 
-import { useState, useEffect, useMemo, useRef } from 'react';
+import { useState, useEffect, useMemo, useRef, useCallback } from 'react';
 import { motion, AnimatePresence } from 'motion/react';
 import { 
   BarChart3, 
@@ -519,6 +519,41 @@ export default function Dashboard({
     window.addEventListener('trigger_dashboard_action', handleAction as EventListener);
     return () => window.removeEventListener('trigger_dashboard_action', handleAction as EventListener);
   }, [lukkesperreZones]);
+
+  // 🧹 Lukk alle åpne dialoger/modaler når brukeren navigerer i arbeidsstasjonen eller sidemenyen
+  const closeAllDashboardModals = useCallback(() => {
+    setIsChecklistModalOpen(false);
+    setIsBuildingAppModalOpen(false);
+    setIsInventoryModalOpen(false);
+    setIsHandoverModalOpen(false);
+    setIsVehicleModalOpen(false);
+    setIsHMSModalOpen(false);
+    setIsActivityLogModalOpen(false);
+    setIsDailyLogModalOpen(false);
+    setIsOfferModalOpen(false);
+    setIsChangeOrderModalOpen(false);
+    setIsVoiceSJAOpen(false);
+    setIsAIVisionModalOpen(false);
+    setIsTimeModalOpen(false);
+    setIsArchiveModalOpen(false);
+    setIsContactsModalOpen(false);
+    setIsContractModalOpen(false);
+    setIsApprenticeModalOpen(false);
+    setIsIntegrationModalOpen(false);
+    setIsPreCloseModalOpen(false);
+    setIsOmnichannelModalOpen(false);
+    setIsSmartSearchOpen(false);
+  }, []);
+
+  useEffect(() => {
+    const handleCloseAll = () => closeAllDashboardModals();
+    window.addEventListener('close_all_modals', handleCloseAll);
+    window.addEventListener('close_all_dashboard_modals', handleCloseAll);
+    return () => {
+      window.removeEventListener('close_all_modals', handleCloseAll);
+      window.removeEventListener('close_all_dashboard_modals', handleCloseAll);
+    };
+  }, [closeAllDashboardModals]);
 
   // Global ⌘K / Ctrl+K keyboard shortcut for SmartSearch
   useEffect(() => {

@@ -38,7 +38,7 @@ import {
   ChevronRight
 } from 'lucide-react';
 import { toast } from 'sonner';
-import { Project } from '@/src/types';
+import { Project, TeamChatConsultContext } from '@/src/types';
 import { generateAiContent } from '@/src/services/aiClient';
 import { customerMessageService } from '@/src/services/customerMessageService';
 import { cn } from '@/src/lib/utils';
@@ -68,6 +68,11 @@ export interface TeamChatMessage {
   aiSuggestedReply?: string;
   aiDraftStatus?: 'pending_approval' | 'approved' | 'rejected';
   isCustomerFacing?: boolean;
+  isAiAssisted?: boolean;
+  aiConsultReference?: {
+    channelName?: string;
+    timestamp?: string;
+  };
 }
 
 export interface ChatChannel {
@@ -95,6 +100,7 @@ interface ProjectTeamChatProps {
   projectContacts?: any[];
   onOpenCopilot?: (initialPrompt?: string) => void;
   onBackToWorkstation?: () => void;
+  onConsultMesterAi?: (consultContext: TeamChatConsultContext) => void;
 }
 
 const QUICK_TAGS = [
@@ -121,7 +127,8 @@ export default function ProjectTeamChat({
   user,
   projectContacts = [],
   onOpenCopilot,
-  onBackToWorkstation
+  onBackToWorkstation,
+  onConsultMesterAi
 }: ProjectTeamChatProps) {
   const currentTenantScope = useMemo(() => {
     if (user?.impersonatedCompanyId) return user.impersonatedCompanyId;
@@ -704,6 +711,97 @@ Maks 2-4 avsnitt eller punktliste.${projContext}`;
     e.target.value = '';
   };
 
+  // 🤖 Ta hele samtaletråden eller kanalen til en privat sesjon med MesterAI
+  const handleTakeToMesterAi = () => {
+    const activeProject = activeChannel.projectId 
+      ? projects.find(p => p.id === activeChannel.projectId) 
+      : selectedProject;
+
+    // Hent de siste 8 meldingene for god kontekst
+    const recentSnippet = messages.length > 0
+      ? messages.slice(-8).map(m => `- ${m.senderName} (${m.formattedTime}): "${m.content}"`).join('\n')
+      : 'Ingen meldinger i kanalen ennå.';
+
+    const contextSnippet = `[KONTEKST FRA TEAM-CHAT - PRIVAT RÅDGIVNING]:
+Kanal: "${activeChannel.name}"
+${activeProject ? `Tilknyttet prosjekt: ${activeProject.name} (Adresse: ${activeProject.address || 'Ikke oppgitt'}, Kunde: ${activeProject.clientName || 'Ikke oppgitt'})` : 'Felleskanal for bedriften'}
+
+Siste meldinger i chatten:
+${recentSnippet}`;
+
+    const initialPrompt = `Hei MesterAI! Jeg tar med denne samtalen fra team-chatten (${activeChannel.name}) til en privat fagavklaring:\n\n${contextSnippet}\n\nHva er den beste faglige løsningen her iht. gjeldende forskrifter, TEK17 og god byggeskikk? Jeg vil kvalitetssikre dette før jeg sender svar tilbake til teamet.`;
+
+    const consultContext: TeamChatConsultContext = {
+      channelId: activeChannelId,
+      channelName: activeChannel.name,
+      channelType: activeChannel.type,
+      projectId: activeChannel.projectId || activeProject?.id,
+      projectName: activeProject?.name,
+      initialPrompt,
+      contextSnippet,
+      recentMessages: messages.slice(-8).map(m => ({
+        senderName: m.senderName,
+        content: m.content,
+        time: m.formattedTime
+      })),
+      createdAt: new Date().toISOString()
+    };
+
+    toast.info(`Åpner privat rådgivning med MesterAI for "${activeChannel.name}"...`);
+
+    if (onConsultMesterAi) {
+      onConsultMesterAi(consultContext);
+    } else {
+      window.dispatchEvent(new CustomEvent('mesterai:consult-teamchat', { detail: consultContext }));
+      if (onBackToWorkstation) onBackToWorkstation();
+    }
+  };
+
+  // 🤖 Diskuter en spesifikk melding privat med MesterAI
+  const handleConsultMessageWithAi = (msg: TeamChatMessage) => {
+    const activeProject = activeChannel.projectId 
+      ? projects.find(p => p.id === activeChannel.projectId) 
+      : selectedProject;
+
+    // Finn indeks og ta med forrige melding for kontekst
+    const msgIdx = messages.findIndex(m => m.id === msg.id);
+    const preceding = msgIdx > 0 ? messages.slice(Math.max(0, msgIdx - 2), msgIdx) : [];
+    const precedingSnippet = preceding.length > 0 
+      ? `Tidligere kontekst:\n` + preceding.map(m => `- ${m.senderName}: "${m.content}"`).join('\n') + '\n\n'
+      : '';
+
+    const contextSnippet = `[KONTEKST FRA TEAM-CHAT - PRIVAT RÅDGIVNING]:
+Kanal: "${activeChannel.name}"
+${activeProject ? `Prosjekt: ${activeProject.name}` : ''}
+${precedingSnippet}Hovedmelding som skal avklares:
+- Avsender: ${msg.senderName} (${msg.formattedTime})
+- Innhold: "${msg.content}"`;
+
+    const initialPrompt = `Hei MesterAI! I team-chatten for "${activeChannel.name}" skrev ${msg.senderName}:\n> "${msg.content}"\n\nHvordan bør vi løse dette faglig og forskriftsmessig? Gi meg en klar, praktisk veiledning eller et ferdig svarforslag som jeg kan kvalitetssikre og sende tilbake inn i chatten.`;
+
+    const consultContext: TeamChatConsultContext = {
+      channelId: activeChannelId,
+      channelName: activeChannel.name,
+      channelType: activeChannel.type,
+      projectId: activeChannel.projectId || activeProject?.id,
+      projectName: activeProject?.name,
+      initialPrompt,
+      contextSnippet,
+      sourceMessageId: msg.id,
+      sourceSenderName: msg.senderName,
+      createdAt: new Date().toISOString()
+    };
+
+    toast.info(`Diskuterer melding fra ${msg.senderName} privat med MesterAI...`);
+
+    if (onConsultMesterAi) {
+      onConsultMesterAi(consultContext);
+    } else {
+      window.dispatchEvent(new CustomEvent('mesterai:consult-teamchat', { detail: consultContext }));
+      if (onBackToWorkstation) onBackToWorkstation();
+    }
+  };
+
   // Tale-til-tekst (Web Speech API)
   const toggleVoiceRecording = () => {
     if (isRecording) {
@@ -885,12 +983,24 @@ Maks 2-4 avsnitt eller punktliste.${projContext}`;
 
         {/* Høyre toppkontroller */}
         <div className="flex items-center gap-1.5 sm:gap-2 shrink-0">
-          {/* Spør MesterAI i samtalen */}
+          {/* Ta samtalen til en privat sesjon med MesterAI */}
+          <button
+            type="button"
+            onClick={handleTakeToMesterAi}
+            className="flex items-center gap-1.5 px-3 py-1.5 rounded-full bg-gradient-to-r from-purple-600/30 to-indigo-600/30 hover:from-purple-600/50 hover:to-indigo-600/50 text-purple-200 hover:text-white text-xs font-bold transition-all cursor-pointer border border-purple-500/40 shadow-xs active:scale-95"
+            title="Ta denne samtalen til MesterAI uten at andre i chatten ser det. Send svaret tilbake når du er klar."
+          >
+            <Bot size={14} className="text-purple-300 shrink-0" />
+            <span className="hidden md:inline">Diskuter privat med MesterAI</span>
+            <span className="md:hidden font-semibold">Privat AI</span>
+          </button>
+
+          {/* Spør MesterAI i samtalen (offentlig i kanalen) */}
           <button
             type="button"
             onClick={handleAskMesterAiDirectly}
             className="flex items-center gap-1.5 px-2.5 sm:px-3 py-1.5 rounded-full bg-purple-500/15 hover:bg-purple-500/25 text-purple-300 hover:text-white text-xs font-bold transition-all cursor-pointer border border-purple-500/30 active:scale-95"
-            title="Kall på MesterAI for å gi fagråd i chatten"
+            title="Kall på MesterAI for å gi et offentlig fagråd direkte i chatten"
           >
             <Sparkles size={13} className="text-amber-300 animate-pulse shrink-0" />
             <span className="hidden sm:inline">@MesterAI</span>
@@ -1142,6 +1252,12 @@ Maks 2-4 avsnitt eller punktliste.${projContext}`;
                         </button>
                       )}
                       <span className="text-[10px] text-slate-500">{msg.formattedTime}</span>
+                      {msg.isAiAssisted && (
+                        <span className="inline-flex items-center gap-1 px-1.5 py-0.5 rounded-md bg-purple-500/20 text-purple-300 text-[9px] font-black border border-purple-500/30" title="Denne løsningen ble fagavklart med MesterAI">
+                          <Sparkles size={10} className="text-amber-300" />
+                          <span>FAGAVKLART MED MESTERAI</span>
+                        </span>
+                      )}
                       {msg.isPinned && (
                         <span className="flex items-center gap-0.5 text-amber-400 text-[10px] font-bold">
                           <Pin size={10} className="fill-amber-400" />
@@ -1320,6 +1436,16 @@ Maks 2-4 avsnitt eller punktliste.${projContext}`;
                         isMe ? "right-2" : "left-2",
                         "opacity-0 group-hover:opacity-100 focus-within:opacity-100"
                       )}>
+                        {/* Diskuter denne meldingen privat med MesterAI */}
+                        <button
+                          type="button"
+                          onClick={() => handleConsultMessageWithAi(msg)}
+                          className="p-1 text-slate-400 hover:text-purple-300 rounded-full transition-colors cursor-pointer"
+                          title="Diskuter denne meldingen privat med MesterAI"
+                        >
+                          <Bot size={12} className="text-purple-400" />
+                        </button>
+
                         <button
                           type="button"
                           onClick={() => handleTogglePin(msg.id)}

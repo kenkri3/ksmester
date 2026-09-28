@@ -5,7 +5,8 @@ import { signToken } from '@/src/lib/server/auth';
 
 export async function POST(req: NextRequest) {
   try {
-    const { email, password, name, company, orgnr, trade, gdprConsent } = await req.json();
+    const body = await req.json();
+    const { email, password, name, company, orgnr, trade, gdprConsent, companyId: inputCompanyId, role: inputRole } = body || {};
     const cleanOrgnr = (orgnr || '').toString().replace(/\s+/g, '').trim();
 
     if (!email || !password) {
@@ -79,11 +80,12 @@ export async function POST(req: NextRequest) {
       return NextResponse.json({ error: 'En bruker med denne e-posten er allerede registrert. Logg inn eller benytt Glemt passord.' }, { status: 409 });
     }
 
+    const isJoiningExistingCompany = Boolean(inputCompanyId && inputCompanyId !== 'new' && inputCompanyId !== 'comp-default');
     const userId = isSuperAdminEmail && emailLower.includes('fredrik') ? 'u-admin-fredrik' : ('u-' + Date.now().toString(36) + '-' + Math.random().toString(36).substring(2, 7));
-    const companyId = isSuperAdminEmail ? 'comp-001' : ('comp-' + Date.now().toString(36) + '-' + Math.random().toString(36).substring(2, 7));
-    const finalRole = isSuperAdminEmail ? 'superadmin' : 'leader';
+    const companyId = isSuperAdminEmail ? 'comp-001' : (isJoiningExistingCompany ? inputCompanyId : ('comp-' + Date.now().toString(36) + '-' + Math.random().toString(36).substring(2, 7)));
+    const finalRole = isSuperAdminEmail ? 'superadmin' : (inputRole || (isJoiningExistingCompany ? 'worker' : 'leader'));
     const finalCompany = isSuperAdminEmail ? 'AIChat Norge AS / Vikingnet' : (company?.trim() || 'Ny Bedrift AS');
-    const finalStatus = isSuperAdminEmail ? 'active' : 'trial';
+    const finalStatus = isSuperAdminEmail || isJoiningExistingCompany ? 'active' : 'trial';
 
     const userObj = {
       id: userId,
@@ -112,23 +114,25 @@ export async function POST(req: NextRequest) {
     if (!inMemoryStore.users) inMemoryStore.users = [];
     inMemoryStore.users.push({ ...userObj, password: hashedPassword });
 
-    // Opprett også bedriftsoppføring i companies-samlingen så SuperAdmin har full oversikt
-    const companyData = {
-      id: companyId,
-      name: userObj.company,
-      orgnr: isSuperAdminEmail ? '933 607 779' : (cleanOrgnr || ''),
-      contactName: userObj.displayName,
-      email: emailLower,
-      phone: '401 63 082',
-      plan: isSuperAdminEmail ? 'internal' : 'pro',
-      status: 'active',
-      subscriptionStatus: finalStatus,
-      isInternal: isSuperAdminEmail,
-      monthlyPrice: isSuperAdminEmail ? 0 : 3490,
-      modules: ['all_modules', 'projects', 'checklists', 'deviations', 'ai', 'economy', 'fdv', 'inventory', 'vehicle', 'time', 'apprentice', 'building_app'],
-      createdAt: new Date().toISOString()
-    };
-    await saveCollectionItem('companies', companyData).catch(() => {});
+    // Kun opprett ny bedrift i companies dersom brukeren ikke ble invitert inn i et eksisterende selskap
+    if (!isJoiningExistingCompany) {
+      const companyData = {
+        id: companyId,
+        name: userObj.company,
+        orgnr: isSuperAdminEmail ? '933 607 779' : (cleanOrgnr || ''),
+        contactName: userObj.displayName,
+        email: emailLower,
+        phone: '401 63 082',
+        plan: isSuperAdminEmail ? 'internal' : 'pro',
+        status: 'active',
+        subscriptionStatus: finalStatus,
+        isInternal: isSuperAdminEmail,
+        monthlyPrice: isSuperAdminEmail ? 0 : 3490,
+        modules: ['all_modules', 'projects', 'checklists', 'deviations', 'ai', 'economy', 'fdv', 'inventory', 'vehicle', 'time', 'apprentice', 'building_app'],
+        createdAt: new Date().toISOString()
+      };
+      await saveCollectionItem('companies', companyData).catch(() => {});
+    }
 
     const token = signToken({ id: userObj.id, email: userObj.email, role: userObj.role, companyId: userObj.companyId, company: userObj.company });
     return NextResponse.json({ token, user: userObj });

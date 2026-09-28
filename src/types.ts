@@ -617,3 +617,21 @@ export interface ExtensionOfTimeClaim {
   createdAt: string;
 }
 
+// --- Team Chat & MesterAI Privat Rådgivning ---
+export interface TeamChatConsultContext {
+  channelId: string;
+  channelName: string;
+  channelType?: 'company' | 'project' | 'hms' | 'dm';
+  projectId?: string;
+  projectName?: string;
+  initialPrompt?: string;
+  contextSnippet?: string;
+  sourceMessageId?: string;
+  sourceSenderName?: string;
+  recentMessages?: Array<{
+    senderName: string;
+    content: string;
+    time?: string;
+  }>;
+  createdAt: string;
+}

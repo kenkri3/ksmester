@@ -100,7 +100,7 @@ export const api = {
     return data;
   },
 
-  async register(data: { email: string; password?: string; name?: string; company?: string; orgnr?: string; role?: string; trade?: string; gdprConsent?: boolean }) {
+  async register(data: { email: string; password?: string; name?: string; company?: string; orgnr?: string; role?: string; trade?: string; gdprConsent?: boolean; companyId?: string }) {
     const res = await fetch('/api/auth/register', {
       method: 'POST',
       headers: { 'Content-Type': 'application/json' },

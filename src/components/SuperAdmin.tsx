@@ -1035,7 +1035,19 @@ Svar KUN med gyldig rå JSON (uten markdown \`\`\`json klammer):
           detail: { companyId, modules }
         }));
       }
-      toast.success('Moduler ble oppdatert!');
+
+      // 🔄 Synkroniser også mot REST-databasen (PostgreSQL / items_store)
+      const authToken = typeof window !== 'undefined' ? localStorage.getItem('token') : null;
+      fetch(`/api/data/companies/${companyId}`, {
+        method: 'PUT',
+        headers: {
+          'Content-Type': 'application/json',
+          ...(authToken ? { 'Authorization': 'Bearer ' + authToken } : {})
+        },
+        body: JSON.stringify({ modules })
+      }).catch(() => {});
+
+      toast.success('Moduler ble oppdatert og synkronisert!');
     } catch (error) {
       handleFirestoreError(error, OperationType.UPDATE, 'companies');
     }

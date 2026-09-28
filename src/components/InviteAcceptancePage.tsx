@@ -126,7 +126,10 @@ const InviteAcceptancePage: React.FC<InviteAcceptancePageProps> = ({ token }) =>
           authPassword,
           authName.trim(),
           invitation?.companyName || 'Bedrift',
-          true
+          true,
+          undefined,
+          invitation?.companyId,
+          invitation?.role
         );
         toast.success('Bruker opprettet! Du kan nå akseptere invitasjonen.');
       }

@@ -44,17 +44,31 @@ export async function GET(req: NextRequest) {
     let totalTrialDays: number = 14;
     let isBetaTester = Boolean(userRecord.is_beta_tester || userRecord.isBetaTester);
 
+    let userCompanyPlan = isSuper ? 'internal' : (userRecord.plan || 'solo');
+    let userCompanyModules: string[] = isSuper ? ['all_modules'] : (userRecord.modules || []);
+
+    const compId = userRecord.company_id || userRecord.companyId;
+    if (compId) {
+      const comp = await getCollectionItemById('companies', compId);
+      if (comp) {
+        if (!isSuper && comp.plan) userCompanyPlan = comp.plan;
+        if (!isSuper && Array.isArray(comp.modules)) userCompanyModules = comp.modules;
+        if (!isBetaTester) isBetaTester = Boolean(comp.isBetaTester);
+        if (comp.subscriptionStatus && !isSuper) {
+          if (comp.subscriptionStatus === 'active') currentStatus = 'active';
+        }
+      }
+    }
+
     if (!isSuper && currentStatus === 'trial') {
       let customTrialDays = userRecord.trial_days || userRecord.trialDays;
       let rawStart = userRecord.trial_start_date || userRecord.trialStartDate;
 
-      const compId = userRecord.company_id || userRecord.companyId;
       if (compId) {
         const comp = await getCollectionItemById('companies', compId);
         if (comp) {
           if (!customTrialDays) customTrialDays = comp.trialDays || comp.trial_days;
           if (!rawStart) rawStart = comp.trialStartDate || comp.trial_start_date;
-          if (!isBetaTester) isBetaTester = Boolean(comp.isBetaTester);
         }
       }
 
@@ -85,6 +99,8 @@ export async function GET(req: NextRequest) {
       company: isSuper ? 'AIChat Norge AS / Vikingnet' : (userRecord.company || 'Min Bedrift'),
       companyId: isSuper ? 'comp-001' : (userRecord.company_id || userRecord.companyId || 'comp-default'),
       subscriptionStatus: currentStatus,
+      plan: userCompanyPlan,
+      modules: userCompanyModules,
       trialDaysLeft,
       totalTrialDays,
       isBetaTester

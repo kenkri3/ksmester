@@ -28,7 +28,9 @@ import {
   Send,
   Info,
   RefreshCw,
-  PowerOff
+  PowerOff,
+  Copy,
+  Loader2
 } from 'lucide-react';
 import { cn } from '@/src/lib/utils';
 import { toast } from 'sonner';
@@ -106,13 +108,17 @@ export default function WorkstationSettingsModal({
   });
 
   // Team list
-  const [teamMembers, setTeamMembers] = useState([
+  const [teamMembers, setTeamMembers] = useState<Array<{ id: string; name: string; role: string; email: string }>>([
     { id: '1', name: user?.displayName || 'Ken Kristiansen', role: 'SuperAdmin / Daglig leder', email: user?.email || 'kenkri3@gmail.com' },
     { id: '2', name: 'Ole Hansen', role: 'Bas / Tømrer', email: 'ole@mester.no' },
     { id: '3', name: 'Jonas Vik', role: 'Lærling', email: 'jonas@mester.no' }
   ]);
+  const [newMemberName, setNewMemberName] = useState('');
   const [newMemberEmail, setNewMemberEmail] = useState('');
   const [newMemberRole, setNewMemberRole] = useState('Tømrer / Fagarbeider');
+  const [isInviting, setIsInviting] = useState(false);
+  const [lastInviteInfo, setLastInviteInfo] = useState<{ email: string; inviteUrl: string; name: string } | null>(null);
+  const [copiedLink, setCopiedLink] = useState(false);
 
   // Load stored settings on open
   useEffect(() => {
@@ -135,6 +141,32 @@ export default function WorkstationSettingsModal({
           }
         }).catch((err) => console.warn('Could not load user doc:', err));
       }
+
+      // Hent reelle ansatte for bedriften
+      const token = typeof window !== 'undefined' ? localStorage.getItem('token') : null;
+      fetch('/api/data/users', {
+        headers: {
+          'Content-Type': 'application/json',
+          ...(token ? { 'Authorization': 'Bearer ' + token } : {})
+        }
+      })
+        .then(res => res.json())
+        .then(data => {
+          if (Array.isArray(data) && data.length > 0) {
+            const mapped = data.map((u: any) => ({
+              id: u.id || u.uid || Math.random().toString(),
+              name: u.displayName || u.name || u.email?.split('@')[0] || 'Ansatt',
+              role: u.role === 'superadmin'
+                ? 'SuperAdmin / Systemeier'
+                : (u.role === 'leader' || u.role === 'admin')
+                ? 'Daglig leder / Leder'
+                : (u.trade || (u.role === 'manager' ? 'Prosjektleder / Bas' : 'Tømrer / Fagarbeider')),
+              email: u.email
+            }));
+            setTeamMembers(mapped);
+          }
+        })
+        .catch(err => console.warn('Could not load company users:', err));
 
       // Hent e-postinnstillinger for bedriften (SMTP/Microsoft 365/Gmail/Domeneshop osv.)
       fetch('/api/settings/email')
@@ -333,27 +365,73 @@ export default function WorkstationSettingsModal({
   };
 
   const handleAddMember = async () => {
-    if (!newMemberEmail.trim()) return;
-    const emailToInvite = newMemberEmail.trim();
-    const isSuperInvite = newMemberRole === 'superadmin' || emailToInvite.toLowerCase() === 'fredrik@aichatnorge.no' || emailToInvite.toLowerCase() === 'fredrik.r.ellingsen@gmail.com';
-    const effectiveRole = isSuperInvite ? 'superadmin' : newMemberRole;
+    if (!newMemberEmail.trim()) {
+      toast.error('Vennligst oppgi en gyldig e-postadresse.');
+      return;
+    }
+    const emailToInvite = newMemberEmail.trim().toLowerCase();
+    const employeeName = newMemberName.trim() || emailToInvite.split('@')[0];
+    const isSuperInvite = newMemberRole === 'superadmin' || emailToInvite === 'fredrik@aichatnorge.no' || emailToInvite === 'fredrik.r.ellingsen@gmail.com';
     const effectiveCompanyId = isSuperInvite ? 'comp-001' : (user?.companyId || 'comp-001');
-    const effectiveCompanyName = isSuperInvite ? 'AIChat Norge AS / Vikingnet' : companyName;
+    const effectiveCompanyName = isSuperInvite ? 'AIChat Norge AS / Vikingnet' : (companyName || user?.company || 'Bedrift');
 
-    setTeamMembers(prev => [
-      ...prev,
-      { id: Date.now().toString(), name: emailToInvite.split('@')[0], role: isSuperInvite ? 'SuperAdmin / Systemeier' : effectiveRole, email: emailToInvite }
-    ]);
-    setNewMemberEmail('');
-    
-    // Send ekte invitasjon på e-post via Resend og lagre invitasjon i databasen
+    let dbRole = 'worker';
+    let dbTrade = 'Tømrer';
+    if (isSuperInvite) {
+      dbRole = 'superadmin';
+      dbTrade = 'Systemeier';
+    } else if (newMemberRole.includes('Bas') || newMemberRole.includes('Prosjektleder')) {
+      dbRole = 'manager';
+      dbTrade = 'Bas / Prosjektleder';
+    } else if (newMemberRole.includes('Lærling')) {
+      dbRole = 'worker';
+      dbTrade = 'Lærling';
+    } else if (newMemberRole.includes('Underentreprenør')) {
+      dbRole = 'worker';
+      dbTrade = 'Underentreprenør';
+    } else {
+      dbRole = 'worker';
+      dbTrade = 'Tømrer / Fagarbeider';
+    }
+
+    setIsInviting(true);
+    setLastInviteInfo(null);
+
     try {
       const token = typeof window !== 'undefined' ? localStorage.getItem('token') : null;
       const baseUrl = typeof window !== 'undefined' ? window.location.origin : 'https://vikingmester.no';
-      const inviteToken = Math.random().toString(36).substring(2, 15) + Math.random().toString(36).substring(2, 15);
-      const link = `${baseUrl}/?invite=${inviteToken}`;
 
-      // 1. Lagre invitasjon i databasen
+      // 1. Opprett reell bruker via /api/admin/create-user
+      const res = await fetch('/api/admin/create-user', {
+        method: 'POST',
+        headers: {
+          'Content-Type': 'application/json',
+          ...(token ? { 'Authorization': 'Bearer ' + token } : {})
+        },
+        body: JSON.stringify({
+          accountType: isSuperInvite ? 'superadmin' : 'customer',
+          companyMode: 'existing',
+          companyId: effectiveCompanyId,
+          companyName: effectiveCompanyName,
+          email: emailToInvite,
+          name: employeeName,
+          role: dbRole,
+          trade: dbTrade,
+          plan: 'enterprise',
+          trialDays: 60,
+          isBetaTester: true,
+          sendWelcomeEmail: true
+        })
+      });
+
+      const data = await res.json().catch(() => ({}));
+
+      if (!res.ok) {
+        throw new Error(data.error || 'Kunne ikke opprette bruker og sende invitasjon.');
+      }
+
+      // 2. Lagre invitasjon i invitations-samlingen for bakoverkompatibilitet
+      const inviteToken = Math.random().toString(36).substring(2, 15) + Math.random().toString(36).substring(2, 15);
       await fetch('/api/data/invitations', {
         method: 'POST',
         headers: {
@@ -367,104 +445,47 @@ export default function WorkstationSettingsModal({
           inviterId: user?.id || user?.uid,
           inviterName: user?.displayName || 'Kenneth Kristiansen',
           inviteeEmail: emailToInvite,
-          role: effectiveRole,
-          status: 'pending',
+          role: dbRole,
+          status: 'accepted',
           token: inviteToken,
-          createdAt: new Date().toISOString(),
-          expiresAt: new Date(Date.now() + 14 * 24 * 60 * 60 * 1000).toISOString()
+          createdAt: new Date().toISOString()
         })
       }).catch(err => console.warn('Could not save invitation record:', err));
 
-      // 2. Send e-post
-      const subject = isSuperInvite
-        ? `👑 Invitasjon som SuperAdmin & Systemeier i VikingMester`
-        : `Invitasjon til ${effectiveCompanyName} i VikingMester`;
-
-      const emailHtml = isSuperInvite ? `
-        <div style="font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, sans-serif; max-width: 600px; margin: 0 auto; padding: 24px; color: #1e293b; background: #ffffff; border: 1px solid #fde68a; border-radius: 14px;">
-          <div style="background: linear-gradient(135deg, #0f172a 0%, #1e1b4b 100%); padding: 24px; border-radius: 12px; color: white; margin-bottom: 20px; border-left: 4px solid #f59e0b;">
-            <div style="display: inline-block; background: rgba(245, 158, 11, 0.2); color: #fbbf24; padding: 4px 10px; border-radius: 9999px; font-size: 11px; font-weight: 800; text-transform: uppercase; margin-bottom: 8px;">
-              👑 SuperAdmin & Systemeier
-            </div>
-            <h2 style="margin: 0; font-size: 20px; font-weight: 800;">Velkommen til VikingMester</h2>
-            <p style="margin: 4px 0 0 0; color: #cbd5e1; font-size: 13px;">AIChat Norge AS / Vikingnet</p>
-          </div>
-          <p style="font-size: 15px;">Hei!</p>
-          <p style="font-size: 14px; line-height: 1.6;">
-            <strong>Kenneth Kristiansen</strong> har invitert deg til å bli med som <strong>SuperAdmin & Systemeier</strong> for <strong>VikingMester</strong>.
-          </p>
-          <div style="background: #f8fafc; border: 1px solid #e2e8f0; border-radius: 10px; padding: 14px 18px; margin: 16px 0;">
-            <p style="margin: 0 0 6px 0; font-size: 12px; font-weight: bold; text-transform: uppercase; color: #64748b;">Dine rettigheter:</p>
-            <ul style="margin: 0; padding-left: 20px; font-size: 13px; color: #334155; line-height: 1.6;">
-              <li>Full tilgang til <strong>SuperAdmin-portalen</strong></li>
-              <li>Ubegrenset AI-kalkyle og 500M systemtokens</li>
-              <li>Impersonering og inspeksjon av kundebedrifter</li>
-              <li>100% like rettigheter som plattformeier</li>
-            </ul>
-          </div>
-          <table role="presentation" border="0" cellpadding="0" cellspacing="0" align="center" style="margin: 26px auto;">
-            <tr>
-              <td align="center" bgcolor="#d97706" style="background-color: #d97706; border-radius: 10px; border: 2px solid #b45309;">
-                <a href="${link}" style="display: inline-block; padding: 14px 32px; font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, sans-serif; font-size: 15px; font-weight: bold; color: #ffffff !important; text-decoration: none; line-height: 1.2;">
-                  <span style="color: #ffffff !important; font-weight: bold;">👉 Opprett din SuperAdmin-bruker nå</span>
-                </a>
-              </td>
-            </tr>
-          </table>
-          <div style="background: #f8fafc; border: 1px dashed #cbd5e1; border-radius: 8px; padding: 12px; margin: 18px 0; font-size: 12px; color: #64748b; word-break: break-all; text-align: left;">
-            Fungerer ikke knappen? Kopier og lim inn denne lenken i nettleseren:<br/>
-            <a href="${link}" style="color: #d97706; text-decoration: underline;">${link}</a>
-          </div>
-          <p style="font-size: 12px; color: #64748b; text-align: center;">Lenken er gyldig i 14 dager. Du kan også registrere deg direkte på vikingmester.no med denne e-posten.</p>
-        </div>
-      ` : `
-        <div style="font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, sans-serif; max-width: 600px; margin: 0 auto; padding: 24px; color: #1e293b; background: #ffffff; border: 1px solid #e2e8f0; border-radius: 14px;">
-          <div style="background: #0f172a; padding: 20px; border-radius: 10px; color: white; margin-bottom: 20px;">
-            <h2 style="margin: 0; font-size: 18px;">Velkommen til ${effectiveCompanyName}</h2>
-            <p style="margin: 4px 0 0 0; color: #94a3b8; font-size: 12px;">VikingMester KS & Prosjektstyring</p>
-          </div>
-          <p>Hei!</p>
-          <p>Du har blitt invitert av ledelsen til å bli med som <strong>${effectiveRole === 'admin' ? 'Administrator' : effectiveRole === 'manager' ? 'Prosjektleder' : 'Håndverker'}</strong> for <strong>${effectiveCompanyName}</strong> i VikingMester.</p>
-          <table role="presentation" border="0" cellpadding="0" cellspacing="0" align="center" style="margin: 26px auto;">
-            <tr>
-              <td align="center" bgcolor="#059669" style="background-color: #059669; border-radius: 10px; border: 2px solid #047857;">
-                <a href="${link}" style="display: inline-block; padding: 14px 28px; font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, sans-serif; font-size: 14px; font-weight: bold; color: #ffffff !important; text-decoration: none; line-height: 1.2;">
-                  <span style="color: #ffffff !important; font-weight: bold;">👉 Åpne og godkjenn invitasjonen</span>
-                </a>
-              </td>
-            </tr>
-          </table>
-          <div style="background: #f8fafc; border: 1px dashed #cbd5e1; border-radius: 8px; padding: 12px; margin: 18px 0; font-size: 12px; color: #64748b; word-break: break-all; text-align: left;">
-            Fungerer ikke knappen? Kopier og lim inn denne lenken i nettleseren:<br/>
-            <a href="${link}" style="color: #059669; text-decoration: underline;">${link}</a>
-          </div>
-          <p style="font-size: 12px; color: #64748b;">Lenken er gyldig i 14 dager. Ved spørsmål kan du kontakte bedriftsledelsen.</p>
-        </div>
-      `;
-
-      const res = await fetch('/api/notify/email', {
-        method: 'POST',
-        headers: {
-          'Content-Type': 'application/json',
-          ...(token ? { 'Authorization': 'Bearer ' + token } : {})
-        },
-        body: JSON.stringify({
-          to: emailToInvite,
-          subject,
-          html: emailHtml,
-          text: `Hei!\n\nDu er invitert til ${effectiveCompanyName} i VikingMester som ${effectiveRole}.\n\nAksepter invitasjonen her: ${link}`
-        })
+      // 3. Oppdater lokal teamliste
+      setTeamMembers(prev => {
+        const filtered = prev.filter(m => m.email.toLowerCase() !== emailToInvite);
+        return [
+          ...filtered,
+          {
+            id: data.user?.id || Date.now().toString(),
+            name: employeeName,
+            role: isSuperInvite ? 'SuperAdmin / Systemeier' : newMemberRole,
+            email: emailToInvite
+          }
+        ];
       });
 
-      if (res.ok) {
-        toast.success(`Invitasjon er sendt på e-post til ${emailToInvite}!`);
+      const inviteUrl = data.inviteLink || data.setPasswordUrl || `${baseUrl}/`;
+      setLastInviteInfo({
+        email: emailToInvite,
+        inviteUrl,
+        name: employeeName
+      });
+
+      setNewMemberEmail('');
+      setNewMemberName('');
+
+      if (data.emailSent) {
+        toast.success(`🎉 Bruker opprettet og velkomst-e-post sendt til ${emailToInvite}!`);
       } else {
-        const errData = await res.json().catch(() => ({}));
-        toast.warning(`Medarbeider lagt til, men e-post kunne ikke sendes: ${errData.error || errData.message || 'Sjekk e-postoppsett'}`);
+        toast.success(`Bruker opprettet! Du kan kopiere aktiveringslenken nedenfor og sende til ${employeeName}.`);
       }
-    } catch (err) {
-      console.warn('Could not send invite email:', err);
-      toast.success(`Medarbeider lagt til i listen`);
+    } catch (err: any) {
+      console.error('Invite error:', err);
+      toast.error(err.message || 'Kunne ikke invitere medarbeider.');
+    } finally {
+      setIsInviting(false);
     }
   };
 
@@ -1056,35 +1077,84 @@ export default function WorkstationSettingsModal({
                   </div>
                 )}
 
-                <div className="flex flex-col sm:flex-row gap-2">
-                  <input
-                    type="email"
-                    placeholder="e-post@mester.no"
-                    value={newMemberEmail}
-                    onChange={(e) => setNewMemberEmail(e.target.value)}
-                    className="flex-1 px-3 py-2 rounded-xl bg-slate-900 border border-slate-750 text-xs text-white placeholder:text-slate-500 focus:outline-none focus:border-purple-500"
-                  />
-                  <select
-                    value={newMemberRole}
-                    onChange={(e) => setNewMemberRole(e.target.value)}
-                    className="px-3 py-2 rounded-xl bg-slate-900 border border-slate-750 text-xs text-white focus:outline-none focus:border-purple-500"
-                  >
-                    {isSuperAdmin && (
-                      <option value="superadmin">👑 SuperAdmin / Systemeier (Full tilgang)</option>
-                    )}
-                    <option value="Bas / Prosjektleder">Bas / Prosjektleder</option>
-                    <option value="Tømrer / Fagarbeider">Tømrer / Fagarbeider</option>
-                    <option value="Lærling">Lærling</option>
-                    <option value="Underentreprenør">Underentreprenør</option>
-                  </select>
-                  <button
-                    type="button"
-                    onClick={handleAddMember}
-                    className="px-3.5 py-2 rounded-xl bg-purple-600 hover:bg-purple-500 text-white text-xs font-bold transition-all shadow-xs cursor-pointer"
-                  >
-                    Send invitasjon
-                  </button>
+                <div className="space-y-2.5">
+                  <div className="grid grid-cols-1 sm:grid-cols-2 gap-2">
+                    <input
+                      type="text"
+                      placeholder="Fullt navn (f.eks. Ole Tømrer)"
+                      value={newMemberName}
+                      onChange={(e) => setNewMemberName(e.target.value)}
+                      className="px-3 py-2 rounded-xl bg-slate-900 border border-slate-750 text-xs text-white placeholder:text-slate-500 focus:outline-none focus:border-purple-500"
+                    />
+                    <input
+                      type="email"
+                      placeholder="e-post@bedrift.no"
+                      value={newMemberEmail}
+                      onChange={(e) => setNewMemberEmail(e.target.value)}
+                      className="px-3 py-2 rounded-xl bg-slate-900 border border-slate-750 text-xs text-white placeholder:text-slate-500 focus:outline-none focus:border-purple-500"
+                    />
+                  </div>
+
+                  <div className="flex flex-col sm:flex-row gap-2">
+                    <select
+                      value={newMemberRole}
+                      onChange={(e) => setNewMemberRole(e.target.value)}
+                      className="flex-1 px-3 py-2 rounded-xl bg-slate-900 border border-slate-750 text-xs text-white focus:outline-none focus:border-purple-500"
+                    >
+                      {isSuperAdmin && (
+                        <option value="superadmin">👑 SuperAdmin / Systemeier (Full tilgang)</option>
+                      )}
+                      <option value="Bas / Prosjektleder">Bas / Prosjektleder</option>
+                      <option value="Tømrer / Fagarbeider">Tømrer / Fagarbeider</option>
+                      <option value="Lærling">Lærling</option>
+                      <option value="Underentreprenør">Underentreprenør</option>
+                    </select>
+                    <button
+                      type="button"
+                      disabled={isInviting || !newMemberEmail.trim()}
+                      onClick={handleAddMember}
+                      className="px-4 py-2 rounded-xl bg-purple-600 hover:bg-purple-500 text-white text-xs font-bold transition-all shadow-xs cursor-pointer flex items-center justify-center gap-1.5 disabled:opacity-50"
+                    >
+                      {isInviting ? <Loader2 size={13} className="animate-spin" /> : <Send size={13} />}
+                      <span>{isInviting ? 'Oppretter & sender...' : 'Send invitasjon'}</span>
+                    </button>
+                  </div>
                 </div>
+
+                {lastInviteInfo && (
+                  <div className="p-3.5 rounded-2xl bg-emerald-950/40 border border-emerald-500/40 space-y-2 animate-in fade-in">
+                    <div className="flex items-center justify-between">
+                      <span className="text-xs font-bold text-emerald-300 flex items-center gap-1.5">
+                        <CheckCircle2 size={15} className="text-emerald-400" />
+                        Konto opprettet for {lastInviteInfo.name} ({lastInviteInfo.email})!
+                      </span>
+                    </div>
+                    <p className="text-[11px] text-slate-300">
+                      Velkomst-e-post med innloggingsopplysninger og passordvalg er sendt ut. Du kan også kopiere direkte aktiveringslenke og sende til ansatt på SMS eller melding:
+                    </p>
+                    <div className="flex items-center gap-2">
+                      <input
+                        type="text"
+                        readOnly
+                        value={lastInviteInfo.inviteUrl}
+                        className="flex-1 px-3 py-1.5 rounded-lg bg-slate-900 border border-slate-700 text-xs text-slate-300 select-all font-mono"
+                      />
+                      <button
+                        type="button"
+                        onClick={() => {
+                          navigator.clipboard.writeText(lastInviteInfo.inviteUrl);
+                          setCopiedLink(true);
+                          toast.success('Aktiveringslenke kopiert til utklippstavle!');
+                          setTimeout(() => setCopiedLink(false), 3000);
+                        }}
+                        className="px-3 py-1.5 rounded-lg bg-emerald-600 hover:bg-emerald-500 text-white text-xs font-bold flex items-center gap-1 transition-colors cursor-pointer shrink-0"
+                      >
+                        {copiedLink ? <Check size={13} /> : <Copy size={13} />}
+                        <span>{copiedLink ? 'Kopiert!' : 'Kopier lenke'}</span>
+                      </button>
+                    </div>
+                  </div>
+                )}
               </div>
             </div>
           )}

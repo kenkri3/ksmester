@@ -7,18 +7,21 @@ import { sendSystemEmail, renderBrandedEmailTemplate } from '@/src/lib/server/em
 
 export async function POST(req: NextRequest) {
   try {
-    // 🛡️ SECURITY: Kun systemadministratorer (SuperAdmin) har lov til å opprette partnere/brukere
+    // 🛡️ SECURITY: Systemadministratorer (SuperAdmin) eller bedriftsledere kan opprette brukere
     const requestingUser = getUserFromRequest(req);
-    if (!requestingUser || !isUserAdmin(requestingUser)) {
+    const isSuper = requestingUser ? isUserAdmin(requestingUser) : false;
+    const isCompanyLeader = requestingUser && (requestingUser.role === 'admin' || requestingUser.role === 'leader');
+
+    if (!requestingUser || (!isSuper && !isCompanyLeader)) {
       return NextResponse.json(
-        { error: 'Uautorisert: Kun systemadministratorer har tilgang til denne funksjonen.' },
+        { error: 'Uautorisert: Kun administratorer har tilgang til denne funksjonen.' },
         { status: 403 }
       );
     }
 
     const body = await req.json();
-    const accountType = body.accountType || 'trial'; // 'trial' | 'tester' | 'partner' | 'internal' | 'customer'
-    const companyMode = body.companyMode || 'new';     // 'new' | 'existing'
+    let accountType = body.accountType || 'trial'; // 'trial' | 'tester' | 'partner' | 'internal' | 'customer'
+    let companyMode = body.companyMode || 'new';     // 'new' | 'existing'
     let companyId = sanitize(body.companyId || '').trim();
     let companyName = sanitize(body.companyName || '').trim();
     const orgNumber = sanitizeHeader((body.orgNumber || body.orgnr || '').toString().replace(/\s+/g, '').trim());
@@ -26,13 +29,27 @@ export async function POST(req: NextRequest) {
     const email = sanitizeEmail(body.email || '');
     const phone = sanitize(body.phone || '').trim();
     const password = String(body.password || '').trim();
-    const role = sanitize(body.role || 'admin');
+    let role = sanitize(body.role || 'worker');
     const trade = sanitize(body.trade || 'Byggmester / Tømrer');
-    const sendWelcomeEmail = Boolean(body.sendWelcomeEmail);
+    const sendWelcomeEmail = body.sendWelcomeEmail !== false; // Standard true
     const customMessage = body.customMessage ? String(body.customMessage) : null;
 
-    const isTrial = accountType === 'trial' || accountType === 'tester' || Boolean(body.isTrial);
-    const isBetaTester = Boolean(body.isBetaTester || accountType === 'tester');
+    // For vanlige bedriftsledere: Tving opprettelse kun innenfor egen bedrift, og hindre SuperAdmin-opprettelse
+    if (!isSuper) {
+      if (!requestingUser.companyId) {
+        return NextResponse.json({ error: 'Ugyldig bedriftstilhørighet.' }, { status: 403 });
+      }
+      companyId = requestingUser.companyId;
+      if (requestingUser.company) companyName = requestingUser.company;
+      accountType = 'customer';
+      companyMode = 'existing';
+      if (role === 'superadmin') {
+        role = 'admin'; // Forhindre uautorisert eskalering til SuperAdmin
+      }
+    }
+
+    const isTrial = isSuper && (accountType === 'trial' || accountType === 'tester' || Boolean(body.isTrial));
+    const isBetaTester = isSuper && Boolean(body.isBetaTester || accountType === 'tester');
     const trialDays = typeof body.trialDays === 'number' && body.trialDays > 0 
       ? body.trialDays 
       : (body.trialDays ? parseInt(body.trialDays) : (isBetaTester ? 60 : 14));
@@ -252,6 +269,7 @@ export async function POST(req: NextRequest) {
     let emailMessage = '';
     if (sendWelcomeEmail) {
       try {
+        const roleTitle = role === 'admin' ? 'Leder / Administrator' : role === 'manager' ? 'Prosjektleder' : role === 'apprentice' ? 'Lærling' : 'Håndverker / Fagarbeider';
         const subject = isSuperAdminAccount
           ? `👑 Velkommen som SuperAdmin & Systemeier i VikingMester`
           : isBetaTester
@@ -260,7 +278,9 @@ export async function POST(req: NextRequest) {
           ? `Velkommen til VikingMester (${trialDays} dagers gratis prøveperiode)`
           : isInternal 
           ? `Din interne brukerkonto i VikingMester` 
-          : `Velkommen som samarbeidspartner i VikingMester`;
+          : isPartner
+          ? `Velkommen som samarbeidspartner i VikingMester`
+          : `Velkommen til ${companyName} i VikingMester – opprett ditt passord`;
 
         const greetingText = customMessage || (isSuperAdminAccount
           ? `Hei ${name || 'Fredrik'}!\n\nDu har blitt opprettet som SuperAdmin og Systemeier for VikingMester (AIChat Norge AS / Vikingnet).\n\nDu har 100% full plattformeiertilgang med nøyaktig samme rettigheter som Kenneth Kristiansen (SuperAdmin-portal, ubegrenset kalkyle, impersonering og full systemkontroll).\n\nDu kan velge ditt eget personlige passord med en gang ved å klikke på knappen under.`
@@ -270,7 +290,9 @@ export async function POST(req: NextRequest) {
           ? `Hei ${name || 'Byggmester'}!\n\nVelkommen til VikingMester! Det er opprettet en konto for deg med ${trialDays} dagers kostnadsfri og uforpliktende prøveperiode for ${companyName}.\n\nKlikk på knappen under for å velge ditt eget personlige passord og starte prøveperioden.`
           : isInternal
           ? `Hei ${name || 'kollega'}!\n\nDet er opprettet en intern brukerkonto for deg i VikingMester for ${companyName}.\n\nKlikk på knappen under for å velge ditt personlige passord og aktivere kontoen.`
-          : `Hei ${name || 'samarbeidspartner'}!\n\nVi har gleden av å ønske deg velkommen til VikingMester. Du har fått tildelt en partnerkonto med full tilgang til plattformen.\n\nKlikk på knappen under for å velge ditt personlige passord og aktivere kontoen.`);
+          : isPartner
+          ? `Hei ${name || 'samarbeidspartner'}!\n\nVi har gleden av å ønske deg velkommen til VikingMester. Du har fått tildelt en partnerkonto med full tilgang til plattformen.\n\nKlikk på knappen under for å velge ditt personlige passord og aktivere kontoen.`
+          : `Hei ${name || 'kollega'}!\n\nDu har blitt opprettet som ${roleTitle.toLowerCase()} for ${companyName} i VikingMester.\n\nKlikk på den store fargede knappen under for å velge ditt eget personlige passord og komme i gang med én gang.`);
 
         const theme = isSuperAdminAccount ? 'superadmin' : isBetaTester ? 'betatester' : 'standard';
 
@@ -293,7 +315,7 @@ export async function POST(req: NextRequest) {
               <strong>Firma:</strong> ${userObj.company}
             </p>
             <p style="margin: 6px 0; font-size: 14px; color: #1e293b;">
-              <strong>Rolle:</strong> <span style="font-weight: 700; color: ${isSuperAdminAccount ? '#d97706' : '#0f172a'};">${isSuperAdminAccount ? '👑 SuperAdmin / Systemeier' : role === 'admin' ? 'Leder / Administrator' : role === 'manager' ? 'Prosjektleder' : 'Håndverker'}</span>
+              <strong>Rolle:</strong> <span style="font-weight: 700; color: ${isSuperAdminAccount ? '#d97706' : '#0f172a'};">${isSuperAdminAccount ? '👑 SuperAdmin / Systemeier' : roleTitle}</span>
             </p>
             ${isTrial ? `
               <p style="margin: 6px 0; font-size: 14px; color: #1e293b;">
@@ -313,7 +335,9 @@ export async function POST(req: NextRequest) {
             ? 'Velkommen som SuperAdmin & Systemeier' 
             : isBetaTester 
             ? `Velkommen som Betatester (${trialDays} dager gratis)` 
-            : `Velkommen til VikingMester`,
+            : isTrial
+            ? `Velkommen til VikingMester`
+            : `Velkommen til ${userObj.company}`,
           subtitle: `Opprettet for ${name || emailLower} · ${userObj.company}`,
           theme,
           bodyHtml,
