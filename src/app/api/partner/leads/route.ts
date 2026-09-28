@@ -309,11 +309,15 @@ export async function POST(req: NextRequest) {
                   </div>
                 </div>
 
-                <div style="text-align: center; margin: 30px 0;">
-                  <a href="https://vikingmester.no" style="display: inline-block; background: #8B5CF6; color: white; text-decoration: none; font-weight: bold; font-size: 15px; padding: 14px 28px; border-radius: 10px; box-shadow: 0 4px 12px rgba(139, 92, 246, 0.35);">
-                    Åpne VikingMester og se arbeidsflaten →
-                  </a>
-                </div>
+                <table role="presentation" border="0" cellpadding="0" cellspacing="0" align="center" style="margin: 28px auto;">
+                  <tr>
+                    <td align="center" bgcolor="#8B5CF6" style="background-color: #8B5CF6; border-radius: 10px; border: 2px solid #7c3aed;">
+                      <a href="https://vikingmester.no" style="display: inline-block; padding: 14px 28px; font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, sans-serif; font-size: 15px; font-weight: bold; color: #ffffff !important; text-decoration: none; line-height: 1.2;">
+                        <span style="color: #ffffff !important; font-weight: bold;">Åpne VikingMester og se arbeidsflaten →</span>
+                      </a>
+                    </td>
+                  </tr>
+                </table>
 
                 <p style="font-size: 14px; color: #475569; margin-top: 24px;">
                   Har du spørsmål eller ønsker en kort gjennomgang, er det bare å svare direkte på denne e-posten, så svarer jeg eller en kollega deg umiddelbart.

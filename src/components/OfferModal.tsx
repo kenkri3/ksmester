@@ -436,8 +436,19 @@ const OfferModal: React.FC<OfferModalProps> = ({ isOpen, onClose, initialData })
             <p>Hei ${clientName},</p>
             <p>Vi har utarbeidet et tilbud til deg: <strong>${title}</strong> pålydende <strong>${priceText}</strong>.</p>
             ${propInfo ? `<p><strong>Byggeplass / Eiendom:</strong> ${propInfo}</p>` : ''}
-            <p>Klikk på lenken under for å gjennomgå tilbudet og godkjenne det direkte på skjermen:</p>
-            <p><a href="${link}" style="background-color: #10b981; color: white; padding: 12px 24px; text-decoration: none; border-radius: 8px; font-weight: bold; display: inline-block;">Gjennomgå og godkjenn tilbud</a></p>
+            <table role="presentation" border="0" cellpadding="0" cellspacing="0" style="margin: 20px 0;">
+              <tr>
+                <td align="center" bgcolor="#10b981" style="background-color: #10b981; border-radius: 8px; border: 2px solid #059669;">
+                  <a href="${link}" style="display: inline-block; padding: 13px 26px; font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, sans-serif; font-size: 14px; font-weight: bold; color: #ffffff !important; text-decoration: none; line-height: 1.2;">
+                    <span style="color: #ffffff !important; font-weight: bold;">Gjennomgå og godkjenn tilbud</span>
+                  </a>
+                </td>
+              </tr>
+            </table>
+            <div style="background: #f8fafc; border: 1px dashed #cbd5e1; border-radius: 6px; padding: 10px; margin: 14px 0; font-size: 12px; color: #64748b; word-break: break-all;">
+              Fungerer ikke knappen? Kopier og lim inn lenken i nettleseren:<br/>
+              <a href="${link}" style="color: #10b981; text-decoration: underline;">${link}</a>
+            </div>
             <p>Med vennlig hilsen,<br>${user?.displayName || 'Byggmester'}</p>
           `
         })

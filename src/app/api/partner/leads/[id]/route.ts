@@ -190,11 +190,15 @@ export async function PATCH(
                   </tr>
                 </table>
 
-                <div style="text-align: center; margin: 24px 0;">
-                  <a href="https://vikingmester.no/partner" style="display: inline-block; background: #8B5CF6; color: white; text-decoration: none; font-weight: bold; font-size: 14px; padding: 12px 24px; border-radius: 8px;">
-                    Åpne partnerportalen og se dine salg →
-                  </a>
-                </div>
+                <table role="presentation" border="0" cellpadding="0" cellspacing="0" align="center" style="margin: 24px auto;">
+                  <tr>
+                    <td align="center" bgcolor="#8B5CF6" style="background-color: #8B5CF6; border-radius: 8px; border: 2px solid #7c3aed;">
+                      <a href="https://vikingmester.no/partner" style="display: inline-block; padding: 12px 24px; font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, sans-serif; font-size: 14px; font-weight: bold; color: #ffffff !important; text-decoration: none; line-height: 1.2;">
+                        <span style="color: #ffffff !important; font-weight: bold;">Åpne partnerportalen og se dine salg →</span>
+                      </a>
+                    </td>
+                  </tr>
+                </table>
 
                 <div style="margin-top: 24px; padding-top: 14px; border-top: 1px solid #E2E8F0; font-size: 11px; color: #64748B;">
                   VikingMester Partneroppfølging • AIChat Norge AS / Vikingnet • Org.nr: 933 851 222

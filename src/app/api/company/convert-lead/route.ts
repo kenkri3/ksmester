@@ -188,10 +188,18 @@ export async function POST(req: NextRequest) {
               <div style="font-size: 14px; color: #0f172a;"><strong>Midlertidig passord:</strong> <code style="background: #f1f5f9; padding: 2px 6px; border-radius: 4px; font-weight: bold; color: #4f46e5;">${tempPassword}</code></div>
             </div>
 
-            <div style="text-align: center; margin: 24px 0 10px 0;">
-              <a href="${inviteLink}" style="display: inline-block; background: #0f172a; color: #ffffff; text-decoration: none; padding: 14px 28px; border-radius: 12px; font-weight: 700; font-size: 14px;">
-                Åpne VikingMester og Logg Inn &rarr;
-              </a>
+            <table role="presentation" border="0" cellpadding="0" cellspacing="0" align="center" style="margin: 24px auto 12px auto;">
+              <tr>
+                <td align="center" bgcolor="#0f172a" style="background-color: #0f172a; border-radius: 10px; border: 2px solid #1e293b;">
+                  <a href="${inviteLink}" style="display: inline-block; padding: 14px 28px; font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, sans-serif; font-size: 14px; font-weight: 700; color: #ffffff !important; text-decoration: none; line-height: 1.2;">
+                    <span style="color: #ffffff !important; font-weight: bold;">Åpne VikingMester og Logg Inn &rarr;</span>
+                  </a>
+                </td>
+              </tr>
+            </table>
+            <div style="background: #f8fafc; border: 1px dashed #cbd5e1; border-radius: 8px; padding: 12px; margin: 16px 0; font-size: 12px; color: #64748b; word-break: break-all; text-align: left;">
+              Fungerer ikke knappen? Kopier og lim inn denne lenken i nettleseren:<br/>
+              <a href="${inviteLink}" style="color: #4f46e5; text-decoration: underline;">${inviteLink}</a>
             </div>
           </div>
 

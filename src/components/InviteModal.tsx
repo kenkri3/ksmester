@@ -133,10 +133,18 @@ const InviteModal: React.FC<InviteModalProps> = ({ isOpen, onClose, project }) =
                       <li>100% like rettigheter som plattformeier</li>
                     </ul>
                   </div>
-                  <div style="text-align: center; margin: 26px 0;">
-                    <a href="${link}" style="background: #d97706; color: #ffffff !important; font-weight: bold; padding: 14px 32px; border-radius: 10px; text-decoration: none; display: inline-block; font-size: 15px; box-shadow: 0 4px 12px rgba(217, 119, 6, 0.3);">
-                      👉 Opprett din SuperAdmin-bruker nå
-                    </a>
+                  <table role="presentation" border="0" cellpadding="0" cellspacing="0" align="center" style="margin: 26px auto;">
+                    <tr>
+                      <td align="center" bgcolor="#d97706" style="background-color: #d97706; border-radius: 10px; border: 2px solid #b45309;">
+                        <a href="${link}" style="display: inline-block; padding: 14px 32px; font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, sans-serif; font-size: 15px; font-weight: bold; color: #ffffff !important; text-decoration: none; line-height: 1.2;">
+                          <span style="color: #ffffff !important; font-weight: bold;">👉 Opprett din SuperAdmin-bruker nå</span>
+                        </a>
+                      </td>
+                    </tr>
+                  </table>
+                  <div style="background: #f8fafc; border: 1px dashed #cbd5e1; border-radius: 8px; padding: 12px; margin: 18px 0; font-size: 12px; color: #64748b; word-break: break-all; text-align: left;">
+                    Fungerer ikke knappen? Kopier og lim inn denne lenken i nettleseren:<br/>
+                    <a href="${link}" style="color: #d97706; text-decoration: underline;">${link}</a>
                   </div>
                   <p style="font-size: 12px; color: #64748b; text-align: center;">Lenken er gyldig i 14 dager. Ved spørsmål kan du kontakte ${inviterName}.</p>
                 </div>
@@ -148,10 +156,18 @@ const InviteModal: React.FC<InviteModalProps> = ({ isOpen, onClose, project }) =
                   </div>
                   <p>Hei!</p>
                   <p>Du har blitt invitert av <strong>${inviterName}</strong> til å delta på <strong>${project ? `prosjektet "${project.name}"` : companyName}</strong> som <em>${roleTitle}</em>.</p>
-                  <div style="text-align: center; margin: 26px 0;">
-                    <a href="${link}" style="background: #059669; color: #ffffff !important; font-weight: bold; padding: 14px 28px; border-radius: 10px; text-decoration: none; display: inline-block; font-size: 14px;">
-                      👉 Åpne og godkjenn invitasjonen
-                    </a>
+                  <table role="presentation" border="0" cellpadding="0" cellspacing="0" align="center" style="margin: 26px auto;">
+                    <tr>
+                      <td align="center" bgcolor="#059669" style="background-color: #059669; border-radius: 10px; border: 2px solid #047857;">
+                        <a href="${link}" style="display: inline-block; padding: 14px 28px; font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, sans-serif; font-size: 14px; font-weight: bold; color: #ffffff !important; text-decoration: none; line-height: 1.2;">
+                          <span style="color: #ffffff !important; font-weight: bold;">👉 Åpne og godkjenn invitasjonen</span>
+                        </a>
+                      </td>
+                    </tr>
+                  </table>
+                  <div style="background: #f8fafc; border: 1px dashed #cbd5e1; border-radius: 8px; padding: 12px; margin: 18px 0; font-size: 12px; color: #64748b; word-break: break-all; text-align: left;">
+                    Fungerer ikke knappen? Kopier og lim inn denne lenken i nettleseren:<br/>
+                    <a href="${link}" style="color: #059669; text-decoration: underline;">${link}</a>
                   </div>
                   <p style="font-size: 12px; color: #64748b;">Lenken er gyldig i 14 dager. Ved spørsmål kan du kontakte ${inviterName}.</p>
                 </div>

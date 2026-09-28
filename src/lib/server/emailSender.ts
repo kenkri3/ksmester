@@ -2062,9 +2062,13 @@ export async function sendCraftsmanDeviationAssignedEmail(params: {
             📸 <strong>Viktig:</strong> Når du har rettet avviket, må du ta etter-bilde med mobilen og markere avviket som utbedret. Bildet overføres automatisk til FDV-permen.
           </p>
 
-          <div style="text-align: center; margin: 26px 0;">
-            <a href="${deviationUrl}" class="btn" target="_blank">📲 Åpne avviket & Last opp etter-bilde</a>
-          </div>
+          ${renderBulletproofButton({
+            url: deviationUrl,
+            label: 'Åpne avviket & Last opp etter-bilde',
+            icon: '📲',
+            bgColor: '#ea580c',
+            borderColor: '#c2410c'
+          })}
         </div>
       </div>
     </body>
@@ -2127,9 +2131,13 @@ export async function sendCraftsmanChecklistReminderEmail(params: {
           <p>
             For å sikre at vi er i rute med KS-dokumentasjonen og godkjenning for fakturering, minner vi om at du har <strong>${pendingCount} ubesvarte sjekkpunkter</strong> på <strong>${projectName}</strong>.
           </p>
-          <div style="text-align: center; margin: 26px 0;">
-            <a href="${baseUrl}" class="btn" target="_blank">📱 Fullfør sjekkliste på mobil</a>
-          </div>
+          ${renderBulletproofButton({
+            url: baseUrl,
+            label: 'Fullfør sjekkliste på mobil',
+            icon: '📱',
+            bgColor: '#2563eb',
+            borderColor: '#1d4ed8'
+          })}
           <p style="font-size: 12px; color: #64748b;">
             Det tar bare 2 minutter med mobil-knappene. Takk for innsatsen!
           </p>

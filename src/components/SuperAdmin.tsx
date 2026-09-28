@@ -705,10 +705,19 @@ Svar KUN med gyldig rå JSON (uten markdown \`\`\`json klammer):
                 <p style="margin: 0; font-size: 14px; color: #475569;"><strong>Prøveperiode:</strong> ${offerForm.trialDays} dager kostnadsfritt</p>
               </div>
               ${offerForm.message ? `<p style="white-space: pre-wrap; color: #334155;">${offerForm.message.replace(/</g, '&lt;')}</p>` : ''}
-              <div style="margin: 30px 0; text-align: center;">
-                <a href="${offerLink}" style="background: #4f46e5; color: #ffffff; padding: 14px 28px; text-decoration: none; border-radius: 12px; font-weight: bold; display: inline-block;">Se og godkjenn tilbudet</a>
+              <table role="presentation" border="0" cellpadding="0" cellspacing="0" align="center" style="margin: 28px auto;">
+                <tr>
+                  <td align="center" bgcolor="#4f46e5" style="background-color: #4f46e5; border-radius: 10px; border: 2px solid #4338ca;">
+                    <a href="${offerLink}" style="display: inline-block; padding: 14px 28px; font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, sans-serif; font-size: 15px; font-weight: bold; color: #ffffff !important; text-decoration: none; line-height: 1.2;">
+                      <span style="color: #ffffff !important; font-weight: bold;">Se og godkjenn tilbudet</span>
+                    </a>
+                  </td>
+                </tr>
+              </table>
+              <div style="background: #f8fafc; border: 1px dashed #cbd5e1; border-radius: 8px; padding: 12px; margin: 18px 0; font-size: 12px; color: #64748b; word-break: break-all; text-align: left;">
+                Fungerer ikke knappen? Kopier og lim inn denne lenken i nettleseren:<br/>
+                <a href="${offerLink}" style="color: #4f46e5; text-decoration: underline;">${offerLink}</a>
               </div>
-              <p style="font-size: 12px; color: #94a3b8; margin-top: 30px;">Lenke: ${offerLink}</p>
             </div>`
           })
         });
@@ -772,10 +781,19 @@ Svar KUN med gyldig rå JSON (uten markdown \`\`\`json klammer):
               <p style="margin: 0; font-size: 14px; color: #475569;"><strong>Prøveperiode:</strong> ${offer.trialDays || 30} dager kostnadsfritt</p>
             </div>
             ${offer.message ? `<p style="white-space: pre-wrap; color: #334155;">${offer.message.replace(/</g, '&lt;')}</p>` : ''}
-            <div style="margin: 30px 0; text-align: center;">
-              <a href="${offerLink}" style="background: #4f46e5; color: #ffffff; padding: 14px 28px; text-decoration: none; border-radius: 12px; font-weight: bold; display: inline-block;">Se og godkjenn tilbudet</a>
+            <table role="presentation" border="0" cellpadding="0" cellspacing="0" align="center" style="margin: 28px auto;">
+              <tr>
+                <td align="center" bgcolor="#4f46e5" style="background-color: #4f46e5; border-radius: 10px; border: 2px solid #4338ca;">
+                  <a href="${offerLink}" style="display: inline-block; padding: 14px 28px; font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, sans-serif; font-size: 15px; font-weight: bold; color: #ffffff !important; text-decoration: none; line-height: 1.2;">
+                    <span style="color: #ffffff !important; font-weight: bold;">Se og godkjenn tilbudet</span>
+                  </a>
+                </td>
+              </tr>
+            </table>
+            <div style="background: #f8fafc; border: 1px dashed #cbd5e1; border-radius: 8px; padding: 12px; margin: 18px 0; font-size: 12px; color: #64748b; word-break: break-all; text-align: left;">
+              Fungerer ikke knappen? Kopier og lim inn denne lenken i nettleseren:<br/>
+              <a href="${offerLink}" style="color: #4f46e5; text-decoration: underline;">${offerLink}</a>
             </div>
-            <p style="font-size: 12px; color: #94a3b8; margin-top: 30px;">Lenke: ${offerLink}</p>
           </div>`
         })
       });
@@ -1342,8 +1360,18 @@ Svar KUN med gyldig rå JSON (uten markdown \`\`\`json klammer):
               ${co.description ? `<p style="margin: 0 0 12px 0; font-size: 14px; color: #475569;">${co.description}</p>` : ''}
               <p style="margin: 0; font-size: 15px; font-weight: bold; color: #16a34a;">${amount.toLocaleString('no-NO')} kr eks. mva (${totalAmount.toLocaleString('no-NO')} kr inkl. mva)</p>
             </div>
-            <div style="margin: 28px 0; text-align: center;">
-              <a href="${url}" style="background: #4f46e5; color: #ffffff; padding: 14px 28px; text-decoration: none; border-radius: 12px; font-weight: bold; display: inline-block;">Gjennomgå og signer digitalt</a>
+            <table role="presentation" border="0" cellpadding="0" cellspacing="0" align="center" style="margin: 28px auto;">
+              <tr>
+                <td align="center" bgcolor="#4f46e5" style="background-color: #4f46e5; border-radius: 10px; border: 2px solid #4338ca;">
+                  <a href="${url}" style="display: inline-block; padding: 14px 28px; font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, sans-serif; font-size: 15px; font-weight: bold; color: #ffffff !important; text-decoration: none; line-height: 1.2;">
+                    <span style="color: #ffffff !important; font-weight: bold;">Gjennomgå og signer digitalt</span>
+                  </a>
+                </td>
+              </tr>
+            </table>
+            <div style="background: #f8fafc; border: 1px dashed #cbd5e1; border-radius: 8px; padding: 12px; margin: 18px 0; font-size: 12px; color: #64748b; word-break: break-all; text-align: left;">
+              Fungerer ikke knappen? Kopier og lim inn denne lenken i nettleseren:<br/>
+              <a href="${url}" style="color: #4f46e5; text-decoration: underline;">${url}</a>
             </div>
             <p style="font-size: 12px; color: #94a3b8;">Vilkår i henhold til NS 8406 og Håndverkertjenesteloven § 9.</p>
           </div>`
@@ -5821,46 +5849,56 @@ function EditCompanyInfoModal({
   };
 
   return (
-    <div className="fixed inset-0 z-[100] flex items-center justify-center p-4 bg-black/80 backdrop-blur-md">
+    <div className="fixed inset-0 z-[100] flex items-center justify-center p-3 sm:p-4 bg-black/80 backdrop-blur-md overflow-y-auto">
       <motion.div 
         initial={{ opacity: 0, scale: 0.95 }}
         animate={{ opacity: 1, scale: 1 }}
-        className="bg-[#0B0F17] border border-slate-800 text-white rounded-[2.5rem] shadow-2xl w-full max-w-md overflow-hidden"
+        className="bg-[#0B0F17] border border-slate-800 text-white rounded-3xl sm:rounded-[2rem] shadow-2xl w-full max-w-xl max-h-[92vh] flex flex-col overflow-hidden my-auto"
       >
-        <div className="p-6 sm:p-8 border-b border-slate-800 bg-[#131722] flex justify-between items-center">
-          <h2 className="text-2xl font-bold text-white">Rediger kundeinfo</h2>
-          <button onClick={onClose} className="p-2 hover:bg-slate-800 rounded-full transition-colors cursor-pointer text-slate-400 hover:text-white">
-            <XCircle size={24} />
+        <div className="px-5 py-4 sm:px-6 sm:py-4.5 border-b border-slate-800 bg-[#131722] flex justify-between items-center shrink-0">
+          <div className="flex items-center gap-3">
+            <div className="w-9 h-9 rounded-xl bg-blue-500/20 border border-blue-500/30 text-blue-400 flex items-center justify-center shrink-0">
+              <Building2 size={18} />
+            </div>
+            <div>
+              <h2 className="text-lg sm:text-xl font-bold text-white leading-tight">Rediger kundeinfo</h2>
+              <p className="text-[11px] text-slate-400">Oppdater foretaksdata og abonnement</p>
+            </div>
+          </div>
+          <button onClick={onClose} className="p-1.5 hover:bg-slate-800 rounded-xl transition-colors cursor-pointer text-slate-400 hover:text-white">
+            <X size={20} />
           </button>
         </div>
         
-        <form onSubmit={handleSubmit} className="p-6 sm:p-8 space-y-5 bg-[#0B0F17]">
-          <div className="space-y-2">
-            <label className="text-xs font-black uppercase tracking-widest text-slate-400 ml-1">Kundenavn</label>
-            <input 
-              required
-              type="text"
-              value={name}
-              onChange={(e) => setName(e.target.value)}
-              className="w-full px-4 py-3 bg-slate-950 border border-slate-800 rounded-2xl text-white placeholder:text-slate-500 focus:ring-2 focus:ring-blue-500 outline-none transition-all"
-            />
-          </div>
-          <div className="space-y-2">
-            <label className="text-xs font-black uppercase tracking-widest text-slate-400 ml-1">Organisasjonsnummer</label>
-            <input 
-              type="text"
-              value={orgNumber}
-              onChange={(e) => setOrgNumber(e.target.value)}
-              className="w-full px-4 py-3 bg-slate-950 border border-slate-800 rounded-2xl text-white placeholder:text-slate-500 focus:ring-2 focus:ring-blue-500 outline-none transition-all"
-            />
+        <form onSubmit={handleSubmit} className="flex-1 overflow-y-auto p-5 sm:p-6 space-y-4 bg-[#0B0F17] custom-scrollbar">
+          <div className="grid grid-cols-1 sm:grid-cols-12 gap-3 sm:gap-4">
+            <div className="sm:col-span-7 space-y-1.5">
+              <label className="text-[11px] font-black uppercase tracking-wider text-slate-400 ml-0.5">Kundenavn *</label>
+              <input 
+                required
+                type="text"
+                value={name}
+                onChange={(e) => setName(e.target.value)}
+                className="w-full px-3.5 py-2.5 bg-slate-950 border border-slate-800 rounded-xl text-white placeholder:text-slate-500 focus:ring-2 focus:ring-blue-500 outline-none transition-all text-sm"
+              />
+            </div>
+            <div className="sm:col-span-5 space-y-1.5">
+              <label className="text-[11px] font-black uppercase tracking-wider text-slate-400 ml-0.5">Organisasjonsnummer</label>
+              <input 
+                type="text"
+                value={orgNumber}
+                onChange={(e) => setOrgNumber(e.target.value)}
+                className="w-full px-3.5 py-2.5 bg-slate-950 border border-slate-800 rounded-xl text-white placeholder:text-slate-500 focus:ring-2 focus:ring-blue-500 outline-none transition-all font-mono text-sm"
+              />
+            </div>
           </div>
 
-          <div className="space-y-2">
-            <label className="text-xs font-black uppercase tracking-widest text-slate-400 ml-1">Abonnementsplan</label>
+          <div className="space-y-1.5">
+            <label className="text-[11px] font-black uppercase tracking-wider text-slate-400 ml-0.5">Abonnementsplan</label>
             <select
               value={plan}
               onChange={(e) => setPlan(e.target.value as any)}
-              className="w-full px-4 py-3 bg-slate-950 border border-slate-800 rounded-2xl focus:ring-2 focus:ring-blue-500 outline-none transition-all font-medium text-sm text-white"
+              className="w-full px-3.5 py-2.5 bg-slate-950 border border-slate-800 rounded-xl focus:ring-2 focus:ring-blue-500 outline-none transition-all font-medium text-xs sm:text-sm text-white"
             >
               <option value="internal">👑 SuperAdmin / System Eier (0 kr · Ubegrenset)</option>
               <option value="solo">Solo (690 kr/mnd · 2.5M tokens)</option>
@@ -5871,20 +5909,25 @@ function EditCompanyInfoModal({
           </div>
 
           {isTrial && (
-            <div className="p-4 rounded-2xl bg-amber-500/10 border border-amber-500/30 space-y-3">
+            <div className="p-3.5 sm:p-4 rounded-2xl bg-amber-500/10 border border-amber-500/30 space-y-3">
               <div className="flex items-center justify-between">
-                <span className="text-xs font-black uppercase tracking-wider text-amber-400 flex items-center gap-1.5">
-                  <Clock size={14} /> Skreddersy Prøveperiode
+                <span className="text-[11px] font-black uppercase tracking-wider text-amber-400 flex items-center gap-1.5">
+                  <Clock size={13} /> Skreddersy Prøveperiode
                 </span>
-                {isBetaTester && (
-                  <span className="text-[10px] font-black uppercase bg-emerald-500/20 text-emerald-300 border border-emerald-500/30 px-2 py-0.5 rounded-full">
-                    🧪 Betatester
+                <label className="flex items-center gap-1.5 cursor-pointer bg-slate-900/80 px-2 py-0.5 rounded-lg border border-slate-800 hover:border-slate-700 transition-colors">
+                  <input
+                    type="checkbox"
+                    checked={isBetaTester}
+                    onChange={(e) => setIsBetaTester(e.target.checked)}
+                    className="w-3.5 h-3.5 rounded text-emerald-500 focus:ring-emerald-500 cursor-pointer"
+                  />
+                  <span className="text-[11px] font-bold text-emerald-300">
+                    🧪 Merk som Betatester
                   </span>
-                )}
+                </label>
               </div>
-              <div className="space-y-1.5">
-                <label className="text-[11px] font-bold text-slate-300">Varighet (antall dager gratis)</label>
-                <div className="grid grid-cols-4 gap-1.5">
+              <div className="flex flex-wrap items-center gap-2">
+                <div className="grid grid-cols-4 gap-1.5 flex-1 min-w-[200px]">
                   {[14, 30, 60, 90].map((days) => (
                     <button
                       key={days}
@@ -5894,7 +5937,7 @@ function EditCompanyInfoModal({
                         if (days >= 60) setIsBetaTester(true);
                       }}
                       className={cn(
-                        "py-2 px-1 text-xs font-bold rounded-xl transition-all border cursor-pointer",
+                        "py-2 px-1 text-xs font-bold rounded-xl transition-all border cursor-pointer text-center",
                         trialDays === days 
                           ? "bg-amber-500 text-slate-950 border-amber-400 shadow-xs" 
                           : "bg-slate-900 text-slate-300 border-slate-700 hover:border-slate-500"
@@ -5904,48 +5947,36 @@ function EditCompanyInfoModal({
                     </button>
                   ))}
                 </div>
-                <div className="flex items-center gap-2 pt-1">
-                  <span className="text-xs text-slate-400">Egendefinert:</span>
+                <div className="flex items-center gap-1.5 bg-slate-950 px-2.5 py-1 rounded-xl border border-slate-800 shrink-0">
+                  <span className="text-[11px] text-slate-400 font-medium">Egendefinert:</span>
                   <input
                     type="number"
                     min="1"
                     max="365"
                     value={trialDays}
                     onChange={(e) => setTrialDays(parseInt(e.target.value) || 14)}
-                    className="w-24 px-3 py-1.5 bg-slate-950 border border-slate-800 rounded-xl text-xs font-bold text-white outline-none focus:ring-1 focus:ring-amber-500"
+                    className="w-14 px-1.5 py-1 bg-slate-900 border border-slate-700 rounded-lg text-xs font-bold text-center text-white outline-none focus:ring-1 focus:ring-amber-500"
                   />
-                  <span className="text-xs text-slate-400">dager</span>
+                  <span className="text-[11px] text-slate-400">dager</span>
                 </div>
               </div>
-
-              <label className="flex items-center gap-2 cursor-pointer pt-1">
-                <input
-                  type="checkbox"
-                  checked={isBetaTester}
-                  onChange={(e) => setIsBetaTester(e.target.checked)}
-                  className="w-4 h-4 rounded text-emerald-500 focus:ring-emerald-500 cursor-pointer"
-                />
-                <span className="text-xs font-bold text-slate-200">
-                  🧪 Merk som offisiell Betatester
-                </span>
-              </label>
             </div>
           )}
 
-          <div className="flex gap-4 pt-3">
-            <button 
-              type="submit"
-              disabled={loading}
-              className="flex-1 bg-blue-600 hover:bg-blue-500 text-white py-3.5 rounded-2xl font-bold transition-all shadow-lg shadow-blue-950/50 disabled:opacity-50 cursor-pointer"
-            >
-              {loading ? 'Lagrer...' : 'Lagre endringer'}
-            </button>
+          <div className="pt-2 flex items-center justify-end gap-3">
             <button 
               type="button"
               onClick={onClose}
-              className="flex-1 bg-slate-800 hover:bg-slate-700 text-slate-300 border border-slate-700 py-3.5 rounded-2xl font-bold transition-all cursor-pointer"
+              className="px-4 py-2.5 rounded-xl font-bold text-sm text-slate-400 hover:text-white hover:bg-slate-800/80 transition-colors cursor-pointer"
             >
               Avbryt
+            </button>
+            <button 
+              type="submit"
+              disabled={loading}
+              className="px-6 py-2.5 bg-blue-600 hover:bg-blue-500 text-white rounded-xl font-bold text-sm transition-all shadow-md shadow-blue-950/40 disabled:opacity-50 cursor-pointer"
+            >
+              {loading ? 'Lagrer...' : 'Lagre endringer'}
             </button>
           </div>
         </form>
@@ -5996,98 +6027,135 @@ function CreateCompanyModal({ onClose, onSuccess }: { onClose: () => void, onSuc
   };
 
   return (
-    <div className="fixed inset-0 z-[100] flex items-center justify-center p-4 bg-black/80 backdrop-blur-md">
+    <div className="fixed inset-0 z-[100] flex items-center justify-center p-3 sm:p-4 bg-black/80 backdrop-blur-md overflow-y-auto">
       <motion.div 
         initial={{ opacity: 0, scale: 0.95 }}
         animate={{ opacity: 1, scale: 1 }}
-        className="bg-[#0B0F17] border border-slate-800 text-white rounded-[2.5rem] shadow-2xl w-full max-w-md overflow-hidden"
+        className="bg-[#0B0F17] border border-slate-800 text-white rounded-3xl sm:rounded-[2rem] shadow-2xl w-full max-w-xl max-h-[92vh] flex flex-col overflow-hidden my-auto"
       >
-        <div className="p-6 sm:p-8 border-b border-slate-800 bg-[#131722] flex justify-between items-center">
-          <h2 className="text-2xl font-bold text-white">Opprett ny kunde</h2>
-          <button onClick={onClose} className="p-2 hover:bg-slate-800 rounded-full transition-colors cursor-pointer text-slate-400 hover:text-white">
-            <XCircle size={24} />
+        <div className="px-5 py-4 sm:px-6 sm:py-4.5 border-b border-slate-800 bg-[#131722] flex justify-between items-center shrink-0">
+          <div className="flex items-center gap-3">
+            <div className="w-9 h-9 rounded-xl bg-purple-500/20 border border-purple-500/30 text-purple-400 flex items-center justify-center shrink-0">
+              <UserPlus size={18} />
+            </div>
+            <div>
+              <h2 className="text-lg sm:text-xl font-bold text-white leading-tight">Opprett ny kunde</h2>
+              <p className="text-[11px] text-slate-400">Registrer ny bedriftskonto med tilpasset plan</p>
+            </div>
+          </div>
+          <button 
+            type="button"
+            onClick={onClose} 
+            className="p-1.5 hover:bg-slate-800 rounded-xl transition-colors cursor-pointer text-slate-400 hover:text-white"
+          >
+            <X size={20} />
           </button>
         </div>
         
-        <form onSubmit={handleSubmit} className="p-6 sm:p-8 space-y-6 bg-[#0B0F17]">
-          <div className="space-y-2">
-            <label className="text-xs font-black uppercase tracking-widest text-slate-400 ml-1">Kundenavn</label>
-            <input 
-              required
-              type="text"
-              value={name}
-              onChange={(e) => setName(e.target.value)}
-              className="w-full px-4 py-3 bg-slate-950 border border-slate-800 rounded-2xl text-white placeholder:text-slate-500 focus:ring-2 focus:ring-purple-500 outline-none transition-all"
-              placeholder="F.eks. Mesterbygg AS"
-            />
-          </div>
-          <div className="space-y-2">
-            <label className="text-xs font-black uppercase tracking-widest text-slate-400 ml-1">Organisasjonsnummer</label>
-            <input 
-              type="text"
-              value={orgNumber}
-              onChange={(e) => setOrgNumber(e.target.value)}
-              className="w-full px-4 py-3 bg-slate-950 border border-slate-800 rounded-2xl text-white placeholder:text-slate-500 focus:ring-2 focus:ring-purple-500 outline-none transition-all"
-              placeholder="9 siffer"
-            />
-          </div>
-
-          <div className="space-y-2">
-            <label className="text-xs font-black uppercase tracking-widest text-slate-400 ml-1">Abonnementsplan (Kvote & Marginvern)</label>
-            <select
-              value={plan}
-              onChange={(e) => setPlan(e.target.value as any)}
-              className="w-full px-4 py-3 bg-slate-950 border border-slate-800 rounded-2xl focus:ring-2 focus:ring-purple-500 outline-none transition-all font-medium text-sm text-white"
-            >
-              <option value="internal">👑 SuperAdmin / System Eier (Ubegrenset tokens - 0 kr/mnd)</option>
-              <option value="solo">Solo (2.5M tokens/mnd - kr 690,-)</option>
-              <option value="team">Team (10M tokens/mnd - kr 1 490,-)</option>
-              <option value="entreprenor">Totalentreprenør Pro (30M tokens/mnd - kr 2 990,-)</option>
-              <option value="partner">🤝 Samarbeidspartner / Kollega (15M tokens - 0 kr/mnd)</option>
-            </select>
-          </div>
-
-          <div className="space-y-2">
-            <label className="text-xs font-black uppercase tracking-widest text-slate-400 ml-1">Status</label>
-            <div className="grid grid-cols-2 gap-2">
-              <button
-                type="button"
-                onClick={() => setStatus('trial')}
-                className={cn(
-                  "py-3 rounded-xl font-bold text-sm transition-all cursor-pointer border-2",
-                  status === 'trial' ? "bg-amber-500/20 text-amber-300 border-amber-500/40" : "bg-slate-950 text-slate-400 border-slate-800 hover:text-white"
-                )}
-              >
-                Prøveperiode
-              </button>
-              <button
-                type="button"
-                onClick={() => setStatus('active')}
-                className={cn(
-                  "py-3 rounded-xl font-bold text-sm transition-all cursor-pointer border-2",
-                  status === 'active' ? "bg-emerald-500/20 text-emerald-300 border-emerald-500/40" : "bg-slate-950 text-slate-400 border-slate-800 hover:text-white"
-                )}
-              >
-                Aktiv
-              </button>
+        <form onSubmit={handleSubmit} className="flex-1 overflow-y-auto p-5 sm:p-6 space-y-4 bg-[#0B0F17] custom-scrollbar">
+          {/* Row 1: Kundenavn & Org.nr */}
+          <div className="grid grid-cols-1 sm:grid-cols-12 gap-3 sm:gap-4">
+            <div className="sm:col-span-7 space-y-1.5">
+              <label className="text-[11px] font-black uppercase tracking-wider text-slate-400 ml-0.5">
+                Kundenavn <span className="text-purple-400">*</span>
+              </label>
+              <input 
+                required
+                type="text"
+                value={name}
+                onChange={(e) => setName(e.target.value)}
+                className="w-full px-3.5 py-2.5 bg-slate-950 border border-slate-800 rounded-xl text-white placeholder:text-slate-500 focus:ring-2 focus:ring-purple-500 outline-none transition-all text-sm"
+                placeholder="F.eks. Mesterbygg AS"
+              />
+            </div>
+            <div className="sm:col-span-5 space-y-1.5">
+              <label className="text-[11px] font-black uppercase tracking-wider text-slate-400 ml-0.5">
+                Organisasjonsnummer
+              </label>
+              <input 
+                type="text"
+                value={orgNumber}
+                onChange={(e) => setOrgNumber(e.target.value)}
+                className="w-full px-3.5 py-2.5 bg-slate-950 border border-slate-800 rounded-xl text-white placeholder:text-slate-500 focus:ring-2 focus:ring-purple-500 outline-none transition-all font-mono text-sm"
+                placeholder="9 siffer"
+              />
             </div>
           </div>
 
-          {status === 'trial' && (
-            <div className="p-4 rounded-2xl bg-amber-500/10 border border-amber-500/30 space-y-3">
-              <div className="flex items-center justify-between">
-                <span className="text-xs font-black uppercase tracking-wider text-amber-400 flex items-center gap-1.5">
-                  <Clock size={14} /> Skreddersy Prøveperiode
-                </span>
-                {isBetaTester && (
-                  <span className="text-[10px] font-black uppercase bg-emerald-500/20 text-emerald-300 border border-emerald-500/30 px-2 py-0.5 rounded-full">
-                    🧪 Betatester
-                  </span>
-                )}
+          {/* Row 2: Abonnementsplan & Status */}
+          <div className="grid grid-cols-1 sm:grid-cols-12 gap-3 sm:gap-4">
+            <div className="sm:col-span-7 space-y-1.5">
+              <label className="text-[11px] font-black uppercase tracking-wider text-slate-400 ml-0.5">
+                Abonnementsplan (Kvote & Marginvern)
+              </label>
+              <select
+                value={plan}
+                onChange={(e) => setPlan(e.target.value as any)}
+                className="w-full px-3 py-2.5 bg-slate-950 border border-slate-800 rounded-xl focus:ring-2 focus:ring-purple-500 outline-none transition-all font-medium text-xs sm:text-sm text-white"
+              >
+                <option value="internal">👑 SuperAdmin / System Eier (Ubegrenset tokens - 0 kr/mnd)</option>
+                <option value="solo">Solo (2.5M tokens/mnd - kr 690,-)</option>
+                <option value="team">Team (10M tokens/mnd - kr 1 490,-)</option>
+                <option value="entreprenor">Totalentreprenør Pro (30M tokens/mnd - kr 2 990,-)</option>
+                <option value="partner">🤝 Samarbeidspartner / Kollega (15M tokens - 0 kr/mnd)</option>
+              </select>
+            </div>
+
+            <div className="sm:col-span-5 space-y-1.5">
+              <label className="text-[11px] font-black uppercase tracking-wider text-slate-400 ml-0.5">
+                Status
+              </label>
+              <div className="grid grid-cols-2 gap-1.5">
+                <button
+                  type="button"
+                  onClick={() => setStatus('trial')}
+                  className={cn(
+                    "py-2.5 px-2 rounded-xl font-bold text-xs transition-all cursor-pointer border text-center",
+                    status === 'trial' 
+                      ? "bg-amber-500/20 text-amber-300 border-amber-500/50 shadow-xs" 
+                      : "bg-slate-950 text-slate-400 border-slate-800 hover:text-white"
+                  )}
+                >
+                  Prøveperiode
+                </button>
+                <button
+                  type="button"
+                  onClick={() => setStatus('active')}
+                  className={cn(
+                    "py-2.5 px-2 rounded-xl font-bold text-xs transition-all cursor-pointer border text-center",
+                    status === 'active' 
+                      ? "bg-emerald-500/20 text-emerald-300 border-emerald-500/50 shadow-xs" 
+                      : "bg-slate-950 text-slate-400 border-slate-800 hover:text-white"
+                  )}
+                >
+                  Aktiv
+                </button>
               </div>
-              <div className="space-y-1.5">
-                <label className="text-[11px] font-bold text-slate-300">Varighet (antall dager gratis)</label>
-                <div className="grid grid-cols-4 gap-1.5">
+            </div>
+          </div>
+
+          {/* Row 3: Skreddersy prøveperiode */}
+          {status === 'trial' && (
+            <div className="p-3.5 sm:p-4 rounded-2xl bg-amber-500/10 border border-amber-500/30 space-y-3">
+              <div className="flex items-center justify-between">
+                <span className="text-[11px] font-black uppercase tracking-wider text-amber-400 flex items-center gap-1.5">
+                  <Clock size={13} /> Skreddersy Prøveperiode
+                </span>
+                <label className="flex items-center gap-1.5 cursor-pointer bg-slate-900/80 px-2 py-0.5 rounded-lg border border-slate-800 hover:border-slate-700 transition-colors">
+                  <input
+                    type="checkbox"
+                    checked={isBetaTester}
+                    onChange={(e) => setIsBetaTester(e.target.checked)}
+                    className="w-3.5 h-3.5 rounded text-emerald-500 focus:ring-emerald-500 cursor-pointer"
+                  />
+                  <span className="text-[11px] font-bold text-emerald-300">
+                    🧪 Merk som Betatester
+                  </span>
+                </label>
+              </div>
+
+              <div className="flex flex-wrap items-center gap-2">
+                <div className="grid grid-cols-4 gap-1.5 flex-1 min-w-[200px]">
                   {[14, 30, 60, 90].map((days) => (
                     <button
                       key={days}
@@ -6097,7 +6165,7 @@ function CreateCompanyModal({ onClose, onSuccess }: { onClose: () => void, onSuc
                         if (days >= 60) setIsBetaTester(true);
                       }}
                       className={cn(
-                        "py-2 px-1 text-xs font-bold rounded-xl transition-all border cursor-pointer",
+                        "py-2 px-1 text-xs font-bold rounded-xl transition-all border cursor-pointer text-center",
                         trialDays === days 
                           ? "bg-amber-500 text-slate-950 border-amber-400 shadow-xs" 
                           : "bg-slate-900 text-slate-300 border-slate-700 hover:border-slate-500"
@@ -6107,40 +6175,39 @@ function CreateCompanyModal({ onClose, onSuccess }: { onClose: () => void, onSuc
                     </button>
                   ))}
                 </div>
-                <div className="flex items-center gap-2 pt-1">
-                  <span className="text-xs text-slate-400">Egendefinert:</span>
+
+                <div className="flex items-center gap-1.5 bg-slate-950 px-2.5 py-1 rounded-xl border border-slate-800 shrink-0">
+                  <span className="text-[11px] text-slate-400 font-medium">Egendefinert:</span>
                   <input
                     type="number"
                     min="1"
                     max="365"
                     value={trialDays}
                     onChange={(e) => setTrialDays(parseInt(e.target.value) || 14)}
-                    className="w-24 px-3 py-1.5 bg-slate-950 border border-slate-800 rounded-xl text-xs font-bold text-white outline-none focus:ring-1 focus:ring-amber-500"
+                    className="w-14 px-1.5 py-1 bg-slate-900 border border-slate-700 rounded-lg text-xs font-bold text-center text-white outline-none focus:ring-1 focus:ring-amber-500"
                   />
-                  <span className="text-xs text-slate-400">dager</span>
+                  <span className="text-[11px] text-slate-400">dager</span>
                 </div>
               </div>
-
-              <label className="flex items-center gap-2 cursor-pointer pt-1">
-                <input
-                  type="checkbox"
-                  checked={isBetaTester}
-                  onChange={(e) => setIsBetaTester(e.target.checked)}
-                  className="w-4 h-4 rounded text-emerald-500 focus:ring-emerald-500 cursor-pointer"
-                />
-                <span className="text-xs font-bold text-slate-200">
-                  🧪 Merk som offisiell Betatester
-                </span>
-              </label>
             </div>
           )}
 
-          <button 
-            disabled={loading}
-            className="w-full bg-purple-600 hover:bg-purple-500 text-white py-4 rounded-2xl font-black transition-all shadow-md shadow-purple-950/50 disabled:opacity-50 cursor-pointer"
-          >
-            {loading ? 'Oppretter...' : 'Opprett kunde'}
-          </button>
+          <div className="pt-2 flex items-center justify-end gap-3">
+            <button 
+              type="button"
+              onClick={onClose}
+              className="px-4 py-2.5 rounded-xl font-bold text-sm text-slate-400 hover:text-white hover:bg-slate-800/80 transition-colors cursor-pointer"
+            >
+              Avbryt
+            </button>
+            <button 
+              type="submit"
+              disabled={loading}
+              className="px-6 py-2.5 bg-gradient-to-r from-purple-600 to-indigo-600 hover:from-purple-500 hover:to-indigo-500 text-white rounded-xl font-bold text-sm transition-all shadow-md shadow-purple-950/40 disabled:opacity-50 cursor-pointer flex items-center gap-2"
+            >
+              {loading ? 'Oppretter...' : 'Opprett kunde'}
+            </button>
+          </div>
         </form>
       </motion.div>
     </div>
