@@ -105,6 +105,235 @@ function formatInlineEmailStyles(text: string): string {
     .replace(/#{1,6}\s*/g, ''); // Garanti: fjern alle hashtags
 }
 
+/**
+ * 🛡️ Bulletproof Email Button
+ * Renders an email button that is 100% visible, vibrant and clickable in ALL email clients:
+ * Outlook Desktop (Word engine), Outlook 365, Gmail (Light/Dark), Apple Mail, iOS, Android.
+ *
+ * Avoids pure CSS linear-gradient (which Outlook strips, leaving transparent background).
+ * Uses explicit bgcolor + background-color + table cell structure + high-contrast text span.
+ */
+export function renderBulletproofButton({
+  url,
+  label,
+  bgColor = '#059669',
+  textColor = '#ffffff',
+  borderColor,
+  icon = '',
+  width = 'auto',
+}: {
+  url: string;
+  label: string;
+  bgColor?: string;
+  textColor?: string;
+  borderColor?: string;
+  icon?: string;
+  width?: string;
+}): string {
+  const border = borderColor || bgColor;
+  return `
+    <table role="presentation" border="0" cellpadding="0" cellspacing="0" align="center" style="margin: 26px auto; border-collapse: separate !important; text-align: center;">
+      <tr>
+        <td align="center" bgcolor="${bgColor}" style="background-color: ${bgColor} !important; border-radius: 12px; border: 2px solid ${border}; text-align: center; mso-padding-alt: 15px 34px;">
+          <!--[if mso]>
+          <v:roundrect xmlns:v="urn:schemas-microsoft-com:vml" xmlns:w="urn:schemas-microsoft-com:office:word" href="${url}" style="height:50px;v-text-anchor:middle;width:${width === 'auto' ? '300px' : width};" arcsize="20%" strokecolor="${border}" fillcolor="${bgColor}">
+            <w:anchorlock/>
+            <center style="color:${textColor} !important;font-family:-apple-system,BlinkMacSystemFont,'Segoe UI',Roboto,Helvetica,Arial,sans-serif;font-size:15px;font-weight:bold;">
+              ${icon ? `${icon} ` : ''}${label}
+            </center>
+          </v:roundrect>
+          <![endif]-->
+          <!--[if !mso]><!-->
+          <a href="${url}" target="_blank" style="display: inline-block; background-color: ${bgColor} !important; color: ${textColor} !important; font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, Helvetica, Arial, sans-serif; font-size: 15px; font-weight: 800; text-decoration: none; padding: 15px 34px; border-radius: 12px; border: 1px solid ${bgColor}; text-align: center; line-height: 1.2; -webkit-text-size-adjust: none; box-shadow: 0 4px 14px rgba(0,0,0,0.15);">
+            <span style="color: ${textColor} !important; font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, Helvetica, Arial, sans-serif; font-size: 15px; font-weight: 800; text-decoration: none; line-height: 1.2; display: inline-block;">
+              ${icon ? `${icon} ` : ''}${label}
+            </span>
+          </a>
+          <!--<![endif]-->
+        </td>
+      </tr>
+    </table>
+  `;
+}
+
+/**
+ * 👑 Branded Email Template Generator
+ * Produces an ultra-professional, responsive email card with dark-mode support,
+ * clean brand header, high-contrast typography, and bulletproof action buttons.
+ */
+export function renderBrandedEmailTemplate({
+  subject,
+  title,
+  subtitle,
+  badgeText,
+  badgeColor,
+  bodyHtml,
+  button,
+  secondaryUrl,
+  secondaryText = 'Hvis knappen over ikke fungerer, kan du klikke eller lime inn denne lenken i nettleseren:',
+  footerDetails,
+  companyName = 'VikingMester',
+  accentColor = '#059669',
+  theme = 'standard', // 'standard' | 'superadmin' | 'betatester'
+}: {
+  subject: string;
+  title: string;
+  subtitle?: string;
+  badgeText?: string;
+  badgeColor?: string;
+  bodyHtml: string;
+  button?: {
+    url: string;
+    label: string;
+    bgColor?: string;
+    textColor?: string;
+    borderColor?: string;
+    icon?: string;
+  };
+  secondaryUrl?: string;
+  secondaryText?: string;
+  footerDetails?: string;
+  companyName?: string;
+  accentColor?: string;
+  theme?: 'standard' | 'superadmin' | 'betatester';
+}): string {
+  let brandHeaderTitle = companyName;
+  let brandBadge = badgeText || '';
+  let headerBorderColor = '#e2e8f0';
+  let primaryBtnColor = accentColor;
+  let primaryBtnBorder = accentColor;
+
+  if (theme === 'superadmin') {
+    brandHeaderTitle = '👑 VikingMester SuperAdmin';
+    brandBadge = badgeText || 'Systemeier & Plattformeier';
+    headerBorderColor = '#d97706';
+    primaryBtnColor = '#d97706';
+    primaryBtnBorder = '#b45309';
+  } else if (theme === 'betatester') {
+    brandHeaderTitle = '🧪 VikingMester Betatest';
+    brandBadge = badgeText || 'Betatester';
+    headerBorderColor = '#0284c7';
+    primaryBtnColor = '#0284c7';
+    primaryBtnBorder = '#0369a1';
+  }
+
+  const buttonHtml = button ? renderBulletproofButton({
+    url: button.url,
+    label: button.label,
+    bgColor: button.bgColor || primaryBtnColor,
+    textColor: button.textColor || '#ffffff',
+    borderColor: button.borderColor || primaryBtnBorder,
+    icon: button.icon
+  }) : '';
+
+  const fallbackLinkHtml = secondaryUrl ? `
+    <div style="background-color: #f8fafc; border: 1px dashed #cbd5e1; border-radius: 10px; padding: 14px 16px; margin: 22px 0 10px 0; text-align: center;">
+      <p style="font-size: 11px; color: #64748b; margin: 0 0 6px 0; font-weight: 600;">
+        ${secondaryText}
+      </p>
+      <a href="${secondaryUrl}" target="_blank" style="font-size: 12px; color: #0284c7; word-break: break-all; text-decoration: underline; font-weight: 600;">
+        ${secondaryUrl}
+      </a>
+    </div>
+  ` : '';
+
+  return `<!DOCTYPE html>
+<html lang="no" xmlns:v="urn:schemas-microsoft-com:vml" xmlns:o="urn:schemas-microsoft-com:office:office">
+<head>
+  <meta charset="utf-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <meta name="color-scheme" content="light dark">
+  <meta name="supported-color-schemes" content="light dark">
+  <meta name="x-apple-disable-message-reformatting">
+  <meta name="format-detection" content="telephone=no, date=no, address=no, email=no">
+  <title>${subject}</title>
+  <style>
+    :root {
+      color-scheme: light dark;
+      supported-color-schemes: light dark;
+    }
+    body {
+      margin: 0;
+      padding: 0;
+      width: 100% !important;
+      background-color: #f1f5f9;
+      font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, Helvetica, Arial, sans-serif;
+      -webkit-font-smoothing: antialiased;
+      -webkit-text-size-adjust: 100%;
+      -ms-text-size-adjust: 100%;
+    }
+    table { border-collapse: collapse; }
+    img { border: 0; outline: none; text-decoration: none; }
+    @media (prefers-color-scheme: dark) {
+      body, .email-body { background-color: #0b0f17 !important; }
+      .email-card { background-color: #131722 !important; border-color: #1e293b !important; }
+      .email-title { color: #f8fafc !important; }
+      .email-text { color: #cbd5e1 !important; }
+      .email-box { background-color: #1a2234 !important; border-color: #334155 !important; }
+      .email-box-text { color: #e2e8f0 !important; }
+      .email-muted { color: #94a3b8 !important; }
+    }
+  </style>
+</head>
+<body class="email-body" style="background-color: #f1f5f9; margin: 0; padding: 20px 10px; font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, Helvetica, Arial, sans-serif;">
+  <div style="max-width: 600px; margin: 0 auto;">
+    
+    <!-- Header banner -->
+    <div style="background-color: #0f172a; padding: 24px 20px; border-radius: 16px 16px 0 0; text-align: center; border-bottom: 3px solid ${headerBorderColor};">
+      <div style="font-size: 22px; font-weight: 900; color: #ffffff; letter-spacing: -0.5px; margin-bottom: 4px;">
+        ${brandHeaderTitle}
+      </div>
+      <p style="font-size: 12px; color: #94a3b8; margin: 0; font-weight: 500;">
+        KS, HMS & Prosjektstyring for Bygg og Anlegg
+      </p>
+      ${brandBadge ? `
+        <div style="margin-top: 10px;">
+          <span style="display: inline-block; background-color: rgba(255,255,255,0.12); color: #f8fafc; font-size: 11px; font-weight: 800; padding: 3px 10px; border-radius: 20px; text-transform: uppercase; letter-spacing: 0.5px; border: 1px solid rgba(255,255,255,0.2);">
+            ${brandBadge}
+          </span>
+        </div>
+      ` : ''}
+    </div>
+
+    <!-- Main Card Body -->
+    <div class="email-card" style="background-color: #ffffff; border: 1px solid #e2e8f0; border-top: none; border-radius: 0 0 16px 16px; padding: 32px 24px; box-shadow: 0 4px 12px rgba(0,0,0,0.05);">
+      
+      <h1 class="email-title" style="font-size: 20px; font-weight: 800; color: #0f172a; margin: 0 0 12px 0; line-height: 1.35;">
+        ${title}
+      </h1>
+      
+      ${subtitle ? `
+        <p class="email-muted" style="font-size: 14px; color: #64748b; margin: 0 0 20px 0; line-height: 1.5;">
+          ${subtitle}
+        </p>
+      ` : ''}
+
+      <div class="email-text" style="font-size: 15px; color: #334155; line-height: 1.65;">
+        ${bodyHtml}
+      </div>
+
+      ${buttonHtml}
+
+      ${fallbackLinkHtml}
+
+      ${footerDetails ? `
+        <div class="email-muted" style="margin-top: 24px; padding-top: 16px; border-top: 1px solid #f1f5f9; font-size: 12px; color: #94a3b8; line-height: 1.5; text-align: center;">
+          ${footerDetails}
+        </div>
+      ` : ''}
+    </div>
+
+    <!-- Footer -->
+    <div style="text-align: center; padding: 20px 10px; font-size: 11px; color: #94a3b8; line-height: 1.6;">
+      Denne meldingen er sendt fra <strong>${companyName}</strong> via VikingMester KS-system.<br/>
+      AIChat Norge AS / Vikingnet · <a href="https://vikingmester.no" style="color: #64748b; text-decoration: underline;">vikingmester.no</a>
+    </div>
+
+  </div>
+</body>
+</html>`;
+}
+
 export interface SendEmailResult {
   success: boolean;
   id: string;
@@ -674,9 +903,13 @@ export async function sendOfferByEmail(params: {
             </table>
           </div>
 
-          <div class="btn-container">
-            <a href="${approvalLink}" class="btn" target="_blank">👉 Klikk her for å se og godkjenne tilbudet</a>
-          </div>
+          ${renderBulletproofButton({
+            url: approvalLink,
+            label: 'Se og godkjenn tilbudet',
+            icon: '👉',
+            bgColor: '#059669',
+            borderColor: '#047857'
+          })}
 
           <p style="font-size: 12px; color: #64748b; margin-top: 20px; line-height: 1.5;">
             Tilbudet er gyldig i 30 dager fra dags dato. Standard forbehold iht. NS 8406 / Bustadoppføringslova gjelder for uforutsette bygningstekniske forhold.
@@ -787,9 +1020,13 @@ export async function sendChangeOrderByEmail(params: {
             </tr>
           </table>
 
-          <div style="text-align: center; margin: 26px 0;">
-            <a href="${shareUrl}" class="btn" target="_blank">✍️ Se detaljer og godkjenn endringen</a>
-          </div>
+          ${renderBulletproofButton({
+            url: shareUrl,
+            label: 'Se detaljer og godkjenn endringen',
+            icon: '✍️',
+            bgColor: '#059669',
+            borderColor: '#047857'
+          })}
 
           <p style="font-size: 12px; color: #64748b; line-height: 1.5;">
             Vennligst ta stilling til varselet så snart som mulig slik at fremdriften på byggeplassen ikke hindres.
@@ -919,9 +1156,13 @@ export async function sendContractByEmail(params: {
             Så snart du signerer kontrakten digitalt, vil prosjektet opprettes 100% automatisk i systemet med lovpålagte KS-sjekklister, risikovurdering (SJA) og forberedelse av komplett FDV-dokumentasjon.
           </p>
 
-          <div class="btn-container">
-            <a href="${signUrl}" class="btn" target="_blank">✍️ Signer kontrakten digitalt</a>
-          </div>
+          ${renderBulletproofButton({
+            url: signUrl,
+            label: 'Signer kontrakten digitalt',
+            icon: '✍️',
+            bgColor: '#059669',
+            borderColor: '#047857'
+          })}
 
           <p style="font-size: 12px; color: #64748b; margin-top: 20px; line-height: 1.5;">
             🔒 <strong>Juridisk gyldighet:</strong> Digital signatur oppfyller kravene i eIDAS og norsk avtalerett med full loggføring av signaturbilde, tidsstempel og IP-adresse.
@@ -1005,9 +1246,13 @@ export async function sendProjectStartedEmail(params: {
           <p>
             Mesterhjernen har automatisk etablert prosjektet med alle lovpålagte HMS-rutiner, faseinndelte KS-sjekklister for fagene og påbegynt FDV-dokumentasjonspermen.
           </p>
-          <div style="text-align: center; margin: 30px 0;">
-            <a href="${portalUrl}" class="btn" target="_blank">📲 Følg fremdriften i Byggherreportalen</a>
-          </div>
+          ${renderBulletproofButton({
+            url: portalUrl,
+            label: 'Følg fremdriften i Byggherreportalen',
+            icon: '📲',
+            bgColor: '#0f172a',
+            borderColor: '#1e293b'
+          })}
           <p style="font-size: 13px; color: #64748b;">
             Du vil motta løpende oppdateringer og fotodokumentasjon underveis i byggeperioden.
           </p>
@@ -1092,9 +1337,13 @@ export async function sendHandoverDocumentationEmail(params: {
             </ul>
           </div>
 
-          <div style="text-align: center; margin: 28px 0;">
-            <a href="${portalUrl}" class="btn" target="_blank">📄 Åpne FDV-perm & Last ned PDF</a>
-          </div>
+          ${renderBulletproofButton({
+            url: portalUrl,
+            label: 'Åpne FDV-perm & Last ned PDF',
+            icon: '📄',
+            bgColor: '#059669',
+            borderColor: '#047857'
+          })}
 
           <p style="font-size: 12px; color: #64748b;">
             Dersom du har spørsmål til vedlikehold eller garantier, finner du full kontaktinformasjon i overleveringsprotokollen.
@@ -1270,9 +1519,13 @@ export async function sendOfferReminderEmail(params: {
           <p>
             Vi ønsker bare å høre om du har hatt anledning til å se over det, eller om det er spørsmål, tilpasninger eller detaljer du gjerne vil gå gjennom med oss.
           </p>
-          <div style="text-align: center; margin: 28px 0;">
-            <a href="${approvalLink}" class="btn" target="_blank">👉 Se tilbudet og godkjenn her</a>
-          </div>
+          ${renderBulletproofButton({
+            url: approvalLink,
+            label: 'Se tilbudet og godkjenn her',
+            icon: '👉',
+            bgColor: '#059669',
+            borderColor: '#047857'
+          })}
           <p style="font-size: 13px; color: #64748b;">
             Dersom du ønsker justeringer i materialvalg, tidsplan eller omfang, er det bare å svare direkte på denne e-posten, så hjelper vi deg med det samme!
           </p>
@@ -1451,9 +1704,13 @@ export async function sendAdminContractSignedAlertEmail(params: {
             <div>Avtalt kontraktssum: <strong style="color: #059669; font-size: 16px;">kr ${totalAmount.toLocaleString('no-NO')} inkl. mva</strong></div>
             <div style="color: #64748b; font-size: 12px; margin-top: 4px;">Juridisk bindende signatur med tidsstempel og IP-logg er arkivert.</div>
           </div>
-          <div style="text-align: center; margin: 26px 0;">
-            <a href="${projectUrl}" class="btn" target="_blank">🚀 Åpne prosjekt & Tildel håndverkere</a>
-          </div>
+          ${renderBulletproofButton({
+            url: projectUrl,
+            label: 'Åpne prosjekt & Tildel håndverkere',
+            icon: '🚀',
+            bgColor: '#059669',
+            borderColor: '#047857'
+          })}
           <p style="font-size: 13px; color: #64748b;">
             Mesterhjernen har automatisk forberedt KS-sjekklister, vernerunde-maler og FDV-perm for prosjektet.
           </p>
@@ -1538,9 +1795,13 @@ export async function sendAdminNewDeviationAlertEmail(params: {
             <p style="margin: 6px 0 0 0; color: #7f1d1d; font-size: 13px;">${description}</p>
           </div>
 
-          <div style="text-align: center; margin: 26px 0;">
-            <a href="${deviationUrl}" class="btn" target="_blank">🔍 Se avvik & Iverksett tiltak</a>
-          </div>
+          ${renderBulletproofButton({
+            url: deviationUrl,
+            label: 'Se avvik & Iverksett tiltak',
+            icon: '🔍',
+            bgColor: '#dc2626',
+            borderColor: '#b91c1c'
+          })}
 
           <p style="font-size: 12px; color: #64748b;">
             Husk: Rask lukking av avvik sikrer overholdelse av TEK17 og forhindrer unødige forsinkelser og ekstrakostnader.
@@ -1621,9 +1882,13 @@ export async function sendAdminOnboardingAssistanceEmail(params: {
             </div>
           </div>
 
-          <div style="text-align: center; margin: 28px 0;">
-            <a href="${baseUrl}" class="btn" target="_blank">🚀 Logg inn på kontrollpanelet ditt</a>
-          </div>
+          ${renderBulletproofButton({
+            url: baseUrl,
+            label: 'Logg inn på kontrollpanelet ditt',
+            icon: '🚀',
+            bgColor: '#059669',
+            borderColor: '#047857'
+          })}
 
           <p style="font-size: 13px; color: #64748b; line-height: 1.5;">
             Trenger du hjelp eller tips? Vår integrerte AI-assistent er tilgjengelig døgnet rundt direkte i chatten nederst i appen.
@@ -1706,9 +1971,13 @@ export async function sendCraftsmanTaskAssignedEmail(params: {
             </div>
           </div>
 
-          <div style="text-align: center; margin: 26px 0;">
-            <a href="${baseUrl}" class="btn" target="_blank">📱 Åpne oppgave & Sjekkliste på mobil</a>
-          </div>
+          ${renderBulletproofButton({
+            url: baseUrl,
+            label: 'Åpne oppgave & Sjekkliste på mobil',
+            icon: '📱',
+            bgColor: '#0284c7',
+            borderColor: '#0369a1'
+          })}
 
           <p style="font-size: 12px; color: #64748b;">
             💡 <em>Husk at du kan bruke mikrofon-ikonet i appen for å snakke inn notater mens du jobber med verneutstyr!</em>

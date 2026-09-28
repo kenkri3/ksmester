@@ -3,7 +3,7 @@ import bcrypt from 'bcrypt';
 import { getUserFromRequest, isUserAdmin } from '@/src/lib/server/auth';
 import { saveCollectionItem, getCollectionItemById, dbQuery, inMemoryStore } from '@/src/lib/server/db';
 import { sanitize, sanitizeEmail, sanitizeHeader } from '@/src/lib/sanitize';
-import { sendSystemEmail } from '@/src/lib/server/emailSender';
+import { sendSystemEmail, renderBrandedEmailTemplate } from '@/src/lib/server/emailSender';
 
 export async function POST(req: NextRequest) {
   try {
@@ -272,43 +272,66 @@ export async function POST(req: NextRequest) {
           ? `Hei ${name || 'kollega'}!\n\nDet er opprettet en intern brukerkonto for deg i VikingMester for ${companyName}.\n\nKlikk på knappen under for å velge ditt personlige passord og aktivere kontoen.`
           : `Hei ${name || 'samarbeidspartner'}!\n\nVi har gleden av å ønske deg velkommen til VikingMester. Du har fått tildelt en partnerkonto med full tilgang til plattformen.\n\nKlikk på knappen under for å velge ditt personlige passord og aktivere kontoen.`);
 
-        const emailHtml = `
-          <div style="font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, sans-serif; max-width: 600px; margin: 0 auto; padding: 24px; color: #1e293b; background: #ffffff;">
-            <div style="text-align: center; margin-bottom: 24px;">
-              <h1 style="color: ${isSuperAdminAccount ? '#d97706' : isBetaTester ? '#06b6d4' : '#4f46e5'}; margin: 0; font-size: 26px; font-weight: 800;">
-                ${isSuperAdminAccount ? '👑 VikingMester SuperAdmin' : isBetaTester ? '🧪 VikingMester Betatest' : 'VikingMester'}
-              </h1>
-              <p style="color: #64748b; font-size: 13px; margin-top: 4px;">KS, HMS & Prosjektstyring for Bygg og Anlegg</p>
-            </div>
+        const theme = isSuperAdminAccount ? 'superadmin' : isBetaTester ? 'betatester' : 'standard';
 
-            <div style="background: #f8fafc; border: 1px solid ${isSuperAdminAccount ? '#fde68a' : isBetaTester ? '#a5f3fc' : '#e2e8f0'}; border-radius: 16px; padding: 20px; margin-bottom: 24px;">
-              <p style="font-size: 15px; line-height: 1.6; margin-top: 0;">${greetingText.replace(/\n/g, '<br/>')}</p>
-              
-              <div style="text-align: center; margin: 24px 0 20px 0;">
-                <a href="${setPasswordUrl}" style="display: inline-block; background: ${isSuperAdminAccount ? 'linear-gradient(135deg, #d97706 0%, #f59e0b 100%)' : isBetaTester ? 'linear-gradient(135deg, #0891b2 0%, #06b6d4 100%)' : 'linear-gradient(135deg, #4f46e5 0%, #6366f1 100%)'}; color: #ffffff; text-decoration: none; font-weight: 800; font-size: 15px; padding: 14px 32px; border-radius: 12px; box-shadow: 0 4px 14px rgba(79, 70, 229, 0.3);">
-                  ${isSuperAdminAccount ? '👑 Velg ditt passord og aktiver SuperAdmin nå →' : isBetaTester ? '🧪 Velg passord & start betatestingen →' : 'Velg ditt personlige passord & logg inn →'}
-                </a>
-              </div>
-
-              <div style="background: #ffffff; border: 1px solid #cbd5e1; border-radius: 12px; padding: 16px; margin: 20px 0;">
-                <p style="margin: 0 0 8px 0; font-size: 12px; font-weight: bold; text-transform: uppercase; color: #64748b;">Kontoopplysninger:</p>
-                <p style="margin: 4px 0; font-size: 14px;"><strong>Brukernavn (E-post):</strong> <span style="color: #4f46e5; font-weight: bold;">${emailLower}</span></p>
-                <p style="margin: 4px 0; font-size: 14px;"><strong>Midlertidig passord:</strong> <code style="background: #f1f5f9; padding: 2px 6px; border-radius: 4px; font-weight: bold; color: #0f172a;">${password}</code></p>
-                <p style="margin: 4px 0; font-size: 14px;"><strong>Firma / Organisasjon:</strong> ${userObj.company}</p>
-                <p style="margin: 4px 0; font-size: 14px;"><strong>Rolle:</strong> <span style="font-weight: bold; color: ${isSuperAdminAccount ? '#d97706' : '#1e293b'};">${isSuperAdminAccount ? '👑 SuperAdmin / Systemeier' : role === 'admin' ? 'Administrator' : role === 'manager' ? 'Prosjektleder' : 'Håndverker'}</span></p>
-                ${isTrial ? `<p style="margin: 4px 0; font-size: 14px;"><strong>Prøveperiode:</strong> <span style="color: #059669; font-weight: bold;">${trialDays} dager kostnadsfritt${isBetaTester ? ' (🧪 Betatester)' : ''}</span></p>` : ''}
-              </div>
-
-              <p style="font-size: 12px; color: #64748b; line-height: 1.5; text-align: center; margin-bottom: 0;">
-                Du kan når som helst endre passordet ditt ved å klikke på knappen over eller ved å logge inn på <a href="https://vikingmester.no" style="color: #4f46e5; font-weight: bold;">vikingmester.no</a>.
-              </p>
-            </div>
-
-            <p style="font-size: 12px; color: #94a3b8; text-align: center; margin: 0;">
-              Denne e-posten ble sendt fra administrator i VikingMester (AIChat Norge AS / Vikingnet).
-            </p>
+        const bodyHtml = `
+          <div style="font-size: 15px; line-height: 1.6; margin-bottom: 20px;">
+            ${greetingText.replace(/\n/g, '<br/>')}
           </div>
+
+          <div style="background-color: #f8fafc; border: 1px solid #cbd5e1; border-radius: 12px; padding: 18px; margin: 20px 0;">
+            <p style="margin: 0 0 10px 0; font-size: 11px; font-weight: 800; text-transform: uppercase; letter-spacing: 0.5px; color: #64748b;">
+              Dine innloggingsopplysninger:
+            </p>
+            <p style="margin: 6px 0; font-size: 14px; color: #1e293b;">
+              <strong>Brukernavn (E-post):</strong> <span style="color: #0284c7; font-weight: 700;">${emailLower}</span>
+            </p>
+            <p style="margin: 6px 0; font-size: 14px; color: #1e293b;">
+              <strong>Midlertidig passord:</strong> <code style="background-color: #e2e8f0; padding: 3px 8px; border-radius: 6px; font-weight: 800; color: #0f172a; font-family: monospace;">${password}</code>
+            </p>
+            <p style="margin: 6px 0; font-size: 14px; color: #1e293b;">
+              <strong>Firma:</strong> ${userObj.company}
+            </p>
+            <p style="margin: 6px 0; font-size: 14px; color: #1e293b;">
+              <strong>Rolle:</strong> <span style="font-weight: 700; color: ${isSuperAdminAccount ? '#d97706' : '#0f172a'};">${isSuperAdminAccount ? '👑 SuperAdmin / Systemeier' : role === 'admin' ? 'Leder / Administrator' : role === 'manager' ? 'Prosjektleder' : 'Håndverker'}</span>
+            </p>
+            ${isTrial ? `
+              <p style="margin: 6px 0; font-size: 14px; color: #1e293b;">
+                <strong>Prøveperiode:</strong> <span style="color: #059669; font-weight: 700;">${trialDays} dager kostnadsfritt${isBetaTester ? ' (🧪 Betatester)' : ''}</span>
+              </p>
+            ` : ''}
+          </div>
+
+          <p style="font-size: 14px; color: #475569; line-height: 1.5; margin-bottom: 6px;">
+            Klikk på den store fargede knappen under for å velge ditt personlige passord og komme i gang:
+          </p>
         `;
+
+        const emailHtml = renderBrandedEmailTemplate({
+          subject,
+          title: isSuperAdminAccount 
+            ? 'Velkommen som SuperAdmin & Systemeier' 
+            : isBetaTester 
+            ? `Velkommen som Betatester (${trialDays} dager gratis)` 
+            : `Velkommen til VikingMester`,
+          subtitle: `Opprettet for ${name || emailLower} · ${userObj.company}`,
+          theme,
+          bodyHtml,
+          button: {
+            url: setPasswordUrl,
+            label: isSuperAdminAccount 
+              ? '👑 Velg ditt passord og aktiver SuperAdmin nå →' 
+              : isBetaTester 
+              ? `🧪 Start gratis betatesting (${trialDays} dager) →` 
+              : 'Velg ditt personlige passord & logg inn →',
+            bgColor: isSuperAdminAccount ? '#d97706' : isBetaTester ? '#0284c7' : '#059669',
+            borderColor: isSuperAdminAccount ? '#b45309' : isBetaTester ? '#0369a1' : '#047857'
+          },
+          secondaryUrl: setPasswordUrl,
+          secondaryText: 'Hvis knappen over ikke fungerer i ditt e-postprogram, klikk eller lim inn denne lenken i nettleseren:',
+          footerDetails: 'Du kan når som helst endre passordet ditt ved å logge inn på vikingmester.no. Har du spørsmål, ta kontakt med oss på support@vikingmester.no.',
+          companyName: userObj.company || 'VikingMester'
+        });
 
         const sendRes = await sendSystemEmail({
           to: emailLower,

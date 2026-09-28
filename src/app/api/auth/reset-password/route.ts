@@ -1,6 +1,6 @@
 import { NextRequest, NextResponse } from 'next/server';
 import bcrypt from 'bcrypt';
-import { sendSystemEmail } from '@/src/lib/server/emailSender';
+import { sendSystemEmail, renderBrandedEmailTemplate } from '@/src/lib/server/emailSender';
 import { dbQuery, inMemoryStore, saveCollectionItem, getCollectionItems } from '@/src/lib/server/db';
 import { signToken } from '@/src/lib/server/auth';
 
@@ -29,47 +29,80 @@ export async function POST(req: NextRequest) {
       status: 'pending'
     });
 
+    // Finn eventuell eksisterende bruker for å tilpasse e-postens branding og rolle
+    const userRows = await dbQuery('SELECT * FROM users WHERE LOWER(email) = $1', [email]).catch(() => []);
+    const userRecord = userRows?.[0] || inMemoryStore?.users?.find(u => u.email?.toLowerCase() === email);
+
     const isFredrik = email === 'fredrik@aichatnorge.no' || email === 'fredrik.r.ellingsen@gmail.com';
-    const isSuperAdmin = isFredrik || email === 'kenkri3@gmail.com' || email === 'aichatnorge@gmail.com' || email === 'kenneth@aichatnorge.no' || email === 'admin@vikingmester.no' || email === 'post@vikingent.no';
+    const isSuperAdmin = isFredrik || userRecord?.role === 'superadmin' || email === 'kenkri3@gmail.com' || email === 'aichatnorge@gmail.com' || email === 'kenneth@aichatnorge.no' || email === 'admin@vikingmester.no' || email === 'post@vikingent.no';
+    const isBetaTester = Boolean(userRecord?.is_beta_tester);
+
+    const theme = isSuperAdmin ? 'superadmin' : isBetaTester ? 'betatester' : 'standard';
+    const subject = isSuperAdmin 
+      ? '👑 Velg ditt SuperAdmin-passord for VikingMester'
+      : isBetaTester
+      ? '🧪 Velg passord for VikingMester Betatest'
+      : 'Tilbakestill passord for VikingMester';
+
+    const title = isSuperAdmin 
+      ? 'Velg ditt personlige SuperAdmin-passord' 
+      : isBetaTester 
+      ? 'Velg ditt passord for betatesting' 
+      : 'Tilbakestill ditt passord';
+
+    const bodyHtml = `
+      <p style="margin-top: 0; font-size: 15px; color: #334155; line-height: 1.6;">
+        Vi har mottatt en forespørsel om å sette eller endre passordet for din konto (<strong>${email}</strong>).
+      </p>
+
+      ${isSuperAdmin ? `
+        <div style="background-color: #fffbeb; border: 1px solid #fde68a; border-radius: 12px; padding: 16px 18px; margin: 18px 0;">
+          <div style="font-weight: 800; color: #b45309; font-size: 13px; text-transform: uppercase; margin-bottom: 4px;">
+            👑 Plattformeier & SuperAdmin
+          </div>
+          <p style="margin: 0; font-size: 13px; color: #78350f; line-height: 1.5;">
+            Kontoen din har full tilgang til SuperAdmin-portalen, ubegrenset brukstid, 500M systemtokens og full kontroll over alle 20+ fagmoduler.
+          </p>
+        </div>
+      ` : isBetaTester ? `
+        <div style="background-color: #f0fdfa; border: 1px solid #99f6e4; border-radius: 12px; padding: 16px 18px; margin: 18px 0;">
+          <div style="font-weight: 800; color: #0f766e; font-size: 13px; text-transform: uppercase; margin-bottom: 4px;">
+            🧪 Betatester-konto
+          </div>
+          <p style="margin: 0; font-size: 13px; color: #115e59; line-height: 1.5;">
+            Du har gratis prøvetilgang som betatester med tilgang til alle systemmoduler. Takk for at du tester systemet og melder inn dine erfaringer!
+          </p>
+        </div>
+      ` : ''}
+
+      <p style="font-size: 14px; color: #475569; line-height: 1.5; margin-bottom: 4px;">
+        Klikk på knappen under for å velge ditt nye passord og logge inn:
+      </p>
+    `;
+
+    const emailHtml = renderBrandedEmailTemplate({
+      subject,
+      title,
+      subtitle: `Forespørsel om innlogging for ${email}`,
+      theme,
+      bodyHtml,
+      button: {
+        url: resetUrl,
+        label: isSuperAdmin ? 'Velg nytt SuperAdmin-passord nå →' : 'Velg nytt passord nå →',
+        bgColor: isSuperAdmin ? '#d97706' : isBetaTester ? '#0284c7' : '#059669',
+        borderColor: isSuperAdmin ? '#b45309' : isBetaTester ? '#0369a1' : '#047857',
+        icon: isSuperAdmin ? '👑' : isBetaTester ? '🧪' : '🔑'
+      },
+      secondaryUrl: resetUrl,
+      secondaryText: 'Hvis knappen over ikke fungerer i ditt e-postprogram, klikk eller lim inn denne lenken i nettleseren:',
+      footerDetails: 'Lenken er gyldig i 2 timer av sikkerhetshensyn. Hvis du ikke har bedt om å sette passord, kan du trygt se bort fra denne e-posten.',
+      companyName: 'VikingMester'
+    });
 
     await sendSystemEmail({
       to: email,
-      subject: isSuperAdmin 
-        ? '👑 Tilbakestill ditt SuperAdmin-passord for VikingMester'
-        : 'Tilbakestill passord for VikingMester',
-      html: `
-        <div style="font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, sans-serif; max-width: 540px; margin: 0 auto; padding: 28px; border: 1px solid #E2E8F0; border-radius: 20px; background-color: #FFFFFF; color: #0F172A;">
-          <div style="margin-bottom: 24px; text-align: center;">
-            <div style="font-size: 24px; font-weight: 900; color: ${isSuperAdmin ? '#D97706' : '#059669'}; letter-spacing: -0.5px;">
-              ${isSuperAdmin ? '👑 VikingMester SuperAdmin' : 'VikingMester'}
-            </div>
-            <p style="font-size: 12px; color: #64748B; margin-top: 4px;">KS, HMS & Prosjektstyring for Bygg og Anlegg</p>
-          </div>
-
-          <div style="background: ${isSuperAdmin ? '#FFFBEB' : '#F8FAFC'}; border: 1px solid ${isSuperAdmin ? '#FDE68A' : '#E2E8F0'}; border-radius: 16px; padding: 24px; margin-bottom: 24px;">
-            <h2 style="font-size: 18px; font-weight: 800; color: #0F172A; margin: 0 0 10px 0;">
-              ${isSuperAdmin ? 'Velg ditt personlige SuperAdmin-passord' : 'Tilbakestill ditt passord'}
-            </h2>
-            <p style="font-size: 14px; color: #475569; line-height: 1.6; margin-bottom: 20px;">
-              Vi har mottatt en forespørsel om å sette eller endre passordet for din konto (<strong>${email}</strong>).
-              ${isSuperAdmin ? '<br/><br/><em>Kontoen din har full plattformeiertilgang (SuperAdmin) med ubegrenset brukstid og 500M tokens/mnd.</em>' : ''}
-            </p>
-            <div style="text-align: center; margin: 24px 0 16px 0;">
-              <a href="${resetUrl}" style="display: inline-block; background: ${isSuperAdmin ? 'linear-gradient(135deg, #D97706 0%, #F59E0B 100%)' : 'linear-gradient(135deg, #059669 0%, #10B981 100%)'}; color: #FFFFFF; font-size: 14px; font-weight: 800; text-decoration: none; padding: 14px 32px; border-radius: 14px; box-shadow: 0 4px 14px rgba(217, 119, 6, 0.3);">
-                Velg nytt passord nå →
-              </a>
-            </div>
-            <p style="font-size: 11px; color: #94A3B8; text-align: center; margin-top: 14px; word-break: break-all;">
-              Hvis knappen over ikke fungerer, kan du lime inn denne lenken i nettleseren:<br/>
-              <a href="${resetUrl}" style="color: #6366F1;">${resetUrl}</a>
-            </p>
-          </div>
-
-          <p style="font-size: 12px; color: #94A3B8; line-height: 1.5; border-top: 1px solid #F1F5F9; padding-top: 16px; text-align: center;">
-            Lenken er gyldig i 2 timer av sikkerhetshensyn. Hvis du ikke har bedt om å tilbakestille passordet, kan du trygt se bort fra denne e-posten.
-          </p>
-        </div>
-      `,
+      subject,
+      html: emailHtml,
       text: `Tilbakestill passord for VikingMester (${email}): ${resetUrl}`,
       type: 'notice'
     }).catch(err => {
@@ -255,25 +288,31 @@ export async function PUT(req: NextRequest) {
     });
 
     // 6. Send sikkerhetsbekreftelse på e-post
+    const confirmEmailHtml = renderBrandedEmailTemplate({
+      subject: 'Ditt passord i VikingMester er nå oppdatert',
+      title: 'Passordet ditt er oppdatert',
+      subtitle: `Sikkerhetsbekreftelse for ${email}`,
+      bodyHtml: `
+        <p style="margin-top: 0; font-size: 15px; color: #334155; line-height: 1.6;">
+          Hei <strong>${displayName}</strong>! Passordet for din konto (<strong>${email}</strong>) ble nettopp endret og aktivert.
+        </p>
+        <div style="background-color: #f8fafc; border: 1px solid #e2e8f0; border-radius: 12px; padding: 16px; margin: 18px 0; font-size: 13px; color: #475569; line-height: 1.5;">
+          Dersom det var du som gjorde denne endringen, trenger du ikke å foreta deg noe mer. Hvis du <strong>IKKE</strong> gjorde denne endringen, vennligst kontakt oss på <a href="mailto:support@vikingmester.no" style="color: #0284c7; font-weight: bold;">support@vikingmester.no</a> umiddelbart.
+        </div>
+      `,
+      button: {
+        url: 'https://vikingmester.no',
+        label: 'Gå til VikingMester →',
+        bgColor: '#0f172a',
+        borderColor: '#1e293b'
+      },
+      companyName: assignedCompanyName || 'VikingMester'
+    });
+
     await sendSystemEmail({
       to: email,
       subject: 'Ditt passord i VikingMester er nå oppdatert',
-      html: `
-        <div style="font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, sans-serif; max-width: 500px; margin: 0 auto; padding: 24px; border: 1px solid #E2E8F0; border-radius: 16px; background-color: #FFFFFF; color: #0F172A;">
-          <h2 style="color: #059669; margin-top: 0; font-size: 18px;">Passordet ditt er oppdatert</h2>
-          <p style="font-size: 14px; color: #475569; line-height: 1.6;">
-            Hei ${displayName}! Passordet for din konto (<strong>${email}</strong>) ble nettopp endret.
-          </p>
-          <p style="font-size: 13px; color: #64748B; line-height: 1.5;">
-            Dersom det var du som gjorde denne endringen, trenger du ikke å gjøre noe mer. Hvis du IKKE gjorde denne endringen, vennligst kontakt oss på support@vikingmester.no umiddelbart.
-          </p>
-          <div style="text-align: center; margin-top: 24px;">
-            <a href="https://vikingmester.no" style="display: inline-block; background: #0F172A; color: #FFFFFF; text-decoration: none; font-weight: 700; font-size: 13px; padding: 10px 24px; border-radius: 10px;">
-              Gå til VikingMester
-            </a>
-          </div>
-        </div>
-      `,
+      html: confirmEmailHtml,
       text: `Passordet ditt for VikingMester (${email}) er nå oppdatert. Hvis du ikke gjorde dette, kontakt oss umiddelbart.`,
       type: 'notice'
     }).catch(() => {});

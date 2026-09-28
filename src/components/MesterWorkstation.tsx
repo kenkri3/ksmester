@@ -3204,8 +3204,9 @@ export default function MesterWorkstation({
               </div>
 
               {/* 🖥️ DESKTOP TOP BAR (Full workstation cockpit) */}
-              <div className="hidden md:flex items-center justify-between w-full">
-                <div className="flex items-center gap-2.5 min-w-0">
+              <div className="hidden md:flex items-center justify-between w-full gap-2">
+                {/* Left Desktop Controls */}
+                <div className="flex items-center gap-2 shrink-0">
                   {/* Åpne/lås sidemeny-knapp dersom minimert på desktop */}
                   {isCollapsedDesktop && (
                     <button
@@ -3220,14 +3221,14 @@ export default function MesterWorkstation({
                   )}
 
                   {/* Workstation Badge & Selected Project Dropdown */}
-                  <div ref={projectDropdownRef} className="relative">
+                  <div ref={projectDropdownRef} className="relative shrink-0">
                     <button
                       type="button"
                       onClick={() => setIsProjectDropdownOpen(!isProjectDropdownOpen)}
                       className="flex items-center gap-2 px-3 py-1.5 rounded-xl bg-slate-900/90 border border-slate-800 hover:border-slate-700 text-xs font-bold text-white transition-all cursor-pointer shadow-xs group"
                     >
                       <span className="w-2 h-2 rounded-full bg-emerald-400 animate-pulse shrink-0" />
-                      <span className="truncate max-w-[220px]">
+                      <span className="truncate max-w-[160px] lg:max-w-[220px]">
                         {selectedProject ? selectedProject.name : t('ws_all_sites', 'Alle Byggeplasser')}
                       </span>
                       <ChevronDown size={14} className="text-slate-400 group-hover:text-white transition-colors shrink-0" />
@@ -3274,7 +3275,7 @@ export default function MesterWorkstation({
                                 onSelectProject(proj);
                                 setIsProjectDropdownOpen(false);
                                 setActiveModuleTab('project_details');
-                                setViewMode('module');
+                                viewMode !== 'module' && setViewMode('module');
                               }}
                               className={cn(
                                 "w-full flex items-center gap-2.5 px-3 py-2 rounded-xl text-xs font-bold text-left transition-colors cursor-pointer mt-0.5",
@@ -3325,31 +3326,31 @@ export default function MesterWorkstation({
                   <button
                     type="button"
                     onClick={() => handleOpenCreateOffer()}
-                    className="inline-flex items-center gap-1.5 px-3 py-1.5 rounded-xl bg-purple-600/20 hover:bg-purple-600/30 text-purple-300 hover:text-white border border-purple-500/30 text-xs font-bold transition-all shadow-xs cursor-pointer group active:scale-95 shrink-0"
+                    className="inline-flex items-center gap-1.5 px-3 py-1.5 rounded-xl bg-purple-600/20 hover:bg-purple-600/30 text-purple-300 hover:text-white border border-purple-500/30 text-xs font-bold transition-all shadow-xs cursor-pointer group active:scale-95 shrink-0 whitespace-nowrap"
                     title="Opprett nytt pristilbud eller hurtigkalkyle"
                   >
                     <Calculator size={13} className="text-purple-400 group-hover:scale-110 transition-transform" />
                     <span>+ Nytt tilbud</span>
                   </button>
 
-                  {/* Status: 100% Autonom */}
-                  <span className="hidden lg:inline-flex items-center gap-1.5 px-2.5 py-1 rounded-full text-[11px] font-bold bg-emerald-500/10 text-emerald-400 border border-emerald-500/20">
+                  {/* Status: 100% Autonom (Vises på brede skjermer så den aldri kolliderer) */}
+                  <span className="hidden 2xl:inline-flex items-center gap-1.5 px-2.5 py-1 rounded-full text-[11px] font-bold bg-emerald-500/10 text-emerald-400 border border-emerald-500/20 shrink-0 whitespace-nowrap">
                     <span className="w-1.5 h-1.5 rounded-full bg-emerald-400" />
-                    {t('ws_autonomous_agent', "100% Autonom Agent")}
+                    <span>{t('ws_autonomous_agent', "100% Autonom Agent")}</span>
                   </span>
                 </div>
 
                 {/* Right Desktop Controls */}
-                <div className="flex items-center gap-1 sm:gap-2">
+                <div className="flex items-center gap-1.5 sm:gap-2 shrink-0">
                   {isSuperAdmin && (
                     <button
                       type="button"
                       onClick={handleOpenSuperAdmin}
-                      className="inline-flex items-center gap-1.5 px-2.5 py-1.5 rounded-xl bg-amber-500/15 hover:bg-amber-500/25 border border-amber-500/40 text-amber-300 hover:text-white text-xs font-bold transition-all shadow-xs cursor-pointer"
+                      className="inline-flex items-center gap-1.5 px-2.5 py-1.5 rounded-xl bg-amber-500/15 hover:bg-amber-500/25 border border-amber-500/40 text-amber-300 hover:text-white text-xs font-bold transition-all shadow-xs cursor-pointer shrink-0 whitespace-nowrap"
                       title="Åpne SuperAdmin Portal (Brukere, Lisenser, Logger)"
                     >
-                      <Crown size={14} className="text-amber-400" />
-                      <span>{t('ws_superadmin_portal', "SuperAdmin")}</span>
+                      <Crown size={14} className="text-amber-400 shrink-0" />
+                      <span className="hidden xl:inline">SuperAdmin</span>
                     </button>
                   )}
 
@@ -3361,37 +3362,37 @@ export default function MesterWorkstation({
                         if (stopImpersonation) stopImpersonation();
                         handleOpenSuperAdmin();
                       }}
-                      className="inline-flex items-center gap-1.5 px-2.5 py-1.5 rounded-xl bg-amber-500 hover:bg-amber-400 text-neutral-950 text-xs font-black transition-all shadow-md cursor-pointer"
+                      className="inline-flex items-center gap-1.5 px-2.5 py-1.5 rounded-xl bg-amber-500 hover:bg-amber-400 text-neutral-950 text-xs font-black transition-all shadow-md cursor-pointer shrink-0 whitespace-nowrap"
                       title="Avslutt visningsmodus og returner til SuperAdmin"
                     >
-                      <ArrowLeft size={13} />
-                      <span>{t('ws_back_to_superadmin', "← Til SuperAdmin")}</span>
+                      <ArrowLeft size={13} className="shrink-0" />
+                      <span className="hidden xl:inline">{t('ws_back_to_superadmin', "← Til SuperAdmin")}</span>
                     </button>
                   )}
                   {onOpenOmnichannelModal && (
                     <button
                       type="button"
                       onClick={onOpenOmnichannelModal}
-                      className="p-2 rounded-xl text-slate-400 hover:text-white hover:bg-slate-800/80 transition-colors cursor-pointer"
+                      className="p-1.5 sm:p-2 rounded-xl text-slate-400 hover:text-white hover:bg-slate-800/80 transition-colors cursor-pointer shrink-0"
                       title="Omnichannel Lytter (Discord, Slack, Teams, E-post)"
                     >
                       <Radio size={16} className="text-emerald-400" />
                     </button>
                   )}
 
-                  {/* 🔍 Prominent Global Search Bar (Linear / Gemini / Cloud Console style) */}
+                  {/* 🔍 Prominent Global Search Bar (Linear / Gemini style - kontrollert bredde) */}
                   <button
                     type="button"
                     onClick={() => {
                       if (onOpenSmartSearch) onOpenSmartSearch();
                       else setIsTopSearchOpen(true);
                     }}
-                    className="hidden sm:flex items-center gap-2.5 px-3.5 py-1.5 rounded-full bg-[#13161c] hover:bg-[#1a1e28] text-slate-400 hover:text-white border border-slate-700/60 hover:border-purple-500/50 transition-all text-xs font-medium cursor-pointer shadow-xs max-w-xs md:max-w-sm lg:max-w-md w-full group"
+                    className="hidden sm:flex items-center gap-2 px-3 py-1.5 rounded-full bg-[#13161c] hover:bg-[#1a1e28] text-slate-400 hover:text-white border border-slate-700/60 hover:border-purple-500/50 transition-all text-xs font-medium cursor-pointer shadow-xs w-36 md:w-48 lg:w-60 xl:w-72 shrink-0 group"
                     title={t('ws_search_placeholder', "Søk i hele systemet: samtaler, prosjekter, avvik, verktøy... (⌘K)")}
                   >
                     <Search size={14} className="text-purple-400 group-hover:scale-110 transition-transform shrink-0" />
                     <span className="truncate text-slate-400 group-hover:text-slate-200">
-                      {t('ws_search_all_placeholder', "Søk i hele systemet: samtaler, prosjekter, verktøy...")}
+                      {t('ws_search_all_placeholder', "Søk i systemet...")}
                     </span>
                     <kbd className="ml-auto px-1.5 py-0.5 rounded bg-white/5 border border-white/10 text-[10px] text-slate-400 font-mono font-bold shrink-0">
                       ⌘K
@@ -3404,7 +3405,7 @@ export default function MesterWorkstation({
                       if (onOpenSmartSearch) onOpenSmartSearch();
                       else setIsTopSearchOpen(true);
                     }}
-                    className="sm:hidden p-2 rounded-xl text-slate-400 hover:text-white hover:bg-slate-800/80 transition-colors cursor-pointer"
+                    className="sm:hidden p-2 rounded-xl text-slate-400 hover:text-white hover:bg-slate-800/80 transition-colors cursor-pointer shrink-0"
                     title={t('ws_search_placeholder', "Søk i samtaler, prosjekter og moduler (⌘K)")}
                   >
                     <Search size={16} />
@@ -3418,7 +3419,7 @@ export default function MesterWorkstation({
                       setViewMode('module');
                     }}
                     className={cn(
-                      "p-2 rounded-xl transition-all cursor-pointer relative",
+                      "p-1.5 sm:p-2 rounded-xl transition-all cursor-pointer relative shrink-0",
                       activeModuleTab === 'teamchat' && viewMode === 'module'
                         ? "bg-violet-600/30 text-violet-300 border border-violet-500/50"
                         : "text-slate-400 hover:text-white hover:bg-slate-800/80"
@@ -3429,7 +3430,9 @@ export default function MesterWorkstation({
                     <span className="absolute top-1.5 right-1.5 w-2 h-2 rounded-full bg-violet-400 animate-pulse" />
                   </button>
 
-                  <NotificationBell darkMode={true} />
+                  <div className="shrink-0">
+                    <NotificationBell darkMode={true} />
+                  </div>
                 </div>
               </div>
             </>
@@ -6856,7 +6859,7 @@ export default function MesterWorkstation({
             </div>
           ) : (
             /* 🤖 THE DEFAULT CHAT INTERFACE (ChatGPT / Gemini / Antigravity style) */
-            <div className="flex-1 flex flex-col justify-between max-w-4xl mx-auto w-full px-3 sm:px-6 pt-4 pb-32">
+            <div className="flex-1 flex flex-col justify-between max-w-4xl mx-auto w-full px-3 sm:px-6 pt-4 pb-4">
               {messages.length === 0 ? (
                 /* Centered Welcome Hero (Clean Gemini style with VikingMester brand) */
                 <div className="my-auto py-8 sm:py-16 text-center max-w-2xl mx-auto w-full space-y-6 sm:space-y-8 animate-in fade-in duration-300">
@@ -6914,7 +6917,7 @@ export default function MesterWorkstation({
                   </div>
                 </div>
               ) : (
-                <div className="space-y-6 pt-2 pb-24 sm:pb-32">
+                <div className="space-y-6 pt-2 pb-6">
                   {messages.map((msg, idx) => {
                     const isLatest = idx === messages.length - 1;
                     const isPromptForLatest = 
@@ -7207,17 +7210,17 @@ export default function MesterWorkstation({
         </div>
       )}
 
-        {/* 4. Floating Rounded-Full Input Box (when conversation is active) */}
+        {/* 4. Docked Bottom Input Area (when conversation is active) - Zero overlap with messages */}
         {viewMode === 'chat' && messages.length > 0 && (
           <div 
-            className="absolute bottom-0 inset-x-0 bg-gradient-to-t from-[#0A101D] via-[#0A101D]/95 to-transparent pt-6 px-3 sm:px-6 z-20 pointer-events-none"
-            style={{ paddingBottom: 'max(12px, env(safe-area-inset-bottom))' }}
+            className="shrink-0 bg-[#0A101D] border-t border-slate-800/80 pt-2.5 px-3 sm:px-6 z-20"
+            style={{ paddingBottom: 'max(10px, env(safe-area-inset-bottom))' }}
           >
-            <div className="max-w-3xl mx-auto w-full space-y-2 relative pointer-events-auto">
+            <div className="max-w-3xl mx-auto w-full space-y-1.5 relative">
               {renderPromptBar(false)}
 
               {/* Disclaimer footer */}
-              <p className="text-[11px] text-slate-500 text-center">
+              <p className="text-[11px] text-slate-500 text-center pb-0.5">
                 {t('ws_disclaimer', "MesterAI v2.6 kan gjøre feil. Kontroller viktige mål og NS 8406 endringsvarsler.")}
               </p>
             </div>
