@@ -1,6 +1,6 @@
 import { useState, useRef, useEffect } from 'react';
 import { motion, AnimatePresence } from 'motion/react';
-import { X, Camera, Upload, Brain, CheckCircle2, AlertTriangle, RefreshCw, Scan, Save, Loader2, Building2, ListChecks, Search, Lightbulb, ArrowRight } from 'lucide-react';
+import { X, Camera, Upload, Brain, CheckCircle2, AlertTriangle, RefreshCw, Scan, Save, Loader2, Building2, ListChecks, Search, Lightbulb, ArrowRight, ArrowLeft, ShieldCheck } from 'lucide-react';
 import { useTranslation } from 'react-i18next';
 import { cn } from '@/src/lib/utils';
 import { optimizeImageForVision } from '@/src/lib/imageOptimizer';
@@ -13,28 +13,42 @@ interface AIVisionModalProps {
   onClose: () => void;
   projectId?: string;
   projectName?: string;
+  projects?: any[];
+  selectedProject?: any;
   checklistItemId?: string;
   checklistItemName?: string;
+  inline?: boolean;
 }
 
-export default function AIVisionModal({ isOpen, onClose, projectId: initialProjectId, projectName: initialProjectName, checklistItemId, checklistItemName }: AIVisionModalProps) {
+export default function AIVisionModal({ 
+  isOpen, 
+  onClose, 
+  projectId: initialProjectId, 
+  projectName: initialProjectName, 
+  projects: propProjects,
+  selectedProject,
+  checklistItemId, 
+  checklistItemName,
+  inline = false
+}: AIVisionModalProps) {
   const { t } = useTranslation();
   const [image, setImage] = useState<string | null>(null);
   const [analyzing, setAnalyzing] = useState(false);
   const [isSaving, setIsSaving] = useState(false);
-  const [projects, setProjects] = useState<any[]>([]);
-  const [selectedProjectId, setSelectedProjectId] = useState<string | undefined>(initialProjectId);
-  const [selectedProjectName, setSelectedProjectName] = useState<string | undefined>(initialProjectName);
+  const [projects, setProjects] = useState<any[]>(propProjects || []);
+  const [selectedProjectId, setSelectedProjectId] = useState<string | undefined>(initialProjectId || selectedProject?.id);
+  const [selectedProjectName, setSelectedProjectName] = useState<string | undefined>(initialProjectName || selectedProject?.name);
   const [projectSearch, setProjectSearch] = useState('');
 
   useEffect(() => {
-    if (initialProjectId) {
+    if (selectedProject?.id) {
+      setSelectedProjectId(selectedProject.id);
+      setSelectedProjectName(selectedProject.name);
+    } else if (initialProjectId) {
       setSelectedProjectId(initialProjectId);
+      if (initialProjectName) setSelectedProjectName(initialProjectName);
     }
-    if (initialProjectName) {
-      setSelectedProjectName(initialProjectName);
-    }
-  }, [initialProjectId, initialProjectName]);
+  }, [selectedProject, initialProjectId, initialProjectName]);
   
   const [result, setResult] = useState<VisionAnalysisResult | null>(null);
   const fileInputRef = useRef<HTMLInputElement>(null);
@@ -147,33 +161,49 @@ export default function AIVisionModal({ isOpen, onClose, projectId: initialProje
     }
   };
 
-  return (
-    <AnimatePresence>
-      {isOpen && (
-        <div className="fixed inset-0 z-50 flex items-end sm:items-center justify-center p-0 sm:p-4 bg-black/80 backdrop-blur-md">
-          <motion.div
-            initial={{ opacity: 0, scale: 0.98, y: 30 }}
-            animate={{ opacity: 1, scale: 1, y: 0 }}
-            exit={{ opacity: 0, scale: 0.98, y: 30 }}
-            className="bg-[#0B0F17] text-white w-full max-w-3xl rounded-t-[2.5rem] sm:rounded-[3rem] shadow-2xl overflow-hidden border border-slate-800 flex flex-col max-h-[92vh] sm:max-h-[calc(100vh-2rem)] pb-[env(safe-area-inset-bottom,0px)]"
-          >
-            {/* Mobile Grab Handle */}
-            <div className="sm:hidden w-12 h-1.5 bg-slate-700 rounded-full mx-auto mt-3 mb-1" />
+  if (!isOpen) return null;
 
-            <div className="p-4 sm:p-8 border-b border-slate-800 flex justify-between items-center bg-[#131722] shrink-0">
-              <div className="flex items-center gap-3 sm:gap-4">
-                <div className="p-2 sm:p-3 bg-rose-500 text-white rounded-xl sm:rounded-2xl shadow-lg shadow-rose-950/50">
-                  <Brain size={20} className="sm:w-7 sm:h-7" />
-                </div>
-                <div>
-                  <h2 className="text-lg sm:text-2xl font-bold text-white tracking-tight">MesterAI Vision</h2>
-                  <p className="text-[10px] sm:text-xs text-rose-300 font-bold uppercase tracking-wider mt-0.5 sm:mt-1">Automatisk KS-kontroll</p>
-                </div>
-              </div>
-              <button onClick={onClose} aria-label="Lukk" title="Lukk" className="p-2 hover:bg-slate-800 rounded-full transition-colors text-slate-400 hover:text-white cursor-pointer">
-                <X size={20} className="sm:w-6 sm:h-6" />
-              </button>
+  const content = (
+    <div className={cn(
+      "bg-[#0B0F17] text-white w-full overflow-hidden border border-slate-800 flex flex-col",
+      inline 
+        ? "rounded-3xl shadow-xl min-h-[700px]" 
+        : "max-w-3xl rounded-t-[2.5rem] sm:rounded-[3rem] shadow-2xl max-h-[92vh] sm:max-h-[calc(100vh-2rem)] pb-[env(safe-area-inset-bottom,0px)]"
+    )}>
+      {/* Mobile Grab Handle */}
+      {!inline && <div className="sm:hidden w-12 h-1.5 bg-slate-700 rounded-full mx-auto mt-3 mb-1" />}
+
+      <div className="p-4 sm:p-8 border-b border-slate-800 flex justify-between items-center bg-[#131722] shrink-0">
+        <div className="flex items-center gap-3 sm:gap-4">
+          <div className="p-2 sm:p-3 bg-rose-500 text-white rounded-xl sm:rounded-2xl shadow-lg shadow-rose-950/50">
+            <Brain size={20} className="sm:w-7 sm:h-7" />
+          </div>
+          <div>
+            <div className="flex items-center gap-2">
+              <h2 className="text-lg sm:text-2xl font-bold text-white tracking-tight">MesterAI Vision</h2>
+              <span className="hidden sm:inline-flex items-center gap-1 px-2 py-0.5 rounded-full text-[10px] font-black uppercase tracking-wider bg-rose-500/20 text-rose-300 border border-rose-500/30">
+                <ShieldCheck size={11} /> TEK17 Analyse
+              </span>
             </div>
+            <p className="text-[10px] sm:text-xs text-rose-300 font-bold uppercase tracking-wider mt-0.5 sm:mt-1">Automatisk KS-kontroll & Feildeteksjon</p>
+          </div>
+        </div>
+        {inline ? (
+          <button 
+            type="button"
+            onClick={onClose} 
+            className="flex items-center gap-1.5 px-3 py-1.5 rounded-xl bg-slate-800 hover:bg-slate-700 text-slate-300 hover:text-white text-xs font-bold transition-all cursor-pointer border border-slate-700 shrink-0"
+            title="Gå tilbake til arbeidsstasjonen"
+          >
+            <ArrowLeft size={14} />
+            <span className="hidden sm:inline">Tilbake til chat</span>
+          </button>
+        ) : (
+          <button onClick={onClose} aria-label="Lukk" title="Lukk" className="p-2 hover:bg-slate-800 rounded-full transition-colors text-slate-400 hover:text-white cursor-pointer">
+            <X size={20} className="sm:w-6 sm:h-6" />
+          </button>
+        )}
+      </div>
 
             <div className="flex-1 overflow-y-auto p-4 sm:p-8 custom-scrollbar">
               {/* Context Selection */}
@@ -425,6 +455,24 @@ export default function AIVisionModal({ isOpen, onClose, projectId: initialProje
                 </button>
               </div>
             )}
+      </div>
+  );
+
+  if (inline) {
+    return content;
+  }
+
+  return (
+    <AnimatePresence>
+      {isOpen && (
+        <div className="fixed inset-0 z-50 flex items-end sm:items-center justify-center md:pl-[290px] lg:pl-[320px] p-0 sm:p-4 bg-black/60 backdrop-blur-xs">
+          <motion.div
+            initial={{ opacity: 0, scale: 0.98, y: 30 }}
+            animate={{ opacity: 1, scale: 1, y: 0 }}
+            exit={{ opacity: 0, scale: 0.98, y: 30 }}
+            className="w-full max-w-3xl"
+          >
+            {content}
           </motion.div>
         </div>
       )}

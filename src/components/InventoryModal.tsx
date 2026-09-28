@@ -1,6 +1,6 @@
 import React, { useState, useEffect, useMemo } from 'react';
 import { motion, AnimatePresence } from 'motion/react';
-import { X, Package, Search, Plus, Filter, AlertTriangle, FileText, Wrench, ShieldAlert, ChevronRight, Download, History, User, Send, Sparkles, RefreshCw, Brain } from 'lucide-react';
+import { X, Package, Search, Plus, Filter, AlertTriangle, FileText, Wrench, ShieldAlert, ChevronRight, Download, History, User, Send, Sparkles, RefreshCw, Brain, ArrowLeft, ShieldCheck } from 'lucide-react';
 import { cn } from '../lib/utils';
 import { InventoryItem } from '../types';
 import { db, auth, collection, onSnapshot, query, orderBy, addDoc, serverTimestamp, OperationType, handleFirestoreError } from '../services/firebase';
@@ -9,9 +9,10 @@ import { inventoryAiService, InventoryInsight } from '../services/inventoryAiSer
 interface InventoryModalProps {
   isOpen: boolean;
   onClose: () => void;
+  inline?: boolean;
 }
 
-const InventoryModal: React.FC<InventoryModalProps> = ({ isOpen, onClose }) => {
+const InventoryModal: React.FC<InventoryModalProps> = ({ isOpen, onClose, inline = false }) => {
   const [activeTab, setActiveTab] = useState<'all' | 'materials' | 'tools' | 'chemicals' | 'maintenance'>('all');
   const [searchQuery, setSearchQuery] = useState('');
   const [isNewItemOpen, setIsNewItemOpen] = useState(false);
@@ -103,31 +104,50 @@ const InventoryModal: React.FC<InventoryModalProps> = ({ isOpen, onClose }) => {
 
   if (!isOpen) return null;
 
-  return (
-    <div className="fixed inset-0 z-50 flex items-end sm:items-center justify-center p-0 sm:p-4 bg-black/80 backdrop-blur-md">
-      <motion.div 
-        initial={{ opacity: 0, y: 20 }}
-        animate={{ opacity: 1, y: 0 }}
-        className="bg-[#0B0F17] text-white border border-slate-800 w-full max-w-5xl rounded-t-[2rem] sm:rounded-[2.5rem] shadow-2xl overflow-hidden flex flex-col max-h-[92vh] sm:max-h-[90vh] pb-[env(safe-area-inset-bottom,0px)]"
-      >
-        {/* Header */}
-        <div className="p-4 sm:p-6 border-b border-slate-800 bg-[#131722] shrink-0">
-          <div className="sm:hidden w-12 h-1.5 bg-slate-700 rounded-full mx-auto -mt-1 mb-3 shrink-0" />
-          <div className="flex items-center justify-between">
-            <div className="flex items-center gap-3 sm:gap-4">
-              <div className="w-10 h-10 sm:w-12 sm:h-12 rounded-xl sm:rounded-2xl bg-blue-600/20 border border-blue-500/30 flex items-center justify-center text-blue-400 shadow-lg">
-                <Package size={20} className="sm:w-6 sm:h-6" />
-              </div>
-              <div>
-                <h2 className="text-lg sm:text-2xl font-bold tracking-tight text-white">Lager & Verktøy</h2>
-                <p className="text-slate-400 text-xs sm:text-sm font-medium">Oversikt over materialer, verktøy og kjemikalier</p>
-              </div>
+  const content = (
+    <div className={cn(
+      "bg-[#0B0F17] text-white border border-slate-800 w-full overflow-hidden flex flex-col",
+      inline 
+        ? "rounded-3xl shadow-xl min-h-[720px]" 
+        : "max-w-5xl rounded-t-[2rem] sm:rounded-[2.5rem] shadow-2xl max-h-[92vh] sm:max-h-[90vh] pb-[env(safe-area-inset-bottom,0px)]"
+    )}>
+      {/* Mobile Grab Handle */}
+      {!inline && <div className="sm:hidden w-12 h-1.5 bg-slate-700 rounded-full mx-auto mt-3 mb-1 shrink-0" />}
+
+      {/* Header */}
+      <div className="p-4 sm:p-6 border-b border-slate-800 bg-[#131722] shrink-0">
+        <div className="flex items-center justify-between">
+          <div className="flex items-center gap-3 sm:gap-4">
+            <div className="w-10 h-10 sm:w-12 sm:h-12 rounded-xl sm:rounded-2xl bg-blue-600/20 border border-blue-500/30 flex items-center justify-center text-blue-400 shadow-lg shrink-0">
+              <Package size={20} className="sm:w-6 sm:h-6" />
             </div>
-            <button onClick={onClose} aria-label="Lukk" className="p-2 text-slate-400 hover:text-white hover:bg-slate-800 rounded-xl transition-colors shrink-0">
+            <div>
+              <div className="flex items-center gap-2">
+                <h2 className="text-lg sm:text-2xl font-bold tracking-tight text-white">Lager, Verktøy & Materiell</h2>
+                <span className="hidden sm:inline-flex items-center gap-1 px-2 py-0.5 rounded-full text-[10px] font-black uppercase tracking-wider bg-blue-500/20 text-blue-300 border border-blue-500/30">
+                  <ShieldCheck size={11} /> AML § 4-5
+                </span>
+              </div>
+              <p className="text-slate-400 text-xs sm:text-sm font-medium">Oversikt over materialer, verktøy og kjemikalier</p>
+            </div>
+          </div>
+          {inline ? (
+            <button 
+              type="button"
+              onClick={onClose} 
+              className="flex items-center gap-1.5 px-3 py-1.5 rounded-xl bg-slate-800 hover:bg-slate-700 text-slate-300 hover:text-white text-xs font-bold transition-all cursor-pointer border border-slate-700 shrink-0"
+              title="Gå tilbake til arbeidsstasjonen"
+            >
+              <ArrowLeft size={14} />
+              <span className="hidden sm:inline">Tilbake til chat</span>
+            </button>
+          ) : (
+            <button onClick={onClose} aria-label="Lukk" className="p-2 text-slate-400 hover:text-white hover:bg-slate-800 rounded-xl transition-colors shrink-0 cursor-pointer">
               <X size={20} className="sm:w-6 sm:h-6" />
             </button>
-          </div>
+          )}
         </div>
+      </div>
 
         {/* Tabs & Search */}
         <div className="p-4 sm:p-6 bg-[#0D131F] border-b border-slate-800 flex flex-col md:flex-row gap-3 sm:gap-4 items-center justify-between shrink-0">
@@ -448,6 +468,21 @@ const InventoryModal: React.FC<InventoryModalProps> = ({ isOpen, onClose }) => {
             </div>
           )}
         </AnimatePresence>
+      </div>
+  );
+
+  if (inline) {
+    return content;
+  }
+
+  return (
+    <div className="fixed inset-0 z-50 flex items-end sm:items-center justify-center md:pl-[290px] lg:pl-[320px] p-0 sm:p-4 bg-black/60 backdrop-blur-xs">
+      <motion.div 
+        initial={{ opacity: 0, y: 20 }}
+        animate={{ opacity: 1, y: 0 }}
+        className="w-full max-w-5xl"
+      >
+        {content}
       </motion.div>
     </div>
   );

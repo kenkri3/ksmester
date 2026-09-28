@@ -178,6 +178,15 @@ function AppContent() {
   useEffect(() => {
     if (isAuthReady && user && !hasInitiallyRouted.current) {
       hasInitiallyRouted.current = true;
+      if (typeof window !== 'undefined') {
+        const p = new URLSearchParams(window.location.search);
+        const hasDirectToken = p.has('offerToken') || p.has('contractToken') || p.has('tilbud') || p.has('kontrakt') || p.has('changeOrderToken') || p.has('endring') || p.has('invite') || p.has('portal') || p.has('offer');
+        const path = window.location.pathname;
+        const hasDirectPath = path.startsWith('/tilbud') || path.startsWith('/kontrakt') || path.startsWith('/endring') || path.startsWith('/invite') || path.startsWith('/portal') || path.startsWith('/offer');
+        if (hasDirectToken || hasDirectPath) {
+          return;
+        }
+      }
       if (['landing', 'login'].includes(view)) {
         setView('dashboard');
       }
@@ -417,7 +426,7 @@ function AppContent() {
     const token = params.get('offer');
     if (token) {
       setOfferToken(token);
-      if (token.startsWith('o-') || token.startsWith('c-')) {
+      if (token.startsWith('o-') || token.startsWith('c-') || token.startsWith('off_') || token.startsWith('offer-')) {
         setView('public-offer');
       } else {
         setView('offer');
@@ -451,7 +460,7 @@ function AppContent() {
     }
     if (pathParts[1] === 'offer' && pathParts[2]) {
       setOfferToken(pathParts[2]);
-      if (pathParts[2].startsWith('o-') || pathParts[2].startsWith('c-')) {
+      if (pathParts[2].startsWith('o-') || pathParts[2].startsWith('c-') || pathParts[2].startsWith('off_') || pathParts[2].startsWith('offer-')) {
         setView('public-offer');
       } else {
         setView('offer');

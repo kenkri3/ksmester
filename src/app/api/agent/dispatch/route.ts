@@ -19,6 +19,7 @@ import {
 import { OfferItem } from '@/src/types';
 import { sanitizePlainText } from '@/src/lib/utils';
 import { formatCleanOfferDescription, formatCleanChangeOrderDescription } from '@/src/lib/server/offerFormatter';
+import { getPublicAppUrl } from '@/src/lib/server/urlHelper';
 
 // 🛡️ Tilgangskontroll: Gyldig innlogget bruker (JWT i header/cookie/body),
 // cron/intern hemmelighet, eller tillatte hjelpehandlinger (autofill_form).
@@ -1920,7 +1921,7 @@ Returner KUN et gyldig JSON-objekt:
           `4. Betalingsplan: Faktureres à konto hver 14. dag etter dokumentert fremdrift. 14 dagers betalingsfrist.\n` +
           `5. Gyldighet: Tilbudet er gyldig i 30 dager fra tilbudsdato.`;
 
-        const baseUrl = req.nextUrl?.origin || process.env.NEXT_PUBLIC_APP_URL || 'https://vikingmester.no';
+        const baseUrl = getPublicAppUrl(req);
         const offerId = `offer-${Date.now()}`;
         const token = 'o-' + Date.now().toString(36) + Math.random().toString(36).substring(2, 6);
         const offerLink = `${baseUrl}/?offerToken=${token}`;
@@ -2163,7 +2164,7 @@ Returner KUN et gyldig JSON-objekt:
             });
           }
 
-          const baseUrl = req.nextUrl?.origin || process.env.NEXT_PUBLIC_APP_URL || 'https://vikingmester.no';
+          const baseUrl = getPublicAppUrl(req);
 
           if (!targetOffer) {
             targetOffer = {
@@ -2660,7 +2661,7 @@ Returner KUN et gyldig JSON-objekt:
           };
           await saveCollectionItem('invitations', inviteData);
 
-          const baseUrl = typeof window !== 'undefined' ? window.location.origin : 'https://vikingmester.no';
+          const baseUrl = getPublicAppUrl(req);
           const inviteUrl = `${baseUrl}/?invite=${token}`;
 
           await saveCollectionItem('agent_activities', {
@@ -3344,7 +3345,7 @@ Du skal opptre som en høyt kvalifisert byggmester og kalkulatør og levere en k
         const calcTotal = Math.round(calcExVat * 1.25);
         const offerId = `offer-${Date.now()}`;
         const offerToken = 'o-' + Date.now().toString(36) + Math.random().toString(36).substring(2, 6);
-        const baseUrl = req.nextUrl?.origin || process.env.NEXT_PUBLIC_APP_URL || 'https://vikingmester.no';
+        const baseUrl = getPublicAppUrl(req);
 
         offerDraft = {
           id: offerId,

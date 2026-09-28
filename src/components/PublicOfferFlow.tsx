@@ -147,9 +147,52 @@ export default function PublicOfferFlow({
         }
       }
 
+      // 3. Tertiær fallback: Sjekk nettleserens localStorage
+      if (!matchedOffer && cleanToken && typeof window !== 'undefined') {
+        try {
+          const cached = localStorage.getItem(`pending_offer_${cleanToken}`);
+          if (cached) {
+            matchedOffer = JSON.parse(cached);
+          }
+        } catch (e) {}
+      }
+
+      // 4. Kvartær fallback: Ekstern synk mot vikingmester.no dersom lokalt kall ikke fant tilbudet
+      if (!matchedOffer && !matchedContract && (cleanToken || cleanOfferId)) {
+        try {
+          const isNotProd = typeof window !== 'undefined' && !window.location.hostname.includes('vikingmester.no');
+          if (isNotProd) {
+            const queryParam = cleanToken 
+              ? `token=${encodeURIComponent(cleanToken)}` 
+              : `offerId=${encodeURIComponent(cleanOfferId!)}`;
+            const remoteRes = await fetch(`https://vikingmester.no/api/contract?${queryParam}`, {
+              headers: { 'Accept': 'application/json' }
+            });
+            if (remoteRes.ok) {
+              const remoteData = await remoteRes.json();
+              if (remoteData?.offer || remoteData?.contract) {
+                matchedOffer = remoteData.offer;
+                matchedContract = remoteData.contract;
+              }
+            }
+          }
+        } catch (remoteErr) {
+          console.warn('Ekstern fallback mot vikingmester.no feilet:', remoteErr);
+        }
+      }
+
       // Hvis tilbud ble funnet, sjekk om det foreligger en eksisterende kontrakt
       if (matchedOffer && !matchedContract) {
         matchedContract = allContracts.find((c: any) => c.offerId === matchedOffer?.id || c.token === matchedOffer?.token || c.id === matchedOffer?.contractId);
+      }
+
+      // Synkroniser tilbud lokalt hvis funnet
+      if (matchedOffer) {
+        fetch('/api/contract', {
+          method: 'POST',
+          headers: { 'Content-Type': 'application/json' },
+          body: JSON.stringify({ action: 'sync_offer', offer: matchedOffer })
+        }).catch(() => {});
       }
 
       // Hvis ingen av delene ble funnet, vis feilmelding (ingen falske mock-data)

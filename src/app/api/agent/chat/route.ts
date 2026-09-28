@@ -7,6 +7,7 @@ import { sendSystemEmail, sendOfferByEmail, sendChangeOrderByEmail, cleanMarkdow
 import { getCollectionItems, saveCollectionItem } from '@/src/lib/server/db';
 import { generateWithAiEngine } from '@/src/lib/server/aiEngine';
 import { maskPII, containsPIIOrGdprData } from '@/src/lib/server/privacyShield';
+import { getPublicAppUrl } from '@/src/lib/server/urlHelper';
 
 /**
  * 🤖 MesterAI Headless Agent Proxy
@@ -399,7 +400,9 @@ async function processEmailActionsInReply(
     return replyText;
   }
 
-  const baseUrl = context.baseUrl || 'https://vikingmester.no';
+  const baseUrl = (context.baseUrl && !context.baseUrl.includes('localhost') && !context.baseUrl.includes('127.0.0.1'))
+    ? context.baseUrl
+    : getPublicAppUrl();
   const badges: string[] = [];
 
   for (let i = 0; i < emails.length; i++) {
@@ -2098,7 +2101,7 @@ Når brukeren ber deg sende en e-post og du har mottakers adresse:
       projectName,
       projectId: body.projectId,
       userMessage: message,
-      baseUrl: req.nextUrl?.origin || process.env.NEXT_PUBLIC_APP_URL || 'https://vikingmester.no'
+      baseUrl: getPublicAppUrl(req)
     });
 
     return NextResponse.json({

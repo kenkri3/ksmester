@@ -549,7 +549,11 @@ function InChatOfferForm({
 
     setIsSubmitting(true);
     try {
-      const token = initialData?.token || 'off_' + Math.random().toString(36).substring(2, 12) + Date.now().toString(36);
+      const token = initialData?.token || 'o-' + Date.now().toString(36) + Math.random().toString(36).substring(2, 6);
+      const isLocal = typeof window !== 'undefined' && (window.location.hostname === 'localhost' || window.location.hostname === '127.0.0.1');
+      const publicOrigin = isLocal ? 'https://vikingmester.no' : (typeof window !== 'undefined' ? window.location.origin : 'https://vikingmester.no');
+      const offerLink = `${publicOrigin}/?offerToken=${token}`;
+
       const offerDoc = {
         projectId: projectId || null,
         clientName: clientName.trim(),
@@ -557,10 +561,12 @@ function InChatOfferForm({
         title: title.trim(),
         description: description.trim(),
         items,
-        totalAmount: sumExVat,
-        totalIncVat,
+        totalAmount: totalIncVat,
+        amountExVat: sumExVat,
+        total: totalIncVat,
         status: 'draft',
         token,
+        shareUrl: offerLink,
         companyId: user?.companyId || 'comp-001',
         companyName: user?.company || 'Mester Entreprenør AS',
         createdBy: user?.id || 'admin_user',
@@ -570,6 +576,25 @@ function InChatOfferForm({
       };
 
       const ref = await addDoc(collection(db, 'offers'), offerDoc);
+
+      const finalOfferData = {
+        ...offerDoc,
+        id: ref.id,
+        token,
+        shareUrl: offerLink
+      };
+
+      // 🛡️ Lokal lagring + synkronisering til /api/contract
+      if (typeof window !== 'undefined') {
+        try {
+          localStorage.setItem(`pending_offer_${token}`, JSON.stringify(finalOfferData));
+        } catch (e) {}
+      }
+      fetch('/api/contract', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ action: 'sync_offer', offer: finalOfferData })
+      }).catch(() => {});
 
       try {
         await addDoc(collection(db, 'system_offers'), {
@@ -588,8 +613,6 @@ function InChatOfferForm({
         console.warn('Sync to system_offers skipped:', syncErr);
       }
 
-      const offerLink = `${typeof window !== 'undefined' ? window.location.origin : ''}/?offerToken=${token}`;
-
       toast.success('Pristilbud opprettet og lagret!');
       onSuccess(
         `✅ **Pristilbud opprettet:** "${title}"\n- **Kunde:** ${clientName}\n- **Sum eks. mva:** kr ${sumExVat.toLocaleString('no-NO')},-\n- **Sum inkl. 25% mva:** kr ${totalIncVat.toLocaleString('no-NO')},-\n- **Lenke til tilbud:** [Åpne tilbud](${offerLink})`,
@@ -598,7 +621,7 @@ function InChatOfferForm({
           offerId: ref.id, 
           token, 
           offerLink,
-          offerData: { ...offerDoc, id: ref.id }
+          offerData: finalOfferData
         }
       );
     } catch (err) {

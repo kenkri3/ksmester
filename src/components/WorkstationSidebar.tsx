@@ -147,6 +147,13 @@ export default function WorkstationSidebar({
     }
   };
 
+  const safeCloseAllModals = () => {
+    if (typeof window !== 'undefined') {
+      window.dispatchEvent(new CustomEvent('close_all_modals'));
+      window.dispatchEvent(new CustomEvent('close_all_dashboard_modals'));
+    }
+  };
+
   const handleCleanupEmptySessions = (e: React.MouseEvent) => {
     e.stopPropagation();
     const removed = chatSessionService.cleanupEmptySessions();
@@ -360,6 +367,7 @@ export default function WorkstationSidebar({
           <button
             type="button"
             onClick={() => {
+              safeCloseAllModals();
               onCloseMobile();
               onNewChat();
             }}
@@ -379,6 +387,7 @@ export default function WorkstationSidebar({
             <button
               type="button"
               onClick={() => {
+                safeCloseAllModals();
                 onCloseMobile();
                 onOpenSmartSearch();
               }}
@@ -420,6 +429,7 @@ export default function WorkstationSidebar({
                         toast.info(`Modulen "${label}" er låst i din pakke. Oppgrader for å få full tilgang!`);
                         return;
                       }
+                      safeCloseAllModals();
                       onCloseMobile();
                       onOpenModule(mod.id);
                     }}
@@ -451,6 +461,7 @@ export default function WorkstationSidebar({
                       type="button"
                       onClick={(e) => {
                         e.stopPropagation();
+                        safeCloseAllModals();
                         onCloseMobile();
                         if (onOpenCreateOffer) onOpenCreateOffer();
                         else onOpenModule('offers');
@@ -470,6 +481,7 @@ export default function WorkstationSidebar({
               <button
                 type="button"
                 onClick={() => {
+                  safeCloseAllModals();
                   onCloseMobile();
                   if (onOpenSuperAdmin) onOpenSuperAdmin();
                   else window.dispatchEvent(new CustomEvent("navigate_view", { detail: { view: "super-admin" } }));
@@ -496,6 +508,7 @@ export default function WorkstationSidebar({
               <button
                 type="button"
                 onClick={() => {
+                  safeCloseAllModals();
                   onCloseMobile();
                   if (setSimulatedPlan) setSimulatedPlan(null);
                   if (stopImpersonation) stopImpersonation();
@@ -524,6 +537,7 @@ export default function WorkstationSidebar({
                 <button
                   type="button"
                   onClick={() => {
+                    safeCloseAllModals();
                     onCloseMobile();
                     onSelectProject(null);
                     onOpenModule('all_projects');
@@ -537,6 +551,7 @@ export default function WorkstationSidebar({
                 <button
                   type="button"
                   onClick={() => {
+                    safeCloseAllModals();
                     onCloseMobile();
                     onOpenCreateProject();
                   }}
@@ -553,6 +568,7 @@ export default function WorkstationSidebar({
               <button
                 type="button"
                 onClick={() => {
+                  safeCloseAllModals();
                   onCloseMobile();
                   onSelectProject(null);
                   onOpenModule('all_projects');
@@ -579,6 +595,7 @@ export default function WorkstationSidebar({
                     key={proj.id}
                     type="button"
                     onClick={() => {
+                      safeCloseAllModals();
                       onCloseMobile();
                       onSelectProject(proj);
                       onOpenModule('project_details');
@@ -799,6 +816,7 @@ export default function WorkstationSidebar({
                               onStartRename={(e) => handleStartRename(e, session)}
                               onTogglePin={(e) => handleTogglePinSession(e, session.id)}
                               onSelect={() => {
+                                safeCloseAllModals();
                                 onCloseMobile();
                                 onSelectSession(session.id);
                               }}
@@ -850,6 +868,7 @@ export default function WorkstationSidebar({
                         onStartRename={(e) => handleStartRename(e, session)}
                         onTogglePin={(e) => handleTogglePinSession(e, session.id)}
                         onSelect={() => {
+                          safeCloseAllModals();
                           onCloseMobile();
                           onSelectSession(session.id);
                         }}
@@ -894,6 +913,7 @@ export default function WorkstationSidebar({
                             onStartRename={(e) => handleStartRename(e, session)}
                             onTogglePin={(e) => handleTogglePinSession(e, session.id)}
                             onSelect={() => {
+                              safeCloseAllModals();
                               onCloseMobile();
                               onSelectSession(session.id);
                             }}
@@ -949,6 +969,7 @@ export default function WorkstationSidebar({
                             onStartRename={(e) => handleStartRename(e, session)}
                             onTogglePin={(e) => handleTogglePinSession(e, session.id)}
                             onSelect={() => {
+                              safeCloseAllModals();
                               onCloseMobile();
                               onSelectSession(session.id);
                             }}
@@ -1004,6 +1025,7 @@ export default function WorkstationSidebar({
                             onStartRename={(e) => handleStartRename(e, session)}
                             onTogglePin={(e) => handleTogglePinSession(e, session.id)}
                             onSelect={() => {
+                              safeCloseAllModals();
                               onCloseMobile();
                               onSelectSession(session.id);
                             }}
@@ -1059,6 +1081,7 @@ export default function WorkstationSidebar({
                             onStartRename={(e) => handleStartRename(e, session)}
                             onTogglePin={(e) => handleTogglePinSession(e, session.id)}
                             onSelect={() => {
+                              safeCloseAllModals();
                               onCloseMobile();
                               onSelectSession(session.id);
                             }}
@@ -1144,6 +1167,7 @@ export default function WorkstationSidebar({
                   <button
                     type="button"
                     onClick={() => {
+                      safeCloseAllModals();
                       onCloseMobile();
                       if (onOpenSuperAdmin) onOpenSuperAdmin();
                       else window.dispatchEvent(new CustomEvent("navigate_view", { detail: { view: "super-admin" } }));
@@ -1157,6 +1181,7 @@ export default function WorkstationSidebar({
                 <button
                   type="button"
                   onClick={() => {
+                    safeCloseAllModals();
                     onCloseMobile();
                     onOpenSettings();
                   }}
@@ -1168,6 +1193,7 @@ export default function WorkstationSidebar({
                 <button
                   type="button"
                   onClick={() => {
+                    safeCloseAllModals();
                     onCloseMobile();
                     onLogout();
                   }}

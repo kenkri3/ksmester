@@ -21,7 +21,8 @@ import {
   Check, 
   Minus,
   Sparkles,
-  ShieldCheck
+  ShieldCheck,
+  ArrowLeft
 } from 'lucide-react';
 import { useTranslation } from 'react-i18next';
 import { cn } from '@/src/lib/utils';
@@ -38,6 +39,10 @@ interface ChecklistModalProps {
   onClose: () => void;
   projectId?: string;
   initialTrade?: Trade;
+  projects?: Project[];
+  selectedProject?: Project | null;
+  onSelectProject?: (project: Project | null) => void;
+  inline?: boolean;
 }
 
 const TRADE_ICONS: Record<Trade, any> = {
@@ -49,8 +54,18 @@ const TRADE_ICONS: Record<Trade, any> = {
   general: Layout
 };
 
-export default function ChecklistModal({ isOpen, onClose, projectId, initialTrade }: ChecklistModalProps) {
+export default function ChecklistModal({ 
+  isOpen, 
+  onClose, 
+  projectId, 
+  initialTrade,
+  projects = [],
+  selectedProject,
+  onSelectProject,
+  inline = false
+}: ChecklistModalProps) {
   const { t } = useTranslation();
+  const effectiveProjectId = projectId || selectedProject?.id || (projects.length > 0 ? projects[0].id : undefined);
   const [selectedTrade, setSelectedTrade] = useState<Trade | null>(initialTrade || null);
   const [projectChecklists, setProjectChecklists] = useState<ProjectChecklist[]>([]);
   const [activePhaseIndex, setActivePhaseIndex] = useState(0);
@@ -72,22 +87,22 @@ export default function ChecklistModal({ isOpen, onClose, projectId, initialTrad
 
   // Hent eller generer automatisk sjekklister for prosjektet
   useEffect(() => {
-    if (!isOpen || !projectId) return;
+    if (!isOpen || !effectiveProjectId) return;
 
     async function loadOrGenerateChecklists() {
       setLoading(true);
       try {
         const allChecklists = await api.getCollection('project_checklists');
-        const existing = allChecklists.filter((c: any) => c.projectId === projectId);
+        const existing = allChecklists.filter((c: any) => c.projectId === effectiveProjectId);
 
         if (existing.length > 0) {
           setProjectChecklists(existing);
         } else {
           // Hent prosjektinfo for kontekstuell generering
           const allProjects = await api.getCollection('projects');
-          const proj: Project | undefined = allProjects.find((p: any) => p.id === projectId);
+          const proj: Project | undefined = allProjects.find((p: any) => p.id === effectiveProjectId);
 
-          const generated = await checklistGenerator.generateChecklistsForScope(projectId, {
+          const generated = await checklistGenerator.generateChecklistsForScope(effectiveProjectId, {
             trade: proj?.tags?.[0] || selectedTrade || 'general',
             title: proj?.name || 'Byggeprosjekt',
             description: proj?.description
@@ -107,7 +122,7 @@ export default function ChecklistModal({ isOpen, onClose, projectId, initialTrad
     }
 
     loadOrGenerateChecklists();
-  }, [isOpen, projectId, selectedTrade]);
+  }, [isOpen, effectiveProjectId, selectedTrade]);
 
   // Aktiv sjekkliste (enten fra dynamisk prosjekt eller fallback fra statisk liste)
   const currentChecklist = projectChecklists[activePhaseIndex];
@@ -257,44 +272,72 @@ export default function ChecklistModal({ isOpen, onClose, projectId, initialTrad
   const completedItems = currentChecklist?.items.filter(i => i.status === 'passed' || i.status === 'na').length || 0;
   const progress = totalItems > 0 ? (completedItems / totalItems) * 100 : 0;
 
-  return (
-    <AnimatePresence>
-      {isOpen && (
-        <motion.div key="checklist-backdrop" className="fixed inset-0 z-50 flex items-end sm:items-center justify-center p-0 sm:p-4 bg-black/80 backdrop-blur-md">
-          <motion.div
-          initial={{ opacity: 0, scale: 0.98, y: 20 }}
-          animate={{ opacity: 1, scale: 1, y: 0 }}
-          exit={{ opacity: 0, scale: 0.98, y: 20 }}
-          className="bg-[#0B0F17] text-white border border-slate-800 w-full max-w-3xl rounded-t-[2.5rem] sm:rounded-[2.5rem] shadow-2xl overflow-hidden flex flex-col max-h-[94vh] sm:max-h-[90vh] pb-[env(safe-area-inset-bottom,0px)]"
-        >
-          {/* Mobile Grab Handle */}
-          <div className="sm:hidden w-12 h-1.5 bg-slate-700 rounded-full mx-auto mt-3 mb-1" />
+  if (!isOpen) return null;
 
-          {/* Header */}
-          <div className="p-4 sm:p-6 border-b border-slate-800 flex justify-between items-center bg-[#131722] shrink-0">
-            <div className="flex items-center gap-3 sm:gap-4">
-              <div className="p-2.5 bg-emerald-500/10 border border-emerald-500/20 text-emerald-400 rounded-2xl">
-                <ShieldCheck size={24} />
-              </div>
-              <div>
-                <div className="flex items-center gap-2">
-                  <span className="text-[10px] font-black uppercase tracking-widest text-emerald-400 bg-emerald-500/10 px-2 py-0.5 rounded border border-emerald-500/30">
-                    Lovpålagt KS / TEK17
-                  </span>
-                  <span className="text-[10px] text-slate-400 font-bold">100% Redigerbar</span>
-                </div>
-                <h2 className="text-base sm:text-xl font-bold text-white truncate">
-                  {currentChecklist?.phaseTitle || currentChecklist?.title || 'Kvalitetssikring & Sjekkliste'}
-                </h2>
-              </div>
-            </div>
-            <button 
-              onClick={onClose} 
-              className="p-2 hover:bg-slate-800 rounded-full transition-colors text-slate-400 hover:text-white"
-            >
-              <X size={20} />
-            </button>
+  const content = (
+    <div className={cn(
+      "bg-[#0B0F17] text-white border border-slate-800 w-full overflow-hidden flex flex-col",
+      inline 
+        ? "rounded-3xl shadow-xl min-h-[720px]" 
+        : "max-w-3xl rounded-t-[2.5rem] sm:rounded-[2.5rem] shadow-2xl max-h-[94vh] sm:max-h-[90vh] pb-[env(safe-area-inset-bottom,0px)]"
+    )}>
+      {/* Mobile Grab Handle */}
+      {!inline && <div className="sm:hidden w-12 h-1.5 bg-slate-700 rounded-full mx-auto mt-3 mb-1" />}
+
+      {/* Header */}
+      <div className="p-4 sm:p-6 border-b border-slate-800 flex justify-between items-center bg-[#131722] shrink-0">
+        <div className="flex items-center gap-3 sm:gap-4 min-w-0">
+          <div className="p-2.5 bg-emerald-500/10 border border-emerald-500/20 text-emerald-400 rounded-2xl shrink-0">
+            <ShieldCheck size={24} />
           </div>
+          <div className="min-w-0">
+            <div className="flex items-center gap-2 flex-wrap">
+              <span className="text-[10px] font-black uppercase tracking-widest text-emerald-400 bg-emerald-500/10 px-2 py-0.5 rounded border border-emerald-500/30">
+                Lovpålagt KS / TEK17
+              </span>
+              <span className="text-[10px] text-slate-400 font-bold hidden sm:inline">100% Redigerbar</span>
+              {projects.length > 1 && (
+                <div className="flex items-center gap-1.5 ml-1">
+                  <span className="text-[10px] font-bold text-slate-400">Prosjekt:</span>
+                  <select
+                    value={effectiveProjectId || ''}
+                    onChange={(e) => {
+                      const found = projects.find(p => p.id === e.target.value);
+                      if (onSelectProject) onSelectProject(found || null);
+                    }}
+                    className="px-2 py-0.5 rounded-lg bg-slate-900 border border-slate-750 text-[11px] text-white focus:outline-none focus:border-emerald-500 font-semibold cursor-pointer max-w-[150px] truncate"
+                  >
+                    {projects.map(p => (
+                      <option key={p.id} value={p.id}>{p.name}</option>
+                    ))}
+                  </select>
+                </div>
+              )}
+            </div>
+            <h2 className="text-base sm:text-xl font-bold text-white truncate mt-0.5">
+              {currentChecklist?.phaseTitle || currentChecklist?.title || 'Kvalitetssikring & Sjekkliste'}
+            </h2>
+          </div>
+        </div>
+        {inline ? (
+          <button 
+            type="button"
+            onClick={onClose} 
+            className="flex items-center gap-1.5 px-3 py-1.5 rounded-xl bg-slate-800 hover:bg-slate-700 text-slate-300 hover:text-white text-xs font-bold transition-all cursor-pointer border border-slate-700 shrink-0 ml-2"
+            title="Gå tilbake til arbeidsstasjonen"
+          >
+            <ArrowLeft size={14} />
+            <span className="hidden sm:inline">Tilbake til chat</span>
+          </button>
+        ) : (
+          <button 
+            onClick={onClose} 
+            className="p-2 hover:bg-slate-800 rounded-full transition-colors text-slate-400 hover:text-white cursor-pointer ml-2"
+          >
+            <X size={20} />
+          </button>
+        )}
+      </div>
 
           {/* Fasevelger tabs (HMS, Mottak, Fagkontroll, Sluttkontroll) */}
           {projectChecklists.length > 0 && (
@@ -541,18 +584,47 @@ export default function ChecklistModal({ isOpen, onClose, projectId, initialTrad
               </button>
             )}
           </div>
-        </motion.div>
-      </motion.div>
-    )}
+        </div>
+  );
 
-    <AIVisionModal 
-      isOpen={isAiVisionOpen}
-      onClose={() => setIsAiVisionOpen(false)}
-      projectId={projectId}
-      checklistItemId={activeChecklistItem?.id}
-      checklistItemName={activeChecklistItem?.name}
-    />
-  </AnimatePresence>
+  if (inline) {
+    return (
+      <>
+        {content}
+        <AIVisionModal 
+          isOpen={isAiVisionOpen}
+          onClose={() => setIsAiVisionOpen(false)}
+          projectId={effectiveProjectId}
+          checklistItemId={activeChecklistItem?.id}
+          checklistItemName={activeChecklistItem?.name}
+        />
+      </>
+    );
+  }
+
+  return (
+    <AnimatePresence>
+      {isOpen && (
+        <div className="fixed inset-0 z-50 flex items-end sm:items-center justify-center md:pl-[290px] lg:pl-[320px] p-0 sm:p-4 bg-black/60 backdrop-blur-xs">
+          <motion.div
+            initial={{ opacity: 0, scale: 0.98, y: 20 }}
+            animate={{ opacity: 1, scale: 1, y: 0 }}
+            exit={{ opacity: 0, scale: 0.98, y: 20 }}
+            className="w-full max-w-3xl"
+          >
+            {content}
+          </motion.div>
+        </div>
+      )}
+
+      <AIVisionModal 
+        isOpen={isAiVisionOpen}
+        onClose={() => setIsAiVisionOpen(false)}
+        projectId={effectiveProjectId}
+        checklistItemId={activeChecklistItem?.id}
+        checklistItemName={activeChecklistItem?.name}
+      />
+    </AnimatePresence>
   );
 }
 

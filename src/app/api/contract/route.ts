@@ -9,6 +9,7 @@ import { sendContractByEmail, sendProjectStartedEmail } from '@/src/lib/server/e
 import { checklistGenerator } from '@/src/services/checklistGenerator';
 import { getOrGenerateProjectDocumentation } from '@/src/lib/server/projectDocumentationEngine';
 import { getClientIp } from '@/src/lib/server/rateLimit';
+import { getPublicAppUrl } from '@/src/lib/server/urlHelper';
 
 export const dynamic = 'force-dynamic';
 
@@ -92,11 +93,31 @@ export async function POST(req: NextRequest) {
       token, 
       signatureData, 
       signerName, 
-      baseUrl = 'https://vikingmester.no' 
+      baseUrl: rawBaseUrl 
     } = body;
 
+    const baseUrl = getPublicAppUrl(req) || rawBaseUrl || 'https://vikingmester.no';
     const clientIp = getClientIp(req) || '127.0.0.1';
     const now = new Date().toISOString();
+
+    // 0. SYNKRONISER TILBUD (for lokal minne/persistens og sky-deling)
+    if (action === 'sync_offer') {
+      const offerData = body.offer;
+      if (!offerData || (!offerData.token && !offerData.id)) {
+        return NextResponse.json({ error: 'Mangler offer data eller token' }, { status: 400 });
+      }
+      const allOffers = await getCollectionItems('offers').catch(() => []);
+      const existing = allOffers.find((o: any) => 
+        (offerData.token && o.token === offerData.token) || 
+        (offerData.id && o.id === offerData.id)
+      );
+      if (existing) {
+        await updateCollectionItem('offers', existing.id, offerData);
+      } else {
+        await saveCollectionItem('offers', offerData);
+      }
+      return NextResponse.json({ success: true, offer: offerData });
+    }
 
     // 1. KUNDE GODKJENNER TILBUD ➔ AUTOGENERER & SEND KONTRAKT
     if (action === 'approve_offer_and_create_contract') {

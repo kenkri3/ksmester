@@ -26,6 +26,21 @@ export interface SendEmailParams {
 }
 
 /**
+ * 🛡️ Saniterer kundevendte nettadresser slik at ingen e-post noen gang sendes
+ * med 'localhost' eller '127.0.0.1'. Faller tilbake til https://vikingmester.no.
+ */
+export function sanitizePublicUrl(url?: string): string {
+  if (!url || typeof url !== 'string' || url.includes('localhost') || url.includes('127.0.0.1')) {
+    const envUrl = process.env.APP_URL || process.env.NEXT_PUBLIC_APP_URL;
+    if (envUrl && !envUrl.includes('localhost') && !envUrl.includes('127.0.0.1')) {
+      return envUrl.replace(/\/+$/, '');
+    }
+    return 'https://vikingmester.no';
+  }
+  return url.replace(/\/+$/, '');
+}
+
+/**
  * 🧼 Renser markdown og fjerner alle raw hashtags (#, ##, ###),
  * fjerner interne chat-innledninger ("Ken, jeg klargjør...", "Her er utkastet..."),
  * og konverterer til ren, profesjonell HTML og pen rentekst uten tekniske symboler.
@@ -801,8 +816,9 @@ export async function sendOfferByEmail(params: {
   customMessage?: string;
   baseUrl?: string;
 }): Promise<SendEmailResult> {
-  const { offer, clientEmail, clientName, companyName = 'Mester Entreprenør AS', companyId, authorName = 'Byggmester', replyTo, senderEmail, customMessage, baseUrl = 'https://vikingmester.no' } = params;
+  const { offer, clientEmail, clientName, companyName = 'Mester Entreprenør AS', companyId, authorName = 'Byggmester', replyTo, senderEmail, customMessage, baseUrl: rawBaseUrl } = params;
 
+  const baseUrl = sanitizePublicUrl(rawBaseUrl);
   const token = offer.token || offer.id;
   const approvalLink = `${baseUrl}/?offerToken=${token}`;
 
@@ -958,8 +974,9 @@ export async function sendChangeOrderByEmail(params: {
   senderEmail?: string;
   baseUrl?: string;
 }): Promise<SendEmailResult> {
-  const { changeOrder, clientEmail, clientName, companyName = 'Mester Entreprenør AS', companyId, authorName = 'Byggmester', replyTo, senderEmail, baseUrl = 'https://vikingmester.no' } = params;
+  const { changeOrder, clientEmail, clientName, companyName = 'Mester Entreprenør AS', companyId, authorName = 'Byggmester', replyTo, senderEmail, baseUrl: rawBaseUrl } = params;
 
+  const baseUrl = sanitizePublicUrl(rawBaseUrl);
   const token = changeOrder.token || changeOrder.id;
   const shareUrl = `${baseUrl}/?changeOrderToken=${token}`;
 
@@ -1074,9 +1091,10 @@ export async function sendContractByEmail(params: {
     authorName = 'Ansvarlig Byggmester',
     replyTo,
     senderEmail,
-    baseUrl = 'https://vikingmester.no'
+    baseUrl: rawBaseUrl
   } = params;
 
+  const baseUrl = sanitizePublicUrl(rawBaseUrl);
   const token = contract.token || contract.id;
   const signUrl = `${baseUrl}/?contractToken=${token}`;
   const cName = clientName || contract.clientName || 'Kjære kunde';
@@ -1483,9 +1501,10 @@ export async function sendOfferReminderEmail(params: {
     companyName = 'Mester Entreprenør AS',
     authorName = 'Byggmester',
     replyTo,
-    baseUrl = 'https://vikingmester.no'
+    baseUrl: rawBaseUrl
   } = params;
 
+  const baseUrl = sanitizePublicUrl(rawBaseUrl);
   const token = offer.token || offer.id;
   const approvalLink = `${baseUrl}/?offerToken=${token}`;
   const cName = clientName || offer.clientName || 'Kjære kunde';

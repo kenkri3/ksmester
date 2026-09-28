@@ -1,7 +1,7 @@
 import React, { useState, useEffect, useMemo } from 'react';
 import { motion, AnimatePresence } from 'motion/react';
-import { X, FileSignature, CheckCircle2, Clock, AlertCircle, Search, Filter, Download, ExternalLink, Plus, Send, Sparkles, ShieldAlert } from 'lucide-react';
-import { Contract } from '../types';
+import { X, FileSignature, CheckCircle2, Clock, AlertCircle, Search, Filter, Download, ExternalLink, Plus, Send, Sparkles, ShieldAlert, ArrowLeft, ShieldCheck } from 'lucide-react';
+import { Contract, Project } from '../types';
 import { db, auth, handleFirestoreError, OperationType, collection, addDoc, serverTimestamp, onSnapshot, query, orderBy, where } from '../services/firebase';
 import { contractAiService, ContractRisk } from '../services/contractAiService';
 import { masterAiService } from '../services/masterAiService';
@@ -12,9 +12,18 @@ import { cn } from '../lib/utils';
 interface ContractModalProps {
   isOpen: boolean;
   onClose: () => void;
+  projects?: Project[];
+  selectedProject?: Project | null;
+  inline?: boolean;
 }
 
-const ContractModal: React.FC<ContractModalProps> = ({ isOpen, onClose }) => {
+const ContractModal: React.FC<ContractModalProps> = ({ 
+  isOpen, 
+  onClose,
+  projects = [],
+  selectedProject,
+  inline = false
+}) => {
   const { user, company } = useAuth();
   const [searchTerm, setSearchTerm] = useState('');
   const [contracts, setContracts] = useState<Contract[]>([]);
@@ -155,34 +164,53 @@ const ContractModal: React.FC<ContractModalProps> = ({ isOpen, onClose }) => {
 
   if (!isOpen) return null;
 
-  return (
-    <div className="fixed inset-0 z-50 flex items-end sm:items-center justify-center p-0 sm:p-4 bg-black/80 backdrop-blur-md">
-      <motion.div 
-        initial={{ opacity: 0, scale: 0.98, y: 20 }}
-        animate={{ opacity: 1, scale: 1, y: 0 }}
-        className="bg-[#0B0F17] text-white border border-slate-800 w-full max-w-5xl rounded-t-[2.5rem] sm:rounded-[2.5rem] shadow-2xl overflow-hidden flex flex-col max-h-[92vh] sm:max-h-[90vh] pb-[env(safe-area-inset-bottom,0px)]"
-      >
-        {/* Mobile Grab Handle */}
-        <div className="sm:hidden w-12 h-1.5 bg-slate-700 rounded-full mx-auto mt-3 mb-1" />
+  const content = (
+    <div className={cn(
+      "bg-[#0B0F17] text-white border border-slate-800 w-full overflow-hidden flex flex-col",
+      inline 
+        ? "rounded-3xl shadow-xl min-h-[720px]" 
+        : "max-w-5xl rounded-t-[2.5rem] sm:rounded-[2.5rem] shadow-2xl max-h-[92vh] sm:max-h-[90vh] pb-[env(safe-area-inset-bottom,0px)]"
+    )}>
+      {/* Mobile Grab Handle */}
+      {!inline && <div className="sm:hidden w-12 h-1.5 bg-slate-700 rounded-full mx-auto mt-3 mb-1 shrink-0" />}
 
-        {/* Header */}
-        <div className="p-4 sm:p-6 border-b border-slate-800 flex items-center justify-between bg-[#131722]">
-          <div className="flex items-center gap-4">
-            <div className="w-12 h-12 rounded-2xl bg-indigo-600/20 border border-indigo-500/30 flex items-center justify-center text-indigo-400 shadow-lg">
-              <FileSignature size={24} />
-            </div>
-            <div>
-              <h2 className="text-xl sm:text-2xl font-bold tracking-tight text-white">Kontraktshåndtering</h2>
-              <p className="text-slate-400 text-xs sm:text-sm font-medium">Administrer og følg opp dine kontrakter</p>
-            </div>
+      {/* Header */}
+      <div className="p-4 sm:p-6 border-b border-slate-800 flex items-center justify-between bg-[#131722] shrink-0">
+        <div className="flex items-center gap-3 sm:gap-4 min-w-0">
+          <div className="w-10 h-10 sm:w-12 sm:h-12 rounded-xl sm:rounded-2xl bg-indigo-600/20 border border-indigo-500/30 flex items-center justify-center text-indigo-400 shadow-lg shrink-0">
+            <FileSignature size={22} className="sm:w-6 sm:h-6" />
           </div>
-          <button onClick={onClose} className="p-2 text-slate-400 hover:text-white hover:bg-slate-800 rounded-xl transition-colors">
-            <X size={24} />
-          </button>
+          <div className="min-w-0">
+            <div className="flex items-center gap-2">
+              <h2 className="text-lg sm:text-2xl font-bold tracking-tight text-white truncate">Kontraktshåndtering</h2>
+              <span className="hidden sm:inline-flex items-center gap-1 px-2 py-0.5 rounded-full text-[10px] font-black uppercase tracking-wider bg-indigo-500/20 text-indigo-300 border border-indigo-500/30">
+                <ShieldCheck size={11} /> NS 8405 / NS 8406
+              </span>
+            </div>
+            <p className="text-slate-400 text-xs sm:text-sm font-medium truncate">
+              Administrer, signer og analyser kontrakter mot tilbud med MesterAI
+            </p>
+          </div>
         </div>
+        {inline ? (
+          <button 
+            type="button"
+            onClick={onClose} 
+            className="flex items-center gap-1.5 px-3 py-1.5 rounded-xl bg-slate-800 hover:bg-slate-700 text-slate-300 hover:text-white text-xs font-bold transition-all cursor-pointer border border-slate-700 shrink-0"
+            title="Gå tilbake til arbeidsstasjonen"
+          >
+            <ArrowLeft size={14} />
+            <span className="hidden sm:inline">Tilbake til chat</span>
+          </button>
+        ) : (
+          <button onClick={onClose} aria-label="Lukk" className="p-2 text-slate-400 hover:text-white hover:bg-slate-800 rounded-xl transition-colors shrink-0 cursor-pointer">
+            <X size={20} className="sm:w-6 sm:h-6" />
+          </button>
+        )}
+      </div>
 
-        {/* Content */}
-        <div className="flex-1 overflow-y-auto p-4 sm:p-8 bg-[#0B0F17]">
+      {/* Content */}
+      <div className="flex-1 overflow-y-auto p-4 sm:p-8 custom-scrollbar bg-[#0B0F17]">
           <div className="flex flex-col md:flex-row items-center justify-between gap-4 mb-6 sm:mb-8">
             <div className="relative w-full md:w-96">
               <Search className="absolute left-4 top-1/2 -translate-y-1/2 text-slate-500" size={18} />
@@ -508,6 +536,21 @@ const ContractModal: React.FC<ContractModalProps> = ({ isOpen, onClose }) => {
             </div>
           )}
         </AnimatePresence>
+      </div>
+  );
+
+  if (inline) {
+    return content;
+  }
+
+  return (
+    <div className="fixed inset-0 z-50 flex items-end sm:items-center justify-center md:pl-[290px] lg:pl-[320px] p-0 sm:p-4 bg-black/60 backdrop-blur-xs">
+      <motion.div 
+        initial={{ opacity: 0, scale: 0.98, y: 20 }}
+        animate={{ opacity: 1, scale: 1, y: 0 }}
+        className="w-full max-w-5xl"
+      >
+        {content}
       </motion.div>
     </div>
   );

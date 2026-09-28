@@ -1316,7 +1316,7 @@ ${precedingSnippet}Hovedmelding som skal avklares:
                       )}
 
                       {/* Tekstinnhold med ekte Markdown-parsing slik at **fet skrift**, lister og overskrifter ikke vises som rå stjerner/firkanter */}
-                      {isAi ? (
+                      {(isAi || msg.isAiAssisted) ? (
                         <div className="prose prose-invert prose-sm max-w-none text-slate-100 leading-relaxed font-sans">
                           <ReactMarkdown
                             remarkPlugins={[remarkGfm]}
@@ -1329,6 +1329,9 @@ ${precedingSnippet}Hovedmelding som skal avklares:
                               ),
                               h3: ({ node, ...props }) => (
                                 <h5 className="text-xs font-bold text-teal-300 mt-2 mb-1 uppercase tracking-wider" {...props} />
+                              ),
+                              h4: ({ node, ...props }) => (
+                                <h6 className="text-xs font-bold text-purple-200 mt-2 mb-0.5" {...props} />
                               ),
                               p: ({ node, ...props }) => (
                                 <p className="text-xs sm:text-sm text-slate-200 leading-relaxed mb-2.5 last:mb-0" {...props} />
@@ -1368,20 +1371,41 @@ ${precedingSnippet}Hovedmelding som skal avklares:
                           <ReactMarkdown
                             remarkPlugins={[remarkGfm]}
                             components={{
-                              p: ({ node, ...props }) => <p className="mb-1 last:mb-0 leading-relaxed" {...props} />,
-                              strong: ({ node, ...props }) => <strong className="font-bold underline decoration-white/20" {...props} />,
-                              ul: ({ node, ...props }) => <ul className="my-1.5 space-y-1 pl-3 list-disc" {...props} />,
-                              li: ({ node, ...props }) => <li className="leading-relaxed" {...props} />,
+                              h1: ({ node, ...props }) => (
+                                <h3 className="text-sm font-black text-inherit mt-2.5 mb-1.5 border-b border-white/10 pb-0.5" {...props} />
+                              ),
+                              h2: ({ node, ...props }) => (
+                                <h4 className="text-xs sm:text-sm font-black text-inherit mt-2 mb-1" {...props} />
+                              ),
+                              h3: ({ node, ...props }) => (
+                                <h5 className="text-xs font-bold text-inherit mt-1.5 mb-1 uppercase tracking-wide" {...props} />
+                              ),
+                              h4: ({ node, ...props }) => (
+                                <h6 className="text-xs font-bold text-inherit mt-1.5 mb-0.5" {...props} />
+                              ),
+                              p: ({ node, ...props }) => <p className="mb-1.5 last:mb-0 leading-relaxed text-inherit font-medium" {...props} />,
+                              strong: ({ node, ...props }) => <strong className="font-extrabold text-inherit" {...props} />,
+                              ul: ({ node, ...props }) => <ul className="my-1.5 space-y-1 pl-4 list-disc text-inherit" {...props} />,
+                              ol: ({ node, ...props }) => <ol className="my-1.5 space-y-1 pl-5 list-decimal text-inherit" {...props} />,
+                              li: ({ node, ...props }) => <li className="leading-relaxed text-inherit" {...props} />,
+                              blockquote: ({ node, ...props }) => (
+                                <blockquote className="my-2 p-2 bg-black/25 border-l-2 border-white/40 rounded-r-xl text-xs text-inherit" {...props} />
+                              ),
+                              code: ({ node, inline, ...props }: any) => (
+                                inline ? (
+                                  <code className="px-1.5 py-0.5 rounded bg-black/30 text-inherit font-mono text-xs" {...props} />
+                                ) : (
+                                  <code className="block p-2 rounded-xl bg-black/40 text-inherit font-mono text-xs overflow-x-auto my-1.5" {...props} />
+                                )
+                              ),
                               a: ({ node, href, children, ...props }: any) => (
-                                <a href={href} target="_blank" rel="noopener noreferrer" className="underline hover:text-white" {...props}>
+                                <a href={href} target="_blank" rel="noopener noreferrer" className="underline hover:opacity-80 text-inherit font-semibold" {...props}>
                                   {children}
                                 </a>
                               )
                             }}
                           >
-                            {(msg.content || '')
-                              .replace(/^[ \t]*[•●–—][ \t]*/gm, '- ')
-                              .replace(/\n[ \t]*[•●–—][ \t]*/g, '\n- ')}
+                            {formatAiMarkdown(msg.content)}
                           </ReactMarkdown>
                         </div>
                       )}

@@ -1,22 +1,32 @@
 import React, { useState, useEffect } from 'react';
 import { motion, AnimatePresence } from 'motion/react';
-import { X, CheckCircle2, FileText, Send, Sparkles, AlertTriangle, ClipboardCheck, Download, Mail, RefreshCw } from 'lucide-react';
+import { X, CheckCircle2, FileText, Send, Sparkles, AlertTriangle, ClipboardCheck, Download, Mail, RefreshCw, ArrowLeft, ShieldCheck } from 'lucide-react';
 import { Project, ProjectMaterial } from '../types';
 import { db, collection, query, where, getDocs, handleFirestoreError, OperationType, updateDoc, doc, serverTimestamp } from '../services/firebase';
 import { fdvService, FDVDocument } from '../services/fdvService';
 import { pdfService } from '../services/pdfService';
 import { projectService } from '../services/projectService';
 import { toast } from 'sonner';
+import { cn } from '@/src/lib/utils';
 
 interface HandoverModalProps {
   isOpen: boolean;
   onClose: () => void;
   projects: Project[];
   initialProjectId?: string;
+  selectedProject?: Project | null;
+  inline?: boolean;
 }
 
-const HandoverModal: React.FC<HandoverModalProps> = ({ isOpen, onClose, projects, initialProjectId }) => {
-  const [selectedProjectId, setSelectedProjectId] = useState(initialProjectId || '');
+const HandoverModal: React.FC<HandoverModalProps> = ({ 
+  isOpen, 
+  onClose, 
+  projects = [], 
+  initialProjectId,
+  selectedProject: currentSelectedProject,
+  inline = false
+}) => {
+  const [selectedProjectId, setSelectedProjectId] = useState(initialProjectId || currentSelectedProject?.id || '');
   const [step, setStep] = useState(1);
   const [isGenerating, setIsGenerating] = useState(false);
   const [isSuccess, setIsSuccess] = useState(false);
@@ -24,12 +34,16 @@ const HandoverModal: React.FC<HandoverModalProps> = ({ isOpen, onClose, projects
   const [materials, setMaterials] = useState<ProjectMaterial[]>([]);
 
   useEffect(() => {
-    if (initialProjectId) {
+    if (currentSelectedProject?.id) {
+      setSelectedProjectId(currentSelectedProject.id);
+    } else if (initialProjectId) {
       setSelectedProjectId(initialProjectId);
+    } else if (!selectedProjectId && projects.length > 0) {
+      setSelectedProjectId(projects[0].id);
     }
-  }, [initialProjectId]);
+  }, [currentSelectedProject?.id, initialProjectId, projects]);
 
-  const selectedProject = projects.find(p => p.id === selectedProjectId);
+  const selectedProject = projects.find(p => p.id === selectedProjectId) || currentSelectedProject;
 
   useEffect(() => {
     if (!selectedProjectId) return;
@@ -48,6 +62,7 @@ const HandoverModal: React.FC<HandoverModalProps> = ({ isOpen, onClose, projects
   }, [selectedProjectId]);
 
   const completionProjects = (projects || []).filter(p => Boolean(p) && (p.stage === 'completion' || (Number(p.progress) || 0) > 90));
+  const availableProjects = completionProjects.length > 0 ? completionProjects : projects;
 
   const checklist = [
     { id: 'c1', label: 'Sluttbefaring utført', status: 'completed' },
@@ -82,10 +97,11 @@ const HandoverModal: React.FC<HandoverModalProps> = ({ isOpen, onClose, projects
       toast.success("🎉 Prosjektet er overlevert! Komplett FDV-perm og sluttprotokoll er arkivert og klar for Boligmappa.");
       
       setTimeout(() => {
-        onClose();
         setIsSuccess(false);
         setStep(1);
-        setSelectedProjectId('');
+        if (!inline) {
+          onClose();
+        }
       }, 2500);
     } catch (error) {
       console.error("Error finalizing handover:", error);
@@ -124,215 +140,216 @@ const HandoverModal: React.FC<HandoverModalProps> = ({ isOpen, onClose, projects
 
   if (!isOpen) return null;
 
+  const content = (
+    <div className={cn(
+      "bg-[#0B0F17] text-white border border-slate-800 w-full overflow-hidden flex flex-col",
+      inline 
+        ? "rounded-3xl shadow-xl min-h-[700px]" 
+        : "max-w-4xl rounded-t-[2.5rem] sm:rounded-[2.5rem] shadow-2xl max-h-[92vh] sm:max-h-[90vh] pb-[env(safe-area-inset-bottom,0px)]"
+    )}>
+      {/* Mobile Grab Handle */}
+      {!inline && <div className="sm:hidden w-12 h-1.5 bg-slate-700 rounded-full mx-auto mt-3 mb-1 shrink-0" />}
+
+      {/* Header */}
+      <div className="p-4 sm:p-6 border-b border-slate-800 flex items-center justify-between bg-[#131722] shrink-0">
+        <div className="flex items-center gap-3 sm:gap-4 min-w-0">
+          <div className="w-10 h-10 sm:w-12 sm:h-12 rounded-xl sm:rounded-2xl bg-rose-600/20 border border-rose-500/30 flex items-center justify-center text-rose-400 shadow-lg shrink-0">
+            <CheckCircle2 size={22} className="sm:w-6 sm:h-6" />
+          </div>
+          <div className="min-w-0">
+            <div className="flex items-center gap-2">
+              <h2 className="text-lg sm:text-2xl font-bold tracking-tight text-white truncate">Overlevering & FDV</h2>
+              <span className="hidden sm:inline-flex items-center gap-1 px-2 py-0.5 rounded-full text-[10px] font-black uppercase tracking-wider bg-rose-500/20 text-rose-300 border border-rose-500/30">
+                <ShieldCheck size={11} /> NS 8406 / Bustadoppføringslova
+              </span>
+            </div>
+            <p className="text-slate-400 text-xs sm:text-sm font-medium truncate">
+              Ferdigstill prosjektet, lukk avvik og overlever komplett FDV til byggherre
+            </p>
+          </div>
+        </div>
+        {inline ? (
+          <button 
+            type="button"
+            onClick={onClose} 
+            className="flex items-center gap-1.5 px-3 py-1.5 rounded-xl bg-slate-800 hover:bg-slate-700 text-slate-300 hover:text-white text-xs font-bold transition-all cursor-pointer border border-slate-700 shrink-0"
+            title="Gå tilbake til arbeidsstasjonen"
+          >
+            <ArrowLeft size={14} />
+            <span className="hidden sm:inline">Tilbake til chat</span>
+          </button>
+        ) : (
+          <button onClick={onClose} aria-label="Lukk" title="Lukk" className="p-2 text-slate-400 hover:text-white hover:bg-slate-800 rounded-xl transition-colors shrink-0 cursor-pointer">
+            <X size={20} className="sm:w-6 sm:h-6" />
+          </button>
+        )}
+      </div>
+
+      {/* Content */}
+      <div className="flex-1 overflow-y-auto p-4 sm:p-8 custom-scrollbar bg-[#0B0F17]">
+        <AnimatePresence mode="wait">
+          {isSuccess ? (
+            <motion.div 
+              initial={{ opacity: 0, scale: 0.9 }}
+              animate={{ opacity: 1, scale: 1 }}
+              className="flex flex-col items-center justify-center py-12 text-center"
+            >
+              <div className="w-24 h-24 bg-emerald-950/40 text-emerald-400 border border-emerald-800/50 rounded-full flex items-center justify-center mb-6">
+                <CheckCircle2 size={56} />
+              </div>
+              <h3 className="text-2xl sm:text-3xl font-bold text-white mb-2">Prosjekt Fullført!</h3>
+              <p className="text-slate-400 max-w-sm text-sm">
+                FDV-pakken er sendt til kunden, og prosjektet er nå arkivert i systemet.
+              </p>
+            </motion.div>
+          ) : step === 1 ? (
+            <motion.div 
+              key="step1"
+              initial={{ opacity: 0, x: 20 }}
+              animate={{ opacity: 1, x: 0 }}
+              exit={{ opacity: 0, x: -20 }}
+              className="space-y-8"
+            >
+              <div className="space-y-2">
+                <label className="text-xs font-black uppercase tracking-widest text-slate-400 ml-1">Velg Prosjekt for overlevering</label>
+                <select 
+                  value={selectedProjectId}
+                  onChange={(e) => setSelectedProjectId(e.target.value)}
+                  className="w-full p-4 bg-slate-950 border border-slate-800 rounded-2xl focus:border-rose-500 outline-none font-bold text-white text-sm cursor-pointer"
+                >
+                  <option value="" className="bg-slate-900 text-white">Velg prosjekt...</option>
+                  {availableProjects.map(p => (
+                    <option key={p.id} value={p.id} className="bg-slate-900 text-white">{p.name || 'Prosjekt'} ({p.progress || 0}%)</option>
+                  ))}
+                </select>
+              </div>
+
+              {selectedProjectId && (
+                <div className="space-y-6">
+                  <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
+                    <div className="space-y-4">
+                      <h3 className="text-xs font-black uppercase tracking-widest text-slate-400">Sjekkliste for ferdigstillelse</h3>
+                      <div className="space-y-3">
+                        {checklist.map((item) => (
+                          <div key={item.id} className="flex items-center justify-between p-4 bg-[#131722] border border-slate-800 rounded-2xl">
+                            <span className="text-sm font-bold text-slate-200">{item.label}</span>
+                            <span className={cn(
+                              "text-xs font-black px-2.5 py-1 rounded-full uppercase tracking-wider",
+                              item.status === 'completed' ? "bg-emerald-950 text-emerald-400 border border-emerald-800" : "bg-amber-950 text-amber-400 border border-amber-800"
+                            )}>
+                              {item.status === 'completed' ? 'Klar' : 'Gjenstår'}
+                            </span>
+                          </div>
+                        ))}
+                      </div>
+                    </div>
+
+                    <div className="space-y-4">
+                      <h3 className="text-xs font-black uppercase tracking-widest text-slate-400">FDV Grunnlag & Produkter</h3>
+                      <div className="p-6 bg-slate-950/60 border border-slate-800 rounded-2xl space-y-4">
+                        <div className="flex items-center justify-between text-sm">
+                          <span className="text-slate-400">Registrerte materialer/produkter:</span>
+                          <span className="font-bold text-white">{materials.length} stk</span>
+                        </div>
+                        <div className="flex items-center justify-between text-sm">
+                          <span className="text-slate-400">Produktdatablader funnet:</span>
+                          <span className="font-bold text-emerald-400">{materials.filter(m => m.fdvUrl).length} stk</span>
+                        </div>
+                        <div className="pt-2 border-t border-slate-800">
+                          <button
+                            type="button"
+                            onClick={handleCloseAllDeviations}
+                            className="w-full py-2.5 px-3 bg-slate-900 hover:bg-slate-800 text-slate-300 rounded-xl text-xs font-bold transition-all border border-slate-750 flex items-center justify-center gap-1.5 cursor-pointer"
+                          >
+                            <ShieldCheck size={14} className="text-emerald-400" />
+                            <span>Lukk alle åpne avvik på prosjektet</span>
+                          </button>
+                        </div>
+                      </div>
+                    </div>
+                  </div>
+
+                  <div className="pt-4 border-t border-slate-800 flex justify-end">
+                    <button 
+                      onClick={handleGenerateFDV}
+                      disabled={isGenerating}
+                      className="w-full sm:w-auto px-8 py-4 bg-rose-600 text-white rounded-2xl font-bold hover:bg-rose-500 transition-all shadow-lg shadow-rose-900/30 flex items-center justify-center gap-2 cursor-pointer disabled:opacity-50"
+                    >
+                      {isGenerating ? <RefreshCw className="animate-spin" size={18} /> : <Sparkles size={18} />}
+                      <span>Generer FDV-Sluttpakke</span>
+                    </button>
+                  </div>
+                </div>
+              )}
+            </motion.div>
+          ) : (
+            <motion.div 
+              key="step2"
+              initial={{ opacity: 0, x: 20 }}
+              animate={{ opacity: 1, x: 0 }}
+              exit={{ opacity: 0, x: -20 }}
+              className="space-y-6"
+            >
+              <div className="flex items-center justify-between">
+                <div>
+                  <h3 className="text-lg font-bold text-white">Generert FDV-Dokumentasjon</h3>
+                  <p className="text-xs text-slate-400">Gjennomgå dokumentene før overlevering</p>
+                </div>
+                <button 
+                  onClick={handleDownloadFDVPDF}
+                  className="px-4 py-2 bg-slate-800 hover:bg-slate-700 text-slate-200 border border-slate-700 rounded-xl text-xs font-bold flex items-center gap-2 cursor-pointer"
+                >
+                  <Download size={14} /> Last ned PDF
+                </button>
+              </div>
+
+              <div className="space-y-2 max-h-80 overflow-y-auto custom-scrollbar">
+                {fdvDocs.map((docItem, idx) => (
+                  <div key={idx} className="flex items-center justify-between p-3.5 bg-slate-950 border border-slate-800 rounded-xl text-xs">
+                    <div className="flex items-center gap-2.5">
+                      <FileText size={16} className="text-rose-400 shrink-0" />
+                      <span className="font-bold text-white">{docItem.section}</span>
+                    </div>
+                    <span className="text-slate-400">{docItem.supplierCategory || 'FDV'}</span>
+                  </div>
+                ))}
+              </div>
+
+              <div className="pt-4 border-t border-slate-800 flex gap-3">
+                <button 
+                  onClick={() => setStep(1)}
+                  className="flex-1 py-3.5 bg-slate-800 hover:bg-slate-700 text-slate-300 rounded-xl text-xs font-bold transition-all cursor-pointer"
+                >
+                  Tilbake
+                </button>
+                <button 
+                  onClick={handleFinalize}
+                  disabled={isGenerating}
+                  className="flex-[2] py-3.5 bg-emerald-600 hover:bg-emerald-500 text-white rounded-xl text-xs font-bold transition-all shadow-md flex items-center justify-center gap-2 cursor-pointer disabled:opacity-50"
+                >
+                  <Mail size={16} />
+                  <span>Fullfør Overlevering & Send til Kunde</span>
+                </button>
+              </div>
+            </motion.div>
+          )}
+        </AnimatePresence>
+      </div>
+    </div>
+  );
+
+  if (inline) {
+    return content;
+  }
+
   return (
-    <div className="fixed inset-0 z-50 flex items-end sm:items-center justify-center p-0 sm:p-4 bg-black/80 backdrop-blur-md">
+    <div className="fixed inset-0 z-50 flex items-end sm:items-center justify-center md:pl-[290px] lg:pl-[320px] p-0 sm:p-4 bg-black/60 backdrop-blur-xs">
       <motion.div 
         initial={{ opacity: 0, scale: 0.98, y: 20 }}
         animate={{ opacity: 1, scale: 1, y: 0 }}
-        className="bg-[#0B0F17] text-white border border-slate-800 w-full max-w-4xl rounded-t-[2.5rem] sm:rounded-[2.5rem] shadow-2xl overflow-hidden flex flex-col max-h-[92vh] sm:max-h-[90vh] pb-[env(safe-area-inset-bottom,0px)]"
+        className="w-full max-w-4xl"
       >
-        {/* Mobile Grab Handle */}
-        <div className="sm:hidden w-12 h-1.5 bg-slate-700 rounded-full mx-auto mt-3 mb-1" />
-
-        {/* Header */}
-        <div className="p-4 sm:p-6 border-b border-slate-800 flex items-center justify-between bg-[#131722]">
-          <div className="flex items-center gap-4">
-            <div className="w-12 h-12 rounded-2xl bg-rose-600/20 border border-rose-500/30 flex items-center justify-center text-rose-400 shadow-lg">
-              <CheckCircle2 size={24} />
-            </div>
-            <div>
-              <h2 className="text-xl sm:text-2xl font-bold tracking-tight text-white">Overlevering & FDV</h2>
-              <p className="text-slate-400 text-xs sm:text-sm font-medium">Ferdigstill prosjektet og lever dokumentasjon til kunden</p>
-            </div>
-          </div>
-          <button onClick={onClose} aria-label="Lukk" title="Lukk" className="p-2 text-slate-400 hover:text-white hover:bg-slate-800 rounded-xl transition-colors">
-            <X size={24} />
-          </button>
-        </div>
-
-        {/* Content */}
-        <div className="flex-1 overflow-y-auto p-4 sm:p-8 bg-[#0B0F17]">
-          <AnimatePresence mode="wait">
-            {isSuccess ? (
-              <motion.div 
-                initial={{ opacity: 0, scale: 0.9 }}
-                animate={{ opacity: 1, scale: 1 }}
-                className="flex flex-col items-center justify-center py-12 text-center"
-              >
-                <div className="w-24 h-24 bg-emerald-950/40 text-emerald-400 border border-emerald-800/50 rounded-full flex items-center justify-center mb-6">
-                  <CheckCircle2 size={56} />
-                </div>
-                <h3 className="text-2xl sm:text-3xl font-bold text-white mb-2">Prosjekt Fullført!</h3>
-                <p className="text-slate-400 max-w-sm text-sm">
-                  FDV-pakken er sendt til kunden, og prosjektet er nå arkivert i systemet.
-                </p>
-              </motion.div>
-            ) : step === 1 ? (
-              <motion.div 
-                key="step1"
-                initial={{ opacity: 0, x: 20 }}
-                animate={{ opacity: 1, x: 0 }}
-                exit={{ opacity: 0, x: -20 }}
-                className="space-y-8"
-              >
-                <div className="space-y-2">
-                  <label className="text-xs font-black uppercase tracking-widest text-slate-400 ml-1">Velg Prosjekt for overlevering</label>
-                  <select 
-                    value={selectedProjectId}
-                    onChange={(e) => setSelectedProjectId(e.target.value)}
-                    className="w-full p-4 bg-slate-950 border border-slate-800 rounded-2xl focus:ring-2 focus:ring-rose-500 outline-none font-bold text-white text-sm"
-                  >
-                    <option value="" className="bg-slate-900 text-white">Velg prosjekt...</option>
-                    {completionProjects.map(p => (
-                      <option key={p.id} value={p.id} className="bg-slate-900 text-white">{p.name || 'Prosjekt'} ({p.progress || 0}%)</option>
-                    ))}
-                  </select>
-                </div>
-
-                {selectedProjectId && (
-                  <div className="space-y-6">
-                    <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
-                      <div className="space-y-4">
-                        <h3 className="text-xs font-black uppercase tracking-widest text-slate-400">Sjekkliste for ferdigstillelse</h3>
-                        <div className="space-y-3">
-                          {checklist.map((item) => (
-                            <div key={item.id} className="flex items-center justify-between p-4 bg-[#131722] border border-slate-800 rounded-2xl">
-                              <span className="text-sm font-bold text-slate-200">{item.label}</span>
-                              <div className={`w-6 h-6 rounded-full flex items-center justify-center border ${
-                                item.status === 'completed' ? 'bg-emerald-950/40 text-emerald-400 border-emerald-800/50' : 'bg-slate-800 text-slate-500 border-slate-700'
-                              }`}>
-                                <CheckCircle2 size={14} />
-                              </div>
-                            </div>
-                          ))}
-                        </div>
-                      </div>
-
-                      <div className="bg-rose-950/30 rounded-[2rem] p-6 border border-rose-800/40">
-                        <div className="flex items-center gap-3 mb-4">
-                          <div className="w-10 h-10 rounded-xl bg-rose-900/50 text-rose-400 flex items-center justify-center border border-rose-800/50">
-                            <AlertTriangle size={20} />
-                          </div>
-                          <h4 className="font-bold text-rose-200">Utestående punkter</h4>
-                        </div>
-                        <ul className="space-y-2">
-                          <li className="flex items-center gap-2 text-xs text-rose-300 font-medium">
-                            <div className="w-1.5 h-1.5 rounded-full bg-rose-400" />
-                            Mangler FDV for varmekabler på bad
-                          </li>
-                          <li className="flex items-center gap-2 text-xs text-rose-300 font-medium">
-                            <div className="w-1.5 h-1.5 rounded-full bg-rose-400" />
-                            Sluttfaktura er ikke generert i Tripletex
-                          </li>
-                        </ul>
-                        <button 
-                          type="button"
-                          onClick={handleCloseAllDeviations}
-                          className="w-full mt-6 py-3 bg-rose-600 hover:bg-rose-500 text-white rounded-xl text-xs font-bold transition-all cursor-pointer shadow-md"
-                        >
-                          Lukk alle avvik nå
-                        </button>
-                      </div>
-                    </div>
-
-                    <div className="bg-[#131722] border border-slate-800 rounded-3xl p-6 sm:p-8 text-white flex flex-col md:flex-row items-center justify-between gap-6">
-                      <div className="flex items-center gap-4">
-                        <div className="w-14 h-14 rounded-2xl bg-rose-500/10 border border-rose-500/20 text-rose-400 flex items-center justify-center shrink-0">
-                          <Sparkles size={28} />
-                        </div>
-                        <div>
-                          <h4 className="text-lg font-bold text-white">AI FDV-Generator</h4>
-                          <p className="text-slate-400 text-xs">Samle alle bilder, logger og FDV automatisk.</p>
-                        </div>
-                      </div>
-                      <button 
-                        onClick={handleGenerateFDV}
-                        disabled={isGenerating}
-                        className="w-full md:w-auto px-8 py-4 bg-rose-600 hover:bg-rose-500 text-white rounded-2xl font-bold transition-all shadow-lg shadow-rose-900/30 flex items-center justify-center gap-2 cursor-pointer disabled:opacity-50"
-                      >
-                        {isGenerating ? <RefreshCw className="animate-spin" size={18} /> : <FileText size={18} />}
-                        Generer FDV-pakke
-                      </button>
-                    </div>
-                  </div>
-                )}
-              </motion.div>
-            ) : (
-              <motion.div 
-                key="step2"
-                initial={{ opacity: 0, x: 20 }}
-                animate={{ opacity: 1, x: 0 }}
-                exit={{ opacity: 0, x: -20 }}
-                className="space-y-8"
-              >
-                <div className="bg-[#131722] border border-slate-800 rounded-[2.5rem] p-6 sm:p-8">
-                  <div className="flex items-center justify-between mb-6 sm:mb-8">
-                    <h3 className="text-xl font-bold text-white">Forhåndsvisning: FDV-Pakke</h3>
-                    <div className="flex items-center gap-2">
-                      <button 
-                        type="button"
-                        onClick={handleDownloadFDVPDF}
-                        title="Last ned FDV PDF"
-                        className="p-3 text-slate-400 hover:text-white hover:bg-slate-800 rounded-xl transition-all cursor-pointer"
-                      >
-                        <Download size={20} />
-                      </button>
-                    </div>
-                  </div>
-
-                  <div className="space-y-4 max-h-60 overflow-y-auto pr-2 custom-scrollbar">
-                    {fdvDocs.map((doc, i) => (
-                      <div key={i} className="p-4 bg-slate-950 rounded-2xl border border-slate-800 flex items-center justify-between">
-                        <div className="flex items-center gap-3">
-                          <FileText className={doc.source === 'nobb' ? "text-blue-400" : "text-emerald-400"} size={20} />
-                          <div className="flex flex-col">
-                            <span className="text-sm font-bold text-white">{doc.section}</span>
-                            <span className="text-[10px] text-slate-400">{doc.maintenanceInterval}</span>
-                          </div>
-                        </div>
-                        <div className="flex items-center gap-2">
-                          <span className="text-[10px] font-black text-slate-400 uppercase">{doc.source === 'nobb' ? 'NOBB' : 'AI'}</span>
-                          {doc.url && (
-                            <a href={doc.url} target="_blank" rel="noopener noreferrer" className="p-1 text-slate-400 hover:text-white hover:bg-slate-800 rounded">
-                              <Download size={14} />
-                            </a>
-                          )}
-                        </div>
-                      </div>
-                    ))}
-                  </div>
-
-                  <div className="mt-8 p-6 bg-emerald-950/20 rounded-2xl border border-emerald-800/40">
-                    <div className="flex items-center gap-2 text-emerald-400 font-bold text-sm mb-2">
-                      <CheckCircle2 size={18} />
-                      AI-Kontroll Fullført
-                    </div>
-                    <p className="text-xs text-emerald-300 leading-relaxed">
-                      Alle bilder fra AI Vision-kontroller er inkludert som dokumentasjon på utførelse bak vegger. 
-                      Dette gir kunden ekstra trygghet og reduserer reklamasjonsrisiko.
-                    </p>
-                  </div>
-                </div>
-
-                <div className="flex gap-4">
-                  <button 
-                    onClick={() => setStep(1)}
-                    className="flex-1 py-5 bg-slate-800 border border-slate-700 text-slate-200 rounded-3xl font-bold hover:bg-slate-700 transition-all cursor-pointer"
-                  >
-                    Tilbake
-                  </button>
-                  <button 
-                    onClick={handleFinalize}
-                    className="flex-[2] flex items-center justify-center gap-3 py-5 bg-rose-600 text-white rounded-3xl font-bold hover:bg-rose-500 transition-all shadow-xl shadow-rose-900/30 cursor-pointer"
-                  >
-                    <Mail size={20} />
-                    Send til Kunde & Arkiver
-                  </button>
-                </div>
-              </motion.div>
-            )}
-          </AnimatePresence>
-        </div>
+        {content}
       </motion.div>
     </div>
   );

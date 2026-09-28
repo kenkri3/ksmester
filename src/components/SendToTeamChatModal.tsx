@@ -11,12 +11,19 @@ import {
   AlertTriangle,
   User,
   CheckCircle2,
-  ChevronDown
+  ChevronDown,
+  Edit3,
+  Eye,
+  Eraser,
+  Wand2
 } from 'lucide-react';
 import { Project, TeamChatConsultContext } from '@/src/types';
 import { TeamChatMessage, ChatChannel } from '@/src/components/ProjectTeamChat';
 import { toast } from 'sonner';
 import { cn } from '@/src/lib/utils';
+import ReactMarkdown from 'react-markdown';
+import remarkGfm from 'remark-gfm';
+import { formatAiMarkdown, stripMarkdownFormatting } from '@/src/lib/formatAiMarkdown';
 
 interface SendToTeamChatModalProps {
   isOpen: boolean;
@@ -71,12 +78,14 @@ export default function SendToTeamChatModal({
   const [selectedChannelId, setSelectedChannelId] = useState<string>(defaultChannelId);
   const [messageText, setMessageText] = useState<string>(initialText || '');
   const [tagAsAiAssisted, setTagAsAiAssisted] = useState<boolean>(true);
+  const [activeTab, setActiveTab] = useState<'edit' | 'preview'>('edit');
   const [isSending, setIsSending] = useState<boolean>(false);
 
   // Synkroniser tekst og kanal hvis modalen gjenåpnes med ny tekst
   React.useEffect(() => {
     if (isOpen) {
       setMessageText(initialText || '');
+      setActiveTab('edit');
       if (consultContext?.channelId) {
         setSelectedChannelId(consultContext.channelId);
       }
@@ -217,29 +226,131 @@ export default function SendToTeamChatModal({
             </div>
           </div>
 
-          {/* Meldingstekst (redigerbar) */}
-          <div className="space-y-1.5">
-            <div className="flex items-center justify-between ml-0.5">
-              <label className="text-[11px] font-black uppercase tracking-wider text-slate-400">
-                Meldingstekst (redigerbar)
-              </label>
-              <span className="text-[10px] text-slate-500">
-                Du kan tilpasse teksten før du sender
-              </span>
+          {/* Meldingstekst med fane for redigering og forhåndsvisning samt rense-verktøy */}
+          <div className="space-y-2.5">
+            <div className="flex flex-wrap items-center justify-between gap-2 ml-0.5">
+              <div className="flex items-center gap-1.5 bg-slate-900/90 p-0.5 rounded-xl border border-slate-800">
+                <button
+                  type="button"
+                  onClick={() => setActiveTab('edit')}
+                  className={cn(
+                    "flex items-center gap-1.5 px-3 py-1.5 rounded-lg text-xs font-bold transition-all cursor-pointer",
+                    activeTab === 'edit'
+                      ? "bg-purple-600 text-white shadow-xs"
+                      : "text-slate-400 hover:text-white"
+                  )}
+                >
+                  <Edit3 size={12} />
+                  <span>Rediger</span>
+                </button>
+                <button
+                  type="button"
+                  onClick={() => setActiveTab('preview')}
+                  className={cn(
+                    "flex items-center gap-1.5 px-3 py-1.5 rounded-lg text-xs font-bold transition-all cursor-pointer",
+                    activeTab === 'preview'
+                      ? "bg-purple-600 text-white shadow-xs"
+                      : "text-slate-400 hover:text-white"
+                  )}
+                >
+                  <Eye size={12} />
+                  <span>Forhåndsvisning</span>
+                </button>
+              </div>
+
+              {/* Rense- og formateringsknapper */}
+              <div className="flex items-center gap-1.5">
+                <button
+                  type="button"
+                  onClick={() => {
+                    const cleaned = stripMarkdownFormatting(messageText);
+                    setMessageText(cleaned);
+                    toast.success('Renset bort rå stjerner og markdown-koder! ✨');
+                  }}
+                  className="inline-flex items-center gap-1 px-2.5 py-1.5 rounded-xl bg-slate-900 border border-slate-800 hover:border-amber-500/40 hover:bg-slate-800/80 text-amber-300 hover:text-amber-200 text-[11px] font-semibold transition-all cursor-pointer"
+                  title="Fjerner ** og rå tegn for 100% ren og lesevennlig tekst"
+                >
+                  <Eraser size={12} />
+                  <span>Fjern stjerner (**)</span>
+                </button>
+                <button
+                  type="button"
+                  onClick={() => {
+                    const formatted = formatAiMarkdown(messageText);
+                    setMessageText(formatted);
+                    toast.success('Optimaliserte linjeskift og punktlister!');
+                  }}
+                  className="inline-flex items-center gap-1 px-2.5 py-1.5 rounded-xl bg-slate-900 border border-slate-800 hover:border-purple-500/40 hover:bg-slate-800/80 text-purple-300 hover:text-purple-200 text-[11px] font-semibold transition-all cursor-pointer"
+                  title="Gjør om til luftig, pen struktur"
+                >
+                  <Wand2 size={12} />
+                  <span>Autorydd</span>
+                </button>
+              </div>
             </div>
-            <textarea
-              rows={7}
-              value={messageText}
-              onChange={(e) => setMessageText(e.target.value)}
-              placeholder="Skriv eller tilpass svaret som skal deles..."
-              className="w-full p-3.5 bg-slate-950 border border-slate-800 rounded-2xl text-white text-xs sm:text-sm leading-relaxed placeholder:text-slate-600 focus:ring-2 focus:ring-purple-500 outline-none transition-all resize-y custom-scrollbar font-sans"
-              onKeyDown={(e) => {
-                if ((e.ctrlKey || e.metaKey) && e.key === 'Enter') {
-                  e.preventDefault();
-                  handleSend();
-                }
-              }}
-            />
+
+            {activeTab === 'edit' ? (
+              <textarea
+                rows={7}
+                value={messageText}
+                onChange={(e) => setMessageText(e.target.value)}
+                placeholder="Skriv eller tilpass svaret som skal deles..."
+                className="w-full p-3.5 bg-slate-950 border border-slate-800 rounded-2xl text-white text-xs sm:text-sm leading-relaxed placeholder:text-slate-600 focus:ring-2 focus:ring-purple-500 outline-none transition-all resize-y custom-scrollbar font-sans"
+                onKeyDown={(e) => {
+                  if ((e.ctrlKey || e.metaKey) && e.key === 'Enter') {
+                    e.preventDefault();
+                    handleSend();
+                  }
+                }}
+              />
+            ) : (
+              <div className="w-full p-4 bg-[#131b2e] border border-purple-500/30 rounded-2xl text-slate-100 text-xs sm:text-sm leading-relaxed max-h-60 min-h-[140px] overflow-y-auto custom-scrollbar font-sans">
+                <ReactMarkdown
+                  remarkPlugins={[remarkGfm]}
+                  components={{
+                    h1: ({ node, ...props }) => (
+                      <h3 className="text-sm font-black text-white mt-2.5 mb-1.5 border-b border-purple-500/20 pb-0.5" {...props} />
+                    ),
+                    h2: ({ node, ...props }) => (
+                      <h4 className="text-xs sm:text-sm font-black text-purple-300 mt-2 mb-1" {...props} />
+                    ),
+                    h3: ({ node, ...props }) => (
+                      <h5 className="text-xs font-bold text-teal-300 mt-1.5 mb-1 uppercase tracking-wider" {...props} />
+                    ),
+                    h4: ({ node, ...props }) => (
+                      <h6 className="text-xs font-bold text-purple-200 mt-1.5 mb-0.5" {...props} />
+                    ),
+                    p: ({ node, ...props }) => (
+                      <p className="text-xs sm:text-sm text-slate-200 leading-relaxed mb-2 last:mb-0" {...props} />
+                    ),
+                    ul: ({ node, ...props }) => (
+                      <ul className="my-1.5 space-y-1 pl-4 list-disc text-slate-200 text-xs sm:text-sm" {...props} />
+                    ),
+                    ol: ({ node, ...props }) => (
+                      <ol className="my-1.5 space-y-1 pl-5 list-decimal text-slate-200 text-xs sm:text-sm" {...props} />
+                    ),
+                    li: ({ node, ...props }) => (
+                      <li className="leading-relaxed text-slate-200 text-xs sm:text-sm" {...props} />
+                    ),
+                    strong: ({ node, ...props }) => (
+                      <strong className="font-extrabold text-white" {...props} />
+                    ),
+                    blockquote: ({ node, ...props }) => (
+                      <blockquote className="my-2 p-2 bg-purple-950/40 border-l-3 border-purple-500 rounded-r-xl text-xs text-purple-200" {...props} />
+                    ),
+                    code: ({ node, inline, ...props }: any) => (
+                      inline ? (
+                        <code className="px-1.5 py-0.5 rounded bg-black/40 text-purple-300 font-mono text-xs" {...props} />
+                      ) : (
+                        <code className="block p-2 rounded-xl bg-black/50 text-slate-200 font-mono text-xs overflow-x-auto my-2" {...props} />
+                      )
+                    )
+                  }}
+                >
+                  {formatAiMarkdown(messageText)}
+                </ReactMarkdown>
+              </div>
+            )}
           </div>
 
           {/* Innstillinger & merking */}

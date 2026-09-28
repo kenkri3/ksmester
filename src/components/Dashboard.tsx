@@ -424,102 +424,6 @@ export default function Dashboard({
     }
   };
 
-  useEffect(() => {
-    fetchAgentState();
-
-    const handleAction = (e: any) => {
-      const actionId = e.detail?.actionId;
-      if (!actionId) return;
-      switch (actionId) {
-        case 'new_project':
-          setIsCreateModalOpen(true);
-          break;
-        case 'log_deviation':
-          setIsDeviationModalOpen(true);
-          break;
-        case 'start_checklist':
-        case 'checklist':
-        case 'checklists':
-          setIsChecklistModalOpen(true);
-          break;
-        case 'take_photo':
-        case 'ai_vision':
-          setIsAIVisionModalOpen(true);
-          break;
-        case 'offers':
-        case 'offer':
-          setIsOfferModalOpen(true);
-          break;
-        case 'time_registration':
-        case 'time':
-        case 'time_tracking':
-          setIsTimeModalOpen(true);
-          break;
-        case 'vehicle':
-        case 'bilpark':
-        case 'kjørebok':
-          setIsViewingProjectDetails(false);
-          window.dispatchEvent(new CustomEvent('navigate_view', { detail: { view: 'vehicle' } }));
-          break;
-        case 'inventory':
-          setIsInventoryModalOpen(true);
-          break;
-        case 'hms':
-        case 'hms_handbook':
-          setIsHMSModalOpen(true);
-          break;
-        case 'building_app':
-          setIsBuildingAppModalOpen(true);
-          break;
-        case 'change_order':
-        case 'change_orders':
-          setIsChangeOrderModalOpen(true);
-          break;
-        case 'contract':
-        case 'contracts':
-          setIsContractModalOpen(true);
-          break;
-        case 'handover':
-          setIsHandoverModalOpen(true);
-          break;
-        case 'sja':
-        case 'voice_sja':
-          setIsVoiceSJAOpen(true);
-          break;
-        case 'contacts':
-          setIsContactsModalOpen(true);
-          break;
-        case 'all_modules':
-        case 'modules':
-          setIsAllModulesOpen(true);
-          break;
-        case 'apprentice':
-        case 'laerling':
-          setIsApprenticeModalOpen(true);
-          break;
-        case 'archive':
-        case 'documentation':
-        case 'fdv':
-          setIsArchiveModalOpen(true);
-          break;
-        case 'pre_close':
-        case 'lukkesperre':
-          setActiveTab('kvalitet');
-          setSelectedLukkesperreZone(selectedLukkesperreZone || lukkesperreZones[0] || DEFAULT_LUKKESPERRE_ZONES[0]);
-          setIsPreCloseModalOpen(true);
-          break;
-        case 'omnichannel':
-          setIsOmnichannelModalOpen(true);
-          break;
-        default:
-          break;
-      }
-    };
-
-    window.addEventListener('trigger_dashboard_action', handleAction as EventListener);
-    return () => window.removeEventListener('trigger_dashboard_action', handleAction as EventListener);
-  }, [lukkesperreZones]);
-
   // 🧹 Lukk alle åpne dialoger/modaler når brukeren navigerer i arbeidsstasjonen eller sidemenyen
   const closeAllDashboardModals = useCallback(() => {
     setIsChecklistModalOpen(false);
@@ -543,6 +447,12 @@ export default function Dashboard({
     setIsPreCloseModalOpen(false);
     setIsOmnichannelModalOpen(false);
     setIsSmartSearchOpen(false);
+    setIsAllModulesOpen(false);
+    setIsCreateModalOpen(false);
+    setIsDeviationModalOpen(false);
+    setIsDeviationDetailOpen(false);
+    setIsSJAPreviewOpen(false);
+    setIsInviteModalOpen(false);
   }, []);
 
   useEffect(() => {
@@ -553,6 +463,30 @@ export default function Dashboard({
       window.removeEventListener('close_all_modals', handleCloseAll);
       window.removeEventListener('close_all_dashboard_modals', handleCloseAll);
     };
+  }, [closeAllDashboardModals]);
+
+  useEffect(() => {
+    fetchAgentState();
+
+    const handleAction = (e: any) => {
+      const actionId = e.detail?.actionId;
+      if (!actionId) return;
+
+      // 🧹 Lukk alle popup-modaler så brukeren aldri får popup-vinduer som blokkerer
+      closeAllDashboardModals();
+
+      // Videresend til MesterWorkstation for direkte inline visning
+      window.dispatchEvent(new CustomEvent('open_workstation_module', {
+        detail: {
+          actionId,
+          projectId: e.detail?.projectId || e.detail?.id,
+          data: e.detail?.data
+        }
+      }));
+    };
+
+    window.addEventListener('trigger_dashboard_action', handleAction as EventListener);
+    return () => window.removeEventListener('trigger_dashboard_action', handleAction as EventListener);
   }, [closeAllDashboardModals]);
 
   // Global ⌘K / Ctrl+K keyboard shortcut for SmartSearch
@@ -639,148 +573,66 @@ export default function Dashboard({
       case 'start_checklist':
       case 'checklist':
       case 'checklists':
-        if (id) setChecklistProjectId(id);
-        else if (projects.length > 0) setChecklistProjectId(projects[0].id);
-        if (extra?.trade) setChecklistTrade(extra.trade);
-        else setChecklistTrade(undefined);
-        setIsChecklistModalOpen(true);
-        break;
-
       case 'daily_log':
       case 'byggedagbok':
-        if (id) {
-          const found = projects.find(p => p.id === id);
-          if (found) setSelectedProject(found);
-        }
-        setIsDailyLogModalOpen(true);
-        break;
-
       case 'activity_log':
       case 'aktivitetslogg':
-        setIsActivityLogModalOpen(true);
-        break;
-
       case 'time_registration':
       case 'time':
       case 'timer':
       case 'time_tracking':
-        setIsTimeModalOpen(true);
-        break;
-
       case 'change_order':
-      case 'endringsordre':
-        setIsChangeOrderModalOpen(true);
-        break;
-
       case 'change_orders':
+      case 'endringsordre':
       case 'endringsordrer':
-        setSelectedProject(null);
-        setActiveTab('endringsordrer');
-        onTabChange?.('finans');
-        window.dispatchEvent(new CustomEvent('switch_mester_tab', { detail: { tab: 'admin' } }));
-        break;
-
       case 'offer':
       case 'offers':
       case 'tilbud':
-        setIsOfferModalOpen(true);
-        break;
-
       case 'contract':
       case 'contracts':
       case 'kontrakt':
       case 'kontrakter':
-        setIsContractModalOpen(true);
-        break;
-
       case 'hms':
       case 'hms_handbook':
-        setIsHMSModalOpen(true);
-        break;
-
       case 'voice_sja':
-        setIsVoiceSJAOpen(true);
-        break;
-
-      case 'contacts':
-      case 'telefonliste':
-        setIsContactsModalOpen(true);
-        break;
-
-      case 'weather':
-      case 'yr':
-        setSelectedProject(null);
-        setActiveTab('prosjekter');
-        onTabChange?.('prosjekter');
-        window.dispatchEvent(new CustomEvent('switch_mester_tab', { detail: { tab: 'projects' } }));
-        toast.info('Viser værdata fra Yr.no på prosjektene');
-        break;
-
-      case 'translator':
-      case 'oversetter':
-        window.dispatchEvent(new CustomEvent("navigate_view", { detail: { view: "mobile" } }));
-        break;
-
-      case 'apprentice':
-      case 'laerling':
-        setIsApprenticeModalOpen(true);
-        break;
-
-      case 'super_admin':
-      case 'superadmin':
-        window.dispatchEvent(new CustomEvent("navigate_view", { detail: { view: "super-admin" } }));
-        break;
-
       case 'sja':
       case 'safe_job_analysis':
-        handleOpenSJAForTrade(extra?.trade || 'Tømrer');
-        break;
-
+      case 'contacts':
+      case 'telefonliste':
+      case 'weather':
+      case 'yr':
+      case 'apprentice':
+      case 'laerling':
       case 'tek17_vision':
       case 'ai_vision':
       case 'camera':
-        setIsAIVisionModalOpen(true);
-        break;
-
       case 'pre_close':
       case 'lukkesperre':
-        setSelectedProject(null);
-        setSelectedLukkesperreZone(selectedLukkesperreZone || lukkesperreZones[0] || DEFAULT_LUKKESPERRE_ZONES[0]);
-        setIsPreCloseModalOpen(true);
-        break;
-
       case 'handover':
       case 'overlevering':
-        if (id) setHandoverProjectId(id);
-        setIsHandoverModalOpen(true);
-        break;
-
       case 'archive':
       case 'dokumentarkiv':
       case 'documentation':
       case 'fdv':
+      case 'inventory':
+      case 'lager':
+      case 'vehicle':
+      case 'bilpark':
+      case 'kjørebok':
+      case 'building_app':
+      case 'byggesoknad':
+        closeAllDashboardModals();
         if (id) {
           const found = projects.find(p => p.id === id);
           if (found) setSelectedProject(found);
         }
-        setIsArchiveModalOpen(true);
-        break;
-
-      case 'inventory':
-      case 'lager':
-        setIsInventoryModalOpen(true);
-        break;
-
-      case 'vehicle':
-      case 'bilpark':
-      case 'kjørebok':
-        setIsViewingProjectDetails(false);
-        window.dispatchEvent(new CustomEvent('navigate_view', { detail: { view: 'vehicle' } }));
-        break;
-
-      case 'building_app':
-      case 'byggesoknad':
-        setIsBuildingAppModalOpen(true);
+        window.dispatchEvent(new CustomEvent('open_workstation_module', {
+          detail: {
+            actionId: actionType,
+            projectId: id,
+            extra
+          }
+        }));
         break;
 
       case 'integrations':
@@ -1410,30 +1262,16 @@ export default function Dashboard({
             onPromptHandled={() => setChatInitialPrompt(undefined)}
             onOpenCreateProject={() => {}}
             onOpenSmartSearch={() => setIsSmartSearchOpen(true)}
-            onOpenAllModules={() => setIsAllModulesOpen(true)}
+            onOpenAllModules={() => {
+              closeAllDashboardModals();
+              window.dispatchEvent(new CustomEvent('open_workstation_module', { detail: { actionId: 'all_modules' } }));
+            }}
             onApproveChangeOrder={handleApproveChangeOrder}
             onRejectChangeOrder={handleRejectChangeOrder}
             onDeleteChangeOrder={handleDeleteDashboardOrder}
             onDeleteOffer={handleDeleteDashboardOffer}
             onOpenPreClose={handleOpenPreClose}
             onOpenOmnichannelModal={() => setIsOmnichannelModalOpen(true)}
-            onOpenOfferModal={(data) => {
-              setOfferInitialData(data);
-              setIsOfferModalOpen(true);
-            }}
-            onOpenChangeOrderModal={(_data) => {
-              setIsChangeOrderModalOpen(true);
-            }}
-            onOpenSJAModal={(_data) => {
-              setIsVoiceSJAOpen(true);
-            }}
-            onOpenAIVision={() => {
-              setIsAIVisionModalOpen(true);
-            }}
-            onOpenDailyLogModal={() => setIsDailyLogModalOpen(true)}
-            onOpenTimeModal={() => setIsTimeModalOpen(true)}
-            onOpenArchiveModal={() => setIsArchiveModalOpen(true)}
-            onOpenContactsModal={() => setIsContactsModalOpen(true)}
             onOpenSettings={() => {}}
             onOpenSuperAdmin={onOpenSuperAdmin}
           />

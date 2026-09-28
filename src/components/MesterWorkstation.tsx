@@ -74,7 +74,7 @@ import { cn } from '@/src/lib/utils';
 import { toast } from 'sonner';
 import { useTranslation } from 'react-i18next';
 import { useAuth } from '../hooks/useAuth';
-import { Project, Deviation, TeamChatConsultContext } from '../types';
+import { Project, Deviation, TeamChatConsultContext, Trade } from '../types';
 import { chatSessionService, ChatSession, ChatMessageItem } from '../services/chatSessionService';
 import WorkstationSidebar from './WorkstationSidebar';
 import { NotificationBell } from './NotificationBell';
@@ -88,6 +88,13 @@ import OfferModal from './OfferModal';
 import OfferDetailModal from './OfferDetailModal';
 import ApprenticeModal from './ApprenticeModal';
 import HMSModule from './HMSModule';
+import BuildingApplicationModal from './BuildingApplicationModal';
+import ChecklistModal from './ChecklistModal';
+import AIVisionModal from './AIVisionModal';
+import ContractModal from './ContractModal';
+import HandoverModal from './HandoverModal';
+import InventoryModal from './InventoryModal';
+import TimeRegistrationModal from './TimeRegistrationModal';
 import { formatAiMarkdown } from '../lib/formatAiMarkdown';
 import WeatherWidget from './WeatherWidget';
 import MesterAICopilot from './MesterAICopilot';
@@ -295,6 +302,90 @@ export const MODULE_GUIDE_DATA: Record<string, ModuleGuideItem> = {
       { num: '3', title: 'Inviter SuperAdmin / Kunder', text: 'Opprett nye bedrifter eller medadministratorer med automatisk e-post og selvvalgt passord.' }
     ],
     aiActionPrompt: 'Hvordan fungerer SuperAdmin-portalen, marginbeskyttelsen (96–98%), tokenovervåkning og opprettelse av nye bedrifter?'
+  },
+  building_app: {
+    title: 'Byggesøknad & Nabovarsel (SAK10)',
+    badge: 'Byggesaksforskriften & SAK10',
+    lawBadge: 'Plan- og bygningsloven § 20',
+    desc: 'Full oversikt over søknadsprosessen mot kommunen: ett-trinns søknad, rammetillatelse, nabovarsling og ansvarsretter.',
+    steps: [
+      { num: '1', title: 'Velg prosjekt & søknadstype', text: 'Velg byggeplass og søknadsform (ett-trinns, ramme eller igangsetting).' },
+      { num: '2', title: 'Sjekkliste for vedlegg', text: 'Kvitter ut tegninger, nabovarsel, situasjonsplan og ansvarsretter.' },
+      { num: '3', title: 'AI-kontroll før innsending', text: 'MesterAI analyserer søknaden mot kommunens krav og varsler om mangler.' }
+    ],
+    aiActionPrompt: 'Hvordan setter vi opp en komplett byggesøknad etter SAK10? Forklar hvilke vedlegg som kreves for ett-trinns søknad og hvordan vi unngår mangelbrev fra kommunen.'
+  },
+  checklists: {
+    title: 'Kvalitetskontroll & Sjekklister (TEK17)',
+    badge: 'Lovpålagt KS / Egenkontroll',
+    lawBadge: 'TEK17 § 2-1 (Kvalitetssikring)',
+    desc: 'Faseinndelte sjekklister for tømrer, rørlegger, elektriker og betong. Automatisk generering av KS-protokoll til FDV ved fullføring.',
+    steps: [
+      { num: '1', title: 'Velg fase og fagkontroll', text: 'Gå gjennom sjekkpunkter for forberedelse, råbygg, lukkesperre eller sluttkontroll.' },
+      { num: '2', title: 'Kvitter ut med foto', text: 'Marker godkjent, legg til merknader eller knips bilde med mobilen.' },
+      { num: '3', title: 'Autonom KS-protokoll', text: 'Når en fase fullføres, genereres en formell KS-kontrollrapport rett inn i FDV-arkivet.' }
+    ],
+    aiActionPrompt: 'Hvordan fungerer de faglige sjekklistene og KS-kontrollene i Vikingmester? Hvordan dokumenterer jeg punktene og hvordan autogenereres KS-protokollen?'
+  },
+  ai_vision: {
+    title: 'MesterAI Vision (Bildeanalyse)',
+    badge: 'Autonom bildekontroll',
+    lawBadge: 'TEK17 visuell verifisering',
+    desc: 'Visuell kvalitetskontroll direkte med kamera på mobil eller PC. MesterAI sjekker konstruksjoner, rør og dampsperrer mot TEK17.',
+    steps: [
+      { num: '1', title: 'Knips eller last opp foto', text: 'Ta bilde av konstruksjonen, overgangen, sluket eller overflaten.' },
+      { num: '2', title: 'MesterAI analyserer bildet', text: 'AI-en gjenkjenner bygningsdeler, måler utførelse og sjekker mot TEK17-krav.' },
+      { num: '3', title: 'Automatisk arkivering eller avvik', text: 'Godkjente bilder lagres i prosjektets fotomappe. Feil oppretter avvik med ett klikk.' }
+    ],
+    aiActionPrompt: 'Hvordan fungerer MesterAI Vision for bildekontroll på byggeplassen? Hva kan AI-en detektere, og hvordan kobles bildene automatisk mot sjekklister og avvik?'
+  },
+  contracts: {
+    title: 'Kontraktshåndtering & NS-standarder',
+    badge: 'Juridisk entreprisevern',
+    lawBadge: 'NS 8405 / 8406 & Bustadoppføringslova',
+    desc: 'Oversikt over bedriftens kontrakter, juridisk risikosjekk med MesterAI, og sammenligning av kontrakt mot innsendt tilbud.',
+    steps: [
+      { num: '1', title: 'Opprett eller last opp kontrakt', text: 'Knytt kontrakten til prosjektet med tittel, byggherre og kontraktssum.' },
+      { num: '2', title: 'AI-risikoanalyse', text: 'MesterAI skanner vilkår for urimelige dagmulkter, ensidige frister og uvanlige krav.' },
+      { num: '3', title: 'Sammenlign mot tilbud', text: 'AI sjekker at kontrakten stemmer 100% overens med det opprinnelige pristilbudet.' }
+    ],
+    aiActionPrompt: 'Hvordan hjelper MesterAI meg med kontrakter og standarder (NS 8405, NS 8406)? Hvordan fungerer juridisk risikosjekk og sammenligning mot pristilbud?'
+  },
+  handover: {
+    title: 'Overlevering & Sluttrapport (FDV)',
+    badge: 'Ferdigstillelse & Overtakelse',
+    lawBadge: 'Bustadoppføringslova § 14 / NS 8406',
+    desc: 'Sikrer formell overtakelse med protokoll, lukking av alle gjenstående avvik, og 1-klikk overlevering av samlet FDV-perm til byggherre.',
+    steps: [
+      { num: '1', title: 'Verifiser sluttkontroll', text: 'Sjekk at sluttbefaring er utført og lukk eventuelle gjenstående avvik.' },
+      { num: '2', title: 'Generer komplett FDV-perm', text: 'Systemet samler alle produktdatablader, garantier og samsvarserklæringer i én fil.' },
+      { num: '3', title: 'Overlevering og digital signering', text: 'Overtakelsesprotokoll og FDV sendes formelt til byggherre og arkiveres.' }
+    ],
+    aiActionPrompt: 'Hvordan gjennomfører vi en forskriftsmessig overlevering med FDV og overtakelsesprotokoll? Hva krever bustadoppføringslova og NS 8406 ved overtakelse?'
+  },
+  inventory: {
+    title: 'Lager, Verktøy & Kjemikalier',
+    badge: 'Materiellstyring & Sporbarhet',
+    lawBadge: 'Arbeidsmiljøloven § 4-5',
+    desc: 'Oversikt over verktøypark, materialer, kjemikalier, kalibreringsdatoer og serviceintervaller.',
+    steps: [
+      { num: '1', title: 'Registrer verktøy og materiell', text: 'Legg inn verktøy, maskiner, forbruksmateriell og plassering.' },
+      { num: '2', title: 'AI-forbruksinnsikt', text: 'MesterAI varsler når beholdningen er lav eller utstyr trenger lovpålagt kontroll.' },
+      { num: '3', title: 'Sikkerhetsdatablader', text: 'Kjemikalier kobles direkte mot stoffkartoteket for trygg håndtering.' }
+    ],
+    aiActionPrompt: 'Hvordan fungerer lager- og verktøystyringen i Vikingmester? Hvordan holder vi oversikt over serviceintervaller og forbruksmateriell?'
+  },
+  time: {
+    title: 'Timeføring & Lønn',
+    badge: 'Timer & Lønnsgrunnlag',
+    lawBadge: 'Arbeidsmiljøloven § 10-7',
+    desc: 'Timeføring per prosjekt, oppgave, overtid og fravær med full historikk og godkjenningsløp for leder.',
+    steps: [
+      { num: '1', title: 'Velg prosjekt og dato', text: 'Knytt timene til riktig byggeplass eller interntid.' },
+      { num: '2', title: 'Angi timer og kategori', text: 'Velg ordinære timer, overtid eller reisetid med kort beskrivelse.' },
+      { num: '3', title: 'Godkjenning og eksport', text: 'Leder godkjenner timene for overføring til lønn og fakturering.' }
+    ],
+    aiActionPrompt: 'Hvordan fører og godkjenner jeg timer i Vikingmester? Hvilke regler gjelder for overtid og timelister iht. Arbeidsmiljøloven § 10-7?'
   }
 };
 
@@ -495,7 +586,9 @@ export default function MesterWorkstation({
     let actions: any[] | undefined = undefined;
 
     if (resultMeta?.type === 'offer_created') {
-      const offerLink = resultMeta.offerLink || `${typeof window !== 'undefined' ? window.location.origin : ''}/?offerToken=${resultMeta.token || ''}`;
+      const isLocal = typeof window !== 'undefined' && (window.location.hostname === 'localhost' || window.location.hostname === '127.0.0.1');
+      const publicOrigin = isLocal ? 'https://vikingmester.no' : (typeof window !== 'undefined' ? window.location.origin : 'https://vikingmester.no');
+      const offerLink = resultMeta.offerLink || `${publicOrigin}/?offerToken=${resultMeta.token || ''}`;
       actions = [
         {
           id: 'open_public_offer',
@@ -636,18 +729,24 @@ export default function MesterWorkstation({
     return () => window.removeEventListener('navigate_view', handleNavigate);
   }, []);
 
-  // Lytt etter dashboard-handlinger for bilpark og kjørebok
+  // Lytt etter dashboard-handlinger og globale modul-åpninger
   useEffect(() => {
-    const handleDashboardAction = (e: any) => {
+    const handleGlobalAction = (e: any) => {
       const actionId = e.detail?.actionId;
-      if (actionId === 'vehicle' || actionId === 'bilpark' || actionId === 'kjørebok') {
-        setActiveModuleTab('vehicle');
-        setViewMode('module');
+      if (!actionId) return;
+      if (e.detail?.projectId) {
+        const found = projects.find(p => p.id === e.detail.projectId);
+        if (found) onSelectProject(found);
       }
+      handleModuleCardClick(actionId);
     };
-    window.addEventListener('trigger_dashboard_action', handleDashboardAction as EventListener);
-    return () => window.removeEventListener('trigger_dashboard_action', handleDashboardAction as EventListener);
-  }, []);
+    window.addEventListener('trigger_dashboard_action', handleGlobalAction as EventListener);
+    window.addEventListener('open_workstation_module', handleGlobalAction as EventListener);
+    return () => {
+      window.removeEventListener('trigger_dashboard_action', handleGlobalAction as EventListener);
+      window.removeEventListener('open_workstation_module', handleGlobalAction as EventListener);
+    };
+  }, [projects, onSelectProject]);
 
   // Lytt etter hendelse fra varselbjella om å åpne en spesifikk prosjektchat
   useEffect(() => {
@@ -1813,6 +1912,8 @@ export default function MesterWorkstation({
         if (found) onSelectProject(found);
       }
     }
+    window.dispatchEvent(new CustomEvent('close_all_modals'));
+    window.dispatchEvent(new CustomEvent('close_all_dashboard_modals'));
     setViewMode('chat');
     setActiveModuleTab(null);
     setActiveForm(null);
@@ -1821,78 +1922,121 @@ export default function MesterWorkstation({
 
   // 🛠️ Åpne modul fra sidemeny - Alt åpnes direkte i arbeidsvinduet!
   const handleOpenModuleFromSidebar = (moduleId: string) => {
+    window.dispatchEvent(new CustomEvent('close_all_modals'));
+    window.dispatchEvent(new CustomEvent('close_all_dashboard_modals'));
     setActiveModuleTab(moduleId);
     setViewMode('module');
     setIsOpenMobile(false);
   };
 
-  // 🚀 Aktiver modul fra "Alle moduler"-oversikten
+  // 🚀 Aktiver modul fra "Alle moduler"-oversikten eller globale hendelser
   const handleModuleCardClick = (actionId: string) => {
+    window.dispatchEvent(new CustomEvent('close_all_modals'));
+    window.dispatchEvent(new CustomEvent('close_all_dashboard_modals'));
     switch (actionId) {
       case 'projects':
+      case 'all_projects':
         setActiveModuleTab('all_projects');
         setViewMode('module');
         break;
       case 'create_project':
+      case 'new_project':
         setActiveModuleTab('create_project');
         setViewMode('module');
         break;
       case 'dailylog':
+      case 'daily_log':
+      case 'byggedagbok':
+      case 'activity_log':
+      case 'aktivitetslogg':
         setActiveModuleTab('dailylog');
         setViewMode('module');
         break;
       case 'weather':
+      case 'yr':
         setActiveModuleTab('dailylog');
         setViewMode('module');
         toast.info('Viser sanntids værdata fra Yr.no i byggedagboken');
         break;
       case 'archive':
+      case 'documentation':
+      case 'fdv':
+      case 'dokumentarkiv':
         setActiveModuleTab('archive');
         setViewMode('module');
         break;
       case 'building_app':
-        window.dispatchEvent(new CustomEvent('trigger_dashboard_action', { detail: { actionId: 'building_app' } }));
+      case 'byggesoknad':
+      case 'byggesøknad':
+        setActiveModuleTab('building_app');
+        setViewMode('module');
         break;
       case 'checklists':
-        window.dispatchEvent(new CustomEvent('trigger_dashboard_action', { detail: { actionId: 'start_checklist' } }));
+      case 'checklist':
+      case 'start_checklist':
+        setActiveModuleTab('checklists');
+        setViewMode('module');
         break;
       case 'ai_vision':
-        if (onOpenAIVision) onOpenAIVision();
-        else window.dispatchEvent(new CustomEvent('trigger_dashboard_action', { detail: { actionId: 'take_photo' } }));
+      case 'take_photo':
+      case 'tek17_vision':
+      case 'camera':
+        setActiveModuleTab('ai_vision');
+        setViewMode('module');
         break;
       case 'sja':
+      case 'voice_sja':
+      case 'safe_job_analysis':
         setActiveModuleTab('sja');
         setViewMode('module');
         break;
       case 'deviations':
+      case 'log_deviation':
+      case 'deviation':
         setActiveModuleTab('deviations');
         setViewMode('module');
         break;
       case 'pre_close':
+      case 'lukkesperre':
         setActiveModuleTab('pre_close');
         setViewMode('module');
         break;
       case 'hms':
+      case 'hms_handbook':
         setActiveModuleTab('hms');
         setViewMode('module');
         break;
       case 'change_orders':
+      case 'change_order':
+      case 'endringsordre':
+      case 'endringsordrer':
         setActiveModuleTab('change_orders');
         setViewMode('module');
         break;
       case 'offers':
+      case 'offer':
+      case 'tilbud':
         setActiveModuleTab('offers');
         setViewMode('module');
         break;
       case 'contracts':
-        window.dispatchEvent(new CustomEvent('trigger_dashboard_action', { detail: { actionId: 'contracts' } }));
+      case 'contract':
+      case 'kontrakt':
+      case 'kontrakter':
+        setActiveModuleTab('contracts');
+        setViewMode('module');
         break;
       case 'time':
-        if (onOpenTimeModal) onOpenTimeModal();
-        else window.dispatchEvent(new CustomEvent('trigger_dashboard_action', { detail: { actionId: 'time_registration' } }));
+      case 'time_registration':
+      case 'timer':
+      case 'time_tracking':
+        setActiveModuleTab('time');
+        setViewMode('module');
         break;
       case 'handover':
-        window.dispatchEvent(new CustomEvent('trigger_dashboard_action', { detail: { actionId: 'handover' } }));
+      case 'overlevering':
+        setActiveModuleTab('handover');
+        setViewMode('module');
         break;
       case 'vehicle':
       case 'bilpark':
@@ -1901,27 +2045,39 @@ export default function MesterWorkstation({
         setViewMode('module');
         break;
       case 'inventory':
-        window.dispatchEvent(new CustomEvent('trigger_dashboard_action', { detail: { actionId: 'inventory' } }));
+      case 'lager':
+        setActiveModuleTab('inventory');
+        setViewMode('module');
         break;
       case 'contacts':
+      case 'telefonliste':
         setActiveModuleTab('contacts');
         setViewMode('module');
         break;
       case 'teamchat':
       case 'prosjektchat':
+      case 'chat-module':
         setActiveModuleTab('teamchat');
         setViewMode('module');
         break;
       case 'apprentice':
+      case 'laerling':
         setActiveModuleTab('apprentice');
         setViewMode('module');
         break;
       case 'translator':
+      case 'oversetter':
         setViewMode('chat');
         handleSendMessage('Hei MesterAI! Jeg trenger hjelp med flerspråklig oversettelse på byggeplassen. Hvilke språk støtter du, og kan du hjelpe meg med en faglig oversettelse?');
         break;
       case 'super_admin':
+      case 'superadmin':
         handleOpenSuperAdmin();
+        break;
+      case 'all_modules':
+      case 'modules':
+        setActiveModuleTab('all_modules');
+        setViewMode('module');
         break;
       default:
         handleOpenModuleFromSidebar(actionId);
@@ -3763,7 +3919,25 @@ export default function MesterWorkstation({
                   {activeModuleTab === 'vehicle' && (
                     <span>Bilpark & Kjørebok: <strong className="text-amber-400">🚗 Elektronisk Kjørebok & Flåtestyring</strong></span>
                   )}
-                  {!['project_details', 'all_projects', 'create_project', 'superadmin', 'offers', 'contacts', 'apprentice', 'hms', 'teamchat', 'vehicle'].includes(activeModuleTab || '') && (
+                  {activeModuleTab === 'building_app' && (
+                    <span>Byggesak: <strong className="text-blue-400">🏗️ Byggesøknad & Nabovarsel (SAK10)</strong></span>
+                  )}
+                  {activeModuleTab === 'checklists' && (
+                    <span>Kvalitetskontroll: <strong className="text-emerald-400">📋 Sjekklister & Fagkontroll (TEK17)</strong></span>
+                  )}
+                  {activeModuleTab === 'ai_vision' && (
+                    <span>Bildeanalyse: <strong className="text-rose-400">🧠 MesterAI Vision & Feildeteksjon</strong></span>
+                  )}
+                  {activeModuleTab === 'contracts' && (
+                    <span>Entreprise: <strong className="text-indigo-400">📝 Kontraktshåndtering (NS 8405 / 8406)</strong></span>
+                  )}
+                  {activeModuleTab === 'handover' && (
+                    <span>Ferdigstillelse: <strong className="text-rose-400">🏆 Overlevering & Sluttkontroll</strong></span>
+                  )}
+                  {activeModuleTab === 'inventory' && (
+                    <span>Materiell: <strong className="text-blue-400">📦 Lager, Verktøy & Kjemikalier</strong></span>
+                  )}
+                  {!['project_details', 'all_projects', 'create_project', 'superadmin', 'offers', 'contacts', 'apprentice', 'hms', 'teamchat', 'vehicle', 'building_app', 'checklists', 'ai_vision', 'contracts', 'handover', 'inventory', 'change_orders', 'pre_close', 'deviations', 'sja', 'archive', 'dailylog', 'all_modules'].includes(activeModuleTab || '') && (
                     <span>Viser fagsystem: <strong className="text-white capitalize">{activeModuleTab}</strong></span>
                   )}
                 </span>
@@ -6410,6 +6584,101 @@ export default function MesterWorkstation({
                 </div>
               )}
 
+              {/* 8E. 🏗️ BYGGESØKNAD & NABOVARSEL (INLINE) */}
+              {activeModuleTab === 'building_app' && (
+                <div className="space-y-4">
+                  <BuildingApplicationModal
+                    inline={true}
+                    isOpen={true}
+                    projects={projects}
+                    selectedProject={selectedProject}
+                    onClose={() => setViewMode('chat')}
+                  />
+                </div>
+              )}
+
+              {/* 8F. 📋 KVALITETSKONTROLL & SJEKKLISTER (INLINE) */}
+              {activeModuleTab === 'checklists' && (
+                <div className="space-y-4">
+                  <ChecklistModal
+                    inline={true}
+                    isOpen={true}
+                    projectId={selectedProject?.id || (projects.length > 0 ? projects[0].id : undefined)}
+                    initialTrade={(trade as any) || undefined}
+                    projects={projects}
+                    selectedProject={selectedProject}
+                    onSelectProject={onSelectProject}
+                    onClose={() => setViewMode('chat')}
+                  />
+                </div>
+              )}
+
+              {/* 8G. 🧠 MESTERAI VISION (INLINE) */}
+              {activeModuleTab === 'ai_vision' && (
+                <div className="space-y-4">
+                  <AIVisionModal
+                    inline={true}
+                    isOpen={true}
+                    projectId={selectedProject?.id}
+                    projectName={selectedProject?.name}
+                    projects={projects}
+                    selectedProject={selectedProject}
+                    onClose={() => setViewMode('chat')}
+                  />
+                </div>
+              )}
+
+              {/* 8H. 📝 KONTRAKTSHÅNDTERING (INLINE) */}
+              {activeModuleTab === 'contracts' && (
+                <div className="space-y-4">
+                  <ContractModal
+                    inline={true}
+                    isOpen={true}
+                    projects={projects}
+                    selectedProject={selectedProject}
+                    onClose={() => setViewMode('chat')}
+                  />
+                </div>
+              )}
+
+              {/* 8I. 🏆 OVERLEVERING & FDV-SLUTTRAPPORT (INLINE) */}
+              {activeModuleTab === 'handover' && (
+                <div className="space-y-4">
+                  <HandoverModal
+                    inline={true}
+                    isOpen={true}
+                    projects={projects}
+                    selectedProject={selectedProject}
+                    initialProjectId={selectedProject?.id}
+                    onClose={() => setViewMode('chat')}
+                  />
+                </div>
+              )}
+
+              {/* 8J. 📦 LAGER, VERKTØY & MATERIELL (INLINE) */}
+              {activeModuleTab === 'inventory' && (
+                <div className="space-y-4">
+                  <InventoryModal
+                    inline={true}
+                    isOpen={true}
+                    onClose={() => setViewMode('chat')}
+                  />
+                </div>
+              )}
+
+              {/* 8K. ⏱️ TIME- OG TIMEREGISTRERING (INLINE) */}
+              {(activeModuleTab === 'time' || activeModuleTab === 'time_registration') && (
+                <div className="space-y-4">
+                  <TimeRegistrationModal
+                    inline={true}
+                    isOpen={true}
+                    projects={projects}
+                    selectedProject={selectedProject}
+                    onClose={() => setViewMode('chat')}
+                  />
+                </div>
+              )}
+
 
 
               {/* 9. ⋯ ALLE FAGMODULER */}
@@ -7043,13 +7312,38 @@ export default function MesterWorkstation({
                             : "bg-[#131722]/50 border border-white/5 rounded-3xl p-4 sm:p-6 shadow-sm backdrop-blur-md"
                         )}>
                           {msg.role === 'user' ? (
-                            <div className="whitespace-pre-wrap font-medium">
+                            <div>
                               {msg.imageUrl && (
                                 <div className="mb-3 rounded-2xl overflow-hidden border border-white/20 max-w-xs shadow-md">
                                   <img src={msg.imageUrl} alt="Vedlagt bilde" className="w-full h-auto object-cover" />
                                 </div>
                               )}
-                              {msg.content}
+                              <div className="text-white text-[15px] sm:text-[16px] font-normal leading-relaxed">
+                                <ReactMarkdown
+                                  remarkPlugins={[remarkGfm]}
+                                  components={{
+                                    h1: ({ node, ...props }) => <h3 className="text-base sm:text-lg font-bold text-white mt-3 mb-1.5 border-b border-white/10 pb-1" {...props} />,
+                                    h2: ({ node, ...props }) => <h4 className="text-sm sm:text-base font-bold text-white mt-2.5 mb-1" {...props} />,
+                                    h3: ({ node, ...props }) => <h5 className="text-sm font-bold text-purple-200 mt-2 mb-1 uppercase tracking-wide" {...props} />,
+                                    h4: ({ node, ...props }) => <h6 className="text-xs sm:text-sm font-bold text-purple-200 mt-2 mb-1" {...props} />,
+                                    p: ({ node, ...props }) => <p className="mb-2 last:mb-0 leading-relaxed font-medium" {...props} />,
+                                    strong: ({ node, ...props }) => <strong className="font-bold text-white" {...props} />,
+                                    ul: ({ node, ...props }) => <ul className="my-2 space-y-1 pl-4 list-disc text-white/90" {...props} />,
+                                    ol: ({ node, ...props }) => <ol className="my-2 space-y-1 pl-5 list-decimal text-white/90" {...props} />,
+                                    li: ({ node, ...props }) => <li className="leading-relaxed" {...props} />,
+                                    blockquote: ({ node, ...props }) => (
+                                      <blockquote className="my-2 p-2.5 bg-white/5 border-l-2 border-purple-400 rounded-r-xl text-sm text-purple-100" {...props} />
+                                    ),
+                                    code: ({ node, inline, ...props }: any) => (
+                                      inline 
+                                        ? <code className="px-1.5 py-0.5 rounded bg-black/40 text-purple-200 font-mono text-xs" {...props} />
+                                        : <code className="block p-2 rounded-xl bg-black/50 text-slate-200 font-mono text-xs overflow-x-auto my-2" {...props} />
+                                    )
+                                  }}
+                                >
+                                  {formatAiMarkdown(msg.content)}
+                                </ReactMarkdown>
+                              </div>
                             </div>
                           ) : (
                             <div>
@@ -7113,18 +7407,46 @@ export default function MesterWorkstation({
                                     code: ({ node, inline, ...props }: any) => (
                                       <code className="px-2 py-0.5 rounded-lg bg-slate-800/90 text-amber-300 font-mono text-[15px] sm:text-[16px] border border-slate-700/50" {...props} />
                                     ),
-                                    a: ({ node, href, children, ...props }: any) => (
-                                      <a
-                                        href={href}
-                                        target="_blank"
-                                        rel="noopener noreferrer"
-                                        className="inline-flex items-center gap-1.5 text-emerald-300 hover:text-white bg-emerald-500/15 hover:bg-emerald-500/25 px-3 py-1 rounded-xl border border-emerald-500/30 transition-all font-semibold text-[15px] sm:text-[16px] no-underline group shadow-xs my-0.5 cursor-pointer"
-                                        {...props}
-                                      >
-                                        <ExternalLink size={13} className="text-emerald-400 group-hover:text-emerald-300 shrink-0" />
-                                        <span className="underline decoration-emerald-400/40 group-hover:decoration-white">{children}</span>
-                                      </a>
-                                    )
+                                    a: ({ node, href, children, ...props }: any) => {
+                                      const isOfferOrContractLink = href && (
+                                        href.includes('offerToken=') || 
+                                        href.includes('contractToken=') || 
+                                        href.includes('/tilbud/') || 
+                                        href.includes('/kontrakt/')
+                                      );
+
+                                      return (
+                                        <a
+                                          href={href}
+                                          target={isOfferOrContractLink ? '_self' : '_blank'}
+                                          rel="noopener noreferrer"
+                                          onClick={(e) => {
+                                            if (isOfferOrContractLink) {
+                                              e.preventDefault();
+                                              try {
+                                                const urlObj = new URL(href, window.location.origin);
+                                                const token = urlObj.searchParams.get('offerToken') || 
+                                                              urlObj.searchParams.get('contractToken') || 
+                                                              urlObj.searchParams.get('tilbud') || 
+                                                              urlObj.pathname.split('/')[2];
+                                                if (token) {
+                                                  window.dispatchEvent(new CustomEvent('open_public_offer', {
+                                                    detail: { token, offerToken: token }
+                                                  }));
+                                                  return;
+                                                }
+                                              } catch (err) {}
+                                              window.open(href, '_blank');
+                                            }
+                                          }}
+                                          className="inline-flex items-center gap-1.5 text-emerald-300 hover:text-white bg-emerald-500/15 hover:bg-emerald-500/25 px-3 py-1 rounded-xl border border-emerald-500/30 transition-all font-semibold text-[15px] sm:text-[16px] no-underline group shadow-xs my-0.5 cursor-pointer"
+                                          {...props}
+                                        >
+                                          <ExternalLink size={13} className="text-emerald-400 group-hover:text-emerald-300 shrink-0" />
+                                          <span className="underline decoration-emerald-400/40 group-hover:decoration-white">{children}</span>
+                                        </a>
+                                      );
+                                    }
                                   }}
                                 >
                                   {formatAiMarkdown(msg.content)}
@@ -7141,8 +7463,15 @@ export default function MesterWorkstation({
                                   key={i}
                                   type="button"
                                   onClick={() => {
-                                    if (act.type === 'open_public_offer' && act.data?.offerLink) {
-                                      window.open(act.data.offerLink, '_blank');
+                                    if (act.type === 'open_public_offer') {
+                                      const token = act.data?.token || act.data?.offer?.token;
+                                      if (token) {
+                                        window.dispatchEvent(new CustomEvent('open_public_offer', {
+                                          detail: { token, offerToken: token, offer: act.data?.offer }
+                                        }));
+                                      } else if (act.data?.offerLink) {
+                                        window.open(act.data.offerLink, '_blank');
+                                      }
                                     } else if (act.type === 'open_offer_form') {
                                       handleOpenCreateOffer(act.data);
                                     } else if (act.type === 'copy_link' && act.data?.url) {
