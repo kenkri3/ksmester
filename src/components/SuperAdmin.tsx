@@ -226,6 +226,8 @@ export default function SuperAdmin({ onBackToDashboard }: { onBackToDashboard?: 
   const [isResponseModalOpen, setIsResponseModalOpen] = useState(false);
   const [isConvertModalOpen, setIsConvertModalOpen] = useState(false);
   const [leadToConvert, setLeadToConvert] = useState<any | null>(null);
+  const [leadSearchTerm, setLeadSearchTerm] = useState('');
+  const [leadStatusFilter, setLeadStatusFilter] = useState<'all' | 'new' | 'contacted' | 'qualified' | 'converted' | 'lost'>('all');
 
   const handleOpenConvertModal = (lead: any) => {
     setLeadToConvert(lead);
@@ -1325,6 +1327,42 @@ Svar KUN med gyldig rå JSON (uten markdown \`\`\`json klammer):
     });
   }, [allDailyLogs, adminLogSearch]);
 
+  const filteredLeads = useMemo(() => {
+    const sTerm = (leadSearchTerm || '').trim().toLowerCase();
+    return (leads || []).filter(lead => {
+      if (!lead) return false;
+      const status = lead.status || 'new';
+
+      if (leadStatusFilter === 'new' && status !== 'new') return false;
+      if (leadStatusFilter === 'contacted' && status !== 'contacted') return false;
+      if (leadStatusFilter === 'qualified' && status !== 'qualified') return false;
+      if (leadStatusFilter === 'converted' && status !== 'converted' && !lead.convertedCompanyId) return false;
+      if (leadStatusFilter === 'lost' && status !== 'lost') return false;
+
+      if (!sTerm) return true;
+      const name = (lead.name || '').toLowerCase();
+      const comp = (lead.company || '').toLowerCase();
+      const email = (lead.email || '').toLowerCase();
+      const phone = (lead.phone || '').toLowerCase();
+      const msg = (lead.message || '').toLowerCase();
+      const trade = (lead.trade || '').toLowerCase();
+      const plan = (lead.plan || '').toLowerCase();
+      return name.includes(sTerm) || comp.includes(sTerm) || email.includes(sTerm) || phone.includes(sTerm) || msg.includes(sTerm) || trade.includes(sTerm) || plan.includes(sTerm);
+    });
+  }, [leads, leadSearchTerm, leadStatusFilter]);
+
+  const leadStats = useMemo(() => {
+    const list = leads || [];
+    const total = list.length;
+    const newCount = list.filter(l => !l?.status || l?.status === 'new').length;
+    const contactedCount = list.filter(l => l?.status === 'contacted').length;
+    const qualifiedCount = list.filter(l => l?.status === 'qualified').length;
+    const convertedCount = list.filter(l => l?.status === 'converted' || l?.convertedCompanyId).length;
+    const lostCount = list.filter(l => l?.status === 'lost').length;
+    const calculatedPipelineVal = list.reduce((sum, l) => sum + (Number(l?.monthlyPrice) || 0), 0);
+    return { total, newCount, contactedCount, qualifiedCount, convertedCount, lostCount, calculatedPipelineVal };
+  }, [leads]);
+
   const handleCopyChangeOrderLink = (co: any) => {
     const baseUrl = typeof window !== 'undefined' ? window.location.origin : 'https://vikingmester.no';
     const token = co.token || co.id;
@@ -1418,14 +1456,14 @@ Svar KUN med gyldig rå JSON (uten markdown \`\`\`json klammer):
         <div className="mb-6 flex items-center justify-between">
           <button
             onClick={() => setSelectedProject(null)}
-            className="flex items-center gap-2 px-4 py-2.5 bg-white border border-neutral-200 text-neutral-800 rounded-2xl text-xs font-bold hover:bg-neutral-50 transition-all shadow-sm cursor-pointer"
+            className="flex items-center gap-2 px-4 py-2.5 bg-slate-900 border border-slate-800 text-slate-200 rounded-2xl text-xs font-bold hover:bg-slate-800 hover:text-white transition-all shadow-sm cursor-pointer"
           >
             <ArrowLeft size={16} />
             <span>← Tilbake til SuperAdmin Dashboard</span>
           </button>
-          <div className="flex items-center gap-2 text-xs font-bold text-neutral-500">
+          <div className="flex items-center gap-2 text-xs font-bold text-slate-400">
             <span className="w-2 h-2 rounded-full bg-purple-500 inline-block" />
-            <span>SuperAdmin Prosjekttilgang: <strong className="text-neutral-900">{selectedProject.name}</strong></span>
+            <span>SuperAdmin Prosjekttilgang: <strong className="text-white">{selectedProject.name}</strong></span>
           </div>
         </div>
         <ProjectDetails
@@ -2069,10 +2107,10 @@ Svar KUN med gyldig rå JSON (uten markdown \`\`\`json klammer):
                 <div 
                   key={planKey}
                   className={cn(
-                    "rounded-2xl p-5 sm:p-6 flex flex-col justify-between transition-all relative border bg-white shadow-sm hover:shadow-md",
+                    "rounded-2xl p-5 sm:p-6 flex flex-col justify-between transition-all relative border bg-slate-900/90 shadow-xl hover:shadow-2xl",
                     isPopular 
-                      ? "border-blue-500/80 ring-2 ring-blue-500/20 shadow-blue-500/5" 
-                      : "border-neutral-200"
+                      ? "border-blue-500/80 ring-2 ring-blue-500/20 shadow-blue-500/10" 
+                      : "border-slate-800 hover:border-slate-700"
                   )}
                 >
                   {isPopular && (
@@ -2088,54 +2126,54 @@ Svar KUN med gyldig rå JSON (uten markdown \`\`\`json klammer):
                         <span className={cn("text-[11px] font-black uppercase tracking-wider block", plan.color)}>
                           {plan.badge}
                         </span>
-                        <h3 className="text-lg font-black text-neutral-900 tracking-tight mt-0.5">
+                        <h3 className="text-lg font-black text-white tracking-tight mt-0.5">
                           {plan.name}
                         </h3>
                       </div>
-                      <div className="w-8 h-8 rounded-xl bg-neutral-100 flex items-center justify-center text-neutral-700 shrink-0">
+                      <div className="w-8 h-8 rounded-xl bg-slate-800 border border-slate-700 flex items-center justify-center text-slate-300 shrink-0">
                         <Package size={16} />
                       </div>
                     </div>
 
-                    <p className="text-xs text-neutral-600 line-clamp-2 min-h-[32px] mb-4">
+                    <p className="text-xs text-slate-400 line-clamp-2 min-h-[32px] mb-4">
                       {plan.tagline}
                     </p>
 
                     {/* Pris */}
-                    <div className="p-3 bg-neutral-50 rounded-xl border border-neutral-100 mb-4">
-                      <div className="text-2xl font-black text-neutral-900">
+                    <div className="p-3 bg-slate-950/70 rounded-xl border border-slate-800 mb-4">
+                      <div className="text-2xl font-black text-white">
                         {plan.monthlyPriceLabel}
                       </div>
-                      <div className="text-[11px] text-neutral-500 font-medium">
+                      <div className="text-[11px] text-slate-400 font-medium">
                         faktureres månedlig eks. mva
                       </div>
                     </div>
 
                     {/* Nøkkeltall / Begrensninger */}
-                    <div className="space-y-2 mb-4 pb-4 border-b border-neutral-100 text-xs">
-                      <div className="flex items-center justify-between text-neutral-700">
-                        <span className="flex items-center gap-1.5 text-neutral-500 font-medium">
-                          <Users size={13} className="text-neutral-400" /> Brukere:
+                    <div className="space-y-2 mb-4 pb-4 border-b border-slate-800 text-xs">
+                      <div className="flex items-center justify-between text-slate-300">
+                        <span className="flex items-center gap-1.5 text-slate-400 font-medium">
+                          <Users size={13} className="text-slate-500" /> Brukere:
                         </span>
-                        <span className="font-bold text-neutral-900">{plan.userLimitLabel}</span>
+                        <span className="font-bold text-white">{plan.userLimitLabel}</span>
                       </div>
-                      <div className="flex items-center justify-between text-neutral-700">
-                        <span className="flex items-center gap-1.5 text-neutral-500 font-medium">
-                          <Layers size={13} className="text-neutral-400" /> Prosjekter:
+                      <div className="flex items-center justify-between text-slate-300">
+                        <span className="flex items-center gap-1.5 text-slate-400 font-medium">
+                          <Layers size={13} className="text-slate-500" /> Prosjekter:
                         </span>
-                        <span className="font-bold text-neutral-900">{plan.projectLimitLabel}</span>
+                        <span className="font-bold text-white">{plan.projectLimitLabel}</span>
                       </div>
-                      <div className="flex items-center justify-between text-neutral-700">
-                        <span className="flex items-center gap-1.5 text-neutral-500 font-medium">
-                          <Zap size={13} className="text-neutral-400" /> AI Forbruk:
+                      <div className="flex items-center justify-between text-slate-300">
+                        <span className="flex items-center gap-1.5 text-slate-400 font-medium">
+                          <Zap size={13} className="text-slate-500" /> AI Forbruk:
                         </span>
-                        <span className="font-bold text-neutral-900">{plan.tokenQuotaLabel}</span>
+                        <span className="font-bold text-white">{plan.tokenQuotaLabel}</span>
                       </div>
-                      <div className="flex items-center justify-between text-neutral-700">
-                        <span className="flex items-center gap-1.5 text-neutral-500 font-medium">
-                          <Building2 size={13} className="text-neutral-400" /> Kunder på pakken:
+                      <div className="flex items-center justify-between text-slate-300">
+                        <span className="flex items-center gap-1.5 text-slate-400 font-medium">
+                          <Building2 size={13} className="text-slate-500" /> Kunder på pakken:
                         </span>
-                        <span className="font-black text-blue-600 bg-blue-50 px-2 py-0.5 rounded-full text-[11px]">
+                        <span className="font-black text-blue-300 bg-blue-950/60 border border-blue-500/30 px-2 py-0.5 rounded-full text-[11px]">
                           {customerCount} bedrifter
                         </span>
                       </div>
@@ -2143,17 +2181,17 @@ Svar KUN med gyldig rå JSON (uten markdown \`\`\`json klammer):
 
                     {/* Høydepunkter */}
                     <div className="space-y-1.5 mb-6">
-                      <span className="text-[11px] font-bold text-neutral-400 uppercase tracking-wider block mb-2">
+                      <span className="text-[11px] font-bold text-slate-500 uppercase tracking-wider block mb-2">
                         Inkludert i pakken:
                       </span>
                       {plan.features.slice(0, 5).map((f, i) => (
-                        <div key={i} className="flex items-start gap-2 text-xs text-neutral-700">
-                          <Check size={14} className="text-emerald-500 shrink-0 mt-0.5" />
+                        <div key={i} className="flex items-start gap-2 text-xs text-slate-300">
+                          <Check size={14} className="text-emerald-400 shrink-0 mt-0.5" />
                           <span className="leading-tight">{f}</span>
                         </div>
                       ))}
                       {plan.features.length > 5 && (
-                        <span className="text-[11px] text-neutral-400 italic block pl-5">
+                        <span className="text-[11px] text-slate-500 italic block pl-5">
                           + {plan.features.length - 5} flere funksjoner...
                         </span>
                       )}
@@ -2161,7 +2199,7 @@ Svar KUN med gyldig rå JSON (uten markdown \`\`\`json klammer):
                   </div>
 
                   {/* Handlinger */}
-                  <div className="space-y-2 pt-3 border-t border-neutral-100">
+                  <div className="space-y-2 pt-3 border-t border-slate-800">
                     <button
                       type="button"
                       onClick={() => {
@@ -2172,8 +2210,8 @@ Svar KUN med gyldig rå JSON (uten markdown \`\`\`json klammer):
                       className={cn(
                         "w-full flex items-center justify-center gap-2 px-3 py-2.5 rounded-xl font-bold text-xs transition-all cursor-pointer shadow-sm",
                         isPopular
-                          ? "bg-blue-600 hover:bg-blue-700 text-white"
-                          : "bg-neutral-900 hover:bg-neutral-800 text-white"
+                          ? "bg-blue-600 hover:bg-blue-500 text-white shadow-blue-950/50"
+                          : "bg-slate-800 hover:bg-slate-700 text-white border border-slate-700"
                       )}
                     >
                       <Eye size={14} />
@@ -2187,7 +2225,7 @@ Svar KUN med gyldig rå JSON (uten markdown \`\`\`json klammer):
                         setSearchTerm(planKey);
                         setActiveTab('companies');
                       }}
-                      className="w-full py-1.5 text-center text-[11px] font-semibold text-neutral-500 hover:text-neutral-800 transition-colors cursor-pointer"
+                      className="w-full py-1.5 text-center text-[11px] font-semibold text-slate-400 hover:text-white transition-colors cursor-pointer"
                     >
                       Vis {customerCount} {customerCount === 1 ? 'bedrift' : 'bedrifter'} i listen →
                     </button>
@@ -2198,23 +2236,23 @@ Svar KUN med gyldig rå JSON (uten markdown \`\`\`json klammer):
           </div>
 
           {/* Sammenligningsmatrise: Alle moduler vs Pakker */}
-          <div className="bg-white rounded-2xl sm:rounded-3xl border border-neutral-200 shadow-sm overflow-hidden">
-            <div className="p-5 sm:p-6 border-b border-neutral-200 flex flex-col sm:flex-row sm:items-center justify-between gap-4">
+          <div className="bg-slate-900/90 rounded-2xl sm:rounded-3xl border border-slate-800 shadow-xl overflow-hidden">
+            <div className="p-5 sm:p-6 border-b border-slate-800 flex flex-col sm:flex-row sm:items-center justify-between gap-4">
               <div>
-                <h3 className="text-base sm:text-lg font-black text-neutral-900 tracking-tight flex items-center gap-2">
-                  <ShieldCheck size={18} className="text-emerald-600" />
+                <h3 className="text-base sm:text-lg font-black text-white tracking-tight flex items-center gap-2">
+                  <ShieldCheck size={18} className="text-emerald-400" />
                   <span>Modul- & Tilgangsmatrise</span>
                 </h3>
-                <p className="text-xs text-neutral-500 mt-0.5">
+                <p className="text-xs text-slate-400 mt-0.5">
                   Fullstendig oversikt over hvilke moduler og funksjoner som automatisk låses opp eller sperres per pakkenivå.
                 </p>
               </div>
               <div className="flex items-center gap-3 text-xs">
-                <span className="flex items-center gap-1.5 text-emerald-700 font-bold bg-emerald-50 px-2.5 py-1 rounded-lg">
-                  <Check size={14} className="text-emerald-600" /> Inkludert
+                <span className="flex items-center gap-1.5 text-emerald-300 font-bold bg-emerald-950/60 border border-emerald-500/30 px-2.5 py-1 rounded-lg">
+                  <Check size={14} className="text-emerald-400" /> Inkludert
                 </span>
-                <span className="flex items-center gap-1.5 text-neutral-500 font-bold bg-neutral-100 px-2.5 py-1 rounded-lg">
-                  <Lock size={13} className="text-neutral-400" /> Krever oppgradering
+                <span className="flex items-center gap-1.5 text-slate-400 font-bold bg-slate-800 border border-slate-700 px-2.5 py-1 rounded-lg">
+                  <Lock size={13} className="text-slate-500" /> Krever oppgradering
                 </span>
               </div>
             </div>
@@ -2222,16 +2260,16 @@ Svar KUN med gyldig rå JSON (uten markdown \`\`\`json klammer):
             <div className="overflow-x-auto">
               <table className="w-full text-left border-collapse text-xs">
                 <thead>
-                  <tr className="bg-neutral-50 border-b border-neutral-200 text-neutral-500 font-bold uppercase tracking-wider text-[10px]">
+                  <tr className="bg-slate-950/80 border-b border-slate-800 text-slate-400 font-bold uppercase tracking-wider text-[10px]">
                     <th className="py-3.5 px-4 sm:px-6">Modul / Funksjon</th>
                     <th className="py-3.5 px-3">Kategori</th>
                     <th className="py-3.5 px-4 text-center">Solo (1 bruker)</th>
-                    <th className="py-3.5 px-4 text-center bg-blue-50/50 text-blue-900">Team (5 brukere)</th>
+                    <th className="py-3.5 px-4 text-center bg-blue-950/30 text-blue-300">Team (5 brukere)</th>
                     <th className="py-3.5 px-4 text-center">Totalentreprenør (25+)</th>
                     <th className="py-3.5 px-4 text-center">Enterprise</th>
                   </tr>
                 </thead>
-                <tbody className="divide-y divide-neutral-100">
+                <tbody className="divide-y divide-slate-800/60">
                   {PLAN_MODULES.map((m) => {
                     const soloHas = PLANS.solo.allowedModuleIds.includes(m.id) || PLANS.solo.allowedModuleIds.includes('all_modules');
                     const teamHas = PLANS.team.allowedModuleIds.includes(m.id) || PLANS.team.allowedModuleIds.includes('all_modules');
@@ -2239,51 +2277,51 @@ Svar KUN med gyldig rå JSON (uten markdown \`\`\`json klammer):
                     const enterpriseHas = true;
 
                     return (
-                      <tr key={m.id} className="hover:bg-neutral-50/80 transition-colors">
+                      <tr key={m.id} className="hover:bg-slate-800/40 transition-colors">
                         <td className="py-3.5 px-4 sm:px-6">
-                          <div className="font-bold text-neutral-900">{m.label}</div>
-                          <div className="text-[11px] text-neutral-500 font-normal leading-tight mt-0.5">{m.desc}</div>
+                          <div className="font-bold text-white">{m.label}</div>
+                          <div className="text-[11px] text-slate-400 font-normal leading-tight mt-0.5">{m.desc}</div>
                         </td>
                         <td className="py-3.5 px-3">
-                          <span className="px-2 py-0.5 rounded-md bg-neutral-100 text-neutral-600 font-semibold text-[10px]">
+                          <span className="px-2 py-0.5 rounded-md bg-slate-800 border border-slate-700 text-slate-300 font-semibold text-[10px]">
                             {m.category}
                           </span>
                         </td>
                         <td className="py-3.5 px-4 text-center">
                           {soloHas ? (
-                            <span className="inline-flex items-center justify-center w-6 h-6 rounded-full bg-emerald-100 text-emerald-700">
+                            <span className="inline-flex items-center justify-center w-6 h-6 rounded-full bg-emerald-950/60 border border-emerald-500/40 text-emerald-300">
                               <Check size={14} strokeWidth={3} />
                             </span>
                           ) : (
-                            <span className="inline-flex items-center justify-center w-6 h-6 rounded-full bg-neutral-100 text-neutral-400" title="Ikke inkludert i Solo">
+                            <span className="inline-flex items-center justify-center w-6 h-6 rounded-full bg-slate-800 border border-slate-700 text-slate-500" title="Ikke inkludert i Solo">
                               <Lock size={12} />
                             </span>
                           )}
                         </td>
-                        <td className="py-3.5 px-4 text-center bg-blue-50/20">
+                        <td className="py-3.5 px-4 text-center bg-blue-950/20">
                           {teamHas ? (
-                            <span className="inline-flex items-center justify-center w-6 h-6 rounded-full bg-emerald-100 text-emerald-700">
+                            <span className="inline-flex items-center justify-center w-6 h-6 rounded-full bg-emerald-950/60 border border-emerald-500/40 text-emerald-300">
                               <Check size={14} strokeWidth={3} />
                             </span>
                           ) : (
-                            <span className="inline-flex items-center justify-center w-6 h-6 rounded-full bg-neutral-100 text-neutral-400" title="Ikke inkludert i Team">
+                            <span className="inline-flex items-center justify-center w-6 h-6 rounded-full bg-slate-800 border border-slate-700 text-slate-500" title="Ikke inkludert i Team">
                               <Lock size={12} />
                             </span>
                           )}
                         </td>
                         <td className="py-3.5 px-4 text-center">
                           {entreprenorHas ? (
-                            <span className="inline-flex items-center justify-center w-6 h-6 rounded-full bg-emerald-100 text-emerald-700">
+                            <span className="inline-flex items-center justify-center w-6 h-6 rounded-full bg-emerald-950/60 border border-emerald-500/40 text-emerald-300">
                               <Check size={14} strokeWidth={3} />
                             </span>
                           ) : (
-                            <span className="inline-flex items-center justify-center w-6 h-6 rounded-full bg-neutral-100 text-neutral-400">
+                            <span className="inline-flex items-center justify-center w-6 h-6 rounded-full bg-slate-800 border border-slate-700 text-slate-500">
                               <Lock size={12} />
                             </span>
                           )}
                         </td>
                         <td className="py-3.5 px-4 text-center">
-                          <span className="inline-flex items-center justify-center w-6 h-6 rounded-full bg-emerald-100 text-emerald-700">
+                          <span className="inline-flex items-center justify-center w-6 h-6 rounded-full bg-emerald-950/60 border border-emerald-500/40 text-emerald-300">
                             <Check size={14} strokeWidth={3} />
                           </span>
                         </td>
@@ -2295,7 +2333,7 @@ Svar KUN med gyldig rå JSON (uten markdown \`\`\`json klammer):
             </div>
 
             {/* Sikkerhets- og Arkitekturforklaring for Kenneth */}
-            <div className="p-4 sm:p-6 bg-gradient-to-r from-amber-50 to-orange-50 border-t border-amber-200/80 flex flex-col md:flex-row items-start md:items-center justify-between gap-4">
+            <div className="p-4 sm:p-6 bg-gradient-to-r from-amber-950/30 to-orange-950/30 border-t border-amber-500/30 flex flex-col md:flex-row items-start md:items-center justify-between gap-4">
               <div className="flex items-start gap-3">
                 <div className="w-8 h-8 rounded-xl bg-amber-500 text-neutral-950 flex items-center justify-center shrink-0 font-black shadow-sm mt-0.5">
                   🛡️
@@ -2419,67 +2457,67 @@ Svar KUN med gyldig rå JSON (uten markdown \`\`\`json klammer):
 
           {/* AI Metrics Grid */}
           <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-6">
-            <div className="bg-white rounded-[2rem] border border-neutral-200 p-6 shadow-sm">
+            <div className="bg-slate-900/90 rounded-[2rem] border border-slate-800 p-6 shadow-xl">
               <div className="flex items-center justify-between mb-2">
-                <span className="text-xs font-black uppercase tracking-widest text-neutral-400">Modellstatus</span>
-                <div className="w-8 h-8 rounded-lg bg-purple-50 text-purple-600 flex items-center justify-center">
+                <span className="text-xs font-black uppercase tracking-widest text-slate-400">Modellstatus</span>
+                <div className="w-8 h-8 rounded-lg bg-purple-950/60 text-purple-400 border border-purple-500/30 flex items-center justify-center">
                   <Cpu size={16} />
                 </div>
               </div>
-              <div className="text-xl sm:text-2xl font-black text-neutral-900">DeepSeek &amp; Gemini</div>
-              <p className="text-xs text-neutral-500 mt-1">Hybrid-motor (DeepSeek + Gemini 3.8)</p>
+              <div className="text-xl sm:text-2xl font-black text-white">DeepSeek &amp; Gemini</div>
+              <p className="text-xs text-slate-400 mt-1">Hybrid-motor (DeepSeek + Gemini 3.8)</p>
             </div>
 
-            <div className="bg-white rounded-[2rem] border border-neutral-200 p-6 shadow-sm">
+            <div className="bg-slate-900/90 rounded-[2rem] border border-slate-800 p-6 shadow-xl">
               <div className="flex items-center justify-between mb-2">
-                <span className="text-xs font-black uppercase tracking-widest text-neutral-400">Tokens denne måneden</span>
-                <div className="w-8 h-8 rounded-lg bg-blue-50 text-blue-600 flex items-center justify-center">
+                <span className="text-xs font-black uppercase tracking-widest text-slate-400">Tokens denne måneden</span>
+                <div className="w-8 h-8 rounded-lg bg-blue-950/60 text-blue-400 border border-blue-500/30 flex items-center justify-center">
                   <Zap size={16} />
                 </div>
               </div>
-              <div className="text-2xl font-black text-blue-600">
+              <div className="text-2xl font-black text-blue-400">
                 {totalTokensThisMonth.toLocaleString('no-NO')}
               </div>
-              <p className="text-xs text-neutral-500 mt-1">Totalt input & output tokens</p>
+              <p className="text-xs text-slate-400 mt-1">Totalt input & output tokens</p>
             </div>
 
-            <div className="bg-white rounded-[2rem] border border-neutral-200 p-6 shadow-sm">
+            <div className="bg-slate-900/90 rounded-[2rem] border border-slate-800 p-6 shadow-xl">
               <div className="flex items-center justify-between mb-2">
-                <span className="text-xs font-black uppercase tracking-widest text-neutral-400">Vår API-Kostnad</span>
-                <div className="w-8 h-8 rounded-lg bg-emerald-50 text-emerald-600 flex items-center justify-center">
+                <span className="text-xs font-black uppercase tracking-widest text-slate-400">Vår API-Kostnad</span>
+                <div className="w-8 h-8 rounded-lg bg-emerald-950/60 text-emerald-400 border border-emerald-500/30 flex items-center justify-center">
                   <DollarSign size={16} />
                 </div>
               </div>
-              <div className="text-2xl font-black text-emerald-600">
+              <div className="text-2xl font-black text-emerald-400">
                 {totalCostNokThisMonth > 0 ? `${totalCostNokThisMonth.toFixed(2)} kr` : '0,00 kr'}
               </div>
-              <p className="text-xs text-neutral-500 mt-1">Beskytter 98%+ bruttomargin</p>
+              <p className="text-xs text-slate-400 mt-1">Beskytter 98%+ bruttomargin</p>
             </div>
 
-            <div className="bg-white rounded-[2rem] border border-neutral-200 p-6 shadow-sm">
+            <div className="bg-slate-900/90 rounded-[2rem] border border-slate-800 p-6 shadow-xl">
               <div className="flex items-center justify-between mb-2">
-                <span className="text-xs font-black uppercase tracking-widest text-neutral-400">Kvoteovervåking</span>
-                <div className="w-8 h-8 rounded-lg bg-amber-50 text-amber-600 flex items-center justify-center">
+                <span className="text-xs font-black uppercase tracking-widest text-slate-400">Kvoteovervåking</span>
+                <div className="w-8 h-8 rounded-lg bg-amber-950/60 text-amber-400 border border-amber-500/30 flex items-center justify-center">
                   <Shield size={16} />
                 </div>
               </div>
-              <div className="text-2xl font-black text-amber-600">
+              <div className="text-2xl font-black text-amber-400">
                 {companies.length} bedrifter
               </div>
-              <p className="text-xs text-neutral-500 mt-1">0 bedrifter over kvotegrensen</p>
+              <p className="text-xs text-slate-400 mt-1">0 bedrifter over kvotegrensen</p>
             </div>
           </div>
 
           {/* MesterAI Hybrid Ruting & Kostnadskontroll */}
-          <div className="bg-white rounded-[2.5rem] border border-neutral-200 p-6 sm:p-8 shadow-sm space-y-6">
-            <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-4 pb-4 border-b border-neutral-100">
+          <div className="bg-slate-900/90 rounded-[2.5rem] border border-slate-800 p-6 sm:p-8 shadow-xl space-y-6">
+            <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-4 pb-4 border-b border-slate-800">
               <div className="flex items-center gap-3">
-                <div className="w-10 h-10 rounded-2xl bg-purple-100 text-purple-700 flex items-center justify-center font-black">
+                <div className="w-10 h-10 rounded-2xl bg-purple-950/60 text-purple-400 border border-purple-500/30 flex items-center justify-center font-black">
                   <Bot size={20} />
                 </div>
                 <div>
-                  <h3 className="text-lg font-bold text-neutral-900">MesterAI Hybrid Ruting &amp; Kostnadskontroll</h3>
-                  <p className="text-xs text-neutral-500">Oversikt over hvordan oppgaver rutes mellom DeepSeek, Gemini og backup-motorer for maksimal presisjon og minimal tokenkostnad.</p>
+                  <h3 className="text-lg font-bold text-white">MesterAI Hybrid Ruting &amp; Kostnadskontroll</h3>
+                  <p className="text-xs text-slate-400">Oversikt over hvordan oppgaver rutes mellom DeepSeek, Gemini og backup-motorer for maksimal presisjon og minimal tokenkostnad.</p>
                 </div>
               </div>
               <div className="flex items-center gap-2">
@@ -2487,7 +2525,7 @@ Svar KUN med gyldig rå JSON (uten markdown \`\`\`json klammer):
                   href="https://platform.deepseek.com/usage"
                   target="_blank"
                   rel="noreferrer"
-                  className="px-3 py-2 bg-neutral-100 hover:bg-neutral-200 text-neutral-700 rounded-xl text-xs font-bold transition-all flex items-center gap-1.5"
+                  className="px-3 py-2 bg-slate-800 hover:bg-slate-750 text-slate-300 hover:text-white border border-slate-700 rounded-xl text-xs font-bold transition-all flex items-center gap-1.5"
                   title="Åpne DeepSeek Platform for forbruk og saldo"
                 >
                   <ExternalLink size={13} />
@@ -2497,7 +2535,7 @@ Svar KUN med gyldig rå JSON (uten markdown \`\`\`json klammer):
                   href="https://aistudio.google.com/"
                   target="_blank"
                   rel="noreferrer"
-                  className="px-3 py-2 bg-neutral-100 hover:bg-neutral-200 text-neutral-700 rounded-xl text-xs font-bold transition-all flex items-center gap-1.5"
+                  className="px-3 py-2 bg-slate-800 hover:bg-slate-750 text-slate-300 hover:text-white border border-slate-700 rounded-xl text-xs font-bold transition-all flex items-center gap-1.5"
                   title="Åpne Google AI Studio"
                 >
                   <ExternalLink size={13} />
@@ -2507,7 +2545,7 @@ Svar KUN med gyldig rå JSON (uten markdown \`\`\`json klammer):
                   href="https://app.1min.ai/members"
                   target="_blank"
                   rel="noreferrer"
-                  className="px-3 py-2 bg-neutral-100 hover:bg-neutral-200 text-neutral-700 rounded-xl text-xs font-bold transition-all flex items-center gap-1.5"
+                  className="px-3 py-2 bg-slate-800 hover:bg-slate-750 text-slate-300 hover:text-white border border-slate-700 rounded-xl text-xs font-bold transition-all flex items-center gap-1.5"
                   title="Åpne 1min.ai dashboard"
                 >
                   <ExternalLink size={13} />
@@ -2518,65 +2556,65 @@ Svar KUN med gyldig rå JSON (uten markdown \`\`\`json klammer):
 
             {/* Modellruting Matrise */}
             <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-4">
-              <div className="p-4 rounded-2xl bg-neutral-50 border border-neutral-200/80 space-y-1.5">
+              <div className="p-4 rounded-2xl bg-slate-950/70 border border-slate-800 space-y-1.5">
                 <div className="flex items-center justify-between">
-                  <span className="text-xs font-black uppercase tracking-wider text-neutral-700">MesterAI Chat &amp; Kalkyle</span>
-                  <span className="px-2 py-0.5 rounded-md bg-emerald-100 text-emerald-800 text-[10px] font-bold">DeepSeek-Flash</span>
+                  <span className="text-xs font-black uppercase tracking-wider text-white">MesterAI Chat &amp; Kalkyle</span>
+                  <span className="px-2 py-0.5 rounded-md bg-emerald-950/60 text-emerald-300 border border-emerald-500/40 text-[10px] font-bold">DeepSeek-Flash</span>
                 </div>
-                <p className="text-xs text-neutral-600">Absolutt primærmotor for fagdialog, tilbudskalkyler, sjekklister og byggedagbok. Ekstremt lave tokenkostnader ($0.14/$0.28 per 1M tokens) og lynrask respons.</p>
-                <div className="text-[10px] text-neutral-400 font-mono">DeepSeek Direct API (~0,0015 kr per oppgave)</div>
+                <p className="text-xs text-slate-300">Absolutt primærmotor for fagdialog, tilbudskalkyler, sjekklister og byggedagbok. Ekstremt lave tokenkostnader ($0.14/$0.28 per 1M tokens) og lynrask respons.</p>
+                <div className="text-[10px] text-slate-500 font-mono">DeepSeek Direct API (~0,0015 kr per oppgave)</div>
               </div>
 
-              <div className="p-4 rounded-2xl bg-neutral-50 border border-neutral-200/80 space-y-1.5">
+              <div className="p-4 rounded-2xl bg-slate-950/70 border border-slate-800 space-y-1.5">
                 <div className="flex items-center justify-between">
-                  <span className="text-xs font-black uppercase tracking-wider text-neutral-700">Nettsøk i Sanntid</span>
-                  <span className="px-2 py-0.5 rounded-md bg-blue-100 text-blue-800 text-[10px] font-bold">Gemini 3.8 + Grounding</span>
+                  <span className="text-xs font-black uppercase tracking-wider text-white">Nettsøk i Sanntid</span>
+                  <span className="px-2 py-0.5 rounded-md bg-blue-950/60 text-blue-300 border border-blue-500/40 text-[10px] font-bold">Gemini 3.8 + Grounding</span>
                 </div>
-                <p className="text-xs text-neutral-600">Aktiveres når håndverkeren ber om eksterne priser, nye TEK-forskrifter eller leverandørdata. Henter sanntidsdata med direkte kildehenvisninger.</p>
-                <div className="text-[10px] text-neutral-400 font-mono">Google Search Grounding (Live nettsøk)</div>
+                <p className="text-xs text-slate-300">Aktiveres når håndverkeren ber om eksterne priser, nye TEK-forskrifter eller leverandørdata. Henter sanntidsdata med direkte kildehenvisninger.</p>
+                <div className="text-[10px] text-slate-500 font-mono">Google Search Grounding (Live nettsøk)</div>
               </div>
 
-              <div className="p-4 rounded-2xl bg-neutral-50 border border-neutral-200/80 space-y-1.5">
+              <div className="p-4 rounded-2xl bg-slate-950/70 border border-slate-800 space-y-1.5">
                 <div className="flex items-center justify-between">
-                  <span className="text-xs font-black uppercase tracking-wider text-neutral-700">NS 8406 &amp; Juridisk</span>
-                  <span className="px-2 py-0.5 rounded-md bg-purple-100 text-purple-800 text-[10px] font-bold">DeepSeek-V4 Pro</span>
+                  <span className="text-xs font-black uppercase tracking-wider text-white">NS 8406 &amp; Juridisk</span>
+                  <span className="px-2 py-0.5 rounded-md bg-purple-950/60 text-purple-300 border border-purple-500/40 text-[10px] font-bold">DeepSeek-V4 Pro</span>
                 </div>
-                <p className="text-xs text-neutral-600">Høypresisjons resonneringsmodell for entrepriserett, varsel om endringsordre, krav om fristforlengelse og tvistehåndtering (NS 8405 / NS 8406 / NS 8407).</p>
-                <div className="text-[10px] text-neutral-400 font-mono">DeepSeek Reasoner / Claude 3.7 backup</div>
+                <p className="text-xs text-slate-300">Høypresisjons resonneringsmodell for entrepriserett, varsel om endringsordre, krav om fristforlengelse og tvistehåndtering (NS 8405 / NS 8406 / NS 8407).</p>
+                <div className="text-[10px] text-slate-500 font-mono">DeepSeek Reasoner / Claude 3.7 backup</div>
               </div>
 
-              <div className="p-4 rounded-2xl bg-neutral-50 border border-neutral-200/80 space-y-1.5">
+              <div className="p-4 rounded-2xl bg-slate-950/70 border border-slate-800 space-y-1.5">
                 <div className="flex items-center justify-between">
-                  <span className="text-xs font-black uppercase tracking-wider text-neutral-700">TEK17 Vision / Avvik</span>
-                  <span className="px-2 py-0.5 rounded-md bg-amber-100 text-amber-800 text-[10px] font-bold">Gemini 3.8 Flash</span>
+                  <span className="text-xs font-black uppercase tracking-wider text-white">TEK17 Vision / Avvik</span>
+                  <span className="px-2 py-0.5 rounded-md bg-amber-950/60 text-amber-300 border border-amber-500/40 text-[10px] font-bold">Gemini 3.8 Flash</span>
                 </div>
-                <p className="text-xs text-neutral-600">Multimodal bildeanalyse direkte på byggeplassen. Suveren på å oppdage feil i membran, fall mot sluk, klemring, dampsperre, armering og TEK17-krav.</p>
-                <div className="text-[10px] text-neutral-400 font-mono">Google Multimodal Vision API (Kvote per pakke)</div>
+                <p className="text-xs text-slate-300">Multimodal bildeanalyse direkte på byggeplassen. Suveren på å oppdage feil i membran, fall mot sluk, klemring, dampsperre, armering og TEK17-krav.</p>
+                <div className="text-[10px] text-slate-500 font-mono">Google Multimodal Vision API (Kvote per pakke)</div>
               </div>
 
-              <div className="p-4 rounded-2xl bg-neutral-50 border border-neutral-200/80 space-y-1.5">
+              <div className="p-4 rounded-2xl bg-slate-950/70 border border-slate-800 space-y-1.5">
                 <div className="flex items-center justify-between">
-                  <span className="text-xs font-black uppercase tracking-wider text-neutral-700">Stemme (TTS) Mester</span>
-                  <span className="px-2 py-0.5 rounded-md bg-indigo-100 text-indigo-800 text-[10px] font-bold">tts-1 (onyx)</span>
+                  <span className="text-xs font-black uppercase tracking-wider text-white">Stemme (TTS) Mester</span>
+                  <span className="px-2 py-0.5 rounded-md bg-indigo-950/60 text-indigo-300 border border-indigo-500/40 text-[10px] font-bold">tts-1 (onyx)</span>
                 </div>
-                <p className="text-xs text-neutral-600">Genererer naturlig, autoritær norsk tale direkte på byggeplassen via serverens tts-bro (OpenAI Audio / 1min.ai).</p>
-                <div className="text-[10px] text-neutral-400 font-mono">OpenAI Audio TTS / 1min.ai Features API</div>
+                <p className="text-xs text-slate-300">Genererer naturlig, autoritær norsk tale direkte på byggeplassen via serverens tts-bro (OpenAI Audio / 1min.ai).</p>
+                <div className="text-[10px] text-slate-500 font-mono">OpenAI Audio TTS / 1min.ai Features API</div>
               </div>
 
-              <div className="p-4 rounded-2xl bg-neutral-50 border border-neutral-200/80 space-y-1.5">
+              <div className="p-4 rounded-2xl bg-slate-950/70 border border-slate-800 space-y-1.5">
                 <div className="flex items-center justify-between">
-                  <span className="text-xs font-black uppercase tracking-wider text-neutral-700">Failover / Sikkerhetsnett</span>
-                  <span className="px-2 py-0.5 rounded-md bg-rose-100 text-rose-800 text-[10px] font-bold">Multi-Provider Redundans</span>
+                  <span className="text-xs font-black uppercase tracking-wider text-white">Failover / Sikkerhetsnett</span>
+                  <span className="px-2 py-0.5 rounded-md bg-rose-950/60 text-rose-300 border border-rose-500/40 text-[10px] font-bold">Multi-Provider Redundans</span>
                 </div>
-                <p className="text-xs text-neutral-600">Hvis primærmotoren opplever overbelastning eller nettverksbrudd, faller systemet automatisk og sømløst tilbake til 1min.AI, OpenRouter eller Gemini.</p>
-                <div className="text-[10px] text-neutral-400 font-mono">100% oppetidsgaranti med kaskadekobling</div>
+                <p className="text-xs text-slate-300">Hvis primærmotoren opplever overbelastning eller nettverksbrudd, faller systemet automatisk og sømløst tilbake til 1min.AI, OpenRouter eller Gemini.</p>
+                <div className="text-[10px] text-slate-500 font-mono">100% oppetidsgaranti med kaskadekobling</div>
               </div>
             </div>
 
             {/* Betingelser & Kredittberegning Forklaring */}
-            <div className="p-5 rounded-2xl bg-emerald-50/60 border border-emerald-200/80 text-xs leading-relaxed text-emerald-950 space-y-2">
-              <div className="font-bold flex items-center gap-2 text-emerald-900 text-sm">
-                <CheckCircle2 size={16} className="text-emerald-600" />
+            <div className="p-5 rounded-2xl bg-emerald-950/20 border border-emerald-500/30 text-xs leading-relaxed text-slate-200 space-y-2">
+              <div className="font-bold flex items-center gap-2 text-emerald-300 text-sm">
+                <CheckCircle2 size={16} className="text-emerald-400" />
                 <span>Betingelser og kredittberegning: Hvorfor dette gir 98%+ bruttomargin</span>
               </div>
               <p>
@@ -2589,51 +2627,51 @@ Svar KUN med gyldig rå JSON (uten markdown \`\`\`json klammer):
           </div>
 
           {/* Bedriftenes AI-Kvote og Marginmonitor Tabell */}
-          <div className="bg-white rounded-[2.5rem] border border-neutral-200 p-6 sm:p-8 shadow-sm">
+          <div className="bg-slate-900/90 rounded-[2.5rem] border border-slate-800 p-6 sm:p-8 shadow-xl">
             <div className="flex items-center justify-between mb-6">
               <div>
-                <h3 className="text-xl font-bold text-neutral-900">Bedriftenes AI-Kvote & Marginstatus</h3>
-                <p className="text-xs text-neutral-500">Månedlig forbruk mot tildelt pakke. Forhindrer overforbruk og sikrer lønnsomhet.</p>
+                <h3 className="text-xl font-bold text-white">Bedriftenes AI-Kvote & Marginstatus</h3>
+                <p className="text-xs text-slate-400">Månedlig forbruk mot tildelt pakke. Forhindrer overforbruk og sikrer lønnsomhet.</p>
               </div>
-              <span className="text-xs font-bold text-neutral-400">{companies.length} bedrifter monitorert</span>
+              <span className="text-xs font-bold text-slate-400">{companies.length} bedrifter monitorert</span>
             </div>
 
             <div className="overflow-x-auto">
               <table className="w-full text-left">
                 <thead>
-                  <tr className="bg-neutral-50 border-b border-neutral-200">
-                    <th className="px-6 py-3 text-xs font-black uppercase tracking-widest text-neutral-400">Bedrift</th>
-                    <th className="px-6 py-3 text-xs font-black uppercase tracking-widest text-neutral-400">Pakke & Månedskvote</th>
-                    <th className="px-6 py-3 text-xs font-black uppercase tracking-widest text-neutral-400">Tokens Brukt</th>
-                    <th className="px-6 py-3 text-xs font-black uppercase tracking-widest text-neutral-400">Kvotebruk</th>
-                    <th className="px-6 py-3 text-xs font-black uppercase tracking-widest text-neutral-400">Marginstatus</th>
-                    <th className="px-6 py-3 text-xs font-black uppercase tracking-widest text-neutral-400">Ekstra Kvote</th>
+                  <tr className="bg-slate-950/80 border-b border-slate-800">
+                    <th className="px-6 py-3 text-xs font-black uppercase tracking-widest text-slate-400">Bedrift</th>
+                    <th className="px-6 py-3 text-xs font-black uppercase tracking-widest text-slate-400">Pakke & Månedskvote</th>
+                    <th className="px-6 py-3 text-xs font-black uppercase tracking-widest text-slate-400">Tokens Brukt</th>
+                    <th className="px-6 py-3 text-xs font-black uppercase tracking-widest text-slate-400">Kvotebruk</th>
+                    <th className="px-6 py-3 text-xs font-black uppercase tracking-widest text-slate-400">Marginstatus</th>
+                    <th className="px-6 py-3 text-xs font-black uppercase tracking-widest text-slate-400">Ekstra Kvote</th>
                   </tr>
                 </thead>
-                <tbody className="divide-y divide-neutral-100">
+                <tbody className="divide-y divide-slate-800/60">
                   {companies.map(c => {
                     const stats = getCompanyTokenStats(c.id, c.plan);
                     return (
-                      <tr key={c.id} className="hover:bg-neutral-50 transition-colors">
+                      <tr key={c.id} className="hover:bg-slate-800/40 transition-colors">
                         <td className="px-6 py-4">
-                          <div className="font-bold text-sm text-neutral-900">{c.name}</div>
-                          <div className="text-xs text-neutral-400">{c.orgNumber || 'Uten org.nr'}</div>
+                          <div className="font-bold text-sm text-white">{c.name}</div>
+                          <div className="text-xs text-slate-400">{c.orgNumber || 'Uten org.nr'}</div>
                         </td>
                         <td className="px-6 py-4">
-                          <span className="px-2.5 py-1 bg-purple-50 text-purple-700 text-xs font-bold rounded-lg uppercase tracking-wide">
+                          <span className="px-2.5 py-1 bg-purple-950/60 border border-purple-500/30 text-purple-300 text-xs font-bold rounded-lg uppercase tracking-wide">
                             {stats.plan} ({(stats.limit / 1_000_000).toFixed(1)}M tokens)
                           </span>
                         </td>
-                        <td className="px-6 py-4 font-mono text-sm text-neutral-800">
+                        <td className="px-6 py-4 font-mono text-sm text-slate-200">
                           {stats.used.toLocaleString('no-NO')} tokens
                         </td>
                         <td className="px-6 py-4 min-w-[160px]">
                           <div className="space-y-1">
-                            <div className="flex items-center justify-between text-xs font-bold">
+                            <div className="flex items-center justify-between text-xs font-bold text-slate-300">
                               <span>{stats.percent}%</span>
-                              <span className="text-[10px] text-neutral-400">{((stats.limit - stats.used) / 1_000_000).toFixed(1)}M gjenstår</span>
+                              <span className="text-[10px] text-slate-400">{((stats.limit - stats.used) / 1_000_000).toFixed(1)}M gjenstår</span>
                             </div>
-                            <div className="w-full h-2 bg-neutral-100 rounded-full overflow-hidden">
+                            <div className="w-full h-2 bg-slate-800 rounded-full overflow-hidden">
                               <div 
                                 className={cn(
                                   "h-full rounded-full transition-all",
@@ -2647,7 +2685,7 @@ Svar KUN med gyldig rå JSON (uten markdown \`\`\`json klammer):
                           </div>
                         </td>
                         <td className="px-6 py-4">
-                          <span className="px-2.5 py-1 bg-emerald-100 text-emerald-800 text-[10px] font-black uppercase tracking-widest rounded-full">
+                          <span className="px-2.5 py-1 bg-emerald-950/60 text-emerald-300 border border-emerald-500/40 text-[10px] font-black uppercase tracking-widest rounded-full">
                             98%+ Marginvern
                           </span>
                         </td>
@@ -2656,7 +2694,7 @@ Svar KUN med gyldig rå JSON (uten markdown \`\`\`json klammer):
                             type="button"
                             onClick={() => handleAddTopupTokens(c.id, c.name)}
                             disabled={isAddingTopup === c.id}
-                            className="px-3 py-1.5 bg-neutral-100 hover:bg-purple-100 hover:text-purple-700 text-neutral-700 rounded-xl text-xs font-bold transition-all cursor-pointer disabled:opacity-50"
+                            className="px-3 py-1.5 bg-slate-800 hover:bg-slate-750 text-slate-300 hover:text-white border border-slate-700 rounded-xl text-xs font-bold transition-all cursor-pointer disabled:opacity-50"
                             title="Tildel +5M ekstra tokens til bedriften"
                           >
                             {isAddingTopup === c.id ? 'Tildeler...' : '+5M Top-up'}
@@ -2671,28 +2709,28 @@ Svar KUN med gyldig rå JSON (uten markdown \`\`\`json klammer):
           </div>
 
           {/* Sanntids Agentlogg Stream */}
-          <div className="bg-white rounded-[2.5rem] border border-neutral-200 p-6 sm:p-8 shadow-sm">
+          <div className="bg-slate-900/90 rounded-[2.5rem] border border-slate-800 p-6 sm:p-8 shadow-xl">
             <div className="flex items-center justify-between mb-6">
               <div>
-                <h3 className="text-xl font-bold text-neutral-900">Sanntids Agentaktivitet & Handlingslogg</h3>
-                <p className="text-xs text-neutral-500">Live-feed over AI-analyser, sjekklister og modellkall på tvers av plattformen.</p>
+                <h3 className="text-xl font-bold text-white">Sanntids Agentaktivitet & Handlingslogg</h3>
+                <p className="text-xs text-slate-400">Live-feed over AI-analyser, sjekklister og modellkall på tvers av plattformen.</p>
               </div>
-              <span className="px-3 py-1 bg-purple-50 text-purple-700 text-xs font-black uppercase tracking-widest rounded-full flex items-center gap-2">
+              <span className="px-3 py-1 bg-purple-950/60 border border-purple-500/30 text-purple-300 text-xs font-black uppercase tracking-widest rounded-full flex items-center gap-2">
                 <span className="w-2 h-2 rounded-full bg-purple-500 animate-pulse" />
                 {agentActivities.length} hendelser registrert
               </span>
             </div>
 
             {agentActivities.length === 0 ? (
-              <div className="text-center py-12 border-2 border-dashed border-neutral-100 rounded-3xl">
-                <BrainCircuit className="mx-auto text-neutral-300 mb-3" size={40} />
-                <p className="text-neutral-500 font-medium">Ingen agentaktiviteter registrert enda.</p>
-                <p className="text-xs text-neutral-400 mt-1">Når håndverkere kjører AI-sjekker eller analyser, loggføres det her automatisk.</p>
+              <div className="text-center py-12 border-2 border-dashed border-slate-800 rounded-3xl">
+                <BrainCircuit className="mx-auto text-slate-600 mb-3" size={40} />
+                <p className="text-slate-400 font-medium">Ingen agentaktiviteter registrert enda.</p>
+                <p className="text-xs text-slate-500 mt-1">Når håndverkere kjører AI-sjekker eller analyser, loggføres det her automatisk.</p>
               </div>
             ) : (
-              <div className="divide-y divide-neutral-100 max-h-[450px] overflow-y-auto">
+              <div className="divide-y divide-slate-800/60 max-h-[450px] overflow-y-auto">
                 {agentActivities.map((act) => (
-                  <div key={act.id} className="py-4 flex items-start justify-between gap-4 hover:bg-neutral-50 px-3 rounded-2xl transition-colors">
+                  <div key={act.id} className="py-4 flex items-start justify-between gap-4 hover:bg-slate-800/40 px-3 rounded-2xl transition-colors">
                     <div className="flex items-start gap-3">
                       <div className={cn(
                         "w-9 h-9 rounded-xl flex items-center justify-center shrink-0 mt-0.5",
@@ -2735,24 +2773,24 @@ Svar KUN med gyldig rå JSON (uten markdown \`\`\`json klammer):
       {activeTab === 'support' && (
         <div className="space-y-6 sm:space-y-8 mb-12">
           {/* Support Notice */}
-          <div className="p-5 bg-blue-50/70 border border-blue-200/80 rounded-2xl sm:rounded-3xl flex flex-col sm:flex-row items-start sm:items-center justify-between gap-4">
+          <div className="p-5 bg-blue-950/20 border border-blue-500/30 rounded-2xl sm:rounded-3xl flex flex-col sm:flex-row items-start sm:items-center justify-between gap-4">
             <div className="flex items-start gap-3">
-              <Layers className="text-blue-600 shrink-0 mt-0.5" size={20} />
+              <Layers className="text-blue-400 shrink-0 mt-0.5" size={20} />
               <div>
-                <h4 className="text-sm font-bold text-blue-950">Teknisk Bistand & Kundeprosjekter</h4>
-                <p className="text-xs text-blue-800/80 mt-0.5">
+                <h4 className="text-sm font-bold text-blue-200">Teknisk Bistand & Kundeprosjekter</h4>
+                <p className="text-xs text-blue-300/80 mt-0.5">
                   Dette er kundedata fra tilknyttede håndverkerbedrifter. Brukes kun til feilsøking og support. For å oppleve systemet nøyaktig slik håndverkeren ser det, bruk <strong>"Logg inn som bedrift (Impersonate)"</strong> i kundelisten.
                 </p>
               </div>
             </div>
             {/* Sub-tabs switcher */}
-            <div className="flex items-center gap-1.5 bg-white/80 p-1 rounded-xl border border-blue-200 shrink-0">
+            <div className="flex items-center gap-1.5 bg-slate-900/90 p-1 rounded-xl border border-slate-800 shrink-0">
               <button
                 type="button"
                 onClick={() => setSupportSubTab('projects')}
                 className={cn(
                   "px-3 py-1.5 rounded-lg text-xs font-bold transition-all cursor-pointer",
-                  supportSubTab === 'projects' ? "bg-blue-600 text-white shadow-xs" : "text-blue-900 hover:bg-blue-100"
+                  supportSubTab === 'projects' ? "bg-blue-600 text-white shadow-xs" : "text-slate-400 hover:text-white hover:bg-slate-800"
                 )}
               >
                 Prosjekter ({filteredProjects.length})
@@ -2762,7 +2800,7 @@ Svar KUN med gyldig rå JSON (uten markdown \`\`\`json klammer):
                 onClick={() => setSupportSubTab('deviations')}
                 className={cn(
                   "px-3 py-1.5 rounded-lg text-xs font-bold transition-all cursor-pointer",
-                  supportSubTab === 'deviations' ? "bg-blue-600 text-white shadow-xs" : "text-blue-900 hover:bg-blue-100"
+                  supportSubTab === 'deviations' ? "bg-blue-600 text-white shadow-xs" : "text-slate-400 hover:text-white hover:bg-slate-800"
                 )}
               >
                 Avvik ({filteredDeviations.length})
@@ -2772,7 +2810,7 @@ Svar KUN med gyldig rå JSON (uten markdown \`\`\`json klammer):
                 onClick={() => setSupportSubTab('logs')}
                 className={cn(
                   "px-3 py-1.5 rounded-lg text-xs font-bold transition-all cursor-pointer",
-                  supportSubTab === 'logs' ? "bg-blue-600 text-white shadow-xs" : "text-blue-900 hover:bg-blue-100"
+                  supportSubTab === 'logs' ? "bg-blue-600 text-white shadow-xs" : "text-slate-400 hover:text-white hover:bg-slate-800"
                 )}
               >
                 Byggedagbøker ({filteredDailyLogs.length})
@@ -2783,74 +2821,74 @@ Svar KUN med gyldig rå JSON (uten markdown \`\`\`json klammer):
           {/* Subtab: Projects */}
           {supportSubTab === 'projects' && (
             <div className="space-y-6">
-              <div className="bg-white rounded-[2.5rem] border border-neutral-200 p-6 sm:p-8 shadow-sm">
+              <div className="bg-slate-900/90 rounded-2xl sm:rounded-3xl border border-slate-800 p-4 sm:p-6 shadow-xl">
                 <div className="flex flex-col md:flex-row gap-4 items-center justify-between">
                   <div className="relative w-full md:w-96">
-                    <Search className="absolute left-4 top-1/2 -translate-y-1/2 text-neutral-400" size={20} />
+                    <Search className="absolute left-4 top-1/2 -translate-y-1/2 text-slate-400" size={18} />
                     <input 
                       type="text"
                       placeholder="Søk i alle prosjekter, oppdragsgiver, nummer..."
                       value={adminProjectSearch}
                       onChange={(e) => setAdminProjectSearch(e.target.value)}
-                      className="w-full pl-12 pr-4 py-3 bg-neutral-50 border border-neutral-200 rounded-2xl focus:ring-2 focus:ring-purple-500 outline-none transition-all text-sm"
+                      className="w-full pl-11 pr-4 py-2.5 sm:py-3 bg-slate-800/80 border border-slate-700 rounded-xl sm:rounded-2xl focus:ring-2 focus:ring-purple-500 outline-none transition-all text-sm text-white placeholder-slate-400"
                     />
                   </div>
-                  <div className="text-xs font-bold text-neutral-400">
+                  <div className="text-xs font-bold text-slate-400">
                     Viser {filteredProjects.length} av {allProjects.length} prosjekter
                   </div>
                 </div>
               </div>
 
-              <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-6">
+              <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-4 sm:gap-6">
                 {filteredProjects.map((proj) => {
                   const projectDevs = allDeviations.filter(d => d.projectId === proj.id);
                   const projectLogs = allDailyLogs.filter(l => l.projectId === proj.id);
 
                   return (
-                    <div key={proj.id} className="bg-white rounded-[2rem] border border-neutral-200 p-6 shadow-sm hover:shadow-md transition-all flex flex-col justify-between">
+                    <div key={proj.id} className="bg-slate-900/90 rounded-2xl sm:rounded-3xl border border-slate-800 p-5 sm:p-6 shadow-xl hover:border-slate-700 transition-all flex flex-col justify-between">
                       <div>
                         <div className="flex items-start justify-between gap-2 mb-3">
-                          <span className="text-[10px] font-black uppercase tracking-widest text-neutral-400">
+                          <span className="text-[10px] font-black uppercase tracking-widest text-slate-400">
                             {proj.projectNumber || 'Uten ref.'}
                           </span>
                           <span className={cn(
-                            "px-2.5 py-0.5 rounded-full text-[10px] font-black uppercase tracking-widest",
-                            proj.status === 'completed' ? "bg-neutral-100 text-neutral-600" :
-                            proj.status === 'paused' ? "bg-amber-100 text-amber-700" :
-                            "bg-emerald-100 text-emerald-700"
+                            "px-2.5 py-0.5 rounded-full text-[10px] font-black uppercase tracking-widest border",
+                            proj.status === 'completed' ? "bg-slate-800 text-slate-400 border-slate-700" :
+                            proj.status === 'paused' ? "bg-amber-950/60 text-amber-300 border-amber-500/40" :
+                            "bg-emerald-950/60 text-emerald-300 border-emerald-500/40"
                           )}>
                             {proj.status === 'completed' ? 'Fullført' : proj.status === 'paused' ? 'På vent' : 'Aktiv'}
                           </span>
                         </div>
                         <h3 
                           onClick={() => setSelectedProject(proj)}
-                          className="text-lg font-bold text-neutral-900 mb-1 line-clamp-1 cursor-pointer hover:text-purple-600 transition-colors"
+                          className="text-lg font-bold text-white mb-1 line-clamp-1 cursor-pointer hover:text-purple-400 transition-colors"
                           title="Klikk for å gå direkte inn på prosjektet"
                         >
                           {proj.name || 'Navnløst prosjekt'}
                         </h3>
-                        <p className="text-xs text-neutral-500 mb-4">{proj.client || 'Ingen oppdragsgiver angitt'}</p>
+                        <p className="text-xs text-slate-400 mb-4">{proj.client || 'Ingen oppdragsgiver angitt'}</p>
 
-                        <div className="grid grid-cols-2 gap-2 py-3 border-y border-neutral-100 mb-4 text-center">
+                        <div className="grid grid-cols-2 gap-2 py-3 border-y border-slate-800 mb-4 text-center">
                           <div>
-                            <div className="text-xs font-black text-neutral-900">{projectLogs.length}</div>
-                            <div className="text-[10px] font-bold text-neutral-400 uppercase">Dagbøker</div>
+                            <div className="text-xs font-black text-white">{projectLogs.length}</div>
+                            <div className="text-[10px] font-bold text-slate-500 uppercase">Dagbøker</div>
                           </div>
                           <div>
-                            <div className="text-xs font-black text-neutral-900">{projectDevs.length}</div>
-                            <div className="text-[10px] font-bold text-neutral-400 uppercase">Avvik</div>
+                            <div className="text-xs font-black text-white">{projectDevs.length}</div>
+                            <div className="text-[10px] font-bold text-slate-500 uppercase">Avvik</div>
                           </div>
                         </div>
                       </div>
 
-                      <div className="flex items-center justify-between text-xs text-neutral-400 pt-3 border-t border-neutral-100">
-                        <span>Budsjett: <strong className="text-neutral-700">{proj.budget ? Number(proj.budget).toLocaleString('no-NO') + ' kr' : 'Ikke satt'}</strong></span>
+                      <div className="flex items-center justify-between text-xs text-slate-400 pt-3 border-t border-slate-800">
+                        <span>Budsjett: <strong className="text-white">{proj.budget ? Number(proj.budget).toLocaleString('no-NO') + ' kr' : 'Ikke satt'}</strong></span>
                         <button
                           onClick={() => setSelectedProject(proj)}
-                          className="px-3.5 py-1.5 bg-neutral-900 hover:bg-neutral-800 text-white rounded-xl text-xs font-bold transition-all flex items-center gap-1.5 cursor-pointer shadow-sm"
+                          className="px-3.5 py-1.5 bg-slate-800 hover:bg-slate-750 text-purple-300 hover:text-white border border-slate-700 rounded-xl text-xs font-bold transition-all flex items-center gap-1.5 cursor-pointer shadow-sm"
                           title="Gå direkte inn på prosjektet"
                         >
-                          <span>Gå inn på prosjekt</span>
+                          <span>Gå inn</span>
                           <ChevronRight size={14} />
                         </button>
                       </div>
@@ -2864,19 +2902,19 @@ Svar KUN med gyldig rå JSON (uten markdown \`\`\`json klammer):
           {/* Subtab: Deviations */}
           {supportSubTab === 'deviations' && (
             <div className="space-y-6">
-              <div className="bg-white rounded-[2.5rem] border border-neutral-200 p-6 sm:p-8 shadow-sm">
+              <div className="bg-slate-900/90 rounded-2xl sm:rounded-3xl border border-slate-800 p-4 sm:p-6 shadow-xl">
                 <div className="flex flex-col md:flex-row gap-4 items-center justify-between">
                   <div className="relative w-full md:w-96">
-                    <Search className="absolute left-4 top-1/2 -translate-y-1/2 text-neutral-400" size={20} />
+                    <Search className="absolute left-4 top-1/2 -translate-y-1/2 text-slate-400" size={18} />
                     <input 
                       type="text"
                       placeholder="Søk i avvik, prosjekt eller beskrivelse..."
                       value={adminDeviationSearch}
                       onChange={(e) => setAdminDeviationSearch(e.target.value)}
-                      className="w-full pl-12 pr-4 py-3 bg-neutral-50 border border-neutral-200 rounded-2xl focus:ring-2 focus:ring-purple-500 outline-none transition-all text-sm"
+                      className="w-full pl-11 pr-4 py-2.5 sm:py-3 bg-slate-800/80 border border-slate-700 rounded-xl sm:rounded-2xl focus:ring-2 focus:ring-purple-500 outline-none transition-all text-sm text-white placeholder-slate-400"
                     />
                   </div>
-                  <div className="flex gap-2">
+                  <div className="flex gap-1.5 overflow-x-auto">
                     {[
                       { id: 'all', label: 'Alle' },
                       { id: 'open', label: 'Åpne' },
@@ -2887,10 +2925,10 @@ Svar KUN med gyldig rå JSON (uten markdown \`\`\`json klammer):
                         key={f.id}
                         onClick={() => setDeviationSeverityFilter(f.id as any)}
                         className={cn(
-                          "px-3.5 py-2 rounded-xl text-xs font-bold transition-all cursor-pointer",
+                          "px-3 py-1.5 rounded-xl text-xs font-bold transition-all cursor-pointer",
                           deviationSeverityFilter === f.id
-                            ? "bg-neutral-900 text-white"
-                            : "bg-neutral-100 text-neutral-600 hover:bg-neutral-200"
+                            ? "bg-purple-600 text-white"
+                            : "bg-slate-800 text-slate-300 hover:bg-slate-750 hover:text-white border border-slate-700"
                         )}
                       >
                         {f.label}
@@ -2900,54 +2938,54 @@ Svar KUN med gyldig rå JSON (uten markdown \`\`\`json klammer):
                 </div>
               </div>
 
-              <div className="bg-white rounded-[2.5rem] border border-neutral-200 shadow-sm overflow-hidden">
+              <div className="bg-slate-900/90 rounded-2xl sm:rounded-3xl border border-slate-800 shadow-xl overflow-hidden">
                 <div className="overflow-x-auto">
                   <table className="w-full text-left">
                     <thead>
-                      <tr className="bg-neutral-50 border-b border-neutral-200">
-                        <th className="px-6 py-4 text-xs font-black uppercase tracking-widest text-neutral-400">Avvik</th>
-                        <th className="px-6 py-4 text-xs font-black uppercase tracking-widest text-neutral-400">Prosjekt</th>
-                        <th className="px-6 py-4 text-xs font-black uppercase tracking-widest text-neutral-400">Alvorlighet</th>
-                        <th className="px-6 py-4 text-xs font-black uppercase tracking-widest text-neutral-400">Status</th>
-                        <th className="px-6 py-4 text-xs font-black uppercase tracking-widest text-neutral-400">Dato</th>
+                      <tr className="bg-slate-950/80 border-b border-slate-800 text-slate-400">
+                        <th className="px-6 py-4 text-xs font-black uppercase tracking-widest">Avvik</th>
+                        <th className="px-6 py-4 text-xs font-black uppercase tracking-widest">Prosjekt</th>
+                        <th className="px-6 py-4 text-xs font-black uppercase tracking-widest">Alvorlighet</th>
+                        <th className="px-6 py-4 text-xs font-black uppercase tracking-widest">Status</th>
+                        <th className="px-6 py-4 text-xs font-black uppercase tracking-widest">Dato</th>
                       </tr>
                     </thead>
-                    <tbody className="divide-y divide-neutral-100">
+                    <tbody className="divide-y divide-slate-800/60">
                       {filteredDeviations.length === 0 ? (
                         <tr>
-                          <td colSpan={5} className="px-6 py-12 text-center text-neutral-400 text-sm">
+                          <td colSpan={5} className="px-6 py-12 text-center text-slate-400 text-sm">
                             Ingen avvik funnet.
                           </td>
                         </tr>
                       ) : (
                         filteredDeviations.map((dev) => (
-                          <tr key={dev.id} className="hover:bg-neutral-50 transition-colors">
+                          <tr key={dev.id} className="hover:bg-slate-800/40 transition-colors">
                             <td className="px-6 py-4">
-                              <div className="font-bold text-sm text-neutral-900">{dev.title || 'Avvik uten tittel'}</div>
-                              <p className="text-xs text-neutral-500 line-clamp-1">{dev.description}</p>
+                              <div className="font-bold text-sm text-white">{dev.title || 'Avvik uten tittel'}</div>
+                              <p className="text-xs text-slate-400 line-clamp-1">{dev.description}</p>
                             </td>
-                            <td className="px-6 py-4 text-xs font-medium text-neutral-700">
+                            <td className="px-6 py-4 text-xs font-medium text-slate-300">
                               {dev.projectTitle || dev.projectName || dev.projectId || 'Ikke spesifisert'}
                             </td>
                             <td className="px-6 py-4">
                               <span className={cn(
-                                "px-2.5 py-1 rounded-full text-[10px] font-black uppercase tracking-widest",
-                                dev.severity === 'critical' ? "bg-red-100 text-red-700" :
-                                dev.severity === 'high' ? "bg-orange-100 text-orange-700" :
-                                "bg-neutral-100 text-neutral-600"
+                                "px-2.5 py-1 rounded-full text-[10px] font-black uppercase tracking-widest border",
+                                dev.severity === 'critical' ? "bg-rose-950/60 text-rose-300 border-rose-500/40" :
+                                dev.severity === 'high' ? "bg-amber-950/60 text-amber-300 border-amber-500/40" :
+                                "bg-slate-800 text-slate-400 border-slate-700"
                               )}>
                                 {dev.severity || 'Normal'}
                               </span>
                             </td>
                             <td className="px-6 py-4">
                               <span className={cn(
-                                "px-2.5 py-1 rounded-full text-[10px] font-black uppercase tracking-widest",
-                                dev.status === 'closed' || dev.status === 'resolved' ? "bg-emerald-100 text-emerald-700" : "bg-amber-100 text-amber-800"
+                                "px-2.5 py-1 rounded-full text-[10px] font-black uppercase tracking-widest border",
+                                dev.status === 'closed' || dev.status === 'resolved' ? "bg-emerald-950/60 text-emerald-300 border-emerald-500/40" : "bg-amber-950/60 text-amber-300 border-amber-500/40"
                               )}>
                                 {dev.status === 'closed' || dev.status === 'resolved' ? 'Lukket' : 'Åpen'}
                               </span>
                             </td>
-                            <td className="px-6 py-4 text-xs text-neutral-400">
+                            <td className="px-6 py-4 text-xs text-slate-400">
                               {formatDate(dev.createdAt)}
                             </td>
                           </tr>
@@ -2963,56 +3001,56 @@ Svar KUN med gyldig rå JSON (uten markdown \`\`\`json klammer):
           {/* Subtab: Daily Logs */}
           {supportSubTab === 'logs' && (
             <div className="space-y-6">
-              <div className="bg-white rounded-[2.5rem] border border-neutral-200 p-6 sm:p-8 shadow-sm">
+              <div className="bg-slate-900/90 rounded-2xl sm:rounded-3xl border border-slate-800 p-4 sm:p-6 shadow-xl">
                 <div className="flex flex-col md:flex-row gap-4 items-center justify-between">
                   <div className="relative w-full md:w-96">
-                    <Search className="absolute left-4 top-1/2 -translate-y-1/2 text-neutral-400" size={20} />
+                    <Search className="absolute left-4 top-1/2 -translate-y-1/2 text-slate-400" size={18} />
                     <input 
                       type="text"
                       placeholder="Søk i byggedagbøker, utført arbeid, forfatter..."
                       value={adminLogSearch}
                       onChange={(e) => setAdminLogSearch(e.target.value)}
-                      className="w-full pl-12 pr-4 py-3 bg-neutral-50 border border-neutral-200 rounded-2xl focus:ring-2 focus:ring-purple-500 outline-none transition-all text-sm"
+                      className="w-full pl-11 pr-4 py-2.5 sm:py-3 bg-slate-800/80 border border-slate-700 rounded-xl sm:rounded-2xl focus:ring-2 focus:ring-purple-500 outline-none transition-all text-sm text-white placeholder-slate-400"
                     />
                   </div>
-                  <div className="text-xs font-bold text-neutral-400">
+                  <div className="text-xs font-bold text-slate-400">
                     {filteredDailyLogs.length} dagbokføringer
                   </div>
                 </div>
               </div>
 
-              <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
+              <div className="grid grid-cols-1 md:grid-cols-2 gap-4 sm:gap-6">
                 {filteredDailyLogs.length === 0 ? (
-                  <div className="col-span-2 text-center py-12 bg-white rounded-[2rem] border border-neutral-200 text-neutral-400 text-sm">
+                  <div className="col-span-2 text-center py-12 bg-slate-900/90 rounded-2xl sm:rounded-3xl border border-slate-800 text-slate-400 text-sm">
                     Ingen byggedagbøker funnet.
                   </div>
                 ) : (
                   filteredDailyLogs.map((log) => (
-                    <div key={log.id} className="bg-white rounded-[2rem] border border-neutral-200 p-6 shadow-sm hover:shadow-md transition-all flex flex-col justify-between">
+                    <div key={log.id} className="bg-slate-900/90 rounded-2xl sm:rounded-3xl border border-slate-800 p-5 sm:p-6 shadow-xl hover:border-slate-700 transition-all flex flex-col justify-between">
                       <div>
                         <div className="flex items-center justify-between mb-3">
-                          <span className="px-3 py-1 bg-purple-50 text-purple-700 text-xs font-black uppercase tracking-widest rounded-full">
+                          <span className="px-3 py-1 bg-purple-950/60 border border-purple-500/30 text-purple-300 text-xs font-black uppercase tracking-widest rounded-full">
                             {log.projectName || 'Prosjekt'}
                           </span>
-                          <span className="text-xs text-neutral-400">
+                          <span className="text-xs text-slate-400">
                             {log.date || (log.createdAt?.toDate ? log.createdAt.toDate().toLocaleDateString('no-NO') : 'Nylig')}
                           </span>
                         </div>
 
-                        <div className="text-sm font-bold text-neutral-900 mb-1 flex items-center gap-2">
-                          <HardHat size={16} className="text-amber-500" />
+                        <div className="text-sm font-bold text-white mb-1 flex items-center gap-2">
+                          <HardHat size={16} className="text-amber-400" />
                           {log.authorName || 'Håndverker'}
                         </div>
 
-                        <p className="text-sm text-neutral-600 bg-neutral-50 p-4 rounded-2xl mt-2 leading-relaxed whitespace-pre-wrap">
+                        <p className="text-sm text-slate-300 bg-slate-950/70 p-4 rounded-2xl mt-2 leading-relaxed whitespace-pre-wrap border border-slate-800">
                           {log.workPerformed || log.description || 'Ingen arbeidsbeskrivelse.'}
                         </p>
                       </div>
 
-                      <div className="mt-4 pt-3 border-t border-neutral-100 flex items-center justify-between text-xs text-neutral-400">
-                        <span>Timer: <strong className="text-neutral-700">{log.hoursWorked || log.hours || '8'} t</strong></span>
+                      <div className="mt-4 pt-3 border-t border-slate-800 flex items-center justify-between text-xs text-slate-400">
+                        <span>Timer: <strong className="text-white">{log.hoursWorked || log.hours || '8'} t</strong></span>
                         {log.photos && log.photos.length > 0 && (
-                          <span className="text-purple-600 font-bold flex items-center gap-1">
+                          <span className="text-purple-400 font-bold flex items-center gap-1">
                             <Camera size={14} /> {log.photos.length} bilder vedlagt
                           </span>
                         )}
@@ -3027,219 +3065,263 @@ Svar KUN med gyldig rå JSON (uten markdown \`\`\`json klammer):
       )}
 
       {activeTab === 'leads' && (
-        <div className="bg-white rounded-[2.5rem] border border-neutral-200 shadow-sm overflow-hidden">
-          <div className="overflow-x-auto">
-            <table className="w-full text-left">
-              <thead>
-                <tr className="bg-neutral-50 border-b border-neutral-200">
-                  <th className="px-8 py-4 text-xs font-black uppercase tracking-widest text-neutral-400">Navn</th>
-                  <th className="px-8 py-4 text-xs font-black uppercase tracking-widest text-neutral-400">Melding</th>
-                  <th className="px-8 py-4 text-xs font-black uppercase tracking-widest text-neutral-400">Status</th>
-                  <th className="px-8 py-4 text-xs font-black uppercase tracking-widest text-neutral-400">Dato</th>
-                  <th className="px-8 py-4 text-xs font-black uppercase tracking-widest text-neutral-400">Handlinger</th>
-                </tr>
-              </thead>
-              <tbody className="divide-y divide-neutral-100">
-                {leads.map((lead) => (
-                  <tr key={lead.id} className="hover:bg-neutral-50 transition-colors">
-                    <td className="px-8 py-6">
-                      <div className="font-bold text-neutral-900">{lead.name || lead.company || 'Henvendelse'}</div>
-                      <div className="text-xs text-neutral-500">{lead.email}</div>
-                      {lead.company && lead.company !== lead.name && (
-                        <div className="text-[11px] text-neutral-400 flex items-center gap-1 mt-0.5">
-                          <Building2 size={12} className="text-neutral-400 shrink-0" />
-                          <span className="truncate">{lead.company}</span>
+        <div className="space-y-6 sm:space-y-8 mb-12">
+          {/* Top KPI Cards */}
+          <div className="grid grid-cols-2 lg:grid-cols-4 gap-3 sm:gap-4">
+            <div className="bg-slate-900/90 border border-slate-800 rounded-2xl p-4 sm:p-5 flex flex-col justify-between shadow-sm">
+              <span className="text-[11px] font-bold uppercase tracking-wider text-slate-400">Totalt henvendelser</span>
+              <div className="mt-2 flex items-baseline justify-between">
+                <span className="text-2xl sm:text-3xl font-black text-white">{leadStats.total}</span>
+                <span className="text-xs font-semibold text-slate-500">Alle leads</span>
+              </div>
+            </div>
+
+            <div className="bg-slate-900/90 border border-rose-500/30 rounded-2xl p-4 sm:p-5 flex flex-col justify-between shadow-sm relative overflow-hidden">
+              <div className="absolute top-0 right-0 w-20 h-20 bg-rose-500/10 rounded-full blur-xl pointer-events-none" />
+              <span className="text-[11px] font-bold uppercase tracking-wider text-rose-300 flex items-center gap-1.5">
+                <span className="w-2 h-2 rounded-full bg-rose-500 animate-pulse" />
+                Nye / Ubehandlede
+              </span>
+              <div className="mt-2 flex items-baseline justify-between relative z-10">
+                <span className="text-2xl sm:text-3xl font-black text-rose-400">{leadStats.newCount}</span>
+                <span className="text-xs font-semibold text-rose-300/80">Venter oppfølging</span>
+              </div>
+            </div>
+
+            <div className="bg-slate-900/90 border border-emerald-500/30 rounded-2xl p-4 sm:p-5 flex flex-col justify-between shadow-sm relative overflow-hidden">
+              <div className="absolute top-0 right-0 w-20 h-20 bg-emerald-500/10 rounded-full blur-xl pointer-events-none" />
+              <span className="text-[11px] font-bold uppercase tracking-wider text-emerald-300 flex items-center gap-1.5">
+                <CheckCircle2 size={13} className="text-emerald-400" />
+                Konvertert til kunde
+              </span>
+              <div className="mt-2 flex items-baseline justify-between relative z-10">
+                <span className="text-2xl sm:text-3xl font-black text-emerald-400">{leadStats.convertedCount}</span>
+                <span className="text-xs font-semibold text-emerald-300/80">
+                  {leadStats.total > 0 ? `${Math.round((leadStats.convertedCount / leadStats.total) * 100)}% rate` : '0%'}
+                </span>
+              </div>
+            </div>
+
+            <div className="bg-slate-900/90 border border-purple-500/30 rounded-2xl p-4 sm:p-5 flex flex-col justify-between shadow-sm relative overflow-hidden">
+              <div className="absolute top-0 right-0 w-20 h-20 bg-purple-500/10 rounded-full blur-xl pointer-events-none" />
+              <span className="text-[11px] font-bold uppercase tracking-wider text-purple-300 flex items-center gap-1.5">
+                <DollarSign size={13} className="text-purple-400" />
+                Est. mnd. pipeline
+              </span>
+              <div className="mt-2 flex items-baseline justify-between relative z-10">
+                <span className="text-xl sm:text-2xl font-black text-purple-300">
+                  {leadStats.calculatedPipelineVal.toLocaleString('no-NO')} <span className="text-xs font-normal text-purple-400/80">kr/mnd</span>
+                </span>
+              </div>
+            </div>
+          </div>
+
+          {/* Search, Filter & Quick Action Bar */}
+          <div className="bg-slate-900/90 rounded-2xl sm:rounded-3xl border border-slate-800 p-4 sm:p-6 shadow-sm space-y-4">
+            <div className="flex flex-col md:flex-row gap-3 sm:gap-4 items-stretch md:items-center justify-between">
+              {/* Search input */}
+              <div className="relative flex-1">
+                <Search className="absolute left-4 top-1/2 -translate-y-1/2 text-slate-400" size={18} />
+                <input 
+                  type="text"
+                  placeholder="Søk etter navn, bedrift, tlf, e-post, fag..."
+                  value={leadSearchTerm}
+                  onChange={(e) => setLeadSearchTerm(e.target.value)}
+                  className="w-full pl-11 pr-4 py-2.5 sm:py-3 bg-slate-800/80 border border-slate-700 rounded-xl sm:rounded-2xl focus:ring-2 focus:ring-purple-500 outline-none transition-all text-sm text-white placeholder-slate-400"
+                />
+                {leadSearchTerm && (
+                  <button 
+                    onClick={() => setLeadSearchTerm('')}
+                    className="absolute right-3.5 top-1/2 -translate-y-1/2 text-slate-400 hover:text-white cursor-pointer"
+                  >
+                    <X size={16} />
+                  </button>
+                )}
+              </div>
+
+              {/* Status filter pills */}
+              <div className="flex items-center gap-1.5 overflow-x-auto pb-1 max-w-full no-scrollbar">
+                {[
+                  { id: 'all', label: 'Alle', count: leadStats.total },
+                  { id: 'new', label: 'Nye', count: leadStats.newCount },
+                  { id: 'contacted', label: 'Kontaktet', count: leadStats.contactedCount },
+                  { id: 'qualified', label: 'Kvalifisert', count: leadStats.qualifiedCount },
+                  { id: 'converted', label: 'Kunde opprettet', count: leadStats.convertedCount },
+                  { id: 'lost', label: 'Tapt', count: leadStats.lostCount },
+                ].map(f => (
+                  <button
+                    key={f.id}
+                    onClick={() => setLeadStatusFilter(f.id as any)}
+                    className={cn(
+                      "px-3 py-2 rounded-xl text-xs font-bold transition-all whitespace-nowrap cursor-pointer shrink-0",
+                      leadStatusFilter === f.id
+                        ? "bg-purple-600 text-white shadow-xs"
+                        : "bg-slate-800 text-slate-300 hover:bg-slate-750 hover:text-white border border-slate-700"
+                    )}
+                  >
+                    {f.label} ({f.count})
+                  </button>
+                ))}
+              </div>
+            </div>
+          </div>
+
+          {/* Empty state */}
+          {filteredLeads.length === 0 ? (
+            <div className="bg-slate-900/90 rounded-2xl sm:rounded-3xl border border-slate-800 p-12 text-center text-slate-400">
+              <Sparkles className="w-12 h-12 text-slate-600 mx-auto mb-3" />
+              <p className="font-bold text-white text-base">Ingen henvendelser funnet</p>
+              <p className="text-sm text-slate-400 mt-1 max-w-md mx-auto">
+                {leadSearchTerm || leadStatusFilter !== 'all' 
+                  ? 'Ingen henvendelser matcher det valgte filteret eller søket ditt.' 
+                  : 'Det er ingen registrerte leads i databasen enda.'}
+              </p>
+              {(leadSearchTerm || leadStatusFilter !== 'all') && (
+                <button
+                  onClick={() => { setLeadSearchTerm(''); setLeadStatusFilter('all'); }}
+                  className="mt-4 px-4 py-2 bg-slate-800 hover:bg-slate-700 text-purple-400 hover:text-purple-300 rounded-xl text-xs font-bold border border-slate-700 transition-all cursor-pointer"
+                >
+                  Nullstill filtre
+                </button>
+              )}
+            </div>
+          ) : (
+            <>
+              {/* MOBILE VIEW (< lg): Responsive touch-optimized card list */}
+              <div className="block lg:hidden space-y-4">
+                {filteredLeads.map((lead) => {
+                  const isConverted = lead.status === 'converted' || !!lead.convertedCompanyId;
+                  const isNew = !lead.status || lead.status === 'new';
+
+                  return (
+                    <div 
+                      key={lead.id} 
+                      className={cn(
+                        "bg-slate-900/95 border rounded-2xl p-4 sm:p-5 shadow-lg transition-all space-y-4",
+                        isConverted ? "border-emerald-500/30 bg-slate-900/90" :
+                        isNew ? "border-rose-500/30 bg-gradient-to-br from-slate-900 via-slate-900 to-rose-950/10" :
+                        "border-slate-800 hover:border-slate-700"
+                      )}
+                    >
+                      {/* Top Header: Lead identity & Timestamp */}
+                      <div className="flex items-start justify-between gap-3">
+                        <div className="min-w-0 flex-1">
+                          <div className="flex items-center gap-2 flex-wrap">
+                            <h3 className="font-bold text-white text-base sm:text-lg leading-tight truncate">
+                              {lead.name || lead.company || 'Henvendelse'}
+                            </h3>
+                            {isNew && (
+                              <span className="px-2 py-0.5 rounded-full bg-rose-500/20 text-rose-300 border border-rose-500/40 text-[10px] font-black uppercase tracking-wider">
+                                Ny lead
+                              </span>
+                            )}
+                          </div>
+
+                          {lead.company && lead.company !== lead.name && (
+                            <div className="text-xs text-slate-300 flex items-center gap-1.5 mt-1 font-medium">
+                              <Building2 size={13} className="text-purple-400 shrink-0" />
+                              <span className="truncate">{lead.company}</span>
+                            </div>
+                          )}
+                        </div>
+
+                        <div className="text-right shrink-0">
+                          <span className="text-[11px] text-slate-400 flex items-center gap-1 font-medium">
+                            <Clock size={12} className="text-slate-500" />
+                            {formatDate(lead.createdAt)}
+                          </span>
+                        </div>
+                      </div>
+
+                      {/* Contact Channels (Touch-friendly clickable links) */}
+                      <div className="flex flex-wrap gap-2 pt-1">
+                        {lead.phone && (
+                          <a 
+                            href={`tel:${lead.phone}`}
+                            className="inline-flex items-center gap-1.5 px-3 py-1.5 rounded-xl bg-slate-800/90 border border-slate-700/80 text-xs font-semibold text-purple-300 hover:text-white hover:bg-slate-750 transition-colors"
+                          >
+                            <Phone size={13} className="text-purple-400 shrink-0" />
+                            <span>{lead.phone}</span>
+                          </a>
+                        )}
+                        {lead.email && (
+                          <a 
+                            href={`mailto:${lead.email}`}
+                            className="inline-flex items-center gap-1.5 px-3 py-1.5 rounded-xl bg-slate-800/90 border border-slate-700/80 text-xs font-semibold text-slate-300 hover:text-white hover:bg-slate-750 transition-colors truncate max-w-[260px]"
+                          >
+                            <Mail size={13} className="text-slate-400 shrink-0" />
+                            <span className="truncate">{lead.email}</span>
+                          </a>
+                        )}
+                      </div>
+
+                      {/* Specifications & Badges */}
+                      <div className="flex flex-wrap gap-1.5 items-center">
+                        {lead.plan && (
+                          <span className="px-2.5 py-1 bg-purple-900/40 text-purple-300 border border-purple-500/30 text-[10px] font-black uppercase tracking-wider rounded-lg">
+                            {lead.plan}
+                          </span>
+                        )}
+                        {lead.trade && (
+                          <span className="px-2.5 py-1 bg-blue-900/40 text-blue-300 border border-blue-500/30 text-[10px] font-bold rounded-lg">
+                            {lead.trade}
+                          </span>
+                        )}
+                        {lead.workers && (
+                          <span className="px-2.5 py-1 bg-slate-800 text-slate-300 border border-slate-700 text-[10px] font-bold rounded-lg">
+                            {lead.workers} {Number(lead.workers) === 1 ? 'ansatt' : 'ansatte'}
+                          </span>
+                        )}
+                        {lead.monthlyPrice && (
+                          <span className="px-2.5 py-1 bg-emerald-950/60 text-emerald-400 border border-emerald-600/40 text-[10px] font-black rounded-lg">
+                            {Number(lead.monthlyPrice).toLocaleString('no-NO')} kr/mnd
+                          </span>
+                        )}
+                        {lead.source && (
+                          <span className="text-[10px] text-slate-400 italic ml-1">
+                            Kilde: {lead.source}
+                          </span>
+                        )}
+                      </div>
+
+                      {/* Message Content */}
+                      {lead.message && (
+                        <div className="bg-slate-950/70 border border-slate-800/80 rounded-xl p-3 text-sm text-slate-200 leading-relaxed whitespace-pre-wrap">
+                          {lead.message}
                         </div>
                       )}
-                      {lead.phone && (
-                        <div className="text-[11px] text-neutral-400 mt-0.5">
-                          Tlf: <a href={`tel:${lead.phone}`} className="hover:underline text-neutral-600 font-medium">{lead.phone}</a>
-                        </div>
-                      )}
+
+                      {/* Converted Company Banner */}
                       {lead.convertedCompanyName && (
                         <div 
                           onClick={() => handleJumpToCompany(lead.convertedCompanyId)}
-                          className="inline-flex items-center gap-1 mt-1.5 px-2 py-0.5 rounded-md bg-emerald-50 border border-emerald-200/60 text-emerald-800 text-[10px] font-bold cursor-pointer hover:bg-emerald-100 transition-colors"
-                          title="Klikk for å gå til bedriften"
+                          className="flex items-center justify-between p-2.5 rounded-xl bg-emerald-950/40 border border-emerald-500/30 text-emerald-300 text-xs font-bold cursor-pointer hover:bg-emerald-900/40 transition-colors"
                         >
-                          <CheckCircle2 size={10} className="text-emerald-600 shrink-0" />
-                          <span className="truncate">Kunde: {lead.convertedCompanyName}</span>
-                        </div>
-                      )}
-                    </td>
-                    <td className="px-8 py-6 max-w-sm">
-                      {lead.message ? (
-                        <div>
-                          <p className="text-sm text-neutral-700 leading-relaxed whitespace-pre-wrap">{lead.message}</p>
-                          {(lead.plan || lead.trade) && (
-                            <div className="flex flex-wrap gap-1 mt-1.5">
-                              {lead.plan && (
-                                <span className="px-2 py-0.5 bg-purple-50 text-purple-700 text-[10px] font-bold rounded-md uppercase tracking-wider">
-                                  {lead.plan}
-                                </span>
-                              )}
-                              {lead.trade && (
-                                <span className="px-2 py-0.5 bg-blue-50 text-blue-700 text-[10px] font-bold rounded-md">
-                                  {lead.trade}
-                                </span>
-                              )}
-                            </div>
-                          )}
-                        </div>
-                      ) : (
-                        <div className="space-y-1">
-                          <div className="flex flex-wrap gap-1.5 items-center">
-                            {lead.plan && (
-                              <span className="px-2.5 py-0.5 bg-purple-100 text-purple-700 text-[10px] font-black uppercase tracking-wider rounded-full">
-                                {lead.plan}
-                              </span>
-                            )}
-                            {lead.trade && (
-                              <span className="px-2.5 py-0.5 bg-blue-100 text-blue-700 text-[10px] font-bold rounded-full">
-                                {lead.trade}
-                              </span>
-                            )}
-                            {lead.workers && (
-                              <span className="px-2.5 py-0.5 bg-neutral-100 text-neutral-600 text-[10px] font-bold rounded-full">
-                                {lead.workers} {Number(lead.workers) === 1 ? 'ansatt' : 'ansatte'}
-                              </span>
-                            )}
+                          <div className="flex items-center gap-2 truncate">
+                            <CheckCircle2 size={15} className="text-emerald-400 shrink-0" />
+                            <span className="truncate">Opprettet som kunde: {lead.convertedCompanyName}</span>
                           </div>
-                          {lead.monthlyPrice && (
-                            <div className="text-xs font-bold text-emerald-600">
-                              Kalkulert: {Number(lead.monthlyPrice).toLocaleString('no-NO')} kr/mnd
-                            </div>
-                          )}
-                          {lead.source && !lead.plan && (
-                            <p className="text-xs text-neutral-400 italic">Kilde: {lead.source}</p>
-                          )}
+                          <ChevronRight size={15} className="text-emerald-400 shrink-0 ml-2" />
                         </div>
                       )}
-                    </td>
-                    <td className="px-8 py-6">
-                      <select 
-                        value={lead.status || 'new'}
-                        onChange={(e) => handleUpdateLeadStatus(lead.id, e.target.value)}
-                        className={cn(
-                          "text-[10px] font-black uppercase tracking-widest px-3 py-1 rounded-full outline-none border-none cursor-pointer",
-                          lead.status === 'converted' ? "bg-emerald-100 text-emerald-800" :
-                          lead.status === 'new' ? "bg-red-100 text-red-700" :
-                          lead.status === 'contacted' ? "bg-blue-100 text-blue-700" :
-                          lead.status === 'qualified' ? "bg-emerald-100 text-emerald-700" :
-                          "bg-neutral-100 text-neutral-700"
-                        )}
-                      >
-                        <option value="new">Ny</option>
-                        <option value="contacted">Kontaktet</option>
-                        <option value="qualified">Kvalifisert</option>
-                        <option value="converted">Kunde opprettet</option>
-                        <option value="lost">Tapt</option>
-                      </select>
-                      {lead.convertedCompanyName && (
-                        <button
-                          type="button"
-                          onClick={() => handleJumpToCompany(lead.convertedCompanyId)}
-                          className="flex items-center gap-1 mt-1.5 text-[10px] font-bold text-emerald-700 hover:text-emerald-900 cursor-pointer hover:underline text-left"
-                          title="Klikk for å gå til opprettet kunde"
-                        >
-                          <Building2 size={10} className="shrink-0" />
-                          <span className="truncate max-w-[120px]">{lead.convertedCompanyName}</span>
-                        </button>
-                      )}
-                    </td>
-                    <td className="px-8 py-6 text-xs text-neutral-500">
-                      {formatDate(lead.createdAt)}
-                    </td>
-                    <td className="px-8 py-6 min-w-[320px] max-w-lg">
-                      <div className="flex items-center gap-2">
-                        {/* 🌟 GJØR OM TIL KUNDE KNAPP */}
-                        <button 
-                          onClick={() => handleOpenConvertModal(lead)}
-                          className={cn(
-                            "p-2 rounded-xl transition-all cursor-pointer flex items-center justify-center shrink-0",
-                            lead.status === 'converted' || lead.convertedCompanyId
-                              ? "text-emerald-700 bg-emerald-100 hover:bg-emerald-200"
-                              : "text-white bg-emerald-600 hover:bg-emerald-700 shadow-sm shadow-emerald-600/25"
-                          )}
-                          title={lead.status === 'converted' || lead.convertedCompanyId ? `Kunde opprettet: ${lead.convertedCompanyName || 'Se detaljer'}` : "Gjør om til kunde nå"}
-                        >
-                          {lead.status === 'converted' || lead.convertedCompanyId ? (
-                            <CheckCircle2 size={18} />
-                          ) : (
-                            <UserPlus size={18} />
-                          )}
-                        </button>
-                        <button 
-                          onClick={() => handleAnalyzeLead(lead)}
-                          disabled={isAnalyzingLead === lead.id}
-                          className={cn(
-                            "p-2 rounded-xl transition-all cursor-pointer",
-                            lead.aiScore ? "text-emerald-600 bg-emerald-50 hover:bg-emerald-100" : "text-neutral-400 hover:text-purple-600 hover:bg-purple-50"
-                          )}
-                          title="AI Analyse"
-                        >
-                          {isAnalyzingLead === lead.id ? (
-                            <div className="w-4 h-4 border-2 border-emerald-600 border-t-transparent rounded-full animate-spin" />
-                          ) : (
-                            <Sparkles size={18} />
-                          )}
-                        </button>
-                        <button 
-                          onClick={() => {
-                            setSelectedLead(lead);
-                            setReplyMessage(
-                              lead.suggestedResponse || 
-                              leadAnalysis[lead.id]?.suggestedResponse || 
-                              `Hei ${lead.name || ''}!\n\nTakk for din henvendelse til VikingMester angående ${lead.plan || 'KS/HMS-systemet'}.\n\nVi setter gjerne opp en uforpliktende demonstrasjon eller prøveperiode for ${lead.company || 'dere'}.\n\nMed vennlig hilsen,\nVikingMester Teamet`
-                            );
-                            setIsResponseModalOpen(true);
-                          }}
-                          className="p-2 text-neutral-400 hover:text-purple-600 hover:bg-purple-50 rounded-xl transition-all cursor-pointer"
-                          title="Svar på henvendelse"
-                        >
-                          <Mail size={18} />
-                        </button>
-                        <button 
-                          onClick={() => {
-                            setOfferForm({
-                              ...offerForm,
-                              recipientEmail: lead.email || '',
-                              recipientName: lead.name || '',
-                              companyName: lead.company || lead.name || '',
-                              customPrice: Number(lead.monthlyPrice) || 0,
-                              message: lead.plan ? `Skreddersydd tilbud basert på ${lead.plan} for ${lead.trade || 'byggbransjen'}.` : ''
-                            });
-                            setIsOfferModalOpen(true);
-                          }}
-                          className="p-2 text-neutral-400 hover:text-blue-600 hover:bg-blue-50 rounded-xl transition-all cursor-pointer"
-                          title="Send tilbud"
-                        >
-                          <Send size={18} />
-                        </button>
-                        <button 
-                          onClick={() => handleDeleteLead(lead.id)}
-                          className="p-2 text-neutral-400 hover:text-rose-600 hover:bg-rose-50 rounded-xl transition-all cursor-pointer"
-                          title="Slett henvendelse"
-                        >
-                          <Trash2 size={18} />
-                        </button>
-                      </div>
+
+                      {/* AI Analysis Card */}
                       {lead.aiScore && (
-                        <div className="mt-2.5 p-3.5 bg-emerald-50/90 rounded-2xl border border-emerald-200/80 text-left shadow-xs space-y-1.5">
-                          <div className="flex items-center justify-between pb-1 border-b border-emerald-200/50">
-                            <span className="text-[10px] font-black uppercase text-emerald-800 flex items-center gap-1">
-                              <Sparkles size={11} className="text-emerald-600" />
+                        <div className="p-3.5 bg-emerald-950/20 border border-emerald-500/30 rounded-xl space-y-2">
+                          <div className="flex items-center justify-between pb-1.5 border-b border-emerald-500/20">
+                            <span className="text-[10px] font-black uppercase text-emerald-400 flex items-center gap-1.5">
+                              <Sparkles size={12} className="text-emerald-400" />
                               AI Vurdering & Profil
                             </span>
-                            <span className="text-xs font-black text-emerald-900 bg-white px-2 py-0.5 rounded-md border border-emerald-200">
+                            <span className="text-xs font-black text-emerald-300 bg-emerald-900/40 px-2 py-0.5 rounded-md border border-emerald-500/30">
                               {lead.aiScore}/100
                             </span>
                           </div>
-                          <p className="text-xs text-emerald-950 leading-relaxed font-medium whitespace-pre-wrap">
+                          <p className="text-xs text-slate-300 leading-relaxed font-medium whitespace-pre-wrap">
                             {lead.aiSummary}
                           </p>
                           {(lead.suggestedResponse || leadAnalysis[lead.id]?.suggestedResponse) && (
-                            <div className="pt-1.5 border-t border-emerald-200/40">
+                            <div className="pt-1">
                               <button
                                 type="button"
                                 onClick={() => {
@@ -3247,174 +3329,624 @@ Svar KUN med gyldig rå JSON (uten markdown \`\`\`json klammer):
                                   setReplyMessage(lead.suggestedResponse || leadAnalysis[lead.id]?.suggestedResponse);
                                   setIsResponseModalOpen(true);
                                 }}
-                                className="text-[10px] font-bold text-emerald-800 hover:text-emerald-950 bg-white hover:bg-emerald-100 border border-emerald-200 px-2 py-1 rounded-lg transition-all flex items-center gap-1 cursor-pointer"
-                                title="Åpne svarmodal med AI-generert svarutkast"
+                                className="text-xs font-bold text-emerald-300 hover:text-emerald-100 bg-emerald-900/40 hover:bg-emerald-800/60 border border-emerald-500/30 px-3 py-1.5 rounded-lg transition-all flex items-center gap-1.5 cursor-pointer"
                               >
-                                <Mail size={10} />
+                                <Mail size={12} />
                                 <span>Bruk AI-svarutkast</span>
                               </button>
                             </div>
                           )}
                         </div>
                       )}
-                    </td>
-                  </tr>
-                ))}
-              </tbody>
-            </table>
-          </div>
+
+                      {/* Status Selector & Quick Action Controls */}
+                      <div className="pt-2 border-t border-slate-800/80 space-y-3">
+                        <div className="flex items-center justify-between gap-2">
+                          <span className="text-xs font-bold text-slate-400">Status:</span>
+                          <select 
+                            value={lead.status || 'new'}
+                            onChange={(e) => handleUpdateLeadStatus(lead.id, e.target.value)}
+                            className={cn(
+                              "text-xs font-bold uppercase tracking-wider px-3 py-1.5 rounded-xl outline-none border cursor-pointer transition-all",
+                              lead.status === 'converted' ? "bg-emerald-950/80 text-emerald-300 border-emerald-500/40" :
+                              lead.status === 'new' ? "bg-rose-950/80 text-rose-300 border-rose-500/40" :
+                              lead.status === 'contacted' ? "bg-blue-950/80 text-blue-300 border-blue-500/40" :
+                              lead.status === 'qualified' ? "bg-purple-950/80 text-purple-300 border-purple-500/40" :
+                              "bg-slate-800 text-slate-300 border-slate-700"
+                            )}
+                          >
+                            <option value="new" className="bg-slate-900 text-rose-300">Ny</option>
+                            <option value="contacted" className="bg-slate-900 text-blue-300">Kontaktet</option>
+                            <option value="qualified" className="bg-slate-900 text-purple-300">Kvalifisert</option>
+                            <option value="converted" className="bg-slate-900 text-emerald-300">Kunde opprettet</option>
+                            <option value="lost" className="bg-slate-900 text-slate-400">Tapt</option>
+                          </select>
+                        </div>
+
+                        {/* Primary Action Button */}
+                        <button 
+                          onClick={() => handleOpenConvertModal(lead)}
+                          className={cn(
+                            "w-full py-2.5 px-3 rounded-xl font-bold text-xs flex items-center justify-center gap-2 transition-all cursor-pointer",
+                            lead.status === 'converted' || lead.convertedCompanyId
+                              ? "bg-emerald-500/20 text-emerald-300 border border-emerald-500/30 hover:bg-emerald-500/30"
+                              : "bg-emerald-600 hover:bg-emerald-500 text-white shadow-md shadow-emerald-900/30"
+                          )}
+                        >
+                          {lead.status === 'converted' || lead.convertedCompanyId ? (
+                            <>
+                              <CheckCircle2 size={16} />
+                              <span>Kunde opprettet ({lead.convertedCompanyName || 'Aktiv'})</span>
+                            </>
+                          ) : (
+                            <>
+                              <UserPlus size={16} />
+                              <span>Gjør om til kunde</span>
+                            </>
+                          )}
+                        </button>
+
+                        {/* Quick Tool Buttons: Svar, Tilbud, AI, Slett */}
+                        <div className="grid grid-cols-4 gap-2">
+                          <button 
+                            onClick={() => {
+                              setSelectedLead(lead);
+                              setReplyMessage(
+                                lead.suggestedResponse || 
+                                leadAnalysis[lead.id]?.suggestedResponse || 
+                                `Hei ${lead.name || ''}!\n\nTakk for din henvendelse til VikingMester angående ${lead.plan || 'KS/HMS-systemet'}.\n\nVi setter gjerne opp en uforpliktende demonstrasjon eller prøveperiode for ${lead.company || 'dere'}.\n\nMed vennlig hilsen,\nVikingMester Teamet`
+                              );
+                              setIsResponseModalOpen(true);
+                            }}
+                            className="py-2 px-2 bg-slate-800/90 border border-slate-700/80 text-purple-400 hover:bg-slate-750 hover:text-purple-300 rounded-xl transition-all cursor-pointer flex flex-col items-center justify-center gap-1 text-[11px] font-bold"
+                          >
+                            <Mail size={15} />
+                            <span>Svar</span>
+                          </button>
+
+                          <button 
+                            onClick={() => {
+                              setOfferForm({
+                                ...offerForm,
+                                recipientEmail: lead.email || '',
+                                recipientName: lead.name || '',
+                                companyName: lead.company || lead.name || '',
+                                customPrice: Number(lead.monthlyPrice) || 0,
+                                message: lead.plan ? `Skreddersydd tilbud basert på ${lead.plan} for ${lead.trade || 'byggbransjen'}.` : ''
+                              });
+                              setIsOfferModalOpen(true);
+                            }}
+                            className="py-2 px-2 bg-slate-800/90 border border-slate-700/80 text-blue-400 hover:bg-slate-750 hover:text-blue-300 rounded-xl transition-all cursor-pointer flex flex-col items-center justify-center gap-1 text-[11px] font-bold"
+                          >
+                            <Send size={15} />
+                            <span>Tilbud</span>
+                          </button>
+
+                          <button 
+                            onClick={() => handleAnalyzeLead(lead)}
+                            disabled={isAnalyzingLead === lead.id}
+                            className={cn(
+                              "py-2 px-2 rounded-xl border transition-all cursor-pointer flex flex-col items-center justify-center gap-1 text-[11px] font-bold",
+                              lead.aiScore 
+                                ? "bg-emerald-950/40 border-emerald-500/40 text-emerald-400 hover:bg-emerald-900/50" 
+                                : "bg-slate-800/90 border-slate-700/80 text-slate-300 hover:bg-slate-750 hover:text-emerald-300"
+                            )}
+                          >
+                            {isAnalyzingLead === lead.id ? (
+                              <div className="w-3.5 h-3.5 border-2 border-emerald-400 border-t-transparent rounded-full animate-spin my-0.5" />
+                            ) : (
+                              <Sparkles size={15} />
+                            )}
+                            <span>AI</span>
+                          </button>
+
+                          <button 
+                            onClick={() => handleDeleteLead(lead.id)}
+                            className="py-2 px-2 bg-slate-800/90 border border-slate-700/80 text-rose-400 hover:bg-rose-950/40 hover:border-rose-500/40 rounded-xl transition-all cursor-pointer flex flex-col items-center justify-center gap-1 text-[11px] font-bold"
+                          >
+                            <Trash2 size={15} />
+                            <span>Slett</span>
+                          </button>
+                        </div>
+                      </div>
+                    </div>
+                  );
+                })}
+              </div>
+
+              {/* DESKTOP VIEW (>= lg): Polished dark table */}
+              <div className="hidden lg:block bg-slate-900/90 rounded-3xl border border-slate-800 shadow-xl overflow-hidden">
+                <div className="overflow-x-auto">
+                  <table className="w-full text-left">
+                    <thead>
+                      <tr className="bg-slate-950/80 border-b border-slate-800 text-slate-400">
+                        <th className="px-6 py-4 text-xs font-black uppercase tracking-wider">Navn & Bedrift</th>
+                        <th className="px-6 py-4 text-xs font-black uppercase tracking-wider">Melding & Behov</th>
+                        <th className="px-6 py-4 text-xs font-black uppercase tracking-wider">Status</th>
+                        <th className="px-6 py-4 text-xs font-black uppercase tracking-wider">Dato</th>
+                        <th className="px-6 py-4 text-xs font-black uppercase tracking-wider">Handlinger</th>
+                      </tr>
+                    </thead>
+                    <tbody className="divide-y divide-slate-800/60">
+                      {filteredLeads.map((lead) => (
+                        <tr key={lead.id} className="hover:bg-slate-800/40 transition-colors">
+                          <td className="px-6 py-5 align-top">
+                            <div className="font-bold text-white text-sm">{lead.name || lead.company || 'Henvendelse'}</div>
+                            <div className="text-xs text-slate-400 mt-0.5">{lead.email}</div>
+                            {lead.company && lead.company !== lead.name && (
+                              <div className="text-xs text-slate-400 flex items-center gap-1.5 mt-1 font-medium">
+                                <Building2 size={12} className="text-purple-400 shrink-0" />
+                                <span className="truncate">{lead.company}</span>
+                              </div>
+                            )}
+                            {lead.phone && (
+                              <div className="text-xs text-slate-400 mt-1">
+                                Tlf: <a href={`tel:${lead.phone}`} className="hover:underline text-purple-400 font-medium">{lead.phone}</a>
+                              </div>
+                            )}
+                            {lead.convertedCompanyName && (
+                              <div 
+                                onClick={() => handleJumpToCompany(lead.convertedCompanyId)}
+                                className="inline-flex items-center gap-1.5 mt-2 px-2.5 py-1 rounded-lg bg-emerald-950/50 border border-emerald-500/40 text-emerald-300 text-[11px] font-bold cursor-pointer hover:bg-emerald-900/50 transition-colors"
+                                title="Klikk for å gå til bedriften"
+                              >
+                                <CheckCircle2 size={12} className="text-emerald-400 shrink-0" />
+                                <span className="truncate">Kunde: {lead.convertedCompanyName}</span>
+                              </div>
+                            )}
+                          </td>
+                          <td className="px-6 py-5 max-w-sm align-top">
+                            {lead.message ? (
+                              <div className="space-y-2">
+                                <p className="text-sm text-slate-200 leading-relaxed whitespace-pre-wrap">{lead.message}</p>
+                                {(lead.plan || lead.trade) && (
+                                  <div className="flex flex-wrap gap-1.5 pt-1">
+                                    {lead.plan && (
+                                      <span className="px-2.5 py-0.5 bg-purple-900/40 text-purple-300 border border-purple-500/30 text-[10px] font-black uppercase tracking-wider rounded-md">
+                                        {lead.plan}
+                                      </span>
+                                    )}
+                                    {lead.trade && (
+                                      <span className="px-2.5 py-0.5 bg-blue-900/40 text-blue-300 border border-blue-500/30 text-[10px] font-bold rounded-md">
+                                        {lead.trade}
+                                      </span>
+                                    )}
+                                  </div>
+                                )}
+                              </div>
+                            ) : (
+                              <div className="space-y-1.5">
+                                <div className="flex flex-wrap gap-1.5 items-center">
+                                  {lead.plan && (
+                                    <span className="px-2.5 py-0.5 bg-purple-900/40 text-purple-300 border border-purple-500/30 text-[10px] font-black uppercase tracking-wider rounded-md">
+                                      {lead.plan}
+                                    </span>
+                                  )}
+                                  {lead.trade && (
+                                    <span className="px-2.5 py-0.5 bg-blue-900/40 text-blue-300 border border-blue-500/30 text-[10px] font-bold rounded-md">
+                                      {lead.trade}
+                                    </span>
+                                  )}
+                                  {lead.workers && (
+                                    <span className="px-2.5 py-0.5 bg-slate-800 text-slate-300 border border-slate-700 text-[10px] font-bold rounded-md">
+                                      {lead.workers} {Number(lead.workers) === 1 ? 'ansatt' : 'ansatte'}
+                                    </span>
+                                  )}
+                                </div>
+                                {lead.monthlyPrice && (
+                                  <div className="text-xs font-black text-emerald-400">
+                                    Kalkulert: {Number(lead.monthlyPrice).toLocaleString('no-NO')} kr/mnd
+                                  </div>
+                                )}
+                                {lead.source && !lead.plan && (
+                                  <p className="text-xs text-slate-400 italic">Kilde: {lead.source}</p>
+                                )}
+                              </div>
+                            )}
+                          </td>
+                          <td className="px-6 py-5 align-top">
+                            <select 
+                              value={lead.status || 'new'}
+                              onChange={(e) => handleUpdateLeadStatus(lead.id, e.target.value)}
+                              className={cn(
+                                "text-xs font-bold uppercase tracking-wider px-3 py-1.5 rounded-xl outline-none border cursor-pointer transition-all",
+                                lead.status === 'converted' ? "bg-emerald-950/80 text-emerald-300 border-emerald-500/40" :
+                                lead.status === 'new' ? "bg-rose-950/80 text-rose-300 border-rose-500/40" :
+                                lead.status === 'contacted' ? "bg-blue-950/80 text-blue-300 border-blue-500/40" :
+                                lead.status === 'qualified' ? "bg-purple-950/80 text-purple-300 border-purple-500/40" :
+                                "bg-slate-800 text-slate-300 border-slate-700"
+                              )}
+                            >
+                              <option value="new" className="bg-slate-900 text-rose-300">Ny</option>
+                              <option value="contacted" className="bg-slate-900 text-blue-300">Kontaktet</option>
+                              <option value="qualified" className="bg-slate-900 text-purple-300">Kvalifisert</option>
+                              <option value="converted" className="bg-slate-900 text-emerald-300">Kunde opprettet</option>
+                              <option value="lost" className="bg-slate-900 text-slate-400">Tapt</option>
+                            </select>
+                            {lead.convertedCompanyName && (
+                              <button
+                                type="button"
+                                onClick={() => handleJumpToCompany(lead.convertedCompanyId)}
+                                className="flex items-center gap-1.5 mt-2 text-xs font-bold text-emerald-400 hover:text-emerald-300 cursor-pointer hover:underline text-left"
+                                title="Klikk for å gå til opprettet kunde"
+                              >
+                                <Building2 size={12} className="shrink-0" />
+                                <span className="truncate max-w-[140px]">{lead.convertedCompanyName}</span>
+                              </button>
+                            )}
+                          </td>
+                          <td className="px-6 py-5 text-xs text-slate-400 whitespace-nowrap align-top">
+                            {formatDate(lead.createdAt)}
+                          </td>
+                          <td className="px-6 py-5 min-w-[280px] max-w-md align-top">
+                            <div className="flex items-center gap-2">
+                              {/* 🌟 GJØR OM TIL KUNDE KNAPP */}
+                              <button 
+                                onClick={() => handleOpenConvertModal(lead)}
+                                className={cn(
+                                  "p-2.5 rounded-xl transition-all cursor-pointer flex items-center justify-center shrink-0",
+                                  lead.status === 'converted' || lead.convertedCompanyId
+                                    ? "text-emerald-300 bg-emerald-950/60 border border-emerald-500/40 hover:bg-emerald-900/60"
+                                    : "text-white bg-emerald-600 hover:bg-emerald-500 shadow-md shadow-emerald-900/30"
+                                )}
+                                title={lead.status === 'converted' || lead.convertedCompanyId ? `Kunde opprettet: ${lead.convertedCompanyName || 'Se detaljer'}` : "Gjør om til kunde nå"}
+                              >
+                                {lead.status === 'converted' || lead.convertedCompanyId ? (
+                                  <CheckCircle2 size={16} />
+                                ) : (
+                                  <UserPlus size={16} />
+                                )}
+                              </button>
+                              <button 
+                                onClick={() => handleAnalyzeLead(lead)}
+                                disabled={isAnalyzingLead === lead.id}
+                                className={cn(
+                                  "p-2.5 rounded-xl border transition-all cursor-pointer",
+                                  lead.aiScore 
+                                    ? "text-emerald-400 bg-emerald-950/40 border-emerald-500/40 hover:bg-emerald-900/60" 
+                                    : "text-slate-400 bg-slate-800 border-slate-700 hover:text-purple-400 hover:bg-slate-750"
+                                )}
+                                title="AI Analyse"
+                              >
+                                {isAnalyzingLead === lead.id ? (
+                                  <div className="w-4 h-4 border-2 border-emerald-400 border-t-transparent rounded-full animate-spin" />
+                                ) : (
+                                  <Sparkles size={16} />
+                                )}
+                              </button>
+                              <button 
+                                onClick={() => {
+                                  setSelectedLead(lead);
+                                  setReplyMessage(
+                                    lead.suggestedResponse || 
+                                    leadAnalysis[lead.id]?.suggestedResponse || 
+                                    `Hei ${lead.name || ''}!\n\nTakk for din henvendelse til VikingMester angående ${lead.plan || 'KS/HMS-systemet'}.\n\nVi setter gjerne opp en uforpliktende demonstrasjon eller prøveperiode for ${lead.company || 'dere'}.\n\nMed vennlig hilsen,\nVikingMester Teamet`
+                                  );
+                                  setIsResponseModalOpen(true);
+                                }}
+                                className="p-2.5 text-slate-400 hover:text-purple-400 bg-slate-800 border border-slate-700 hover:bg-slate-750 rounded-xl transition-all cursor-pointer"
+                                title="Svar på henvendelse"
+                              >
+                                <Mail size={16} />
+                              </button>
+                              <button 
+                                onClick={() => {
+                                  setOfferForm({
+                                    ...offerForm,
+                                    recipientEmail: lead.email || '',
+                                    recipientName: lead.name || '',
+                                    companyName: lead.company || lead.name || '',
+                                    customPrice: Number(lead.monthlyPrice) || 0,
+                                    message: lead.plan ? `Skreddersydd tilbud basert på ${lead.plan} for ${lead.trade || 'byggbransjen'}.` : ''
+                                  });
+                                  setIsOfferModalOpen(true);
+                                }}
+                                className="p-2.5 text-slate-400 hover:text-blue-400 bg-slate-800 border border-slate-700 hover:bg-slate-750 rounded-xl transition-all cursor-pointer"
+                                title="Send tilbud"
+                              >
+                                <Send size={16} />
+                              </button>
+                              <button 
+                                onClick={() => handleDeleteLead(lead.id)}
+                                className="p-2.5 text-slate-400 hover:text-rose-400 bg-slate-800 border border-slate-700 hover:bg-rose-950/40 hover:border-rose-500/40 rounded-xl transition-all cursor-pointer"
+                                title="Slett henvendelse"
+                              >
+                                <Trash2 size={16} />
+                              </button>
+                            </div>
+
+                            {/* AI analysis card in row */}
+                            {lead.aiScore && (
+                              <div className="mt-3 p-3 bg-emerald-950/30 rounded-xl border border-emerald-500/30 text-left shadow-xs space-y-1.5">
+                                <div className="flex items-center justify-between pb-1 border-b border-emerald-500/20">
+                                  <span className="text-[10px] font-black uppercase text-emerald-400 flex items-center gap-1">
+                                    <Sparkles size={11} className="text-emerald-400" />
+                                    AI Vurdering & Profil
+                                  </span>
+                                  <span className="text-xs font-black text-emerald-300 bg-emerald-900/40 px-2 py-0.5 rounded-md border border-emerald-500/30">
+                                    {lead.aiScore}/100
+                                  </span>
+                                </div>
+                                <p className="text-xs text-slate-300 leading-relaxed font-medium whitespace-pre-wrap">
+                                  {lead.aiSummary}
+                                </p>
+                                {(lead.suggestedResponse || leadAnalysis[lead.id]?.suggestedResponse) && (
+                                  <div className="pt-1 border-t border-emerald-500/20">
+                                    <button
+                                      type="button"
+                                      onClick={() => {
+                                        setSelectedLead(lead);
+                                        setReplyMessage(lead.suggestedResponse || leadAnalysis[lead.id]?.suggestedResponse);
+                                        setIsResponseModalOpen(true);
+                                      }}
+                                      className="text-[11px] font-bold text-emerald-300 hover:text-emerald-100 bg-emerald-900/40 hover:bg-emerald-800/60 border border-emerald-500/30 px-2.5 py-1 rounded-lg transition-all flex items-center gap-1.5 cursor-pointer"
+                                      title="Åpne svarmodal med AI-generert svarutkast"
+                                    >
+                                      <Mail size={11} />
+                                      <span>Bruk AI-svarutkast</span>
+                                    </button>
+                                  </div>
+                                )}
+                              </div>
+                            )}
+                          </td>
+                        </tr>
+                      ))}
+                    </tbody>
+                  </table>
+                </div>
+              </div>
+            </>
+          )}
         </div>
       )}
 
+
       {activeTab === 'offers' && (
-        <div className="bg-white rounded-[2.5rem] border border-neutral-200 shadow-sm overflow-hidden">
-          <div className="overflow-x-auto">
-            <table className="w-full text-left">
-              <thead>
-                <tr className="bg-neutral-50 border-b border-neutral-200">
-                  <th className="px-8 py-4 text-xs font-black uppercase tracking-widest text-neutral-400">Mottaker</th>
-                  <th className="px-8 py-4 text-xs font-black uppercase tracking-widest text-neutral-400">Pris</th>
-                  <th className="px-8 py-4 text-xs font-black uppercase tracking-widest text-neutral-400">Status</th>
-                  <th className="px-8 py-4 text-xs font-black uppercase tracking-widest text-neutral-400">Dato</th>
-                  <th className="px-8 py-4 text-xs font-black uppercase tracking-widest text-neutral-400">Handling</th>
-                </tr>
-              </thead>
-              <tbody className="divide-y divide-neutral-100">
-                {offers.length === 0 ? (
-                  <tr>
-                    <td colSpan={5} className="px-8 py-12 text-center text-neutral-400 text-sm">
-                      Ingen sendte tilbud enda.
-                    </td>
+        <div className="space-y-6 sm:space-y-8 mb-12">
+          {/* Offers Table / Cards in dark workstation style */}
+          <div className="bg-slate-900/90 rounded-2xl sm:rounded-3xl border border-slate-800 shadow-xl overflow-hidden">
+            {/* Desktop Table (hidden on mobile) */}
+            <div className="hidden lg:block overflow-x-auto">
+              <table className="w-full text-left">
+                <thead>
+                  <tr className="bg-slate-950/80 border-b border-slate-800 text-slate-400">
+                    <th className="px-6 py-4 text-xs font-black uppercase tracking-wider">Mottaker & Bedrift</th>
+                    <th className="px-6 py-4 text-xs font-black uppercase tracking-wider">Kalkulert Pris</th>
+                    <th className="px-6 py-4 text-xs font-black uppercase tracking-wider">Status</th>
+                    <th className="px-6 py-4 text-xs font-black uppercase tracking-wider">Dato</th>
+                    <th className="px-6 py-4 text-xs font-black uppercase tracking-wider">Handling</th>
                   </tr>
-                ) : (
-                  offers.map((offer) => (
-                    <tr key={offer.id} className="hover:bg-neutral-50 transition-colors">
-                      <td className="px-8 py-6">
-                        <div className="font-bold text-neutral-900">{offer.recipientName || 'Uten navn'}</div>
-                        <div className="text-xs text-neutral-500">{offer.recipientEmail}</div>
-                        {offer.companyName && (
-                          <div className="text-[11px] text-neutral-400">{offer.companyName}</div>
-                        )}
-                      </td>
-                      <td className="px-8 py-6 font-bold text-neutral-900">
-                        {Number(offer.customPrice || 0).toLocaleString('no-NO')} kr/mnd
-                      </td>
-                      <td className="px-8 py-6">
-                        <span className={cn(
-                          "px-3 py-1 rounded-full text-[10px] font-black uppercase tracking-widest",
-                          offer.status === 'accepted' ? "bg-emerald-100 text-emerald-700" :
-                          offer.status === 'declined' ? "bg-red-100 text-red-700" :
-                          "bg-blue-100 text-blue-700"
-                        )}>
-                          {offer.status === 'accepted' ? 'Godkjent' : offer.status === 'declined' ? 'Avslått' : 'Venter på kunde'}
-                        </span>
-                      </td>
-                      <td className="px-8 py-6 text-xs text-neutral-500">
-                        {formatDate(offer.createdAt)}
-                      </td>
-                      <td className="px-8 py-6">
-                        <div className="flex items-center gap-2">
-                          <button 
-                            onClick={() => {
-                              const baseUrl = typeof window !== 'undefined' ? window.location.origin : 'https://vikingmester.no';
-                              const url = `${baseUrl}/?offer=${offer.token}`;
-                              if (navigator?.clipboard?.writeText) {
-                                navigator.clipboard.writeText(url).then(() => {
-                                  toast.success('Tilbudslenke kopiert!');
-                                }).catch(() => {
-                                  window.prompt('Kopier lenke:', url);
-                                });
-                              } else {
-                                window.prompt('Kopier lenke:', url);
-                              }
-                            }}
-                            className="p-2 text-neutral-500 hover:text-blue-600 hover:bg-blue-50 rounded-xl transition-all cursor-pointer"
-                            title="Kopier tilbudslenke"
-                          >
-                            <Copy size={16} />
-                          </button>
-                          <button 
-                            onClick={() => handleResendOfferEmail(offer)}
-                            className="p-2 text-neutral-500 hover:text-purple-600 hover:bg-purple-50 rounded-xl transition-all cursor-pointer"
-                            title="Send tilbud på e-post"
-                          >
-                            <Mail size={16} />
-                          </button>
-                          <button 
-                            onClick={() => {
-                              const baseUrl = typeof window !== 'undefined' ? window.location.origin : 'https://vikingmester.no';
-                              window.open(`${baseUrl}/?offer=${offer.token}`, '_blank');
-                            }}
-                            className="p-2 text-neutral-500 hover:text-emerald-600 hover:bg-emerald-50 rounded-xl transition-all cursor-pointer"
-                            title="Åpne forhåndsvisning"
-                          >
-                            <ExternalLink size={16} />
-                          </button>
-                          <button 
-                            onClick={() => handleDeleteOffer(offer.id)}
-                            className="p-2 text-neutral-500 hover:text-rose-600 hover:bg-rose-50 rounded-xl transition-all cursor-pointer"
-                            title="Slett tilbud"
-                          >
-                            <Trash2 size={16} />
-                          </button>
-                        </div>
+                </thead>
+                <tbody className="divide-y divide-slate-800/60">
+                  {offers.length === 0 ? (
+                    <tr>
+                      <td colSpan={5} className="px-8 py-12 text-center text-slate-400 text-sm">
+                        Ingen sendte tilbud enda.
                       </td>
                     </tr>
-                  ))
-                )}
-              </tbody>
-            </table>
+                  ) : (
+                    offers.map((offer) => (
+                      <tr key={offer.id} className="hover:bg-slate-800/40 transition-colors">
+                        <td className="px-6 py-5">
+                          <div className="font-bold text-white text-sm">{offer.recipientName || 'Uten navn'}</div>
+                          <div className="text-xs text-slate-400">{offer.recipientEmail}</div>
+                          {offer.companyName && (
+                            <div className="text-xs text-slate-400 flex items-center gap-1.5 mt-1 font-medium">
+                              <Building2 size={12} className="text-purple-400 shrink-0" />
+                              <span>{offer.companyName}</span>
+                            </div>
+                          )}
+                        </td>
+                        <td className="px-6 py-5 font-bold text-white text-sm">
+                          {Number(offer.customPrice || 0).toLocaleString('no-NO')} <span className="text-xs text-slate-400 font-normal">kr/mnd</span>
+                        </td>
+                        <td className="px-6 py-5">
+                          <span className={cn(
+                            "px-3 py-1 rounded-full text-[10px] font-black uppercase tracking-widest border",
+                            offer.status === 'accepted' ? "bg-emerald-950/60 text-emerald-300 border-emerald-500/40" :
+                            offer.status === 'declined' ? "bg-rose-950/60 text-rose-300 border-rose-500/40" :
+                            "bg-blue-950/60 text-blue-300 border-blue-500/40"
+                          )}>
+                            {offer.status === 'accepted' ? 'Godkjent' : offer.status === 'declined' ? 'Avslått' : 'Venter på kunde'}
+                          </span>
+                        </td>
+                        <td className="px-6 py-5 text-xs text-slate-400 whitespace-nowrap">
+                          {formatDate(offer.createdAt)}
+                        </td>
+                        <td className="px-6 py-5">
+                          <div className="flex items-center gap-2">
+                            <button 
+                              onClick={() => {
+                                const baseUrl = typeof window !== 'undefined' ? window.location.origin : 'https://vikingmester.no';
+                                const url = `${baseUrl}/?offer=${offer.token}`;
+                                if (navigator?.clipboard?.writeText) {
+                                  navigator.clipboard.writeText(url).then(() => {
+                                    toast.success('Tilbudslenke kopiert!');
+                                  }).catch(() => {
+                                    window.prompt('Kopier lenke:', url);
+                                  });
+                                } else {
+                                  window.prompt('Kopier lenke:', url);
+                                }
+                              }}
+                              className="p-2.5 bg-slate-800 border border-slate-700 text-slate-300 hover:text-blue-400 hover:bg-slate-750 rounded-xl transition-all cursor-pointer"
+                              title="Kopier tilbudslenke"
+                            >
+                              <Copy size={16} />
+                            </button>
+                            <button 
+                              onClick={() => handleResendOfferEmail(offer)}
+                              className="p-2.5 bg-slate-800 border border-slate-700 text-slate-300 hover:text-purple-400 hover:bg-slate-750 rounded-xl transition-all cursor-pointer"
+                              title="Send tilbud på e-post"
+                            >
+                              <Mail size={16} />
+                            </button>
+                            <button 
+                              onClick={() => {
+                                const baseUrl = typeof window !== 'undefined' ? window.location.origin : 'https://vikingmester.no';
+                                window.open(`${baseUrl}/?offer=${offer.token}`, '_blank');
+                              }}
+                              className="p-2.5 bg-slate-800 border border-slate-700 text-slate-300 hover:text-emerald-400 hover:bg-slate-750 rounded-xl transition-all cursor-pointer"
+                              title="Åpne forhåndsvisning"
+                            >
+                              <ExternalLink size={16} />
+                            </button>
+                            <button 
+                              onClick={() => handleDeleteOffer(offer.id)}
+                              className="p-2.5 bg-slate-800 border border-slate-700 text-slate-300 hover:text-rose-400 hover:bg-rose-950/40 hover:border-rose-500/40 rounded-xl transition-all cursor-pointer"
+                              title="Slett tilbud"
+                            >
+                              <Trash2 size={16} />
+                            </button>
+                          </div>
+                        </td>
+                      </tr>
+                    ))
+                  )}
+                </tbody>
+              </table>
+            </div>
+
+            {/* Mobile Cards View (lg:hidden) */}
+            <div className="block lg:hidden p-4 space-y-4">
+              {offers.length === 0 ? (
+                <div className="text-center py-8 text-slate-400 text-sm">
+                  Ingen sendte tilbud enda.
+                </div>
+              ) : (
+                offers.map((offer) => (
+                  <div key={offer.id} className="bg-slate-850/80 border border-slate-800 rounded-2xl p-4 space-y-3">
+                    <div className="flex items-start justify-between gap-2">
+                      <div>
+                        <div className="font-bold text-white text-base">{offer.recipientName || 'Uten navn'}</div>
+                        <div className="text-xs text-slate-400">{offer.recipientEmail}</div>
+                        {offer.companyName && (
+                          <div className="text-xs text-slate-300 flex items-center gap-1.5 mt-1 font-medium">
+                            <Building2 size={12} className="text-purple-400 shrink-0" />
+                            <span>{offer.companyName}</span>
+                          </div>
+                        )}
+                      </div>
+                      <span className={cn(
+                        "px-2.5 py-1 rounded-full text-[10px] font-black uppercase tracking-wider border shrink-0",
+                        offer.status === 'accepted' ? "bg-emerald-950/60 text-emerald-300 border-emerald-500/40" :
+                        offer.status === 'declined' ? "bg-rose-950/60 text-rose-300 border-rose-500/40" :
+                        "bg-blue-950/60 text-blue-300 border-blue-500/40"
+                      )}>
+                        {offer.status === 'accepted' ? 'Godkjent' : offer.status === 'declined' ? 'Avslått' : 'Venter'}
+                      </span>
+                    </div>
+
+                    <div className="flex items-center justify-between text-xs pt-1 border-t border-slate-800">
+                      <span className="font-bold text-emerald-400 text-sm">
+                        {Number(offer.customPrice || 0).toLocaleString('no-NO')} kr/mnd
+                      </span>
+                      <span className="text-slate-400">{formatDate(offer.createdAt)}</span>
+                    </div>
+
+                    <div className="grid grid-cols-4 gap-2 pt-1">
+                      <button 
+                        onClick={() => {
+                          const baseUrl = typeof window !== 'undefined' ? window.location.origin : 'https://vikingmester.no';
+                          const url = `${baseUrl}/?offer=${offer.token}`;
+                          if (navigator?.clipboard?.writeText) {
+                            navigator.clipboard.writeText(url).then(() => {
+                              toast.success('Tilbudslenke kopiert!');
+                            }).catch(() => {
+                              window.prompt('Kopier lenke:', url);
+                            });
+                          } else {
+                            window.prompt('Kopier lenke:', url);
+                          }
+                        }}
+                        className="p-2.5 bg-slate-800 border border-slate-700 text-slate-300 hover:text-blue-400 rounded-xl flex items-center justify-center cursor-pointer"
+                        title="Kopier lenke"
+                      >
+                        <Copy size={16} />
+                      </button>
+                      <button 
+                        onClick={() => handleResendOfferEmail(offer)}
+                        className="p-2.5 bg-slate-800 border border-slate-700 text-slate-300 hover:text-purple-400 rounded-xl flex items-center justify-center cursor-pointer"
+                        title="Send e-post"
+                      >
+                        <Mail size={16} />
+                      </button>
+                      <button 
+                        onClick={() => {
+                          const baseUrl = typeof window !== 'undefined' ? window.location.origin : 'https://vikingmester.no';
+                          window.open(`${baseUrl}/?offer=${offer.token}`, '_blank');
+                        }}
+                        className="p-2.5 bg-slate-800 border border-slate-700 text-slate-300 hover:text-emerald-400 rounded-xl flex items-center justify-center cursor-pointer"
+                        title="Forhåndsvis"
+                      >
+                        <ExternalLink size={16} />
+                      </button>
+                      <button 
+                        onClick={() => handleDeleteOffer(offer.id)}
+                        className="p-2.5 bg-slate-800 border border-slate-700 text-slate-300 hover:text-rose-400 rounded-xl flex items-center justify-center cursor-pointer"
+                        title="Slett"
+                      >
+                        <Trash2 size={16} />
+                      </button>
+                    </div>
+                  </div>
+                ))
+              )}
+            </div>
           </div>
         </div>
       )}
 
       {activeTab === 'templates' && (
-        <div className="grid grid-cols-1 md:grid-cols-3 gap-6">
+        <div className="grid grid-cols-1 md:grid-cols-3 gap-4 sm:gap-6 mb-12">
           {templates.map((template) => (
-            <div key={template.id} className="bg-white p-6 rounded-[2rem] border border-neutral-200 shadow-sm hover:shadow-md transition-all group">
-              <div className="flex items-center justify-between mb-4">
-                <div className="w-10 h-10 bg-neutral-100 rounded-xl flex items-center justify-center text-neutral-400 group-hover:bg-blue-100 group-hover:text-blue-600 transition-all">
-                  <FileText size={20} />
+            <div key={template.id} className="bg-slate-900/90 p-5 sm:p-6 rounded-2xl sm:rounded-3xl border border-slate-800 shadow-lg hover:border-slate-700 transition-all group flex flex-col justify-between">
+              <div>
+                <div className="flex items-center justify-between mb-4">
+                  <div className="w-10 h-10 bg-slate-800 border border-slate-700 rounded-xl flex items-center justify-center text-slate-400 group-hover:bg-purple-950/50 group-hover:text-purple-400 group-hover:border-purple-500/30 transition-all">
+                    <FileText size={20} />
+                  </div>
+                  <div className="flex gap-1.5">
+                    <button 
+                      onClick={() => {
+                        setEditingTemplateId(template.id);
+                        setTemplateForm({
+                          name: template.name,
+                          subject: template.subject,
+                          body: template.body,
+                          type: template.type,
+                          category: template.category
+                        });
+                        setIsTemplateModalOpen(true);
+                      }}
+                      className="p-2 text-slate-400 hover:text-purple-400 hover:bg-slate-800 rounded-lg transition-all cursor-pointer"
+                      title="Rediger mal"
+                    >
+                      <Settings size={16} />
+                    </button>
+                    <button 
+                      onClick={async () => {
+                        if (window.confirm('Er du sikker på at du vil slette denne malen?')) {
+                          await deleteDoc(doc(db, 'templates', template.id));
+                          toast.success('Mal slettet!');
+                        }
+                      }}
+                      className="p-2 text-slate-400 hover:text-rose-400 hover:bg-slate-800 rounded-lg transition-all cursor-pointer"
+                      title="Slett mal"
+                    >
+                      <Trash2 size={16} />
+                    </button>
+                  </div>
                 </div>
-                <div className="flex gap-2">
-                  <button 
-                    onClick={() => {
-                      setEditingTemplateId(template.id);
-                      setTemplateForm({
-                        name: template.name,
-                        subject: template.subject,
-                        body: template.body,
-                        type: template.type,
-                        category: template.category
-                      });
-                      setIsTemplateModalOpen(true);
-                    }}
-                    className="p-2 text-neutral-400 hover:text-blue-600 hover:bg-blue-50 rounded-lg transition-all"
-                    title="Rediger mal"
-                  >
-                    <Settings size={16} />
-                  </button>
-                  <button 
-                    onClick={async () => {
-                      if (window.confirm('Er du sikker på at du vil slette denne malen?')) {
-                        await deleteDoc(doc(db, 'templates', template.id));
-                        toast.success('Mal slettet!');
-                      }
-                    }}
-                    className="p-2 text-neutral-400 hover:text-red-600 hover:bg-red-50 rounded-lg transition-all"
-                    title="Slett mal"
-                  >
-                    <Trash2 size={16} />
-                  </button>
-                </div>
+                <h3 className="font-bold text-white text-base mb-1">{template.name}</h3>
+                <p className="text-xs text-slate-400 mb-4">{template.subject}</p>
               </div>
-              <h3 className="font-bold text-neutral-900 mb-1">{template.name}</h3>
-              <p className="text-xs text-neutral-500 mb-4">{template.subject}</p>
-              <div className="flex items-center gap-2">
-                <span className="px-2 py-0.5 bg-neutral-100 text-neutral-600 text-[10px] font-black uppercase tracking-widest rounded">
+              <div className="flex items-center gap-2 pt-2 border-t border-slate-800">
+                <span className="px-2.5 py-1 bg-slate-800 border border-slate-700 text-slate-300 text-[10px] font-black uppercase tracking-wider rounded-lg">
                   {template.type}
                 </span>
-                <span className="px-2 py-0.5 bg-blue-100 text-blue-600 text-[10px] font-black uppercase tracking-widest rounded">
+                <span className="px-2.5 py-1 bg-purple-950/50 border border-purple-500/30 text-purple-300 text-[10px] font-black uppercase tracking-wider rounded-lg">
                   {template.category}
                 </span>
               </div>
@@ -3432,10 +3964,10 @@ Svar KUN med gyldig rå JSON (uten markdown \`\`\`json klammer):
               });
               setIsTemplateModalOpen(true);
             }}
-            className="bg-neutral-50 border-2 border-dashed border-neutral-200 rounded-[2rem] p-6 flex flex-col items-center justify-center gap-2 text-neutral-400 hover:bg-neutral-100 hover:border-neutral-300 transition-all cursor-pointer"
+            className="bg-slate-900/40 border-2 border-dashed border-slate-800 hover:border-purple-500 rounded-2xl sm:rounded-3xl p-6 flex flex-col items-center justify-center gap-2 text-slate-400 hover:text-white transition-all cursor-pointer min-h-[180px]"
           >
-            <Plus size={24} />
-            <span className="font-bold">Opprett ny mal</span>
+            <Plus size={24} className="text-purple-400" />
+            <span className="font-bold text-sm">Opprett ny mal</span>
           </button>
         </div>
       )}
