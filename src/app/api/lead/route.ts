@@ -1,5 +1,8 @@
 import { NextRequest, NextResponse } from 'next/server';
-import { saveCollectionItem } from '@/src/lib/server/db';
+import bcrypt from 'bcrypt';
+import { dbQuery, inMemoryStore, saveCollectionItem, ADMIN_EMAILS } from '@/src/lib/server/db';
+import { signToken } from '@/src/lib/server/auth';
+import { sendSystemEmail, renderBrandedEmailTemplate } from '@/src/lib/server/emailSender';
 import { enrollCustomerInNurture } from '@/src/lib/server/nurtureEngine';
 import { sanitize, sanitizeEmail, sanitizePhone, sanitizeHeader } from '@/src/lib/sanitize';
 import { checkRateLimit, getClientIp } from '@/src/lib/server/rateLimit';
@@ -17,16 +20,18 @@ export async function POST(req: NextRequest) {
     }
 
     const body = await req.json();
-    const rawCompany = sanitize(body.company || body.companyName || '');
+    const rawCompany = sanitize(body.company || body.companyName || '').trim();
     const rawOrgnr = sanitizeHeader((body.orgnr || body.organizationNumber || '').toString().replace(/\s+/g, '').trim());
-    const rawName = sanitize(body.name || body.contactName || '');
+    const rawName = sanitize(body.name || body.contactName || '').trim();
     const email = sanitizeEmail(body.email || '');
     const phone = sanitizePhone(body.phone || '');
     const trade = sanitize(body.trade || 'Byggmester / Tømrer');
+    const passwordInput = body.password ? String(body.password).trim() : '';
     const workers = Number(body.workers) || (body.plan === 'solo' ? 1 : body.plan === 'entreprenor' ? 10 : 3);
     const planRaw = sanitize((body.plan || (workers <= 1 ? 'solo' : workers <= 5 ? 'team' : 'entreprenor')).toLowerCase());
-    const channel = sanitize(body.channel || 'Microsoft Teams / Web');
+    const channel = sanitize(body.channel || 'Web / Mobil');
     const message = sanitize(body.message || '');
+    const acceptedTerms = Boolean(body.acceptedTerms);
 
     if (!email && !phone) {
       return NextResponse.json({ error: 'Minst e-post eller telefonnummer må oppgis.' }, { status: 400 });
@@ -38,15 +43,17 @@ export async function POST(req: NextRequest) {
       try {
         const res = await fetch(`https://data.brreg.no/enhetsregisteret/api/enheter/${rawOrgnr}`, {
           headers: { 'Accept': 'application/json' },
-          signal: AbortSignal.timeout(3000)
+          signal: AbortSignal.timeout(3500)
         });
         if (res.ok) {
           const unit = await res.json();
           brregInfo = {
             orgnr: unit.organisasjonsnummer,
             navn: unit.navn,
-            organisasjonsform: unit.organisasjonsform?.kode,
-            forretningsadresse: unit.forretningsadresse ? `${unit.forretningsadresse.adresse?.[0] || ''}, ${unit.forretningsadresse.postnummer || ''} ${unit.forretningsadresse.poststed || ''}` : null,
+            organisasjonsform: unit.organisasjonsform?.kode || 'AS',
+            organisasjonsformBeskrivelse: unit.organisasjonsform?.beskrivelse || 'Aksjeselskap',
+            forretningsadresse: unit.forretningsadresse ? `${unit.forretningsadresse.adresse?.[0] || ''}, ${unit.forretningsadresse.postnummer || ''} ${unit.forretningsadresse.poststed || ''}`.trim() : null,
+            poststed: unit.forretningsadresse?.poststed || null,
             mvaRegistrert: unit.registrertIMvaregisteret || false,
             antallAnsatte: unit.antallAnsatte || workers,
             naeringskode: unit.naeringskode1?.beskrivelse || null
@@ -57,13 +64,13 @@ export async function POST(req: NextRequest) {
       }
     }
 
-    const lookupQuery = rawCompany.trim();
+    const lookupQuery = rawCompany;
     if (!brregInfo && lookupQuery.length > 1) {
       try {
         const query = encodeURIComponent(lookupQuery);
         const res = await fetch(`https://data.brreg.no/enhetsregisteret/api/enheter?navn=${query}&size=1`, {
           headers: { 'Accept': 'application/json' },
-          signal: AbortSignal.timeout(3000)
+          signal: AbortSignal.timeout(3500)
         });
         if (res.ok) {
           const data = await res.json();
@@ -72,8 +79,10 @@ export async function POST(req: NextRequest) {
             brregInfo = {
               orgnr: unit.organisasjonsnummer,
               navn: unit.navn,
-              organisasjonsform: unit.organisasjonsform?.kode,
-              forretningsadresse: unit.forretningsadresse ? `${unit.forretningsadresse.adresse?.[0] || ''}, ${unit.forretningsadresse.postnummer || ''} ${unit.forretningsadresse.poststed || ''}` : null,
+              organisasjonsform: unit.organisasjonsform?.kode || 'AS',
+              organisasjonsformBeskrivelse: unit.organisasjonsform?.beskrivelse || 'Aksjeselskap',
+              forretningsadresse: unit.forretningsadresse ? `${unit.forretningsadresse.adresse?.[0] || ''}, ${unit.forretningsadresse.postnummer || ''} ${unit.forretningsadresse.poststed || ''}`.trim() : null,
+              poststed: unit.forretningsadresse?.poststed || null,
               mvaRegistrert: unit.registrertIMvaregisteret || false,
               antallAnsatte: unit.antallAnsatte || workers,
               naeringskode: unit.naeringskode1?.beskrivelse || null
@@ -96,13 +105,17 @@ export async function POST(req: NextRequest) {
       monthlyPrice = 2990;
     }
 
+    const companyOfficialName = brregInfo?.navn || rawCompany || 'Ny Bedrift AS';
+    const finalOrgnr = brregInfo?.orgnr || (rawOrgnr && /^\d{9}$/.test(rawOrgnr) ? rawOrgnr : null);
+    const finalDisplayName = rawName || (email ? email.split('@')[0] : 'Håndverker');
+
     // 2. Lagre lead i databasen
     const leadId = `lead-${Date.now()}-${Math.random().toString(36).substring(2, 7)}`;
     const leadRecord = {
       id: leadId,
-      name: rawName || brregInfo?.navn || rawCompany || 'Interessert håndverker',
-      company: brregInfo?.navn || rawCompany || 'Ukjent firma',
-      orgnr: brregInfo?.orgnr || (rawOrgnr && /^\d{9}$/.test(rawOrgnr) ? rawOrgnr : null),
+      name: finalDisplayName,
+      company: companyOfficialName,
+      orgnr: finalOrgnr,
       email,
       phone,
       trade,
@@ -112,16 +125,151 @@ export async function POST(req: NextRequest) {
       workers,
       message,
       brregInfo,
-      acceptedTerms: Boolean(body.acceptedTerms),
+      acceptedTerms,
       acceptedTermsAt: body.acceptedTermsAt || new Date().toISOString(),
-      status: 'active_lead',
-      source: 'VikingMester.no',
+      status: 'active_trial_lead',
+      source: 'VikingMester.no (Direkte registrering)',
       createdAt: new Date().toISOString()
     };
 
     await saveCollectionItem('leads', leadRecord);
 
-    // 3. Synkroniser til VikingCRM via Webhook hvis konfigurert
+    // 3. Opprett eller klargjør bruker og bedrift med 14 dagers gratis prøveperiode
+    let authToken: string | null = null;
+    let authUser: any = null;
+    let inviteToken: string = Math.random().toString(36).substring(2, 12) + Math.random().toString(36).substring(2, 12);
+    let chosenOrGeneratedPassword = passwordInput || `VikingMester${new Date().getFullYear()}!`;
+    const userEnteredPassword = Boolean(passwordInput && passwordInput.length >= 8);
+
+    if (email) {
+      const emailLower = email.toLowerCase().trim();
+      const isSuperAdminEmail = ADMIN_EMAILS.includes(emailLower) || ['kenkri3@gmail.com', 'aichatnorge@gmail.com'].includes(emailLower);
+
+      // Sjekk om bruker allerede finnes
+      let existingUser: any = null;
+      try {
+        const rows = await dbQuery('SELECT * FROM users WHERE LOWER(email) = $1', [emailLower]);
+        if (rows && rows.length > 0) existingUser = rows[0];
+      } catch {
+        // Fallback in-memory
+      }
+      if (!existingUser && inMemoryStore.users) {
+        existingUser = inMemoryStore.users.find(u => u.email?.toLowerCase() === emailLower);
+      }
+
+      const hashedPassword = await bcrypt.hash(chosenOrGeneratedPassword, 10);
+      const companyId = existingUser?.company_id || existingUser?.companyId || ('comp-' + Date.now().toString(36) + '-' + Math.random().toString(36).substring(2, 7));
+      const userId = existingUser?.id || existingUser?.uid || ('u-' + Date.now().toString(36) + '-' + Math.random().toString(36).substring(2, 7));
+
+      if (existingUser) {
+        // Bruker finnes allerede: Hvis passord ble oppgitt ved registreringen, oppdater passord og aktiver prøveperiode
+        if (userEnteredPassword) {
+          await dbQuery(
+            `UPDATE users SET password = $1, company = $2, company_id = $3, subscription_status = 'trial', updated_at = NOW() WHERE LOWER(email) = $4`,
+            [hashedPassword, companyOfficialName, companyId, emailLower]
+          ).catch(() => {});
+        }
+        authUser = {
+          id: existingUser.id,
+          uid: existingUser.id,
+          email: emailLower,
+          displayName: rawName || existingUser.display_name || existingUser.displayName || finalDisplayName,
+          role: existingUser.role || 'leader',
+          trade: trade || existingUser.trade || 'Byggmester',
+          company: companyOfficialName,
+          companyId,
+          subscriptionStatus: 'trial',
+          plan: planTitle,
+          modules: ['projects', 'checklists', 'deviations', 'ai', 'economy', 'fdv', 'inventory', 'vehicle', 'time', 'apprentice', 'building_app'],
+          trialDaysLeft: 14,
+          totalTrialDays: 14
+        };
+      } else {
+        // Ny bruker opprettes med 14 dagers prøveperiode
+        authUser = {
+          id: userId,
+          uid: userId,
+          email: emailLower,
+          displayName: finalDisplayName,
+          role: isSuperAdminEmail ? 'superadmin' : 'leader',
+          trade,
+          company: companyOfficialName,
+          companyId,
+          orgnr: finalOrgnr,
+          subscriptionStatus: 'trial',
+          trialDaysLeft: 14,
+          totalTrialDays: 14,
+          plan: planTitle,
+          modules: ['projects', 'checklists', 'deviations', 'ai', 'economy', 'fdv', 'inventory', 'vehicle', 'time', 'apprentice', 'building_app'],
+          createdAt: new Date().toISOString()
+        };
+
+        await dbQuery(
+          `INSERT INTO users (id, email, password, display_name, role, trade, company, company_id, subscription_status, orgnr)
+           VALUES ($1, $2, $3, $4, $5, $6, $7, $8, $9, $10)
+           ON CONFLICT (email) DO UPDATE SET
+             password = EXCLUDED.password,
+             company = EXCLUDED.company,
+             company_id = EXCLUDED.company_id,
+             subscription_status = 'trial'`,
+          [authUser.id, authUser.email, hashedPassword, authUser.displayName, authUser.role, authUser.trade, authUser.company, authUser.companyId, authUser.subscriptionStatus, authUser.orgnr]
+        ).catch(() => {});
+
+        if (!inMemoryStore.users) inMemoryStore.users = [];
+        inMemoryStore.users.push({ ...authUser, password: hashedPassword });
+      }
+
+      // Klargjør bedriftsoppføring i companies
+      const companyRecord = {
+        id: companyId,
+        name: companyOfficialName,
+        orgnr: finalOrgnr || '',
+        contactName: finalDisplayName,
+        email: emailLower,
+        phone: phone || '',
+        trade,
+        plan: planRaw.includes('solo') ? 'solo' : planRaw.includes('entreprenor') ? 'entreprenor' : 'team',
+        planTitle,
+        monthlyPrice,
+        status: 'active',
+        subscriptionStatus: 'trial',
+        trialDaysLeft: 14,
+        totalTrialDays: 14,
+        trialStartDate: new Date().toISOString(),
+        trialEndDate: new Date(Date.now() + 14 * 24 * 60 * 60 * 1000).toISOString(),
+        modules: ['projects', 'checklists', 'deviations', 'ai', 'economy', 'fdv', 'inventory', 'vehicle', 'time', 'apprentice', 'building_app'],
+        convertedFromLeadId: leadId,
+        createdAt: new Date().toISOString()
+      };
+      await saveCollectionItem('companies', companyRecord);
+
+      // Klargjør invitasjonspost for sikker token-innlogging / magisk lenke
+      await saveCollectionItem('invitations', {
+        id: `inv-${inviteToken}`,
+        token: inviteToken,
+        email: emailLower,
+        companyId,
+        companyName: companyOfficialName,
+        role: 'leader',
+        status: 'pending',
+        invitedBy: 'system_self_signup',
+        expiresAt: new Date(Date.now() + 30 * 24 * 60 * 60 * 1000).toISOString(),
+        createdAt: new Date().toISOString()
+      });
+
+      // Generer autoritativ JWT-sesjonstoken så brukeren kan logges inn umiddelbart i nettleseren
+      authToken = signToken({
+        id: authUser.id,
+        email: authUser.email,
+        role: authUser.role,
+        companyId: authUser.companyId,
+        company: authUser.company,
+        displayName: authUser.displayName,
+        trade: authUser.trade
+      });
+    }
+
+    // 4. Synkroniser til VikingCRM via Webhook hvis konfigurert
     const crmWebhook = process.env.VIKINGCRM_WEBHOOK_URL || process.env.LEAD_WEBHOOK_URL;
     if (crmWebhook) {
       try {
@@ -129,7 +277,7 @@ export async function POST(req: NextRequest) {
           method: 'POST',
           headers: { 'Content-Type': 'application/json' },
           body: JSON.stringify({
-            event: 'lead.created',
+            event: 'lead.registered_trial',
             leadId: leadRecord.id,
             contactName: leadRecord.name,
             companyName: leadRecord.company,
@@ -137,170 +285,215 @@ export async function POST(req: NextRequest) {
             email: leadRecord.email,
             phone: leadRecord.phone,
             trade: leadRecord.trade,
-            product: `${leadRecord.plan} (${leadRecord.channel})`,
+            product: `${leadRecord.plan} (14 dagers gratis prøveperiode)`,
             price: monthlyPrice,
-            status: 'warm_lead',
+            status: 'trial_active',
             source: 'vikingmester.no-bestilling',
-            notes: `Bestilling fra nettside. Foretrukket kanal: ${leadRecord.channel}. Antall brukere: ${workers}. Brreg: ${brregInfo?.antallAnsatte || workers} ansatte, adresse: ${brregInfo?.forretningsadresse || 'Ukjent'}.`
+            notes: `14 dagers gratis prøve startet. Brreg: ${brregInfo?.organisasjonsformBeskrivelse || 'Ukjent'}, adresse: ${brregInfo?.forretningsadresse || 'Ikke oppgitt'}.`
           }),
-          signal: AbortSignal.timeout(10000)
+          signal: AbortSignal.timeout(6000)
         });
       } catch (crmErr) {
         console.warn('VikingCRM sync error:', crmErr);
       }
     }
 
-    // 4. Send automatisk onboarding og FAKTURAGRUNNLAG via Resend
-    const resendKey = process.env.RESEND_API_KEY || process.env.RESEND_API || process.env.RESEND_KEY || process.env.RESEND_TOKEN || process.env.RESEND || process.env.RESEND_APIKEY;
-    const fromEmail = process.env.EMAIL_FROM || process.env.RESEND_FROM || 'VikingMester <hei@vikingmester.no>';
+    // 5. Send velkomst- og bekreftelses-epost til kunden via den robuste emailSender (med domene-fallback)
+    const baseUrl = process.env.NEXT_PUBLIC_APP_URL || process.env.APP_URL || 'https://vikingmester.no';
+    const directLoginLink = `${baseUrl}/?invite=${inviteToken}`;
 
-    if (resendKey) {
-      // 4A. Send velkomst- og onboarding-epost til kunden
-      if (leadRecord.email) {
-        try {
-          await fetch('https://api.resend.com/emails', {
-            method: 'POST',
-            headers: {
-              'Authorization': `Bearer ${resendKey}`,
-              'Content-Type': 'application/json'
-            },
-            body: JSON.stringify({
-              from: fromEmail,
-              reply_to: 'hei@vikingmester.no',
-              to: [leadRecord.email],
-              subject: `Velkommen til VikingMester – Din autonome byggeleder i lomma`,
-              html: `
-                <div style="font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, sans-serif; max-width: 600px; margin: 0 auto; color: #171717; line-height: 1.6; padding: 24px;">
-                  <div style="border-bottom: 2px solid #8B5CF6; padding-bottom: 12px; margin-bottom: 20px;">
-                    <h2 style="color: #0F172A; margin: 0; font-size: 24px;">Velkommen til VikingMester!</h2>
-                    <p style="color: #8B5CF6; font-weight: bold; margin: 4px 0 0 0; font-size: 14px;">Autonom byggeleder & kvalitetssikring (TEK17 / HMS / NS 8406)</p>
-                  </div>
-                  
-                  <p>Hei ${leadRecord.name}!</p>
-                  <p>Takk for din bestilling av <strong>${leadRecord.plan}</strong> for <strong>${leadRecord.company}</strong>.</p>
-                  
-                  <div style="background: #F8FAFC; border: 1px solid #E2E8F0; padding: 18px; border-radius: 12px; margin: 20px 0;">
-                    <h4 style="margin: 0 0 10px 0; color: #0F172A; font-size: 15px;">Din abonnementsavtale:</h4>
-                    <ul style="margin: 0; padding-left: 20px; font-size: 14px; color: #334155;">
-                      <li><strong>Pakke:</strong> ${leadRecord.plan}</li>
-                      <li><strong>Pris:</strong> kr ${monthlyPrice.toLocaleString('nb-NO')},- / mnd eks. mva</li>
-                      <li><strong>Antall brukere/lisenser:</strong> ${workers}</li>
-                      <li><strong>Fagområde:</strong> ${leadRecord.trade}</li>
-                      <li><strong>Fakturering:</strong> Månedlig bedriftsfaktura / EHF (14 dagers forfall)</li>
-                    </ul>
-                  </div>
-
-                  <div style="background: #FAF5FF; border: 1px solid #E9D5FF; padding: 18px; border-radius: 12px; margin: 20px 0;">
-                    <h4 style="margin: 0 0 10px 0; color: #6B21A8; font-size: 15px;">🚀 Slik kommer du i gang på 2 minutter:</h4>
-                    <ol style="margin: 0; padding-left: 20px; font-size: 14px; color: #374151;">
-                      <li style="margin-bottom: 8px;">Gå direkte til arbeidsflaten på <a href="https://vikingmester.no" style="color: #8B5CF6; font-weight: bold;">vikingmester.no</a>.</li>
-                      <li style="margin-bottom: 8px;">Test stemmestyrt byggedagbok eller ta et bilde av et våtrom / sluk for TEK17-sjekk.</li>
-                      <li style="margin-bottom: 0;">Du kan koble til fagsystemer (f.eks. Tripletex, Boligmappa) under <em>Innstillinger → Integrasjoner</em> når du vil.</li>
-                    </ol>
-                  </div>
-
-                  <p style="font-size: 14px; color: #475569;">Har du spørsmål, kan du svare direkte på denne e-posten til <a href="mailto:hei@vikingmester.no" style="color: #8B5CF6;">hei@vikingmester.no</a>.</p>
-                  
-                  <div style="margin-top: 30px; padding-top: 16px; border-top: 1px solid #E2E8F0; font-size: 12px; color: #64748B;">
-                    Med vennlig hilsen,<br>
-                    <strong>VikingMester Teamet</strong><br>
-                    AIChat Norge AS / Vikingnet • Org.nr: 933 851 222 MVA
-                  </div>
-                </div>
-              `
-            }),
-            signal: AbortSignal.timeout(15000)
-          });
-        } catch (mailErr) {
-          console.warn('Customer onboarding email notice:', mailErr);
-        }
-      }
-
-      // 4B. Send autoritativt FAKTURAGRUNNLAG til Kenneth, Fredrik og aichatnorge@gmail.com
+    if (leadRecord.email) {
       try {
-        const timestampStr = new Date().toLocaleString('nb-NO', { timeZone: 'Europe/Oslo' });
-        await fetch('https://api.resend.com/emails', {
-          method: 'POST',
-          headers: {
-            'Authorization': `Bearer ${resendKey}`,
-            'Content-Type': 'application/json'
+        const emailBodyHtml = `
+          <div style="font-size: 15px; color: #1e293b; line-height: 1.65;">
+            <p>Hei <strong>${leadRecord.name}</strong>!</p>
+            <p>
+              Takk for at du valgte VikingMester! Din <strong>14-dagers gratis prøveperiode</strong> for <strong>${companyOfficialName}</strong> er nå aktivert og klar til bruk.
+            </p>
+
+            <div style="background-color: #f8fafc; border: 1px solid #e2e8f0; border-radius: 12px; padding: 18px 20px; margin: 22px 0;">
+              <h3 style="margin: 0 0 10px 0; color: #0f172a; font-size: 15px; font-weight: 700;">
+                📋 Detaljer om din prøveperiode:
+              </h3>
+              <table role="presentation" style="width: 100%; border-collapse: collapse; font-size: 14px;">
+                <tr>
+                  <td style="padding: 5px 0; color: #64748b; width: 140px;">Bedrift:</td>
+                  <td style="padding: 5px 0; font-weight: 700; color: #0f172a;">${companyOfficialName}</td>
+                </tr>
+                ${finalOrgnr ? `
+                <tr>
+                  <td style="padding: 5px 0; color: #64748b;">Org.nummer:</td>
+                  <td style="padding: 5px 0; font-weight: 600; color: #0f172a; font-family: monospace;">${finalOrgnr}</td>
+                </tr>
+                ` : ''}
+                <tr>
+                  <td style="padding: 5px 0; color: #64748b;">Valgt pakke:</td>
+                  <td style="padding: 5px 0; font-weight: 700; color: #7c3aed;">${planTitle}</td>
+                </tr>
+                <tr>
+                  <td style="padding: 5px 0; color: #64748b;">Prøveperiode:</td>
+                  <td style="padding: 5px 0; font-weight: 700; color: #059669;">14 dager gratis (0,- kr i dag)</td>
+                </tr>
+                <tr>
+                  <td style="padding: 5px 0; color: #64748b;">Pris etter prøve:</td>
+                  <td style="padding: 5px 0; color: #334155;">kr ${monthlyPrice.toLocaleString('nb-NO')},- / mnd eks. mva (ingen bindingstid)</td>
+                </tr>
+              </table>
+            </div>
+
+            <div style="background-color: #f5f3ff; border: 1px solid #ddd6fe; border-radius: 12px; padding: 18px 20px; margin: 22px 0;">
+              <h3 style="margin: 0 0 8px 0; color: #5b21b6; font-size: 15px; font-weight: 700;">
+                🔑 Din innloggingsinformasjon:
+              </h3>
+              <p style="margin: 0 0 6px 0; font-size: 14px; color: #374151;">
+                <strong>Brukernavn / E-post:</strong> ${leadRecord.email}
+              </p>
+              <p style="margin: 0 0 10px 0; font-size: 14px; color: #374151;">
+                <strong>Passord:</strong> ${userEnteredPassword ? 'Passordet du valgte ved registrering.' : `Ditt midlertidige passord er: <code style="background: #ffffff; padding: 2px 6px; border-radius: 4px; font-weight: bold; border: 1px solid #c4b5fd;">${chosenOrGeneratedPassword}</code> (kan endres i systemet)`}
+              </p>
+              <p style="margin: 0; font-size: 13px; color: #6b21a8;">
+                Klikk på knappen nedenfor for å gå direkte inn i din arbeidsflate:
+              </p>
+            </div>
+
+            <div style="background-color: #f0fdf4; border: 1px solid #bbf7d0; border-radius: 12px; padding: 16px 20px; margin: 22px 0;">
+              <h4 style="margin: 0 0 6px 0; color: #166534; font-size: 14px; font-weight: 700;">
+                📱 Tips for mobil & byggeplass:
+              </h4>
+              <p style="margin: 0; font-size: 13px; color: #15803d; line-height: 1.5;">
+                Åpne <a href="${baseUrl}" style="color: #15803d; font-weight: bold;">${baseUrl}</a> i Safari (iPhone) eller Chrome (Android), trykk på <em>Del/Valg</em> og velg <strong>«Legg til på Hjem-skjerm»</strong> for å få VikingMester som fullverdig mobil-app med offline-støtte og stemmedagbok.
+              </p>
+            </div>
+
+            <p style="font-size: 14px; color: #475569; margin-top: 24px;">
+              Trenger du hjelp eller lurer på noe? Svar direkte på denne e-posten eller kontakt oss på <a href="mailto:hei@vikingmester.no" style="color: #7c3aed; font-weight: bold;">hei@vikingmester.no</a>.
+            </p>
+          </div>
+        `;
+
+        const emailHtml = renderBrandedEmailTemplate({
+          subject: `Velkommen til VikingMester – Din 14-dagers prøveperiode er aktivert`,
+          title: `Velkommen til VikingMester!`,
+          subtitle: `Din 14-dagers gratis prøveperiode er klargjort for ${companyOfficialName}`,
+          badgeText: `14 DAGERS GRATIS PRØVE`,
+          badgeColor: `#059669`,
+          accentColor: `#7c3aed`,
+          companyName: 'VikingMester',
+          bodyHtml: emailBodyHtml,
+          button: {
+            url: directLoginLink,
+            label: 'Åpne VikingMester og start nå',
+            bgColor: '#059669',
+            textColor: '#ffffff',
+            icon: '🚀'
           },
-          body: JSON.stringify({
-            from: fromEmail,
-            reply_to: leadRecord.email || 'hei@vikingmester.no',
-            to: ['kenkri3@gmail.com', 'fredrik.r.ellingsen@gmail.com', 'aichatnorge@gmail.com'],
-            subject: `🔥 FAKTURAGRUNNLAG [${leadRecord.id}]: ${leadRecord.company} – ${leadRecord.plan}`,
-            html: `
-              <div style="font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, sans-serif; max-width: 600px; margin: 0 auto; color: #0F172A; line-height: 1.6; padding: 24px; border: 1px solid #CBD5E1; border-radius: 12px;">
-                <div style="background: #10B981; color: white; padding: 12px 16px; border-radius: 8px; font-weight: bold; font-size: 16px; margin-bottom: 20px;">
-                  ✓ NY BEDRIFTSBESTILLING – VIKINGMESTER (50/50 PARTNERSKAP)
-                </div>
-
-                <h3 style="margin-top: 0; color: #0F172A;">FAKTURAGRUNNLAG (EHF / E-POST)</h3>
-                
-                <table style="width: 100%; border-collapse: collapse; font-size: 14px; margin-bottom: 20px;">
-                  <tr style="border-bottom: 1px solid #E2E8F0;">
-                    <td style="padding: 8px 0; font-weight: bold; color: #64748B; width: 140px;">Kunde / Bedrift:</td>
-                    <td style="padding: 8px 0; font-weight: bold; color: #0F172A;">${leadRecord.company}</td>
-                  </tr>
-                  <tr style="border-bottom: 1px solid #E2E8F0;">
-                    <td style="padding: 8px 0; font-weight: bold; color: #64748B;">Organisasjonsnr:</td>
-                    <td style="padding: 8px 0; font-family: monospace; font-weight: bold; color: #0F172A;">${leadRecord.orgnr || 'Må verifiseres / enkeltpersonforetak'}</td>
-                  </tr>
-                  <tr style="border-bottom: 1px solid #E2E8F0;">
-                    <td style="padding: 8px 0; font-weight: bold; color: #64748B;">Forretningsadr.:</td>
-                    <td style="padding: 8px 0;">${brregInfo?.forretningsadresse || 'Ikke oppgitt i Brreg'}</td>
-                  </tr>
-                  <tr style="border-bottom: 1px solid #E2E8F0;">
-                    <td style="padding: 8px 0; font-weight: bold; color: #64748B;">Faktura-e-post:</td>
-                    <td style="padding: 8px 0;"><a href="mailto:${leadRecord.email}">${leadRecord.email}</a></td>
-                  </tr>
-                  <tr style="border-bottom: 1px solid #E2E8F0;">
-                    <td style="padding: 8px 0; font-weight: bold; color: #64748B;">Telefon:</td>
-                    <td style="padding: 8px 0;">${leadRecord.phone || 'Ikke oppgitt'}</td>
-                  </tr>
-                  <tr style="border-bottom: 1px solid #E2E8F0;">
-                    <td style="padding: 8px 0; font-weight: bold; color: #64748B;">Produkt / Plan:</td>
-                    <td style="padding: 8px 0; font-weight: bold; color: #8B5CF6;">${leadRecord.plan}</td>
-                  </tr>
-                  <tr style="border-bottom: 1px solid #E2E8F0;">
-                    <td style="padding: 8px 0; font-weight: bold; color: #64748B;">Pris per mnd:</td>
-                    <td style="padding: 8px 0; font-weight: bold; color: #0F172A;">kr ${monthlyPrice.toLocaleString('nb-NO')},- eks. mva</td>
-                  </tr>
-                  <tr style="border-bottom: 1px solid #E2E8F0;">
-                    <td style="padding: 8px 0; font-weight: bold; color: #64748B;">Antall brukere:</td>
-                    <td style="padding: 8px 0;">${workers}</td>
-                  </tr>
-                  <tr style="border-bottom: 1px solid #E2E8F0;">
-                    <td style="padding: 8px 0; font-weight: bold; color: #64748B;">Fagområde:</td>
-                    <td style="padding: 8px 0;">${leadRecord.trade}</td>
-                  </tr>
-                  <tr style="border-bottom: 1px solid #E2E8F0;">
-                    <td style="padding: 8px 0; font-weight: bold; color: #64748B;">Lead ID / Ref:</td>
-                    <td style="padding: 8px 0; font-family: monospace; color: #64748B;">${leadRecord.id}</td>
-                  </tr>
-                  <tr>
-                    <td style="padding: 8px 0; font-weight: bold; color: #64748B;">Tidspunkt:</td>
-                    <td style="padding: 8px 0; color: #64748B;">${timestampStr}</td>
-                  </tr>
-                </table>
-
-                <div style="background: #F1F5F9; padding: 12px; border-radius: 8px; font-size: 13px; color: #334155;">
-                  <strong>Neste steg:</strong> Send EHF / bedriftsfaktura på <strong>kr ${monthlyPrice.toLocaleString('nb-NO')},- eks. mva</strong> for første måned med 14 dagers forfall.
-                  <br><br>
-                  <em style="color: #64748B;">Merk: Inntekter og direkte driftskostnader for dette abonnementet inngår i 50/50-avregningen for VikingMester.</em>
-                </div>
-              </div>
-            `
-          }),
-          signal: AbortSignal.timeout(15000)
+          secondaryUrl: directLoginLink,
+          secondaryText: 'Du kan også åpne VikingMester direkte via denne lenken:',
+          footerDetails: `AIChat Norge AS / Vikingnet · Org.nr: 933 851 222 MVA · Vidjeveien 21, 3151 Tolvsrød`
         });
-      } catch (adminMailErr) {
-        console.warn('Admin invoice basis email notice:', adminMailErr);
+
+        await sendSystemEmail({
+          to: leadRecord.email,
+          replyTo: 'hei@vikingmester.no',
+          subject: `Velkommen til VikingMester – Din 14-dagers prøveperiode er aktivert`,
+          html: emailHtml,
+          text: `Hei ${leadRecord.name}!\n\nTakk for din bestilling. Din 14-dagers gratis prøveperiode for ${companyOfficialName} er nå aktivert.\n\nBrukernavn: ${leadRecord.email}\nPassord: ${userEnteredPassword ? 'Passordet du oppga ved registrering' : chosenOrGeneratedPassword}\n\nLogg inn direkte her: ${directLoginLink}\n\nMed vennlig hilsen,\nVikingMester Teamet`,
+          type: 'general',
+          companyName: 'VikingMester'
+        });
+        console.info(`[Lead] Velkomst-epost sendt til kunden: ${leadRecord.email}`);
+      } catch (custMailErr: any) {
+        console.error('[Lead] Kunne ikke sende velkomst-epost til kunden:', custMailErr.message);
       }
     }
 
-    // 5. Autonom inrullering i oppfølgings- og mersalgssekvens (Dag 3, 7, 14, 21)
+    // 6. Send autoritativt FAKTURAGRUNNLAG og ordrevarsel til Kenneth, Fredrik og AIChat Norge
+    try {
+      const timestampStr = new Date().toLocaleString('nb-NO', { timeZone: 'Europe/Oslo' });
+      const adminHtml = `
+        <div style="font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, sans-serif; max-width: 620px; margin: 0 auto; color: #0F172A; line-height: 1.6; padding: 24px; border: 1px solid #CBD5E1; border-radius: 12px; background: #ffffff;">
+          <div style="background: #10B981; color: white; padding: 12px 16px; border-radius: 8px; font-weight: bold; font-size: 15px; margin-bottom: 20px;">
+            ✓ NY PRØVEPERIODE & BESTILLING – VIKINGMESTER
+          </div>
+
+          <h3 style="margin-top: 0; color: #0F172A;">BESTILLING & FAKTURAGRUNNLAG (EHF / E-POST)</h3>
+          
+          <table style="width: 100%; border-collapse: collapse; font-size: 14px; margin-bottom: 20px;">
+            <tr style="border-bottom: 1px solid #E2E8F0;">
+              <td style="padding: 8px 0; font-weight: bold; color: #64748B; width: 140px;">Kunde / Bedrift:</td>
+              <td style="padding: 8px 0; font-weight: bold; color: #0F172A;">${companyOfficialName}</td>
+            </tr>
+            <tr style="border-bottom: 1px solid #E2E8F0;">
+              <td style="padding: 8px 0; font-weight: bold; color: #64748B;">Organisasjonsnr:</td>
+              <td style="padding: 8px 0; font-family: monospace; font-weight: bold; color: #0F172A;">${finalOrgnr || 'Ikke oppgitt / ENK'}</td>
+            </tr>
+            <tr style="border-bottom: 1px solid #E2E8F0;">
+              <td style="padding: 8px 0; font-weight: bold; color: #64748B;">Org.form:</td>
+              <td style="padding: 8px 0;">${brregInfo?.organisasjonsformBeskrivelse || 'Ukjent'}</td>
+            </tr>
+            <tr style="border-bottom: 1px solid #E2E8F0;">
+              <td style="padding: 8px 0; font-weight: bold; color: #64748B;">Kontaktperson:</td>
+              <td style="padding: 8px 0; font-weight: bold; color: #0F172A;">${finalDisplayName}</td>
+            </tr>
+            <tr style="border-bottom: 1px solid #E2E8F0;">
+              <td style="padding: 8px 0; font-weight: bold; color: #64748B;">Adresse (Brreg):</td>
+              <td style="padding: 8px 0;">${brregInfo?.forretningsadresse || 'Ikke oppgitt'}</td>
+            </tr>
+            <tr style="border-bottom: 1px solid #E2E8F0;">
+              <td style="padding: 8px 0; font-weight: bold; color: #64748B;">Faktura-e-post:</td>
+              <td style="padding: 8px 0;"><a href="mailto:${leadRecord.email}">${leadRecord.email}</a></td>
+            </tr>
+            <tr style="border-bottom: 1px solid #E2E8F0;">
+              <td style="padding: 8px 0; font-weight: bold; color: #64748B;">Telefon:</td>
+              <td style="padding: 8px 0;">${leadRecord.phone || 'Ikke oppgitt'}</td>
+            </tr>
+            <tr style="border-bottom: 1px solid #E2E8F0;">
+              <td style="padding: 8px 0; font-weight: bold; color: #64748B;">Produkt / Plan:</td>
+              <td style="padding: 8px 0; font-weight: bold; color: #8B5CF6;">${leadRecord.plan}</td>
+            </tr>
+            <tr style="border-bottom: 1px solid #E2E8F0;">
+              <td style="padding: 8px 0; font-weight: bold; color: #64748B;">Pris per mnd:</td>
+              <td style="padding: 8px 0; font-weight: bold; color: #0F172A;">kr ${monthlyPrice.toLocaleString('nb-NO')},- eks. mva</td>
+            </tr>
+            <tr style="border-bottom: 1px solid #E2E8F0;">
+              <td style="padding: 8px 0; font-weight: bold; color: #64748B;">Status:</td>
+              <td style="padding: 8px 0; font-weight: bold; color: #059669;">14 dagers gratis prøveperiode aktivert</td>
+            </tr>
+            <tr style="border-bottom: 1px solid #E2E8F0;">
+              <td style="padding: 8px 0; font-weight: bold; color: #64748B;">Fagområde:</td>
+              <td style="padding: 8px 0;">${leadRecord.trade}</td>
+            </tr>
+            <tr style="border-bottom: 1px solid #E2E8F0;">
+              <td style="padding: 8px 0; font-weight: bold; color: #64748B;">Lead ID / Ref:</td>
+              <td style="padding: 8px 0; font-family: monospace; color: #64748B;">${leadRecord.id}</td>
+            </tr>
+            <tr>
+              <td style="padding: 8px 0; font-weight: bold; color: #64748B;">Tidspunkt:</td>
+              <td style="padding: 8px 0; color: #64748B;">${timestampStr}</td>
+            </tr>
+          </table>
+
+          <div style="background: #F1F5F9; padding: 14px; border-radius: 8px; font-size: 13px; color: #334155;">
+            <strong>Aksjonsplan:</strong> Kunden har fått 14 dagers gratis prøveperiode. EHF / bedriftsfaktura på <strong>kr ${monthlyPrice.toLocaleString('nb-NO')},- eks. mva</strong> sendes etter prøveperioden dersom kunden fortsetter.
+          </div>
+        </div>
+      `;
+
+      await sendSystemEmail({
+        to: ['kenkri3@gmail.com', 'fredrik.r.ellingsen@gmail.com', 'aichatnorge@gmail.com'],
+        replyTo: leadRecord.email || 'hei@vikingmester.no',
+        subject: `🔥 NY BESTILLING [${leadRecord.id}]: ${companyOfficialName} – ${leadRecord.plan}`,
+        html: adminHtml,
+        text: `Ny bestilling mottatt fra ${companyOfficialName} (Org.nr: ${finalOrgnr || 'Ikke oppgitt'}). Plan: ${leadRecord.plan} (kr ${monthlyPrice},-). Kontakt: ${finalDisplayName} (${leadRecord.email}, ${leadRecord.phone}).`,
+        type: 'general',
+        companyName: 'VikingMester Admin'
+      });
+      console.info(`[Lead] Admin varsel sendt for lead: ${leadRecord.id}`);
+    } catch (adminMailErr: any) {
+      console.warn('[Lead] Kunne ikke sende admin fakturavarsel:', adminMailErr.message);
+    }
+
+    // 7. Autonom inrullering i oppfølgings- og mersalgssekvens (Dag 3, 7, 14, 21)
     try {
       await enrollCustomerInNurture({
         id: leadRecord.id,
@@ -316,8 +509,11 @@ export async function POST(req: NextRequest) {
 
     return NextResponse.json({
       success: true,
-      message: 'Bestilling registrert. Fakturagrunnlag, velkomstepost og oppfølgingssekvens aktivert.',
-      lead: leadRecord
+      message: '14 dagers gratis prøveperiode er aktivert! Velkommen til VikingMester.',
+      token: authToken,
+      user: authUser,
+      lead: leadRecord,
+      directLoginLink
     });
   } catch (err: any) {
     console.error('Lead route error:', err);

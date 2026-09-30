@@ -2,7 +2,7 @@ import { toast } from "sonner";
 import React, { useState } from 'react';
 import { motion, AnimatePresence } from 'motion/react';
 import Logo from './Logo';
-import { ShieldCheck, LogIn, ArrowLeft, Mail, Lock, User, Building, ArrowRight, Loader2, Hash } from 'lucide-react';
+import { ShieldCheck, LogIn, ArrowLeft, Mail, Lock, User, Building, ArrowRight, Loader2, Hash, CheckCircle2 } from 'lucide-react';
 import { useAuth } from '../hooks/useAuth';
 import { useTranslation } from 'react-i18next';
 
@@ -16,10 +16,37 @@ export default function Login({ onBack, onSuccess }: { onBack?: () => void; onSu
   const [name, setName] = useState('');
   const [company, setCompany] = useState('');
   const [orgnr, setOrgnr] = useState('');
+  const [isSearchingBrreg, setIsSearchingBrreg] = useState(false);
+  const [verifiedBrreg, setVerifiedBrreg] = useState<any | null>(null);
   const [gdprConsent, setGdprConsent] = useState(false);
   const [error, setError] = useState('');
   const [success, setSuccess] = useState('');
   const [isSubmitting, setIsSubmitting] = useState(false);
+
+  const handleOrgnrChange = async (val: string) => {
+    setOrgnr(val);
+    const clean = val.replace(/\s+/g, '').trim();
+    if (clean.length === 9 && /^\d{9}$/.test(clean)) {
+      setIsSearchingBrreg(true);
+      try {
+        const res = await fetch(`/api/brreg?orgnr=${clean}`);
+        if (res.ok) {
+          const data = await res.json();
+          if (data.found && data.unit) {
+            setCompany(data.unit.navn);
+            setVerifiedBrreg(data.unit);
+            toast.success(`✓ Fant ${data.unit.navn} i Brønnøysund!`);
+          }
+        }
+      } catch (e) {
+        console.warn('Brreg login lookup error', e);
+      } finally {
+        setIsSearchingBrreg(false);
+      }
+    } else if (clean.length < 9) {
+      setVerifiedBrreg(null);
+    }
+  };
 
   const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault();
@@ -136,6 +163,24 @@ export default function Login({ onBack, onSuccess }: { onBack?: () => void; onSu
                   />
                 </div>
                 <div className="relative">
+                  <Hash className="absolute left-3.5 top-1/2 -translate-y-1/2 text-slate-400" size={17} />
+                  <input
+                    type="text"
+                    placeholder="Organisasjonsnummer (9 siffer) - autooppslag"
+                    value={orgnr}
+                    onChange={(e) => handleOrgnrChange(e.target.value)}
+                    maxLength={12}
+                    required
+                    className="w-full pl-10 pr-4 py-3 bg-slate-50 border border-slate-200 rounded-xl text-slate-900 placeholder:text-slate-400 focus:bg-white focus:border-electric-500 focus:ring-2 focus:ring-electric-500/20 outline-none text-sm transition-all font-mono"
+                  />
+                  {isSearchingBrreg && (
+                    <div className="absolute right-3.5 top-1/2 -translate-y-1/2 text-xs text-electric-600 font-bold flex items-center gap-1">
+                      <Loader2 size={13} className="animate-spin" />
+                      <span>Søker...</span>
+                    </div>
+                  )}
+                </div>
+                <div className="relative">
                   <Building className="absolute left-3.5 top-1/2 -translate-y-1/2 text-slate-400" size={17} />
                   <input
                     type="text"
@@ -146,18 +191,12 @@ export default function Login({ onBack, onSuccess }: { onBack?: () => void; onSu
                     className="w-full pl-10 pr-4 py-3 bg-slate-50 border border-slate-200 rounded-xl text-slate-900 placeholder:text-slate-400 focus:bg-white focus:border-electric-500 focus:ring-2 focus:ring-electric-500/20 outline-none text-sm transition-all"
                   />
                 </div>
-                <div className="relative">
-                  <Hash className="absolute left-3.5 top-1/2 -translate-y-1/2 text-slate-400" size={17} />
-                  <input
-                    type="text"
-                    placeholder="Organisasjonsnummer (9 siffer)"
-                    value={orgnr}
-                    onChange={(e) => setOrgnr(e.target.value)}
-                    maxLength={12}
-                    required
-                    className="w-full pl-10 pr-4 py-3 bg-slate-50 border border-slate-200 rounded-xl text-slate-900 placeholder:text-slate-400 focus:bg-white focus:border-electric-500 focus:ring-2 focus:ring-electric-500/20 outline-none text-sm transition-all font-mono"
-                  />
-                </div>
+                {verifiedBrreg && (
+                  <div className="flex items-center gap-2 p-2.5 rounded-lg bg-emerald-50 border border-emerald-200 text-emerald-800 text-xs">
+                    <CheckCircle2 size={14} className="text-emerald-600 shrink-0" />
+                    <span>✓ Verifisert fra Brønnøysund: <strong>{verifiedBrreg.navn}</strong></span>
+                  </div>
+                )}
               </motion.div>
             )}
           </AnimatePresence>

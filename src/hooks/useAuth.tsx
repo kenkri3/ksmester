@@ -1,6 +1,6 @@
 'use client';
 
-import React, { createContext, useContext, useEffect, useState } from 'react';
+import React, { createContext, useContext, useEffect, useState, useCallback } from 'react';
 import { api } from '../services/api';
 import { setCurrentAuthUser } from '../services/dbAdapter';
 import { chatSessionService } from '../services/chatSessionService';
@@ -42,6 +42,8 @@ interface AuthContextType {
   login: () => Promise<void>;
   loginWithEmail: (email: string, pass: string) => Promise<void>;
   registerWithEmail: (email: string, pass: string, name: string, company: string, gdprConsent?: boolean, orgnr?: string, companyId?: string, role?: string) => Promise<void>;
+  applyAuthSession: (token: string, user: any) => void;
+  refreshAuth: () => Promise<void>;
   resetPassword: (email: string) => Promise<void>;
   logout: () => Promise<void>;
   isAuthReady: boolean;
@@ -110,67 +112,83 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
     }
   }, []);
 
-  useEffect(() => {
-    const initAuth = async () => {
-      try {
-        const res = await api.getMe();
-        if (res && res.user) {
-          const u = res.user;
-          const SUPERADMIN_EMAILS = [
-            'kenkri3@gmail.com',
-            'aichatnorge@gmail.com',
-            'kenneth@aichatnorge.no',
-            'admin@vikingmester.no',
-            'post@vikingent.no',
-            'fredrik.r.ellingsen@gmail.com',
-            'fredrik@aichatnorge.no'
-          ];
-          const isSuper = u.role === 'superadmin' || SUPERADMIN_EMAILS.includes((u.email || '').toLowerCase());
-          const computedRole = isSuper ? 'superadmin' : (u.role || 'leader');
+  const initAuth = useCallback(async () => {
+    try {
+      const res = await api.getMe();
+      if (res && res.user) {
+        const u = res.user;
+        const SUPERADMIN_EMAILS = [
+          'kenkri3@gmail.com',
+          'aichatnorge@gmail.com',
+          'kenneth@aichatnorge.no',
+          'admin@vikingmester.no',
+          'post@vikingent.no',
+          'fredrik.r.ellingsen@gmail.com',
+          'fredrik@aichatnorge.no'
+        ];
+        const isSuper = u.role === 'superadmin' || SUPERADMIN_EMAILS.includes((u.email || '').toLowerCase());
+        const computedRole = isSuper ? 'superadmin' : (u.role || 'leader');
 
-          const userObj: User = {
-            uid: u.id || u.uid,
-            id: u.id || u.uid,
-            email: u.email,
-            displayName: u.displayName || u.email.split('@')[0],
-            role: computedRole,
-            trade: u.trade || 'Byggmester',
-            company: u.company || (isSuper ? 'AIChat Norge AS / Vikingnet' : 'Min Bedrift'),
-            companyId: u.companyId || (isSuper ? 'comp-001' : `comp-${u.id || 'user'}`),
-            subscriptionStatus: u.subscriptionStatus || 'active',
-            plan: u.plan,
-            modules: u.modules
-          };
-          setUser(userObj);
-          setCurrentAuthUser(userObj);
-          setRole(computedRole);
-          setTrade(u.trade || 'Byggmester');
-          setCompany(userObj.company || 'Min Bedrift');
-          if (Array.isArray(u.modules)) {
-            setCompanyModules(u.modules);
-          }
-          setSubscriptionStatus(u.subscriptionStatus || 'active');
-          setTrialDaysLeft(typeof u.trialDaysLeft === 'number' ? u.trialDaysLeft : null);
-          setTotalTrialDays(typeof u.totalTrialDays === 'number' ? u.totalTrialDays : null);
-          setIsBetaTester(Boolean(u.isBetaTester));
-        } else {
-          setUser(null);
-          setCurrentAuthUser(null);
-          setRole(null);
+        const userObj: User = {
+          uid: u.id || u.uid,
+          id: u.id || u.uid,
+          email: u.email,
+          displayName: u.displayName || u.email.split('@')[0],
+          role: computedRole,
+          trade: u.trade || 'Byggmester',
+          company: u.company || (isSuper ? 'AIChat Norge AS / Vikingnet' : 'Min Bedrift'),
+          companyId: u.companyId || (isSuper ? 'comp-001' : `comp-${u.id || 'user'}`),
+          subscriptionStatus: u.subscriptionStatus || 'active',
+          plan: u.plan,
+          modules: u.modules
+        };
+        setUser(userObj);
+        setCurrentAuthUser(userObj);
+        setRole(computedRole);
+        setTrade(u.trade || 'Byggmester');
+        setCompany(userObj.company || 'Min Bedrift');
+        if (Array.isArray(u.modules)) {
+          setCompanyModules(u.modules);
         }
-      } catch (err) {
-        console.warn("Auth check notice:", err);
+        setSubscriptionStatus(u.subscriptionStatus || 'active');
+        setTrialDaysLeft(typeof u.trialDaysLeft === 'number' ? u.trialDaysLeft : null);
+        setTotalTrialDays(typeof u.totalTrialDays === 'number' ? u.totalTrialDays : null);
+        setIsBetaTester(Boolean(u.isBetaTester));
+      } else {
         setUser(null);
         setCurrentAuthUser(null);
         setRole(null);
-      } finally {
-        setLoading(false);
-        setIsAuthReady(true);
+      }
+    } catch (err) {
+      console.warn("Auth check notice:", err);
+      setUser(null);
+      setCurrentAuthUser(null);
+      setRole(null);
+    } finally {
+      setLoading(false);
+      setIsAuthReady(true);
+    }
+  }, []);
+
+  useEffect(() => {
+    initAuth();
+
+    const handleAuthEvent = (e: any) => {
+      if (e?.detail?.token && e?.detail?.user) {
+        applyAuthSession(e.detail.token, e.detail.user);
+      } else {
+        initAuth();
       }
     };
-
-    initAuth();
-  }, []);
+    if (typeof window !== 'undefined') {
+      window.addEventListener('auth_session_created', handleAuthEvent);
+    }
+    return () => {
+      if (typeof window !== 'undefined') {
+        window.removeEventListener('auth_session_created', handleAuthEvent);
+      }
+    };
+  }, [initAuth]);
 
   const login = async () => {
     throw new Error('Vennligst oppgi e-postadresse og passord for å logge inn.');
@@ -246,6 +264,40 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
     } else {
       throw new Error('Kunne ikke registrere bruker.');
     }
+  };
+
+  const applyAuthSession = (token: string, u: any) => {
+    if (typeof window !== 'undefined') {
+      localStorage.setItem('token', token);
+    }
+    const emailLower = (u.email || '').toLowerCase().trim();
+    const isSuper = u.role === 'superadmin' || SUPERADMIN_EMAILS.includes(emailLower);
+    const computedRole = isSuper ? 'superadmin' : (u.role || 'leader');
+
+    const userObj: User = {
+      uid: u.id || u.uid,
+      id: u.id || u.uid,
+      email: u.email,
+      displayName: u.displayName || u.email.split('@')[0],
+      role: computedRole,
+      trade: u.trade || 'Byggmester',
+      company: u.company || (isSuper ? 'AIChat Norge AS / Vikingnet' : 'Min Bedrift'),
+      companyId: u.companyId || (isSuper ? 'comp-001' : `comp-${u.id || 'user'}`),
+      subscriptionStatus: u.subscriptionStatus || 'trial',
+      plan: u.plan,
+      modules: u.modules
+    };
+    setUser(userObj);
+    setCurrentAuthUser(userObj);
+    setRole(computedRole);
+    setCompany(userObj.company || 'Min Bedrift');
+    setTrade(userObj.trade || 'Byggmester');
+    if (Array.isArray(u.modules)) {
+      setCompanyModules(u.modules);
+    }
+    setSubscriptionStatus(userObj.subscriptionStatus || 'trial');
+    setTrialDaysLeft(typeof u.trialDaysLeft === 'number' ? u.trialDaysLeft : 14);
+    setTotalTrialDays(typeof u.totalTrialDays === 'number' ? u.totalTrialDays : 14);
   };
 
   const resetPassword = async (email: string) => {
@@ -415,6 +467,8 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
       login,
       loginWithEmail,
       registerWithEmail,
+      applyAuthSession,
+      refreshAuth: initAuth,
       resetPassword,
       logout,
       isAuthReady,

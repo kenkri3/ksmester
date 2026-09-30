@@ -55,7 +55,9 @@ import {
   Hammer,
   FolderKanban,
   Package,
-  Volume2
+  Volume2,
+  Loader2,
+  EyeOff
 } from 'lucide-react';
 import { cn } from '@/src/lib/utils';
 import Image from 'next/image';
@@ -63,6 +65,7 @@ import InstallGuide from './InstallGuide';
 import WorkstationShowcase from './WorkstationShowcase';
 import { toast } from 'sonner';
 import { promptPWAInstall, isPWAInstalled, triggerAppDownloadOrInstall } from '../lib/pwa';
+import { useAuth } from '../hooks/useAuth';
 
 export type LandingTab = 'home' | 'offers_ks' | 'change_orders' | 'lukkesperre' | 'fdv' | 'customer_portal' | 'pricing' | 'ai' | 'hms';
 
@@ -381,16 +384,114 @@ function TacticalHomeView({
   onViewChange: (view: any) => void,
   onSwitchTab?: (tab: LandingTab) => void
 }) {
+  const { applyAuthSession } = useAuth();
   const [workerCount, setWorkerCount] = useState<number>(4);
   const [leadEmail, setLeadEmail] = useState('');
   const [leadCompany, setLeadCompany] = useState('');
   const [leadOrgnr, setLeadOrgnr] = useState('');
   const [leadPhone, setLeadPhone] = useState('');
+  const [leadContactName, setLeadContactName] = useState('');
+  const [leadPassword, setLeadPassword] = useState('');
+  const [showPassword, setShowPassword] = useState(false);
   const [selectedTrade, setSelectedTrade] = useState('tomrer');
   const [selectedPlan, setSelectedPlan] = useState<'solo' | 'team' | 'entreprenor'>('team');
-  const [acceptedTerms, setAcceptedTerms] = useState(false);
+  const [acceptedTerms, setAcceptedTerms] = useState(true);
   const [isSubmittingLead, setIsSubmittingLead] = useState(false);
   const [leadSuccess, setLeadSuccess] = useState(false);
+
+  // Brønnøysund auto-lookup state
+  const [isSearchingBrreg, setIsSearchingBrreg] = useState(false);
+  const [brregSuggestions, setBrregSuggestions] = useState<any[]>([]);
+  const [verifiedBrregUnit, setVerifiedBrregUnit] = useState<any | null>(null);
+  const [searchTimeout, setSearchTimeout] = useState<any>(null);
+
+  // 1. Slå opp 9-sifret organisasjonsnummer automatisk
+  const handleOrgnrChange = async (val: string) => {
+    setLeadOrgnr(val);
+    const clean = val.replace(/\s+/g, '').trim();
+    if (clean.length === 9 && /^\d{9}$/.test(clean)) {
+      setIsSearchingBrreg(true);
+      try {
+        const res = await fetch(`/api/brreg?orgnr=${clean}`);
+        if (res.ok) {
+          const data = await res.json();
+          if (data.found && data.unit) {
+            setVerifiedBrregUnit(data.unit);
+            setLeadCompany(data.unit.navn);
+            if (data.unit.tradeSuggestion) {
+              setSelectedTrade(data.unit.tradeSuggestion);
+            }
+            if (data.unit.antallAnsatte) {
+              const count = Math.max(1, Number(data.unit.antallAnsatte));
+              setWorkerCount(count);
+              if (count === 1) setSelectedPlan('solo');
+              else if (count > 5) setSelectedPlan('entreprenor');
+              else setSelectedPlan('team');
+            }
+            toast.success(`✓ Verifisert fra Brønnøysund: ${data.unit.navn}`);
+          }
+        }
+      } catch (err) {
+        console.warn('Brreg lookup error:', err);
+      } finally {
+        setIsSearchingBrreg(false);
+      }
+    } else if (verifiedBrregUnit && clean.length < 9) {
+      setVerifiedBrregUnit(null);
+    }
+  };
+
+  // 2. Søk i Brønnøysund mens brukeren skriver bedriftsnavn
+  const handleCompanyChange = (val: string) => {
+    setLeadCompany(val);
+    if (verifiedBrregUnit && val !== verifiedBrregUnit.navn) {
+      setVerifiedBrregUnit(null);
+    }
+    if (searchTimeout) clearTimeout(searchTimeout);
+
+    const query = val.trim();
+    if (query.length >= 3 && !verifiedBrregUnit) {
+      const timer = setTimeout(async () => {
+        setIsSearchingBrreg(true);
+        try {
+          const res = await fetch(`/api/brreg?query=${encodeURIComponent(query)}`);
+          if (res.ok) {
+            const data = await res.json();
+            if (data.units && data.units.length > 0) {
+              setBrregSuggestions(data.units);
+            } else {
+              setBrregSuggestions([]);
+            }
+          }
+        } catch (e) {
+          console.warn('Brreg name search error:', e);
+        } finally {
+          setIsSearchingBrreg(false);
+        }
+      }, 350);
+      setSearchTimeout(timer);
+    } else {
+      setBrregSuggestions([]);
+    }
+  };
+
+  const handleSelectBrregUnit = (unit: any) => {
+    setVerifiedBrregUnit(unit);
+    setLeadCompany(unit.navn);
+    setLeadOrgnr(unit.orgnr);
+    if (unit.tradeSuggestion) {
+      setSelectedTrade(unit.tradeSuggestion);
+    }
+    if (unit.antallAnsatte) {
+      const count = Math.max(1, Number(unit.antallAnsatte));
+      setWorkerCount(count);
+      if (count === 1) setSelectedPlan('solo');
+      else if (count > 5) setSelectedPlan('entreprenor');
+      else setSelectedPlan('team');
+    }
+    setBrregSuggestions([]);
+    toast.success(`✓ Valgte ${unit.navn} (${unit.orgnr})`);
+  };
 
   // ROI calculations
   const hoursSavedPerMonth = workerCount * 14;
@@ -402,6 +503,10 @@ function TacticalHomeView({
     e.preventDefault();
     if (!leadEmail || !leadCompany) {
       toast.error('Vennligst fyll inn bedriftsnavn og e-post.');
+      return;
+    }
+    if (!leadPassword || leadPassword.length < 8) {
+      toast.error('Vennligst velg et passord på minst 8 tegn slik at du kan logge inn.');
       return;
     }
     if (!acceptedTerms) {
@@ -416,8 +521,10 @@ function TacticalHomeView({
         body: JSON.stringify({
           companyName: leadCompany,
           orgnr: leadOrgnr,
+          name: leadContactName || leadCompany,
           email: leadEmail,
           phone: leadPhone,
+          password: leadPassword,
           trade: selectedTrade,
           plan: selectedPlan,
           workers: workerCount,
@@ -428,9 +535,19 @@ function TacticalHomeView({
       const data = await res.json();
       if (res.ok && data.success) {
         setLeadSuccess(true);
-        toast.success('Bestilling mottatt! Vi klargjør din 14-dagers gratis prøveperiode umiddelbart.');
+        if (data.token && data.user) {
+          localStorage.setItem('token', data.token);
+          applyAuthSession(data.token, data.user);
+          window.dispatchEvent(new CustomEvent('auth_session_created', { detail: { token: data.token, user: data.user } }));
+        }
+        toast.success('🎉 Gratulerer! Din 14-dagers gratis prøveperiode er aktivert.');
+
+        // Automatisk navigering inn i Mester-arbeidsflaten
+        setTimeout(() => {
+          onViewChange('dashboard');
+        }, 1800);
       } else {
-        toast.error(data.message || 'Kunne ikke sende registrering.');
+        toast.error(data.message || data.error || 'Kunne ikke sende registrering.');
       }
     } catch {
       toast.error('Nettverksfeil. Ta kontakt på hei@vikingmester.no');
@@ -1526,34 +1643,47 @@ function TacticalHomeView({
         </div>
       </section>
 
-      {/* Direct Order Form (Lead Capture) */}
+      {/* Direct Order Form (Lead Capture & Immediate Trial Access) */}
       <section id="bestill" className="py-24 bg-slate-50 border-b border-slate-200">
         <div className="max-w-2xl mx-auto px-4 sm:px-6 lg:px-8">
           <div className="bg-white border border-slate-200 rounded-3xl p-6 sm:p-10 shadow-card-hover relative">
             <div className="text-center mb-8">
               <span className="text-xs font-bold text-electric-600 uppercase tracking-widest bg-electric-50 px-3.5 py-1 rounded-full border border-electric-300/40">
-                BEDRIFTSBESTILLING
+                14 DAGERS GRATIS PRØVEPERIODE • 0,- KR I DAG
               </span>
               <h2 className="text-2xl sm:text-4xl font-black text-navy-900 mt-4 leading-tight">
-                FÅ TILGANG NÅ
+                START DIN TEST NÅ
               </h2>
               <p className="text-xs sm:text-sm font-sans text-slate-600 mt-2">
-                Faktura sendes automatisk på EHF / e-post. Null kredittkortkrav.
+                Opprett brukerkonto på 60 sekunder og test Mester-arbeidsflaten umiddelbart. Null kredittkortkrav.
               </p>
             </div>
 
             {leadSuccess ? (
               <div className="p-6 sm:p-8 rounded-2xl bg-emerald-50 border border-emerald-200 text-center font-sans">
-                <CheckCircle2 size={44} className="text-emerald-600 mx-auto mb-3" />
-                <h3 className="text-xl sm:text-2xl font-bold text-navy-900 mb-2">Takk for bestillingen!</h3>
+                <CheckCircle2 size={48} className="text-emerald-600 mx-auto mb-3" />
+                <span className="inline-block text-[11px] font-bold text-emerald-800 bg-emerald-100 px-3 py-1 rounded-full uppercase tracking-wider mb-2">
+                  14 DAGERS GRATIS PRØVE AKTIVERT
+                </span>
+                <h3 className="text-xl sm:text-2xl font-black text-navy-900 mb-2">Velkommen til VikingMester!</h3>
                 <p className="text-sm text-slate-700 leading-relaxed max-w-lg mx-auto">
-                  Vi verifiserer foretaket mot Brønnøysundregistrene og har sendt ordrebekreftelse til <strong className="text-navy-900">{leadEmail}</strong>. Fakturagrunnlag klargjøres automatisk.
+                  Din konto for <strong className="text-navy-900">{leadCompany}</strong> er opprettet. Vi har sendt en skriftlig bekreftelse til <strong className="text-navy-900">{leadEmail}</strong>.
                 </p>
+
+                <div className="p-4 bg-white/90 rounded-xl border border-emerald-200 max-w-md mx-auto my-5 text-xs text-slate-700 text-left space-y-1.5 shadow-xs">
+                  <div><strong className="text-slate-900">Brukernavn / E-post:</strong> {leadEmail}</div>
+                  <div><strong className="text-slate-900">Passord:</strong> Passordet du oppga ved registrering</div>
+                  <div><strong className="text-slate-900">Abonnement:</strong> {selectedPlan === 'solo' ? 'VikingMester Solo (690,-/mnd)' : selectedPlan === 'entreprenor' ? 'Totalentreprenør Pro (2 990,-/mnd)' : 'VikingMester Team (1 490,-/mnd)'}</div>
+                  <div className="text-emerald-700 font-bold pt-1 border-t border-slate-100">
+                    ✓ 14 dager 100% gratis • Faktura sendes kun dersom du fortsetter etter prøvetiden.
+                  </div>
+                </div>
+
                 <div className="mt-6 flex flex-col sm:flex-row items-center justify-center gap-3">
                   <button
                     type="button"
-                    onClick={() => onStartDemo()}
-                    className="w-full sm:w-auto px-6 py-3.5 rounded-xl bg-electric-600 hover:bg-electric-500 text-white font-bold text-xs uppercase tracking-wider transition-all shadow-md cursor-pointer flex items-center justify-center gap-2"
+                    onClick={() => onViewChange('dashboard')}
+                    className="w-full sm:w-auto px-7 py-3.5 rounded-xl bg-electric-600 hover:bg-electric-500 text-white font-bold text-xs uppercase tracking-wider transition-all shadow-md cursor-pointer flex items-center justify-center gap-2"
                   >
                     <span>Åpne Mester-Dashboardet nå</span>
                     <ArrowRight size={16} />
@@ -1563,14 +1693,41 @@ function TacticalHomeView({
                     onClick={() => onViewChange("mobile")}
                     className="w-full sm:w-auto px-6 py-3.5 rounded-xl bg-white hover:bg-slate-100 text-slate-800 border border-slate-300 font-bold text-xs uppercase tracking-wider transition-all cursor-pointer flex items-center justify-center gap-2"
                   >
+                    <Smartphone size={16} className="text-slate-600" />
                     <span>Åpne Mobil App</span>
                   </button>
                 </div>
               </div>
             ) : (
               <form onSubmit={handleLeadSubmit} className="space-y-4 font-sans text-xs sm:text-sm">
+                
+                {/* 1. Bedriftsinformasjon med Brønnøysund-oppslag */}
                 <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
-                  <div>
+                  <div className="relative">
+                    <label className="block text-xs font-bold text-slate-700 uppercase tracking-wider mb-1.5 flex items-center justify-between">
+                      <span>ORGANISASJONSNUMMER *</span>
+                      {isSearchingBrreg && (
+                        <span className="text-[10px] text-electric-600 font-semibold flex items-center gap-1">
+                          <Loader2 size={11} className="animate-spin" />
+                          Søker i Brreg...
+                        </span>
+                      )}
+                    </label>
+                    <input 
+                      type="text" 
+                      required
+                      placeholder="9 siffer (f.eks. 933 851 222)"
+                      value={leadOrgnr}
+                      onChange={(e) => handleOrgnrChange(e.target.value)}
+                      maxLength={12}
+                      className="w-full bg-slate-50 border border-slate-200 rounded-xl px-4 py-3 text-slate-900 placeholder:text-slate-400 focus:bg-white focus:border-electric-500 focus:ring-2 focus:ring-electric-500/20 outline-none text-sm transition-all font-mono"
+                    />
+                    <p className="text-[10px] text-slate-500 mt-1">
+                      Tast inn ditt org.nr for automatisk utfylling fra Brønnøysund.
+                    </p>
+                  </div>
+
+                  <div className="relative">
                     <label className="block text-xs font-bold text-slate-700 uppercase tracking-wider mb-1.5">
                       BEDRIFTSNAVN / FORETAK *
                     </label>
@@ -1579,37 +1736,73 @@ function TacticalHomeView({
                       required
                       placeholder="f.eks. Mesterbygg AS"
                       value={leadCompany}
-                      onChange={(e) => setLeadCompany(e.target.value)}
+                      onChange={(e) => handleCompanyChange(e.target.value)}
                       className="w-full bg-slate-50 border border-slate-200 rounded-xl px-4 py-3 text-slate-900 placeholder:text-slate-400 focus:bg-white focus:border-electric-500 focus:ring-2 focus:ring-electric-500/20 outline-none text-sm transition-all"
                     />
-                  </div>
-                  <div>
-                    <label className="block text-xs font-bold text-slate-700 uppercase tracking-wider mb-1.5">
-                      ORGANISASJONSNUMMER *
-                    </label>
-                    <input 
-                      type="text" 
-                      required
-                      placeholder="9 siffer (f.eks. 912 345 678)"
-                      value={leadOrgnr}
-                      onChange={(e) => setLeadOrgnr(e.target.value)}
-                      maxLength={12}
-                      className="w-full bg-slate-50 border border-slate-200 rounded-xl px-4 py-3 text-slate-900 placeholder:text-slate-400 focus:bg-white focus:border-electric-500 focus:ring-2 focus:ring-electric-500/20 outline-none text-sm transition-all font-mono"
-                    />
+
+                    {/* Live Brønnøysund-forslag dropdown */}
+                    {brregSuggestions.length > 0 && !verifiedBrregUnit && (
+                      <div className="absolute top-full left-0 right-0 z-30 mt-1 bg-white border border-slate-200 rounded-xl shadow-xl overflow-hidden max-h-48 overflow-y-auto">
+                        <div className="p-2 bg-slate-50 border-b border-slate-200 text-[10px] font-bold text-slate-500 uppercase tracking-wider">
+                          Treff i Brønnøysundregistrene (klikk for å velge):
+                        </div>
+                        {brregSuggestions.map((unit) => (
+                          <button
+                            key={unit.orgnr}
+                            type="button"
+                            onClick={() => handleSelectBrregUnit(unit)}
+                            className="w-full text-left px-3.5 py-2.5 hover:bg-electric-50 border-b border-slate-100 last:border-b-0 transition-colors flex items-center justify-between text-xs cursor-pointer"
+                          >
+                            <div>
+                              <div className="font-bold text-slate-900">{unit.navn}</div>
+                              <div className="text-[11px] text-slate-500">
+                                Org.nr: <span className="font-mono">{unit.orgnr}</span> {unit.poststed ? `• ${unit.poststed}` : ''}
+                              </div>
+                            </div>
+                            <span className="text-[10px] bg-slate-100 text-slate-600 px-2 py-0.5 rounded font-mono uppercase">
+                              {unit.organisasjonsform}
+                            </span>
+                          </button>
+                        ))}
+                      </div>
+                    )}
                   </div>
                 </div>
 
+                {/* Verifisert Brønnøysund-badge */}
+                {verifiedBrregUnit && (
+                  <div className="flex items-start gap-2.5 p-3 rounded-xl bg-emerald-50 border border-emerald-200 text-emerald-900 text-xs">
+                    <CheckCircle2 size={16} className="text-emerald-600 shrink-0 mt-0.5" />
+                    <div className="flex-1">
+                      <div className="font-bold flex items-center gap-1.5 flex-wrap">
+                        <span>{verifiedBrregUnit.navn}</span>
+                        <span className="text-[10px] bg-emerald-100 text-emerald-800 px-1.5 py-0.5 rounded font-mono uppercase">
+                          {verifiedBrregUnit.organisasjonsformBeskrivelse || verifiedBrregUnit.organisasjonsform}
+                        </span>
+                        {verifiedBrregUnit.mvaRegistrert && (
+                          <span className="text-[10px] bg-emerald-200/60 text-emerald-800 px-1.5 py-0.5 rounded font-semibold">
+                            MVA
+                          </span>
+                        )}
+                      </div>
+                      <div className="text-[11px] text-emerald-700 mt-0.5">
+                        Org.nr: <span className="font-mono">{verifiedBrregUnit.orgnr}</span> {verifiedBrregUnit.poststed ? `• ${verifiedBrregUnit.poststed}` : ''} {verifiedBrregUnit.antallAnsatte ? `• ${verifiedBrregUnit.antallAnsatte} ansatte` : ''} {verifiedBrregUnit.naeringsbeskrivelse ? `• ${verifiedBrregUnit.naeringsbeskrivelse}` : ''}
+                      </div>
+                    </div>
+                  </div>
+                )}
+
+                {/* 2. Kontaktperson & Telefon */}
                 <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
                   <div>
                     <label className="block text-xs font-bold text-slate-700 uppercase tracking-wider mb-1.5">
-                      E-POST FOR FAKTURA *
+                      DITT NAVN / KONTAKTPERSON
                     </label>
                     <input 
-                      type="email" 
-                      required
-                      placeholder="post@bedrift.no"
-                      value={leadEmail}
-                      onChange={(e) => setLeadEmail(e.target.value)}
+                      type="text" 
+                      placeholder="Ola Nordmann (Daglig leder / Mester)"
+                      value={leadContactName}
+                      onChange={(e) => setLeadContactName(e.target.value)}
                       className="w-full bg-slate-50 border border-slate-200 rounded-xl px-4 py-3 text-slate-900 placeholder:text-slate-400 focus:bg-white focus:border-electric-500 focus:ring-2 focus:ring-electric-500/20 outline-none text-sm transition-all"
                     />
                   </div>
@@ -1628,6 +1821,49 @@ function TacticalHomeView({
                   </div>
                 </div>
 
+                {/* 3. E-post og Brukerpassord (Slik at kunden kan teste umiddelbart!) */}
+                <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
+                  <div>
+                    <label className="block text-xs font-bold text-slate-700 uppercase tracking-wider mb-1.5">
+                      E-POST (INNLOGGING & BEKREFTELSE) *
+                    </label>
+                    <input 
+                      type="email" 
+                      required
+                      placeholder="post@bedrift.no"
+                      value={leadEmail}
+                      onChange={(e) => setLeadEmail(e.target.value)}
+                      className="w-full bg-slate-50 border border-slate-200 rounded-xl px-4 py-3 text-slate-900 placeholder:text-slate-400 focus:bg-white focus:border-electric-500 focus:ring-2 focus:ring-electric-500/20 outline-none text-sm transition-all"
+                    />
+                  </div>
+
+                  <div>
+                    <label className="block text-xs font-bold text-slate-700 uppercase tracking-wider mb-1.5">
+                      VELG DITT PASSORD (MIN. 8 TEGN) *
+                    </label>
+                    <div className="relative">
+                      <input 
+                        type={showPassword ? 'text' : 'password'}
+                        required
+                        minLength={8}
+                        placeholder="Minst 8 tegn"
+                        value={leadPassword}
+                        onChange={(e) => setLeadPassword(e.target.value)}
+                        className="w-full bg-slate-50 border border-slate-200 rounded-xl px-4 py-3 text-slate-900 placeholder:text-slate-400 focus:bg-white focus:border-electric-500 focus:ring-2 focus:ring-electric-500/20 outline-none text-sm transition-all pr-10"
+                      />
+                      <button
+                        type="button"
+                        onClick={() => setShowPassword(!showPassword)}
+                        className="absolute right-3 top-1/2 -translate-y-1/2 text-slate-400 hover:text-slate-600 transition-colors cursor-pointer"
+                        tabIndex={-1}
+                      >
+                        {showPassword ? <EyeOff size={16} /> : <Eye size={16} />}
+                      </button>
+                    </div>
+                  </div>
+                </div>
+
+                {/* 4. Fagområde og Ønsket pakke */}
                 <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
                   <div>
                     <label className="block text-xs font-bold text-slate-700 uppercase tracking-wider mb-1.5">
@@ -1649,7 +1885,7 @@ function TacticalHomeView({
 
                   <div>
                     <label className="block text-xs font-bold text-slate-700 uppercase tracking-wider mb-1.5">
-                      ØNSKET PAKKE
+                      ØNSKET PAKKE (14 DAGER GRATIS)
                     </label>
                     <select
                       value={selectedPlan}
@@ -1694,7 +1930,7 @@ function TacticalHomeView({
                     </span>
                   </label>
                   <p className="text-[11px] text-slate-400 pl-7 leading-tight">
-                    Full overensstemmelse med GDPR og norsk personopplysningslov. Ingen data deles med tredjepart.
+                    Full overensstemmelse med GDPR og norsk personopplysningslov. Ingen kredittkort. Ingen bindingstid.
                   </p>
                 </div>
 
@@ -1705,11 +1941,14 @@ function TacticalHomeView({
                     className="w-full py-4 rounded-xl bg-gradient-to-r from-electric-500 to-electric-400 hover:from-electric-400 hover:to-electric-300 text-white font-bold text-sm tracking-wide shadow-purple-cta hover:shadow-purple-hover transition-all flex items-center justify-center gap-2 cursor-pointer disabled:opacity-50 active:scale-[0.99]"
                   >
                     {isSubmittingLead ? (
-                      <span>Sjekker Enhetsregisteret & klargjør tilgang...</span>
+                      <span className="flex items-center gap-2">
+                        <Loader2 size={16} className="animate-spin" />
+                        <span>Klargjør din brukerkonto & 14 dagers gratis prøve...</span>
+                      </span>
                     ) : (
                       <>
                         <Sparkles size={16} className="text-amber-300" />
-                        <span>Start 14 Dagers Gratis Prøveperiode</span>
+                        <span>Opprett Bruker & Start 14 Dagers Gratis Test</span>
                         <ArrowRight size={16} />
                       </>
                     )}
@@ -1717,7 +1956,7 @@ function TacticalHomeView({
                 </div>
 
                 <p className="text-[11px] text-slate-500 text-center pt-1.5 leading-relaxed">
-                  ✓ 14 dager 100% gratis • Null kredittkortkrav • Ingen bindingstid • Faktura sendes kun hvis du velger å fortsette etter 14 dager.
+                  ✓ 14 dager 100% gratis • Umiddelbar tilgang • Null kredittkortkrav • Ingen bindingstid • Faktura sendes kun hvis du velger å fortsette etter 14 dager.
                 </p>
               </form>
             )}

@@ -149,7 +149,11 @@ export const PricingPage = () => {
     if (planId === 'enterprise') {
       window.dispatchEvent(new CustomEvent('navigate_view', { detail: { view: 'contact' } }));
     } else {
-      window.dispatchEvent(new CustomEvent('navigate_view', { detail: { view: 'login' } }));
+      window.dispatchEvent(new CustomEvent('navigate_view', { detail: { view: 'landing' } }));
+      setTimeout(() => {
+        const el = document.getElementById('bestill');
+        if (el) el.scrollIntoView({ behavior: 'smooth' });
+      }, 150);
     }
   };
 

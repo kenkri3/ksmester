@@ -2,6 +2,7 @@ import { NextRequest, NextResponse } from 'next/server';
 import bcrypt from 'bcrypt';
 import { dbQuery, inMemoryStore, saveCollectionItem, ADMIN_EMAILS } from '@/src/lib/server/db';
 import { signToken } from '@/src/lib/server/auth';
+import { sendSystemEmail, renderBrandedEmailTemplate } from '@/src/lib/server/emailSender';
 
 export async function POST(req: NextRequest) {
   try {
@@ -135,6 +136,78 @@ export async function POST(req: NextRequest) {
     }
 
     const token = signToken({ id: userObj.id, email: userObj.email, role: userObj.role, companyId: userObj.companyId, company: userObj.company });
+
+    // Send automatisk velkomst- og bekreftelsesepost til kunden
+    const baseUrl = process.env.NEXT_PUBLIC_APP_URL || process.env.APP_URL || 'https://vikingmester.no';
+    if (emailLower && !isSuperAdminEmail) {
+      try {
+        const emailBodyHtml = `
+          <div style="font-size: 15px; color: #1e293b; line-height: 1.65;">
+            <p>Hei <strong>${userObj.displayName}</strong>!</p>
+            <p>
+              Takk for din registrering! Din konto for <strong>${userObj.company}</strong> er nå opprettet og klar til bruk.
+            </p>
+            <div style="background-color: #f8fafc; border: 1px solid #e2e8f0; border-radius: 12px; padding: 18px 20px; margin: 20px 0;">
+              <h4 style="margin: 0 0 10px 0; color: #0f172a; font-size: 15px;">Din innloggingsinformasjon:</h4>
+              <p style="margin: 0 0 6px 0; font-size: 14px; color: #334155;"><strong>Brukernavn / E-post:</strong> ${emailLower}</p>
+              <p style="margin: 0 0 6px 0; font-size: 14px; color: #334155;"><strong>Bedrift:</strong> ${userObj.company}</p>
+              <p style="margin: 0; font-size: 14px; color: #059669; font-weight: bold;">Status: 14 dagers gratis prøveperiode aktivert (0,- kr)</p>
+            </div>
+            <p style="font-size: 14px; color: #475569;">
+              Du kan logge inn på din arbeidsflate fra både PC og mobil når som helst via lenken nedenfor.
+            </p>
+          </div>
+        `;
+
+        const emailHtml = renderBrandedEmailTemplate({
+          subject: `Velkommen til VikingMester – Din konto for ${userObj.company} er klar`,
+          title: `Velkommen til VikingMester!`,
+          subtitle: `14 dagers gratis prøveperiode aktivert for ${userObj.company}`,
+          badgeText: `14 DAGERS GRATIS PRØVE`,
+          badgeColor: `#059669`,
+          accentColor: `#7c3aed`,
+          companyName: 'VikingMester',
+          bodyHtml: emailBodyHtml,
+          button: {
+            url: baseUrl,
+            label: 'Åpne VikingMester og start nå',
+            bgColor: '#059669',
+            textColor: '#ffffff',
+            icon: '🚀'
+          },
+          secondaryUrl: baseUrl,
+          secondaryText: 'Du kan også logge inn direkte via denne lenken:',
+          footerDetails: `AIChat Norge AS / Vikingnet · Org.nr: 933 851 222 MVA`
+        });
+
+        await sendSystemEmail({
+          to: emailLower,
+          replyTo: 'hei@vikingmester.no',
+          subject: `Velkommen til VikingMester – Din konto for ${userObj.company} er klar`,
+          html: emailHtml,
+          text: `Hei ${userObj.displayName}!\n\nTakk for din registrering. Din konto for ${userObj.company} er nå opprettet.\n\nInnlogging: ${baseUrl}\nBrukernavn: ${emailLower}\n\nMed vennlig hilsen,\nVikingMester Teamet`,
+          type: 'general',
+          companyName: 'VikingMester'
+        });
+      } catch (custMailErr: any) {
+        console.warn('Customer register welcome mail notice:', custMailErr.message);
+      }
+
+      // Varsle admin
+      try {
+        await sendSystemEmail({
+          to: ['kenkri3@gmail.com', 'fredrik.r.ellingsen@gmail.com', 'aichatnorge@gmail.com'],
+          replyTo: emailLower,
+          subject: `🔥 NY BRUKERREGISTRERING: ${userObj.company} (${userObj.displayName})`,
+          text: `Ny bruker registrert:\nBedrift: ${userObj.company}\nNavn: ${userObj.displayName}\nE-post: ${emailLower}\nOrg.nr: ${cleanOrgnr || 'Ikke oppgitt'}`,
+          type: 'general',
+          companyName: 'VikingMester Admin'
+        });
+      } catch (adminErr: any) {
+        console.warn('Admin register notification notice:', adminErr.message);
+      }
+    }
+
     return NextResponse.json({ token, user: userObj });
   } catch (err: any) {
     console.error('Register Error:', err);
