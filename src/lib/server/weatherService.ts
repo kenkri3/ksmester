@@ -54,46 +54,72 @@ export function resolveLocationCoords(loc: string): { lat: number; lon: number; 
   return { lat: 59.91, lon: 10.75, name: loc, matched: false };
 }
 
+/** Ord som ikke er stedsnavn, men som ofte står i prosjektnavn. */
+const GENERIC_PROJECT_WORDS = new Set([
+  'nybygg', 'tilbygg', 'påbygg', 'renovering', 'rehabilitering', 'ombygging', 'oppussing',
+  'bad', 'badet', 'våtrom', 'kjøkken', 'stue', 'soverom', 'etasje', 'sone', 'garasje', 'terrasse',
+  'prosjekt', 'prosjektet', 'bygg', 'bygget', 'byggherre', 'enebolig', 'leilighet', 'hytte',
+  'arbeid', 'jobben', 'test', 'demo', 'service', 'vedlikehold', 'totalrenovering'
+]);
+
+async function geocodeCandidate(candidate: string): Promise<any | null> {
+  try {
+    const url = `https://geocoding-api.open-meteo.com/v1/search?name=${encodeURIComponent(candidate)}&count=1&language=no&format=json`;
+    const res = await fetch(url, { headers: { 'Accept': 'application/json' }, signal: AbortSignal.timeout(2500) });
+    if (!res.ok) return null;
+    const data = await res.json();
+    const hit = data?.results?.[0];
+    if (!hit || typeof hit.latitude !== 'number' || typeof hit.longitude !== 'number') return null;
+    return hit;
+  } catch {
+    return null;
+  }
+}
+
 /**
  * Slår opp ukjente steder via Open-Meteos geokodingstjeneste.
  *
  * Norske prosjektadresser skrives ofte som «Storgata 5, 6413 Molde», der byen
- * står ETTER komma og postnummeret foran. Vi prøver derfor flere kandidater i
- * rekkefølge: byen etter komma først, så gatenavnet, så hele strengen.
+ * står ETTER komma og postnummeret foran. Prosjektnavn er ofte «Nybygg Ålesund»,
+ * der stedsnavnet er ett av flere ord. Vi prøver derfor inntil fire kandidater:
+ * byen etter komma, hele strengen, strengen uten tall, og til slutt det lengste
+ * ordet som ikke er et generisk bygg-ord.
+ *
+ * 🛡️ Vi godtar KUN treff i Norge. For enkeltord krever vi i tillegg at treffet
+ * er et tettsted (feature_code «P*»), ellers kunne en gatestubb gitt feil by.
  */
 async function geocodeLocation(query: string): Promise<{ lat: number; lon: number; name: string } | null> {
   const raw = (query || '').trim();
   if (!raw) return null;
 
   const parts = raw.split(',').map(p => p.trim()).filter(Boolean);
-  const candidates: string[] = [];
+  const candidates: { text: string; requireTown: boolean }[] = [];
+
   if (parts.length > 1) {
     // «6413 Molde» -> «Molde»
-    candidates.push(parts[parts.length - 1].replace(/^\d{4}\s*/, '').trim());
-    candidates.push(parts[0]);
+    candidates.push({ text: parts[parts.length - 1].replace(/^\d{4}\s*/, '').trim(), requireTown: false });
   }
-  candidates.push(raw);
-  candidates.push(raw.replace(/\d+/g, ' ').replace(/\s+/g, ' ').trim());
+  candidates.push({ text: raw, requireTown: false });
+  candidates.push({ text: raw.replace(/\d+/g, ' ').replace(/\s+/g, ' ').trim(), requireTown: false });
+
+  const longestWord = raw
+    .split(/[^A-Za-zÆØÅæøå]+/)
+    .map(t => t.trim())
+    .filter(t => t.length >= 4 && !GENERIC_PROJECT_WORDS.has(t.toLowerCase()))
+    .sort((x, y) => y.length - x.length)[0];
+  if (longestWord) candidates.push({ text: longestWord, requireTown: true });
 
   for (const candidate of candidates) {
-    if (candidate.length < 3) continue;
-    try {
-      const url = `https://geocoding-api.open-meteo.com/v1/search?name=${encodeURIComponent(candidate)}&count=1&language=no&format=json`;
-      const res = await fetch(url, { headers: { 'Accept': 'application/json' }, signal: AbortSignal.timeout(3500) });
-      if (!res.ok) continue;
-      const data = await res.json();
-      const hit = data?.results?.[0];
-      if (hit && typeof hit.latitude === 'number' && typeof hit.longitude === 'number') {
-        return { lat: hit.latitude, lon: hit.longitude, name: hit.name || candidate };
-      }
-    } catch {
-      // Nettverksfeil for denne kandidaten – prøv neste.
-    }
+    if (!candidate.text || candidate.text.length < 3) continue;
+    const hit = await geocodeCandidate(candidate.text);
+    if (!hit) continue;
+    if (hit.country_code !== 'NO') continue;
+    if (candidate.requireTown && !String(hit.feature_code || '').startsWith('P')) continue;
+    return { lat: hit.latitude, lon: hit.longitude, name: hit.name || candidate.text };
   }
 
   return null;
 }
-
 export async function fetchRealtimeWeather(locationQuery: string): Promise<LiveWeatherReport> {
   let coords = resolveLocationCoords(locationQuery);
 
