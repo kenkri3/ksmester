@@ -12,8 +12,20 @@ export interface AiImageAttachment {
   };
 }
 
+export interface AiChatMessage {
+  role: 'system' | 'user' | 'assistant';
+  content: string;
+}
+
 export interface GenerateAiOptions {
   prompt?: string;
+  /**
+   * 🧠 Strukturert samtalehistorikk med ekte roller. Når denne er satt bruker
+   * primærmotoren (DeepSeek) ekte multi-turn-meldinger i stedet for at hele
+   * dialogen flates ut til én enkelt user-melding. `prompt` brukes fortsatt som
+   * tekst-fallback for sekundærmotorene (1min.AI / Gemini / OpenRouter).
+   */
+  messages?: AiChatMessage[];
   contents?: any;
   model?: string;
   systemInstruction?: string;
@@ -671,7 +683,9 @@ async function callDeepSeekDirect(
   model: string,
   prompt: string,
   systemInstruction?: string,
-  forceJson = false
+  forceJson = false,
+  chatMessages?: AiChatMessage[],
+  temperature = 0.3
 ): Promise<{ text: string; promptTokens: number; completionTokens: number; executedModel: string }> {
   const now = new Date();
   const dateStr = new Intl.DateTimeFormat('no-NO', {
@@ -696,7 +710,22 @@ async function callDeepSeekDirect(
 
   const messages: any[] = [];
   messages.push({ role: 'system', content: fullSystemInstruction });
-  messages.push({ role: 'user', content: prompt });
+
+  // 🧠 EKTE MULTI-TURN: Bruk rollebaserte meldinger når kallet har det. Uten
+  // dette flates hele dialogen ut til én user-melding, og modellen mister
+  // tur/replikk-strukturen (dårligere oppfølging og svakere husk).
+  const hasStructuredTurns = Array.isArray(chatMessages) && chatMessages.length > 0;
+  // Ved JSON-uttrekk (forceJson) ligger skjemaet i prompten – da må prompten
+  // fortsatt sendes, ellers ber vi om JSON uten å si hvilken JSON.
+  if (hasStructuredTurns && !forceJson) {
+    for (const turn of chatMessages!) {
+      if (!turn || typeof turn.content !== 'string' || !turn.content.trim()) continue;
+      if (turn.role === 'system') continue; // systemprompten er allerede lagt inn over
+      messages.push({ role: turn.role === 'assistant' ? 'assistant' : 'user', content: turn.content });
+    }
+  } else {
+    messages.push({ role: 'user', content: prompt });
+  }
 
   const isReasoner = !forceJson && (model?.includes('reasoner') || model?.includes('r1') || model?.includes('pro'));
 
@@ -714,7 +743,10 @@ async function callDeepSeekDirect(
       };
 
       if (!isCandReasoner) {
-        body.temperature = 0.3;
+        // JSON-uttrekk skal være deterministisk; samtale skal være levende.
+        body.temperature = forceJson ? 0.2 : temperature;
+        // Rom for utfyllende fagsvar (DeepSeek-standarden er lavere).
+        body.max_tokens = 8000;
         if (forceJson) {
           body.response_format = { type: 'json_object' };
         }
@@ -913,6 +945,23 @@ export async function generateWithAiEngine(options: GenerateAiOptions): Promise<
   );
 
   const { oneMinModel, geminiModel, deepseekModel } = resolveOptimalModel(options.operation, options.model, isWebSearch, isGdprSensitive);
+
+  // 🎛️ SAMTALETEMPERATUR: Samtale, rådgivning og mentor-svar skal ikke kjøres på
+  // 0.3, som gir knappe og stakkato svar. JSON-uttrekk og deterministiske
+  // oppgaver holder seg fortsatt lave. Broen (botsify_chat_bridge) beholdes
+  // uendret på 0.3 siden den er verifisert god.
+  const isConversational = Boolean(
+    options.operation &&
+    /chat|conversation|advisor|consultation|mentor|assistant/i.test(options.operation) &&
+    !/bridge/i.test(options.operation)
+  );
+  const deepseekTemperature = isJsonExpected ? 0.2 : (isConversational ? 0.65 : 0.3);
+
+  // 🧠 Strukturert samtale (ekte roller) sendes til primærmotoren når kallet har det.
+  const structuredMessages: AiChatMessage[] | undefined =
+    Array.isArray(options.messages) && options.messages.length > 0
+      ? options.messages.filter((m) => m && typeof m.content === 'string' && m.content.trim().length > 0)
+      : undefined;
 
   // ==========================================================================
   // CASE 1: SYN / BILDEANALYSE (Vision / TEK17 / Foto / Skanning)
@@ -1233,7 +1282,9 @@ export async function generateWithAiEngine(options: GenerateAiOptions): Promise<
         deepseekModel,
         promptText,
         options.systemInstruction,
-        isJsonExpected
+        isJsonExpected,
+        structuredMessages,
+        deepseekTemperature
       );
 
       if (res.text && res.text.trim().length > 0) {

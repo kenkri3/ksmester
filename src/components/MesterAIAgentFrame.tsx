@@ -566,7 +566,7 @@ export default function MesterAIAgentFrame({
           message: apiPayload,
           history: messages
             .filter(m => m.id !== 'welcome' && m.id !== userMsg.id)
-            .slice(-8)
+            .slice(-12)
             .map(m => ({ role: m.role, content: m.content })),
           sessionId,
           projectName: selectedProjectName,

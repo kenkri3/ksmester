@@ -4,6 +4,7 @@ import { evaluatePreCloseWall } from '@/src/lib/server/crossTradeEngine';
 import { createAutonomousChangeOrder } from '@/src/lib/server/changeOrderAgent';
 import { saveCollectionItem, getCollectionItems, updateCollectionItem, getCollectionItemById, deleteCollectionItem } from '@/src/lib/server/db';
 import { generateWithAiEngine, cleanAiJson } from '@/src/lib/server/aiEngine';
+import type { AiEngineResult } from '@/src/lib/server/aiEngine';
 import { getUserFromRequest, verifyCronOrInternalSecret, verifyAuthToken } from '@/src/lib/server/auth';
 import { sendOfferByEmail, sendChangeOrderByEmail, sendSystemEmail, getResendApiKey, testResendConnection } from '@/src/lib/server/emailSender';
 import { 
@@ -3046,6 +3047,7 @@ Returner KUN et gyldig JSON-objekt:
 
       // E6. MESTERAI: AUTONOM SAMTALEPARTNER & FAGLIG RÅDGIVER (Alle caser: Tilbud, TEK17, NS 8406, Sparring)
       let replyText = '';
+      let aiFailed = false;
       let offerDraft: any = null;
       let parsedOfferItems: any[] = [];
       let parsedOfferDescription = '';
@@ -3119,8 +3121,11 @@ RETNINGSLINJER FOR SVARENE:
         let contextPrompt = `DAGENS DATO & TID I SANNTID: ${formattedDate} kl. ${formattedTime} (${currentMonthName} ${currentYear}).\n\n`;
         if (history && history.length > 0) {
           contextPrompt += `TIDLIGERE SAMTALEHISTORIKK:\n`;
-          for (const msg of history.slice(-6)) {
-            contextPrompt += `${msg.role === 'user' ? 'Håndverker' : 'MesterAI'}: ${msg.content}\n`;
+          for (const msg of history.slice(-20)) {
+            const itemText = String(msg?.content ?? '').trim();
+            if (!itemText) continue;
+            const keptItem = itemText.length > 4000 ? itemText.slice(0, 4000) + '...' : itemText;
+            contextPrompt += `${msg.role === 'user' ? 'Håndverker' : 'MesterAI'}: ${keptItem}\n`;
           }
           contextPrompt += `\n`;
         }
@@ -3200,13 +3205,25 @@ Du skal opptre som en høyt kvalifisert byggmester og kalkulatør og levere en k
           backendKnowledgeSummary = `\n(Systeminfo: Bedriften har ${allProjects.length} aktive prosjekter i systemet. Dette er et generelt spørsmål eller eksternt nettsøk, så detaljerte lister utelates for optimalt fokus.)\n`;
         }
 
-        const aiRes = await generateWithAiEngine({
-          prompt: contextPrompt + backendKnowledgeSummary,
-          systemInstruction,
-          webSearch: wantsWebSearch,
-          operation: isOfferIntent ? 'mester_ai_offer' : 'mester_ai_conversation',
-          notes: targetProject ? `Conversational MesterAI assistance on project ${targetProject.name}` : 'Conversational MesterAI general inquiry'
-        });
+        let aiRes: AiEngineResult | undefined;
+        for (let dispatchAttempt = 0; dispatchAttempt < 2 && !aiRes?.text; dispatchAttempt++) {
+          try {
+            aiRes = await generateWithAiEngine({
+              prompt: contextPrompt + backendKnowledgeSummary,
+              systemInstruction,
+              webSearch: wantsWebSearch,
+              operation: isOfferIntent ? 'mester_ai_offer' : 'mester_ai_conversation',
+              notes: targetProject ? `Conversational MesterAI assistance on project ${targetProject.name}` : 'Conversational MesterAI general inquiry'
+            });
+          } catch (aiCallErr: any) {
+            // Kun forbigående feil prøves på nytt; kvote-, abonnements- og
+            // nøkkelfeil feiler likt hver gang og koster bare ekstra tid.
+            const detail = aiCallErr?.message || String(aiCallErr);
+            const isTransient = !/kvote|top-?up|abonnement|utløpt|nøkkel|api[-_ ]?key|401|403|ugyldig/i.test(detail);
+            if (dispatchAttempt === 1 || !isTransient) throw aiCallErr;
+            await new Promise((r) => setTimeout(r, 1200));
+          }
+        }
 
         if (aiRes?.text) {
           const rawText = aiRes.text.trim();
@@ -3239,99 +3256,29 @@ Du skal opptre som en høyt kvalifisert byggmester og kalkulatør og levere en k
         console.warn('[Dispatch] MesterAI conversation error:', err);
         const hasProject = !!targetProject;
         const projectLabel = hasProject ? ` på ${targetProject.name}` : '';
+        aiFailed = true;
+        const failureReason = err?.message ? String(err.message) : 'ukjent årsak';
+        console.warn('[Dispatch] MesterAI feilet:', failureReason.slice(0, 500));
+        const quotaHit = /kvote|top-?up|abonnement|utløpt/i.test(failureReason);
 
-        // Sjekk om henvendelsen er et generelt bransjespørsmål eller nettsøkshenvendelse
-        const isIndustryQuery =
-          lower.includes('byggebransj') ||
-          lower.includes('siste nytt') ||
-          lower.includes('hva skjer') ||
-          lower.includes('nyheter') ||
-          lower.includes('trender') ||
-          lower.includes('marked') ||
-          lower.includes('konjunktur') ||
-          (wantsWebSearch && !hasProject);
-
-        if (isIndustryQuery) {
-          replyText = `🏗️ **Viktige utviklingstrekk og nyheter i norsk byggebransje (2025/2026):**\n\n` +
-            `1. **Skjerpede klimakrav & Ombruk (TEK17 og Avfallsforskriften):**\n` +
-            `   - Krav om klimagassregnskap er innført for boligblokker og yrkesbygg, med strengere dokumentasjon på materialers miljøpåvirkning (EPD).\n` +
-            `   - Krav til **ombrukskartlegging** før riving eller større ombygging. Minst 70 % av byggavfallet skal sorteres og tilrettelegges for materialgjenvinning.\n\n` +
-            `2. **Marked og aktivitetsnivå (ROT vs. Nybygg):**\n` +
-            `   - Mens igangsetting av nybygg har vært preget av høyt rentenivå, opplever ROT-markedet (rehabilitering, ombygging og tilbygg) sterk vekst.\n` +
-            `   - Enova gir betydelig støtte til energioppgradering (etterisolering, balansert ventilasjon, varmepumper og solceller), noe som skaper stor oppdragsmengde for håndverkere.\n\n` +
-            `3. **Byggevarepriser og kontraktshåndtering:**\n` +
-            `   - Trelast- og råvarepriser har stabilisert seg noe etter de historiske toppene, men valutasvingninger holder importvarer (stål, tekniske installasjoner) på et høyt nivå.\n` +
-            `   - Flere entreprenører sikrer seg nå konsekvent med indeksregulering iht. NS 8406 / NS 8405 for å beskytte marginene mot uforutsette prisstigninger.\n\n` +
-            `4. **Digitalisering, Seriøsitet og AI på byggeplassen:**\n` +
-            `   - Innstramminger i innleiereglene fra bemanningsforetak har økt behovet for faste ansettelser og lærlinger.\n` +
-            `   - Automatisk KS, digital FDV-generering og AI-assistert tilbudskalkyle (slik som VikingMester) tas i bruk i rekordfart for å eliminere papirarbeid og unngå tvister.\n\n` +
-            `*(ℹ️ Merk: For sanntids nettsøk med direkte eksterne lenker, sørg for at 1_MIN_AI eller GEMINI_API_KEY er registrert i miljøvariablene).*`;
-        } else if (lower.includes('tek17') || lower.includes('sluk') || lower.includes('fall') || lower.includes('våtrom')) {
-          replyText = `📐 **Krav til fall mot sluk og våtrom iht. TEK17 § 13-15:**\n\n` +
-            `1. **Fallforhold mot sluk:**\n` +
-            `   - Gulvet skal ha fall mot sluk på alle arealer som kan bli utsatt for vannsøl.\n` +
-            `   - I dusjsonen skal det være fall på minst **1:50** (2 cm per meter) i en radius på minst 0,8 m fra sluket.\n` +
-            `   - Øvrig gulvflate skal ha fall på minst **1:100** mot sluk, eller være utført med oppkant på minst 25 mm ved døråpning slik at vann ikke renner ut i tilstøtende rom.\n\n` +
-            `2. **Tettesjikt og membran:**\n` +
-            `   - Membran eller tettesjikt skal føres minst 25 mm høyere enn overkant slukrist ved terskel/døråpning.\n` +
-            `   - Rørgjennomføringer skal ha tette mansjetter tilpasset rørdiameter.\n\n` +
-            `3. **BVN (Byggebransjens Våtromsnorm):**\n` +
-            `   - Følg BVN blad 31.205 for klemring og membranoverganger for å sikre garanti og godkjent FDV.`;
-        } else if (lower.includes('ns 8406') || lower.includes('endringsordre') || lower.includes('varsel') || lower.includes('tillegg')) {
-          replyText = `📄 **Varsling av endringsordre iht. NS 8406 pkt. 19:**\n\n` +
-            `Når det oppstår uforutsette bygningsmessige forhold eller byggherren ber om tilleggsarbeid, gjelder følgende strenge regler:\n\n` +
-            `1. **Varsle «uten ugrunnet opphold» (Preklusjonsfrist):**\n` +
-            `   - Skriftlig varsel må sendes så raskt som praktisk mulig etter at du oppdaget eller burde ha oppdaget forholdet.\n` +
-            `   - **KRITISK:** Hvis du venter for lenge, inntrer **preklusjon** iht. NS 8406 pkt. 19.4. Da mister du ubønnhørlig retten til både tilleggsvederlag og fristforlengelse, selv om arbeidet faktisk er utført!\n\n` +
-            `2. **Påkrevd innhold i endringsvarselet:**\n` +
-            `   - **Beskrivelse:** Hva endringen består i, og hvorfor dette er et avvik fra opprinnelig kontraktstegninger/beskrivelse.\n` +
-            `   - **Juridisk hjemmel:** NS 8406 pkt. 19.2 (pålegg/instruks fra byggherre) eller pkt. 19.3 (uforutsette fysiske hindringer / grunn- og bygningsforhold).\n` +
-            `   - **Krav om vederlagsjustering:** Estimert beløp (regningsarbeid iht. kontraktens timepriser eller fastpris eks. mva).\n` +
-            `   - **Krav om fristforlengelse:** Antall virkedagers forlengelse endringen medfører for overleveringsdatoen.\n\n` +
-            `3. **Byggherrens svarplikt:**\n` +
-            `   - Byggherren plikter å svare «uten ugrunnet opphold». Svarer ikke byggherren i tide, anses kravet som akseptert.\n\n` +
-            `Du kan klikke på **«Åpne Endringsordre (NS 8406)»** under for å opprette og sende et formelt varsel direkte til kunden.`;
-        } else if (lower.includes('sja') || lower.includes('sikkerhet') || lower.includes('hms')) {
-          replyText = `🛡️ **Sikker Jobb Analyse (SJA) – Krav og sjekkpunkter:**\n\n` +
-            `Før oppstart av risikofylt arbeid skal det alltid gjennomføres SJA:\n` +
-            `1. **Arbeid i høyden (> 2m):** Stillas skal ha godkjent grønt skilt, rekkverk (topp/mellom/fotlist) og fallsikringssele ved montering/demontering.\n` +
-            `2. **Varme arbeider:** Sertifikat, 2x 6kg pulverapparat, 10m ryddesone og 60 min kontinuerlig brannvakt etter avsluttet arbeid.\n` +
-            `3. **Kapping og støv:** Punktavsug med hepa-filter (kvartsstøv / asbest / trevirke) og P3 åndedrettsvern.\n` +
-            `4. **Tverrfaglig koordinering:** Varsle andre fag før trykktesting eller kranløft.`;
-        } else if (isOfferIntent || lower.includes('tilbud') || lower.includes('kalkyle')) {
-          replyText = `📋 **Kalkyle- og tilbudsrådgivning${projectLabel}:**\n\n` +
-            `For å sikre god dekningsgrad og unngå økonomiske overraskelser anbefales følgende modell:\n\n` +
-            `1. **Fagarbeid & Timepris:** Benytt reelle markedspriser (tømrer ca. 890 kr/t, rørlegger/elektro ca. 980 kr/t eks. mva). Sørg for at rigg, drift og avfallshåndtering spesifiseres som egne poster.\n` +
-            `2. **Materialpåslag:** Legg til 15–20% entreprenørpåslag på innkjøpspriser for å dekke lagerhold, svinn og reklamasjonsrisiko.\n` +
-            `3. **NS 8406 Forbehold:** Ta alltid skriftlig forbehold om skjulte feil (fukt/råte/skjulte bærekonstruksjoner) slik at ekstraarbeid kan faktureres som tillegg.\n\n` +
-            `Klikk på «Åpne Tilbudsbygger» for å justere poster eller sende formelt tilbud til kunden med digital signeringslenke.`;
-        } else if (lower.includes('nobb') || lower.includes('byggevare') || lower.includes('materialpris') || lower.includes('pris')) {
-          replyText = `📦 **NOBB (Norsk Byggevarebase) & Oppdaterte Byggevarepriser:**\n\n` +
-            `**1. Hva er NOBB og hvordan fungerer prisene?**\n` +
-            `   - **NOBB** (Norsk Byggevarebase, driftet av Norsk Byggtjeneste) inneholder over 1 million byggevarer med unike NOBB-numre, GTIN, EPD og FDV-dokumentasjon.\n` +
-            `   - **Prisstruktur:** Prisene i NOBB er **veiledende listepriser** (før rabatt, eks. mva). Som utførende proffbedrift handler du aldri til listepris; faktiske nettopriser forhandles via din kundekonto hos byggevarehusene (f.eks. Optimera/Montér, Byggmakker, Maxbo, XL-Bygg eller Ahlsell) og ligger normalt **30–60 % under** listepris på basismaterialer.\n\n` +
-            `**2. Veiledende markedspriser (2026 estimater eks. mva):**\n` +
-            `   - **Konstruksjonsvirke C24 48x98:** ca. 38 – 52 kr per løpemeter\n` +
-            `   - **Standard Gipsplate 12,5 mm (120x240):** ca. 120 – 160 kr per plate\n` +
-            `   - **Glava Proff 34 / Rockwool 100 mm:** ca. 70 – 90 kr per m²\n` +
-            `   - **OSB-plater 12 mm:** ca. 190 – 250 kr per plate\n` +
-            `   - **K-virke impregnert 48x148:** ca. 65 – 85 kr per løpemeter\n\n` +
-            `**3. Slik bruker du NOBB i VikingMester:**\n` +
-            `   - Gå inn på det aktuelle prosjektet ditt og klikk på fanen **«Materialer & NOBB»**.\n` +
-            `   - Der kan du søke opp produkter direkte eller lime inn produkt-URL fra leverandør for automatisk import av FDV og godkjente sikkerhetsdatablader direkte til prosjektmappen.`;
-        } else {
-          const cleanSubject = text.slice(0, 80).trim();
-          replyText = `💬 **MesterAI Svar angående «${cleanSubject}»${projectLabel}:**\n\n` +
-            `Takk for henvendelsen! Som din digitale lederassistent og sparringspartner bistår jeg med kalkyler, materialpriser, HMS, TEK17 og kontraktsoppfølging.\n\n` +
-            `Hvis du trenger konkrete priser eller datablader for et spesifikt produkt eller fagområde, spesifiser gjerne varetype, dimensjon eller leverandør, så hjelper jeg deg med nøyaktige tall og forslag til tilbudsposter.`;
-        }
+        // 🛡️ Vi er ÆRLIGE om at motoren ikke svarte. Her lå det tidligere 7
+        // ferdigskrevne fagtekster (TEK17, NS 8406, SJA, NOBB m.fl.) som ble
+        // presentert som svar på helt andre spørsmål. Det ga korte og feilaktige
+        // svar, og skjulte at AI-kallet faktisk feilet.
+        // Rå leverandørfeil er logget over, men vises ikke til brukeren.
+        replyText = quotaHit
+          ? `⚠️ **MesterAI er stoppet av kvotevernet${projectLabel}**\n\nDen månedlige inkluderte AI-kvoten for bedriften er brukt opp.\n\nDu kan fortsette umiddelbart ved å aktivere en **Mester Top-up** under **Innstillinger → Fakturering**.`
+          : `⚠️ **MesterAI fikk ikke svar fra modellen akkurat nå${projectLabel}**\n\nSpørsmålet ditt ble ikke besvart, og jeg vil ikke gi deg et generisk standardsvar i stedet.\n\nPrøv gjerne igjen om et lite øyeblikk — spørsmålet fortjener et skikkelig svar.`;
       }
 
       // Build rich suggested actions
       const suggestedActions: any[] = [];
       let followUpPrompts: string[] = [];
 
-      if (isOfferIntent) {
+      // 🛡️ Ved AI-feil skal vi IKKE bygge og lagre et fabrikkert tilbud med
+      // standardposter (24 t x 890 kr osv.) – da får brukeren både en ærlig
+      // feilmelding og et falskt tilbud i systemet.
+      if (isOfferIntent && !aiFailed) {
         let finalItems = parsedOfferItems.length > 0 ? parsedOfferItems : [
           { description: 'Fagarbeid og utførelse', quantity: 24, unit: 'timer', pricePerUnit: 890, total: 21360 },
           { description: 'Nødvendige materialer og forbruksmateriell', quantity: 1, unit: 'stk', pricePerUnit: 16500, total: 16500 },

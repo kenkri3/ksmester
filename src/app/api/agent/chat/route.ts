@@ -6,6 +6,7 @@ import { getUserFromRequest } from '@/src/lib/server/auth';
 import { sendSystemEmail, sendOfferByEmail, sendChangeOrderByEmail, cleanMarkdownForEmail } from '@/src/lib/server/emailSender';
 import { getCollectionItems, saveCollectionItem } from '@/src/lib/server/db';
 import { generateWithAiEngine } from '@/src/lib/server/aiEngine';
+import type { AiChatMessage } from '@/src/lib/server/aiEngine';
 import { maskPII, containsPIIOrGdprData } from '@/src/lib/server/privacyShield';
 import { getPublicAppUrl } from '@/src/lib/server/urlHelper';
 
@@ -1781,41 +1782,47 @@ export async function POST(req: NextRequest) {
     // 🧠 SJEKK OM FORESPØRSELEN KREVER NETTSØK (ARRANGEMENTER, PRISER, TEK17, NYHETER)
     const wantsWebSearch = detectWebSearchNeed(message);
 
-    let enrichedMessage = `${contextHeader}\n`;
-
-    // 🧠 Multi-turn samtalehukommelse: Inkluder tidligere meldinger i tråden slik at agenten husker kontekst
+    // 🧠 Multi-turn samtalehukommelse. Historikken bygges BÅDE som strukturert
+    // liste med ekte roller (til primærmotoren) og som tekstblokk (fallback for
+    // 1min.AI / Gemini / OpenRouter), slik at ingen motor mister konteksten.
+    let historyBlock = '';
+    const structuredHistory: AiChatMessage[] = [];
     if (Array.isArray(history) && history.length > 0) {
       const cleanHistory = history
         .filter((h: any) => h && (h.content || h.text || h.message))
-        .slice(-8);
+        .slice(-20);
 
       if (cleanHistory.length > 0) {
-        enrichedMessage += `\n[TIDLIGERE SAMTALEHISTORIKK I DENNE TRÅDEN]:\n`;
+        historyBlock = `\n[TIDLIGERE SAMTALEHISTORIKK I DENNE TRÅDEN]:\n`;
         for (const item of cleanHistory) {
-          const roleName = (item.role === 'assistant' || item.role === 'model' || item.sender === 'bot')
-            ? 'MesterAI'
-            : (effectiveUser || 'Håndverker');
+          const isAssistantTurn = (item.role === 'assistant' || item.role === 'model' || item.sender === 'bot');
+          const roleName = isAssistantTurn ? 'MesterAI' : (effectiveUser || 'Håndverker');
           const itemText = (item.content || item.text || item.message || '').toString().trim();
           if (itemText) {
-            // Unngå for lange historiske meldinger
-            const truncatedItem = itemText.length > 500 ? itemText.slice(0, 500) + '...' : itemText;
-            enrichedMessage += `${roleName}: ${truncatedItem}\n`;
+            // Romslig tak: hele forrige svar skal kunne leses, ikke bare 500 tegn.
+            const keptItem = itemText.length > 4000 ? itemText.slice(0, 4000) + '...' : itemText;
+            historyBlock += `${roleName}: ${keptItem}\n`;
+            structuredHistory.push({ role: isAssistantTurn ? 'assistant' : 'user', content: keptItem });
           }
         }
-        enrichedMessage += `[SLUTT PÅ SAMTALEHISTORIKK - NÅVÆRENDE HENVENDELSE FRA HÅNDVERKER UNDER]\n\n`;
+        historyBlock += `[SLUTT PÅ SAMTALEHISTORIKK - NÅVÆRENDE HENVENDELSE FRA HÅNDVERKER UNDER]\n\n`;
       }
     }
 
+    // Selve dagens henvendelse, uten den flate historikken (den sendes som ekte roller).
+    let currentTurn = '';
     // 📜 Kontekst fra forrige samtaletråd (hvis brukeren åpner en ny tråd og refererer til "i forrige samtale")
     if (previousSessionContext && typeof previousSessionContext === 'string' && previousSessionContext.trim()) {
-      enrichedMessage += `[KONTEKST FRA BRUKERENS FORRIGE SAMTALETRÅD]:\n${previousSessionContext.trim()}\n[SLUTT PÅ FORRIGE TRÅD]\n\n`;
+      currentTurn += `[KONTEKST FRA BRUKERENS FORRIGE SAMTALETRÅD]:\n${previousSessionContext.trim()}\n[SLUTT PÅ FORRIGE TRÅD]\n\n`;
     }
 
-    enrichedMessage += message;
+    currentTurn += message;
 
     if (hasImage) {
-      enrichedMessage += `\n\n[📷 VEDLAGT BILDE FOR SYNSSJEKK]: Et bilde er lastet opp. Gjennomfør en grundig faglig bildeanalyse av motivet. Beskriv hva du observerer (utførelse, materialer, konstruksjon, tilstand), vurder opp mot gjeldende krav (TEK17 / BVN / HMS), påpek eventuelle feil eller avvik, og gi konkrete råd eller forslag til videre tiltak.`;
+      currentTurn += `\n\n[📷 VEDLAGT BILDE FOR SYNSSJEKK]: Et bilde er lastet opp. Gjennomfør en grundig faglig bildeanalyse av motivet. Beskriv hva du observerer (utførelse, materialer, konstruksjon, tilstand), vurder opp mot gjeldende krav (TEK17 / BVN / HMS), påpek eventuelle feil eller avvik, og gi konkrete råd eller forslag til videre tiltak.`;
     }
+
+    const enrichedMessage = `${contextHeader}\n${historyBlock}${currentTurn}`;
 
     // 🛡️ INTELLIGENT GDPR-RUTING (Schrems II / EU-overholdelse):
     // Hvis henvendelsen gjelder bilpark, kjøretøy/skiltnummer, sjåfører, ansatte eller personopplysninger:
@@ -1826,6 +1833,11 @@ export async function POST(req: NextRequest) {
       /\b(?:bil|bilpark|kjøretøy|skiltnr|regnr|registreringsnummer|sjåfør|ansatt|personalia|lønn|førerkort|firmabil|varebil)\b/i.test(enrichedMessage);
 
     const safeEnrichedMessage = isGdprSensitive ? enrichedMessage : maskPII(enrichedMessage);
+    // 🛡️ Primærmotoren får dagens henvendelse MED konteksthodet (rolle, tilgang,
+    // prosjektstatus, vær). Uten dette mister den all per-request-kontekst, siden
+    // den strukturerte meldingslisten erstatter den flate prompten.
+    const currentTurnWithContext = `${contextHeader}\n${currentTurn}`;
+    const safeCurrentTurn = isGdprSensitive ? currentTurnWithContext : maskPII(currentTurnWithContext);
 
     const userLang = (language || 'no').toLowerCase();
     const langDirective = (() => {
@@ -1877,9 +1889,11 @@ Du har full tilgang til Vikingmester-systemet og kan:
 - Hvis brukeren kun oppgir et stikkord («endringsordre», «tilbud», «SJA»), spør høflig og direkte hvilket prosjekt og hva arbeidet gjelder.
 - Når arbeidet er oppgitt, gjør kalkylen/vurderingen ferdig i én operasjon med beste byggfaglige skjønn.
 
-📱 KONSIS CHAT-FORMATERING (IKKE OVERVELD BRUKEREN MED 2000 ORD):
-- Brukeren leser svarene på byggeplass, ofte på mobil. Svarene i chatten må ALDRI være uendelige vegger av tekst!
-- Hold chat-svar konsise, oversiktlige og stramme (rundt 150-350 ord).
+📱 TILPASSET SVARLENGDE (VERKEN VEGGER AV TEKST ELLER STUMPETE SVAR):
+- Brukeren leser svarene på byggeplass, ofte på mobil. Svarene må ALDRI være uendelige vegger av tekst!
+- Tilpass lengden til spørsmålet: korte statusspørsmål og enkle fakta besvares kort og direkte.
+- Faglige spørsmål, kalkyler, vurderinger, veiledning og «hvordan/hvorfor»-spørsmål SKAL besvares grundig og utfyllende — gjerne 500-1200 ord når temaet krever det. Utelat ALDRI nødvendige tall, standardreferanser, forbehold eller fremgangsmåter for å holde svaret kort.
+- Det er ALLTID bedre å gi et fullstendig og nyttig fagsvar enn et kort svar brukeren må spørre om igjen.
 
 🎓 AKTIV SYSTEMVEILEDNING & PEDAGOGISK STØTTE (HÅNDVERKERENS BESTE VENN I ALLE KATEGORIER):
 Du er ikke bare en assistent, du er en tålmodig, pedagogisk og faglig sterk mentor for håndverkere, baser og prosjektledere. Vikingmester er bygget for å fjerne papirarbeid og gjøre hverdagen ekstremt enkel for alle på byggeplassen.
@@ -1989,26 +2003,54 @@ Når brukeren ber deg sende en e-post og du har mottakers adresse:
       ? 'mesterai_vision_chat' 
       : (wantsWebSearch ? 'mesterai_web_search' : (isGdprSensitive ? 'mesterai_gdpr_eu' : 'mesterai_chat'));
 
-    // 🚀 1. PRIMÆRT: Generer svar via VikingMesters interne AI Engine (med full Google Gemini Vision ved bilder eller Grounding ved nettsøk)
-    try {
-      const aiResult = await generateWithAiEngine({
-        prompt: safeEnrichedMessage,
-        systemInstruction: MASTER_SYSTEM_PROMPT,
-        images: imageAttachment ? [{ inlineData: imageAttachment }] : undefined,
-        model: hasImage ? 'gemini-3.8-flash' : undefined,
-        webSearch: wantsWebSearch,
-        gdprProtected: isGdprSensitive,
-        companyId: effectiveCompanyId,
-        companyName: effectiveCompany,
-        projectId: body.projectId,
-        operation
-      });
+    // 🚀 1. PRIMÆRT: Generer svar via VikingMesters interne AI Engine (med full Google Gemini Vision ved bilder eller Grounding ved nettsøk).
+    // Historikken sendes som ekte roller til primærmotoren, og kallet forsøkes på
+    // nytt én gang før vi gir opp – et forbigående feilslag skal ikke gi brukeren
+    // et dårligere svar enn nødvendig.
+    let aiEngineError = '';
+    const structuredMessages: AiChatMessage[] = [
+      ...structuredHistory.map((m) => ({
+        role: m.role,
+        content: isGdprSensitive ? m.content : maskPII(m.content)
+      })),
+      { role: 'user' as const, content: safeCurrentTurn }
+    ];
 
-      if (aiResult && aiResult.text) {
-        replyText = aiResult.text;
+    for (let aiAttempt = 0; aiAttempt < 2 && !replyText; aiAttempt++) {
+      try {
+        const aiResult = await generateWithAiEngine({
+          prompt: safeEnrichedMessage,
+          messages: structuredMessages,
+          systemInstruction: MASTER_SYSTEM_PROMPT,
+          images: imageAttachment ? [{ inlineData: imageAttachment }] : undefined,
+          model: hasImage ? 'gemini-3.8-flash' : undefined,
+          webSearch: wantsWebSearch,
+          gdprProtected: isGdprSensitive,
+          companyId: effectiveCompanyId,
+          companyName: effectiveCompany,
+          projectId: body.projectId,
+          operation
+        });
+
+        if (aiResult && aiResult.text && aiResult.text.trim()) {
+          replyText = aiResult.text;
+        } else if (!aiEngineError) {
+          aiEngineError = 'AI-motoren returnerte et tomt svar.';
+        }
+      } catch (aiEngineErr: any) {
+        const detail = aiEngineErr?.message || String(aiEngineErr);
+        if (!aiEngineError) aiEngineError = detail;
+        console.warn(`VikingMester AI Engine forsøk ${aiAttempt + 1} feilet:`, detail);
+        // Kun forbigående feil prøves på nytt. Kvote-, abonnements- og
+        // nøkkelfeil feiler likt hver gang, og billedanalyser har allerede
+        // egne reservemotorer innebygd i motoren.
+        const isTransient = !/kvote|top-?up|abonnement|utløpt|nøkkel|api[-_ ]?key|401|403|ugyldig/i.test(detail);
+        if (aiAttempt === 0 && isTransient && !hasImage) {
+          await new Promise((r) => setTimeout(r, 1200));
+        } else {
+          break;
+        }
       }
-    } catch (aiEngineErr: any) {
-      console.warn('VikingMester AI Engine primærkall feilet eller mangler nøkkel, forsøker fallback:', aiEngineErr.message);
     }
 
     // 🔄 2. SEKUNDÆRT: Hvis intern AI Engine ikke ga svar og Botsify-nøkkel finnes, forsøk headless webhook
@@ -2063,12 +2105,18 @@ Når brukeren ber deg sende en e-post og du har mottakers adresse:
       }
     }
 
-    // 🛡️ 3. SIKKERHETSVENTIL HVIS ALT FEILER: Returner et hjelpsomt og profesjonelt byggmestersvar (ALDRI hermetisk vær-spam)
+    // 🛡️ 3. SISTE UTVEI: Værdata kan alltid leveres. Ellers er vi ÆRLIGE om at
+    // motoren ikke svarte, i stedet for å skjule feilen bak en ferdigskrevet tekst.
     if (!replyText) {
       if (isWeather) {
         replyText = `🌤️ **Værvarsel og HMS-arbeidsforhold for ${weatherRep.locationName}**\n*Gjelder byggeplass: ${projectName || weatherRep.locationName}*\n\n• **Temperatur nå:** ${weatherRep.temp}°C (Dagens spenn: ${weatherRep.minTemp}°C til ${weatherRep.maxTemp}°C)\n• **Værforhold:** ${weatherRep.condition}\n• **Vindstyrke:** ${weatherRep.windSpeed} m/s (${weatherRep.beaufort})\n• **Nedbør i dag:** ${weatherRep.precipitation} mm\n• **Luftfuktighet:** ${weatherRep.humidity}%\n\n🛡️ **HMS- og Arbeidsråd:**\n${weatherRep.workAdvice}`;
       } else {
-        replyText = `Hei! Jeg er klar til å bistå deg med **${projectName || 'prosjektet ditt'}**.\n\nHva ønsker du at jeg skal utføre for deg nå? Jeg kan blant annet hjelpe deg med:\n- Sette opp et pristilbud eller kalkyle\n- Utarbeide en SJA (Sikker Jobb Analyse) tilpasset dagens arbeidsforhold\n- Føre byggedagbok eller registrere avvik\n- Sjekke oppdaterte regler og krav i TEK17 / Våtromsnormen\n- Søke opp dagsaktuelle priser, tekniske datablad eller arrangementer`;
+        const quotaHit = /kvote|top-?up|abonnement|utløpt/i.test(aiEngineError);
+        // ⚠️ Rå leverandørfeil er allerede logget over. Den vises ikke til
+        // brukeren, siden den kan inneholde nøkkel-, plan- og leverandørdetaljer.
+        replyText = quotaHit
+          ? `⚠️ **MesterAI er stoppet av kvotevernet**\n\nDen månedlige inkluderte AI-kvoten for bedriften er brukt opp.\n\nDu kan fortsette umiddelbart ved å aktivere en **Mester Top-up** under **Innstillinger → Fakturering**.`
+          : `⚠️ **MesterAI fikk ikke svar fra modellen akkurat nå**\n\nSpørsmålet ditt ble ikke besvart, og jeg vil ikke gi deg et generisk standardsvar i stedet.\n\nPrøv gjerne igjen om et lite øyeblikk — spørsmålet fortjener et skikkelig svar.`;
       }
     }
 

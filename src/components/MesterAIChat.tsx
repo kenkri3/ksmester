@@ -1111,7 +1111,7 @@ export default function MesterAIChat({
 
       const historyPayload = newMessages
         .filter(m => m.id !== 'welcome')
-        .slice(-6)
+        .slice(-12)
         .map(m => ({ role: m.role, content: m.content }));
 
       let res: Response | null = null;

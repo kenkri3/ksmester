@@ -644,7 +644,7 @@ export default function MesterAICopilot({
           message: textToSend.trim() || userMsgText,
           history: messages
             .filter(m => m.id !== 'welcome' && m.id !== userMsg.id)
-            .slice(-8)
+            .slice(-12)
             .map(m => ({ role: m.role, content: m.content })),
           sessionId: `copilot-${user?.id || 'guest'}`,
           projectName: currentProjName,

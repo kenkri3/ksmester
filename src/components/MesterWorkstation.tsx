@@ -2702,7 +2702,7 @@ export default function MesterWorkstation({
 
       const historyPayload = messages
         .filter(m => m.id !== 'welcome' && m.id !== userMessage.id)
-        .slice(-8)
+        .slice(-12)
         .map(m => ({
           role: m.role === 'assistant' ? 'assistant' : 'user',
           content: m.content
