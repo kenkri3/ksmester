@@ -10,12 +10,13 @@ import { timingSafeEqual } from 'crypto';
  * Med `Access-Control-Allow-Origin: *` kunne hvem som helst — også fra en
  * vilkårlig nettside i en ansatts nettleser — brenne AI-kvoten vår.
  *
- * Ny modell:
- *   - Kall uten nøkkel avvises (401).
- *   - Er `AGENT_API` satt og oppgitt nøkkel matcher den, regnes kallet som
- *     plattform-kall og serverens egen AI-nøkkel brukes.
- *   - Ellers behandles nøkkelen som "bring your own key" (BYOK) og brukes
- *     videre til AI-leverandøren i stedet for vår egen.
+ * ⚠️ Viktig: en første versjon krevde bare at en nøkkel VAR oppgitt ("BYOK").
+ * Det ble verifisert i produksjon å være utrygt — AI-motoren faller tilbake på
+ * serverens egen nøkkel når den oppgitte nøkkelen avvises av leverandøren.
+ * En vilkårlig streng som "Bearer tull" ga derfor et ekte AI-svar på vår regning.
+ *
+ * Endelig modell: broen godtar KUN plattformnøkkelen (`AGENT_API`), og feiler
+ * lukket dersom den ikke er konfigurert.
  */
 
 function safeEqual(a: string, b: string): boolean {
@@ -49,8 +50,20 @@ export interface BridgeAuthResult {
 }
 
 export function authorizeBridgeRequest(req: NextRequest): BridgeAuthResult {
-  const provided = extractProvidedKey(req);
+  const platformKey = (process.env.AGENT_API || '').trim();
 
+  // Fail closed: uten konfigurert plattformnøkkel er broen helt avstengt.
+  if (!platformKey) {
+    console.error(
+      '[OpenAI Bridge] AGENT_API er ikke konfigurert. Alle kall avvises (fail-closed).'
+    );
+    return {
+      authorized: false,
+      reason: 'Broen er ikke konfigurert. AGENT_API mangler på serveren.'
+    };
+  }
+
+  const provided = extractProvidedKey(req);
   if (!provided) {
     return {
       authorized: false,
@@ -58,13 +71,10 @@ export function authorizeBridgeRequest(req: NextRequest): BridgeAuthResult {
     };
   }
 
-  const platformKey = (process.env.AGENT_API || '').trim();
-
-  // Plattform-kall: bruk serverens egen AI-nøkkel.
-  if (platformKey && safeEqual(provided, platformKey)) {
-    return { authorized: true, apiKey: undefined };
+  if (!safeEqual(provided, platformKey)) {
+    return { authorized: false, reason: 'Ugyldig API-nøkkel.' };
   }
 
-  // Bring your own key: kunden betaler sin egen AI-regning.
-  return { authorized: true, apiKey: provided };
+  // Plataform-kall: bruk serverens egen AI-nøkkel.
+  return { authorized: true, apiKey: undefined };
 }
