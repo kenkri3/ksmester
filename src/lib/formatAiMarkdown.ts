@@ -12,10 +12,16 @@ export function formatAiMarkdown(text: string): string {
   // Normaliser linjeskift
   formatted = formatted.replace(/\r\n/g, '\n');
 
-  // Rydd opp eventuelle mellomrom inne i fet skrift som ødelegger parsing (f.eks. ** tekst ** -> **tekst**)
-  formatted = formatted.replace(/\*\*\s+([^*]+?)\s+\*\*/g, '**$1**');
-  formatted = formatted.replace(/\*\*\s+([^*]+?)\*\*/g, '**$1**');
-  formatted = formatted.replace(/\*\*([^*]+?)\s+\*\*/g, '**$1**');
+  // Rydd opp mellomrom INNE i fet skrift (f.eks. ** tekst ** -> **tekst**).
+  //
+  // ⚠️ VIKTIG: Ett og ett komplett **...**-par behandles om gangen.
+  // En tidligere variant brukte `\*\*([^*]+?)\s+\*\*` og lignende. Den kunne starte på en
+  // AVSLUTTENDE ** og slutte på neste ÅPNENDE **, og spiste derfor mellomrommene rundt hver
+  // fet-markering: «**Fremdrift:** 15% - **Status:** Aktiv» ble til
+  // «**Fremdrift:**15% -**Status:**Aktiv». CommonMark nekter å parse en avsluttende ** som står
+  // rett etter skilletegn og rett foran tekst, så stjernene ble vist rått i chatten.
+  // `[^*\n]+?` kan ikke krysse en * eller et linjeskift, og trim() rører bare teksten INNE i paret.
+  formatted = formatted.replace(/\*\*([^*\n]+?)\*\*/g, (_match: string, inner: string) => `**${inner.trim()}**`);
 
   // Normaliser uformelle kulepunkter (en-dash –, em-dash —, bullet •, ●) til standard markdown '- '
   formatted = formatted
@@ -150,10 +156,8 @@ export function formatAiMarkdown(text: string): string {
 export function stripMarkdownFormatting(text: string): string {
   if (!text || typeof text !== 'string') return '';
   return text
-    // Rydd opp ujevne mellomrom i fet skrift først
-    .replace(/\*\*\s+([^*]+?)\s+\*\*/g, '$1')
-    .replace(/\*\*\s+([^*]+?)\*\*/g, '$1')
-    .replace(/\*\*([^*]+?)\s+\*\*/g, '$1')
+    // Rydd opp ujevne mellomrom INNE i fet skrift (aldri på tvers av to markeringer)
+    .replace(/\*\*([^*\n]+?)\*\*/g, (_match: string, inner: string) => inner.trim())
     // Gjør overskrifter om til vanlige linjer (#### Tittel -> Tittel)
     .replace(/^#{1,6}\s+/gm, '')
     // Fjern doble stjerner for fet skrift (**tekst** -> tekst)
