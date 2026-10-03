@@ -1,6 +1,7 @@
 import { NextRequest, NextResponse } from 'next/server';
 import { generateSJAAction } from '@/src/app/actions/aiActions';
 import { evaluatePreCloseWall } from '@/src/lib/server/crossTradeEngine';
+import { fetchRealtimeWeather } from '@/src/lib/server/weatherService';
 import { createAutonomousChangeOrder } from '@/src/lib/server/changeOrderAgent';
 import { saveCollectionItem, getCollectionItems, updateCollectionItem, getCollectionItemById, deleteCollectionItem } from '@/src/lib/server/db';
 import { generateWithAiEngine, cleanAiJson } from '@/src/lib/server/aiEngine';
@@ -245,6 +246,30 @@ function extractTimeDetails(text: string) {
  * POST /api/agent/dispatch
  * Handles instructions, quick commands, voice-to-action, approvals, and validations.
  */
+/**
+ * 🛡️ Henter RELLE lukkesperre-forutsetninger fra prosjektets sjekklister.
+ *
+ * Dette fantes tidligere i to varianter: én riktig (pre_close_check-handlingen
+ * nedenfor) og én med hardkodede flagg i chat-stien, som derfor alltid ga
+ * samme svar uansett hva som faktisk var dokumentert på byggeplassen.
+ */
+async function derivePreCloseInputs(projectId: string) {
+  const allChecklists = await getCollectionItems('checklists').catch(() => []);
+  const projectChecks = (allChecklists || []).filter((c: any) => c && c.projectId === projectId);
+  const isDone = (c: any) =>
+    String(c?.status || '').toLowerCase() === 'completed' || c?.completed === true;
+  const done = projectChecks.filter(isDone);
+
+  return {
+    hasPlumberSignoff: done.some((c: any) => c.trade === 'plumber' || /rør|vvs|trykk/i.test(String(c.title || ''))),
+    hasElectricianPhotos: done.some((c: any) => c.trade === 'electrician' || /elektro|skjultanlegg|el-anlegg/i.test(String(c.title || ''))),
+    hasVaporBarrierChecked: done.some((c: any) => /dampsperre|lufttetthet/i.test(String(c.title || ''))),
+    hasInsulationChecked: done.some((c: any) => /isolasjon|kuldebro/i.test(String(c.title || ''))),
+    checklistCount: projectChecks.length,
+    completedCount: done.length
+  };
+}
+
 export async function POST(req: NextRequest) {
   let body: any = {};
   try {
@@ -1679,20 +1704,28 @@ Returner KUN et gyldig JSON-objekt:
       // C. Eksplisitt lukkesperre (pre-close check)
       if (isExplicitLukkesperre) {
         const room = roomOrZone || 'Aktuell sone';
+        // 🛡️ RELLE forutsetninger fra prosjektets sjekklister. Før sto flaggene
+        // hardkodet (rørlegger = false, resten = true), så svaret var identisk
+        // uansett hva som faktisk var dokumentert.
+        const preClose = await derivePreCloseInputs(resolvedProjectId || targetProject?.id || '');
         const evaluation = evaluatePreCloseWall({
           roomName: room,
-          hasPlumberSignoff: false,
-          hasElectricianPhotos: true,
-          hasVaporBarrierChecked: true,
-          hasInsulationChecked: true
+          hasPlumberSignoff: preClose.hasPlumberSignoff,
+          hasElectricianPhotos: preClose.hasElectricianPhotos,
+          hasVaporBarrierChecked: preClose.hasVaporBarrierChecked,
+          hasInsulationChecked: preClose.hasInsulationChecked
         });
+
+        const evidence = preClose.checklistCount === 0
+          ? 'Det er ikke registrert noen sjekkliste på prosjektet ennå, så ingen kontroller er kvittert ut.'
+          : `${preClose.completedCount} av ${preClose.checklistCount} sjekklistepunkter på prosjektet er kvittert ut.`;
 
         return NextResponse.json({
           success: true,
           action: 'pre_close_check',
           reply: evaluation.canClose
-            ? `GRØNT LYS for ${room}! Alle tverrfaglige forutsetninger er verifisert. Du kan trygt lukke veggen.`
-            : `RØDT LYS / STOPP for ${room}! Veggen kan IKKE lukkes ennå: ${evaluation.blockers.join(' ')}`,
+            ? `GRØNT LYS for ${room}! Alle tverrfaglige forutsetninger er verifisert. Du kan trygt lukke veggen.\n\n📋 ${evidence}`
+            : `RØDT LYS / STOPP for ${room}! Veggen kan IKKE lukkes ennå:\n\n${evaluation.blockers.map((b: string) => `• ${b}`).join('\n')}\n\n📋 ${evidence}`,
           evaluation
         });
       }
@@ -2766,7 +2799,12 @@ Returner KUN et gyldig JSON-objekt:
             });
           }
 
-          workerReply += `\n⛅ **Værvarsel i felt (Yr.no):** +14°C, lett bris og opphold. Gode arbeidsforhold for både inne- og utearbeid.\n`;
+          // ⛅ Ekte vær for prosjektets adresse i stedet for en fast tekst.
+          const briefingProject = allProjects.find((p: any) => myTasks.some((t: any) => t.projectId === p.id)) || allProjects[0];
+          const briefingWeather = await fetchRealtimeWeather(briefingProject?.location || briefingProject?.address || '');
+          workerReply += briefingWeather.isLive
+            ? `\n⛅ **Værvarsel i felt (${briefingWeather.locationName}):** ${briefingWeather.temp}°C (${briefingWeather.minTemp}–${briefingWeather.maxTemp}°C), ${briefingWeather.condition.toLowerCase()}, vind ${briefingWeather.windSpeed} m/s (${briefingWeather.beaufort.toLowerCase()}), nedbør ${briefingWeather.precipitation} mm.\n🛠️ **Arbeidsforhold:** ${briefingWeather.workAdvice}\n`
+            : `\n⛅ **Værvarsel:** fikk ikke hentet værdata akkurat nå. Sjekk yr.no før arbeid som er avhengig av været.\n`;
           workerReply += `🛡️ **HMS & SJA:** Husk å verifisere SJA før arbeid over 2 meter eller varme arbeider.\n\n`;
           workerReply += `Hva vil du gjøre nå? Du kan be meg føre timer, registrere et avvik, eller sette en oppgave som ferdig.`;
 
@@ -3627,29 +3665,14 @@ Du skal opptre som en høyt kvalifisert byggmester og kalkulatør og levere en k
     if (action === 'pre_close_check') {
       const room = roomOrZone || 'Aktuelt rom/sone';
       
-      const allChecklists = await getCollectionItems('checklists');
-      const projectChecks = allChecklists.filter((c: any) => c.projectId === projectId);
-
-      const hasPlumberSignoff = projectChecks.some((c: any) => 
-        (c.trade === 'plumber' || (c.title && c.title.toLowerCase().includes('rør'))) && 
-        c.status === 'completed'
-      );
-
-      const hasElectricianPhotos = projectChecks.some((c: any) => 
-        (c.trade === 'electrician' || (c.title && c.title.toLowerCase().includes('elektro'))) &&
-        c.status === 'completed'
-      );
-
-      const hasVaporBarrierChecked = projectChecks.some((c: any) => 
-        c.title && c.title.toLowerCase().includes('dampsperre') && c.status === 'completed'
-      );
+      const preClose = await derivePreCloseInputs(projectId || '');
 
       const evaluation = evaluatePreCloseWall({
         roomName: room,
-        hasPlumberSignoff,
-        hasElectricianPhotos,
-        hasVaporBarrierChecked,
-        hasInsulationChecked: true
+        hasPlumberSignoff: preClose.hasPlumberSignoff,
+        hasElectricianPhotos: preClose.hasElectricianPhotos,
+        hasVaporBarrierChecked: preClose.hasVaporBarrierChecked,
+        hasInsulationChecked: preClose.hasInsulationChecked
       });
 
       let reply = evaluation.canClose
