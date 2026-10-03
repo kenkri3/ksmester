@@ -1,5 +1,6 @@
 import { NextRequest, NextResponse } from 'next/server';
 import { generateWithAiEngine } from '@/src/lib/server/aiEngine';
+import { authorizeBridgeRequest } from '@/src/lib/server/bridgeAuth';
 
 export const dynamic = 'force-dynamic';
 
@@ -18,16 +19,24 @@ export async function OPTIONS() {
 
 export async function POST(req: NextRequest) {
   try {
-    // 1. Ekstraher API-nøkkel fra Authorization (Bearer) eller api-key header
-    const authHeader = req.headers.get('authorization') || req.headers.get('api-key') || req.headers.get('x-api-key');
-    let customKey: string | undefined;
-    if (authHeader) {
-      if (authHeader.startsWith('Bearer ')) {
-        customKey = authHeader.slice(7).trim();
-      } else {
-        customKey = authHeader.trim();
-      }
+    // 🛡️ SIKKERHETSFIKS (P0): Endepunktet hadde tidligere ingen avvisningsgren.
+    // Uten nøkkel falt kallet tilbake på serverens EGEN betalte AI-nøkkel, slik
+    // at hvem som helst kunne brenne AI-kvoten vår. Nå kreves alltid en nøkkel:
+    // enten plattformnøkkelen (AGENT_API) eller kundens egen (BYOK).
+    const auth = authorizeBridgeRequest(req);
+    if (!auth.authorized) {
+      return NextResponse.json(
+        {
+          error: {
+            message: auth.reason || 'Uautorisert. Gyldig API-nøkkel kreves.',
+            type: 'invalid_request_error',
+            code: 401
+          }
+        },
+        { status: 401, headers: CORS_HEADERS }
+      );
     }
+    const customKey = auth.apiKey;
 
     const body = await req.json().catch(() => ({}));
     const { model = 'gemini-2.5-flash', messages = [] } = body;

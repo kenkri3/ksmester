@@ -5,7 +5,7 @@ Denne guiden forklarer oppsett og drift av **VikingMester.no** på **Railway** m
 ---
 
 ## 🚀 1. Hovedtjeneste (Web / Next.js)
-1. **Repository:** `kenkri3/VikingMester` (branch `main`).
+1. **Repository:** `kenkri3/ksmester` (branch `main`).
 2. **Start Command:** `npm start`
 3. **Healthcheck:** `/api/health`
 4. **Viktig om Cron Schedule på Web:**  
@@ -33,6 +33,6 @@ Applikasjonen bruker nå **1min.AI** som primær AI-motor for å gi tilgang til 
 ## ⏰ 4. Valgfri dedikert Railway Cron Worker
 Dersom du ønsker en separat dedikert cron-arbeider i Railway i stedet for/i tillegg til den interne scheduleren:
 1. Klikk **"+ New"** -> **"Service"** i samme Railway-prosjekt.
-2. Velg samme repo (`VikingMester`).
+2. Velg samme repo (`ksmester`).
 3. Sett **Start Command:** `npm run cron`
 4. Sett **Cron Schedule:** `0 5 * * *` (kjører kl. 05:00 UTC / 06:00-07:00 norsk tid og avslutter prosessen pent).

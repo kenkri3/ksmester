@@ -22,7 +22,17 @@ import { getPublicAppUrl } from '@/src/lib/server/urlHelper';
  *   uten tilgang til reelle bedriftsdata.
  */
 
-const BOT_API_KEY = process.env.AGENT_API || 'UDuz6jJYyXeVli7LuNyWqNUJHORWZQBDZYeF3sKs';
+/**
+ * 🛡️ SIKKERHETSFIKS (P0): Hardkodet Botsify-nøkkel er fjernet.
+ *
+ * Nøkkelen lå tidligere i klartekst i kildekoden og dermed i hele git-historikken.
+ * Den er nå kun lest fra miljøvariabelen AGENT_API. Er den ikke satt, hoppes
+ * Botsify-reserven stille over (se `if (!replyText && BOT_API_KEY && ...)` under),
+ * og den interne AI-motoren brukes alene.
+ *
+ * ⚠️ Den gamle nøkkelen MÅ roteres i Botsify — den skal anses som kompromittert.
+ */
+const BOT_API_KEY = process.env.AGENT_API;
 const CONVERSE_ENDPOINT = 'https://agentic.botsify.com/api/v1/converse';
 
 const TRADE_NAMES: Record<string, string> = {

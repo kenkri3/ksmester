@@ -5,6 +5,7 @@ import { runSeoAutoHealer } from '@/src/lib/server/autoHealer';
 import { runAutonomousSeoCycle, isAutoblogDue } from '@/src/lib/server/autonomousSeoEngine';
 import { saveCollectionItem, getCollectionItems } from '@/src/lib/server/db';
 import { checkRateLimit } from '@/src/lib/server/rateLimiter';
+import { getUserFromRequest, isUserSuperAdmin, verifyCronOrInternalSecret } from '@/src/lib/server/auth';
 
 export const dynamic = 'force-dynamic';
 export const maxDuration = 60; // 60 sekunder timeout
@@ -30,21 +31,28 @@ async function handleAutopilot(req: NextRequest) {
     return NextResponse.json({ error: 'For mange forespørsler. Prøv igjen senere.' }, { status: 429 });
   }
 
-  // Sikkerhetsvalidering: Støtter Vercel Cron, CRON_SECRET eller admin-token
-  const authHeader = req.headers.get('authorization');
-  const cronSecret = process.env.CRON_SECRET || 'vikingmester-cron-secret-2026';
+  // 🛡️ SIKKERHETSFIKS (P0): Hardkodet cron-hemmelighet ('vikingmester-cron-secret-2026')
+  // er fjernet. Den lå i klartekst i både denne ruten og i klientkomponenten,
+  // og ga hvem som helst rett til å starte tunge SEO-jobber.
+  //
+  // Autorisasjon skjer nå via den delte, fail-closed hjelperen
+  // verifyCronOrInternalSecret (CRON_SECRET / INTERNAL_API_SECRET, timing-safe),
+  // Vercel Cron-headeren, eller en innlogget SuperAdmin.
   const url = new URL(req.url);
-  const secretParam = url.searchParams.get('secret');
   const force = url.searchParams.get('force') === 'true';
 
-  const isAuthorized = 
+  const cronAuthorized =
     req.headers.get('x-vercel-cron') === '1' ||
-    authHeader === `Bearer ${cronSecret}` ||
-    secretParam === cronSecret ||
-    process.env.NODE_ENV === 'development';
+    verifyCronOrInternalSecret(req);
 
-  if (!isAuthorized) {
-    return NextResponse.json({ error: 'Uautorisert. Gyldig CRON_SECRET kreves.' }, { status: 401 });
+  let adminAuthorized = false;
+  if (!cronAuthorized) {
+    const user = getUserFromRequest(req);
+    adminAuthorized = isUserSuperAdmin(user);
+  }
+
+  if (!cronAuthorized && !adminAuthorized) {
+    return NextResponse.json({ error: 'Uautorisert. Gyldig CRON_SECRET eller SuperAdmin-innlogging kreves.' }, { status: 401 });
   }
 
   const startTime = Date.now();

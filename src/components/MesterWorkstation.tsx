@@ -1,6 +1,7 @@
 'use client';
 
 import React, { useState, useEffect, useRef, useMemo, useCallback } from 'react';
+import { authHeaders } from '@/src/lib/clientAuth';
 import { motion, AnimatePresence } from 'motion/react';
 import ReactMarkdown from 'react-markdown';
 import remarkGfm from 'remark-gfm';
@@ -1542,7 +1543,7 @@ export default function MesterWorkstation({
     try {
       await fetch('/api/data/time_entries', {
         method: 'POST',
-        headers: { 'Content-Type': 'application/json' },
+        headers: authHeaders({ 'Content-Type': 'application/json' }),
         body: JSON.stringify(newEntry)
       });
     } catch (e) {
@@ -1564,7 +1565,7 @@ export default function MesterWorkstation({
       for (const entry of updated) {
         await fetch(`/api/data/time_entries/${entry.id}`, {
           method: 'PATCH',
-          headers: { 'Content-Type': 'application/json' },
+          headers: authHeaders({ 'Content-Type': 'application/json' }),
           body: JSON.stringify({ status: 'approved' })
         }).catch(() => null);
       }
@@ -1583,7 +1584,7 @@ export default function MesterWorkstation({
     try {
       await fetch(`/api/data/time_entries/${id}`, {
         method: 'PATCH',
-        headers: { 'Content-Type': 'application/json' },
+        headers: authHeaders({ 'Content-Type': 'application/json' }),
         body: JSON.stringify({ status: 'approved' })
       });
     } catch (e) {}
@@ -1604,7 +1605,7 @@ export default function MesterWorkstation({
     try {
       await fetch(`/api/data/time_entries/${id}`, {
         method: 'PATCH',
-        headers: { 'Content-Type': 'application/json' },
+        headers: authHeaders({ 'Content-Type': 'application/json' }),
         body: JSON.stringify({ status: newStatus })
       });
     } catch (e) {}
@@ -2114,7 +2115,7 @@ export default function MesterWorkstation({
     try {
       const res = await fetch('/api/documentation', {
         method: 'POST',
-        headers: { 'Content-Type': 'application/json' },
+        headers: authHeaders({ 'Content-Type': 'application/json' }),
         body: JSON.stringify({
           action: 'get_combined_fdv',
           projectId: targetProject.id,

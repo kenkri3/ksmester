@@ -14,7 +14,7 @@ jobs:
         run: |
           APP_URL="${{ secrets.APP_URL }}"
           if [ -z "$APP_URL" ]; then
-            APP_URL="https://ksmester.no"
+            APP_URL="https://vikingmester.no"
           fi
           
           echo "Kaller cron-endepunkt på: $APP_URL/api/cron/daily-summary"

@@ -3,7 +3,19 @@ import { sendSystemEmail, cleanMarkdownForEmail } from '@/src/lib/server/emailSe
 import { getUserFromRequest, verifyCronOrInternalSecret } from '@/src/lib/server/auth';
 import { checkRateLimit, getClientIp } from '@/src/lib/server/rateLimit';
 
-const BOT_API_KEY = process.env.AGENT_API || 'UDuz6jJYyXeVli7LuNyWqNUJHORWZQBDZYeF3sKs';
+/**
+ * 🛡️ SIKKERHETSFIKS (P0): Hardkodet bot-nøkkel er fjernet.
+ *
+ * Den gamle fallbacken ('UDuz...') lå i klartekst i kildekoden — og dermed
+ * offentlig i git-historikken — og fungerte samtidig som innloggingsnøkkel
+ * for dette endepunktet. Nøkkelen leses nå KUN fra AGENT_API.
+ *
+ * Er AGENT_API ikke satt, er bot-innlogging deaktivert (fail-closed), mens
+ * innloggede brukere og cron/interne kall fortsatt slipper inn.
+ *
+ * ⚠️ Den gamle nøkkelen MÅ roteres i Botsify — den skal anses som kompromittert.
+ */
+const BOT_API_KEY = process.env.AGENT_API;
 
 /**
  * 📬 POST /api/agent/email

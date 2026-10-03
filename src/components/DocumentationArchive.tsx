@@ -1,4 +1,5 @@
 import React, { useState, useEffect, useMemo, useRef } from 'react';
+import { authHeaders } from '@/src/lib/clientAuth';
 import { motion, AnimatePresence } from 'motion/react';
 import { 
   X, 
@@ -436,7 +437,7 @@ const DocumentationArchive: React.FC<DocumentationArchiveProps> = ({
       toast.info('Klargjør samlet FDV-perm for utskrift/PDF...');
       const res = await fetch('/api/documentation', {
         method: 'POST',
-        headers: { 'Content-Type': 'application/json' },
+        headers: authHeaders({ 'Content-Type': 'application/json' }),
         body: JSON.stringify({
           action: 'get_combined_fdv',
           projectId: selectedProjectId || 'general',
@@ -471,7 +472,7 @@ const DocumentationArchive: React.FC<DocumentationArchiveProps> = ({
       toast.info(`MesterAI analyserer ${activeProject?.name || 'prosjektet'} og genererer FDV-blader...`);
       const res = await fetch('/api/documentation', {
         method: 'POST',
-        headers: { 'Content-Type': 'application/json' },
+        headers: authHeaders({ 'Content-Type': 'application/json' }),
         body: JSON.stringify({
           action: 'generate_project_fdv',
           projectId: selectedProjectId || 'general',
@@ -518,7 +519,7 @@ const DocumentationArchive: React.FC<DocumentationArchiveProps> = ({
       if (emailMode === 'single' && selectedDocForEmail) {
         await fetch('/api/notify/email', {
           method: 'POST',
-          headers: { 'Content-Type': 'application/json' },
+          headers: authHeaders({ 'Content-Type': 'application/json' }),
           body: JSON.stringify({
             to: recipientEmailInput.trim(),
             subject: `📄 ${selectedDocForEmail.title} - ${activeProject?.name || 'Prosjekt'}`,
@@ -544,7 +545,7 @@ const DocumentationArchive: React.FC<DocumentationArchiveProps> = ({
       } else {
         const res = await fetch('/api/documentation', {
           method: 'POST',
-          headers: { 'Content-Type': 'application/json' },
+          headers: authHeaders({ 'Content-Type': 'application/json' }),
           body: JSON.stringify({
             action: 'email_documentation',
             projectId: selectedProjectId || 'general',
@@ -1076,7 +1077,7 @@ const DocumentationArchive: React.FC<DocumentationArchiveProps> = ({
                   try {
                     const res = await fetch('/api/settings/integrations', {
                       method: 'POST',
-                      headers: { 'Content-Type': 'application/json' },
+                      headers: authHeaders({ 'Content-Type': 'application/json' }),
                       body: JSON.stringify({
                         service: 'NOBB',
                         secretToken: nobbKeyInput.trim(),

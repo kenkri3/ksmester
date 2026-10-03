@@ -1,5 +1,6 @@
 import { Offer, Contract, Project, SJAReport, ProjectMaterial, AppNotification, ProjectChecklist } from '../types';
 import { api } from './api';
+import { authHeaders } from '../lib/clientAuth';
 import { checklistGenerator } from './checklistGenerator';
 
 export interface SignaturePayload {
@@ -241,7 +242,7 @@ Oppdragsgiver har 5 års reklamasjonsrett i henhold til norsk lov fra dato for s
       if (typeof window !== 'undefined') {
         fetch('/api/documentation', {
           method: 'POST',
-          headers: { 'Content-Type': 'application/json' },
+          headers: authHeaders({ 'Content-Type': 'application/json' }),
           body: JSON.stringify({
             action: 'generate_project_fdv',
             projectId,

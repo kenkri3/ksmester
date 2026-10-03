@@ -1,4 +1,5 @@
 import { db, auth, collection, addDoc, serverTimestamp, updateDoc, doc, getDoc, getDocs, query, where } from './firebase';
+import { authHeaders } from '../lib/clientAuth';
 import { Project, Offer, Contract, Trade } from '../types';
 import { dashboardAiService } from './dashboardAiService';
 import { fdvService } from './fdvService';
@@ -169,7 +170,7 @@ export const projectService = {
         try {
           await fetch('/api/documentation', {
             method: 'POST',
-            headers: { 'Content-Type': 'application/json' },
+            headers: authHeaders({ 'Content-Type': 'application/json' }),
             body: JSON.stringify({
               action: 'email_documentation',
               projectId,

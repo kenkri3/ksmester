@@ -53,8 +53,13 @@ export default function SeoAutopilotHub() {
     toast.info('🚀 Kjører full autonom optimaliseringssyklus for hele Norge...', { duration: 4000 });
 
     try {
-      const res = await fetch(`/api/cron/seo-autopilot?force=${force}&secret=vikingmester-cron-secret-2026`, {
-        method: 'POST'
+      // 🛡️ SIKKERHETSFIKS (P0): Den hardkodede cron-hemmeligheten som tidligere lå
+      // i denne URL-en er fjernet. Kallet autentiseres nå med innlogget brukers
+      // sesjonstoken, og ruten krever SuperAdmin.
+      const token = typeof window !== 'undefined' ? localStorage.getItem('token') : null;
+      const res = await fetch(`/api/cron/seo-autopilot?force=${force}`, {
+        method: 'POST',
+        headers: token ? { 'Authorization': `Bearer ${token}` } : {}
       });
       const data = await res.json();
 

@@ -5,6 +5,7 @@ import {
   saveCollectionItem, 
   updateCollectionItem 
 } from '@/src/lib/server/db';
+import { getUserFromRequest, isUserAdmin } from '@/src/lib/server/auth';
 import { sendContractByEmail, sendProjectStartedEmail } from '@/src/lib/server/emailSender';
 import { checklistGenerator } from '@/src/services/checklistGenerator';
 import { getOrGenerateProjectDocumentation } from '@/src/lib/server/projectDocumentationEngine';
@@ -32,7 +33,23 @@ export async function GET(req: NextRequest) {
     let offer = null;
 
     if (contractId) {
+      // 🛡️ SIKKERHETSFIKS (P0): Oppslag direkte på `contractId` returnerte hele
+      // kontrakten (kundenavn, adresse, priser) uten noen form for token eller
+      // innlogging — en åpen IDOR. Ingen offentlig flyt bruker `?contractId=`;
+      // kundelenkene bruker `?token=`. ID-oppslag krever derfor innlogging med
+      // tilgang til riktig bedrift.
+      const user = getUserFromRequest(req);
+      if (!user) {
+        return NextResponse.json(
+          { error: 'Uautorisert. Oppslag på contractId krever innlogging. Bruk token for delte kundelenker.' },
+          { status: 401 }
+        );
+      }
       contract = allContracts.find((c: any) => c.id === contractId);
+      const owner = (contract as any)?.companyId || (contract as any)?.company_id;
+      if (contract && owner && !isUserAdmin(user) && owner !== user.companyId) {
+        return NextResponse.json({ error: 'Ingen tilgang til denne kontrakten.' }, { status: 403 });
+      }
     } else if (token) {
       contract = allContracts.find((c: any) => 
         c.token === token || 

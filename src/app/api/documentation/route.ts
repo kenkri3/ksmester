@@ -5,11 +5,28 @@ import {
   GeneratedDocItem 
 } from '@/src/lib/server/projectDocumentationEngine';
 import { sendSystemEmail } from '@/src/lib/server/emailSender';
+import { getUserFromRequest } from '@/src/lib/server/auth';
 
 export const dynamic = 'force-dynamic';
 
+/**
+ * 🛡️ SIKKERHETSFIKS (P0): Ruten krevde ingen autentisering.
+ * - GET returnerte prosjektdokumentasjon (kundenavn, avvik, FDV) for et vilkårlig
+ *   `projectId` — ren IDOR mot alle kunders prosjektdata.
+ * - POST kunne generere dokumentasjon OG sende e-post til en vilkårlig
+ *   `recipientEmail` — altså et åpent e-postendepunkt (spam/phishing).
+ * Begge krever nå en innlogget bruker.
+ */
+function requireUser(req: NextRequest) {
+  return getUserFromRequest(req);
+}
+
 export async function GET(request: NextRequest) {
   try {
+    if (!requireUser(request)) {
+      return NextResponse.json({ error: 'Uautorisert. Innlogging kreves.' }, { status: 401 });
+    }
+
     const { searchParams } = new URL(request.url);
     const projectId = searchParams.get('projectId') || '';
     const projectName = searchParams.get('projectName') || 'Prosjekt';
@@ -41,6 +58,10 @@ export async function GET(request: NextRequest) {
 
 export async function POST(request: NextRequest) {
   try {
+    if (!requireUser(request)) {
+      return NextResponse.json({ error: 'Uautorisert. Innlogging kreves.' }, { status: 401 });
+    }
+
     const body = await request.json();
     const { action, projectId, projectInfo, recipientEmail, companyName } = body;
 

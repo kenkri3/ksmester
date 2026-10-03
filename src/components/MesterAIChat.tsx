@@ -1,4 +1,5 @@
 import React, { useState, useEffect, useRef } from 'react';
+import { authHeaders } from '@/src/lib/clientAuth';
 import { motion, AnimatePresence } from 'motion/react';
 import ReactMarkdown from 'react-markdown';
 import remarkGfm from 'remark-gfm';
@@ -1379,7 +1380,7 @@ export default function MesterAIChat({
     if (action.type === 'download_combined_fdv' || action.id === 'download_combined_fdv') {
       fetch('/api/documentation', {
         method: 'POST',
-        headers: { 'Content-Type': 'application/json' },
+        headers: authHeaders({ 'Content-Type': 'application/json' }),
         body: JSON.stringify({
           action: 'get_combined_fdv',
           projectId: action.data?.projectId || 'general',

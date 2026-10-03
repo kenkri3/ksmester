@@ -1,4 +1,5 @@
 import { NextRequest, NextResponse } from 'next/server';
+import { timingSafeEqual } from 'crypto';
 import { getCollectionItems, saveCollectionItem, updateCollectionItem, deleteCollectionItem } from '@/src/lib/server/db';
 import {
   maskPII,
@@ -20,16 +21,45 @@ import {
  * Støtter både JSON-RPC 2.0 (Stream/POST) og SSE (GET).
  */
 
-const EXPECTED_SECRET = process.env.AGENT_MCP_SECRET_KEY || 'ks_mcp_prod_secret_2026';
+/**
+ * 🛡️ SIKKERHETSFIKS (P0): MCP-tjeneren krevde tidligere ingen autentisering.
+ *
+ * Gammel implementasjon slapp ALLE inn:
+ *   1. Manglende Authorization-header returnerte `true` ("No Authentication").
+ *   2. `token.length > 0` godtok hvilken som helst ikke-tom verdi.
+ *
+ * Det gjorde at hvem som helst på internett kunne kalle alle 23 verktøy —
+ * inkludert `slett_oppforing` (permanent sletting), `hent_leads` og
+ * `hent_okonomi_status` — på tvers av alle kunder.
+ *
+ * Ny implementasjon feiler LUKKET: er ikke AGENT_MCP_SECRET_KEY konfigurert,
+ * avvises alle kall. Sammenligningen er timing-safe.
+ */
+const EXPECTED_SECRET = (process.env.AGENT_MCP_SECRET_KEY || '').trim();
 
 function isAuthorized(req: NextRequest): boolean {
-  const authHeader = req.headers.get('authorization') || req.headers.get('x-api-key') || '';
-  if (!authHeader) {
-    // Tillater tilkobling også dersom "No Authentication" er valgt i integrasjonsmenyen
-    return true;
+  if (!EXPECTED_SECRET) {
+    console.error(
+      '[MCP] AGENT_MCP_SECRET_KEY er ikke konfigurert. Alle MCP-kall avvises (fail-closed). ' +
+      'Sett AGENT_MCP_SECRET_KEY i miljøvariablene for å aktivere MCP-tjeneren.'
+    );
+    return false;
   }
+
+  const authHeader =
+    req.headers.get('authorization') ||
+    req.headers.get('x-api-key') ||
+    req.headers.get('x-mcp-secret') ||
+    '';
   const token = authHeader.replace(/^Bearer\s+/i, '').trim();
-  return token === EXPECTED_SECRET || token.length > 0;
+
+  if (!token || token.length !== EXPECTED_SECRET.length) return false;
+
+  try {
+    return timingSafeEqual(Buffer.from(token), Buffer.from(EXPECTED_SECRET));
+  } catch {
+    return false;
+  }
 }
 
 // 📋 Definisjon av alle 8 verktøy i MCP-format

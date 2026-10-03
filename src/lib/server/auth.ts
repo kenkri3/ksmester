@@ -4,8 +4,37 @@ import { timingSafeEqual, randomBytes } from 'crypto';
 
 const { sign, verify } = jwtPkg;
 
-// 🛡️ SECURITY FIX: Replaced hardcoded fallback secret with a dynamically generated one.
-export const JWT_SECRET = process.env.JWT_SECRET || 'vikingmester-ks-hms-supersecret-jwt-token-2026';
+/**
+ * 🛡️ SIKKERHETSFIKS (P0): Den hardkodede JWT-hemmeligheten er fjernet.
+ *
+ * Den gamle fallbacken ('vikingmester-ks-hms-supersecret-jwt-token-2026') lå i
+ * klartekst i kildekoden. Siden repoet nå er offentlig, kunne hvem som helst
+ * signert en gyldig SuperAdmin-token dersom JWT_SECRET ikke var satt i miljøet.
+ *
+ * Verifisert mot produksjon: JWT_SECRET ER satt i Railway, så fallbacken var
+ * inaktiv der. For å hindre at en offentlig kjent nøkkel noen gang tas i bruk:
+ *   - produksjon uten JWT_SECRET genererer en tilfeldig hemmelighet per prosess
+ *     (tokens kan da ikke forfalskes; brukere logges ut ved omstart) og varsler.
+ *   - utvikling beholder en stabil lokal fallback så `npm run dev` fungerer.
+ */
+function resolveJwtSecret(): string {
+  const fromEnv = (process.env.JWT_SECRET || '').trim();
+  if (fromEnv) return fromEnv;
+
+  if (process.env.NODE_ENV === 'production') {
+    console.error(
+      '[SECURITY] JWT_SECRET er ikke konfigurert i produksjon! ' +
+      'Genererer en tilfeldig hemmelighet for denne prosessen — alle sesjoner ' +
+      'ugyldiggjøres ved omstart. Sett JWT_SECRET i miljøvariablene umiddelbart.'
+    );
+    return randomBytes(48).toString('hex');
+  }
+
+  console.warn('[SECURITY] JWT_SECRET mangler – bruker midlertidig utviklingshemmelighet.');
+  return 'dev-only-insecure-jwt-secret';
+}
+
+export const JWT_SECRET = resolveJwtSecret();
 
 export interface TokenPayload {
   id: string;
