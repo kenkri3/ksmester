@@ -26,6 +26,13 @@ export interface GenerateAiOptions {
    * tekst-fallback for sekundærmotorene (1min.AI / Gemini / OpenRouter).
    */
   messages?: AiChatMessage[];
+  /**
+   * 🌊 Strømming: kalles med hver tekstbit etter hvert som modellen svarer.
+   * Når denne er satt strømmes svaret fra DeepSeek i stedet for å ventes på i
+   * én blokk. Reservemotorene (1min.AI / Gemini / OpenRouter) strømmer ikke og
+   * leverer hele svaret til slutt – det er akseptert.
+   */
+  onDelta?: (chunk: string) => void;
   contents?: any;
   model?: string;
   systemInstruction?: string;
@@ -685,7 +692,8 @@ async function callDeepSeekDirect(
   systemInstruction?: string,
   forceJson = false,
   chatMessages?: AiChatMessage[],
-  temperature = 0.3
+  temperature = 0.3,
+  onDelta?: (chunk: string) => void
 ): Promise<{ text: string; promptTokens: number; completionTokens: number; executedModel: string }> {
   const now = new Date();
   const dateStr = new Intl.DateTimeFormat('no-NO', {
@@ -735,12 +743,19 @@ async function callDeepSeekDirect(
 
   let lastError: any = null;
   for (const cand of candidateModels) {
+    // Sporer om brukeren allerede har sett deler av svaret. Da må vi IKKE
+    // prøve en ny modell, for det ville sendt begynnelsen av svaret to ganger.
+    let streamEmitted = false;
     try {
       const isCandReasoner = cand.includes('reasoner') || cand.includes('pro');
       const body: any = {
         model: cand,
         messages
       };
+
+      // 🌊 Strømming støttes på den raske samtalemodellen, og aldri for
+      // JSON-uttrekk (der må vi ha hele objektet før vi kan parse det).
+      const useStream = Boolean(onDelta) && !isCandReasoner && !forceJson;
 
       if (!isCandReasoner) {
         // JSON-uttrekk skal være deterministisk; samtale skal være levende.
@@ -749,6 +764,9 @@ async function callDeepSeekDirect(
         body.max_tokens = 8000;
         if (forceJson) {
           body.response_format = { type: 'json_object' };
+        }
+        if (useStream) {
+          body.stream = true;
         }
       } else {
         body.thinking = { type: 'enabled' };
@@ -790,6 +808,50 @@ async function callDeepSeekDirect(
         continue;
       }
 
+      if (useStream && res.body) {
+        // Server-Sent Events fra DeepSeek: «data: {...}» med choices[0].delta.content.
+        const reader = res.body.getReader();
+        const decoder = new TextDecoder();
+        let sseBuffer = '';
+        let streamedText = '';
+
+        while (true) {
+          const { done, value } = await reader.read();
+          if (done) break;
+          sseBuffer += decoder.decode(value, { stream: true });
+          const lines = sseBuffer.split('\n');
+          sseBuffer = lines.pop() || '';
+          for (const rawLine of lines) {
+            const line = rawLine.trim();
+            if (!line.startsWith('data:')) continue;
+            const payload = line.slice(5).trim();
+            if (!payload || payload === '[DONE]') continue;
+            try {
+              const parsed = JSON.parse(payload);
+              const delta = parsed?.choices?.[0]?.delta?.content || '';
+              if (delta) {
+                streamEmitted = true;
+                streamedText += delta;
+                onDelta!(delta);
+              }
+            } catch {
+              // Ufullstendig eller ikke-JSON linje – hopp over.
+            }
+          }
+        }
+
+        if (!streamedText.trim()) {
+          throw new Error(`DeepSeek (${cand}) strømmet et tomt svar`);
+        }
+
+        return {
+          text: streamedText,
+          promptTokens: Math.round(prompt.length / 4),
+          completionTokens: Math.round(streamedText.length / 4),
+          executedModel: cand
+        };
+      }
+
       const data = await res.json();
       const text = data.choices?.[0]?.message?.content || data.choices?.[0]?.message?.reasoning_content || '';
       const promptTokens = data.usage?.prompt_tokens || Math.round(prompt.length / 4);
@@ -797,6 +859,9 @@ async function callDeepSeekDirect(
 
       return { text, promptTokens, completionTokens, executedModel: cand };
     } catch (candErr: any) {
+      // Har brukeren alt fått deler av svaret, stopper vi her i stedet for å
+      // starte på nytt med en annen modell.
+      if (streamEmitted) throw candErr;
       lastError = candErr;
     }
   }
@@ -1284,7 +1349,8 @@ export async function generateWithAiEngine(options: GenerateAiOptions): Promise<
         options.systemInstruction,
         isJsonExpected,
         structuredMessages,
-        deepseekTemperature
+        deepseekTemperature,
+        options.onDelta
       );
 
       if (res.text && res.text.trim().length > 0) {

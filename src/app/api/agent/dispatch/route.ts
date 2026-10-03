@@ -844,6 +844,8 @@ Returner KUN et gyldig JSON-objekt:
 
       const isInformationalQuery =
         lower.startsWith('hvordan') ||
+        lower.startsWith('hvor') ||
+        lower.startsWith('hva koster') ||
         lower.startsWith('hva er') ||
         lower.startsWith('hva sier') ||
         lower.startsWith('hva kreves') ||
@@ -1005,6 +1007,7 @@ Returner KUN et gyldig JSON-objekt:
         );
 
       const isTimeIntent = 
+        !isInformationalQuery &&
         (lower.includes('før time') || 
          lower.includes('føre time') || 
          lower.includes('før dagens time') || 
@@ -1016,27 +1019,35 @@ Returner KUN et gyldig JSON-objekt:
         !lower.includes('tilbud') &&
         !lower.includes('kalkyle');
 
+      // 🛡️ Åpne spørsmål om sjekklister skal besvares av modellen, ikke av malen.
       const isChecklistIntent = 
+        !isInformationalQuery &&
         (lower.includes('sjekkliste') || 
          lower.includes('ks-sjekk') || 
          lower.includes('kvalitetssjekk') || 
          lower.includes('egenkontroll')) &&
         !isBuildingAppIntent;
 
+      // 🛡️ Åpne spørsmål om kontraktsrett skal besvares av modellen, ikke av malen.
       const isContractIntent = 
+        !isInformationalQuery && (
         lower.includes('kontrakt') || 
         lower.includes('entrepriseavtale') || 
         lower.includes('håndverkeravtale') || 
         lower.includes('standardkontrakt') ||
         lower.includes('ns 8405') ||
         lower.includes('ns 8407') ||
-        lower.includes('bustadoppføringslova');
+        lower.includes('bustadoppføringslova')
+        );
 
+      // 🛡️ Åpne spørsmål om stoffkartotek/datablad skal besvares av modellen.
       const isStoffkartotekIntent = 
+        !isInformationalQuery && (
         lower.includes('stoffkartotek') || 
         lower.includes('sikkerhetsdatablad') || 
         lower.includes('kjemikalie') || 
-        lower.includes('datablad');
+        lower.includes('datablad')
+        );
 
       const isAutonomousOfferIntent = 
         !action?.startsWith('send_') &&

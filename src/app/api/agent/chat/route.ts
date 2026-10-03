@@ -895,6 +895,14 @@ export async function POST(req: NextRequest) {
 
     const cleanLowerMsg = message.trim().toLowerCase().replace(/[.!?]/g, '');
 
+    // 🛡️ SPØRSMÅLSVAKT: Hindrer at åpne spørsmål blir tolket som kommandoer.
+    // Uten denne skrev «hva koster 5 timer?» inn 5 timer, og «hvilke feil kan
+    // føre til avvik?» opprettet et avvik i KS-systemet.
+    // Bevisst smal: «kan du føre 7,5 timer» er en bestilling, ikke et spørsmål.
+    const looksLikeOpenQuestion =
+      /\?\s*$/.test(message.trim()) ||
+      /^(hva|hvordan|hvilke|hvilken|hvilket|hvor|hvorfor|hvor mye|koster|er det|finnes det|gjelder)\b/i.test(message.trim());
+
     // 🎯 0. SLÅ SAMMEN PROSJEKTER (f.eks. "slå sammen prosjektene" eller "ja slå dem sammen")
     const isMergeProject = cleanLowerMsg.includes('slå sammen') || cleanLowerMsg.includes('sla sammen') || (
       (cleanLowerMsg.startsWith('ja') || cleanLowerMsg === 'ja') && 
@@ -906,12 +914,13 @@ export async function POST(req: NextRequest) {
       return NextResponse.json({
         success: true,
         sessionId: fbId,
-        reply: `🔗 **Prosjektene er nå fullstendig sammenslått og synkronisert!**\n\n` +
-          `• **Hovednavn:** **Renovering Bad Vidjeveien 21**\n` +
-          `• **Prosjektkode:** \`BAD-2101\`\n` +
-          `• **Adresse:** Vidjeveien 21, 3113 Tønsberg\n` +
-          `• **Alias:** «Totalrenovering Bad - Våtromsnormen»\n\n` +
-          `Alle 3 arbeidsoppgaver, førte timer (${totalProjectHours.toFixed(1)}t), byggedagbok og avvik er samlet under dette prosjektet. Uansett om du refererer til «Vidjeveien», «Badet» eller «Våtromsnormen», har jeg full oversikt over all fremdrift.`,
+        reply: `🔗 **Sammenslåing av prosjekter**\n\n` +
+          `Jeg kan ikke slå sammen to prosjekter automatisk ennå. Det krever en gjennomgang av hvilket prosjekt som skal være hovedprosjekt, fordi timer, avvik, byggedagbok og tilbud må flyttes uten å miste historikk.\n\n` +
+          `**Slik gjør du det i dag:**\n` +
+          `1. Velg prosjektet du vil beholde som hovedprosjekt.\n` +
+          `2. Flytt oppgaver og timer dit fra prosjektvisningen.\n` +
+          `3. Arkiver det andre prosjektet når det er tomt.\n\n` +
+          `Det jeg kan gjøre med en gang, er å lage en samlet status på tvers av begge prosjektene, eller samle all dokumentasjon i ett prosjekt. Si ifra hva du ønsker.`,
         quickReplies: [
           { title: 'Hent oppgaver', payload: 'Hent oppgaver på Renovering Bad Vidjeveien 21' },
           { title: 'Hent timer', payload: 'Hent timer på Renovering Bad Vidjeveien 21' },
@@ -1142,7 +1151,7 @@ export async function POST(req: NextRequest) {
     }
 
     // 🎯 0B. REELL REGISTRERING AV AVVIK / RUH (AUTONOMT I KS-SYSTEMET)
-    const isDeviationRegistration = !isFetchDeviations && !isBareAvvik && (
+    const isExplicitDeviationCommand =
       cleanLowerMsg.startsWith('registrer avvik') ||
       cleanLowerMsg.startsWith('meld avvik') ||
       cleanLowerMsg.startsWith('opprett avvik') ||
@@ -1156,8 +1165,13 @@ export async function POST(req: NextRequest) {
       cleanLowerMsg.startsWith('avvik -') ||
       cleanLowerMsg.startsWith('ruh:') ||
       cleanLowerMsg.startsWith('ruh på') ||
-      cleanLowerMsg.includes('avviksmelding') ||
-      (cleanLowerMsg.includes('avvik') && (
+      cleanLowerMsg.includes('avviksmelding');
+
+    const isDeviationRegistration = !isFetchDeviations && !isBareAvvik && (
+      isExplicitDeviationCommand ||
+      // 🛡️ Den løse heuristikken under må ikke fyre på åpne spørsmål, ellers
+      // opprettes det et avvik på et spørsmål i stedet for å besvares.
+      (!looksLikeOpenQuestion && cleanLowerMsg.includes('avvik') && (
         cleanLowerMsg.includes('mangler') ||
         cleanLowerMsg.includes('feil') ||
         cleanLowerMsg.includes('oppdaget') ||
@@ -1479,7 +1493,8 @@ export async function POST(req: NextRequest) {
       cleanLowerMsg.includes('timer')
     );
 
-    const isLoggingTime = detectedHours !== null && (
+    // 🛡️ Spørsmålsvakt: «hva koster 5 timer?» skal besvares, ikke føres.
+    const isLoggingTime = detectedHours !== null && !looksLikeOpenQuestion && (
       hasTimeLoggingKeyword || 
       /^(\d+(?:[.,]\d+)?)\s*(?:timer?|time|t\b)/i.test(cleanLowerMsg)
     );
@@ -1996,177 +2011,221 @@ Når brukeren ber deg sende en e-post og du har mottakers adresse:
 - ALDRI legg til en fast liste med generiske lenker (som Arbeidstilsynet, TEK17 osv.) i bunnen av vanlige samtaler, statusoppdateringer eller fremdriftsspørsmål!
 - Henvis KUN til offisielle kilder eller lover dersom brukeren eksplisitt ber om lovtekst, forskrifter (TEK17, BVN, Arbeidsmiljøloven) eller tekniske datablad.`;
 
-    let replyText = '';
-    const quickReplies: Array<{ title: string; payload: string }> = [];
+    // 🧩 Genereringen pakkes i en funksjon slik at den kan kjøres både direkte
+    // (vanlig JSON-svar) og inne i en SSE-strøm. Strømming krever at arbeidet
+    // skjer ETTER at responsen er sendt til klienten.
+    let streamedAny = false;
+    const produceReply = async (emitDelta?: (chunk: string) => void): Promise<{ reply: string; quickReplies: Array<{ title: string; payload: string }> }> => {
+      let replyText = '';
+      const quickReplies: Array<{ title: string; payload: string }> = [];
 
-    const operation = hasImage 
-      ? 'mesterai_vision_chat' 
-      : (wantsWebSearch ? 'mesterai_web_search' : (isGdprSensitive ? 'mesterai_gdpr_eu' : 'mesterai_chat'));
+      const operation = hasImage 
+        ? 'mesterai_vision_chat' 
+        : (wantsWebSearch ? 'mesterai_web_search' : (isGdprSensitive ? 'mesterai_gdpr_eu' : 'mesterai_chat'));
 
-    // 🚀 1. PRIMÆRT: Generer svar via VikingMesters interne AI Engine (med full Google Gemini Vision ved bilder eller Grounding ved nettsøk).
-    // Historikken sendes som ekte roller til primærmotoren, og kallet forsøkes på
-    // nytt én gang før vi gir opp – et forbigående feilslag skal ikke gi brukeren
-    // et dårligere svar enn nødvendig.
-    let aiEngineError = '';
-    const structuredMessages: AiChatMessage[] = [
-      ...structuredHistory.map((m) => ({
-        role: m.role,
-        content: isGdprSensitive ? m.content : maskPII(m.content)
-      })),
-      { role: 'user' as const, content: safeCurrentTurn }
-    ];
+      // 🚀 1. PRIMÆRT: Generer svar via VikingMesters interne AI Engine (med full Google Gemini Vision ved bilder eller Grounding ved nettsøk).
+      // Historikken sendes som ekte roller til primærmotoren, og kallet forsøkes på
+      // nytt én gang før vi gir opp – et forbigående feilslag skal ikke gi brukeren
+      // et dårligere svar enn nødvendig.
+      let aiEngineError = '';
+      const structuredMessages: AiChatMessage[] = [
+        ...structuredHistory.map((m) => ({
+          role: m.role,
+          content: isGdprSensitive ? m.content : maskPII(m.content)
+        })),
+        { role: 'user' as const, content: safeCurrentTurn }
+      ];
 
-    for (let aiAttempt = 0; aiAttempt < 2 && !replyText; aiAttempt++) {
-      try {
-        const aiResult = await generateWithAiEngine({
-          prompt: safeEnrichedMessage,
-          messages: structuredMessages,
-          systemInstruction: MASTER_SYSTEM_PROMPT,
-          images: imageAttachment ? [{ inlineData: imageAttachment }] : undefined,
-          model: hasImage ? 'gemini-3.8-flash' : undefined,
-          webSearch: wantsWebSearch,
-          gdprProtected: isGdprSensitive,
-          companyId: effectiveCompanyId,
-          companyName: effectiveCompany,
-          projectId: body.projectId,
-          operation
-        });
+      for (let aiAttempt = 0; aiAttempt < 2 && !replyText; aiAttempt++) {
+        try {
+          const aiResult = await generateWithAiEngine({
+            prompt: safeEnrichedMessage,
+            messages: structuredMessages,
+            onDelta: emitDelta
+              ? (chunk: string) => { streamedAny = true; emitDelta(chunk); }
+              : undefined,
+            systemInstruction: MASTER_SYSTEM_PROMPT,
+            images: imageAttachment ? [{ inlineData: imageAttachment }] : undefined,
+            model: hasImage ? 'gemini-3.8-flash' : undefined,
+            webSearch: wantsWebSearch,
+            gdprProtected: isGdprSensitive,
+            companyId: effectiveCompanyId,
+            companyName: effectiveCompany,
+            projectId: body.projectId,
+            operation
+          });
 
-        if (aiResult && aiResult.text && aiResult.text.trim()) {
-          replyText = aiResult.text;
-        } else if (!aiEngineError) {
-          aiEngineError = 'AI-motoren returnerte et tomt svar.';
-        }
-      } catch (aiEngineErr: any) {
-        const detail = aiEngineErr?.message || String(aiEngineErr);
-        if (!aiEngineError) aiEngineError = detail;
-        console.warn(`VikingMester AI Engine forsøk ${aiAttempt + 1} feilet:`, detail);
-        // Kun forbigående feil prøves på nytt. Kvote-, abonnements- og
-        // nøkkelfeil feiler likt hver gang, og billedanalyser har allerede
-        // egne reservemotorer innebygd i motoren.
-        const isTransient = !/kvote|top-?up|abonnement|utløpt|nøkkel|api[-_ ]?key|401|403|ugyldig/i.test(detail);
-        if (aiAttempt === 0 && isTransient && !hasImage) {
-          await new Promise((r) => setTimeout(r, 1200));
-        } else {
-          break;
+          if (aiResult && aiResult.text && aiResult.text.trim()) {
+            replyText = aiResult.text;
+          } else if (!aiEngineError) {
+            aiEngineError = 'AI-motoren returnerte et tomt svar.';
+          }
+        } catch (aiEngineErr: any) {
+          const detail = aiEngineErr?.message || String(aiEngineErr);
+          if (!aiEngineError) aiEngineError = detail;
+          console.warn(`VikingMester AI Engine forsøk ${aiAttempt + 1} feilet:`, detail);
+          // Kun forbigående feil prøves på nytt. Kvote-, abonnements- og
+          // nøkkelfeil feiler likt hver gang, og billedanalyser har allerede
+          // egne reservemotorer innebygd i motoren.
+          const isTransient = !/kvote|top-?up|abonnement|utløpt|nøkkel|api[-_ ]?key|401|403|ugyldig/i.test(detail);
+          // Har brukeren alt sett deler av svaret i strømmen, må vi ikke starte på nytt.
+          if (aiAttempt === 0 && isTransient && !hasImage && !streamedAny) {
+            await new Promise((r) => setTimeout(r, 1200));
+          } else {
+            break;
+          }
         }
       }
-    }
 
-    // 🔄 2. SEKUNDÆRT: Hvis intern AI Engine ikke ga svar og Botsify-nøkkel finnes, forsøk headless webhook
-    if (!replyText && BOT_API_KEY && CONVERSE_ENDPOINT) {
-      try {
-        const payload = {
-          type: 'message',
-          fbId: fbId,
-          bot_key: BOT_API_KEY,
-          text: safeEnrichedMessage,
-          message: safeEnrichedMessage,
-          current_messages: safeEnrichedMessage,
-          url: 'https://vikingmester.no',
-          user_name: userName || 'Byggmester',
-          messages: []
-        };
+      // 🔄 2. SEKUNDÆRT: Hvis intern AI Engine ikke ga svar og Botsify-nøkkel finnes, forsøk headless webhook
+      if (!replyText && BOT_API_KEY && CONVERSE_ENDPOINT) {
+        try {
+          const payload = {
+            type: 'message',
+            fbId: fbId,
+            bot_key: BOT_API_KEY,
+            text: safeEnrichedMessage,
+            message: safeEnrichedMessage,
+            current_messages: safeEnrichedMessage,
+            url: 'https://vikingmester.no',
+            user_name: userName || 'Byggmester',
+            messages: []
+          };
 
-        const response = await fetch(CONVERSE_ENDPOINT, {
-          method: 'POST',
-          headers: {
-            'Content-Type': 'application/json',
-            'Accept': 'application/json'
-          },
-          body: JSON.stringify(payload),
-          signal: AbortSignal.timeout(30000)
-        });
+          const response = await fetch(CONVERSE_ENDPOINT, {
+            method: 'POST',
+            headers: {
+              'Content-Type': 'application/json',
+              'Accept': 'application/json'
+            },
+            body: JSON.stringify(payload),
+            signal: AbortSignal.timeout(30000)
+          });
 
-        if (response.ok) {
-          const data = await response.json();
-          if (data.messages && Array.isArray(data.messages)) {
-            for (const m of data.messages) {
-              if (m.message) {
-                if (m.message.text) {
-                  replyText += (replyText ? '\n\n' : '') + m.message.text;
-                }
-                if (Array.isArray(m.message.quick_replies)) {
-                  for (const qr of m.message.quick_replies) {
-                    if (qr.title) {
-                      quickReplies.push({
-                        title: qr.title,
-                        payload: qr.payload || qr.title
-                      });
+          if (response.ok) {
+            const data = await response.json();
+            if (data.messages && Array.isArray(data.messages)) {
+              for (const m of data.messages) {
+                if (m.message) {
+                  if (m.message.text) {
+                    replyText += (replyText ? '\n\n' : '') + m.message.text;
+                  }
+                  if (Array.isArray(m.message.quick_replies)) {
+                    for (const qr of m.message.quick_replies) {
+                      if (qr.title) {
+                        quickReplies.push({
+                          title: qr.title,
+                          payload: qr.payload || qr.title
+                        });
+                      }
                     }
                   }
                 }
               }
             }
           }
+        } catch (botsifyErr: any) {
+          console.warn('Botsify fallback timeout/error:', botsifyErr.message);
         }
-      } catch (botsifyErr: any) {
-        console.warn('Botsify fallback timeout/error:', botsifyErr.message);
       }
-    }
 
-    // 🛡️ 3. SISTE UTVEI: Værdata kan alltid leveres. Ellers er vi ÆRLIGE om at
-    // motoren ikke svarte, i stedet for å skjule feilen bak en ferdigskrevet tekst.
-    if (!replyText) {
-      if (isWeather) {
-        replyText = `🌤️ **Værvarsel og HMS-arbeidsforhold for ${weatherRep.locationName}**\n*Gjelder byggeplass: ${projectName || weatherRep.locationName}*\n\n• **Temperatur nå:** ${weatherRep.temp}°C (Dagens spenn: ${weatherRep.minTemp}°C til ${weatherRep.maxTemp}°C)\n• **Værforhold:** ${weatherRep.condition}\n• **Vindstyrke:** ${weatherRep.windSpeed} m/s (${weatherRep.beaufort})\n• **Nedbør i dag:** ${weatherRep.precipitation} mm\n• **Luftfuktighet:** ${weatherRep.humidity}%\n\n🛡️ **HMS- og Arbeidsråd:**\n${weatherRep.workAdvice}`;
-      } else {
-        const quotaHit = /kvote|top-?up|abonnement|utløpt/i.test(aiEngineError);
-        // ⚠️ Rå leverandørfeil er allerede logget over. Den vises ikke til
-        // brukeren, siden den kan inneholde nøkkel-, plan- og leverandørdetaljer.
-        replyText = quotaHit
-          ? `⚠️ **MesterAI er stoppet av kvotevernet**\n\nDen månedlige inkluderte AI-kvoten for bedriften er brukt opp.\n\nDu kan fortsette umiddelbart ved å aktivere en **Mester Top-up** under **Innstillinger → Fakturering**.`
-          : `⚠️ **MesterAI fikk ikke svar fra modellen akkurat nå**\n\nSpørsmålet ditt ble ikke besvart, og jeg vil ikke gi deg et generisk standardsvar i stedet.\n\nPrøv gjerne igjen om et lite øyeblikk — spørsmålet fortjener et skikkelig svar.`;
+      // 🛡️ 3. SISTE UTVEI: Værdata kan alltid leveres. Ellers er vi ÆRLIGE om at
+      // motoren ikke svarte, i stedet for å skjule feilen bak en ferdigskrevet tekst.
+      if (!replyText) {
+        if (isWeather) {
+          replyText = `🌤️ **Værvarsel og HMS-arbeidsforhold for ${weatherRep.locationName}**\n*Gjelder byggeplass: ${projectName || weatherRep.locationName}*\n\n• **Temperatur nå:** ${weatherRep.temp}°C (Dagens spenn: ${weatherRep.minTemp}°C til ${weatherRep.maxTemp}°C)\n• **Værforhold:** ${weatherRep.condition}\n• **Vindstyrke:** ${weatherRep.windSpeed} m/s (${weatherRep.beaufort})\n• **Nedbør i dag:** ${weatherRep.precipitation} mm\n• **Luftfuktighet:** ${weatherRep.humidity}%\n\n🛡️ **HMS- og Arbeidsråd:**\n${weatherRep.workAdvice}`;
+        } else {
+          const quotaHit = /kvote|top-?up|abonnement|utløpt/i.test(aiEngineError);
+          // ⚠️ Rå leverandørfeil er allerede logget over. Den vises ikke til
+          // brukeren, siden den kan inneholde nøkkel-, plan- og leverandørdetaljer.
+          replyText = quotaHit
+            ? `⚠️ **MesterAI er stoppet av kvotevernet**\n\nDen månedlige inkluderte AI-kvoten for bedriften er brukt opp.\n\nDu kan fortsette umiddelbart ved å aktivere en **Mester Top-up** under **Innstillinger → Fakturering**.`
+            : `⚠️ **MesterAI fikk ikke svar fra modellen akkurat nå**\n\nSpørsmålet ditt ble ikke besvart, og jeg vil ikke gi deg et generisk standardsvar i stedet.\n\nPrøv gjerne igjen om et lite øyeblikk — spørsmålet fortjener et skikkelig svar.`;
+        }
       }
-    }
 
-    // Generer intelligente hurtigvalg hvis ingen er spesifisert
-    if (quickReplies.length === 0) {
-      const lowerReply = replyText.toLowerCase();
-      if (lowerReply.includes('sja') || lowerReply.includes('sikker jobb analyse')) {
-        quickReplies.push({ title: 'Opprett SJA', payload: `Opprett en komplett SJA for dagens arbeid på ${projectName || 'byggeplassen'}` });
+      // Generer intelligente hurtigvalg hvis ingen er spesifisert
+      if (quickReplies.length === 0) {
+        const lowerReply = replyText.toLowerCase();
+        if (lowerReply.includes('sja') || lowerReply.includes('sikker jobb analyse')) {
+          quickReplies.push({ title: 'Opprett SJA', payload: `Opprett en komplett SJA for dagens arbeid på ${projectName || 'byggeplassen'}` });
+        }
+        if (lowerReply.includes('tilbud') || lowerReply.includes('kalkyle')) {
+          quickReplies.push({ title: 'Lag tilbud', payload: 'Sett opp et detaljert pristilbud med materiell og arbeidstimer' });
+        }
+        if (lowerReply.includes('byggedagbok') || lowerReply.includes('time')) {
+          quickReplies.push({ title: 'Før dagbok', payload: `Før 7.5 timer og dagens værforhold i byggedagboken` });
+        }
       }
-      if (lowerReply.includes('tilbud') || lowerReply.includes('kalkyle')) {
-        quickReplies.push({ title: 'Lag tilbud', payload: 'Sett opp et detaljert pristilbud med materiell og arbeidstimer' });
-      }
-      if (lowerReply.includes('byggedagbok') || lowerReply.includes('time')) {
-        quickReplies.push({ title: 'Før dagbok', payload: `Før 7.5 timer og dagens værforhold i byggedagboken` });
-      }
-    }
 
-    // Hvis ingen spesifikk byggeplass var valgt og agentens svar etterspør eller nevner prosjekt,
-    // sørg for at tilgjengelige byggeplasser tilbys som klikkbare hurtigvalg hvis listen er tom
-    if ((!projectName || projectName === 'Alle byggeplasser') && quickReplies.length === 0 && Array.isArray(availableProjects) && availableProjects.length > 0) {
-      const lowerReply = replyText.toLowerCase();
-      if (lowerReply.includes('prosjekt') || lowerReply.includes('byggeplass') || lowerReply.includes('hvilket') || lowerReply.includes('hvilken')) {
-        for (const p of availableProjects) {
-          if (p.name) {
-            quickReplies.push({
-              title: p.name,
-              payload: p.name
-            });
+      // Hvis ingen spesifikk byggeplass var valgt og agentens svar etterspør eller nevner prosjekt,
+      // sørg for at tilgjengelige byggeplasser tilbys som klikkbare hurtigvalg hvis listen er tom
+      if ((!projectName || projectName === 'Alle byggeplasser') && quickReplies.length === 0 && Array.isArray(availableProjects) && availableProjects.length > 0) {
+        const lowerReply = replyText.toLowerCase();
+        if (lowerReply.includes('prosjekt') || lowerReply.includes('byggeplass') || lowerReply.includes('hvilket') || lowerReply.includes('hvilken')) {
+          for (const p of availableProjects) {
+            if (p.name) {
+              quickReplies.push({
+                title: p.name,
+                payload: p.name
+              });
+            }
           }
         }
       }
+
+      // 📬 FANG OPP OG UTFØR EVENTUELLE E-POST HANDLINGER VIA RESEND
+      replyText = await processEmailActionsInReply(replyText, {
+        companyName: effectiveCompany,
+        authorName: effectiveUser,
+        replyTo: effectiveSenderEmail,
+        senderEmail: effectiveSenderEmail,
+        projectName,
+        projectId: body.projectId,
+        userMessage: message,
+        baseUrl: getPublicAppUrl(req)
+      });
+
+      return { reply: replyText, quickReplies };
+    };
+
+    // 🌊 Strømmende svar når klienten ber om det: tekstbitene sendes mens
+    // modellen skriver, og hele svaret + hurtigvalgene kommer til slutt.
+    if (body.stream === true) {
+      const encoder = new TextEncoder();
+      const sseStream = new ReadableStream<Uint8Array>({
+        start: async (controller) => {
+          const send = (obj: any) => {
+            try { controller.enqueue(encoder.encode(`data: ${JSON.stringify(obj)}\n\n`)); } catch { /* lukket */ }
+          };
+          try {
+            const out = await produceReply((chunk: string) => send({ delta: chunk }));
+            send({ done: true, success: true, sessionId: fbId, reply: out.reply, quickReplies: out.quickReplies });
+          } catch (streamErr: any) {
+            console.error('MesterAI stream error:', streamErr);
+            send({ done: true, success: false, error: 'Strømmen ble avbrutt. Prøv igjen.' });
+          } finally {
+            try { controller.close(); } catch { /* allerede lukket */ }
+          }
+        }
+      });
+
+      return new Response(sseStream, {
+        headers: {
+          'Content-Type': 'text/event-stream; charset=utf-8',
+          'Cache-Control': 'no-cache, no-transform',
+          'Connection': 'keep-alive',
+          'X-Accel-Buffering': 'no'
+        }
+      });
     }
 
-    // 📬 FANG OPP OG UTFØR EVENTUELLE E-POST HANDLINGER VIA RESEND
-    replyText = await processEmailActionsInReply(replyText, {
-      companyName: effectiveCompany,
-      authorName: effectiveUser,
-      replyTo: effectiveSenderEmail,
-      senderEmail: effectiveSenderEmail,
-      projectName,
-      projectId: body.projectId,
-      userMessage: message,
-      baseUrl: getPublicAppUrl(req)
-    });
-
+    const produced = await produceReply();
     return NextResponse.json({
       success: true,
       sessionId: fbId,
-      reply: replyText,
-      quickReplies: quickReplies
+      reply: produced.reply,
+      quickReplies: produced.quickReplies
     });
 
   } catch (error: any) {

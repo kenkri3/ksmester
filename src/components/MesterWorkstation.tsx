@@ -71,6 +71,7 @@ import {
   Loader2
 } from 'lucide-react';
 import { getDynamicReasoningFlow } from '@/src/lib/reasoningEngine';
+import { streamAgentChat } from '@/src/lib/streamChat';
 import { cn } from '@/src/lib/utils';
 import { toast } from 'sonner';
 import { useTranslation } from 'react-i18next';
@@ -2724,13 +2725,20 @@ export default function MesterWorkstation({
         }
       } catch {}
 
-      const res = await fetch('/api/agent/chat', {
-        method: 'POST',
-        headers: { 
-          'Content-Type': 'application/json',
-          ...(token ? { 'Authorization': 'Bearer ' + token } : {})
-        },
-        body: JSON.stringify({
+      // 🌊 Legg inn en tom assistentmelding med en gang, og fyll den mens
+      // modellen skriver. Uten dette ser brukeren bare en spinner i 30-60 sek.
+      const assistantPlaceholderId = `a-${Date.now()}`;
+      setMessages([
+        ...updatedWithUser,
+        {
+          id: assistantPlaceholderId,
+          role: 'assistant',
+          content: '',
+          timestamp: new Date().toLocaleTimeString('no-NO', { hour: '2-digit', minute: '2-digit' })
+        } as ChatMessageItem
+      ]);
+
+      const data = await streamAgentChat({
           message: textToSend.trim() || userMessage.content,
           history: historyPayload,
           previousSessionContext: previousSessionContext || undefined,
@@ -2801,12 +2809,20 @@ export default function MesterWorkstation({
               description: d.description,
               correctiveAction: d.correctiveAction
             }))
-        })
-      });
+        }, token, {
+          onDelta: (chunk) => {
+            if (thinkingTimerRef.current) {
+              clearInterval(thinkingTimerRef.current);
+              thinkingTimerRef.current = null;
+            }
+            setIsLoading(false);
+            setMessages(prev => prev.map(m => m.id === assistantPlaceholderId
+              ? { ...m, content: m.content + chunk }
+              : m));
+          }
+        });
 
-      if (!res.ok) throw new Error(`Agent-API svarte med status ${res.status}`);
-
-      const data = await res.json();
+      if (!data || !data.reply) throw new Error('Agenten returnerte et tomt svar.');
 
       if (thinkingTimerRef.current) {
         clearInterval(thinkingTimerRef.current);
