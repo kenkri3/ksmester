@@ -301,3 +301,24 @@ Gar i `docs/manuelt-arbeid.md` med BLOKKERER-merking. Jeg stopper og spor fremfo
 **Nytt:** `scripts/security-check-high.mjs` - 24 kjorbare HOY-sjekker.
 
 **Status:** 10 av 10 BLOKKERER rettet (E-08 uverifisert, krever Postgres) · 8 av 28 HOY rettet og verifisert · 17 commits pa `lansering/fikser` · 0 push.
+### Runde 5 — 2026-10-05 (målrunde 2, fortsatt)
+
+**Flere HOY-funn lukket.** Status: 17/17 BLOKKERER-sjekker og 24/24 HOY-sjekker passerer i produksjonsmodus. 20 commits.
+
+| Funn | Rettelse | Verifisert |
+| :--- | :--- | :--- |
+| E-14 | `o.id` godtas ikke som capability-token; mottaker last til ordrens kunde | 2/2 |
+| E-16 | Kun bot-nokkel/intern/SuperAdmin; timing-safe sammenligning | 3/3 |
+| E-18 | Spoofbar `x-vercel-cron` fjernet | 2/2 |
+| W-01 | Tre apne tenant-fallbacks (`\|\| !data.company`) fjernet | Statisk + kode |
+| W-02 | Sletting av tilbud feiler na aerlig i stedet for a melde suksess | Kode |
+| W-03 | `loading` avsluttes ved lytterfeil; ny `loadError`-tilstand | Kode |
+| W-04 | Fabrikerte prosjektfelt fjernet (P-2026, Privatkunde, 15 %, «Nylig», og en ekte privatadresse) | Kode |
+| W-05 | Fabrikerte penge- og jussfelt fjernet (25 % mva av ingenting, «NS 8406 pkt. 19.2» uten grunnlag) | Kode |
+| W-11 | To dode knapper koblet til ekte handlinger; ny `settings`-gren i arbeidsflaten | Kode |
+| R-01 | Org.nr samlet i én sannhetskilde, rettet fra ugyldig til verifisert | Statisk: 0 forekomster igjen |
+| R-02 | Plattformens org.nr skrives ikke lenger inn i kundens FDV-dokumenter | Kode |
+
+**Viktig om verifiseringsmetode:** dev-serveren kan ikke brukes til a bevise E-16 og E-18, fordi `verifyCronOrInternalSecret` med vilje returnerer `true` for localhost nar `NODE_ENV !== 'production'`. Begge sa «autorisert» uansett kode. Alle sikkerhetssjekker kjores derfor mot `next start` med `NODE_ENV=production`.
+
+**Gjenstar av HOY:** R-03 (priser i JSON-LD mot plans.ts), F-01 til F-04 (personvern og ekte persondata), T-01 (zoom sperret), O-04, O-06, B-01 (myndighetspastander), og C-02/C-03 (aerlige feil i stedet for tomme lister i API-klienten). Flere av disse krever brukerens beslutning og star i docs/manuelt-arbeid.md.

@@ -199,3 +199,27 @@ Dette er med vilje, ikke en forglemmelse. Jeg sier ikke at disse er i orden.
 - **Dine originalfiler i `G:` er ikke rort.** Kildekoden ligger urort pa `main` med mine endringer kun i worktree-en, fram til du sier ja til a slå dem sammen.
 - **Slik slar du dem sammen selv senere:** `git -C "G:\Min disk\GitHub\ksmester" merge --ff-only lansering/fikser`
 - **Slik rydder du bort arbeidskopien:** `git -C "G:\Min disk\GitHub\ksmester" worktree remove C:\ksmester-work`
+---
+
+## 10. TILFØYET ETTER RUNDE 5
+
+### 10.1 Bekreft organisasjonsnummeret — BLOKKERER (men rettelsen er teknisk verifisert)
+Jeg har rettet `933 607 779` → `933 851 222` i 16 filer og samlet det i én fil: `src/constants/companyDetails.ts`.
+
+**Slik sjekker du selv at det er riktig** (tar 10 sekunder): åpne
+`https://data.brreg.no/enhetsregisteret/api/enheter/933851222` i nettleseren. Du skal få `"navn":"AI CHAT NORGE AS"`.
+Prøv deretter `https://data.brreg.no/enhetsregisteret/api/enheter/933607779` — den gir 404, altså fantes det gamle nummeret ikke.
+
+- **Hvis riktig:** ingen handling nødvendig.
+- **Hvis det juridiske ansvarlige selskapet er et annet:** endre verdien i `src/constants/companyDetails.ts` — det er det eneste stedet. Ikke i de 16 andre filene.
+- **Hvis ikke:** feil org.nr står på kontakt, om-oss (også i Googles beskrivelse), personvern, vilkår, footer, og i FDV-dokumenter kunden mottar.
+
+### 10.2 Plattformens org.nr skrives ikke lenger i kundens dokumenter
+FDV-sluttdokumentasjonen skrev tidligere inn et hardkodet org.nr som om det var entreprenørens. Nå vises prosjektets eget nummer, eller «Ikke registrert».
+- **Hva du bør gjøre:** sørg for at prosjektene har `companyOrgnr` satt der det er relevant. Ellers står det «Ikke registrert» i dokumentet — som er ærlig, men mindre komplett.
+- **Hvis ikke:** dokumenter uten org.nr. Bedre enn dokumenter med feil org.nr.
+
+### 10.3 Poster uten bedriftstilhørighet vises ikke lenger
+Tre lister i dashboardet godtok tidligere poster som manglet `company`-felt, og viste dem til alle bedrifter. Det er lukket.
+- **Hva du bør gjøre:** hvis en kunde sier at noe er «forsvunnet» etter denne endringen, mangler posten bedriftstilhørighet i databasen. Den må da få `companyId` eller `company` satt. Dette er en bevisst atferdsendring for å lukke en lekkasje.
+- **Hvis ikke:** vi har en åpen tenantisolasjon der én kundes poster vises hos en annen.
