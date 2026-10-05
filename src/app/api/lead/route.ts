@@ -162,28 +162,13 @@ export async function POST(req: NextRequest) {
       const userId = existingUser?.id || existingUser?.uid || ('u-' + Date.now().toString(36) + '-' + Math.random().toString(36).substring(2, 7));
 
       if (existingUser) {
-        // Bruker finnes allerede: Hvis passord ble oppgitt ved registreringen, oppdater passord og aktiver prøveperiode
-        if (userEnteredPassword) {
-          await dbQuery(
-            `UPDATE users SET password = $1, company = $2, company_id = $3, subscription_status = 'trial', updated_at = NOW() WHERE LOWER(email) = $4`,
-            [hashedPassword, companyOfficialName, companyId, emailLower]
-          ).catch(() => {});
-        }
-        authUser = {
-          id: existingUser.id,
-          uid: existingUser.id,
-          email: emailLower,
-          displayName: rawName || existingUser.display_name || existingUser.displayName || finalDisplayName,
-          role: existingUser.role || 'leader',
-          trade: trade || existingUser.trade || 'Byggmester',
-          company: companyOfficialName,
-          companyId,
-          subscriptionStatus: 'trial',
-          plan: planTitle,
-          modules: ['projects', 'checklists', 'deviations', 'ai', 'economy', 'fdv', 'inventory', 'vehicle', 'time', 'apprentice', 'building_app'],
-          trialDaysLeft: 14,
-          totalTrialDays: 14
-        };
+        // SIKKERHETSFIKS (E-02): Denne grenen overskrev tidligere passordet til en
+        // eksisterende bruker og utstedte en gyldig JWT - uautentisert kontoovertakelse.
+        // Leadet lagres fortsatt og admin varsles, men kontoen roeres ikke og ingen
+        // sesjon utstedes. Svaret utad er identisk med foer, slik at ruten heller ikke
+        // kan brukes til aa kartlegge hvilke e-postadresser som er registrert.
+        authToken = null;
+        authUser = null;
       } else {
         // Ny bruker opprettes med 14 dagers prøveperiode
         authUser = {
@@ -219,54 +204,56 @@ export async function POST(req: NextRequest) {
         inMemoryStore.users.push({ ...authUser, password: hashedPassword });
       }
 
-      // Klargjør bedriftsoppføring i companies
-      const companyRecord = {
-        id: companyId,
-        name: companyOfficialName,
-        orgnr: finalOrgnr || '',
-        contactName: finalDisplayName,
-        email: emailLower,
-        phone: phone || '',
-        trade,
-        plan: planRaw.includes('solo') ? 'solo' : planRaw.includes('entreprenor') ? 'entreprenor' : 'team',
-        planTitle,
-        monthlyPrice,
-        status: 'active',
-        subscriptionStatus: 'trial',
-        trialDaysLeft: 14,
-        totalTrialDays: 14,
-        trialStartDate: new Date().toISOString(),
-        trialEndDate: new Date(Date.now() + 14 * 24 * 60 * 60 * 1000).toISOString(),
-        modules: ['projects', 'checklists', 'deviations', 'ai', 'economy', 'fdv', 'inventory', 'vehicle', 'time', 'apprentice', 'building_app'],
-        convertedFromLeadId: leadId,
-        createdAt: new Date().toISOString()
-      };
-      await saveCollectionItem('companies', companyRecord);
-
-      // Klargjør invitasjonspost for sikker token-innlogging / magisk lenke
-      await saveCollectionItem('invitations', {
-        id: `inv-${inviteToken}`,
-        token: inviteToken,
-        email: emailLower,
-        companyId,
-        companyName: companyOfficialName,
-        role: 'leader',
-        status: 'pending',
-        invitedBy: 'system_self_signup',
-        expiresAt: new Date(Date.now() + 30 * 24 * 60 * 60 * 1000).toISOString(),
-        createdAt: new Date().toISOString()
-      });
-
-      // Generer autoritativ JWT-sesjonstoken så brukeren kan logges inn umiddelbart i nettleseren
-      authToken = signToken({
-        id: authUser.id,
-        email: authUser.email,
-        role: authUser.role,
-        companyId: authUser.companyId,
-        company: authUser.company,
-        displayName: authUser.displayName,
-        trade: authUser.trade
-      });
+      if (!existingUser) {
+        // Klargjør bedriftsoppføring i companies
+        const companyRecord = {
+          id: companyId,
+          name: companyOfficialName,
+          orgnr: finalOrgnr || '',
+          contactName: finalDisplayName,
+          email: emailLower,
+          phone: phone || '',
+          trade,
+          plan: planRaw.includes('solo') ? 'solo' : planRaw.includes('entreprenor') ? 'entreprenor' : 'team',
+          planTitle,
+          monthlyPrice,
+          status: 'active',
+          subscriptionStatus: 'trial',
+          trialDaysLeft: 14,
+          totalTrialDays: 14,
+          trialStartDate: new Date().toISOString(),
+          trialEndDate: new Date(Date.now() + 14 * 24 * 60 * 60 * 1000).toISOString(),
+          modules: ['projects', 'checklists', 'deviations', 'ai', 'economy', 'fdv', 'inventory', 'vehicle', 'time', 'apprentice', 'building_app'],
+          convertedFromLeadId: leadId,
+          createdAt: new Date().toISOString()
+        };
+        await saveCollectionItem('companies', companyRecord);
+  
+        // Klargjør invitasjonspost for sikker token-innlogging / magisk lenke
+        await saveCollectionItem('invitations', {
+          id: `inv-${inviteToken}`,
+          token: inviteToken,
+          email: emailLower,
+          companyId,
+          companyName: companyOfficialName,
+          role: 'leader',
+          status: 'pending',
+          invitedBy: 'system_self_signup',
+          expiresAt: new Date(Date.now() + 30 * 24 * 60 * 60 * 1000).toISOString(),
+          createdAt: new Date().toISOString()
+        });
+  
+        // Generer autoritativ JWT-sesjonstoken så brukeren kan logges inn umiddelbart i nettleseren
+        authToken = signToken({
+          id: authUser.id,
+          email: authUser.email,
+          role: authUser.role,
+          companyId: authUser.companyId,
+          company: authUser.company,
+          displayName: authUser.displayName,
+          trade: authUser.trade
+        });
+      }
     }
 
     // 4. Synkroniser til VikingCRM via Webhook hvis konfigurert
@@ -509,7 +496,10 @@ export async function POST(req: NextRequest) {
 
     return NextResponse.json({
       success: true,
-      message: '14 dagers gratis prøveperiode er aktivert! Velkommen til VikingMester.',
+      // Ærlig melding: en eksisterende konto får ingen ny prøveperiode og ingen sesjon.
+      message: authUser
+        ? '14 dagers gratis prøveperiode er aktivert! Velkommen til VikingMester.'
+        : 'Takk! Vi har registrert henvendelsen din. Har du allerede en konto, kan du logge inn eller bruke «glemt passord».',
       token: authToken,
       user: authUser,
       lead: leadRecord,
