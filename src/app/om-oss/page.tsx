@@ -3,6 +3,7 @@ import Link from 'next/link';
 import { PublicHeader } from '@/src/components/PublicHeader';
 import { PublicFooter } from '@/src/components/PublicFooter';
 import { StructuredData } from '@/src/components/StructuredData';
+import { PLATFORM_LEGAL_NAME, PLATFORM_LEGAL_NAME_FULL, PLATFORM_ORGNUMBER_LABEL } from '@/src/constants/companyDetails';
 import { 
   Building2, 
   ShieldCheck, 
@@ -22,7 +23,7 @@ const baseUrl = process.env.NEXT_PUBLIC_APP_URL || 'https://vikingmester.no';
 
 export const metadata: Metadata = {
   title: 'Om oss | Hvem står bak VikingMester? | AIChat Norge AS',
-  description: 'VikingMester leveres av AIChat Norge AS (Org.nr: 933 607 779 MVA). Vi bygger fremtidens enkle og intelligente KS- og HMS-system for norske håndverkere.',
+  description: `VikingMester leveres av ${PLATFORM_LEGAL_NAME} (Org.nr: ${PLATFORM_ORGNUMBER_LABEL}). Vi bygger fremtidens enkle og intelligente KS- og HMS-system for norske håndverkere.`,
   alternates: {
     canonical: `${baseUrl}/om-oss`,
   },
@@ -90,8 +91,8 @@ export default function OmOssPage() {
                 <Building2 className="text-slate-400 mt-1 shrink-0" size={18} />
                 <div>
                   <div className="font-bold text-navy-900">Juridisk enhet</div>
-                  <div className="text-slate-600">AIChat Norge AS (Vikingnet)</div>
-                  <div className="text-slate-500 text-xs">Org.nr: 933 607 779 MVA</div>
+                  <div className="text-slate-600">{PLATFORM_LEGAL_NAME_FULL}</div>
+                  <div className="text-slate-500 text-xs">Org.nr: {PLATFORM_ORGNUMBER_LABEL}</div>
                 </div>
               </div>
 

@@ -4,6 +4,7 @@ import { getUserFromRequest, isUserAdmin } from '@/src/lib/server/auth';
 import { saveCollectionItem, getCollectionItemById, dbQuery, inMemoryStore } from '@/src/lib/server/db';
 import { sanitize, sanitizeEmail, sanitizeHeader } from '@/src/lib/sanitize';
 import { sendSystemEmail, renderBrandedEmailTemplate } from '@/src/lib/server/emailSender';
+import { PLATFORM_ORGNUMBER } from '@/src/constants/companyDetails';
 
 export async function POST(req: NextRequest) {
   try {
@@ -94,8 +95,8 @@ export async function POST(req: NextRequest) {
       finalCompany = {
         id: 'comp-001',
         name: companyName,
-        orgNumber: '933 607 779',
-        orgnr: '933 607 779',
+        orgNumber: PLATFORM_ORGNUMBER,
+        orgnr: PLATFORM_ORGNUMBER,
         contactName: name || 'Fredrik R. Ellingsen',
         email: emailLower,
         phone: phone || '401 63 082',
@@ -199,7 +200,7 @@ export async function POST(req: NextRequest) {
       trialStartDate: isTrial ? now.toISOString() : undefined,
       trialDaysLeft: isTrial ? trialDays : undefined,
       isBetaTester,
-      orgnr: isSuperAdminAccount ? '933 607 779' : (orgNumber || null),
+      orgnr: isSuperAdminAccount ? PLATFORM_ORGNUMBER : (orgNumber || null),
       phone: phone || null,
       isPartner: isSuperAdminAccount || isPartner,
       isInternal: isSuperAdminAccount || isInternal,

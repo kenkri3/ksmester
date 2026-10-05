@@ -3,6 +3,7 @@ import { PublicHeader } from '@/src/components/PublicHeader';
 import { PublicFooter } from '@/src/components/PublicFooter';
 import { StructuredData } from '@/src/components/StructuredData';
 import { ContactForm } from '@/src/components/ContactForm';
+import { PLATFORM_LEGAL_NAME, PLATFORM_ORGNUMBER_LABEL } from '@/src/constants/companyDetails';
 import { 
   Phone, 
   Mail, 
@@ -113,7 +114,7 @@ export default function KontaktPage() {
                   <div>
                     <div className="text-xs text-slate-400">Lokasjon</div>
                     <div className="font-bold text-sm text-white">Oslo / Fredrikstad, Norge</div>
-                    <div className="text-[11px] text-slate-400">AIChat Norge AS (Org.nr: 933 607 779 MVA)</div>
+                    <div className="text-[11px] text-slate-400">{PLATFORM_LEGAL_NAME} (Org.nr: {PLATFORM_ORGNUMBER_LABEL})</div>
                   </div>
                 </div>
               </div>

@@ -27,7 +27,7 @@ Allow: /
 
 # ── ORGANISATION ─────────────────────────────────────────────
 # Name: VikingMester
-# Legal Name / Operator: Vikingnet / AIChat Norge AS (Org.nr: 933 607 779 MVA)
+# Legal Name / Operator: Vikingnet / AIChat Norge AS (Org.nr: 933 851 222 MVA)
 # Website: https://vikingmester.no
 # Contact: hei@vikingmester.no
 # Country: Norge (Norway)

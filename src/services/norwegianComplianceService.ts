@@ -160,7 +160,10 @@ export const norwegianComplianceService = {
 
     const companyInfo = {
       name: project.companyName || matchedCompany?.name || authUser?.company || 'Byggmester Bedrift AS',
-      orgNumber: project.companyOrgnr || matchedCompany?.orgnr || authUser?.orgnr || '933 607 779 MVA',
+      // SIKKERHETSFIKS (R-02): falt tilbake på et hardkodet org.nr som ikke
+      // tilhørte kunden. Nå en ærlig tomverdi, i stedet for å tilskrive
+      // entreprenøren feil organisasjon i et juridisk dokument.
+      orgNumber: project.companyOrgnr || matchedCompany?.orgnr || authUser?.orgnr || '',
       address: project.companyAddress || matchedCompany?.address || authUser?.address || 'Norge',
       contactPerson: project.projectManager || matchedCompany?.contactName || authUser?.displayName || authUser?.name || 'Faglig Leder',
       phone: project.companyPhone || matchedCompany?.phone || authUser?.phone || '',

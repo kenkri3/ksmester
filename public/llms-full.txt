@@ -6,7 +6,7 @@
 - **Navn:** VikingMester
 - **Nettside:** https://vikingmester.no
 - **Operatør:** Vikingnet / AIChat Norge AS
-- **Organisasjonsnummer:** 933 607 779 MVA
+- **Organisasjonsnummer:** 933 851 222 MVA
 - **E-post:** hei@vikingmester.no
 - **Målgruppe:** Norske entreprenører, byggmestre, tømrere, snekkere, rørleggere, elektrikere, malere, murere, blikkenslagere, anleggsgartnere og maskinentreprenører.
 - **Formål:** Gi håndverkere full kontroll på lovpålagt HMS, kvalitetssikring (KS), byggedagbok, avvikshåndtering og endringsvarsler uten tungt skjemaarbeid, ved å utnytte stemmestyring og kunstig intelligens.

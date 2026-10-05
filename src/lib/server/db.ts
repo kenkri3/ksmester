@@ -3,6 +3,7 @@ import bcrypt from 'bcrypt';
 import { randomBytes } from 'crypto';
 import fs from 'fs';
 import path from 'path';
+import { PLATFORM_ORGNUMBER } from '@/src/constants/companyDetails';
 
 const LOCAL_STORE_DIR = path.resolve(process.cwd(), '.data');
 const LOCAL_STORE_FILE = path.join(LOCAL_STORE_DIR, 'local_store.json');
@@ -165,7 +166,10 @@ export const inMemoryStore: Record<string, any[]> = {
     {
       id: 'comp-001',
       name: 'Mester Entreprenør AS',
-      orgnr: '933 607 779',
+      // SIKKERHETSFIKS (R-01): dette var det feilaktige '933 607 779', som ikke
+      // finnes i Enhetsregisteret. Rettet til plattformens verifiserte nummer via
+      // én sannhetskilde, se src/constants/companyDetails.ts.
+      orgnr: PLATFORM_ORGNUMBER,
       contactName: 'Ken (Admin)',
       email: 'kenkri3@gmail.com',
       phone: '401 63 082',
@@ -751,7 +755,11 @@ export async function getCollectionItems(collectionName: string): Promise<any[]>
               const synthCompany = {
                 id: compId,
                 name: compName,
-                orgnr: u.orgnr || '933 607 779',
+                // SIKKERHETSFIKS (R-02): dette var en fallback til plattformens
+                // gamle, ugyldige org.nr. En syntetisk bedriftsrad skal ikke
+                // tilskrives en organisasjon den ikke er - bruk brukerens eget
+                // nummer, eller ingenting.
+                orgnr: u.orgnr || '',
                 contactName: u.display_name || u.email,
                 email: u.email,
                 phone: '401 63 082',

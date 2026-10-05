@@ -4,6 +4,7 @@ import React from 'react';
 import Link from 'next/link';
 import Logo from './Logo';
 import { ShieldCheck, Mail, Phone, MapPin, Award, CheckCircle2 } from 'lucide-react';
+import { PLATFORM_LEGAL_NAME_FULL, PLATFORM_ORGNUMBER_LABEL } from '../constants/companyDetails';
 
 export function PublicFooter() {
   return (
@@ -127,8 +128,8 @@ export function PublicFooter() {
                 <span>Oslo, Norge</span>
               </div>
               <div className="pt-2 text-xs text-slate-500">
-                <p className="font-semibold text-slate-400">AIChat Norge AS / Vikingnet</p>
-                <p>Org.nr: 933 607 779 MVA</p>
+                <p className="font-semibold text-slate-400">{PLATFORM_LEGAL_NAME_FULL}</p>
+                <p>Org.nr: {PLATFORM_ORGNUMBER_LABEL}</p>
               </div>
             </div>
           </div>

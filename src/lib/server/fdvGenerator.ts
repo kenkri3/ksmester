@@ -1,4 +1,5 @@
 import { getCollectionItems, getCollectionItemById } from './db';
+import { displayOrgnr } from '@/src/constants/companyDetails';
 
 export interface FDVReportResult {
   projectId: string;
@@ -127,7 +128,12 @@ export async function generateFDVReport(projectId: string): Promise<FDVReportRes
       </div>
       <div style="text-align: right;">
         <div style="font-size: 16px; font-weight: 800; color: #0284c7;">${project.companyName || 'Mester Entreprenør AS'}</div>
-        <div style="font-size: 11px; color: #64748b;">Org.nr: 933 607 779</div>
+        <!-- SIKKERHETSFIKS (R-02): her sto et hardkodet org.nr som ikke tilhørte
+             kunden. Det skrev plattformens nummer inn i kundens
+             FDV-sluttdokumentasjon som om det var entreprenørens. Feil
+             organisasjonsnummer i et juridisk dokument er en gal opplysning.
+             Na vises prosjektets eget nummer, eller «Ikke registrert». -->
+        <div style="font-size: 11px; color: #64748b;">Org.nr: ${displayOrgnr((project as any).companyOrgnr || (project as any).orgnr)}</div>
       </div>
     </div>
 

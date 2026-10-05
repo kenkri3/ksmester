@@ -3,6 +3,7 @@ import bcrypt from 'bcrypt';
 import { dbQuery, inMemoryStore, saveCollectionItem, ADMIN_EMAILS } from '@/src/lib/server/db';
 import { signToken } from '@/src/lib/server/auth';
 import { sendSystemEmail, renderBrandedEmailTemplate } from '@/src/lib/server/emailSender';
+import { PLATFORM_ORGNUMBER } from '@/src/constants/companyDetails';
 
 export async function POST(req: NextRequest) {
   try {
@@ -118,7 +119,7 @@ export async function POST(req: NextRequest) {
       role: finalRole,
       trade: trade || 'Byggmester',
       company: finalCompany,
-      orgnr: isSuperAdminEmail ? '933 607 779' : (cleanOrgnr || null),
+      orgnr: isSuperAdminEmail ? PLATFORM_ORGNUMBER : (cleanOrgnr || null),
       companyId: companyId,
       subscriptionStatus: finalStatus,
       gdprConsent: true,
@@ -142,7 +143,7 @@ export async function POST(req: NextRequest) {
       const companyData = {
         id: companyId,
         name: userObj.company,
-        orgnr: isSuperAdminEmail ? '933 607 779' : (cleanOrgnr || ''),
+        orgnr: isSuperAdminEmail ? PLATFORM_ORGNUMBER : (cleanOrgnr || ''),
         contactName: userObj.displayName,
         email: emailLower,
         phone: '401 63 082',
