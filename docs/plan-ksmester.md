@@ -382,3 +382,20 @@ Alle 7 er na rettet og verifisert ved a lese filen tilbake fra disk. Typekontrol
 **Lærdom som er verdt a ta med:** et script som sier «ferdig» er ikke et bevis. Fra na av verifiseres hver fil ved a leses tilbake fra disk, ikke ved a lese scriptets utskrift. Dette er andre gang i sesjonen et inline-script ga falsk suksess — redigeringsverktoyet brukes videre for alle kildeendringer.
 
 **E-29-status, korrigert:** 8 filer / 16 steder rettet og verifisert. 19 steder i 12 filer gjenstar, i admin-, cron- og agent-rutene: `agent/autonomous` (2), `agent/dispatch` (2), `agent/email` (1), `ai/generate` (1), `apprentice` (2), `auth/reset-password` (3), `company/convert-lead` (1), `contract` (2), `cron/daily-summary` (1), `cron/nurture` (1), `cron/seo-autopilot` (1), `cron/seo-worker` (1), `documentation` (2), `integrations/verify` (2), `seo/pagespeed` (1). Samme monster, mekanisk arbeid.
+### Runde 8 — 2026-10-05 (målrunde 5)
+
+**E-29 fullfort, E-27 og R-07 rettet. 31 commits.**
+
+| Funn | Rettelse |
+| :--- | :--- |
+| **E-29** | Alle 50 lekkasjer av rå `error.message` i `src/app/api` er lukket. Ny `src/lib/server/apiError.ts` logger full feil server-side med korrelasjons-ID og svarer generisk. Tre ruter med andre svarformat (Botsify-formatet i `agent/email`, `{success,error}` i `cron/seo-autopilot`, `{valid,error}` i `auth/reset-password`) logger og svarer generisk uten hjelperen, så klientkontrakten holdes |
+| **E-27** | `seo/pagespeed` var uautentisert og sendte `url=` til Google med plattformens nøkkel. Krever nå innlogging, og målet må være vikingmester.no med mindre brukeren er SuperAdmin |
+| **R-07** | `/_next/` fjernet fra disallow — den blokkerte JS/CSS for crawlere, og forsiden er klient-rendret. `/invite`, `/invite/` og `/auth/` lagt til, slik at token-baserte lenker ikke indekseres |
+
+**Egen feil, rettet i samme runde:** da jeg krevde innlogging på tre ruter, sendte tre klientkomponenter fortsatt ingen `Authorization`-header. Alle tre svelger feilen stille (`if (res.ok)` uten `else`), så fanene ville bare stått tomme uten feilmelding — nøyaktig den stille svikten prosjektet skal bort fra. `Settings.tsx` (GET, POST og DELETE), `SuperAdmin.tsx` og `SeoAutopilotHub.tsx` sender nå `getHeaders()`. POST i Settings hadde i tillegg mistet `Content-Type` og ville fått 415.
+
+**Lærdom fort i planen:** når en rute strammes, må alle kallere sjekkes i samme runde. Jeg fant disse bare fordi jeg søkte etter kallere i stedet for å anta at endringen var isolert.
+
+**Nye automatiske sjekker:** E-29 og R-07 er lagt inn i `security-check-high.mjs`, så de ikke kan regressere. Suiten er nå 31 sjekker.
+
+**Status: 17/17 BLOKKERER og 31/31 HØY passerer i produksjonsmodus.**
