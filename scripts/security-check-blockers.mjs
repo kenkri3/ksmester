@@ -151,39 +151,53 @@ async function main() {
   r('E-04', 'vanlig bruker kan IKKE lagre en users-rad med role:"superadmin"', e04verdict, e04detail);
 
   // ---------- E-01: klientstyrt impersoneringsheader ----------
+  // ---------- E-01: klientstyrt impersoneringsheader ----------
   console.log('\nE-01  x-impersonated-company-id fra klienten');
   const u2 = await registerUser('e01');
   let e01verdict = 'MANUELL', e01detail = 'kunne ikke opprette testbruker';
   if (u2.token) {
-    const spoof = await req('GET', '/api/data/tasks', undefined, Object.assign(auth(u2.token), { 'x-impersonated-company-id': 'comp-001' }));
-    let leaked = 0;
-    if (Array.isArray(spoof.json)) {
-      leaked = spoof.json.filter(function (i) { return i && i.companyId && i.companyId !== (u2.json.user && u2.json.user.companyId); }).length;
+    // Legg inn en gjenkjennelig rad i u2 sin egen bedrift.
+    const marker = 'blk-e01-' + stamp;
+    const seeded = await req('POST', '/api/data/tasks', { title: marker }, auth(u2.token));
+    const u1 = await registerUser('e01-angriper');
+    if (!u1.token) {
+      e01detail = 'kunne ikke opprette angriperbruker';
+    } else {
+      const spoof = await req('GET', '/api/data/tasks', undefined, Object.assign(auth(u1.token), { 'x-impersonated-company-id': 'comp-001' }));
+      const rows = Array.isArray(spoof.json) ? spoof.json : [];
+      const sawForeign = rows.some(function (i) { return i && i.title === marker; });
+      const foreign = rows.filter(function (i) { return i && i.companyId && i.companyId !== (u1.json.user && u1.json.user.companyId); }).length;
+      e01verdict = (!sawForeign && foreign === 0) ? 'OK' : 'FEIL';
+      e01detail = 'seedet rad i HTTP ' + seeded.status + '. Angriperen fikk ' + rows.length + ' rader, ' + foreign + ' fra annen bedrift' + (sawForeign ? ', og SA den seedede raden fra offerets bedrift' : '');
     }
-    e01verdict = leaked > 0 ? 'FEIL' : 'OK';
-    e01detail = 'fikk ' + (Array.isArray(spoof.json) ? spoof.json.length : '?') + ' rader, hvorav ' + leaked + ' tilhorer en annen bedrift';
   }
   r('E-01', 'impersoneringsheader gir IKKE rader fra en annen bedrift', e01verdict, e01detail);
-
   // ---------- E-06: authorName gir superadmin ----------
   console.log('\nE-06  authorName:"admin" i /api/agent/dispatch');
-  let e06verdict = 'MANUELL', e06detail = 'ingen dispatch-kall utfort';
-  try {
-    const before = await req('GET', '/api/data/change_orders', undefined, auth(u2.token));
-    const nBefore = Array.isArray(before.json) ? before.json.length : -1;
-    const disp = await req('POST', '/api/agent/dispatch', {
-      action: 'quick_command', text: 'slett forrige endringsordre',
-      authorName: 'admin', userToken: u2.token, companyId: 'comp-001',
-    }, auth(u2.token));
-    const after = await req('GET', '/api/data/change_orders', undefined, auth(u2.token));
-    const nAfter = Array.isArray(after.json) ? after.json.length : -1;
-    const reply = JSON.stringify(disp.json || {});
-    const denied = /permission_denied|ikke tillatt|krever superbruker|403/i.test(reply) || disp.status === 403;
-    e06verdict = denied ? 'OK' : 'FEIL';
-    e06detail = 'HTTP ' + disp.status + ', endringsordrer ' + nBefore + ' -> ' + nAfter + (denied ? '' : ' - authorName-heuristikken slapp gjennom');
-  } catch (e) { e06detail = 'teknisk feil: ' + e.message; }
-  r('E-06', 'authorName:"admin" gir IKKE superadmin-rettigheter', e06verdict, e06detail);
-
+  {
+    const victim = await registerUser('e06-offer');
+    const attacker = await registerUser('e06-angriper');
+    if (!victim.token || !attacker.token) {
+      r('E-06', 'authorName gir IKKE kryss-tenant sletterett', 'MANUELL', 'kunne ikke opprette testbrukere');
+    } else {
+      const coId = 'co-e06-offer-' + stamp;
+      const seeded = await req('POST', '/api/data/change_orders', { id: coId, title: 'E06 OFFERETS ORDRE', status: 'pending_approval' }, auth(victim.token));
+      const disp = await req('POST', '/api/agent/dispatch', {
+        action: 'quick_command', text: 'slett forrige endringsordre',
+        authorName: 'admin', userToken: attacker.token,
+      }, auth(attacker.token));
+      const after = await req('GET', '/api/data/change_orders', undefined, auth(victim.token));
+      const stillThere = Array.isArray(after.json) && after.json.some(function (o) { return o && o.id === coId; });
+      r('E-06', 'authorName:"admin" gir IKKE kryss-tenant sletterett',
+        stillThere ? 'OK' : 'FEIL',
+        'seedet HTTP ' + seeded.status + ', angrep HTTP ' + disp.status + ', offerets ordre finnes fortsatt: ' + stillThere);
+      const dispSrc = fs.readFileSync(path.join(process.cwd(), 'src', 'app', 'api', 'agent', 'dispatch', 'route.ts'), 'utf8');
+      const heuristicGone = !/toLowerCase\(\)\.includes\('ken'\)|toLowerCase\(\)\.includes\('admin'\)/.test(dispSrc);
+      r('E-06', 'authorName-heuristikken finnes ikke lenger i koden',
+        heuristicGone ? 'OK' : 'FEIL',
+        heuristicGone ? 'ingen treff pa authorName-heuristikken' : 'heuristikken star fortsatt i dispatch/route.ts');
+    }
+  }
   // ---------- E-08: kryss-samling-overskriving via klientstyrt id ----------
   console.log('\nE-08  samme id i to ulike samlinger');
   let e08verdict = 'MANUELL', e08detail = 'kunne ikke opprette testbruker';

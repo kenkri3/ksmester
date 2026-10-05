@@ -89,9 +89,16 @@ export async function GET(
     let items = await getCollectionItems(targetCollection);
 
     const isSuper = isUserSuperAdmin(user);
-    const impersonatedHeader = req.headers.get('x-impersonated-company-id');
+    // SIKKERHETSFIKS (E-01): Headeren er klientstyrt - services/api.ts:6,10 setter den
+    // fra localStorage.getItem('impersonatedCompanyId'). Den ble tidligere brukt uten
+    // a sjekke isSuper, sa enhver innlogget bruker kunne sende den og lese en annen
+    // bedrifts rader i hvilken som helst samling. Impersonering er en reell funksjon
+    // for plattformeiere, sa den beholdes - men autoriseres na server-side.
+    const rawImpersonatedHeader = req.headers.get('x-impersonated-company-id');
+    const impersonatedHeader = (isSuper && rawImpersonatedHeader && rawImpersonatedHeader.trim())
+      ? rawImpersonatedHeader.trim()
+      : null;
     const effectiveCompanyId = impersonatedHeader || user.companyId;
-
     // SuperAdmin ONLY gets global unfiltered overview when in SuperAdmin panel (no impersonation header)
     const isGlobalSuperAdminView = isSuper && !impersonatedHeader;
 
