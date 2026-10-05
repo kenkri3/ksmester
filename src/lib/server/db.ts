@@ -639,6 +639,28 @@ export async function initDb() {
       );
     }
 
+    // SIKKERHETSFIKS (E-09), del 2 - roter en allerede kompromittert admin-hash.
+    // Produksjonsdatabasen kan inneholde hashen av det gamle hardkodede passordet
+    // fra for denne rettelsen. 'DO NOTHING' over lar den sta, sa vi ma rydde den
+    // eksplisitt: hvis ADMIN_PASSWORD ikke er satt, og en admin-rad sin hash
+    // matcher det gamle kjente passordet, erstattes den med et tilfeldig passord.
+    // Da finnes ingen kjent legitimasjonsvei inn i en admin-konto.
+    const adminPasswordConfigured = Boolean((process.env.ADMIN_PASSWORD || process.env.INITIAL_ADMIN_PASSWORD || '').trim());
+    if (!adminPasswordConfigured) {
+      for (const admin of seedAdmins) {
+        try {
+          const existing = await client.query('SELECT password FROM users WHERE LOWER(email) = $1', [admin.email]);
+          const row = existing.rows && existing.rows[0];
+          if (row && row.password && bcrypt.compareSync('VikingMester2026!', row.password)) {
+            await client.query('UPDATE users SET password = $1, updated_at = NOW() WHERE LOWER(email) = $2', [bcrypt.hashSync(randomBytes(32).toString('hex'), 10), admin.email]);
+            console.error('[SECURITY] Admin-kontoen ' + admin.email + ' brukte det gamle hardkodede passordet. Passordet er na tilfeldig - sett ADMIN_PASSWORD og deploy pa nytt for a fa tilgang.');
+          }
+        } catch (rotateErr) {
+          console.warn('Kunne ikke rotere admin-hash:', rotateErr);
+        }
+      }
+    }
+
     client.release();
     dbInitialized = true;
   } catch (err) {
