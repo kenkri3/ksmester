@@ -243,3 +243,14 @@ Repoet har vært offentlig, og `.env.example` nevner selv at en botnøkkel lå h
 ### 10.7 Innstillinger-knappen i dashboardet
 Jeg koblet `onOpenSettings` til en ny `settings`-gren i arbeidsflaten, fordi knappen tidligere var koblet til en tom funksjon.
 - **Hva du bør gjøre:** klikk «Innstillinger» i dashboardet og bekreft at den åpner den innstillingene du forventer. Jeg har verifisert at grenen finnes og at modalen åpnes, men ikke at det er den *riktige* modalen for din arbeidsflyt.
+### 10.8 Forsiden er usynlig for søkemotorer — BLOKKERER for din beslutning
+Forsiden (`/`) er bygget slik at all tekst kommer fra JavaScript. Uten JS viser den bare en spinner. Samtidig blokkerer `robots.txt` `/_next/` for alle robots (R-07).
+- **Konsekvens:** Google og Bing ser i praksis ingen av markedsføringstekstene, prisen eller påstandene deres på forsiden. Søketrafikk er en vesentlig del av hvordan denne siden skal skaffes kunder.
+- **Hva jeg trenger:** en beslutning. Enten (a) server-rendrer jeg landingssiden, som er et større arbeid jeg ikke bør gjøre rett før lansering, eller (b) du aksepterer at bare crawlere som kjører JavaScript indekserer den.
+- **Hva jeg kan gjøre nå uansett:** fjerne `/_next/` fra `robots.txt` slik at JS/cSS kan hentes (R-07), og legge `/invite` og `/auth/` i disallow. Si fra, så gjør jeg det.
+- **Merk:** tilgang til Google Search Console (10.3) vil vise deg den faktiske situasjonen før du bestemmer deg.
+
+### 10.9 Prisene bør bekreftes — BLOKKERER
+Jeg har rettet prisene slik at de er konsistente overalt: 690 / 1 490 / 2 990 per måned, med 550 / 1 190 / 2 390 ved årlig avtale. Verdiene kommer fra `src/config/plans.ts`, som er det `/priser` viser.
+- **Hva jeg trenger:** bekreft at dette er de riktige prisene.
+- **Hvis ikke:** både nettsiden, JSON-LD-en Google leser, og `llms.txt` som AI-modeller leser, oppgir feil pris samtidig. Det var nettopp derfor de spriket før: tre kilder, tre svar.

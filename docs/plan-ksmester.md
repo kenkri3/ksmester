@@ -352,3 +352,24 @@ Gar i `docs/manuelt-arbeid.md` med BLOKKERER-merking. Jeg stopper og spor fremfo
 | **D-01, D-02, O-07, O-08** rydding | Sletting krever bevis for at ingenting refererer til filene. LAV prioritet |
 | **F-07, F-09** samtykke og bildetilgang | Krever gjennomgang av flytene |
 | **E-29** gjenstar i ca. 20 ruter | Samme monster som er rettet ett sted; ma gjentas per rute. Mekanisk arbeid |
+### Runde 7 — 2026-10-05 (målrunde 4)
+
+**Skjermbilde-verifisering gjennomført** (stoppkriterium 3, første del). 40 skjermbilder av 20 offentlige sider i PC (1440x900) og mobil (390x844), lagt i `docs/skjermbilder/`.
+
+**Metode:** Chrome headless direkte (`--headless=new --screenshot --virtual-time-budget`). Ingen ny avhengighet. Chrome fantes på maskinen; npm-registeret var tilgjengelig, men puppeteer/playwright ble bevisst ikke installert.
+
+**Hva skjermbildene viste:**
+- Alle 19 server-renderte sider rendres korrekt. Forsiden viser hero, cookiebanner og meny som forventet. Ingen tomme eller ødelagte flater.
+- `/priser` viser 690 / 1 490 / 2 990 kr — konsistent med `plans.ts` og na ogsa med JSON-LD.
+- **`/invite` er nesten tom (9,8 kB PC, 6,8 kB mobil).** Siden er klient-rendret og venter pa en invitasjonstoken. Forventet for en token-side, men betyr ogsa at en crawler ser ingenting.
+- **Forsiden rendrer bare en spinner uten JavaScript.** Dette er ikke en feil jeg innførte; `src/app/page.tsx` er `'use client'` og hele landingssiden kommer fra `App.tsx`. Prod-verifier bekreftet det samme uavhengig: all markedsforingstekst er usynlig for ikke-JS-crawlere. Sammen med `Disallow: /_next/` i robots.txt (R-07) betyr det at Google og Bing i praksis ikke ser innholdet. **Dette er et reelt lanseringsproblem som ikke var i revisjonen, og det krever en beslutning:** enten server-rendre landingssiden, eller godta at den kun indekseres av crawlere som kjorer JavaScript.
+
+**Nye funn fra skjermbildene, rettet:**
+- **`public/llms.txt` og `llms-full.txt` oppgav priser som ikke finnes.** Solo 1 490 (faktisk 690), Team 3 490 (faktisk 1 490), Entreprenor 6 900 (faktisk 2 990), og 249 kr per ekstra bruker som ikke star i `plans.ts`. Disse filene finnes SPESIELT for a mate AI-crawlere, sa feilen forplanter seg til svar brukere far fra ChatGPT og Gemini.
+- **«alle 20 moduler» mens `PLAN_MODULES` har 13.** Sto i 18 filer, inkludert prissiden, landingssiden, sidebar og i18n. Dette er R-09 fra revisjonen, men den nevnte bare `plans.ts` — den sto mange flere steder. Erstattet med «alle fagmoduler», som er sant uten a tallfeste noe uverifisert.
+
+**E-29 delvis rettet:** ny `src/lib/server/apiError.ts` logger hele feilen server-side med korrelasjons-ID og returnerer en generisk melding. Anvendt pa de mest brukernare rutene: `ai/tts`, `scrape`, `company/quota`, `upload`, `settings/email`, `settings/integrations`, `settings/topup`, `notify/email`. Ca. 23 steder gjenstar i admin-, cron- og agent-rutene.
+
+**Egen feil, rapportert hoyt:** et inline PowerShell-script rapporterte «erstattet: 12 av 12» uten at en eneste fil ble endret. Oppdaget bare fordi jeg leste filen etterpa i stedet for a stole pa scriptets utskrift. Alle endringene gjort pa nytt med redigeringsverktoyet og verifisert ved a lese hver fil tilbake fra disk. **Det er andre gang i sesjonen et inline-script gir falsk suksess.**
+
+**Status: 27 commits. 17/17 BLOKKERER og 28/28 HOY-sjekker passerer i produksjonsmodus.**
