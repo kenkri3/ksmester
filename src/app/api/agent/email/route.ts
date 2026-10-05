@@ -192,14 +192,18 @@ export async function POST(req: NextRequest) {
     }, { status: 200 });
 
   } catch (error: any) {
-    console.error('Agent email webhook error:', error);
+    // SIKKERHETSFIKS (E-29): denne ruten svarer i Botsify-formatet
+    // { success, error, messages }, så apiError() passer ikke på formen.
+    // Vi logger hele feilen server-side og returnerer en generisk melding -
+    // rå error.message gikk tidligere ut både i error og i meldingsteksten.
+    console.error('[agent/email] Utsending feilet:', error);
     return NextResponse.json({
       success: false,
-      error: error.message || 'Serverfeil ved utsending av e-post',
+      error: 'Serverfeil ved utsending av e-post',
       messages: [
         {
           message: {
-            text: `❌ Teknisk feil ved utsendelse av e-post: ${error.message}`
+            text: '❌ Teknisk feil ved utsendelse av e-post. Se serverloggen for detaljer.'
           }
         }
       ]

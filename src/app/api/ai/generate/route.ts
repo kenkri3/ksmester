@@ -6,6 +6,7 @@ import { tryResolveDeterministicSja } from '@/src/lib/server/ruleEngine';
 import { generateWithAiEngine, get1MinAiKey, getGeminiKey, getDeepSeekKey } from '@/src/lib/server/aiEngine';
 import { maskPII, containsPIIOrGdprData } from '@/src/lib/server/privacyShield';
 import { getCollectionItems } from '@/src/lib/server/db';
+import { apiError } from '@/src/lib/server/apiError';
 import { createHash } from 'crypto';
 
 function computeCacheKey(promptOrContents: any, systemInstruction?: string, model = 'default', images?: any[], inlineData?: any): string {
@@ -192,7 +193,6 @@ export async function POST(req: NextRequest) {
       usage: aiResult.usage
     });
   } catch (error: any) {
-    console.error('Server AI Generation error:', error);
-    return NextResponse.json({ error: error.message || 'AI-generering feilet på serveren' }, { status: 500 });
+    return apiError(error, 'AI-genereringen feilet på serveren.');
   }
 }

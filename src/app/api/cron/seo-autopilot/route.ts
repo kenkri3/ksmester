@@ -113,10 +113,13 @@ async function handleAutopilot(req: NextRequest) {
       results: runRecord
     });
   } catch (error: any) {
-    console.error('❌ [SEO Autopilot] Kritisk feil i autopilot-syklus:', error.message);
+    // SIKKERHETSFIKS (E-29): logg hele feilen server-side, men returner ikke
+    // error.message til klienten - den kan inneholde interne detaljer fra
+    // PageSpeed, AI-leverandørene eller databasen.
+    console.error('❌ [SEO Autopilot] Kritisk feil i autopilot-syklus:', error);
     return NextResponse.json({
       success: false,
-      error: error.message
+      error: 'Autopilot-syklusen feilet. Se serverloggen for detaljer.'
     }, { status: 500 });
   }
 }

@@ -1,6 +1,7 @@
 import { NextRequest, NextResponse } from 'next/server';
 import { processAutonomousNurtureSequence } from '@/src/lib/server/nurtureEngine';
 import { verifyCronOrInternalSecret } from '@/src/lib/server/auth';
+import { apiError } from '@/src/lib/server/apiError';
 
 export async function GET(req: NextRequest) {
   return handleNurtureCron(req);
@@ -23,7 +24,6 @@ async function handleNurtureCron(req: NextRequest) {
       result
     });
   } catch (error: any) {
-    console.error('Nurture cron route error:', error);
-    return NextResponse.json({ error: error.message || 'Nurture feilet' }, { status: 500 });
+    return apiError(error, 'Oppfølgingsrunden feilet.');
   }
 }

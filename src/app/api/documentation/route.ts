@@ -7,6 +7,7 @@ import {
 import { sendSystemEmail } from '@/src/lib/server/emailSender';
 import { getUserFromRequest, isUserSuperAdmin, type TokenPayload } from '@/src/lib/server/auth';
 import { getCollectionItemById } from '@/src/lib/server/db';
+import { apiError } from '@/src/lib/server/apiError';
 
 export const dynamic = 'force-dynamic';
 
@@ -83,8 +84,7 @@ export async function GET(request: NextRequest) {
       count: result.documents.length
     });
   } catch (error: any) {
-    console.error('Error in GET /api/documentation:', error);
-    return NextResponse.json({ error: error.message || 'Kunne ikke hente dokumentasjon' }, { status: 500 });
+    return apiError(error, 'Kunne ikke hente dokumentasjonen.');
   }
 }
 
@@ -391,7 +391,6 @@ export async function POST(request: NextRequest) {
 
     return NextResponse.json({ error: `Ukjent action '${action}'` }, { status: 400 });
   } catch (error: any) {
-    console.error('Error in POST /api/documentation:', error);
-    return NextResponse.json({ error: error.message || 'Feil ved dokumentasjonsbehandling' }, { status: 500 });
+    return apiError(error, 'Feil ved dokumentasjonsbehandling.');
   }
 }

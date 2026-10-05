@@ -332,6 +332,52 @@ async function main() {
       /price:\s*'\d+'/.test(sdCode) ? 'hardkodede pris-strenger star fortsatt' : 'prisene utledes fra PLANS');
   }
 
+  // ---------- E-29: raa error.message til klienten ----------
+  console.log('\nE-29  raa error.message i API-svarene');
+  {
+    const files = [];
+    const walk = (dir) => {
+      for (const entry of fs.readdirSync(dir, { withFileTypes: true })) {
+        const full = path.join(dir, entry.name);
+        if (entry.isDirectory()) walk(full);
+        else if (entry.name.endsWith('route.ts')) files.push(full);
+      }
+    };
+    try { walk(path.join(process.cwd(), 'src', 'app', 'api')); } catch (e) { /* ignore */ }
+
+    const leaks = [];
+    for (const f of files) {
+      const code = fs.readFileSync(f, 'utf8')
+        .split(/\r?\n/)
+        .filter(function (l) {
+          const t = l.trim();
+          return !t.startsWith('//') && !t.startsWith('*') && !t.startsWith('/*');
+        })
+        .join('\n');
+      if (/error:\s*(err|error|e)\??\.message/.test(code)) {
+        leaks.push(path.relative(process.cwd(), f));
+      }
+    }
+    r('E-29', 'ingen API-rute returnerer ra error.message til klienten',
+      leaks.length === 0 ? 'OK' : 'FEIL',
+      leaks.length === 0
+        ? 'alle ruter logger server-side og svarer generisk'
+        : leaks.length + ' filer: ' + leaks.join(', '));
+  }
+
+  // ---------- R-07: robots.txt ----------
+  console.log('\nR-07  robots.txt');
+  {
+    const rb = await req('GET', '/robots.txt');
+    const txt = rb.text || '';
+    r('R-07', '/_next/ blokkeres ikke for robots',
+      !/Disallow:\s*\/_next\//.test(txt) ? 'OK' : 'FEIL',
+      /Disallow:\s*\/_next\//.test(txt) ? 'JS/CSS blokkeres for crawlere' : 'crawlere kan hente JS og CSS');
+    r('R-07', 'token-baserte sider er utelukket fra indeksering',
+      /Disallow:\s*\/invite/.test(txt) && /Disallow:\s*\/auth\//.test(txt) ? 'OK' : 'FEIL',
+      '/invite og /auth/ i disallow');
+  }
+
   console.log('\n=== OPPSUMMERING ===');
   for (const row of rows) console.log(row.verdict.padEnd(6) + '  ' + row.id + '  ' + row.name);
   console.log('\nOK: ' + pass + '   FEIL: ' + fail + '   MANUELL: ' + manual);

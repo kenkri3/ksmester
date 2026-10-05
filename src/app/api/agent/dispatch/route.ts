@@ -7,6 +7,7 @@ import { saveCollectionItem, getCollectionItems, updateCollectionItem, getCollec
 import { generateWithAiEngine, cleanAiJson } from '@/src/lib/server/aiEngine';
 import type { AiEngineResult } from '@/src/lib/server/aiEngine';
 import { getUserFromRequest, verifyCronOrInternalSecret, verifyAuthToken, isUserSuperAdmin } from '@/src/lib/server/auth';
+import { apiError } from '@/src/lib/server/apiError';
 import { sendOfferByEmail, sendChangeOrderByEmail, sendSystemEmail, getResendApiKey, testResendConnection } from '@/src/lib/server/emailSender';
 import { 
   getApprenticeProfiles, 
@@ -173,8 +174,7 @@ export async function GET(req: NextRequest) {
       recentActivities
     });
   } catch (error: any) {
-    console.error('Agent dispatch GET error:', error);
-    return NextResponse.json({ error: error.message || 'Internt agentfeil' }, { status: 500 });
+    return apiError(error, 'Intern agentfeil.');
   }
 }
 
@@ -3742,8 +3742,7 @@ Du skal opptre som en høyt kvalifisert byggmester og kalkulatør og levere en k
 
     return NextResponse.json({ error: 'Ukjent handling' }, { status: 400 });
   } catch (error: any) {
-    console.error('Agent dispatch error:', error);
-    return NextResponse.json({ error: error.message || 'Internt agentfeil' }, { status: 500 });
+    return apiError(error, 'Intern agentfeil.');
   }
 }
 

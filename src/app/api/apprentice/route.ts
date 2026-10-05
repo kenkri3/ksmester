@@ -8,6 +8,7 @@ import {
   OFFICIAL_CURRICULUM_GOALS
 } from '@/src/lib/server/apprenticeEngine';
 import { saveCollectionItem } from '@/src/lib/server/db';
+import { apiError } from '@/src/lib/server/apiError';
 
 export async function GET(req: NextRequest) {
   const user = getUserFromRequest(req);
@@ -31,8 +32,7 @@ export async function GET(req: NextRequest) {
       pendingReviewsCount
     });
   } catch (error: any) {
-    console.error('Apprentice route GET error:', error);
-    return NextResponse.json({ error: error.message || 'Internt feil' }, { status: 500 });
+    return apiError(error, 'Kunne ikke hente lærlingdata.');
   }
 }
 
@@ -128,7 +128,6 @@ export async function POST(req: NextRequest) {
 
     return NextResponse.json({ error: 'Ukjent handling' }, { status: 400 });
   } catch (error: any) {
-    console.error('Apprentice route POST error:', error);
-    return NextResponse.json({ error: error.message || 'Internt feil' }, { status: 500 });
+    return apiError(error, 'Kunne ikke behandle lærlingdata.');
   }
 }

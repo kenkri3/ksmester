@@ -1,6 +1,7 @@
-﻿import { NextRequest, NextResponse } from 'next/server';
+import { NextRequest, NextResponse } from 'next/server';
 import { runAutonomousSeoCycle } from '@/src/lib/server/autonomousSeoEngine';
 import { verifyCronOrInternalSecret } from '@/src/lib/server/auth';
+import { apiError } from '@/src/lib/server/apiError';
 
 export async function GET(req: NextRequest) {
   return handleCron(req);
@@ -23,7 +24,6 @@ async function handleCron(req: NextRequest) {
       result
     });
   } catch (error: any) {
-    console.error('SEO Cron route error:', error);
-    return NextResponse.json({ error: error.message || 'SEO Cron feilet' }, { status: 500 });
+    return apiError(error, 'SEO-arbeideren feilet.');
   }
 }
