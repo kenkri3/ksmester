@@ -896,30 +896,18 @@ export default function Dashboard({
   };
 
   // 1-Click Approve Change Order (Registrer godkjenning / aksept fra kunde)
+  // SIKKERHETSFIKS (W-06): her ble UI-et satt til «Godkjent av kunde» og elementet
+  // fjernet fra godkjenningskøen FØR serveren var kontaktet. Feilet skrivingen, ble
+  // feilen svelget med console.warn, og et ikke-ok svar fra /api/agent/dispatch ble
+  // ignorert fordi `if (res.ok)` ikke hadde noen else. En juridisk bindende
+  // godkjenning (NS 8406) kunne dermed se gjennomført ut uten å være lagret.
+  // Nå venter vi på serverbekreftelse før UI-et endres.
   const handleApproveChangeOrder = async (changeOrderId: string) => {
+    const previousOrders = dashboardChangeOrders;
+    const previousApprovals = pendingApprovals;
     try {
-      // Optimistisk oppdatering i UI umiddelbart
-      setDashboardChangeOrders(prev => prev.map(item => item.id === changeOrderId ? { ...item, status: 'Godkjent av kunde' } : item));
-      setPendingApprovals(prev => prev.filter(item => item.id !== changeOrderId));
-      setAgentMetrics((prev: any) => ({
-        ...prev,
-        pendingApprovalsCount: Math.max(0, prev.pendingApprovalsCount - 1)
-      }));
-
-      // Oppdater Firestore direkte slik at det persisteres umiddelbart
-      try {
-        await updateDoc(doc(db, 'change_orders', changeOrderId), {
-          status: 'Godkjent av kunde',
-          approvedAt: new Date().toISOString(),
-          approvedBy: user?.displayName || 'Byggmester / Admin'
-        });
-      } catch (fsErr) {
-        console.warn('Firestore update fallback:', fsErr);
-      }
-
       const res = await fetch('/api/agent/dispatch', {
         method: 'POST',
-        // FIX (11.09.2026): Send med Authorization-token – /api/agent/dispatch krever nå pålogging.
         headers: { 'Content-Type': 'application/json', ...(typeof window !== 'undefined' && localStorage.getItem('token') ? { 'Authorization': `Bearer ${localStorage.getItem('token')}` } : {}) },
         body: JSON.stringify({
           action: 'approve_change_order',
@@ -928,35 +916,44 @@ export default function Dashboard({
         })
       });
 
-      if (res.ok) {
-        toast.success('Endringsordre markert som godkjent av kunde!', {
-          description: 'Varsel og godkjenningsdokument (NS 8406) er oppdatert og arkivert.'
-        });
-        fetchAgentState();
+      if (!res.ok) {
+        const detail = await res.text().catch(() => '');
+        console.error('Godkjenning avvist av serveren:', res.status, detail);
+        toast.error(`Kunne ikke godkjenne endringsordren (HTTP ${res.status}). Den er IKKE godkjent – prøv igjen.`);
+        return;
       }
+
+      // Først når serveren har bekreftet, endrer vi det brukeren ser.
+      setDashboardChangeOrders(prev => prev.map(item => item.id === changeOrderId ? { ...item, status: 'Godkjent av kunde' } : item));
+      setPendingApprovals(prev => prev.filter(item => item.id !== changeOrderId));
+      setAgentMetrics((prev: any) => ({
+        ...prev,
+        pendingApprovalsCount: Math.max(0, prev.pendingApprovalsCount - 1)
+      }));
+
+      toast.success('Endringsordre markert som godkjent av kunde!', {
+        description: 'Varsel og godkjenningsdokument (NS 8406) er oppdatert og arkivert.'
+      });
+      fetchAgentState();
     } catch (err: any) {
-      toast.error('Feil ved godkjenning: ' + err.message);
+      // Nettverksfeil: rull tilbake til det som faktisk gjaldt.
+      console.error('Godkjenning feilet:', err);
+      setDashboardChangeOrders(previousOrders);
+      setPendingApprovals(previousApprovals);
+      toast.error('Kunne ikke kontakte serveren. Endringsordren er IKKE godkjent.');
     }
   };
 
   // 1-Click Reject Change Order
+  // SIKKERHETSFIKS (W-06): samme feil som i godkjenningen – UI-et ble endret før
+  // serveren svarte, og et ikke-ok svar ble ignorert. En avvisning er like
+  // bindende som en godkjenning og skal ikke se gjennomført ut uten å være lagret.
   const handleRejectChangeOrder = async (changeOrderId: string) => {
+    const previousOrders = dashboardChangeOrders;
+    const previousApprovals = pendingApprovals;
     try {
-      setDashboardChangeOrders(prev => prev.map(item => item.id === changeOrderId ? { ...item, status: 'Avvist' } : item));
-      setPendingApprovals(prev => prev.filter(item => item.id !== changeOrderId));
-
-      try {
-        await updateDoc(doc(db, 'change_orders', changeOrderId), {
-          status: 'rejected',
-          rejectedAt: new Date().toISOString()
-        });
-      } catch (fsErr) {
-        console.warn('Firestore reject fallback:', fsErr);
-      }
-
       const res = await fetch('/api/agent/dispatch', {
         method: 'POST',
-        // FIX (11.09.2026): Send med Authorization-token – /api/agent/dispatch krever nå pålogging.
         headers: { 'Content-Type': 'application/json', ...(typeof window !== 'undefined' && localStorage.getItem('token') ? { 'Authorization': `Bearer ${localStorage.getItem('token')}` } : {}) },
         body: JSON.stringify({
           action: 'reject_change_order',
@@ -964,12 +961,22 @@ export default function Dashboard({
         })
       });
 
-      if (res.ok) {
-        toast.info('Endringsordre er markert som avvist.');
-        fetchAgentState();
+      if (!res.ok) {
+        const detail = await res.text().catch(() => '');
+        console.error('Avvisning avvist av serveren:', res.status, detail);
+        toast.error(`Kunne ikke avvise endringsordren (HTTP ${res.status}). Den er IKKE avvist – prøv igjen.`);
+        return;
       }
+
+      setDashboardChangeOrders(prev => prev.map(item => item.id === changeOrderId ? { ...item, status: 'Avvist' } : item));
+      setPendingApprovals(prev => prev.filter(item => item.id !== changeOrderId));
+      toast.info('Endringsordre er markert som avvist.');
+      fetchAgentState();
     } catch (err: any) {
-      toast.error('Feil: ' + err.message);
+      console.error('Avvisning feilet:', err);
+      setDashboardChangeOrders(previousOrders);
+      setPendingApprovals(previousApprovals);
+      toast.error('Kunne ikke kontakte serveren. Endringsordren er IKKE avvist.');
     }
   };
 
