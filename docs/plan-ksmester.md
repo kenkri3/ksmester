@@ -399,3 +399,12 @@ Alle 7 er na rettet og verifisert ved a lese filen tilbake fra disk. Typekontrol
 **Nye automatiske sjekker:** E-29 og R-07 er lagt inn i `security-check-high.mjs`, så de ikke kan regressere. Suiten er nå 31 sjekker.
 
 **Status: 17/17 BLOKKERER og 31/31 HØY passerer i produksjonsmodus.**
+### Runde 9 — 2026-10-05 (målrunde 5, fortsatt)
+
+**W-13 og W-14 rettet.** Dashboardet sendte et oppdiktet prosjektobjekt (`id: 'proj-default'`, `name: 'Nytt Prosjekt'`, `projectCode: 'P-01'`) til byggedagbok og endringsordre når brukeren ikke hadde noe prosjekt. Konsekvensen ble verre etter W-01-fiksen: en skriving knyttet til `proj-default` ville heller ikke vært synlig etterpå, altså et stille datatap. Begge modaler rendres nå bare når det finnes et reelt prosjekt, og de får det valgte prosjektet. 30 linjer oppdiktet prosjektdata fjernet.
+
+**W-13:** aktivitetsloggen fikk alltid `projects[0]`, ikke det valgte prosjektet — brukeren kunne velge byggeplass B og likevel se loggen for A.
+
+**Forbehold:** W-14 er verifisert statisk (koden lest, verdiene borte), ikke ved en kjørt reproduksjon. Å reprodusere krever en konto uten prosjekter, som jeg ikke har laget i denne runden.
+
+**Samlet status: 40 av 104 funn rettet (38 %). Alle 10 BLOKKERER, og 26 av 28 HØY.**
