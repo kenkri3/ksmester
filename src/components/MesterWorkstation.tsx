@@ -2085,6 +2085,13 @@ export default function MesterWorkstation({
         setActiveModuleTab('apprentice');
         setViewMode('module');
         break;
+      // SIKKERHETSFIKS (W-11): det fantes ingen vei til innstillingsmodalen via
+      // en handling. Dashboard-knappen «Innstillinger» var derfor koblet til en
+      // tom funksjon. Denne grenen gjor handlingen ekte.
+      case 'settings':
+      case 'innstillinger':
+        setIsSettingsModalOpen(true);
+        break;
       case 'translator':
       case 'oversetter':
         setViewMode('chat');

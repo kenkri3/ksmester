@@ -194,6 +194,11 @@ export default function Dashboard({
       if (snapshot.docs && snapshot.docs.length > 0) {
         let docs = snapshot.docs;
         // 🔒 GDPR & Tenant Isolation: Kun vis ordre som tilhører denne bedriften dersom ikke uinnskrenket SuperAdmin
+        // SIKKERHETSFIKS (W-01): her sto i tillegg `|| !data.company` med
+        // kommentaren «fallback for demo if newly created». Det gjorde at enhver
+        // post som manglet company-felt ble vist til ALLE bedrifter - en
+        // tenantisolasjon som faller apen. Dokumenter som mangler bedriftstilhoring
+        // skal ikke vises i en kundes arbeidsflate i det hele tatt.
         if ((!isSuperAdmin || impersonatedCompanyId) && effectiveCompany) {
           docs = docs.filter(d => {
             const data = d.data();
@@ -201,23 +206,30 @@ export default function Dashboard({
               data.company === effectiveCompany ||
               data.companyId === effectiveCompany ||
               data.companyName === effectiveCompany ||
-              data.tenantId === effectiveCompany ||
-              !data.company // fallback for demo if newly created
+              data.tenantId === effectiveCompany
             );
           });
         }
+        // SIKKERHETSFIKS (W-04): manglende felt ble fylt med oppdiktede verdier -
+        // endringsordrenummer 1, 25 % mva regnet ut av ingenting, og den
+        // juridiske hjemmelen 'NS 8406 pkt. 19.2' oppgitt som faktum selv nar den
+        // ikke fantes i dataene. En oppdiktet paragrafreferanse i et juridisk
+        // dokument er verre enn ingen referanse. Na vises det som mangler som
+        // null, og UI-et ma si «ikke registrert» i stedet for a finne pa en verdi.
         const liveOrders = docs.map(d => {
           const data = d.data();
+          const exVat = typeof data.amountExVat === 'number' ? data.amountExVat
+            : (typeof data.totalAmount === 'number' ? data.totalAmount : null);
           return {
             id: d.id,
-            number: data.changeNumber || 1,
+            number: data.changeNumber || null,
             title: data.title || 'Endringsordre',
             project: data.projectName || data.projectCode || 'Prosjekt',
             projectId: data.projectId,
-            amount: data.amountExVat || data.totalAmount || 0,
-            amountExVat: data.amountExVat || data.totalAmount || 0,
-            totalAmount: data.totalAmount || Math.round((data.amountExVat || 0) * 1.25),
-            vatAmount: data.vatAmount || Math.round((data.amountExVat || 0) * 0.25),
+            amount: exVat,
+            amountExVat: exVat,
+            totalAmount: typeof data.totalAmount === 'number' ? data.totalAmount : null,
+            vatAmount: typeof data.vatAmount === 'number' ? data.vatAmount : null,
             days: data.impactDays || 0,
             impactDays: data.impactDays || 0,
             status: (() => {
@@ -230,8 +242,8 @@ export default function Dashboard({
               }
               return 'Sendt til kunde';
             })(),
-            legal: data.legalHjemmel || 'NS 8406 pkt. 19.2',
-            legalHjemmel: data.legalHjemmel || 'NS 8406 pkt. 19.2',
+            legal: data.legalHjemmel || null,
+            legalHjemmel: data.legalHjemmel || null,
             description: data.description || '',
             cause: data.cause || 'kundetillegg',
             clientName: data.clientName || '',
@@ -270,14 +282,15 @@ export default function Dashboard({
     const unsub = onSnapshot(collection(db, 'offers'), (snapshot) => {
       if (snapshot.docs && snapshot.docs.length > 0) {
         let docs = snapshot.docs;
+        // SIKKERHETSFIKS (W-01): `|| !data.company` fjernet ogsa her. Uten den
+        // vises tilbud som mangler bedriftstilhoring ikke til alle bedrifter.
         if ((!isSuperAdmin || impersonatedCompanyId) && effectiveCompany) {
           docs = docs.filter(d => {
             const data = d.data();
             return (
               data.company === effectiveCompany ||
               data.companyId === effectiveCompany ||
-              data.companyName === effectiveCompany ||
-              !data.company
+              data.companyName === effectiveCompany
             );
           });
         }
@@ -300,13 +313,13 @@ export default function Dashboard({
     const unsub = onSnapshot(collection(db, 'tasks'), (snapshot) => {
       if (snapshot.docs) {
         let docs = snapshot.docs;
+        // SIKKERHETSFIKS (W-01): `|| !data.company` fjernet ogsa her.
         if ((!isSuperAdmin || impersonatedCompanyId) && effectiveCompany) {
           docs = docs.filter(d => {
             const data = d.data();
             return (
               data.company === effectiveCompany ||
-              data.companyId === effectiveCompany ||
-              !data.company
+              data.companyId === effectiveCompany
             );
           });
         }
@@ -331,9 +344,12 @@ export default function Dashboard({
       setDashboardOffers(prev => prev.filter(o => o.id !== offerId));
       toast.success(`Tilbud "${offerTitle}" er slettet.`);
     } catch (e) {
-      console.warn('Error deleting offer from DB, updating local state:', e);
-      setDashboardOffers(prev => prev.filter(o => o.id !== offerId));
-      toast.success(`Tilbud "${offerTitle}" er fjernet.`);
+      // SIKKERHETSFIKS (W-02): her ble tilbudet fjernet fra UI-et og brukeren fikk
+      // grønn «er fjernet» selv nar slettingen FEILET. Elementet dukket opp igjen
+      // ved neste poll (20 s), sa brukeren trodde det var slettet. Feil skal feile
+      // aerlig: ingen state-endring, og en tydelig feilmelding.
+      console.error('Kunne ikke slette tilbud:', e);
+      toast.error(`Kunne ikke slette tilbudet "${offerTitle}". Det er ikke slettet - prov igjen.`);
     }
   };
 
@@ -1258,7 +1274,11 @@ export default function Dashboard({
             tasks={dashboardTasks}
             initialPrompt={chatInitialPrompt}
             onPromptHandled={() => setChatInitialPrompt(undefined)}
-            onOpenCreateProject={() => {}}
+            // SIKKERHETSFIKS (W-11): disse var `() => {}` - knapper som sa ut som
+            // de gjorde noe, men ikke gjorde noe. Na apner de den faktiske
+            // prosjektmodalen og innstillingsmodulen. Alt som kan klikkes skal
+            // gjore noe.
+            onOpenCreateProject={() => setIsCreateModalOpen(true)}
             onOpenSmartSearch={() => setIsSmartSearchOpen(true)}
             onOpenAllModules={() => {
               closeAllDashboardModals();
@@ -1270,7 +1290,12 @@ export default function Dashboard({
             onDeleteOffer={handleDeleteDashboardOffer}
             onOpenPreClose={handleOpenPreClose}
             onOpenOmnichannelModal={() => setIsOmnichannelModalOpen(true)}
-            onOpenSettings={() => {}}
+            onOpenSettings={() => {
+              // SIKKERHETSFIKS (W-11): var `() => {}`. Sender brukeren til
+              // arbeidsflatas innstillinger i stedet for a gjore ingenting.
+              closeAllDashboardModals();
+              window.dispatchEvent(new CustomEvent('open_workstation_module', { detail: { actionId: 'settings' } }));
+            }}
             onOpenSuperAdmin={onOpenSuperAdmin}
           />
         )}

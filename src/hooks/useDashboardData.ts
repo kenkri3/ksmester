@@ -12,6 +12,9 @@ export function useDashboardData() {
   // UI kan vise en tydelig melding i stedet for et stille tomt rutenett (så det ikke ser
   // ut som en ødelagt knapp for brukeren).
   const [dataUnavailable, setDataUnavailable] = useState(false);
+  // SIKKERHETSFIKS (W-03): egen feilmeldingstilstand sa UI-et kan si fra i stedet
+  // for a vise en tom liste eller bli staende i lastetilstand.
+  const [loadError, setLoadError] = useState<string | null>(null);
   const { user, role, company, impersonatedCompanyId } = useAuth();
 
   useEffect(() => {
@@ -51,24 +54,33 @@ export function useDashboardData() {
     const unsubscribeProjects = onSnapshot(projectsQuery, (snapshot) => {
       const projectsData = snapshot.docs.map(doc => {
         const data = doc.data() || {};
-        const isKongeveien = (doc.id || '').toLowerCase().includes('kongeveien') ||
-                             String(data.location || '').toLowerCase().includes('kongeveien');
+        // SIKKERHETSFIKS (W-04): her ble manglende felt fylt med oppdiktede verdier -
+        // projectCode 'P-2026', clientName 'Privatkunde', progress 15 og
+        // lastUpdate 'Nylig'. Brukeren sa 15 % fremdrift som om det var malt, og
+        // «Privatkunde» som om det var registrert. Na vises det som mangler som
+        // null, og UI-et ma vise «ikke registrert» i stedet for en oppdiktet verdi.
         return {
           id: doc.id,
-          projectCode: data.projectCode || 'P-2026',
-          clientName: data.clientName || 'Privatkunde',
-          location: data.location || (isKongeveien ? 'Kongeveien 93A, Horten' : 'Norge'),
-          progress: typeof data.progress === 'number' ? data.progress : 15,
+          projectCode: data.projectCode || null,
+          clientName: data.clientName || null,
+          location: data.location || null,
+          progress: typeof data.progress === 'number' ? data.progress : null,
           stage: data.stage || 'active',
           status: data.status || 'active',
           ...data,
-          name: data.name || (isKongeveien ? 'Totalrenovering Kongeveien 93A' : (data.location ? `Prosjekt ${data.location}` : `Prosjekt ${doc.id}`)),
-          lastUpdate: data.lastUpdate?.toDate?.()?.toLocaleString() || String(data.lastUpdate || 'Nylig')
+          name: data.name || (data.location ? `Prosjekt ${data.location}` : `Prosjekt ${doc.id}`),
+          lastUpdate: data.lastUpdate?.toDate?.()?.toLocaleString() || String(data.lastUpdate || '')
         };
       }) as Project[];
       setProjects(projectsData);
       setLoading(false);
     }, (error) => {
+      // SIKKERHETSFIKS (W-03): her ble loading aldri satt til false ved lytterfeil,
+      // sa dashboardet ble staende i lastetilstand for alltid. Na avsluttes den,
+      // og feilen sies apent fra om i stedet for a se ut som tomme data.
+      console.error('[useDashboardData] Kunne ikke hente prosjekter:', error);
+      setLoading(false);
+      setLoadError('Kunne ikke hente prosjekter. Sjekk nettverket og prov igjen.');
       handleFirestoreError(error, OperationType.LIST, projectsPath);
     });
 
@@ -98,6 +110,11 @@ export function useDashboardData() {
       });
       setDeviations(deviationsData);
     }, (error) => {
+      // SIKKERHETSFIKS (W-03): ogsa her ble loading staende. Avslutt den, si fra,
+      // og fall tilbake til server-API-et som for.
+      console.error('[useDashboardData] Kunne ikke hente avvik:', error);
+      setLoading(false);
+      setLoadError('Kunne ikke hente avvik. Viser data fra serveren i stedet.');
       handleFirestoreError(error, OperationType.LIST, deviationsPath);
       // Fallback til API hvis Firestore nekter eller mangler indeks
       api.getCollection('deviations').then((serverDevs: any[]) => {
@@ -154,6 +171,7 @@ export function useDashboardData() {
     stats,
     recentDeviations,
     loading,
-    dataUnavailable
+    dataUnavailable,
+    loadError
   };
 }
