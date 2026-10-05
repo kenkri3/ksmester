@@ -61,7 +61,7 @@ export async function POST(req: NextRequest) {
             👑 Plattformeier & SuperAdmin
           </div>
           <p style="margin: 0; font-size: 13px; color: #78350f; line-height: 1.5;">
-            Kontoen din har full tilgang til SuperAdmin-portalen, ubegrenset brukstid, 500M systemtokens og full kontroll over alle 20+ fagmoduler.
+            Kontoen din har full tilgang til SuperAdmin-portalen, ubegrenset brukstid, 500M systemtokens og full kontroll over alle fagmoduler.
           </p>
         </div>
       ` : isBetaTester ? `

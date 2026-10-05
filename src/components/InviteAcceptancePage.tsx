@@ -337,7 +337,7 @@ const InviteAcceptancePage: React.FC<InviteAcceptancePageProps> = ({ token }) =>
                     <span>👑 SuperAdmin / Systemeier-invitasjon</span>
                   </div>
                   <p className="text-[11px] text-amber-800/90 leading-relaxed">
-                    Velg ditt ønskede passord nedenfor. Du får umiddelbart 100% like rettigheter som Kenneth (ubegrenset tilgang, 500M tokens/mnd, tilgang til alle 20+ fagmoduler).
+                    Velg ditt ønskede passord nedenfor. Du får umiddelbart 100% like rettigheter som Kenneth (ubegrenset tilgang, 500M tokens/mnd, tilgang til alle fagmoduler).
                   </p>
                 </div>
               )}

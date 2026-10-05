@@ -1310,7 +1310,7 @@ function AppContent() {
                     </div>
                   </div>
 
-                  {/* Banner: Åpne alle 20 verktøy & moduler */}
+                  {/* Banner: Åpne alle verktøy og moduler */}
                   <button
                     onClick={() => {
                       handleMobileAction('all_modules');
@@ -1323,7 +1323,7 @@ function AppContent() {
                         <Layers size={18} />
                       </span>
                       <div className="text-left">
-                        <div className="font-bold text-white text-xs">Se alle 20 verktøy & moduler</div>
+                        <div className="font-bold text-white text-xs">Se alle verktøy og moduler</div>
                         <div className="text-[10px] text-white/80 font-normal">Komplett verktøykasse for bygg & anlegg</div>
                       </div>
                     </div>

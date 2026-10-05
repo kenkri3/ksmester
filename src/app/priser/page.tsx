@@ -90,7 +90,7 @@ export default function PriserPage() {
             Enkle priser. <span className="text-electric-600">14 dagers prøveperiode.</span>
           </h1>
           <p className="text-lg sm:text-xl text-slate-600 max-w-2xl mx-auto mb-10 leading-relaxed">
-            Velg pakken som passer din håndverksbedrift. MesterAI Copilot, Gemini 3.8 Flash Vision, 100% offline-modus, prosjektchatt og alle 20 moduler er tilgjengelige fra dag én.
+            Velg pakken som passer din håndverksbedrift. MesterAI Copilot, Gemini 3.8 Flash Vision, 100% offline-modus, prosjektchatt og alle fagmoduler er tilgjengelige fra dag én.
           </p>
         </div>
       </section>

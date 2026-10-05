@@ -34,7 +34,7 @@ export const PLAN_MODULES = [
   { id: 'offers', label: 'Tilbud & AI Kalkyle', category: 'Kalkyle', desc: 'Smart prising, anbud og materialkalkyle' },
   { id: 'subcontractors', label: 'Underentreprenør-portal', category: 'Prosjekt', desc: 'Portal for underentreprenører og innsyn' },
   { id: 'integrations', label: 'Regnskap (Tripletex/Fiken)', category: 'Integrasjon', desc: 'Automatisk synk av timer, ordre og fakturagrunnlag' },
-  { id: 'all_modules', label: 'Alle 20+ fagmoduler', category: 'Avansert', desc: 'Våtrom BVN, Elektro NEK400, Stoffkartotek m.m.' },
+  { id: 'all_modules', label: 'Alle fagmoduler', category: 'Avansert', desc: 'Våtrom BVN, Elektro NEK400, Stoffkartotek m.m.' },
 ];
 
 export const PLANS: Record<PlanId, PlanConfig> = {
@@ -155,7 +155,7 @@ export const PLANS: Record<PlanId, PlanConfig> = {
       'Underentreprenør-portal (UE-innsyn, sjekklister og signering)',
       'Ubegrenset antall aktive brukere & byggeprosjekter',
       'Autonom Tilbud-til-Prosjekt-til-KS flyt (3 sek)',
-      'Alle 20+ fagmoduler ulåst',
+      'Alle fagmoduler ulåst',
       'Tripletex, PowerOffice & Fiken API-synk',
       'Juridisk NS 8405 / NS 8406 / NS 8407 motor',
       'Tverrfaglig Lukkesperre med tidslås og soner',
@@ -195,7 +195,7 @@ export const PLANS: Record<PlanId, PlanConfig> = {
     ],
     features: [
       'Ubegrenset brukere & prosjekter',
-      'Alle 20+ fagmoduler ulåst',
+      'Alle fagmoduler ulåst',
       'Autonom Tilbud-til-Prosjekt-til-KS motor',
       'Underentreprenør-portal (UE)',
       'Tripletex, PowerOffice & Fiken API-synk',

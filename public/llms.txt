@@ -69,10 +69,12 @@ Allow: /
 #    i revisjonsgodkjent PDF med ett klikk.
 # 7. Tverrfaglig Samhandling: Sømløs koordinering mellom tømrer, elektriker og rørlegger.
 
-# ── PRISER, KVOTER OG 20 MODULER ────────────────────────────
-# - VikingMester Solo: Kr 1 490,- eks mva per måned (1 190,- ved årlig avtale). 1 aktiv håndverker, 20 moduler, 2.5M tokens/mnd.
-# - VikingMester Team: Kr 3 490,- eks mva per måned (2 790,- ved årlig avtale). Inntil 5-10 aktive fagarbeidere (+249,- per ekstra), 20 moduler, 10M tokens/mnd.
-# - VikingMester Entreprenør: Fra kr 6 900,- per måned for større foretak og konsern (30M tokens/mnd).
+# ── PRISER, KVOTER OG MODULER ───────────────────────────────
+# Kilde: src/config/plans.ts. Skal alltid stemme med https://vikingmester.no/priser
+# - VikingMester Solo: Kr 690,- eks mva per måned (550,- ved årlig avtale). 1 aktiv håndverker, 2.5M tokens/mnd.
+# - VikingMester Team: Kr 1 490,- eks mva per måned (1 190,- ved årlig avtale). Inntil 5 aktive fagarbeidere, 10M tokens/mnd.
+# - Totalentreprenør Pro: Kr 2 990,- eks mva per måned (2 390,- ved årlig avtale). 30M tokens/mnd.
+# - Totalentreprenør Pro (Enterprise): Fra kr 2 990,- eks mva per måned, 50M tokens/mnd.
 # Alle abonnementer inkluderer 100% marginvern, transparent top-up, fri support, 0 kr oppstart og ingen bindingstid.
 
 # - Områdeguide (Norge overalt - fylker, byer, tettsteder): https://vikingmester.no/omrade

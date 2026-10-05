@@ -152,7 +152,7 @@ export const allModules = [
   { id: 'teamchat', name: 'Prosjekt- & Firmachatt', icon: <MessageSquare size={16} /> },
   { id: 'apprentice', name: 'Lærlingmodul', icon: <GraduationCap size={16} /> },
   { id: 'building_app', name: 'Byggesøknad', icon: <Building2 size={16} /> },
-  { id: 'all_modules', name: 'Alle 20+ fagmoduler (Full pakke)', icon: <Layers size={16} /> }
+  { id: 'all_modules', name: 'Alle fagmoduler (Full pakke)', icon: <Layers size={16} /> }
 ];
 
 export default function SuperAdmin({ onBackToDashboard }: { onBackToDashboard?: () => void } = {}) {
@@ -5109,7 +5109,7 @@ Rolle: SuperAdmin (Full plattformeiertilgang, 500M tokens/mnd, alle moduler)`;
                 SuperAdmin-konto er klar! 👑
               </h2>
               <p className="text-xs text-slate-300 mt-1 max-w-sm mx-auto">
-                <strong>{createdData.user.email}</strong> har nå nøyaktig samme rettigheter som deg (full plattformeier, 500M tokens/mnd, alle 20+ fagmoduler).
+                <strong>{createdData.user.email}</strong> har nå nøyaktig samme rettigheter som deg (full plattformeier, 500M tokens/mnd, alle fagmoduler).
               </p>
             </div>
 
@@ -5224,7 +5224,7 @@ Rolle: SuperAdmin (Full plattformeiertilgang, 500M tokens/mnd, alle moduler)`;
               <li>Full adgang til SuperAdmin-portalen, AI-marginkontroll og SaaS-styring</li>
               <li>Kan logge inn som hvilken som helst bedriftskunde (Impersonering)</li>
               <li>Knyttes automatisk til <strong>comp-001 (AIChat Norge AS / Vikingnet)</strong></li>
-              <li>500 000 000 tokens/mnd + alle 20+ fagmoduler aktivert (0 kr fakturering)</li>
+              <li>500 000 000 tokens/mnd + alle fagmoduler aktivert (0 kr fakturering)</li>
             </ul>
           </div>
 
