@@ -5,6 +5,7 @@ import { getCachedAiResponse, setCachedAiResponse } from '@/src/lib/server/aiCac
 import { tryResolveDeterministicSja } from '@/src/lib/server/ruleEngine';
 import { generateWithAiEngine, get1MinAiKey, getGeminiKey, getDeepSeekKey } from '@/src/lib/server/aiEngine';
 import { maskPII, containsPIIOrGdprData } from '@/src/lib/server/privacyShield';
+import { getCollectionItems } from '@/src/lib/server/db';
 import { createHash } from 'crypto';
 
 function computeCacheKey(promptOrContents: any, systemInstruction?: string, model = 'default', images?: any[], inlineData?: any): string {
@@ -25,7 +26,24 @@ function computeCacheKey(promptOrContents: any, systemInstruction?: string, mode
 
 export async function POST(req: NextRequest) {
   const user = getUserFromRequest(req);
-  const isPortalAccess = req.headers.get('x-portal-access') === 'true';
+  // SIKKERHETSFIKS (E-05): 'x-portal-access: true' var en usignert literar som
+  // klienten satte selv (services/aiClient.ts:33), og den opphevet autentiseringen
+  // for ALLE operasjoner. Enhver kunne dermed bruke plattformens betalte AI-nokler
+  // gratis, og kvotesjekken ble hoppet over fordi den krever innlogget bruker.
+  // Na ma portal-unntaket baere et reelt prosjekttoken - det samme tokenet som
+  // kundeportalen selv brukes med (/?portal=<portalToken|prosjekt-id>).
+  const portalToken = (req.headers.get('x-portal-token') || '').trim();
+  let isPortalAccess = false;
+  if (!user && portalToken) {
+    try {
+      const portalProjects = await getCollectionItems('projects');
+      isPortalAccess = portalProjects.some((p: any) =>
+        Boolean(p) && (p.portalToken === portalToken || p.id === portalToken || p.token === portalToken)
+      );
+    } catch {
+      isPortalAccess = false;
+    }
+  }
 
   if (!user && !isPortalAccess) {
     return NextResponse.json({ error: 'Uautorisert' }, { status: 401 });

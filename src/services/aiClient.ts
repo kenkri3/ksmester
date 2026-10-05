@@ -17,11 +17,23 @@ export interface GenerateAiOptions {
 
 export async function generateAiContent(options: GenerateAiOptions): Promise<{ text: string }> {
   const token = typeof window !== 'undefined' ? localStorage.getItem('token') : null;
-  const isPortal = options.isPortal || (typeof window !== 'undefined' && (
-    window.location.search.includes('portal=') || 
-    window.location.search.includes('offer=') || 
-    window.location.search.includes('contract=')
-  ));
+  // SIKKERHETSFIKS (E-05): Serveren krever na et reelt prosjekttoken i stedet for
+  // den usignerte literaren 'x-portal-access: true'. Tokenet hentes fra samme URL
+  // som kundeportalen selv bruker: /?portal=<portalToken|prosjekt-id>,
+  // /?portalToken=... eller /portal/<id>. Finnes det ingen token, sendes ingen
+  // portal-header, og serveren krever vanlig innlogging.
+  const portalToken = (() => {
+    if (typeof window === 'undefined') return '';
+    try {
+      const params = new URLSearchParams(window.location.search);
+      const fromQuery = params.get('portal') || params.get('portalToken') || '';
+      if (fromQuery) return fromQuery.trim();
+      const parts = window.location.pathname.split('/').filter(Boolean);
+      return parts[0] === 'portal' && parts[1] ? parts[1].trim() : '';
+    } catch {
+      return '';
+    }
+  })();
 
   const headers: Record<string, string> = {
     'Content-Type': 'application/json',
@@ -29,9 +41,7 @@ export async function generateAiContent(options: GenerateAiOptions): Promise<{ t
   if (token) {
     headers['Authorization'] = `Bearer ${token}`;
   }
-  if (isPortal) {
-    headers['x-portal-access'] = 'true';
-  }
+    headers['x-portal-token'] = portalToken;
 
   const controller = new AbortController();
   const timeoutId = setTimeout(() => controller.abort(), 45000);

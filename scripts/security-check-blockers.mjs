@@ -111,12 +111,23 @@ async function main() {
       'HTTP ' + anonRes.status);
   }
 
-  // ---------- E-05: x-portal-access opphever autentisering ----------
-  console.log('\nE-05  x-portal-access header');
-  const portal = await req('POST', '/api/ai/generate', { prompt: 'hei' }, { 'x-portal-access': 'true' });
-  r('E-05', 'usignert x-portal-access: true gir IKKE tilgang uten innlogging',
-    portal.status === 401 || portal.status === 403 ? 'OK' : (portal.status === 500 ? 'MANUELL' : 'FEIL'),
-    'HTTP ' + portal.status + (portal.status !== 401 && portal.status !== 403 ? ' - headeren slapp gjennom autentiseringssjekken' : ''));
+  // ---------- E-05: x-portal-access opphevet autentiseringen ----------
+  console.log('\nE-05  portal-unntaket i /api/ai/generate');
+  {
+    const forge = await req('POST', '/api/ai/generate', { prompt: 'hei', operation: 'ai_generate' }, { 'x-portal-access': 'true' });
+    r('E-05', 'usignert x-portal-access: true gir IKKE tilgang uten innlogging',
+      (forge.status === 401 || forge.status === 403) ? 'OK' : 'FEIL',
+      'HTTP ' + forge.status + (forge.status !== 401 && forge.status !== 403 ? ' - den gamle headeren slapp fortsatt gjennom' : ''));
+    const bogus = await req('POST', '/api/ai/generate', { prompt: 'hei' }, { 'x-portal-token': 'finnes-ikke-' + stamp });
+    r('E-05', 'oppdiktet portal-token gir IKKE tilgang',
+      (bogus.status === 401 || bogus.status === 403) ? 'OK' : 'FEIL',
+      'HTTP ' + bogus.status + (bogus.status !== 401 && bogus.status !== 403 ? ' - ukjent token ble godtatt' : ''));
+    const aiSrc = fs.readFileSync(path.join(process.cwd(), 'src', 'app', 'api', 'ai', 'generate', 'route.ts'), 'utf8');
+    const aiCode = aiSrc.split(/\r?\n/).filter(function (l) { return !l.trim().startsWith('//'); }).join('\n');
+    r('E-05', 'koden leser ikke lenger den usignerte x-portal-access-headeren',
+      !/x-portal-access/.test(aiCode) ? 'OK' : 'FEIL',
+      /x-portal-access/.test(aiCode) ? 'headeren leses fortsatt' : 'kun x-portal-token med prosjekttoken');
+  }
 
   // ---------- E-03: selvvalgt rolle ved registrering ----------
   console.log('\nE-03  selvvalgt rolle ved registrering');
