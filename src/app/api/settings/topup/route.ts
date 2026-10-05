@@ -2,6 +2,7 @@ import { NextRequest, NextResponse } from 'next/server';
 import { getUserFromRequest } from '@/src/lib/server/auth';
 import { saveCollectionItem } from '@/src/lib/server/db';
 import { TOPUP_PACKAGES } from '@/src/lib/server/costTracker';
+import { apiError } from '@/src/lib/server/apiError';
 
 export async function POST(req: NextRequest) {
   const user = getUserFromRequest(req);
@@ -55,7 +56,7 @@ export async function POST(req: NextRequest) {
       topup: topupRecord
     });
   } catch (error: any) {
-    console.error('Top-up error:', error);
-    return NextResponse.json({ error: error.message || 'Kunne ikke aktivere pakke' }, { status: 500 });
+    // SIKKERHETSFIKS (E-29): logg detaljene server-side, ikke til klienten.
+    return apiError(error, 'Kunne ikke aktivere pakken.');
   }
 }

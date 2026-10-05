@@ -2,6 +2,7 @@ import { NextRequest, NextResponse } from 'next/server';
 import { saveCollectionItem, getCollectionItems, deleteCollectionItem } from '@/src/lib/server/db';
 import { getUserFromRequest, isUserSuperAdmin } from '@/src/lib/server/auth';
 import { getAdminNotifyEmails } from '@/src/lib/server/emailSender';
+import { apiError } from '@/src/lib/server/apiError';
 
 export async function POST(req: NextRequest) {
   try {
@@ -130,7 +131,7 @@ export async function POST(req: NextRequest) {
       service
     });
   } catch (err: any) {
-    return NextResponse.json({ error: err.message || 'Kunne ikke lagre integrasjon.' }, { status: 500 });
+    return apiError(err, 'Kunne ikke lagre integrasjonen.');
   }
 }
 
@@ -155,7 +156,7 @@ export async function GET(req: NextRequest) {
       configuredAt: item.configuredAt
     })));
   } catch (err: any) {
-    return NextResponse.json({ error: err.message }, { status: 500 });
+    return apiError(err, 'Kunne ikke hente integrasjoner.');
   }
 }
 
@@ -190,7 +191,7 @@ export async function DELETE(req: NextRequest) {
       message: `Integrasjon med ${service} er koblet fra.`
     });
   } catch (err: any) {
-    return NextResponse.json({ error: err.message || 'Kunne ikke koble fra' }, { status: 500 });
+    return apiError(err, 'Kunne ikke koble fra tjenesten.');
   }
 }
 

@@ -7,6 +7,7 @@ import {
   CompanyEmailConfig,
   SMTP_PRESETS
 } from '@/src/lib/server/emailConfig';
+import { apiError } from '@/src/lib/server/apiError';
 
 /**
  * GET /api/settings/email
@@ -59,8 +60,7 @@ export async function GET(req: NextRequest) {
       presets: SMTP_PRESETS
     });
   } catch (err: any) {
-    console.error('Error fetching email settings:', err);
-    return NextResponse.json({ error: err.message || 'Kunne ikke hente e-postinnstillinger' }, { status: 500 });
+    return apiError(err, 'Kunne ikke hente e-postinnstillinger.');
   }
 }
 
@@ -107,8 +107,7 @@ export async function POST(req: NextRequest) {
       }
     });
   } catch (err: any) {
-    console.error('Error saving email settings:', err);
-    return NextResponse.json({ error: err.message || 'Kunne ikke lagre e-postinnstillinger' }, { status: 500 });
+    return apiError(err, 'Kunne ikke lagre e-postinnstillinger.');
   }
 }
 
@@ -131,6 +130,6 @@ export async function DELETE(req: NextRequest) {
       message: 'Egen e-postserver er koblet fra. Systemet benytter nå standard skyavsender.'
     });
   } catch (err: any) {
-    return NextResponse.json({ error: err.message || 'Kunne ikke nullstille e-postoppsett' }, { status: 500 });
+    return apiError(err, 'Kunne ikke nullstille e-postoppsettet.');
   }
 }

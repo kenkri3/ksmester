@@ -3,6 +3,7 @@ import { sendSystemEmail } from '@/src/lib/server/emailSender';
 import { getUserFromRequest } from '@/src/lib/server/auth';
 import { getCollectionItems } from '@/src/lib/server/db';
 import { checkRateLimit, getClientIp } from '@/src/lib/server/rateLimit';
+import { apiError } from '@/src/lib/server/apiError';
 
 export async function POST(req: NextRequest) {
   try {
@@ -90,7 +91,7 @@ export async function POST(req: NextRequest) {
       fromUsed: sendRes.fromUsed
     }, { status: isSent ? 200 : 502 });
   } catch (error: any) {
-    console.error('Email dispatch error:', error);
-    return NextResponse.json({ error: error.message || 'Kunne ikke sende e-post.' }, { status: 500 });
+    // SIKKERHETSFIKS (E-29): logg detaljene server-side, ikke til klienten.
+    return apiError(error, 'Kunne ikke sende e-posten.');
   }
 }
