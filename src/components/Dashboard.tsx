@@ -439,6 +439,14 @@ export default function Dashboard({
   };
 
   // 🧹 Lukk alle åpne dialoger/modaler når brukeren navigerer i arbeidsstasjonen eller sidemenyen
+  // SIKKERHETSFIKS (W-14): her ble det sendt et OPPDIKTET prosjektobjekt til
+  // byggedagbok og endringsordre når brukeren ikke hadde noe prosjekt:
+  // { id: 'proj-default', name: 'Nytt Prosjekt', projectCode: 'P-01' }.
+  // Skrivinger ble dermed knyttet til et prosjekt som ikke finnes, og brukeren
+  // fikk se et prosjekt som ikke er registrert. Nå brukes bare et reelt prosjekt,
+  // og modalen åpnes ikke i det hele tatt hvis det ikke finnes noe.
+  const activeProject = selectedProject || projects[0] || null;
+
   const closeAllDashboardModals = useCallback(() => {
     setIsChecklistModalOpen(false);
     setIsBuildingAppModalOpen(false);
@@ -1104,34 +1112,21 @@ export default function Dashboard({
       <InventoryModal isOpen={isInventoryModalOpen} onClose={() => setIsInventoryModalOpen(false)} />
       <VehicleModal isOpen={isVehicleModalOpen} onClose={() => setIsVehicleModalOpen(false)} projects={projects} />
       <HMSModal isOpen={isHMSModalOpen} onClose={() => setIsHMSModalOpen(false)} projects={projects} />
-      <ActivityLogModal isOpen={isActivityLogModalOpen} onClose={() => setIsActivityLogModalOpen(false)} projectId={projects[0]?.id} />
-      <DailyLogModal
-        isOpen={isDailyLogModalOpen}
-        onClose={() => setIsDailyLogModalOpen(false)}
-        project={selectedProject || projects[0] || ({
-          id: 'proj-default',
-          name: 'Hovedprosjekt',
-          projectCode: 'P-01',
-          description: 'Hovedprosjekt',
-          location: 'Byggeplass',
-          progress: 0,
-          status: 'active',
-          stage: 'active',
-          documentationLevel: 0,
-          clientName: 'Oppdragsgiver',
-          clientEmail: '',
-          clientPhone: '',
-          company: user?.company || 'Bedrift',
-          companyId: user?.companyId || 'comp',
-          companyName: user?.company || 'Bedrift',
-          projectManager: user?.displayName || 'Byggeleder',
-          startDate: new Date().toISOString(),
-          lastUpdate: new Date().toISOString(),
-          createdAt: new Date().toISOString(),
-          updatedAt: new Date().toISOString()
-        } as unknown as Project)}
-        currentUserName={user?.displayName || 'Byggeleder'}
-      />
+      {/* SIKKERHETSFIKS (W-13/W-14): aktivitetsloggen fikk alltid FØRSTE prosjekt,
+          ikke det valgte, og byggedagbok/endringsordre fikk et OPPDIKTET
+          prosjektobjekt ({ id: 'proj-default', name: 'Nytt Prosjekt' }) når
+          brukeren ikke hadde noe prosjekt. Skrivinger kunne dermed knyttes til et
+          prosjekt som ikke finnes. Modalen rendres nå bare når det finnes et
+          reelt prosjekt, og den bruker det valgte prosjektet. */}
+      <ActivityLogModal isOpen={isActivityLogModalOpen} onClose={() => setIsActivityLogModalOpen(false)} projectId={activeProject?.id} />
+      {activeProject && (
+        <DailyLogModal
+          isOpen={isDailyLogModalOpen}
+          onClose={() => setIsDailyLogModalOpen(false)}
+          project={activeProject}
+          currentUserName={user?.displayName || 'Byggeleder'}
+        />
+      )}
       <DeviationDetailModal
         isOpen={isDeviationDetailOpen}
         onClose={() => {
@@ -1146,37 +1141,21 @@ export default function Dashboard({
           fetchAgentState();
         }}
       />
-      <ChangeOrderModal
-        isOpen={isChangeOrderModalOpen}
-        onClose={() => {
-          setIsChangeOrderModalOpen(false);
-          fetchAgentState();
-        }}
-        project={(selectedProject || projects[0] || {
-          id: 'proj-default',
-          name: 'Nytt Prosjekt',
-          projectCode: 'P-01',
-          description: 'Hovedprosjekt',
-          location: 'Byggeplass',
-          progress: 0,
-          status: 'active',
-          stage: 'active',
-          documentationLevel: 0,
-          clientName: 'Oppdragsgiver',
-          clientEmail: '',
-          clientPhone: '',
-          company: user?.company || 'Bedrift',
-          companyId: user?.companyId || 'comp',
-          companyName: user?.company || 'Bedrift',
-          projectManager: user?.displayName || 'Byggeleder',
-          startDate: new Date().toISOString(),
-          lastUpdate: new Date().toISOString(),
-          createdAt: new Date().toISOString(),
-          updatedAt: new Date().toISOString()
-        }) as unknown as Project}
-        currentUserId={user?.id || 'admin_user'}
-        currentUserName={user?.displayName || 'Byggeleder'}
-      />
+      {/* SIKKERHETSFIKS (W-14): samme oppdiktede prosjektobjekt ble sendt hit.
+          Endringsordren kunne dermed lagres på et prosjekt som ikke finnes.
+          Modalen rendres nå bare når det finnes et reelt prosjekt. */}
+      {activeProject && (
+        <ChangeOrderModal
+          isOpen={isChangeOrderModalOpen}
+          onClose={() => {
+            setIsChangeOrderModalOpen(false);
+            fetchAgentState();
+          }}
+          project={activeProject}
+          currentUserId={user?.id || 'admin_user'}
+          currentUserName={user?.displayName || 'Byggeleder'}
+        />
+      )}
       <SmartSearch 
         isOpen={isSmartSearchOpen} 
         onClose={() => setIsSmartSearchOpen(false)} 
