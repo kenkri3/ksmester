@@ -57,11 +57,15 @@ export async function generateFDVReport(projectId: string): Promise<FDVReportRes
   <meta charset="UTF-8">
   <title>FDV & Sluttrapport - ${project.name}</title>
   <style>
-    @import url('https://fonts.googleapis.com/css2?family=Plus+Jakarta+Sans:wght@400;600;700;800&display=swap');
-    
+    /* SIKKERHETSFIKS (F-02): her sto en @import fra fonts.googleapis.com. Et
+       FDV-dokument apnes av kunden, ofte i en nettleser, og hentet dermed en
+       font fra Google - som sendte kundens IP-adresse til en tredjepart fra et
+       dokument de trodde var internt. Systemfonter brukes i stedet; det er ingen
+       tredjepartsforespørsel i dokumentet i det hele tatt. */
+
     * { box-sizing: border-box; }
     body {
-      font-family: 'Plus Jakarta Sans', -apple-system, BlinkMacSystemFont, sans-serif;
+      font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, 'Helvetica Neue', Arial, sans-serif;
       color: #0f172a;
       background: #f8fafc;
       margin: 0;

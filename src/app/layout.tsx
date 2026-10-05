@@ -79,8 +79,10 @@ export const metadata: Metadata = {
 export const viewport: Viewport = {
   width: 'device-width',
   initialScale: 1.0,
-  maximumScale: 1.0,
-  userScalable: false,
+  // SIKKERHETSFIKS (T-01): her sto `maximumScale: 1.0` og `userScalable: false`,
+  // som sperret zoom for ALLE brukere. Det bryter WCAG 2.1 AA (1.4.4 Resize text)
+  // og rammer svaksynte hardt - de kan ikke forstorrelse siden i det hele tatt.
+  // Begge er fjernet, slik at nettleserens egen zoom virker igjen.
   viewportFit: 'cover',
   themeColor: '#0A192F',
 };
@@ -93,12 +95,22 @@ export default function RootLayout({
   return (
     <html lang="nb">
       <head>
-        <link rel="preconnect" href="https://fonts.googleapis.com" />
-        <link rel="preconnect" href="https://fonts.gstatic.com" crossOrigin="anonymous" />
-        <link
-          href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700;800&family=Plus+Jakarta+Sans:wght@400;500;600;700;800;900&display=swap"
-          rel="stylesheet"
-        />
+        {/* SIKKERHETSFIKS (F-02): her ble Google Fonts lastet fra ekstern CDN i
+            <head>, med preconnect til fonts.gstatic.com. Det sendte IP-adresse og
+            user-agent til Google (USA) for HVER besøkende, uavhengig av
+            cookiebanneret og før noe samtykke var gitt. Det er en overføring til
+            tredjeland som ikke var avtalt eller opplyst om i
+            personvernerklæringen.
+
+            Fontene er fjernet i stedet for self-hostet: det finnes ingen lokale
+            fontfiler i repoet, og a hente dem via next/font ville lagt til et
+            byggetidsavhengighet til et eksternt CDN rett før lansering. Alle
+            fontstakkene i globals.css har systemfonter som fallback
+            (--font-sans: ..., -apple-system, BlinkMacSystemFont, "Segoe UI",
+            Roboto, sans-serif), sa teksten rendres riktig uten dem.
+
+            Skal de merkede fontene tilbake, last dem ned som .woff2 til public/
+            og bruk @font-face - da gar det ingen forespørsel til tredjepart. */}
 
         {/* Google Consent Mode v2 default denied BEFORE any scripts */}
         <script

@@ -304,6 +304,34 @@ async function main() {
       /x-vercel-cron/.test(code) ? 'headeren leses fortsatt' : 'kun CRON_SECRET / intern hemmelighet / SuperAdmin');
   }
 
+  // ---------- T-01 / F-02 / R-01 / R-03: offentlig flate ----------
+  console.log('\nT-01  zoom, tredjepartsfonter og org.nr i servert HTML');
+  {
+    const page = await req('GET', '/kontakt');
+    const html = page.text || '';
+
+    const viewport = (html.match(/<meta name="viewport"[^>]*>/) || [''])[0];
+    const zoomBlocked = /user-scalable=no|maximum-scale=1(?!\d)/.test(viewport);
+    r('T-01', 'zoom er ikke sperret for brukeren',
+      !zoomBlocked ? 'OK' : 'FEIL',
+      viewport ? viewport : 'fant ingen viewport-meta (HTTP ' + page.status + ')');
+
+    r('F-02', 'ingen tredjeparts font-CDN i servert HTML',
+      !/fonts\.googleapis|fonts\.gstatic/.test(html) ? 'OK' : 'FEIL',
+      /fonts\.googleapis|fonts\.gstatic/.test(html) ? 'Google Fonts refereres fortsatt' : 'ingen fontforespørsel til tredjepart');
+
+    const wrongOrgnr = /933\s*607\s*779/.test(html);
+    r('R-01', 'det ugyldige org.nr vises ikke pa offentlig side',
+      !wrongOrgnr ? 'OK' : 'FEIL',
+      wrongOrgnr ? '933 607 779 star fortsatt i HTML' : 'kun det verifiserte nummeret');
+
+    const sdSrc = readSrc('src/components/StructuredData.tsx');
+    const sdCode = sdSrc.split(/\r?\n/).filter(function (l) { return !l.trim().startsWith('//'); }).join('\n');
+    r('R-03', 'JSON-LD-prisene hentes fra PLANS, ikke som literaler',
+      /PLANS\./.test(sdCode) && !/price:\s*'\d+'/.test(sdCode) ? 'OK' : 'FEIL',
+      /price:\s*'\d+'/.test(sdCode) ? 'hardkodede pris-strenger star fortsatt' : 'prisene utledes fra PLANS');
+  }
+
   console.log('\n=== OPPSUMMERING ===');
   for (const row of rows) console.log(row.verdict.padEnd(6) + '  ' + row.id + '  ' + row.name);
   console.log('\nOK: ' + pass + '   FEIL: ' + fail + '   MANUELL: ' + manual);
