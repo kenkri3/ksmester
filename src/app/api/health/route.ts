@@ -17,17 +17,29 @@ export async function GET() {
   );
 
   let dbHealthy = false;
+  let dbReason = 'ok';
 
   if (process.env.DATABASE_URL) {
     try {
       const result = await dbQuery('SELECT 1');
       dbHealthy = result && result.length > 0;
+      if (!dbHealthy) dbReason = 'database svarte ikke på SELECT 1';
     } catch (e) {
       dbHealthy = false;
+      dbReason = 'databasefeil';
     }
+  } else if (process.env.NODE_ENV === 'production') {
+    // SIKKERHETSFIKS (O-04): uten DATABASE_URL går all data til minnelager og
+    // forsvinner ved neste redeploy. Tidligere svarte helsesjekken 200 her, så
+    // deployen så vellykket ut mens kundedata var i ferd med å gå tapt.
+    // Nå feiler den synlig i produksjon: Railway stopper deployen og lar den
+    // forrige, fungerende versjonen stå.
+    dbHealthy = false;
+    dbReason = 'DATABASE_URL er ikke satt – data ville gått tapt ved redeploy';
   } else {
-    // If no DATABASE_URL is configured, consider in-memory "healthy" for local dev
+    // Utvikling: lokal fillagring er tilsiktet.
     dbHealthy = true;
+    dbReason = 'lokalt minnelager (kun utvikling)';
   }
 
   const isHealthy = dbHealthy;
@@ -43,6 +55,9 @@ export async function GET() {
     framework: 'next.js',
     database: isDbConnected() ? 'postgresql' : 'in-memory',
     databaseHealthy: dbHealthy,
+    // SIKKERHETSFIKS (O-04): si hvorfor databasen ikke er frisk. Uten dette så en
+    // manglende DATABASE_URL og en reell databasefeil identiske ut.
+    databaseStatus: dbReason,
     renderReady: true,
     hosting: 'Railway',
     region: 'EU West (Amsterdam, Netherlands)',

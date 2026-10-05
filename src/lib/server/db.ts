@@ -77,6 +77,20 @@ if (DATABASE_URL) {
   pool.on('error', (err) => {
     console.error('⚠️ [PostgreSQL Pool Warning] Uventet feil på ledig databaseklient:', err.message);
   });
+} else {
+  // SIKKERHETSFIKS (O-04): uten DATABASE_URL ble `pool` null, og ALL data gikk
+  // til minne eller .data/local_store.json. På Railway betyr det stille datatap
+  // ved hver redeploy, mens README kaller variabelen påkrevd. Appen så dessuten
+  // frisk ut hele veien - den svarte 200 og viste tomme lister.
+  //
+  // Vi kaster ikke her: det ville satt tjenesten i restart-løkke og tatt ned
+  // også den delen som virker. I stedet sier vi det høyt, og /api/health
+  // rapporterer 503 i produksjon uten DATABASE_URL - da feiler deployen
+  // synlig, og den forrige, fungerende versjonen blir stående.
+  console.error(
+    '[DB] ADVARSEL: DATABASE_URL er ikke satt. Data går til minnelager/lokal fil ' +
+    'og FORSVINNER ved neste redeploy. Sett DATABASE_URL i miljøvariablene.'
+  );
 }
 
 /**
