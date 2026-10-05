@@ -160,7 +160,7 @@ export function ContactForm() {
             <input
               type="tel"
               required
-              placeholder="912 34 567"
+              placeholder="000 00 000"
               value={formData.phone}
               onChange={(e) => setFormData({ ...formData, phone: e.target.value })}
               className="w-full pl-10 pr-4 py-3 rounded-xl border border-slate-300 text-sm focus:outline-none focus:ring-2 focus:ring-electric-500 focus:border-transparent text-navy-900"

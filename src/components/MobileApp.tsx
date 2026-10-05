@@ -73,7 +73,7 @@ const DEFAULT_COLLEAGUES: ColleagueContact[] = [
     role: 'Prosjektleder / Faglig leder',
     company: 'VikingMester AS',
     trade: 'carpenter',
-    phone: '920 11 222',
+    phone: '000 00 002',
     email: 'prosjekt@vikingmester.no',
     isOnSiteToday: true,
     isKeyPersonnel: true

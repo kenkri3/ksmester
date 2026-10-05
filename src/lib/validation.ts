@@ -68,7 +68,7 @@ export const leadFormSchema = z.object({
     .string()
     .min(8, 'Telefonnummer må være minst 8 siffer')
     .max(20, 'Telefonnummer er for langt')
-    .refine(validateNorwegianPhone, 'Vennligst oppgi et gyldig norsk telefonnummer (f.eks. 912 34 567 eller +47 912 34 567)'),
+    .refine(validateNorwegianPhone, 'Vennligst oppgi et gyldig norsk telefonnummer (f.eks. 000 00 000 eller +47 000 00 000)'),
 
   trade: z
     .string()

@@ -2,7 +2,7 @@ import { NextRequest, NextResponse } from 'next/server';
 import bcrypt from 'bcrypt';
 import { dbQuery, inMemoryStore, saveCollectionItem, ADMIN_EMAILS } from '@/src/lib/server/db';
 import { signToken } from '@/src/lib/server/auth';
-import { sendSystemEmail, renderBrandedEmailTemplate } from '@/src/lib/server/emailSender';
+import { sendSystemEmail, renderBrandedEmailTemplate, getAdminNotifyEmails } from '@/src/lib/server/emailSender';
 import { PLATFORM_ORGNUMBER } from '@/src/constants/companyDetails';
 
 export async function POST(req: NextRequest) {
@@ -219,7 +219,8 @@ export async function POST(req: NextRequest) {
       // Varsle admin
       try {
         await sendSystemEmail({
-          to: ['kenkri3@gmail.com', 'fredrik.r.ellingsen@gmail.com', 'aichatnorge@gmail.com'],
+          // SIKKERHETSFIKS (F-04): var hardkodet til private Gmail-adresser.
+          to: getAdminNotifyEmails(),
           replyTo: emailLower,
           subject: `🔥 NY BRUKERREGISTRERING: ${userObj.company} (${userObj.displayName})`,
           text: `Ny bruker registrert:\nBedrift: ${userObj.company}\nNavn: ${userObj.displayName}\nE-post: ${emailLower}\nOrg.nr: ${cleanOrgnr || 'Ikke oppgitt'}`,

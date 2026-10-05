@@ -1,6 +1,7 @@
 import { NextRequest, NextResponse } from 'next/server';
 import { saveCollectionItem, getCollectionItems, deleteCollectionItem } from '@/src/lib/server/db';
 import { getUserFromRequest, isUserSuperAdmin } from '@/src/lib/server/auth';
+import { getAdminNotifyEmails } from '@/src/lib/server/emailSender';
 
 export async function POST(req: NextRequest) {
   try {
@@ -103,7 +104,8 @@ export async function POST(req: NextRequest) {
           body: JSON.stringify({
             from: fromEmail,
             reply_to: 'hei@vikingmester.no',
-            to: ['kenkri3@gmail.com', 'fredrik.r.ellingsen@gmail.com', 'aichatnorge@gmail.com'],
+            // SIKKERHETSFIKS (F-04): var hardkodet til private Gmail-adresser.
+            to: getAdminNotifyEmails(),
             subject: `⚡ INTEGRASJON TILKOBLET: ${effectiveCompanyName} koblet til ${service}`,
             html: `
               <div style="font-family: sans-serif; max-width: 550px; margin: 0 auto; padding: 20px; border: 1px solid #E2E8F0; border-radius: 10px;">

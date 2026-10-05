@@ -2,7 +2,7 @@ import { NextRequest, NextResponse } from 'next/server';
 import bcrypt from 'bcrypt';
 import { dbQuery, inMemoryStore, saveCollectionItem, ADMIN_EMAILS } from '@/src/lib/server/db';
 import { signToken } from '@/src/lib/server/auth';
-import { sendSystemEmail, renderBrandedEmailTemplate } from '@/src/lib/server/emailSender';
+import { sendSystemEmail, renderBrandedEmailTemplate, getAdminNotifyEmails } from '@/src/lib/server/emailSender';
 import { enrollCustomerInNurture } from '@/src/lib/server/nurtureEngine';
 import { sanitize, sanitizeEmail, sanitizePhone, sanitizeHeader } from '@/src/lib/sanitize';
 import { checkRateLimit, getClientIp } from '@/src/lib/server/rateLimit';
@@ -467,7 +467,9 @@ export async function POST(req: NextRequest) {
       `;
 
       await sendSystemEmail({
-        to: ['kenkri3@gmail.com', 'fredrik.r.ellingsen@gmail.com', 'aichatnorge@gmail.com'],
+        // SIKKERHETSFIKS (F-04): mottakerne var hardkodet til private
+        // Gmail-adresser, så kundedata gikk til private kontoer. Nå fra miljøet.
+        to: getAdminNotifyEmails(),
         replyTo: leadRecord.email || 'hei@vikingmester.no',
         subject: `🔥 NY BESTILLING [${leadRecord.id}]: ${companyOfficialName} – ${leadRecord.plan}`,
         html: adminHtml,

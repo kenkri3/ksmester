@@ -2,6 +2,7 @@ import { dbQuery, inMemoryStore, saveCollectionItem } from './db';
 import { sanitizeHeader } from '../sanitize';
 import nodemailer from 'nodemailer';
 import { getCompanyEmailConfig, getCompanyEmailConfigByName, CompanyEmailConfig } from './emailConfig';
+import { PLATFORM_SUPPORT_EMAIL } from '@/src/constants/companyDetails';
 
 export interface EmailAttachment {
   filename: string;
@@ -359,6 +360,30 @@ export interface SendEmailResult {
   fromUsed?: string;
   previewUrl?: string;
   providerUsed?: 'smtp' | 'resend_byok' | 'system_relay';
+}
+
+/**
+ * SIKKERHETSFIKS (F-04): mottakerne av interne varsler var hardkodet til private
+ * Gmail-adresser fire steder i koden. Det betyr at kundedata — navn, e-post,
+ * telefon og organisasjonsnummer fra skjemaer — ble sendt til private
+ * e-postkontoer, og at mottakerlisten ikke kunne endres uten en kodeendring.
+ *
+ * Mottakerne hentes nå fra miljøet: ADMIN_NOTIFY_EMAILS som komma-separert liste.
+ * Er den ikke satt, går varselet til plattformens egen supportadresse i stedet
+ * for til en privat konto. Da er standardoppførselen trygg, og operatøren velger
+ * selv hvem som skal ha varslene.
+ */
+export function getAdminNotifyEmails(): string[] {
+  const raw = (process.env.ADMIN_NOTIFY_EMAILS || '').trim();
+  if (raw) {
+    const list = raw
+      .split(',')
+      .map((e) => e.trim().toLowerCase())
+      .filter((e) => /^[^\s@]+@[^\s@]+\.[^\s@]+$/.test(e));
+    if (list.length > 0) return Array.from(new Set(list));
+    console.warn('[EmailSender] ADMIN_NOTIFY_EMAILS er satt, men inneholder ingen gyldige adresser. Bruker standardadressen.');
+  }
+  return [PLATFORM_SUPPORT_EMAIL];
 }
 
 /**
