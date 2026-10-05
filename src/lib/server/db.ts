@@ -12,8 +12,36 @@ const DATABASE_URL = process.env.DATABASE_URL || process.env.POSTGRES_URL || pro
 // 🛡️ SECURITY FIX: Replaced hardcoded fallback password with a dynamically generated one.
 // Hardcoded passwords in source code allow attackers to access the default admin account if the environment variable is missing.
 export const DEFAULT_ADMIN_EMAIL = (process.env.ADMIN_EMAIL || 'kenkri3@gmail.com').toLowerCase();
-export const DEFAULT_ADMIN_PASSWORD = process.env.ADMIN_PASSWORD || 'VikingMester2026!';
-export const DEFAULT_ADMIN_HASH = bcrypt.hashSync(DEFAULT_ADMIN_PASSWORD, 10);
+// SIKKERHETSFIKS (E-09): Tidligere sto det hardkodede passordet 'VikingMester2026!'
+// som fallback her, og seedingen kjorte 'ON CONFLICT (email) DO UPDATE SET
+// password = EXCLUDED.password'. Uten ADMIN_PASSWORD i miljoet ble admin-passordet
+// dermed nullstilt til en offentlig kjent verdi ved HVER prosessoppstart.
+// Na: ingen hardkodet fallback. Mangler variabelen i produksjon, genereres et
+// tilfeldig passord per prosess - kontoen finnes, men ingen kan logge inn med et
+// kjent passord. I utvikling brukes en stabil, tydelig lokal testverdi.
+let cachedAdminHash: string | null = null;
+function getAdminSeedHash(): string {
+  if (cachedAdminHash) return cachedAdminHash;
+  const configured = (process.env.ADMIN_PASSWORD || process.env.INITIAL_ADMIN_PASSWORD || '').trim();
+  if (configured) {
+    cachedAdminHash = bcrypt.hashSync(configured, 10);
+    return cachedAdminHash;
+  }
+  if (process.env.NODE_ENV === 'production') {
+    console.error(
+      '[SECURITY] ADMIN_PASSWORD er ikke satt i produksjon. ' +
+      'Admin-kontoen seedes med et tilfeldig passord som ikke deles - ingen kan logge inn pa den. ' +
+      'Sett ADMIN_PASSWORD i miljovariablene.'
+    );
+    cachedAdminHash = bcrypt.hashSync(randomBytes(32).toString('hex'), 10);
+  } else {
+    console.warn('[SECURITY] ADMIN_PASSWORD mangler - bruker en lokal utviklingsverdi.');
+    cachedAdminHash = bcrypt.hashSync('dev-only-admin-password', 10);
+  }
+  return cachedAdminHash;
+}
+// Beholdes som navn for kompatibilitet, men er na en funksjon uten kjent fallback.
+export const getDefaultAdminHash = getAdminSeedHash;
 
 export const ADMIN_EMAILS = [
   'kenkri3@gmail.com',
@@ -24,8 +52,6 @@ export const ADMIN_EMAILS = [
   'lars@nonfoodgroup.no',
   'jm@nonfoodgroup.no'
 ];
-export const INITIAL_ADMIN_PASSWORD = process.env.INITIAL_ADMIN_PASSWORD || process.env.ADMIN_PASSWORD || 'VikingMester2026!';
-export const INITIAL_ADMIN_HASH = bcrypt.hashSync(INITIAL_ADMIN_PASSWORD, 10);
 
 export const DEMO_USER_EMAIL = 'demo@fjellheimbygg.no';
 export const DEMO_USER_PASSWORD = 'Demo1234!';
@@ -101,7 +127,7 @@ export const inMemoryStore: Record<string, any[]> = {
     {
       id: 'u-admin-123',
       email: DEFAULT_ADMIN_EMAIL,
-      password: DEFAULT_ADMIN_HASH,
+      password: getAdminSeedHash(),
       displayName: 'Ken (Admin)',
       role: 'admin',
       trade: 'Byggmester',
@@ -113,7 +139,7 @@ export const inMemoryStore: Record<string, any[]> = {
     {
       id: 'u-admin-aichatnorge',
       email: 'aichatnorge@gmail.com',
-      password: INITIAL_ADMIN_HASH,
+      password: getAdminSeedHash(),
       displayName: 'Kenneth Kristiansen',
       role: 'admin',
       trade: 'Byggmester',
@@ -596,21 +622,21 @@ export async function initDb() {
       ALTER TABLE users ADD COLUMN IF NOT EXISTS is_beta_tester BOOLEAN DEFAULT FALSE;
     `);
 
+    // SIKKERHETSFIKS (E-09): 'password = EXCLUDED.password' er fjernet. Uten den
+    // beholder en eksisterende admin sitt passord ved omstart, i stedet for a bli
+    // nullstilt til en verdi fra kildekoden.
     const seedAdmins = [
       { id: 'u-admin-123', email: DEFAULT_ADMIN_EMAIL, name: 'Ken (Admin)' },
       { id: 'u-admin-aichatnorge', email: 'aichatnorge@gmail.com', name: 'Kenneth Kristiansen' }
     ];
 
     for (const admin of seedAdmins) {
-      await client.query(`
-        INSERT INTO users (id, email, password, display_name, role, trade, company, company_id, subscription_status)
-        VALUES ($1, $2, $3, $4, 'admin', 'Byggmester', 'AIChat Norge AS / Vikingnet', 'comp-001', 'active')
-        ON CONFLICT (email) DO UPDATE SET 
-          password = EXCLUDED.password,
-          role = 'admin', 
-          subscription_status = 'active', 
-          display_name = EXCLUDED.display_name
-      `, [admin.id, admin.email, INITIAL_ADMIN_HASH, admin.name]);
+      await client.query(
+        'INSERT INTO users (id, email, password, display_name, role, trade, company, company_id, subscription_status) ' +
+          "VALUES ($1, $2, $3, $4, 'admin', 'Byggmester', 'AIChat Norge AS / Vikingnet', 'comp-001', 'active') " +
+        'ON CONFLICT (email) DO NOTHING',
+        [admin.id, admin.email, getAdminSeedHash(), admin.name]
+      );
     }
 
     client.release();
@@ -932,7 +958,7 @@ export async function saveCollectionItem(collectionName: string, item: any): Pro
         `, [
           fullItem.id,
           fullItem.email.toLowerCase().trim(),
-          fullItem.password || DEFAULT_ADMIN_HASH,
+          fullItem.password || getAdminSeedHash(),
           fullItem.displayName || fullItem.name || fullItem.email.split('@')[0],
           fullItem.role || 'worker',
           fullItem.trade || 'Tømrer',
