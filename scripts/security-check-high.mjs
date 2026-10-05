@@ -207,6 +207,36 @@ async function main() {
       delLeaks ? 'bruker fortsatt role===admin som global nokkel' : 'krever eierskap eller SuperAdmin');
   }
 
+  // ---------- E-13: uautentisert e-postutsending fra verifisert domene ----------
+  console.log('\nE-13  /api/partner/leads - apen e-postutsending');
+  {
+    const anon = await req('POST', '/api/partner/leads', {
+      sellerName: 'Angriper', email: 'offer-' + stamp + '@example.invalid',
+      name: 'Offer', company: 'Offer AS',
+    });
+    r('E-13', 'uautentisert POST avvises',
+      (anon.status === 401 || anon.status === 403) ? 'OK' : 'FEIL',
+      'HTTP ' + anon.status + (anon.status === 200 ? ' - ruten sendte e-post uten innlogging' : ''));
+
+    const legit = await registerUser('e13-selger');
+    const spoof = await req('POST', '/api/partner/leads', {
+      sellerName: 'Spoofet Navn', sellerEmail: 'spoof-' + stamp + '@example.invalid',
+      sellerId: 'seller-finnes-ikke',
+      email: 'mottaker-' + stamp + '@example.invalid',
+      name: 'Mottaker', company: 'Mottaker AS',
+    }, auth(legit.token));
+    const storedEmail = String((spoof.json && spoof.json.lead && spoof.json.lead.sellerEmail) || '').toLowerCase();
+    r('E-13', 'selgeridentiteten kan ikke spoofes via body',
+      storedEmail !== 'spoof-' + stamp + '@example.invalid' ? 'OK' : 'FEIL',
+      'lagret sellerEmail: ' + JSON.stringify(storedEmail) + ' (HTTP ' + spoof.status + ')');
+
+    const src = readSrc('src/app/api/partner/leads/route.ts');
+    const code = src.split(/\r?\n/).filter(function (l) { return !l.trim().startsWith('//'); }).join('\n');
+    r('E-13', 'POST henter selger fra sesjonen, ikke fra body',
+      /if\s*\(!userPayload\)/.test(code) && !/body\.sellerEmail/.test(code) ? 'OK' : 'FEIL',
+      /body\.sellerEmail/.test(code) ? 'body.sellerEmail brukes fortsatt' : 'sellerEmail/sellerId kommer fra JWT');
+  }
+
   console.log('\n=== OPPSUMMERING ===');
   for (const row of rows) console.log(row.verdict.padEnd(6) + '  ' + row.id + '  ' + row.name);
   console.log('\nOK: ' + pass + '   FEIL: ' + fail + '   MANUELL: ' + manual);
