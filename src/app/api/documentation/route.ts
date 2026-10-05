@@ -5,7 +5,8 @@ import {
   GeneratedDocItem 
 } from '@/src/lib/server/projectDocumentationEngine';
 import { sendSystemEmail } from '@/src/lib/server/emailSender';
-import { getUserFromRequest } from '@/src/lib/server/auth';
+import { getUserFromRequest, isUserSuperAdmin, type TokenPayload } from '@/src/lib/server/auth';
+import { getCollectionItemById } from '@/src/lib/server/db';
 
 export const dynamic = 'force-dynamic';
 
@@ -17,16 +18,43 @@ export const dynamic = 'force-dynamic';
  *   `recipientEmail` — altså et åpent e-postendepunkt (spam/phishing).
  * Begge krever nå en innlogget bruker.
  */
-function requireUser(req: NextRequest) {
+function requireUser(req: NextRequest): TokenPayload | null {
   return getUserFromRequest(req);
+}
+
+/**
+ * SIKKERHETSFIKS (E-12): Ruten krevde innlogging, men aldri EIERSKAP. En hvilken
+ * som helst innlogget bruker kunne hente dokumentasjon for vilkarlig projectId
+ * (kundenavn, avvik, FDV) og sende den til vilkarlig mottaker fra plattformens
+ * verifiserte domene - et fullverdig phishing-primitiv. Autoriserer na pa bedrift.
+ */
+async function loadAuthorizedProject(
+  req: NextRequest,
+  projectId: string
+): Promise<{ error: NextResponse } | { user: TokenPayload; project: any }> {
+  const user = requireUser(req);
+  if (!user) return { error: NextResponse.json({ error: 'Uautorisert. Innlogging kreves.' }, { status: 401 }) };
+
+  const project = await getCollectionItemById('projects', projectId).catch(() => null);
+  if (!project) {
+    return { error: NextResponse.json({ error: 'Prosjektet finnes ikke' }, { status: 404 }) };
+  }
+
+  if (!isUserSuperAdmin(user)) {
+    const projectCompanyId = project.companyId || project.company_id || null;
+    const projectCompany = project.company || null;
+    const sameCompanyId = projectCompanyId && user.companyId && projectCompanyId === user.companyId;
+    const sameCompanyName = projectCompany && user.company && projectCompany === user.company;
+    if (!sameCompanyId && !sameCompanyName) {
+      return { error: NextResponse.json({ error: 'Du har ikke tilgang til dette prosjektet' }, { status: 403 }) };
+    }
+  }
+
+  return { user, project };
 }
 
 export async function GET(request: NextRequest) {
   try {
-    if (!requireUser(request)) {
-      return NextResponse.json({ error: 'Uautorisert. Innlogging kreves.' }, { status: 401 });
-    }
-
     const { searchParams } = new URL(request.url);
     const projectId = searchParams.get('projectId') || '';
     const projectName = searchParams.get('projectName') || 'Prosjekt';
@@ -36,6 +64,10 @@ export async function GET(request: NextRequest) {
     if (!projectId) {
       return NextResponse.json({ error: 'Mangler projectId' }, { status: 400 });
     }
+
+    // SIKKERHETSFIKS (E-12): autoriser pa bedrift for dokumentasjon hentes.
+    const auth = await loadAuthorizedProject(request, projectId);
+    if ('error' in auth) return auth.error;
 
     const result = await getOrGenerateProjectDocumentation(projectId, {
       name: projectName,
@@ -58,16 +90,16 @@ export async function GET(request: NextRequest) {
 
 export async function POST(request: NextRequest) {
   try {
-    if (!requireUser(request)) {
-      return NextResponse.json({ error: 'Uautorisert. Innlogging kreves.' }, { status: 401 });
-    }
-
     const body = await request.json();
     const { action, projectId, projectInfo, recipientEmail, companyName } = body;
 
     if (!projectId) {
       return NextResponse.json({ error: 'Mangler projectId' }, { status: 400 });
     }
+
+    // SIKKERHETSFIKS (E-12): samme autorisasjon for generering og e-postutsending.
+    const auth = await loadAuthorizedProject(request, projectId);
+    if ('error' in auth) return auth.error;
 
     if (action === 'generate_project_fdv') {
       const result = await getOrGenerateProjectDocumentation(projectId, projectInfo);
@@ -99,6 +131,25 @@ export async function POST(request: NextRequest) {
     if (action === 'email_documentation') {
       if (!recipientEmail) {
         return NextResponse.json({ error: 'Mangler recipientEmail' }, { status: 400 });
+      }
+
+      // SIKKERHETSFIKS (E-12): mottakeren var fritt valgt, mens avsenderen er
+      // plattformens verifiserte domene. Det gjorde ruten til et phishing-primitiv:
+      // en innlogget bruker kunne sende plattformbrandet HTML med vedlegg til hvem
+      // som helst. Mottakeren ma na vaere prosjektets registrerte kundeadresse.
+      const projectClientEmail = String(
+        auth.project?.clientEmail || auth.project?.client_email || ''
+      ).trim().toLowerCase();
+      const requestedRecipient = String(recipientEmail).trim().toLowerCase();
+      if (!projectClientEmail) {
+        return NextResponse.json({
+          error: 'Prosjektet har ingen registrert kundeadresse. Legg inn kundens e-post pa prosjektet for du sender dokumentasjon.'
+        }, { status: 400 });
+      }
+      if (requestedRecipient !== projectClientEmail) {
+        return NextResponse.json({
+          error: `Dokumentasjon kan bare sendes til prosjektets registrerte kundeadresse (${projectClientEmail}).`
+        }, { status: 403 });
       }
 
       const customSubject = body.customSubject;
