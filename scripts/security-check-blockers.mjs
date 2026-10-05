@@ -1,4 +1,6 @@
 #!/usr/bin/env node
+import fs from 'fs';
+import path from 'path';
 /**
  * Bevissjekk for BLOKKERER-funnene E-01 .. E-10 i VikingMester.
  *
@@ -73,11 +75,41 @@ async function main() {
   console.log('  /api/ai/generate -> HTTP ' + ai.status);
   console.log('  /api/agent/chat  -> HTTP ' + chat.status + '\n');
 
-  // ---------- E-07: agent/chat avviser aldri anonyme ----------
-  console.log('E-07  /api/agent/chat uten innlogging');
-  r('E-07', 'anonym POST til /api/agent/chat avvises med 401/403',
-    (chat.status === 401 || chat.status === 403) ? 'OK' : 'FEIL',
-    'HTTP ' + chat.status + (chat.status === 200 ? ' - ruten svarte 200 pa en anonym foresporsel' : ''));
+  // ---------- E-07: agent/chat - klientstyrt autorisasjon ----------
+  // Merk: ruten MAA svare anonyme kall, fordi den offentlige demoen
+  // (MesterAIAgentFrame via MesterAIChat) ikke sender Authorization.
+  // Det som ikke maa skje, er at body.isAdmin eller body.companyId far
+  // styre autorisasjonen eller hvilken bedrifts data som leses.
+  console.log('E-07  /api/agent/chat - klientstyrt autorisasjon');
+  {
+    const srcPath = path.join(process.cwd(), 'src', 'app', 'api', 'agent', 'chat', 'route.ts');
+    let src = '';
+    try { src = fs.readFileSync(srcPath, 'utf8'); } catch (e) { src = ''; }
+    if (!src) {
+      r('E-07', 'kildekoden til agent/chat kan leses for statisk sjekk', 'MANUELL', 'fant ikke ' + srcPath);
+    } else {
+      // Se bort fra kommentarlinjer, slik at fiksen ikke matcher sin egen forklaring.
+      const codeOnly = src.split(/\r?\n/).filter(function (l) { return !l.trim().startsWith('//'); }).join('\n');
+      const hasAnonAdminGate = /!\s*user\s*&&\s*body\.isAdmin/.test(codeOnly);
+      const usesBodyCompanyId = /body\.companyId\s*\|\|/.test(codeOnly);
+      r('E-07', 'body.isAdmin styrer IKKE autorisasjonen',
+        !hasAnonAdminGate ? 'OK' : 'FEIL',
+        hasAnonAdminGate ? 'fant grenen (!user && body.isAdmin === true)' : 'ingen anonym admin-gren i koden');
+      r('E-07', 'body.companyId styrer IKKE hvilken bedrift som leses',
+        !usesBodyCompanyId ? 'OK' : 'FEIL',
+        usesBodyCompanyId ? 'body.companyId brukes fortsatt direkte i en fallback-kjede' : 'body.companyId brukes ikke som fallback');
+    }
+    const forgedAnon = { message: 'hvilke prosjekter har vi?', isAdmin: true, companyId: 'comp-001', userId: 'u-admin-123' };
+    const anonRes = await req('POST', '/api/agent/chat', forgedAnon);
+    const anonReply = String((anonRes.json && anonRes.json.reply) || '');
+    const claimsAdmin = /administrator\s*\/\s*leder|full tilgang til alle bedriftens bygg/i.test(anonReply);
+    r('E-07', 'anonymt kall med isAdmin:true far IKKE administrasjonskontekst',
+      !claimsAdmin ? 'OK' : 'FEIL',
+      claimsAdmin ? 'svaret hevdet administrator/leder-tilgang' : 'HTTP ' + anonRes.status + ', ingen administrator-kontekst i svaret');
+    r('E-07', 'anonymt kall krasjer IKKE (den offentlige demoen virker fortsatt)',
+      anonRes.status < 500 ? 'OK' : 'FEIL',
+      'HTTP ' + anonRes.status);
+  }
 
   // ---------- E-05: x-portal-access opphever autentisering ----------
   console.log('\nE-05  x-portal-access header');
@@ -165,7 +197,7 @@ async function main() {
     e08verdict = clobbered ? 'FEIL' : 'OK';
     e08detail = 'oppgave-raden etter overskriving: ' + JSON.stringify(taskRow && taskRow.title) + ' (tasks HTTP ' + a.status + ', notifications HTTP ' + b.status + ')';
   }
-  r('E-08', 'samme id i to samlinger overskriver IKKE hverandre', e08verdict, e08detail);
+  r('E-08', 'samme id i to samlinger overskriver IKKE hverandre I MINNESLAGERET', e08verdict, e08detail + ' - MERK: minneslageret nokler per samling, sa denne sjekken sier IKKE om Postgres er trygg');
 
   // ---------- E-02: kontoovertakelse (full sjekk ligger i egen fil) ----------
   console.log('\nE-02  kontoovertakelse via /api/lead');

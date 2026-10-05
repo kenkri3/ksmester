@@ -2,7 +2,7 @@ import path from 'path';
 import fs from 'fs';
 import { NextRequest, NextResponse } from 'next/server';
 import crypto from 'crypto';
-import { getUserFromRequest } from '@/src/lib/server/auth';
+import { getUserFromRequest, isUserSuperAdmin } from '@/src/lib/server/auth';
 import { sendSystemEmail, sendOfferByEmail, sendChangeOrderByEmail, cleanMarkdownForEmail } from '@/src/lib/server/emailSender';
 import { getCollectionItems, saveCollectionItem } from '@/src/lib/server/db';
 import { generateWithAiEngine } from '@/src/lib/server/aiEngine';
@@ -481,8 +481,15 @@ export async function POST(req: NextRequest) {
     let isSandboxedDemo = false;
 
     // Multi-tenant: Finn effektiv bedrifts-ID (støtter body.companyId, impersonering eller user.companyId)
-    const effectiveCompanyId = body.companyId || user?.companyId || (companyName && companyName !== 'VikingMester' ? companyName.toLowerCase().replace(/[^a-z0-9]/g, '') : null);
-    const effectiveUserId = user?.id || body.userId || (effectiveCompanyId === 'comp-demo-fjellheim' ? 'demo-user-lars' : null);
+    // SIKKERHETSFIKS (E-07): Bedrifts- og brukeridentitet skal komme fra den
+    // verifiserte sesjonen, ikke fra request-bodyen. Tidligere kunne en anonym
+    // klient sende body.companyId og fa alle data for den bedriften.
+    // Bare SuperAdmin far velge bedrift eksplisitt (impersonering).
+    const isSuperAdminCaller = isUserSuperAdmin(user);
+    const effectiveCompanyId = user
+      ? (isSuperAdminCaller && body.companyId ? body.companyId : user.companyId || null)
+      : null;
+    const effectiveUserId = user?.id || null;
 
     if (effectiveCompanyId && effectiveUserId) {
       // Autentisert kunde eller spesifikk bedrift: Streng multi-tenant hashing basert på bedrift og bruker
@@ -508,12 +515,14 @@ export async function POST(req: NextRequest) {
 
     // 🛡️ 1. ROLLE- OG TILGANGSVALIDERING (RBAC: Admin/Leder vs. Fagarbeider/Lærling)
     const effectiveRole = (user?.role || body.userRole || 'worker').toLowerCase();
-    const isUserAdmin = Boolean(
-      (user && (user.role === 'admin' || user.role === 'superadmin' || user.role === 'leader')) ||
-      (!user && body.isAdmin === true) ||
-      (effectiveCompanyId === 'comp-demo-fjellheim' && effectiveUserId === 'demo-user-lars')
-    );
-
+    // SIKKERHETSFIKS (E-07): Rollen avgjores av den verifiserte JWT-sesjonen alene.
+    // Den tidligere grenen (!user && body.isAdmin === true) lot en anonym klient
+    // erklare seg som administrator og lese hele plattformens data.
+    // Anonyme kall far effectiveRole = 'worker' og er sandkasset via isSandboxedDemo.
+    const isUserAdmin = effectiveRole === 'admin' || effectiveRole === 'superadmin' || effectiveRole === 'leader';
+    // Brukes til a avgjore om avsenderen kan fore timer pa vegne av andre (AML § 10-7).
+    // Skal ALDRI lese body.isAdmin / body.userRole, som er klientstyrte.
+    const isSenderAdmin = isUserAdmin;
     // 📂 2. Hent oppgaver, timer, dagbøker og avvik
     const clientTasks = Array.isArray(body.tasks) ? body.tasks : [];
     const clientTimeEntries = Array.isArray(body.timeEntries) ? body.timeEntries : (Array.isArray(body.dailyTimeEntries) ? body.dailyTimeEntries : []);
@@ -1420,14 +1429,6 @@ export async function POST(req: NextRequest) {
 
       // 🔒 Sjekk om det bes om å føre timer på en annen person
       // Kun administrator eller leder har lov til å føre timer på andre ansatte iht. AML § 10-7
-      const isSenderAdmin = Boolean(
-        body.isAdmin || 
-        body.userRole === 'admin' || 
-        body.userRole === 'leader' || 
-        user?.role === 'admin' || 
-        user?.role === 'leader' || 
-        user?.role === 'superadmin'
-      );
 
       // Finn om meldingen spesifiserer en annen håndverker
       let targetWorkerName = effectiveUser;

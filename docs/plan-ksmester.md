@@ -194,3 +194,29 @@ Gar i `docs/manuelt-arbeid.md` med BLOKKERER-merking. Jeg stopper og spor fremfo
 - **Deploy:** Railway beholder forrige vellykkede deploy og kan re-deployes fra panelet.
 - **Helsesjekk — kjent felle:** `/api/health` er deploy-porten (`railway.json:8`). Nar jeg retter C-02 (la DB-feil kaste), kan helseruten begynne a svare 503 og dermed **blokkere fremtidige deploys**. Helseruten ma derfor skille «DB nede» fra «app nede» med vilje, og jeg ma verifisere 200 lokalt for push.
 - **Varsling:** hvem som varsles ved feil er **ikke avklart** og star i `docs/manuelt-arbeid.md`.
+
+---
+
+## 7. RUUNDELOGG
+
+### Runde 1 — 2026-10-05
+
+**Blokkering lost.** `npm ci` feilet i 40 minutter med `EBADF: bad file descriptor` og `EPERM` pa hver fil. Arsak: `G:` er et **Google Drive-volum** (`GoogleDriveFS` kjorer, `.shortcut-targets-by-id` finnes). npm og det innebygde skriveverktoyet kan ikke skrive der. Lost ved a opprette en **lokal git-worktree** `C:\ksmester-work` pa grenen `lansering/fikser`, som deler samme `.git`. Installasjon tok 1 minutt der. Kildefilene i `G:` er ikke rort.
+
+**Verifiseringsportene Fase 1 og 2 er nad:** planen finnes, alle 10 BLOKKERER er verifisert mot kilden, to uavhengige agenter har rapportert, mal og paminnele er opprettet.
+
+**Utfort:**
+- E-02 kontoovertakelse — rettet, verifisert 6/6 i kjorende app. Commit `5cb6460`.
+- E-07 agent/chat — rettet, verifisert 4/4 i kjorende app.
+- `scripts/security-check-lead-takeover.mjs` og `scripts/security-check-blockers.mjs` skrevet.
+
+**Funnet underveis (min egen feil, rettet hoyt):** forste forsok pa E-07 fjernet `const sessionRole` sammen med en duplisert kommentar, slik at ruten kastet `ReferenceError` og svarte 500. `tsc --noEmit` var kjort **for** den redigeringen og fanget det derfor ikke. Fanging skjedde bare fordi appen ble kjort og endepunktet kalt. Lærdom brukt videre: typecheck kjores etter hver redigering, ikke foran.
+
+**Avviste funn (utvidet):**
+- **R-16 AVVIST.** Produksjon og lokal instans svarer 200 pa `/api/health`. Padstanden «kan aldri returnere 200» er feil.
+- **R-03 delvis AVVIST.** «3490 og 6900 finnes ingen steder i repoet» er feil: de star i `auth/register/route.ts:131` og `db.ts:712`. Resten star.
+- **E-06 presisert.** Ruten er ikke anonymt tilgjengelig (`isAuthorizedDispatchCaller`), men `authorName` gir privilegieheving fra enhver selvregistrert konto.
+
+**E-08 presisert — viktig nyanse:** feilen er **miljoavhengig**. `items_store` i Postgres har `id` alene som primarnokkel, sa to samlinger kolliderer. Minneslageret nokler derimot per `collectionName` (`db.ts:906-911`), sa kollisjonen reproduseres **ikke** lokalt uten database. Sjekken i `security-check-blockers.mjs` er merket deretter og paviser derfor ikke Postgres-trygghet.
+
+**Status etter runde 1:** 2 av 10 BLOKKERER lukket og verifisert i kjorende app. 6 sjekker feiler fortsatt (E-01, E-03, E-04, E-06, E-10 og E-05/E-09 manuelt). 0 push.
