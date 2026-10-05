@@ -408,3 +408,23 @@ Alle 7 er na rettet og verifisert ved a lese filen tilbake fra disk. Typekontrol
 **Forbehold:** W-14 er verifisert statisk (koden lest, verdiene borte), ikke ved en kjørt reproduksjon. Å reprodusere krever en konto uten prosjekter, som jeg ikke har laget i denne runden.
 
 **Samlet status: 40 av 104 funn rettet (38 %). Alle 10 BLOKKERER, og 26 av 28 HØY.**
+### Runde 10 — 2026-10-05 (målrunde 6) · BRUKEREN BA OM STOPP
+
+Brukeren ba om å stoppe her. Runden ble avsluttet ryddig: alt arbeid er committet, verifisert og dokumentert.
+
+**Rettet denne runden:**
+
+| Funn | Rettelse |
+| :--- | :--- |
+| **C-04** | `runCron.js` falt tilbake på den hardkodede produksjonsadressen når `APP_URL` manglet; sendte forespørselen uten Authorization når `CRON_SECRET` manglet; og kalte alltid `process.exit(0)` selv når alle jobber feilet. Alle tre rettet — scriptet avbryter nå med feilkode i stedet. `?secret=` fjernet fra `verifyCronOrInternalSecret`: en hemmelighet i URL-en havner i logger og historikk |
+| **O-04** | Manglende `DATABASE_URL` feilet ikke lukket. `/api/health` svarte 200 mens all data gikk til minnelager og ville forsvunnet ved redeploy. Nå 503 i produksjon, med et nytt `databaseStatus`-felt som skiller «mangler» fra «databasen svarer ikke». Verifisert: HTTP 503 |
+| **W-06** | Godkjenning og avvisning av endringsordre (NS 8406) oppdaterte UI-et FØR serveren var kontaktet, svelget skrivefeil med `console.warn`, og ignorerte ikke-ok svar. En juridisk bindende handling kunne se gjennomført ut uten å være lagret. Nå ventes det på serverbekreftelse, med rulle-tilbake ved nettverksfeil |
+| **O-06** | Tre verktøysider (i sitemap, priority 0.85) arvet root-layoutens `canonical: '/'` og ble bedt indeksert som forsiden. De var klientkomponenter og kunne ikke eksportere metadata, så hver side er delt i `page.tsx` (server, eier metadata) og `VerktoyClient.tsx` (uendret UI). Verifisert i servert HTML: hver side har nå sin egen canonical |
+
+**Egen feil, rapportert høyt — tredje gang:** et inline PowerShell-script rapporterte at W-06 var skrevet, men filen var uendret. Jeg oppdaget det ved å lese filen tilbake, ikke ved å lese scriptets utskrift. Et påfølgende forsøk traff feil linjeområde og etterlot en duplikat funksjonsdeklarasjon, som `tsc --noEmit` **ikke** fanget fordi parseren kom seg videre. Begge ble rettet med redigeringsverktøyet og verifisert ved å lese filen og grep-e den etterpå.
+
+**Lærdom, nå i planen som regel:** verifiser hver fil ved å lese den tilbake fra disk. Et script som sier «ferdig» er ikke et bevis, og et grønt bygg er ikke et bevis på at en tekstlig endring traff riktig sted.
+
+**SLUTTSTATUS: 38 commits. 44 av 104 funn rettet (42 %). Alle 10 BLOKKERER. 24 av 29 HØY.**
+**17/17 BLOKKERER-sjekker og 31/31 HØY-sjekker passerer i produksjonsmodus. tsc --noEmit = 0 feil. npm run build = exit 0.**
+**Ingenting er pushet. `main` og `origin/main` står på `f21f032`.**
