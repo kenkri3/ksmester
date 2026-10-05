@@ -1,4 +1,4 @@
-﻿# Plan — VikingMester (ksmester) mot produksjons- og lanseringsklar
+# Plan — VikingMester (ksmester) mot produksjons- og lanseringsklar
 
 **Opprettet:** 2026-10-05 · **Sist oppdatert:** 2026-10-05 (runde 1)
 **Repo:** `G:\Min disk\GitHub\ksmester` · **Remote:** `origin` = https://github.com/kenkri3/ksmester.git
@@ -247,3 +247,35 @@ Gar i `docs/manuelt-arbeid.md` med BLOKKERER-merking. Jeg stopper og spor fremfo
 **E-08 — fortsatt apen, og hvorfor:** `items_store` i Postgres har `id` alene som primarnokkel, sa to samlinger med samme id kolliderer. Minneslageret nokler per `collectionName`, sa feilen reproduseres ikke lokalt. A verifisere den krever en kjorende Postgres. Docker-daemonen kjorer ikke pa maskinen, sa jeg kan ikke starte en selv. Dette star i `docs/manuelt-arbeid.md`.
 
 **Status etter runde 2:** 9 av 10 BLOKKERER lukket og verifisert. 1 gjenstar (E-08) og er avhengig av en Postgres jeg ikke kan starte. 0 push — venter pa brukerens ja.
+### Runde 3 — 2026-10-05 (utlost av den planlagte paminnelsen)
+
+**Paminnelsen traff et stoppunkt, ikke et arbeidspunkt.** Ingen nye rettelser ble gjort denne runden, med vilje. Punktet «SLIK ENDRER DU KODEN — ikke start nye spor» og stoppkriterium 8 gjor at videre arbeid na ville være a legge til risiko, ikke fjerne den.
+
+**Tilstand verifisert pa nytt (2026-10-05):**
+
+| Sjekk | Resultat |
+| :--- | :--- |
+| `npx tsc --noEmit` | exit 0, 0 feil |
+| `npm run build` | exit 0 |
+| `scripts/security-check-blockers.mjs` | 17 OK, 0 FEIL, 0 MANUELL |
+| Kjorende dev-instans `/api/health` | HTTP 200 |
+| Arbeidstre | rent — alt er committet |
+| Commits pa `lansering/fikser` | 12, alle kun lokale |
+| `main` i `G:` | urort, `f21f032` |
+| `origin/main` | `f21f032` — ingenting pushet |
+| Docker | kjorer fortsatt ikke |
+
+**Stoppkriterier — status:**
+
+1. Typekontroll og bygg gronne pa siste commit — **NADD** (lokalt; siste commit er ikke pushet, sa «siste commit» er `966d08d` pa `lansering/fikser`)
+2. Malmljoet bekreftet oppdatert — **IKKE NADD.** Blokkert av punkt 1.1: push til `main` er en produksjonsdeploy og krever brukerens ja
+3. Alle sider apnet med skjermbilde PC/mobil — **IKKE NADD.** Gjenstar som fase 5
+4. Ingen pastand uten kilde — **IKKE NADD.** Blokkert av punkt 2.4 og 2.5
+5. Juridiske sider korrekte — **IKKE NADD.** Blokkert av punkt 2.1 (org.nr), 2.2 (priser), 2.7 (personvern)
+6. Tredjepart kan reprodusere — **DELVIS.** `scripts/security-check-*.mjs` er kjorbare og dokumentert, men er ikke kjort av noen andre enna
+7. Vei tilbake finnes — **NADD.** Isolerte commits, `git revert` per rettelse, Railway beholder forrige deploy. Varslingsvei mangler (punkt 2.8)
+8. Ingen gjenstaende BLOKKERER eller HOY — **IKKE NADD.** Alle 10 BLOKKERER er rettet, men E-08 er uverifisert, og ingen av de 28 HOY-funnene er rettet enna
+
+**Hvorfor jeg stopper og ikke fortsetter:** de to gjenstaende verifiseringsoppgavene (E-08 og passordrotasjonen) krever en PostgreSQL jeg ikke kan starte. De tre gjenstaende beslutningene (push, priser, org.nr) krever brukeren. A begynne pa HOY-funn na ville være a stable 28 nye endringer oppa et sett som enna ikke er bekreftet i produksjon — det er a legge til risiko rett for lansering, som er eksplisitt forbudt.
+
+**Paminnelsen er slettet** i trad med instruksen, og sluttrapporten er skrevet.
