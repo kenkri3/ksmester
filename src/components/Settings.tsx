@@ -37,6 +37,9 @@ import { useAuth } from '../hooks/useAuth';
 import { useTranslation } from 'react-i18next';
 import { getStandardLang } from '../i18n';
 import { cn } from '@/src/lib/utils';
+// SIKKERHETSFIKS (E-17/E-29): /api/settings/integrations krever na innlogging og
+// svarer 401 uten Authorization-header. getHeaders() henter tokenet fra sesjonen.
+import { getHeaders } from '@/src/services/api';
 import { db, doc, getDoc, setDoc, handleFirestoreError, OperationType, collection, query, where, getDocs, deleteDoc } from '../services/firebase';
 import InviteModal from './InviteModal';
 import OmnichannelModal from './OmnichannelModal';
@@ -194,7 +197,7 @@ export default function Settings() {
   useEffect(() => {
     async function loadIntegrations() {
       try {
-        const res = await fetch('/api/settings/integrations');
+        const res = await fetch('/api/settings/integrations', { headers: getHeaders() });
         if (res.ok) {
           const list = await res.json();
           if (Array.isArray(list)) {
@@ -731,7 +734,7 @@ export default function Settings() {
                                 onClick={async () => {
                                   if (confirm(`Vil du koble fra ${service}?`)) {
                                     try {
-                                      await fetch(`/api/settings/integrations?service=${encodeURIComponent(service)}`, { method: 'DELETE' });
+                                      await fetch(`/api/settings/integrations?service=${encodeURIComponent(service)}`, { method: 'DELETE', headers: getHeaders() });
                                       setConnectedServices(prev => ({ ...prev, [service]: false }));
                                       toast.info(`${service} er koblet fra.`);
                                     } catch (err) {
@@ -1385,7 +1388,7 @@ export default function Settings() {
                   try {
                     const res = await fetch('/api/settings/integrations', {
                       method: 'POST',
-                      headers: { 'Content-Type': 'application/json' },
+                      headers: getHeaders(),
                       body: JSON.stringify({
                         service: activeIntegrationModal,
                         secretToken: integrationSecret,

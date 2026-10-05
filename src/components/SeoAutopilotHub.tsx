@@ -22,6 +22,7 @@ import {
 } from 'lucide-react';
 import { toast } from 'sonner';
 import { NORWAY_COUNTIES, NORWAY_LOCATIONS } from '@/src/constants/norwayLocationsData';
+import { getHeaders } from '@/src/services/api';
 
 export default function SeoAutopilotHub() {
   const [isRunning, setIsRunning] = useState(false);
@@ -38,7 +39,10 @@ export default function SeoAutopilotHub() {
   const fetchInitialData = async () => {
     try {
       // Hent PageSpeed
-      const psRes = await fetch('/api/seo/pagespeed');
+      // SIKKERHETSFIKS (E-27): ruten krever na innlogging (den brukte tidligere
+      // plattformens PageSpeed-nokkel for hvem som helst). Uten denne headeren
+      // ville kallet fatt 401 og fanen statt tom - derfor sendes tokenet med.
+      const psRes = await fetch('/api/seo/pagespeed', { headers: getHeaders() });
       if (psRes.ok) {
         const psJson = await psRes.json();
         if (psJson.success) setPageSpeedData(psJson.data);

@@ -65,6 +65,9 @@ import { generateAiContent } from '../services/aiClient';
 import { db, collection, onSnapshot, query, where, doc, updateDoc, deleteDoc, addDoc, serverTimestamp, handleFirestoreError, OperationType, orderBy } from '../services/firebase';
 import { useAuth } from '../hooks/useAuth';
 import { cn } from '../lib/utils';
+// SIKKERHETSFIKS (E-17): /api/integrations/status krever na innlogging og svarer
+// 401 uten Authorization-header. getHeaders() henter tokenet fra sesjonen.
+import { getHeaders } from '../services/api';
 import { toast } from 'sonner';
 import ProjectDetails from './ProjectDetails';
 import SeoAutopilotHub from './SeoAutopilotHub';
@@ -272,7 +275,7 @@ export default function SuperAdmin({ onBackToDashboard }: { onBackToDashboard?: 
 
   const loadIntegrationStatus = async () => {
     try {
-      const res = await fetch('/api/integrations/status');
+      const res = await fetch('/api/integrations/status', { headers: getHeaders() });
       if (res.ok) {
         const data = await res.json();
         setIntegrationStatus(data);
