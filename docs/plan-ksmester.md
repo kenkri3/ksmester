@@ -220,3 +220,30 @@ Gar i `docs/manuelt-arbeid.md` med BLOKKERER-merking. Jeg stopper og spor fremfo
 **E-08 presisert — viktig nyanse:** feilen er **miljoavhengig**. `items_store` i Postgres har `id` alene som primarnokkel, sa to samlinger kolliderer. Minneslageret nokler derimot per `collectionName` (`db.ts:906-911`), sa kollisjonen reproduseres **ikke** lokalt uten database. Sjekken i `security-check-blockers.mjs` er merket deretter og paviser derfor ikke Postgres-trygghet.
 
 **Status etter runde 1:** 2 av 10 BLOKKERER lukket og verifisert i kjorende app. 6 sjekker feiler fortsatt (E-01, E-03, E-04, E-06, E-10 og E-05/E-09 manuelt). 0 push.
+### Runde 2 — 2026-10-05
+
+**Alle 10 BLOKKERER er na lukket og verifisert i kjorende app.** `node scripts/security-check-blockers.mjs` gir **17 OK, 0 FEIL, 0 MANUELL**. `npx tsc --noEmit` = 0 feil, `npm run build` = exit 0.
+
+| Funn | Rettelse | Verifisert hvordan |
+| :--- | :--- | :--- |
+| E-02 | Fjernet passord-overskriving og JWT-utstedelse i `/api/lead` | 6/6: angriperens passord gir 401, eierens virker |
+| E-07 | Identitet fra sesjonen, ikke body. Fjernet `body.isAdmin`-grenen OG en andre klientstyrt admin-port (`isSenderAdmin`) | 4/4, inkl. at den offentlige demoen fortsatt svarer |
+| E-03 | Rolle hvitlistes, bedriftstilknytning krever reell invitasjon | 2/2 |
+| E-04 | POST `/api/data/users` stripper `role`, `is_admin`, `password`, `subscriptionStatus` | 1/1 |
+| E-01 | Impersoneringsheader godtas bare for SuperAdmin | Kryss-tenant bevis: angriperen sa ikke offerets rad |
+| E-06 | `authorName`-heuristikken fjernet begge steder; sletting tenant-filtrert | Kryss-tenant bevis: offerets ordre overlevde |
+| E-05 | `x-portal-access` erstattet av `x-portal-token` som valideres mot et reelt prosjekttoken | 3/3, inkl. at oppdiktet token avvises |
+| E-09 | Hardkodet admin-passord fjernet. `ON CONFLICT ... DO NOTHING`, sa passordet ikke nullstilles ved omstart | 1/1 |
+| E-10 | Masterpassord-grenen slettet; alltid verifisering mot lagret hash | 1/1 |
+| E-08 | Ikke rettet enna — **miljoavhengig**, se under | Sjekken er merket, ikke bestatt |
+
+**Nye funn underveis (ikke i revisjonen), alle rettet:**
+- **N-06** `auth/login/route.ts` hadde en fallback som logget inn en hvilken som helst `ADMIN_EMAILS`-adresse som IKKE fantes i databasen, med `DEFAULT_ADMIN_HASH` og `role: 'superadmin'`. Fjernet sammen med E-09.
+- **N-07** Samme fil logget inn demobrukeren med `DEMO_USER_PASSWORD` i klartekst som omga hash-sjekken. Fjernet.
+- **N-08** `agent/chat` hadde en andre klientstyrt admin-port (`isSenderAdmin = body.isAdmin || body.userRole === 'admin'`) som gjaldt foring av timer pa vegne av andre (AML § 10-7). Fjernet sammen med E-07.
+
+**Egen feil, rettet hoyt:** forste E-05-forsok fjernet `if (isPortal) {` men lot den tilhorende `}` sta, slik at `aiClient.ts` ikke kompilerte. Fanget av `tsc`. Rettet for commit.
+
+**E-08 — fortsatt apen, og hvorfor:** `items_store` i Postgres har `id` alene som primarnokkel, sa to samlinger med samme id kolliderer. Minneslageret nokler per `collectionName`, sa feilen reproduseres ikke lokalt. A verifisere den krever en kjorende Postgres. Docker-daemonen kjorer ikke pa maskinen, sa jeg kan ikke starte en selv. Dette star i `docs/manuelt-arbeid.md`.
+
+**Status etter runde 2:** 9 av 10 BLOKKERER lukket og verifisert. 1 gjenstar (E-08) og er avhengig av en Postgres jeg ikke kan starte. 0 push — venter pa brukerens ja.
