@@ -373,3 +373,12 @@ Gar i `docs/manuelt-arbeid.md` med BLOKKERER-merking. Jeg stopper og spor fremfo
 **Egen feil, rapportert hoyt:** et inline PowerShell-script rapporterte «erstattet: 12 av 12» uten at en eneste fil ble endret. Oppdaget bare fordi jeg leste filen etterpa i stedet for a stole pa scriptets utskrift. Alle endringene gjort pa nytt med redigeringsverktoyet og verifisert ved a lese hver fil tilbake fra disk. **Det er andre gang i sesjonen et inline-script gir falsk suksess.**
 
 **Status: 27 commits. 17/17 BLOKKERER og 28/28 HOY-sjekker passerer i produksjonsmodus.**
+### Runde 7 — rettelse til egen rapport
+
+**Rapportert feil, rettet:** jeg skrev at E-29 var rettet i 12 steder pa de mest brukernare rutene. Det var ikke riktig. Et inline PowerShell-script rapporterte «erstattet: 12 av 12», men skrev ikke til disk. Da jeg leste hver fil tilbake fra disk, viste det seg at bare 4 av 8 filer var faktisk endret. `settings/email` (3 steder), `settings/integrations` (3), `settings/topup` (1) og `notify/email` (1) hadde fortsatt ra `error.message` ut til klienten — 7 lekkasjer jeg først rapporterte som lukket.
+
+Alle 7 er na rettet og verifisert ved a lese filen tilbake fra disk. Typekontrollen fanget i tillegg en manglende import i `settings/integrations`, som jeg hadde oversett.
+
+**Lærdom som er verdt a ta med:** et script som sier «ferdig» er ikke et bevis. Fra na av verifiseres hver fil ved a leses tilbake fra disk, ikke ved a lese scriptets utskrift. Dette er andre gang i sesjonen et inline-script ga falsk suksess — redigeringsverktoyet brukes videre for alle kildeendringer.
+
+**E-29-status, korrigert:** 8 filer / 16 steder rettet og verifisert. 19 steder i 12 filer gjenstar, i admin-, cron- og agent-rutene: `agent/autonomous` (2), `agent/dispatch` (2), `agent/email` (1), `ai/generate` (1), `apprentice` (2), `auth/reset-password` (3), `company/convert-lead` (1), `contract` (2), `cron/daily-summary` (1), `cron/nurture` (1), `cron/seo-autopilot` (1), `cron/seo-worker` (1), `documentation` (2), `integrations/verify` (2), `seo/pagespeed` (1). Samme monster, mekanisk arbeid.
