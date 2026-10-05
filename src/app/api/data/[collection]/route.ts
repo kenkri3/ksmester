@@ -206,6 +206,17 @@ export async function POST(
     const targetCollection = collection === 'system_offers' ? 'offers' : collection;
     const isAdmin = isUserAdmin(user);
 
+    // SIKKERHETSFIKS (E-04): POST spreadet hele body rett inn i raden, mens PUT
+    // allerede fjernet privilegerte felt for ikke-admin. En vanlig innlogget bruker
+    // kunne derfor POSTe en users-rad med role: 'superadmin' og fa global tilgang.
+    // Samme guard som PUT, pluss passord og abonnement, som ogsa er privilegert.
+    if (targetCollection === 'users' && !isAdmin) {
+      delete body.role;
+      delete body.is_admin;
+      delete body.password;
+      delete body.subscriptionStatus;
+    }
+
     // Enforce tenant boundary from verified JWT session
     const itemData = {
       ...body,
@@ -214,7 +225,6 @@ export async function POST(
       createdAt: body.createdAt || new Date().toISOString(),
       updatedAt: new Date().toISOString()
     };
-
     const item = await saveCollectionItem(targetCollection, itemData);
 
     // 🤖 Autonom fremdriftskalkulering: Oppdater prosjektfremdrift automatisk hvis ny oppgave opprettes
