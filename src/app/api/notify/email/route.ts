@@ -39,23 +39,26 @@ export async function POST(req: NextRequest) {
         getCollectionItems('offers').catch(() => [])
       ]);
 
-      const foundOrder = changeOrders.find((o: any) => o.token === activeToken || o.id === activeToken);
-      const foundOffer = !foundOrder ? offers.find((o: any) => o.token === activeToken || o.id === activeToken) : null;
+      // SIKKERHETSFIKS (E-14): her ble `o.id === activeToken` godtatt som gyldig
+      // capability-token. En ID er ikke en hemmelighet — den er synlig i lister,
+      // logger og delte lenker — sa hvem som helst som kjente en ordre-ID kunne
+      // bruke ruten som e-postrelay. Na kreves det faktiske tokenet.
+      const foundOrder = changeOrders.find((o: any) => o.token === activeToken);
+      const foundOffer = !foundOrder ? offers.find((o: any) => o.token === activeToken) : null;
 
       if (foundOrder) {
         companyId = foundOrder.companyId || 'comp-001';
         companyName = foundOrder.company || 'VikingMester';
         authorName = foundOrder.clientName || 'Kunde';
-        if (!recipientEmail) {
-          recipientEmail = foundOrder.authorEmail || foundOrder.companyEmail || process.env.ADMIN_EMAIL || 'post@vikingent.no';
-        }
+        // SIKKERHETSFIKS (E-14): mottakeren ble tatt fra body nar den var oppgitt,
+        // sa en uinnlogget part kunne sende til vilkarlig adresse. Uten sesjon
+        // sendes det na kun til ordrens registrerte kunde.
+        recipientEmail = foundOrder.clientEmail || foundOrder.authorEmail || foundOrder.companyEmail || recipientEmail;
       } else if (foundOffer) {
         companyId = foundOffer.companyId || 'comp-001';
         companyName = foundOffer.company || 'VikingMester';
         authorName = foundOffer.clientName || 'Kunde';
-        if (!recipientEmail) {
-          recipientEmail = foundOffer.authorEmail || foundOffer.companyEmail || process.env.ADMIN_EMAIL || 'post@vikingent.no';
-        }
+        recipientEmail = foundOffer.clientEmail || foundOffer.authorEmail || foundOffer.companyEmail || recipientEmail;
       } else {
         return NextResponse.json({ error: 'Ugyldig eller utløpt sikkerhetstoken.' }, { status: 403 });
       }

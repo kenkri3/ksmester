@@ -237,6 +237,73 @@ async function main() {
       /body\.sellerEmail/.test(code) ? 'body.sellerEmail brukes fortsatt' : 'sellerEmail/sellerId kommer fra JWT');
   }
 
+  // ---------- E-14: id godtatt som capability-token ----------
+  console.log('\nE-14  /api/notify/email - id som token og fri mottaker');
+  {
+    const owner = await registerUser('e14');
+    const coId = 'co-e14-' + stamp;
+    await req('POST', '/api/data/change_orders', {
+      id: coId, title: 'E14 ordre', status: 'pending_approval',
+      clientEmail: 'e14-kunde-' + stamp + '@example.invalid',
+    }, auth(owner.token));
+
+    const byId = await req('POST', '/api/notify/email', {
+      to: 'angriper-' + stamp + '@example.invalid',
+      subject: 'E14 relay-test', text: 'test',
+      changeOrderToken: coId,
+    });
+    r('E-14', 'ordre-ID godtas IKKE som capability-token',
+      (byId.status === 401 || byId.status === 403) ? 'OK' : 'FEIL',
+      'HTTP ' + byId.status + (byId.status === 200 ? ' - ID-en ga tilgang' : ''));
+
+    const src = readSrc('src/app/api/notify/email/route.ts');
+    const code = src.split(/\r?\n/).filter(function (l) { return !l.trim().startsWith('//'); }).join('\n');
+    r('E-14', 'koden sammenligner kun mot faktisk token, ikke id',
+      !/o\.id === activeToken/.test(code) ? 'OK' : 'FEIL',
+      /o\.id === activeToken/.test(code) ? 'o.id === activeToken star fortsatt' : 'kun o.token === activeToken');
+  }
+
+  // ---------- E-16: enhver innlogget bruker kunne sende vilkarlig e-post ----------
+  console.log('\nE-16  /api/agent/email - vilkarlig e-post fra verifisert domene');
+  {
+    const plain = await registerUser('e16');
+    const asUser = await req('POST', '/api/agent/email', {
+      to: 'angriper-' + stamp + '@example.invalid',
+      subject: 'E16 test', message: 'test',
+    }, auth(plain.token));
+    r('E-16', 'vanlig innlogget bruker avvises',
+      (asUser.status === 401 || asUser.status === 403) ? 'OK' : 'FEIL',
+      'HTTP ' + asUser.status + (asUser.status === 200 ? ' - kundekonto kunne sende vilkarlig e-post' : ''));
+
+    const anon = await req('POST', '/api/agent/email', {
+      to: 'angriper-' + stamp + '@example.invalid', subject: 'x', message: 'x',
+    });
+    r('E-16', 'uautentisert kall avvises',
+      (anon.status === 401 || anon.status === 403) ? 'OK' : 'FEIL',
+      'HTTP ' + anon.status);
+
+    const src = readSrc('src/app/api/agent/email/route.ts');
+    const code = src.split(/\r?\n/).filter(function (l) { return !l.trim().startsWith('//'); }).join('\n');
+    r('E-16', 'nokkelsammenligningen er timing-sikker',
+      /timingSafeEqual/.test(code) ? 'OK' : 'FEIL',
+      /timingSafeEqual/.test(code) ? 'bruker timingSafeEqual' : 'bruker fortsatt ===');
+  }
+
+  // ---------- E-18: spoofbar cron-header ----------
+  console.log('\nE-18  /api/cron/seo-autopilot - spoofbar cron-header');
+  {
+    const spoof = await req('POST', '/api/cron/seo-autopilot', undefined, { 'x-vercel-cron': '1' });
+    r('E-18', 'x-vercel-cron: 1 gir IKKE tilgang',
+      (spoof.status === 401 || spoof.status === 403) ? 'OK' : 'FEIL',
+      'HTTP ' + spoof.status + (spoof.status === 200 ? ' - headeren startet tunge jobber' : ''));
+
+    const src = readSrc('src/app/api/cron/seo-autopilot/route.ts');
+    const code = src.split(/\r?\n/).filter(function (l) { return !l.trim().startsWith('//'); }).join('\n');
+    r('E-18', 'koden leser ikke lenger den spoofbare headeren',
+      !/x-vercel-cron/.test(code) ? 'OK' : 'FEIL',
+      /x-vercel-cron/.test(code) ? 'headeren leses fortsatt' : 'kun CRON_SECRET / intern hemmelighet / SuperAdmin');
+  }
+
   console.log('\n=== OPPSUMMERING ===');
   for (const row of rows) console.log(row.verdict.padEnd(6) + '  ' + row.id + '  ' + row.name);
   console.log('\nOK: ' + pass + '   FEIL: ' + fail + '   MANUELL: ' + manual);
