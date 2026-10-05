@@ -322,3 +322,33 @@ Gar i `docs/manuelt-arbeid.md` med BLOKKERER-merking. Jeg stopper og spor fremfo
 **Viktig om verifiseringsmetode:** dev-serveren kan ikke brukes til a bevise E-16 og E-18, fordi `verifyCronOrInternalSecret` med vilje returnerer `true` for localhost nar `NODE_ENV !== 'production'`. Begge sa «autorisert» uansett kode. Alle sikkerhetssjekker kjores derfor mot `next start` med `NODE_ENV=production`.
 
 **Gjenstar av HOY:** R-03 (priser i JSON-LD mot plans.ts), F-01 til F-04 (personvern og ekte persondata), T-01 (zoom sperret), O-04, O-06, B-01 (myndighetspastander), og C-02/C-03 (aerlige feil i stedet for tomme lister i API-klienten). Flere av disse krever brukerens beslutning og star i docs/manuelt-arbeid.md.
+### Runde 6 — 2026-10-05 (målrunde 3)
+
+**Status: 28/28 HOY-sjekker og 17/17 BLOKKERER-sjekker passerer i produksjonsmodus. 24 commits.**
+
+| Funn | Rettelse | Verifisert |
+| :--- | :--- | :--- |
+| R-03 | JSON-LD-priser hentes fra PLANS i stedet for hardkodede literaler | Statisk + servert HTML |
+| R-11 | SearchAction mot et sok som ikke finnes, fjernet | Statisk |
+| T-01 | Zoom sperret (`maximumScale`, `userScalable`) fjernet | Servert HTML: viewport tillater zoom |
+| F-02 | Google Fonts fjernet fra `<head>`; CSP strammet | Servert HTML: ingen tredjepartsforespørsel |
+| F-03 | Ekte persondata erstattet med demodata | 0 forekomster igjen |
+| F-04 | Varsler gar til konfigurerte firmadresser, ikke private Gmail | Statisk + `.env.example` |
+| C-03 | Serverfeil svelges ikke lenger som «offline» | Statisk: alle 4 skriveveier sjekker `res.ok` |
+
+**Egen feil funnet og rettet:** forste forsok pa C-03 traff feil sted i filen pa grunn av ulik linjetelling mellom verktoyene, sa `syncOfflineQueue` sto uendret igjen mens jeg trodde den var rettet. Fanget av en uavhengig `grep` etter `res.ok`, ikke av typekontrollen — koden kompilerte fint begge veier. Rettet, og bekreftet med fullstendig treffliste.
+
+**Funnet som revisjonen ikke hadde:** `fdvGenerator.ts` la en `@import` fra fonts.googleapis.com inn i hvert genererte FDV-dokument. Kunden apner dokumentet i nettleseren, sa kundens IP gikk til Google fra et dokument de trodde var internt.
+
+**Hva som gjenstar av HOY, og hvorfor det ikke er gjort:**
+
+| Funn | Hvorfor det star |
+| :--- | :--- |
+| **E-15** rate limiting | Begge limiterne er in-memory per prosess. A flytte telleren til delt lager (Postgres/Redis) er en arkitektur-endring og pavirker alle 83 handlere. Ma gjores som eget, planlagt arbeid — ikke rett for lansering |
+| **E-21, E-22** kryptering i ro | Krever en nokkel som skal ligge i miljovariabler operatoren kontrollerer. A innfore kryptering uten nokkelbehandling ville gitt falsk trygghet |
+| **F-01, F-05, F-08** personvernerklaring | Erklaringen lover EOS-lagring og daglige sikkerhetskopier mens data gar til DeepSeek, 1min.AI og OpenAI, og ingen backup finnes. Teksten kan ikke rettes uten a vite hva som faktisk er avtalt. Krever brukerens beslutning |
+| **F-06** markedsforingssamtykke | Krever beslutning om rettslig grunnlag |
+| **B-01** myndighetspastander | Krever at brukeren bekrefter om godkjenningen finnes |
+| **D-01, D-02, O-07, O-08** rydding | Sletting krever bevis for at ingenting refererer til filene. LAV prioritet |
+| **F-07, F-09** samtykke og bildetilgang | Krever gjennomgang av flytene |
+| **E-29** gjenstar i ca. 20 ruter | Samme monster som er rettet ett sted; ma gjentas per rute. Mekanisk arbeid |

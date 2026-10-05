@@ -223,3 +223,23 @@ FDV-sluttdokumentasjonen skrev tidligere inn et hardkodet org.nr som om det var 
 Tre lister i dashboardet godtok tidligere poster som manglet `company`-felt, og viste dem til alle bedrifter. Det er lukket.
 - **Hva du bør gjøre:** hvis en kunde sier at noe er «forsvunnet» etter denne endringen, mangler posten bedriftstilhørighet i databasen. Den må da få `companyId` eller `company` satt. Dette er en bevisst atferdsendring for å lukke en lekkasje.
 - **Hvis ikke:** vi har en åpen tenantisolasjon der én kundes poster vises hos en annen.
+### 10.4 Ny miljøvariabel: `ADMIN_NOTIFY_EMAILS` — bør gjøres
+Interne varsler (nye leads, registreringer, integrasjoner, Ragnar-leads) inneholder kundens navn, e-post, telefon og org.nr. Mottakerne lå tidligere hardkodet til private Gmail-adresser. De leses nå fra miljøet.
+- **Hva du må gjøre:** sett `ADMIN_NOTIFY_EMAILS=post@dittfirma.no` (komma-separert for flere) i Railway.
+- **Hvordan du sjekker:** send inn kontaktskjemaet på `/kontakt` og se at varselet kommer til den adressen, ikke til en privat konto.
+- **Hvis ikke:** varslene går til `hei@vikingmester.no`. Ingen kundedata lekker til private kontoer, men ingen får kanskje sett dem.
+
+### 10.5 Ekte persondata lå i repoet — BLOKKERER for vurdering
+Koden seedet databasen med en ekte persons navn, private e-post, private telefon og private hjemadresse, pluss to andre private e-postadresser og telefonnumre. Alt er nå erstattet med demodata.
+- **Hva jeg trenger:** en avgjørelse på om dette skal håndteres videre.
+- **Hva du bør vite:** opplysningene er fjernet fra koden, men **ligger fortsatt i git-historikken**, og repoet har vært offentlig. Jeg har ikke omskrevet historikken — det er en destruktiv operasjon som krever din godkjenning og koordinering med alle som har en klone.
+- **Hva som bør vurderes:** om de berørte personene skal varsles, og om historikken skal renses (`git filter-repo` eller BFG) før repoet eventuelt gjøres offentlig igjen.
+- **Hvis ikke:** personopplysningene er tilgjengelige for alle som kloner repoet og ser på historikken.
+
+### 10.6 Historikken er ikke gjennomsøkt etter hemmeligheter
+Repoet har vært offentlig, og `.env.example` nevner selv at en botnøkkel lå hardkodet og er kompromittert. Jeg har ikke gjennomsøkt historikken.
+- **Hva du bør gjøre:** la meg eller noen andre kjøre en gjennomsøking (`git log -p` etter nøkkelmønstre) før repoet eventuelt åpnes igjen.
+
+### 10.7 Innstillinger-knappen i dashboardet
+Jeg koblet `onOpenSettings` til en ny `settings`-gren i arbeidsflaten, fordi knappen tidligere var koblet til en tom funksjon.
+- **Hva du bør gjøre:** klikk «Innstillinger» i dashboardet og bekreft at den åpner den innstillingene du forventer. Jeg har verifisert at grenen finnes og at modalen åpnes, men ikke at det er den *riktige* modalen for din arbeidsflyt.
