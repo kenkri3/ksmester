@@ -1,6 +1,7 @@
 import { NextRequest, NextResponse } from 'next/server';
 import { getUserFromRequest } from '@/src/lib/server/auth';
 import { checkCompanyQuota, TOPUP_PACKAGES } from '@/src/lib/server/costTracker';
+import { apiError } from '@/src/lib/server/apiError';
 
 export async function GET(req: NextRequest) {
   const user = getUserFromRequest(req);
@@ -19,7 +20,7 @@ export async function GET(req: NextRequest) {
       companyId
     });
   } catch (error: any) {
-    console.error('Company quota error:', error);
-    return NextResponse.json({ error: error.message || 'Kunne ikke hente kvote' }, { status: 500 });
+    // SIKKERHETSFIKS (E-29): logg detaljene server-side, ikke til klienten.
+    return apiError(error, 'Kunne ikke hente kvote.');
   }
 }

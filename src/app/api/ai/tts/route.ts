@@ -1,6 +1,7 @@
 import { NextRequest, NextResponse } from 'next/server';
 import { getUserFromRequest } from '@/src/lib/server/auth';
 import { get1MinAiKey } from '@/src/lib/server/aiEngine';
+import { apiError } from '@/src/lib/server/apiError';
 
 /**
  * Normaliserer norsk håndverkstekst for optimal og flytende taleuttale
@@ -147,7 +148,7 @@ export async function POST(req: NextRequest) {
       message: 'AI TTS utilgjengelig, faller tilbake til forbedret nettleser-stemme'
     });
   } catch (error: any) {
-    console.error('[TTS Route Error]:', error);
-    return NextResponse.json({ error: error.message || 'Feil ved generering av tale' }, { status: 500 });
+    // SIKKERHETSFIKS (E-29): logg detaljene server-side, ikke til klienten.
+    return apiError(error, 'Kunne ikke generere tale.');
   }
 }
