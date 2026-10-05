@@ -279,3 +279,25 @@ Gar i `docs/manuelt-arbeid.md` med BLOKKERER-merking. Jeg stopper og spor fremfo
 **Hvorfor jeg stopper og ikke fortsetter:** de to gjenstaende verifiseringsoppgavene (E-08 og passordrotasjonen) krever en PostgreSQL jeg ikke kan starte. De tre gjenstaende beslutningene (push, priser, org.nr) krever brukeren. A begynne pa HOY-funn na ville være a stable 28 nye endringer oppa et sett som enna ikke er bekreftet i produksjon — det er a legge til risiko rett for lansering, som er eksplisitt forbudt.
 
 **Paminnelsen er slettet** i trad med instruksen, og sluttrapporten er skrevet.
+### Runde 4 — 2026-10-05 (målrunde 2)
+
+**Arbeidet gjenopptatt pa HOY-funnene**, som er innenfor min kontroll og ikke krever push eller Docker. Alle endringer er verifisert i kjorende app.
+
+**Viktig lærdom om verifiseringsmetode:** `verifyCronOrInternalSecret` har et bevisst utviklerunntak - den returnerer `true` nar `NODE_ENV !== 'production'` og host er localhost. Dev-serveren kunne derfor **ikke** brukes til a bevise E-16 og E-18; begge sa «autorisert» uansett kode. Sjekkene kjores na mot `next start` med `NODE_ENV=production` pa port 3200. Det er ogsa naermere produksjon.
+
+**Resultat:** 17/17 BLOKKERER-sjekker og 24/24 HOY-sjekker passerer i produksjonsmodus.
+
+| Funn | Rettelse | Verifisert |
+| :--- | :--- | :--- |
+| E-12 | Prosjekteierskap kreves; e-postmottaker last til prosjektets kunde | 4/4: kryss-tenant 403, eier 200, vilkarlig mottaker 403 |
+| E-13 | Innlogging kreves; selgeridentitet fra JWT | 3/3: anonym 401, spoofing ignorert |
+| E-14 | `o.id` godtas ikke som token; mottaker last | 2/2 |
+| E-16 | Kun bot-nokkel/intern/SuperAdmin; timing-safe sammenligning | 3/3 |
+| E-17 | Global oversikt krever SuperAdmin (3 steder + integrationsService) | 5/5 |
+| E-18 | Spoofbar `x-vercel-cron` fjernet | 2/2 |
+| E-23 | `?adminKey=` fjernet helt | 4/4 |
+| C-06 | Fail-closed ved manglende bedrifts-ID | 1/1 |
+
+**Nytt:** `scripts/security-check-high.mjs` - 24 kjorbare HOY-sjekker.
+
+**Status:** 10 av 10 BLOKKERER rettet (E-08 uverifisert, krever Postgres) · 8 av 28 HOY rettet og verifisert · 17 commits pa `lansering/fikser` · 0 push.
