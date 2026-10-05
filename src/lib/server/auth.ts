@@ -99,10 +99,17 @@ export function isUserAdmin(user: TokenPayload | null): boolean {
 /**
  * 🛡️ Verifiserer at innlogget bruker har tilgang til forespurt bedrift (Multi-tenant IDOR-sikring).
  * Admin har global tilgang, mens ordinære brukere kun har tilgang til egen bedrift.
+ *
+ * SIKKERHETSFIKS (C-06): funksjonen returnerte tidligere `true` når
+ * targetCompanyId manglet (`if (!targetCompanyId) return true`). Det er å feile
+ * APENT: enhver rute som glemte å sende bedrifts-ID slapp gjennom tenant-sjekken.
+ * Nå avvises manglende bedrifts-ID i stedet. Funksjonen hadde ingen kallsteder
+ * da dette ble rettet, så endringen påvirker ingen eksisterende flyt — den
+ * fjerner en felle for fremtidig kode.
  */
 export function assertTenantAccess(user: TokenPayload, targetCompanyId?: string): boolean {
   if (isUserAdmin(user)) return true;
-  if (!targetCompanyId) return true;
+  if (!targetCompanyId) return false;
   return user.companyId === targetCompanyId;
 }
 

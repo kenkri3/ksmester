@@ -1,24 +1,27 @@
 import { NextRequest, NextResponse } from 'next/server';
 import { getPartnershipAccountingSummary } from '@/src/lib/server/costTracker';
-import { getUserFromRequest } from '@/src/lib/server/auth';
+import { getUserFromRequest, isUserSuperAdmin, verifyInternalSecret } from '@/src/lib/server/auth';
 import { getCollectionItems } from '@/src/lib/server/db';
 
 export async function GET(req: NextRequest) {
   try {
     const url = new URL(req.url);
     const month = url.searchParams.get('month') || undefined;
-    const adminKey = url.searchParams.get('adminKey') || req.headers.get('x-admin-key');
     const user = getUserFromRequest(req);
 
-    // 🛡️ Sikker tilgangskontroll: Kun autorisert admin (JWT eller hemmelig adminnøkkel/intern hemmelighet)
-    const isAuthorized = 
-      (user && user.role === 'admin') ||
-      (adminKey && Boolean(process.env.ADMIN_PASSWORD) && adminKey === process.env.ADMIN_PASSWORD) ||
-      (adminKey && Boolean(process.env.INTERNAL_API_SECRET) && adminKey === process.env.INTERNAL_API_SECRET);
+    // SIKKERHETSFIKS (E-23 + E-17): Grenen godtok admin-passordet som
+    // QUERY-PARAMETER (?adminKey=...), som havner i access-logger, proxy-logger
+    // og nettleserhistorikk, og sammenlignet det med vanlig === (ikke
+    // timing-sikkert). Den godtok i tillegg role === 'admin', som er en
+    // BEDRIFTSADMINISTRATOR - ikke plattform-eier - og returnerte dermed
+    // partnerskapsregnskap og alle leads pa tvers av bedrifter til en
+    // vanlig kundeadmin. Na: kun SuperAdmin, eller en timing-sikker
+    // intern-hemmelighet i header. Query-varianten er fjernet helt.
+    const isAuthorized = isUserSuperAdmin(user) || verifyInternalSecret(req);
 
     if (!isAuthorized) {
-      return NextResponse.json({ 
-        error: 'Uautorisert tilgang. Krever gyldig admin-innlogging eller administrativ nøkkel.' 
+      return NextResponse.json({
+        error: 'Uautorisert tilgang. Krever SuperAdmin-innlogging eller intern hemmelighet i header.'
       }, { status: 401 });
     }
 
@@ -40,6 +43,8 @@ export async function GET(req: NextRequest) {
       generatedAt: new Date().toISOString()
     });
   } catch (err: any) {
-    return NextResponse.json({ error: err.message }, { status: 500 });
+    // SIKKERHETSFIKS (E-29): logg detaljene server-side, ikke til klienten.
+    console.error('Error in GET /api/accounting/summary:', err);
+    return NextResponse.json({ error: 'Kunne ikke hente regnskapssammendrag.' }, { status: 500 });
   }
 }

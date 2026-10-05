@@ -33,7 +33,10 @@ export async function GET() {
   const isHealthy = dbHealthy;
 
   const { getActualIntegrationsStatus } = await import('@/src/lib/server/integrationsService');
-  const actualStatus = await getActualIntegrationsStatus();
+  // SIKKERHETSFIKS (E-17): 'all' ma na være eksplisitt. Helse-ruten er en
+  // server-side plattformsjekk og skal fortsatt se alle integrasjoner for a
+  // kunne rapportere status, sa den ber om det med vilje.
+  const actualStatus = await getActualIntegrationsStatus('all');
 
   return NextResponse.json({
     status: isHealthy ? 'ok' : 'error',

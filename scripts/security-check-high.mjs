@@ -108,8 +108,13 @@ async function main() {
       /loadAuthorizedProject/.test(src) ? 'autorisasjonshjelper og mottakersjekk finnes' : 'mangler');
   }
 
-  // ---------- E-17: raa role === 'admin' som autorisasjon ----------
-  console.log('\nE-17  raa role-sjekker i API-rutene');
+  // ---------- E-17: raa role === 'admin' brukt som GLOBAL nokkel ----------
+  // Merk: role === 'admin' ER en legitim bedriftsadministrator. Det som er feil,
+  // er a bruke den som plattform-global nokkel. Sjekken leter derfor etter de
+  // konkrete lekkasjemonstrene som faktisk fantes i revisjonen:
+  //   a) role === 'admin' ? all : all.filter(...)          (ga hele samlingen)
+  //   b) user?.role === 'admin' ? undefined : companyId    (undefined = alle)
+  console.log('\nE-17  raa role === "admin" brukt som global nokkel');
   {
     const files = [];
     const walk = (dir) => {
@@ -120,15 +125,86 @@ async function main() {
       }
     };
     try { walk(path.join(process.cwd(), 'src', 'app', 'api')); } catch (e) { /* ignore */ }
-    const offenders = [];
+    const leaks = [];
     for (const f of files) {
       const src = fs.readFileSync(f, 'utf8');
       const code = src.split(/\r?\n/).filter(function (l) { return !l.trim().startsWith('//'); }).join('\n');
-      if (/role\s*===\s*'admin'/.test(code)) offenders.push(path.relative(process.cwd(), f));
+      const grantsAll = /role\s*===\s*'admin'\s*\?\s*all\s*:/.test(code);
+      const passesUndefined = /role\s*===\s*'admin'\s*\?\s*undefined\s*:/.test(code);
+      if (grantsAll || passesUndefined) leaks.push(path.relative(process.cwd(), f));
     }
-    r('E-17', 'ingen API-rute autoriserer pa raa role === "admin"',
-      offenders.length === 0 ? 'OK' : 'FEIL',
-      offenders.length === 0 ? 'ingen treff' : offenders.length + ' filer: ' + offenders.slice(0, 6).join(', '));
+    r('E-17', 'ingen API-rute gir global oversikt til en kundeadmin',
+      leaks.length === 0 ? 'OK' : 'FEIL',
+      leaks.length === 0
+        ? 'ingen treff pa admin -> hele samlingen / admin -> undefined'
+        : leaks.length + ' filer: ' + leaks.join(', '));
+
+    const statusSrc = readSrc('src/app/api/integrations/status/route.ts');
+    const statusCode = statusSrc.split(/\r?\n/).filter(function (l) { return !l.trim().startsWith('//'); }).join('\n');
+    const requiresAuth = /if\s*\(!user\)/.test(statusCode) && /401/.test(statusCode);
+    r('E-17', '/api/integrations/status krever innlogging',
+      requiresAuth ? 'OK' : 'FEIL',
+      requiresAuth ? '401 for uinnloggede, global oversikt kun for SuperAdmin' : 'ruten er fortsatt uautentisert');
+
+    const anonStatus = await req('GET', '/api/integrations/status');
+    r('E-17', 'uinnlogget kall til /api/integrations/status avvises',
+      (anonStatus.status === 401 || anonStatus.status === 403) ? 'OK' : 'FEIL',
+      'HTTP ' + anonStatus.status);
+  }
+
+  // ---------- E-23 + E-17: accounting/summary ----------
+  console.log('\nE-23  admin-passord som query-parameter i /api/accounting/summary');
+  {
+    const noAuth = await req('GET', '/api/accounting/summary');
+    r('E-23', 'uautentisert kall avvises',
+      (noAuth.status === 401 || noAuth.status === 403) ? 'OK' : 'FEIL',
+      'HTTP ' + noAuth.status);
+
+    const plain = await registerUser('e23');
+    const asUser = await req('GET', '/api/accounting/summary', undefined, auth(plain.token));
+    r('E-23', 'vanlig innlogget bruker far IKKE partnerskapsregnskapet',
+      (asUser.status === 401 || asUser.status === 403) ? 'OK' : 'FEIL',
+      'HTTP ' + asUser.status + (asUser.status === 200 ? ' - returnerte regnskap pa tvers av bedrifter' : ''));
+
+    const viaQuery = await req('GET', '/api/accounting/summary?adminKey=noe');
+    r('E-23', '?adminKey= i URL gir IKKE tilgang',
+      (viaQuery.status === 401 || viaQuery.status === 403) ? 'OK' : 'FEIL',
+      'HTTP ' + viaQuery.status);
+
+    const aSrc = readSrc('src/app/api/accounting/summary/route.ts');
+    const aCode = aSrc.split(/\r?\n/).filter(function (l) { return !l.trim().startsWith('//'); }).join('\n');
+    r('E-23', 'koden leser ikke lenger adminKey fra query eller header',
+      !/adminKey/.test(aCode) ? 'OK' : 'FEIL',
+      /adminKey/.test(aCode) ? 'adminKey leses fortsatt' : 'kun SuperAdmin eller timing-sikker intern header');
+  }
+
+  // ---------- C-06: assertTenantAccess feilet apent ----------
+  console.log('\nC-06  assertTenantAccess ved manglende bedrifts-ID');
+  {
+    const cSrc = readSrc('src/lib/server/auth.ts');
+    const cCode = cSrc.split(/\r?\n/).filter(function (l) { return !l.trim().startsWith('//'); }).join('\n');
+    // Matcher KUN den faktiske kodelinjen (med semikolon), ikke omtalen i kommentaren.
+    const failsOpen = /if\s*\(!targetCompanyId\)\s*return\s+true\s*;/.test(cCode);
+    const failsClosed = /if\s*\(!targetCompanyId\)\s*return\s+false\s*;/.test(cCode);
+    r('C-06', 'manglende targetCompanyId avvises i stedet for a slippe gjennom',
+      (!failsOpen && failsClosed) ? 'OK' : 'FEIL',
+      failsOpen ? 'returnerer fortsatt true nar bedrifts-ID mangler'
+        : (failsClosed ? 'returnerer false (fail-closed). Merk: funksjonen hadde ingen kallsteder' : 'kunne ikke avgjore'));
+  }
+
+  // ---------- E-17: kryss-tenant i settings/integrations ----------
+  console.log('\nE-17  /api/settings/integrations - kryss-tenant');
+  {
+    const iSrc = readSrc('src/app/api/settings/integrations/route.ts');
+    const iCode = iSrc.split(/\r?\n/).filter(function (l) { return !l.trim().startsWith('//'); }).join('\n');
+    const getLeaks = /role\s*===\s*'admin'\s*\?\s*all/.test(iCode);
+    r('E-17', 'GET gir ikke alle bedrifters integrasjoner til en kundeadmin',
+      !getLeaks ? 'OK' : 'FEIL',
+      getLeaks ? 'bruker fortsatt role===admin for global visning' : 'global visning krever SuperAdmin');
+    const delLeaks = /user\.role\s*===\s*'admin'\s*\|\|/.test(iCode);
+    r('E-17', 'DELETE kan ikke ramme en annen bedrifts integrasjon',
+      !delLeaks ? 'OK' : 'FEIL',
+      delLeaks ? 'bruker fortsatt role===admin som global nokkel' : 'krever eierskap eller SuperAdmin');
   }
 
   console.log('\n=== OPPSUMMERING ===');
