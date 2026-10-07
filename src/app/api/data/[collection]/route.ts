@@ -1,5 +1,5 @@
 import { NextRequest, NextResponse } from 'next/server';
-import { getCollectionItems, saveCollectionItem } from '@/src/lib/server/db';
+import { getCollectionItems, saveCollectionItem, getCollectionItemById } from '@/src/lib/server/db';
 import { getUserFromRequest, isUserAdmin, isUserSuperAdmin } from '@/src/lib/server/auth';
 import { recalculateProjectProgress } from '@/src/lib/server/progressEngine';
 
@@ -89,9 +89,16 @@ export async function GET(
     let items = await getCollectionItems(targetCollection);
 
     const isSuper = isUserSuperAdmin(user);
-    const impersonatedHeader = req.headers.get('x-impersonated-company-id');
+    // SIKKERHETSFIKS (E-01): Headeren er klientstyrt - services/api.ts:6,10 setter den
+    // fra localStorage.getItem('impersonatedCompanyId'). Den ble tidligere brukt uten
+    // a sjekke isSuper, sa enhver innlogget bruker kunne sende den og lese en annen
+    // bedrifts rader i hvilken som helst samling. Impersonering er en reell funksjon
+    // for plattformeiere, sa den beholdes - men autoriseres na server-side.
+    const rawImpersonatedHeader = req.headers.get('x-impersonated-company-id');
+    const impersonatedHeader = (isSuper && rawImpersonatedHeader && rawImpersonatedHeader.trim())
+      ? rawImpersonatedHeader.trim()
+      : null;
     const effectiveCompanyId = impersonatedHeader || user.companyId;
-
     // SuperAdmin ONLY gets global unfiltered overview when in SuperAdmin panel (no impersonation header)
     const isGlobalSuperAdminView = isSuper && !impersonatedHeader;
 
@@ -206,6 +213,17 @@ export async function POST(
     const targetCollection = collection === 'system_offers' ? 'offers' : collection;
     const isAdmin = isUserAdmin(user);
 
+    // SIKKERHETSFIKS (E-04): POST spreadet hele body rett inn i raden, mens PUT
+    // allerede fjernet privilegerte felt for ikke-admin. En vanlig innlogget bruker
+    // kunne derfor POSTe en users-rad med role: 'superadmin' og fa global tilgang.
+    // Samme guard som PUT, pluss passord og abonnement, som ogsa er privilegert.
+    if (targetCollection === 'users' && !isAdmin) {
+      delete body.role;
+      delete body.is_admin;
+      delete body.password;
+      delete body.subscriptionStatus;
+    }
+
     // Enforce tenant boundary from verified JWT session
     const itemData = {
       ...body,
@@ -214,6 +232,24 @@ export async function POST(
       createdAt: body.createdAt || new Date().toISOString(),
       updatedAt: new Date().toISOString()
     };
+
+    // SIKKERHETSFIKS (E-08): klienten kunne tidligere oppgi `id` fritt, og
+    // lagringen skrev `ON CONFLICT (id) DO UPDATE`. En ny rad med samme id som en
+    // rad i en ANNEN samling tok derfor over den andres plass: en oppgave kunne
+    // forsvinne og en tasks-sporring returnere innholdet fra notifications.
+    // Databasen har na sammensatt nokkel (collection_name, id), sa kryss-samling
+    // er umulig. Innenfor samme samling kan to bedrifter likevel velge samme
+    // id (typisk et lesbart "co-123"), sa den gjores unik bare nar den faktisk er
+    // opptatt. Klientens id beholdes uendret ellers - UI-et bruker den til a
+    // hente og oppdatere raden.
+    const requestedId = typeof body.id === 'string' ? body.id.trim().slice(0, 200) : '';
+    if (!requestedId) {
+      delete itemData.id;
+    } else if (await getCollectionItemById(targetCollection, requestedId)) {
+      itemData.id = requestedId + '#' + Math.random().toString(36).substring(2, 8);
+    } else {
+      itemData.id = requestedId;
+    }
 
     const item = await saveCollectionItem(targetCollection, itemData);
 

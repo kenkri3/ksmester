@@ -202,9 +202,9 @@ export default function QuickStartGuide({
             type="button"
             onClick={onOpenAllModules}
             className="flex items-center gap-1.5 px-3 py-1.5 rounded-xl bg-slate-800 hover:bg-slate-700 text-slate-200 hover:text-white border border-slate-700 text-xs font-bold transition-all cursor-pointer shadow-xs"
-            title="Se alle 20 fagsystem-verktøy"
+            title="Se alle fagsystem-verktøy"
           >
-            <span>Alle 20 verktøy</span>
+            <span>Alle verktøy</span>
           </button>
 
           <button

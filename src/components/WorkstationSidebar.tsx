@@ -263,7 +263,7 @@ export default function WorkstationSidebar({
     { id: 'contacts', labelKey: 'ws_contacts', defaultLabel: 'Kontakter & Team', icon: Users, color: 'text-cyan-400' },
     { id: 'teamchat', labelKey: 'ws_teamchat', defaultLabel: 'Prosjekt- & Firmachatt', icon: MessageSquare, color: 'text-violet-400' },
     { id: 'vehicle', labelKey: 'ws_vehicle', defaultLabel: 'Kjørebok & Bilpark', icon: Car, color: 'text-amber-400' },
-    { id: 'all_modules', labelKey: 'ws_all_modules', defaultLabel: 'Alle 20+ moduler', icon: Layers, color: 'text-slate-300' }
+    { id: 'all_modules', labelKey: 'ws_all_modules', defaultLabel: 'Alle fagmoduler', icon: Layers, color: 'text-slate-300' }
   ];
 
   return (

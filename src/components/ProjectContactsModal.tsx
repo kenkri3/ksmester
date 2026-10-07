@@ -43,7 +43,7 @@ const DEFAULT_CONTACTS: ColleagueContact[] = [
     name: 'Kari Nordmann',
     role: 'Prosjektleder / Faglig leder',
     company: 'VikingMester Entreprenør AS',
-    phone: '+47 920 11 222',
+    phone: '+47 000 00 002',
     email: 'kari@vikingmester.no',
     isOnSiteToday: true,
     isKeyPersonnel: true

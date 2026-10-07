@@ -3,6 +3,7 @@ import bcrypt from 'bcrypt';
 import { sendSystemEmail, renderBrandedEmailTemplate } from '@/src/lib/server/emailSender';
 import { dbQuery, inMemoryStore, saveCollectionItem, getCollectionItems } from '@/src/lib/server/db';
 import { signToken } from '@/src/lib/server/auth';
+import { apiError } from '@/src/lib/server/apiError';
 
 /**
  * POST /api/auth/reset-password
@@ -61,7 +62,7 @@ export async function POST(req: NextRequest) {
             👑 Plattformeier & SuperAdmin
           </div>
           <p style="margin: 0; font-size: 13px; color: #78350f; line-height: 1.5;">
-            Kontoen din har full tilgang til SuperAdmin-portalen, ubegrenset brukstid, 500M systemtokens og full kontroll over alle 20+ fagmoduler.
+            Kontoen din har full tilgang til SuperAdmin-portalen, ubegrenset brukstid, 500M systemtokens og full kontroll over alle fagmoduler.
           </p>
         </div>
       ` : isBetaTester ? `
@@ -114,8 +115,7 @@ export async function POST(req: NextRequest) {
       message: 'Instruksjoner for å velge nytt passord er sendt til din e-postadresse.'
     });
   } catch (err: any) {
-    console.error('Password reset POST error:', err);
-    return NextResponse.json({ error: err.message || 'Kunne ikke sende tilbakestillingslenke.' }, { status: 500 });
+    return apiError(err, 'Kunne ikke sende tilbakestillingslenke.');
   }
 }
 
@@ -159,7 +159,11 @@ export async function GET(req: NextRequest) {
       isSuperAdmin
     });
   } catch (err: any) {
-    return NextResponse.json({ valid: false, error: err.message || 'Valideringsfeil.' }, { status: 500 });
+    // SIKKERHETSFIKS (E-29): denne ruten svarer med { valid, ... } til klienten,
+    // ikke { error } alene, så apiError() passer ikke på formen. Vi logger derfor
+    // selv og returnerer en generisk melding uten rå error.message.
+    console.error('[reset-password] Validering av token feilet:', err);
+    return NextResponse.json({ valid: false, error: 'Kunne ikke validere lenken.' }, { status: 500 });
   }
 }
 
@@ -333,7 +337,6 @@ export async function PUT(req: NextRequest) {
       }
     });
   } catch (err: any) {
-    console.error('Password reset PUT error:', err);
-    return NextResponse.json({ error: err.message || 'Kunne ikke oppdatere passord.' }, { status: 500 });
+    return apiError(err, 'Kunne ikke oppdatere passordet.');
   }
 }

@@ -11,6 +11,7 @@ import {
 } from '@/src/lib/server/autonomousAgent';
 import { generateFDVReport } from '@/src/lib/server/fdvGenerator';
 import { getCollectionItems } from '@/src/lib/server/db';
+import { apiError } from '@/src/lib/server/apiError';
 
 export async function GET(req: NextRequest) {
   const user = getUserFromRequest(req);
@@ -45,8 +46,7 @@ export async function GET(req: NextRequest) {
       }
     });
   } catch (error: any) {
-    console.error('Autonomous route GET error:', error);
-    return NextResponse.json({ error: error.message || 'Internt feil' }, { status: 500 });
+    return apiError(error, 'Kunne ikke hente agenthandlinger.');
   }
 }
 
@@ -112,7 +112,6 @@ export async function POST(req: NextRequest) {
 
     return NextResponse.json({ error: 'Ukjent handling' }, { status: 400 });
   } catch (error: any) {
-    console.error('Autonomous route POST error:', error);
-    return NextResponse.json({ error: error.message || 'Internt feil' }, { status: 500 });
+    return apiError(error, 'Kunne ikke behandle agenthandlingen.');
   }
 }

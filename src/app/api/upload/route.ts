@@ -4,6 +4,7 @@ import fs from 'fs';
 import sharp from 'sharp';
 
 import { getUserFromRequest } from '@/src/lib/server/auth';
+import { apiError } from '@/src/lib/server/apiError';
 
 // Mappe for opplastinger – kan pekes til Railway Volume via UPLOADS_PATH env var
 const UPLOADS_DIR = process.env.UPLOADS_PATH || path.join(process.cwd(), 'uploads');
@@ -89,7 +90,8 @@ export async function POST(req: NextRequest) {
       format: 'image/webp'
     });
   } catch (error: any) {
-    console.error('Feil ved opplasting og bildekomprimering:', error);
-    return NextResponse.json({ error: error.message || 'Feil ved behandling av bilde' }, { status: 500 });
+    // SIKKERHETSFIKS (E-29): en rå feilmelding fra sharp eller filsystemet kan
+    // inneholde filstier på serveren. Logges server-side, ikke til klienten.
+    return apiError(error, 'Kunne ikke behandle bildet.');
   }
 }

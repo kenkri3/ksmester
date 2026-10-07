@@ -37,13 +37,16 @@ async function handleAutopilot(req: NextRequest) {
   //
   // Autorisasjon skjer nå via den delte, fail-closed hjelperen
   // verifyCronOrInternalSecret (CRON_SECRET / INTERNAL_API_SECRET, timing-safe),
-  // Vercel Cron-headeren, eller en innlogget SuperAdmin.
+  // eller en innlogget SuperAdmin. Den spoofbare Vercel-headeren er fjernet (E-18).
+  // SIKKERHETSFIKS (E-18): her sto i tillegg `req.headers.get('x-vercel-cron') === '1'`.
+  // En HTTP-header kan settes av hvem som helst, sa den var ikke en autentisering
+  // i det hele tatt - enhver kunne starte tunge SEO-jobber (PageSpeed, auto-healer,
+  // AI-autoblogg) mot plattformens kvoter og kostnader. Appen kjorer pa Railway,
+  // ikke Vercel, sa unntaket hadde ingen legitim funksjon. Fjernet.
   const url = new URL(req.url);
   const force = url.searchParams.get('force') === 'true';
 
-  const cronAuthorized =
-    req.headers.get('x-vercel-cron') === '1' ||
-    verifyCronOrInternalSecret(req);
+  const cronAuthorized = verifyCronOrInternalSecret(req);
 
   let adminAuthorized = false;
   if (!cronAuthorized) {
@@ -110,10 +113,13 @@ async function handleAutopilot(req: NextRequest) {
       results: runRecord
     });
   } catch (error: any) {
-    console.error('❌ [SEO Autopilot] Kritisk feil i autopilot-syklus:', error.message);
+    // SIKKERHETSFIKS (E-29): logg hele feilen server-side, men returner ikke
+    // error.message til klienten - den kan inneholde interne detaljer fra
+    // PageSpeed, AI-leverandørene eller databasen.
+    console.error('❌ [SEO Autopilot] Kritisk feil i autopilot-syklus:', error);
     return NextResponse.json({
       success: false,
-      error: error.message
+      error: 'Autopilot-syklusen feilet. Se serverloggen for detaljer.'
     }, { status: 500 });
   }
 }

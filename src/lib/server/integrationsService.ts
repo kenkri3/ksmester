@@ -443,10 +443,16 @@ export async function getActualIntegrationsStatus(companyId?: string): Promise<S
     console.warn('[Integrations] Feil ved henting av integrasjonsliste:', err);
   }
 
-  // Filtrer for bedriften eller global admin
-  const relevant = companyId && companyId !== 'all' && companyId !== 'comp-001'
-    ? integrationsList.filter(i => i.companyId === companyId || i.companyId === 'system')
-    : integrationsList;
+  // SIKKERHETSFIKS (E-17): Tidligere behandlet denne 'comp-001' som "vis alt".
+  // comp-001 er bedrifts-ID-en til admin-kontoen, så enhver kodevei som sendte
+  // den — eller utelot companyId — fikk hele listen på tvers av bedrifter.
+  // Global visning skjer nå kun ved eksplisitt 'all'. Uten companyId og uten
+  // 'all' returneres ingen rader fra basen, i stedet for alle.
+  const relevant = companyId === 'all'
+    ? integrationsList
+    : (companyId
+        ? integrationsList.filter(i => i.companyId === companyId || i.companyId === 'system')
+        : []);
 
   // 1. NOBB
   const dbNobb = relevant.find(i => i.service?.toLowerCase() === 'nobb' && i.status === 'active' && i.secretToken?.trim());

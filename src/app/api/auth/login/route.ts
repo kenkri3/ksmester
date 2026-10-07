@@ -5,7 +5,6 @@ import {
   inMemoryStore, 
   ADMIN_EMAILS, 
   DEFAULT_ADMIN_EMAIL, 
-  DEFAULT_ADMIN_HASH, 
   DEMO_USER_EMAIL,
   DEMO_USER_PASSWORD,
   DEMO_USER_HASH,
@@ -54,33 +53,14 @@ export async function POST(req: NextRequest) {
       );
     }
 
-    // Fallback if in-memory store is fresh and database is empty
-    if (!userRecord && ADMIN_EMAILS.includes(resolvedEmail)) {
-      const isFredrik = resolvedEmail.includes('fredrik');
-      userRecord = {
-        id: isFredrik ? 'u-admin-fredrik' : 'u-admin-123',
-        email: resolvedEmail,
-        password: DEFAULT_ADMIN_HASH,
-        displayName: isFredrik ? 'Fredrik R. Ellingsen' : 'Ken (Admin)',
-        role: 'superadmin',
-        trade: 'Byggmester',
-        company: 'AIChat Norge AS / Vikingnet',
-        companyId: 'comp-001',
-        subscriptionStatus: 'active'
-      };
-    } else if (!userRecord && resolvedEmail === DEMO_USER_EMAIL) {
-      userRecord = {
-        id: 'u-demo-lars-fjellheim',
-        email: DEMO_USER_EMAIL,
-        password: DEMO_USER_HASH,
-        displayName: 'Lars Fjellheim (Demokunde)',
-        role: 'admin',
-        trade: 'Tømrer / Byggmester',
-        company: 'Fjellheim Bygg & Tømrer AS',
-        companyId: 'comp-demo-fjellheim',
-        subscriptionStatus: 'active'
-      };
-    }
+    // SIKKERHETSFIKS (E-09): Her la to fallback-grener som logget inn kontoer som
+    // IKKE finnes i databasen: en for ADMIN_EMAILS med DEFAULT_ADMIN_HASH (den
+    // hardkodede fallbacken 'VikingMester2026!') og en for demobrukeren med
+    // DEMO_USER_PASSWORD. Begge utstedte token uten at noen lagret konto fantes,
+    // og admin-grenen ga role: 'superadmin'. Fjernet. Innlogging krever na at
+    // brukeren faktisk finnes og at passordet matcher lagret hash.
+    // Kallenavnene over (admin/superadmin/ken/demo) beholdes - de peker bare pa
+    // en e-postadresse og krever fortsatt riktig passord.
 
     if (!userRecord) {
       return NextResponse.json({ error: 'Ugyldig e-post/brukernavn eller passord.' }, { status: 401 });
@@ -92,10 +72,6 @@ export async function POST(req: NextRequest) {
       passwordValid = await bcrypt.compare(password, userRecord.password).catch(() => false);
     }
 
-    // Specific verification for demo user
-    if (!passwordValid && userRecord.email === DEMO_USER_EMAIL && password === DEMO_USER_PASSWORD) {
-      passwordValid = true;
-    }
 
     if (!passwordValid) {
       return NextResponse.json({ error: 'Ugyldig e-post/brukernavn eller passord.' }, { status: 401 });

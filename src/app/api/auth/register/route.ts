@@ -2,7 +2,8 @@ import { NextRequest, NextResponse } from 'next/server';
 import bcrypt from 'bcrypt';
 import { dbQuery, inMemoryStore, saveCollectionItem, ADMIN_EMAILS } from '@/src/lib/server/db';
 import { signToken } from '@/src/lib/server/auth';
-import { sendSystemEmail, renderBrandedEmailTemplate } from '@/src/lib/server/emailSender';
+import { sendSystemEmail, renderBrandedEmailTemplate, getAdminNotifyEmails } from '@/src/lib/server/emailSender';
+import { PLATFORM_ORGNUMBER } from '@/src/constants/companyDetails';
 
 export async function POST(req: NextRequest) {
   try {
@@ -39,17 +40,19 @@ export async function POST(req: NextRequest) {
 
     const hashedPassword = await bcrypt.hash(password, 10);
 
+    // Sjekk om e-posten har en aktiv invitasjon. Brukes bade for aktivering av
+    // eksisterende bruker og for a avgiore om en ny bruker far melde seg inn i en
+    // eksisterende bedrift (E-03: bedriftstilknytning skal ikke kunne velges fritt).
+    const inviteRows = await dbQuery(
+      `SELECT * FROM items_store WHERE collection_name = 'invitations' AND LOWER(data->>'inviteeEmail') = $1 AND data->>'status' = 'pending'`,
+      [emailLower]
+    ).catch(() => []);
+    const hasInvite = (inviteRows && inviteRows.length > 0) || (inMemoryStore.invitations || []).some(
+      inv => inv && inv.inviteeEmail?.toLowerCase() === emailLower && inv.status === 'pending'
+    );
+
     // Sikkerhet: Hvis bruker allerede eksisterer, tillat kun aktivering dersom det foreligger en gyldig invitasjon
     if (existingUser) {
-
-      // Sjekk om brukeren har en aktiv invitasjon (håndverker, leder, etc.)
-      const inviteRows = await dbQuery(
-        `SELECT * FROM items_store WHERE collection_name = 'invitations' AND LOWER(data->>'inviteeEmail') = $1 AND data->>'status' = 'pending'`,
-        [emailLower]
-      ).catch(() => []);
-      const hasInvite = (inviteRows && inviteRows.length > 0) || (inMemoryStore.invitations || []).some(
-        inv => inv && inv.inviteeEmail?.toLowerCase() === emailLower && inv.status === 'pending'
-      );
 
       if (hasInvite) {
         await dbQuery(
@@ -81,10 +84,30 @@ export async function POST(req: NextRequest) {
       return NextResponse.json({ error: 'En bruker med denne e-posten er allerede registrert. Logg inn eller benytt Glemt passord.' }, { status: 409 });
     }
 
-    const isJoiningExistingCompany = Boolean(inputCompanyId && inputCompanyId !== 'new' && inputCompanyId !== 'comp-default');
+    // SIKKERHETSFIKS (E-03): Rollen var tidligere selvvalgt - body.role ble skrevet
+    // rett inn i brukerraden, og en ny konto kunne dermed utstede seg selv som
+    // 'superadmin' og fa global tilgang (auth.ts:77). companyId ble ogsa tatt fra
+    // body, sa man kunne melde seg inn i vilkarlig bedrift, inkludert comp-001.
+    // Na: rollen hvitlistes og bedriftstilknytning krever en reell invitasjon.
+    const SELF_SERVICE_ROLES = ['worker', 'leader', 'apprentice'];
+    const requestedRole = typeof inputRole === 'string' ? inputRole.toLowerCase().trim() : '';
+    const hasValidInvitation = Boolean(
+      inputCompanyId &&
+      inputCompanyId !== 'new' &&
+      inputCompanyId !== 'comp-default' &&
+      (inviteRows || []).some((r: any) => {
+        const data = r && r.data ? r.data : r;
+        return data && data.companyId === inputCompanyId && data.status === 'pending';
+      })
+    );
+    const isJoiningExistingCompany = hasValidInvitation;
     const userId = isSuperAdminEmail && emailLower.includes('fredrik') ? 'u-admin-fredrik' : ('u-' + Date.now().toString(36) + '-' + Math.random().toString(36).substring(2, 7));
     const companyId = isSuperAdminEmail ? 'comp-001' : (isJoiningExistingCompany ? inputCompanyId : ('comp-' + Date.now().toString(36) + '-' + Math.random().toString(36).substring(2, 7)));
-    const finalRole = isSuperAdminEmail ? 'superadmin' : (inputRole || (isJoiningExistingCompany ? 'worker' : 'leader'));
+    const finalRole = isSuperAdminEmail
+      ? 'superadmin'
+      : (isJoiningExistingCompany
+          ? (SELF_SERVICE_ROLES.includes(requestedRole) ? requestedRole : 'worker')
+          : 'leader');
     const finalCompany = isSuperAdminEmail ? 'AIChat Norge AS / Vikingnet' : (company?.trim() || 'Ny Bedrift AS');
     const finalStatus = isSuperAdminEmail || isJoiningExistingCompany ? 'active' : 'trial';
 
@@ -96,7 +119,7 @@ export async function POST(req: NextRequest) {
       role: finalRole,
       trade: trade || 'Byggmester',
       company: finalCompany,
-      orgnr: isSuperAdminEmail ? '933 607 779' : (cleanOrgnr || null),
+      orgnr: isSuperAdminEmail ? PLATFORM_ORGNUMBER : (cleanOrgnr || null),
       companyId: companyId,
       subscriptionStatus: finalStatus,
       gdprConsent: true,
@@ -120,7 +143,7 @@ export async function POST(req: NextRequest) {
       const companyData = {
         id: companyId,
         name: userObj.company,
-        orgnr: isSuperAdminEmail ? '933 607 779' : (cleanOrgnr || ''),
+        orgnr: isSuperAdminEmail ? PLATFORM_ORGNUMBER : (cleanOrgnr || ''),
         contactName: userObj.displayName,
         email: emailLower,
         phone: '401 63 082',
@@ -196,7 +219,8 @@ export async function POST(req: NextRequest) {
       // Varsle admin
       try {
         await sendSystemEmail({
-          to: ['kenkri3@gmail.com', 'fredrik.r.ellingsen@gmail.com', 'aichatnorge@gmail.com'],
+          // SIKKERHETSFIKS (F-04): var hardkodet til private Gmail-adresser.
+          to: getAdminNotifyEmails(),
           replyTo: emailLower,
           subject: `🔥 NY BRUKERREGISTRERING: ${userObj.company} (${userObj.displayName})`,
           text: `Ny bruker registrert:\nBedrift: ${userObj.company}\nNavn: ${userObj.displayName}\nE-post: ${emailLower}\nOrg.nr: ${cleanOrgnr || 'Ikke oppgitt'}`,

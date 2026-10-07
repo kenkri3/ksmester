@@ -1,7 +1,8 @@
 import { NextRequest, NextResponse } from 'next/server';
 import { sendSystemEmail, cleanMarkdownForEmail } from '@/src/lib/server/emailSender';
-import { getUserFromRequest, verifyCronOrInternalSecret } from '@/src/lib/server/auth';
+import { getUserFromRequest, verifyCronOrInternalSecret, isUserSuperAdmin } from '@/src/lib/server/auth';
 import { checkRateLimit, getClientIp } from '@/src/lib/server/rateLimit';
+import { timingSafeEqual } from 'crypto';
 
 /**
  * 🛡️ SIKKERHETSFIKS (P0): Hardkodet bot-nøkkel er fjernet.
@@ -52,10 +53,24 @@ export async function POST(req: NextRequest) {
     const queryKey = req.nextUrl.searchParams.get('bot_key') || req.nextUrl.searchParams.get('apiKey') || req.nextUrl.searchParams.get('key');
     const providedKey = body.bot_key || body.apiKey || token || queryKey;
 
-    // Autentisering: Enten gyldig bot_key, intern hemmelighet, eller innlogget bruker
+    // Autentisering: gyldig bot_key, intern hemmelighet, eller SuperAdmin.
     const user = getUserFromRequest(req);
-    const isBotAuthorized = Boolean(providedKey && (providedKey === BOT_API_KEY || providedKey === process.env.AGENT_API));
-    const isUserAuthorized = Boolean(user) || verifyCronOrInternalSecret(req);
+    // SIKKERHETSFIKS (E-16): nokkelsammenligningen var vanlig ===, som lekker
+    // lengde- og prefiksinformasjon gjennom tidsforskjeller. Na timing-sikker.
+    const keyMatches = (candidate: string | undefined, expected: string | undefined): boolean => {
+      if (!candidate || !expected) return false;
+      const a = Buffer.from(candidate);
+      const b = Buffer.from(expected);
+      if (a.length !== b.length) return false;
+      return timingSafeEqual(a, b);
+    };
+    const isBotAuthorized = keyMatches(providedKey, BOT_API_KEY) || keyMatches(providedKey, process.env.AGENT_API);
+    // SIKKERHETSFIKS (E-16): for var `Boolean(user)` nok. Enhver innlogget bruker -
+    // ogsa en selvregistrert trial-konto - kunne dermed sende vilkarlig e-post til
+    // vilkarlig mottaker, med valgfritt avsendernavn og reply-to, fra plattformens
+    // verifiserte domene. Ruten har ingen interne kallere, sa kravet kan strammes
+    // uten a bryte noen flyt.
+    const isUserAuthorized = isUserSuperAdmin(user) || verifyCronOrInternalSecret(req);
 
     if (!isBotAuthorized && !isUserAuthorized) {
       return NextResponse.json({
@@ -177,14 +192,18 @@ export async function POST(req: NextRequest) {
     }, { status: 200 });
 
   } catch (error: any) {
-    console.error('Agent email webhook error:', error);
+    // SIKKERHETSFIKS (E-29): denne ruten svarer i Botsify-formatet
+    // { success, error, messages }, så apiError() passer ikke på formen.
+    // Vi logger hele feilen server-side og returnerer en generisk melding -
+    // rå error.message gikk tidligere ut både i error og i meldingsteksten.
+    console.error('[agent/email] Utsending feilet:', error);
     return NextResponse.json({
       success: false,
-      error: error.message || 'Serverfeil ved utsending av e-post',
+      error: 'Serverfeil ved utsending av e-post',
       messages: [
         {
           message: {
-            text: `❌ Teknisk feil ved utsendelse av e-post: ${error.message}`
+            text: '❌ Teknisk feil ved utsendelse av e-post. Se serverloggen for detaljer.'
           }
         }
       ]

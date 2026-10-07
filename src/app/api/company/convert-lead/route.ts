@@ -3,6 +3,7 @@ import bcrypt from 'bcrypt';
 import { getUserFromRequest, isUserAdmin } from '@/src/lib/server/auth';
 import { saveCollectionItem, getCollectionItemById, dbQuery, inMemoryStore } from '@/src/lib/server/db';
 import { sanitize, sanitizeEmail, sanitizeHeader } from '@/src/lib/sanitize';
+import { apiError } from '@/src/lib/server/apiError';
 
 export async function POST(req: NextRequest) {
   try {
@@ -246,7 +247,6 @@ export async function POST(req: NextRequest) {
     });
 
   } catch (err: any) {
-    console.error('Feil ved konvertering av lead til kunde:', err);
-    return NextResponse.json({ error: err.message || 'Kunne ikke konvertere lead til kunde.' }, { status: 500 });
+    return apiError(err, 'Kunne ikke konvertere lead til kunde.');
   }
 }

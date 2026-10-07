@@ -65,6 +65,9 @@ import { generateAiContent } from '../services/aiClient';
 import { db, collection, onSnapshot, query, where, doc, updateDoc, deleteDoc, addDoc, serverTimestamp, handleFirestoreError, OperationType, orderBy } from '../services/firebase';
 import { useAuth } from '../hooks/useAuth';
 import { cn } from '../lib/utils';
+// SIKKERHETSFIKS (E-17): /api/integrations/status krever na innlogging og svarer
+// 401 uten Authorization-header. getHeaders() henter tokenet fra sesjonen.
+import { getHeaders } from '../services/api';
 import { toast } from 'sonner';
 import ProjectDetails from './ProjectDetails';
 import SeoAutopilotHub from './SeoAutopilotHub';
@@ -152,7 +155,7 @@ export const allModules = [
   { id: 'teamchat', name: 'Prosjekt- & Firmachatt', icon: <MessageSquare size={16} /> },
   { id: 'apprentice', name: 'Lærlingmodul', icon: <GraduationCap size={16} /> },
   { id: 'building_app', name: 'Byggesøknad', icon: <Building2 size={16} /> },
-  { id: 'all_modules', name: 'Alle 20+ fagmoduler (Full pakke)', icon: <Layers size={16} /> }
+  { id: 'all_modules', name: 'Alle fagmoduler (Full pakke)', icon: <Layers size={16} /> }
 ];
 
 export default function SuperAdmin({ onBackToDashboard }: { onBackToDashboard?: () => void } = {}) {
@@ -272,7 +275,7 @@ export default function SuperAdmin({ onBackToDashboard }: { onBackToDashboard?: 
 
   const loadIntegrationStatus = async () => {
     try {
-      const res = await fetch('/api/integrations/status');
+      const res = await fetch('/api/integrations/status', { headers: getHeaders() });
       if (res.ok) {
         const data = await res.json();
         setIntegrationStatus(data);
@@ -418,7 +421,7 @@ export default function SuperAdmin({ onBackToDashboard }: { onBackToDashboard?: 
           orgNumber: '928 374 651',
           contactPerson: 'Lars Fjellheim',
           contactEmail: 'demo@fjellheimbygg.no',
-          phone: '912 34 567',
+          phone: '000 00 001',
           plan: 'demo',
           isDemo: true,
           status: 'active',
@@ -5109,7 +5112,7 @@ Rolle: SuperAdmin (Full plattformeiertilgang, 500M tokens/mnd, alle moduler)`;
                 SuperAdmin-konto er klar! 👑
               </h2>
               <p className="text-xs text-slate-300 mt-1 max-w-sm mx-auto">
-                <strong>{createdData.user.email}</strong> har nå nøyaktig samme rettigheter som deg (full plattformeier, 500M tokens/mnd, alle 20+ fagmoduler).
+                <strong>{createdData.user.email}</strong> har nå nøyaktig samme rettigheter som deg (full plattformeier, 500M tokens/mnd, alle fagmoduler).
               </p>
             </div>
 
@@ -5224,7 +5227,7 @@ Rolle: SuperAdmin (Full plattformeiertilgang, 500M tokens/mnd, alle moduler)`;
               <li>Full adgang til SuperAdmin-portalen, AI-marginkontroll og SaaS-styring</li>
               <li>Kan logge inn som hvilken som helst bedriftskunde (Impersonering)</li>
               <li>Knyttes automatisk til <strong>comp-001 (AIChat Norge AS / Vikingnet)</strong></li>
-              <li>500 000 000 tokens/mnd + alle 20+ fagmoduler aktivert (0 kr fakturering)</li>
+              <li>500 000 000 tokens/mnd + alle fagmoduler aktivert (0 kr fakturering)</li>
             </ul>
           </div>
 
@@ -5689,7 +5692,7 @@ Lykke til med testingen! Gi meg gjerne beskjed om du finner ting som ikke funger
                 type="tel"
                 value={phone}
                 onChange={(e) => setPhone(e.target.value)}
-                placeholder="F.eks. 912 34 567"
+                placeholder="F.eks. 000 00 000"
                 className="w-full px-3.5 py-2.5 bg-slate-950 border border-slate-800 rounded-xl text-xs font-semibold text-white placeholder:text-slate-500 outline-none focus:ring-2 focus:ring-emerald-500/30 focus:border-emerald-500 transition-all shadow-2xs"
               />
             </div>

@@ -162,7 +162,7 @@ function ResetPasswordContent() {
               <span>Full plattformeiertilgang</span>
             </div>
             <p className="text-[11px] text-amber-200/90">
-              Du setter nå passord for en SuperAdmin-konto med 100% like rettigheter som Kenneth (500M tokens/mnd, tilgang til alle 20+ moduler, SuperAdmin-portal).
+              Du setter nå passord for en SuperAdmin-konto med 100% like rettigheter som Kenneth (500M tokens/mnd, tilgang til alle fagmoduler, SuperAdmin-portal).
             </p>
           </div>
         )}

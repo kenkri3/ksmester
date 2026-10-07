@@ -194,6 +194,11 @@ export default function Dashboard({
       if (snapshot.docs && snapshot.docs.length > 0) {
         let docs = snapshot.docs;
         // 🔒 GDPR & Tenant Isolation: Kun vis ordre som tilhører denne bedriften dersom ikke uinnskrenket SuperAdmin
+        // SIKKERHETSFIKS (W-01): her sto i tillegg `|| !data.company` med
+        // kommentaren «fallback for demo if newly created». Det gjorde at enhver
+        // post som manglet company-felt ble vist til ALLE bedrifter - en
+        // tenantisolasjon som faller apen. Dokumenter som mangler bedriftstilhoring
+        // skal ikke vises i en kundes arbeidsflate i det hele tatt.
         if ((!isSuperAdmin || impersonatedCompanyId) && effectiveCompany) {
           docs = docs.filter(d => {
             const data = d.data();
@@ -201,23 +206,30 @@ export default function Dashboard({
               data.company === effectiveCompany ||
               data.companyId === effectiveCompany ||
               data.companyName === effectiveCompany ||
-              data.tenantId === effectiveCompany ||
-              !data.company // fallback for demo if newly created
+              data.tenantId === effectiveCompany
             );
           });
         }
+        // SIKKERHETSFIKS (W-04): manglende felt ble fylt med oppdiktede verdier -
+        // endringsordrenummer 1, 25 % mva regnet ut av ingenting, og den
+        // juridiske hjemmelen 'NS 8406 pkt. 19.2' oppgitt som faktum selv nar den
+        // ikke fantes i dataene. En oppdiktet paragrafreferanse i et juridisk
+        // dokument er verre enn ingen referanse. Na vises det som mangler som
+        // null, og UI-et ma si «ikke registrert» i stedet for a finne pa en verdi.
         const liveOrders = docs.map(d => {
           const data = d.data();
+          const exVat = typeof data.amountExVat === 'number' ? data.amountExVat
+            : (typeof data.totalAmount === 'number' ? data.totalAmount : null);
           return {
             id: d.id,
-            number: data.changeNumber || 1,
+            number: data.changeNumber || null,
             title: data.title || 'Endringsordre',
             project: data.projectName || data.projectCode || 'Prosjekt',
             projectId: data.projectId,
-            amount: data.amountExVat || data.totalAmount || 0,
-            amountExVat: data.amountExVat || data.totalAmount || 0,
-            totalAmount: data.totalAmount || Math.round((data.amountExVat || 0) * 1.25),
-            vatAmount: data.vatAmount || Math.round((data.amountExVat || 0) * 0.25),
+            amount: exVat,
+            amountExVat: exVat,
+            totalAmount: typeof data.totalAmount === 'number' ? data.totalAmount : null,
+            vatAmount: typeof data.vatAmount === 'number' ? data.vatAmount : null,
             days: data.impactDays || 0,
             impactDays: data.impactDays || 0,
             status: (() => {
@@ -230,8 +242,8 @@ export default function Dashboard({
               }
               return 'Sendt til kunde';
             })(),
-            legal: data.legalHjemmel || 'NS 8406 pkt. 19.2',
-            legalHjemmel: data.legalHjemmel || 'NS 8406 pkt. 19.2',
+            legal: data.legalHjemmel || null,
+            legalHjemmel: data.legalHjemmel || null,
             description: data.description || '',
             cause: data.cause || 'kundetillegg',
             clientName: data.clientName || '',
@@ -270,14 +282,15 @@ export default function Dashboard({
     const unsub = onSnapshot(collection(db, 'offers'), (snapshot) => {
       if (snapshot.docs && snapshot.docs.length > 0) {
         let docs = snapshot.docs;
+        // SIKKERHETSFIKS (W-01): `|| !data.company` fjernet ogsa her. Uten den
+        // vises tilbud som mangler bedriftstilhoring ikke til alle bedrifter.
         if ((!isSuperAdmin || impersonatedCompanyId) && effectiveCompany) {
           docs = docs.filter(d => {
             const data = d.data();
             return (
               data.company === effectiveCompany ||
               data.companyId === effectiveCompany ||
-              data.companyName === effectiveCompany ||
-              !data.company
+              data.companyName === effectiveCompany
             );
           });
         }
@@ -300,13 +313,13 @@ export default function Dashboard({
     const unsub = onSnapshot(collection(db, 'tasks'), (snapshot) => {
       if (snapshot.docs) {
         let docs = snapshot.docs;
+        // SIKKERHETSFIKS (W-01): `|| !data.company` fjernet ogsa her.
         if ((!isSuperAdmin || impersonatedCompanyId) && effectiveCompany) {
           docs = docs.filter(d => {
             const data = d.data();
             return (
               data.company === effectiveCompany ||
-              data.companyId === effectiveCompany ||
-              !data.company
+              data.companyId === effectiveCompany
             );
           });
         }
@@ -331,9 +344,12 @@ export default function Dashboard({
       setDashboardOffers(prev => prev.filter(o => o.id !== offerId));
       toast.success(`Tilbud "${offerTitle}" er slettet.`);
     } catch (e) {
-      console.warn('Error deleting offer from DB, updating local state:', e);
-      setDashboardOffers(prev => prev.filter(o => o.id !== offerId));
-      toast.success(`Tilbud "${offerTitle}" er fjernet.`);
+      // SIKKERHETSFIKS (W-02): her ble tilbudet fjernet fra UI-et og brukeren fikk
+      // grønn «er fjernet» selv nar slettingen FEILET. Elementet dukket opp igjen
+      // ved neste poll (20 s), sa brukeren trodde det var slettet. Feil skal feile
+      // aerlig: ingen state-endring, og en tydelig feilmelding.
+      console.error('Kunne ikke slette tilbud:', e);
+      toast.error(`Kunne ikke slette tilbudet "${offerTitle}". Det er ikke slettet - prov igjen.`);
     }
   };
 
@@ -423,6 +439,14 @@ export default function Dashboard({
   };
 
   // 🧹 Lukk alle åpne dialoger/modaler når brukeren navigerer i arbeidsstasjonen eller sidemenyen
+  // SIKKERHETSFIKS (W-14): her ble det sendt et OPPDIKTET prosjektobjekt til
+  // byggedagbok og endringsordre når brukeren ikke hadde noe prosjekt:
+  // { id: 'proj-default', name: 'Nytt Prosjekt', projectCode: 'P-01' }.
+  // Skrivinger ble dermed knyttet til et prosjekt som ikke finnes, og brukeren
+  // fikk se et prosjekt som ikke er registrert. Nå brukes bare et reelt prosjekt,
+  // og modalen åpnes ikke i det hele tatt hvis det ikke finnes noe.
+  const activeProject = selectedProject || projects[0] || null;
+
   const closeAllDashboardModals = useCallback(() => {
     setIsChecklistModalOpen(false);
     setIsBuildingAppModalOpen(false);
@@ -872,30 +896,18 @@ export default function Dashboard({
   };
 
   // 1-Click Approve Change Order (Registrer godkjenning / aksept fra kunde)
+  // SIKKERHETSFIKS (W-06): her ble UI-et satt til «Godkjent av kunde» og elementet
+  // fjernet fra godkjenningskøen FØR serveren var kontaktet. Feilet skrivingen, ble
+  // feilen svelget med console.warn, og et ikke-ok svar fra /api/agent/dispatch ble
+  // ignorert fordi `if (res.ok)` ikke hadde noen else. En juridisk bindende
+  // godkjenning (NS 8406) kunne dermed se gjennomført ut uten å være lagret.
+  // Nå venter vi på serverbekreftelse før UI-et endres.
   const handleApproveChangeOrder = async (changeOrderId: string) => {
+    const previousOrders = dashboardChangeOrders;
+    const previousApprovals = pendingApprovals;
     try {
-      // Optimistisk oppdatering i UI umiddelbart
-      setDashboardChangeOrders(prev => prev.map(item => item.id === changeOrderId ? { ...item, status: 'Godkjent av kunde' } : item));
-      setPendingApprovals(prev => prev.filter(item => item.id !== changeOrderId));
-      setAgentMetrics((prev: any) => ({
-        ...prev,
-        pendingApprovalsCount: Math.max(0, prev.pendingApprovalsCount - 1)
-      }));
-
-      // Oppdater Firestore direkte slik at det persisteres umiddelbart
-      try {
-        await updateDoc(doc(db, 'change_orders', changeOrderId), {
-          status: 'Godkjent av kunde',
-          approvedAt: new Date().toISOString(),
-          approvedBy: user?.displayName || 'Byggmester / Admin'
-        });
-      } catch (fsErr) {
-        console.warn('Firestore update fallback:', fsErr);
-      }
-
       const res = await fetch('/api/agent/dispatch', {
         method: 'POST',
-        // FIX (11.09.2026): Send med Authorization-token – /api/agent/dispatch krever nå pålogging.
         headers: { 'Content-Type': 'application/json', ...(typeof window !== 'undefined' && localStorage.getItem('token') ? { 'Authorization': `Bearer ${localStorage.getItem('token')}` } : {}) },
         body: JSON.stringify({
           action: 'approve_change_order',
@@ -904,35 +916,44 @@ export default function Dashboard({
         })
       });
 
-      if (res.ok) {
-        toast.success('Endringsordre markert som godkjent av kunde!', {
-          description: 'Varsel og godkjenningsdokument (NS 8406) er oppdatert og arkivert.'
-        });
-        fetchAgentState();
+      if (!res.ok) {
+        const detail = await res.text().catch(() => '');
+        console.error('Godkjenning avvist av serveren:', res.status, detail);
+        toast.error(`Kunne ikke godkjenne endringsordren (HTTP ${res.status}). Den er IKKE godkjent – prøv igjen.`);
+        return;
       }
+
+      // Først når serveren har bekreftet, endrer vi det brukeren ser.
+      setDashboardChangeOrders(prev => prev.map(item => item.id === changeOrderId ? { ...item, status: 'Godkjent av kunde' } : item));
+      setPendingApprovals(prev => prev.filter(item => item.id !== changeOrderId));
+      setAgentMetrics((prev: any) => ({
+        ...prev,
+        pendingApprovalsCount: Math.max(0, prev.pendingApprovalsCount - 1)
+      }));
+
+      toast.success('Endringsordre markert som godkjent av kunde!', {
+        description: 'Varsel og godkjenningsdokument (NS 8406) er oppdatert og arkivert.'
+      });
+      fetchAgentState();
     } catch (err: any) {
-      toast.error('Feil ved godkjenning: ' + err.message);
+      // Nettverksfeil: rull tilbake til det som faktisk gjaldt.
+      console.error('Godkjenning feilet:', err);
+      setDashboardChangeOrders(previousOrders);
+      setPendingApprovals(previousApprovals);
+      toast.error('Kunne ikke kontakte serveren. Endringsordren er IKKE godkjent.');
     }
   };
 
   // 1-Click Reject Change Order
+  // SIKKERHETSFIKS (W-06): samme feil som i godkjenningen – UI-et ble endret før
+  // serveren svarte, og et ikke-ok svar ble ignorert. En avvisning er like
+  // bindende som en godkjenning og skal ikke se gjennomført ut uten å være lagret.
   const handleRejectChangeOrder = async (changeOrderId: string) => {
+    const previousOrders = dashboardChangeOrders;
+    const previousApprovals = pendingApprovals;
     try {
-      setDashboardChangeOrders(prev => prev.map(item => item.id === changeOrderId ? { ...item, status: 'Avvist' } : item));
-      setPendingApprovals(prev => prev.filter(item => item.id !== changeOrderId));
-
-      try {
-        await updateDoc(doc(db, 'change_orders', changeOrderId), {
-          status: 'rejected',
-          rejectedAt: new Date().toISOString()
-        });
-      } catch (fsErr) {
-        console.warn('Firestore reject fallback:', fsErr);
-      }
-
       const res = await fetch('/api/agent/dispatch', {
         method: 'POST',
-        // FIX (11.09.2026): Send med Authorization-token – /api/agent/dispatch krever nå pålogging.
         headers: { 'Content-Type': 'application/json', ...(typeof window !== 'undefined' && localStorage.getItem('token') ? { 'Authorization': `Bearer ${localStorage.getItem('token')}` } : {}) },
         body: JSON.stringify({
           action: 'reject_change_order',
@@ -940,12 +961,22 @@ export default function Dashboard({
         })
       });
 
-      if (res.ok) {
-        toast.info('Endringsordre er markert som avvist.');
-        fetchAgentState();
+      if (!res.ok) {
+        const detail = await res.text().catch(() => '');
+        console.error('Avvisning avvist av serveren:', res.status, detail);
+        toast.error(`Kunne ikke avvise endringsordren (HTTP ${res.status}). Den er IKKE avvist – prøv igjen.`);
+        return;
       }
+
+      setDashboardChangeOrders(prev => prev.map(item => item.id === changeOrderId ? { ...item, status: 'Avvist' } : item));
+      setPendingApprovals(prev => prev.filter(item => item.id !== changeOrderId));
+      toast.info('Endringsordre er markert som avvist.');
+      fetchAgentState();
     } catch (err: any) {
-      toast.error('Feil: ' + err.message);
+      console.error('Avvisning feilet:', err);
+      setDashboardChangeOrders(previousOrders);
+      setPendingApprovals(previousApprovals);
+      toast.error('Kunne ikke kontakte serveren. Endringsordren er IKKE avvist.');
     }
   };
 
@@ -1088,34 +1119,21 @@ export default function Dashboard({
       <InventoryModal isOpen={isInventoryModalOpen} onClose={() => setIsInventoryModalOpen(false)} />
       <VehicleModal isOpen={isVehicleModalOpen} onClose={() => setIsVehicleModalOpen(false)} projects={projects} />
       <HMSModal isOpen={isHMSModalOpen} onClose={() => setIsHMSModalOpen(false)} projects={projects} />
-      <ActivityLogModal isOpen={isActivityLogModalOpen} onClose={() => setIsActivityLogModalOpen(false)} projectId={projects[0]?.id} />
-      <DailyLogModal
-        isOpen={isDailyLogModalOpen}
-        onClose={() => setIsDailyLogModalOpen(false)}
-        project={selectedProject || projects[0] || ({
-          id: 'proj-default',
-          name: 'Hovedprosjekt',
-          projectCode: 'P-01',
-          description: 'Hovedprosjekt',
-          location: 'Byggeplass',
-          progress: 0,
-          status: 'active',
-          stage: 'active',
-          documentationLevel: 0,
-          clientName: 'Oppdragsgiver',
-          clientEmail: '',
-          clientPhone: '',
-          company: user?.company || 'Bedrift',
-          companyId: user?.companyId || 'comp',
-          companyName: user?.company || 'Bedrift',
-          projectManager: user?.displayName || 'Byggeleder',
-          startDate: new Date().toISOString(),
-          lastUpdate: new Date().toISOString(),
-          createdAt: new Date().toISOString(),
-          updatedAt: new Date().toISOString()
-        } as unknown as Project)}
-        currentUserName={user?.displayName || 'Byggeleder'}
-      />
+      {/* SIKKERHETSFIKS (W-13/W-14): aktivitetsloggen fikk alltid FØRSTE prosjekt,
+          ikke det valgte, og byggedagbok/endringsordre fikk et OPPDIKTET
+          prosjektobjekt ({ id: 'proj-default', name: 'Nytt Prosjekt' }) når
+          brukeren ikke hadde noe prosjekt. Skrivinger kunne dermed knyttes til et
+          prosjekt som ikke finnes. Modalen rendres nå bare når det finnes et
+          reelt prosjekt, og den bruker det valgte prosjektet. */}
+      <ActivityLogModal isOpen={isActivityLogModalOpen} onClose={() => setIsActivityLogModalOpen(false)} projectId={activeProject?.id} />
+      {activeProject && (
+        <DailyLogModal
+          isOpen={isDailyLogModalOpen}
+          onClose={() => setIsDailyLogModalOpen(false)}
+          project={activeProject}
+          currentUserName={user?.displayName || 'Byggeleder'}
+        />
+      )}
       <DeviationDetailModal
         isOpen={isDeviationDetailOpen}
         onClose={() => {
@@ -1130,37 +1148,21 @@ export default function Dashboard({
           fetchAgentState();
         }}
       />
-      <ChangeOrderModal
-        isOpen={isChangeOrderModalOpen}
-        onClose={() => {
-          setIsChangeOrderModalOpen(false);
-          fetchAgentState();
-        }}
-        project={(selectedProject || projects[0] || {
-          id: 'proj-default',
-          name: 'Nytt Prosjekt',
-          projectCode: 'P-01',
-          description: 'Hovedprosjekt',
-          location: 'Byggeplass',
-          progress: 0,
-          status: 'active',
-          stage: 'active',
-          documentationLevel: 0,
-          clientName: 'Oppdragsgiver',
-          clientEmail: '',
-          clientPhone: '',
-          company: user?.company || 'Bedrift',
-          companyId: user?.companyId || 'comp',
-          companyName: user?.company || 'Bedrift',
-          projectManager: user?.displayName || 'Byggeleder',
-          startDate: new Date().toISOString(),
-          lastUpdate: new Date().toISOString(),
-          createdAt: new Date().toISOString(),
-          updatedAt: new Date().toISOString()
-        }) as unknown as Project}
-        currentUserId={user?.id || 'admin_user'}
-        currentUserName={user?.displayName || 'Byggeleder'}
-      />
+      {/* SIKKERHETSFIKS (W-14): samme oppdiktede prosjektobjekt ble sendt hit.
+          Endringsordren kunne dermed lagres på et prosjekt som ikke finnes.
+          Modalen rendres nå bare når det finnes et reelt prosjekt. */}
+      {activeProject && (
+        <ChangeOrderModal
+          isOpen={isChangeOrderModalOpen}
+          onClose={() => {
+            setIsChangeOrderModalOpen(false);
+            fetchAgentState();
+          }}
+          project={activeProject}
+          currentUserId={user?.id || 'admin_user'}
+          currentUserName={user?.displayName || 'Byggeleder'}
+        />
+      )}
       <SmartSearch 
         isOpen={isSmartSearchOpen} 
         onClose={() => setIsSmartSearchOpen(false)} 
@@ -1258,7 +1260,11 @@ export default function Dashboard({
             tasks={dashboardTasks}
             initialPrompt={chatInitialPrompt}
             onPromptHandled={() => setChatInitialPrompt(undefined)}
-            onOpenCreateProject={() => {}}
+            // SIKKERHETSFIKS (W-11): disse var `() => {}` - knapper som sa ut som
+            // de gjorde noe, men ikke gjorde noe. Na apner de den faktiske
+            // prosjektmodalen og innstillingsmodulen. Alt som kan klikkes skal
+            // gjore noe.
+            onOpenCreateProject={() => setIsCreateModalOpen(true)}
             onOpenSmartSearch={() => setIsSmartSearchOpen(true)}
             onOpenAllModules={() => {
               closeAllDashboardModals();
@@ -1270,7 +1276,12 @@ export default function Dashboard({
             onDeleteOffer={handleDeleteDashboardOffer}
             onOpenPreClose={handleOpenPreClose}
             onOpenOmnichannelModal={() => setIsOmnichannelModalOpen(true)}
-            onOpenSettings={() => {}}
+            onOpenSettings={() => {
+              // SIKKERHETSFIKS (W-11): var `() => {}`. Sender brukeren til
+              // arbeidsflatas innstillinger i stedet for a gjore ingenting.
+              closeAllDashboardModals();
+              window.dispatchEvent(new CustomEvent('open_workstation_module', { detail: { actionId: 'settings' } }));
+            }}
             onOpenSuperAdmin={onOpenSuperAdmin}
           />
         )}

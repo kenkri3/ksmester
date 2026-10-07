@@ -1,6 +1,8 @@
 import { NextRequest, NextResponse } from 'next/server';
 import { saveCollectionItem, getCollectionItems, deleteCollectionItem } from '@/src/lib/server/db';
-import { getUserFromRequest } from '@/src/lib/server/auth';
+import { getUserFromRequest, isUserSuperAdmin } from '@/src/lib/server/auth';
+import { getAdminNotifyEmails } from '@/src/lib/server/emailSender';
+import { apiError } from '@/src/lib/server/apiError';
 
 export async function POST(req: NextRequest) {
   try {
@@ -103,7 +105,8 @@ export async function POST(req: NextRequest) {
           body: JSON.stringify({
             from: fromEmail,
             reply_to: 'hei@vikingmester.no',
-            to: ['kenkri3@gmail.com', 'fredrik.r.ellingsen@gmail.com', 'aichatnorge@gmail.com'],
+            // SIKKERHETSFIKS (F-04): var hardkodet til private Gmail-adresser.
+            to: getAdminNotifyEmails(),
             subject: `⚡ INTEGRASJON TILKOBLET: ${effectiveCompanyName} koblet til ${service}`,
             html: `
               <div style="font-family: sans-serif; max-width: 550px; margin: 0 auto; padding: 20px; border: 1px solid #E2E8F0; border-radius: 10px;">
@@ -128,7 +131,7 @@ export async function POST(req: NextRequest) {
       service
     });
   } catch (err: any) {
-    return NextResponse.json({ error: err.message || 'Kunne ikke lagre integrasjon.' }, { status: 500 });
+    return apiError(err, 'Kunne ikke lagre integrasjonen.');
   }
 }
 
@@ -139,7 +142,13 @@ export async function GET(req: NextRequest) {
       return NextResponse.json({ error: 'Uautorisert tilgang' }, { status: 401 });
     }
     const all = await getCollectionItems('integrations');
-    const filtered = user.role === 'admin' ? all : all.filter((i: any) => i.companyId === user.companyId);
+    // SIKKERHETSFIKS (E-17): user.role === 'admin' er en BEDRIFTSADMINISTRATOR,
+    // ikke plattform-eier. Den gamle grenen returnerte derfor alle bedrifters
+    // integrasjoner til en vanlig kundeadmin - kryss-tenant datalekkasje.
+    // Global oversikt krever SuperAdmin; alle andre ser kun sin egen bedrift.
+    const filtered = isUserSuperAdmin(user)
+      ? all
+      : all.filter((i: any) => i.companyId === user.companyId);
 
     return NextResponse.json(filtered.map((item: any) => ({
       service: item.service,
@@ -147,7 +156,7 @@ export async function GET(req: NextRequest) {
       configuredAt: item.configuredAt
     })));
   } catch (err: any) {
-    return NextResponse.json({ error: err.message }, { status: 500 });
+    return apiError(err, 'Kunne ikke hente integrasjoner.');
   }
 }
 
@@ -164,9 +173,13 @@ export async function DELETE(req: NextRequest) {
     }
 
     const all = await getCollectionItems('integrations');
-    const target = all.find((i: any) => 
-      i.service === service && 
-      (user.role === 'admin' || i.companyId === user.companyId)
+    // SIKKERHETSFIKS (E-17): samme feil i slettegrenen - en kundeadmin kunne
+    // matche og slette en ANNEN bedrifts integrasjon. Kobling fra krever na at
+    // raden tilhorer brukerens egen bedrift (eller at brukeren er SuperAdmin).
+    const isSuper = isUserSuperAdmin(user);
+    const target = all.find((i: any) =>
+      i.service === service &&
+      (isSuper ? true : i.companyId === user.companyId)
     );
 
     if (target) {
@@ -178,7 +191,7 @@ export async function DELETE(req: NextRequest) {
       message: `Integrasjon med ${service} er koblet fra.`
     });
   } catch (err: any) {
-    return NextResponse.json({ error: err.message || 'Kunne ikke koble fra' }, { status: 500 });
+    return apiError(err, 'Kunne ikke koble fra tjenesten.');
   }
 }
 

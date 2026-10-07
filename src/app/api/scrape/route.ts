@@ -1,6 +1,7 @@
 import { NextRequest, NextResponse } from 'next/server';
 import { getUserFromRequest } from '@/src/lib/server/auth';
 import { generateWithAiEngine, cleanAiJson } from '@/src/lib/server/aiEngine';
+import { apiError } from '@/src/lib/server/apiError';
 
 function isBlockedUrl(urlString: string): boolean {
   try {
@@ -126,7 +127,8 @@ export async function POST(req: NextRequest) {
       imageUrl: ogImage || ''
     });
   } catch (error: any) {
-    console.error('Scrape API error:', error);
-    return NextResponse.json({ error: error.message || 'Kunne ikke skrape nettside' }, { status: 500 });
+    // SIKKERHETSFIKS (E-29): logg detaljene server-side, ikke til klienten.
+    // Viktig her: ra feilmelding fra en henting kan rope interne adresser.
+    return apiError(error, 'Kunne ikke hente innholdet fra nettsiden.');
   }
 }

@@ -6,7 +6,8 @@ import { createAutonomousChangeOrder } from '@/src/lib/server/changeOrderAgent';
 import { saveCollectionItem, getCollectionItems, updateCollectionItem, getCollectionItemById, deleteCollectionItem } from '@/src/lib/server/db';
 import { generateWithAiEngine, cleanAiJson } from '@/src/lib/server/aiEngine';
 import type { AiEngineResult } from '@/src/lib/server/aiEngine';
-import { getUserFromRequest, verifyCronOrInternalSecret, verifyAuthToken } from '@/src/lib/server/auth';
+import { getUserFromRequest, verifyCronOrInternalSecret, verifyAuthToken, isUserSuperAdmin } from '@/src/lib/server/auth';
+import { apiError } from '@/src/lib/server/apiError';
 import { sendOfferByEmail, sendChangeOrderByEmail, sendSystemEmail, getResendApiKey, testResendConnection } from '@/src/lib/server/emailSender';
 import { 
   getApprenticeProfiles, 
@@ -173,8 +174,7 @@ export async function GET(req: NextRequest) {
       recentActivities
     });
   } catch (error: any) {
-    console.error('Agent dispatch GET error:', error);
-    return NextResponse.json({ error: error.message || 'Internt agentfeil' }, { status: 500 });
+    return apiError(error, 'Intern agentfeil.');
   }
 }
 
@@ -668,11 +668,13 @@ Returner KUN et gyldig JSON-objekt:
 
       const lower = text.toLowerCase();
       const user = getUserFromRequest(req);
+      // SIKKERHETSFIKS (E-06): authorName kommer fra request-bodyen (linje 294).
+      // Heuristikken under ga SuperAdmin til enhver som skrev 'admin' eller 'ken'
+      // som visningsnavn, og slettingen under var ikke filtrert per bedrift.
       const isSuperAdmin = user?.role === 'superadmin' || user?.role === 'admin' ||
-        ['kenkri3@gmail.com', 'aichatnorge@gmail.com', 'kenneth@aichatnorge.no', 'fredrik.r.ellingsen@gmail.com', 'fredrik@aichatnorge.no'].includes((user?.email || '').toLowerCase()) ||
-        verifyCronOrInternalSecret(req) ||
-        (authorName || '').toLowerCase().includes('admin') ||
-        (authorName || '').toLowerCase().includes('ken');
+        isUserSuperAdmin(user) ||
+        verifyCronOrInternalSecret(req);
+      const callerCompanyId = user?.companyId || null;
 
       // 0. INTENT: Slett / Angre / Kanseller / Fjern
       const isDeleteIntent = 
@@ -695,8 +697,13 @@ Returner KUN et gyldig JSON-objekt:
             }, { status: 403 });
           }
 
+          // SIKKERHETSFIKS (E-06): filtrer pa bedrift for alle andre enn SuperAdmin,
+          // sa en administrator ikke kan slette en annen bedrifts endringsordrer.
           const allOrders = await getCollectionItems('change_orders');
-          const candidates = allOrders.sort((a: any, b: any) => 
+          const scopedOrders = isUserSuperAdmin(user)
+            ? allOrders
+            : allOrders.filter((o: any) => !o.companyId || o.companyId === callerCompanyId);
+          const candidates = scopedOrders.sort((a: any, b: any) => 
             new Date(b.createdAt || 0).getTime() - new Date(a.createdAt || 0).getTime()
           );
 
@@ -3597,10 +3604,9 @@ Du skal opptre som en høyt kvalifisert byggmester og kalkulatør og levere en k
       }
 
       const user = getUserFromRequest(req);
-      const isSuper = user?.role === 'superadmin' || user?.role === 'admin' ||
-        ['kenkri3@gmail.com', 'aichatnorge@gmail.com', 'kenneth@aichatnorge.no', 'fredrik.r.ellingsen@gmail.com', 'fredrik@aichatnorge.no'].includes((user?.email || '').toLowerCase()) ||
-        (authorName || '').toLowerCase().includes('admin') ||
-        (authorName || '').toLowerCase().includes('ken') ||
+      // SIKKERHETSFIKS (E-06): samme authorName-heuristikk som over, fjernet.
+      // Rollen ma komme fra den verifiserte sesjonen.
+      const isSuper = isUserSuperAdmin(user) ||
         verifyCronOrInternalSecret(req);
 
       if (!isSuper && user?.role !== 'admin') {
@@ -3736,8 +3742,7 @@ Du skal opptre som en høyt kvalifisert byggmester og kalkulatør og levere en k
 
     return NextResponse.json({ error: 'Ukjent handling' }, { status: 400 });
   } catch (error: any) {
-    console.error('Agent dispatch error:', error);
-    return NextResponse.json({ error: error.message || 'Internt agentfeil' }, { status: 500 });
+    return apiError(error, 'Intern agentfeil.');
   }
 }
 

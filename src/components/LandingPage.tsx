@@ -943,7 +943,7 @@ function TacticalHomeView({
               href="#moduler"
               className="w-full sm:w-auto px-6 py-4 rounded-xl bg-slate-900 hover:bg-slate-800 text-slate-300 hover:text-white font-bold text-sm border border-slate-800 transition-colors"
             >
-              Utforsk alle 20 moduler
+              Utforsk alle fagmoduler
             </a>
           </div>
         </div>

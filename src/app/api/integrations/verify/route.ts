@@ -11,6 +11,7 @@ import {
 } from '@/src/lib/server/integrationsService';
 import { getUserFromRequest } from '@/src/lib/server/auth';
 import { getCollectionItems, saveCollectionItem, deleteCollectionItem } from '@/src/lib/server/db';
+import { apiError } from '@/src/lib/server/apiError';
 
 export async function POST(req: NextRequest) {
   try {
@@ -108,8 +109,7 @@ export async function POST(req: NextRequest) {
     });
 
   } catch (err: any) {
-    console.error('Integrations verify error:', err);
-    return NextResponse.json({ error: err.message || 'Feil ved verifisering' }, { status: 500 });
+    return apiError(err, 'Feil ved verifisering av integrasjonen.');
   }
 }
 
@@ -141,6 +141,6 @@ export async function DELETE(req: NextRequest) {
       message: `${service} er koblet fra.`
     });
   } catch (err: any) {
-    return NextResponse.json({ error: err.message || 'Kunne ikke koble fra' }, { status: 500 });
+    return apiError(err, 'Kunne ikke koble fra tjenesten.');
   }
 }

@@ -76,11 +76,22 @@ export async function GET(req: NextRequest) {
 export async function POST(req: NextRequest) {
   try {
     const userPayload = getUserFromRequest(req);
+    // SIKKERHETSFIKS (E-13): POST var helt uautentisert, og sellerEmail/sellerId
+    // ble tatt fra request-bodyen. En anonym part kunne dermed sende
+    // plattformbrandet e-post fra det verifiserte domenet til en VILKARLIG
+    // mottaker, og rulle adressen inn i nurture-sekvensen. GET krever allerede
+    // innlogging, og PartnerPortal.tsx sender Authorization pa begge kall, sa
+    // kravet endrer ingen legitim flyt.
+    if (!userPayload) {
+      return NextResponse.json({ error: 'Uautorisert tilgang. Vennligst logg inn.' }, { status: 401 });
+    }
+
     const body = await req.json();
 
-    const sellerName = (body.sellerName || userPayload?.email?.split('@')[0] || body.seller || '').trim();
-    const sellerEmail = (body.sellerEmail || userPayload?.email || '').trim().toLowerCase();
-    const sellerId = userPayload?.id || body.sellerId || null;
+    // Selgeridentiteten kommer na fra den verifiserte sesjonen, ikke fra body.
+    const sellerName = (userPayload.displayName || userPayload.email?.split('@')[0] || '').trim();
+    const sellerEmail = (userPayload.email || '').trim().toLowerCase();
+    const sellerId = userPayload.id || null;
 
     const rawCompany = (body.company || body.companyName || '').trim();
     const rawOrgnr = (body.orgnr || body.organizationNumber || '').toString().replace(/\s+/g, '').trim();

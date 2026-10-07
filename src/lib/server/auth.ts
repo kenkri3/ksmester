@@ -99,10 +99,17 @@ export function isUserAdmin(user: TokenPayload | null): boolean {
 /**
  * 🛡️ Verifiserer at innlogget bruker har tilgang til forespurt bedrift (Multi-tenant IDOR-sikring).
  * Admin har global tilgang, mens ordinære brukere kun har tilgang til egen bedrift.
+ *
+ * SIKKERHETSFIKS (C-06): funksjonen returnerte tidligere `true` når
+ * targetCompanyId manglet (`if (!targetCompanyId) return true`). Det er å feile
+ * APENT: enhver rute som glemte å sende bedrifts-ID slapp gjennom tenant-sjekken.
+ * Nå avvises manglende bedrifts-ID i stedet. Funksjonen hadde ingen kallsteder
+ * da dette ble rettet, så endringen påvirker ingen eksisterende flyt — den
+ * fjerner en felle for fremtidig kode.
  */
 export function assertTenantAccess(user: TokenPayload, targetCompanyId?: string): boolean {
   if (isUserAdmin(user)) return true;
-  if (!targetCompanyId) return true;
+  if (!targetCompanyId) return false;
   return user.companyId === targetCompanyId;
 }
 
@@ -120,14 +127,21 @@ export function verifyCronOrInternalSecret(req: NextRequest): boolean {
   const isDev = process.env.NODE_ENV !== 'production' && (host.includes('localhost') || host.includes('127.0.0.1'));
 
   if (!secret) {
+    // Bevisst utviklerunntak for lokal kjøring. Merk at dette gjør at
+    // cron-ruter ser autoriserte ut i dev uansett kode — sikkerhetssjekkene
+    // i scripts/security-check-*.mjs kjøres derfor mot NODE_ENV=production.
     return isDev;
   }
 
   const authHeader = req.headers.get('authorization');
   const internalHeader = req.headers.get('x-internal-secret');
-  const querySecret = req.nextUrl.searchParams.get('secret');
 
-  const provided = (authHeader?.replace(/^Bearer\s+/i, '') || internalHeader || querySecret || '').trim();
+  // SIKKERHETSFIKS (C-04): her ble også `?secret=` i query godtatt. En
+  // hemmelighet i URL-en havner i access-logger, proxy-logger, Referer-headere
+  // og nettleserhistorikk. Det er ikke en akseptabel plass for en hemmelighet.
+  // Varianten er fjernet; hemmeligheten må sendes i Authorization- eller
+  // x-internal-secret-headeren.
+  const provided = (authHeader?.replace(/^Bearer\s+/i, '') || internalHeader || '').trim();
   if (!provided || provided.length !== secret.length) {
     return false;
   }

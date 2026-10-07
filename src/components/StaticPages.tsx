@@ -124,7 +124,7 @@ export const PricingPage = () => {
         'Full autonom AI-arkitektur & skreddersydd MesterAI',
         'Ubegrenset antall aktive brukere & prosjekter',
         'Autonom Tilbud-til-Prosjekt-til-KS motor',
-        'Alle 20 moduler + underentreprenør-portal (UE)',
+        'Alle fagmoduler + underentreprenør-portal (UE)',
         'Juridisk NS 8405 / NS 8406 endringsordremotor',
         'Tverrfaglig Lukkesperre med tidslås og soner',
         'Omnichannel tilkobling (Discord, Slack, Microsoft Teams, E-post)',
@@ -159,9 +159,9 @@ export const PricingPage = () => {
 
   return (
     <PageWrapper 
-      badge="Forutsigbare priser & 20 moduler"
+      badge="Forutsigbare priser "
       title="Invester i mer fritid og bedre kvalitet" 
-      subtitle="Ingen bindingstid, ingen etableringsgebyrer. Alle 20 spesialiserte moduler inkludert med 100% forutsigbart marginvern og garanti mot overraskelsesfakturaer."
+      subtitle="Ingen bindingstid, ingen etableringsgebyrer. Alle fagmoduler inkludert med 100% forutsigbart marginvern og garanti mot overraskelsesfakturaer."
     >
       {/* Billing toggle */}
       <div className="flex items-center justify-center gap-3 mb-12">

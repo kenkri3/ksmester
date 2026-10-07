@@ -432,7 +432,7 @@ export async function runAutonomousSeoCycle(options?: { force?: boolean }): Prom
 
   // Hvis alle pre-definerte emner er dekket, generer et nytt hyper-relevant norsk emne
   if (!nextCandidate) {
-    console.log('[Autoblogg Autopilot] Alle 20 faste emner er dekket! Genererer nytt friskt emne...');
+    console.log('[Autoblogg Autopilot] Alle faste emner er dekket! Genererer nytt friskt emne...');
     nextCandidate = {
       topic: `Digital byggeledelse og KS for håndverkere i Norge 2026: Nyeste krav og standarder`,
       category: 'byggeledelse',

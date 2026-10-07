@@ -6,8 +6,11 @@ const cspHeader = [
   "script-src 'self' 'unsafe-inline' 'unsafe-eval' https://*.googletagmanager.com https://va.vercel-scripts.com https://cdn.jsdelivr.net",
   "connect-src 'self' https://*.google-analytics.com https://*.analytics.google.com https://*.googletagmanager.com https://data.brreg.no https://ws.geonorge.no https://api.open-meteo.com https://api.resend.com https://api.met.no https://generativelanguage.googleapis.com https://*.railway.app wss://*.railway.app",
   "img-src 'self' data: https: blob:",
-  "style-src 'self' 'unsafe-inline' https://fonts.googleapis.com",
-  "font-src 'self' data: https://fonts.gstatic.com",
+  // SIKKERHETSFIKS (F-02): Google Fonts er fjernet fra layout.tsx, så CSP-en
+  // trenger ikke lenger å tillate fonts.googleapis.com eller fonts.gstatic.com.
+  // Det er også en innstramming: ingen tredjeparts font-CDN kan lastes.
+  "style-src 'self' 'unsafe-inline'",
+  "font-src 'self' data:",
   "media-src 'self' data: https: blob:",
   "worker-src 'self' blob:",
   "frame-ancestors 'self'",

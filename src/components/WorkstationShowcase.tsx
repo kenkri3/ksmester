@@ -104,7 +104,7 @@ export default function WorkstationShowcase({ onInteract }: WorkstationShowcaseP
               { icon: FolderArchive, label: 'Dokumentarkiv & FDV', color: 'text-indigo-400' },
               { icon: Users, label: 'Kontakter & Team', color: 'text-cyan-400' },
               { icon: MessageSquare, label: 'Prosjekt- & Firmachatt', color: 'text-fuchsia-400' },
-              { icon: LayoutGrid, label: '20+ moduler', color: 'text-slate-400' },
+              { icon: LayoutGrid, label: 'Fagmoduler', color: 'text-slate-400' },
             ].map((item, idx) => {
               const Icon = item.icon;
               return (

@@ -1,5 +1,6 @@
 import React, { useState, useMemo } from 'react';
 import { useTranslation } from 'react-i18next';
+import { displayOrgnr } from '../constants/companyDetails';
 import { 
   X, 
   FileText, 
@@ -96,7 +97,10 @@ export default function ReportModal({ isOpen, onClose, project, sjaReports, devi
         project,
         {
           name: companyName,
-          orgNumber: companyOrg || '933 607 779'
+          // SIKKERHETSFIKS (R-02): falt tilbake pa et hardkodet org.nr som ikke
+          // tilhørte kunden. Na brukes kundens eget nummer, eller en aelig
+          // tomverdi, i stedet for a tilskrive dem feil organisasjon.
+          orgNumber: companyOrg || displayOrgnr(null)
         },
         (project as any).checklists || []
       );

@@ -1,6 +1,6 @@
 import { NextRequest, NextResponse } from 'next/server';
 import bcrypt from 'bcrypt';
-import { getCollectionItems, ADMIN_EMAILS, DEFAULT_ADMIN_PASSWORD, INITIAL_ADMIN_PASSWORD } from '@/src/lib/server/db';
+import { getCollectionItems } from '@/src/lib/server/db';
 import { signToken } from '@/src/lib/server/auth';
 
 export async function POST(req: NextRequest) {
@@ -13,44 +13,13 @@ export async function POST(req: NextRequest) {
       return NextResponse.json({ error: 'Både e-post og passord må oppgis.' }, { status: 400 });
     }
 
-    // 1. Sjekk NonFoodGroup (Lars Erik Eng / JM) eller system-admins
-    const isLars = email === 'lars@nonfoodgroup.no';
-    const isJm = email === 'jm@nonfoodgroup.no';
-    const isKenneth = email === 'aichatnorge@gmail.com' || email === 'kenkri3@gmail.com';
-    const isFredrik = email === 'fredrik.r.ellingsen@gmail.com' || email === 'fredrik@aichatnorge.no';
+    // SIKKERHETSFIKS (E-10): Her la en universal masterpassord-gren som godtok
+    // 'VikingMester2026!' (og andre varianter) for en hardkodet liste av e-postadresser,
+    // og utstedte en admin-token uten a sjekke lagret passordhash. Passordet la i
+    // klartekst i et offentlig repo. Grenen er fjernet helt.
+    // All paalogging verifiseres na mot lagret passwordHash for selgerkontoen.
 
-    const isSystemAdminOrPartnerLeader = isLars || isJm || isKenneth || isFredrik || ADMIN_EMAILS.includes(email);
-    const isMasterPassword = 
-      password === 'VikingMester2026!' || 
-      password.toLowerCase() === 'vikingmester2026!' ||
-      password === DEFAULT_ADMIN_PASSWORD ||
-      password === INITIAL_ADMIN_PASSWORD;
-
-    if (isSystemAdminOrPartnerLeader && isMasterPassword) {
-      const sellerObj = {
-        id: isLars ? 'seller-lars-nonfood' : isJm ? 'seller-jm-nonfood' : isKenneth ? 'seller-kenneth' : 'seller-fredrik',
-        name: isLars ? 'Lars Erik Eng' : isJm ? 'JM' : isKenneth ? 'Kenneth Kristiansen' : 'Fredrik R. Ellingsen',
-        email,
-        phone: isLars ? '400 00 000' : isJm ? '400 00 000' : '',
-        firm: isLars || isJm ? 'NonFoodGroup AS (50% Partner)' : 'AIChat Norge AS / Vikingnet',
-        role: isSystemAdminOrPartnerLeader ? 'admin' : 'partner_seller'
-      };
-
-      const token = signToken({
-        id: sellerObj.id,
-        email: sellerObj.email,
-        role: sellerObj.role,
-        companyId: 'comp-nonfood'
-      });
-
-      return NextResponse.json({
-        success: true,
-        token,
-        seller: sellerObj
-      });
-    }
-
-    // 2. Finn i partner_sellers
+    // Finn selgerkontoen.
     const sellers = await getCollectionItems('partner_sellers');
     const seller = (sellers || []).find((s: any) => s.email?.toLowerCase() === email);
 
@@ -59,7 +28,7 @@ export async function POST(req: NextRequest) {
     }
 
     const passwordMatch = await bcrypt.compare(password, seller.passwordHash || '').catch(() => false);
-    if (!passwordMatch && !isMasterPassword) {
+    if (!passwordMatch || !seller.passwordHash) {
       return NextResponse.json({ error: 'Feil passord.' }, { status: 401 });
     }
 

@@ -6,6 +6,7 @@ import {
   updateCollectionItem 
 } from '@/src/lib/server/db';
 import { getUserFromRequest, isUserAdmin } from '@/src/lib/server/auth';
+import { apiError } from '@/src/lib/server/apiError';
 import { sendContractByEmail, sendProjectStartedEmail } from '@/src/lib/server/emailSender';
 import { checklistGenerator } from '@/src/services/checklistGenerator';
 import { getOrGenerateProjectDocumentation } from '@/src/lib/server/projectDocumentationEngine';
@@ -95,8 +96,7 @@ export async function GET(req: NextRequest) {
       offer
     });
   } catch (err: any) {
-    console.error('Error in GET /api/contract:', err);
-    return NextResponse.json({ error: err.message || 'Kunne ikke hente kontrakt' }, { status: 500 });
+    return apiError(err, 'Kunne ikke hente kontrakten.');
   }
 }
 
@@ -454,7 +454,6 @@ Oppdragsgiver har 5 års reklamasjonsrett i henhold til norsk lov fra dato for s
 
     return NextResponse.json({ error: 'Ugyldig handling (action)' }, { status: 400 });
   } catch (err: any) {
-    console.error('Error in POST /api/contract:', err);
-    return NextResponse.json({ error: err.message || 'Internt systemfeil ved kontraktbehandling' }, { status: 500 });
+    return apiError(err, 'Intern feil ved kontraktbehandling.');
   }
 }

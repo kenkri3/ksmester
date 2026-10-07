@@ -2200,7 +2200,7 @@ export default function MesterAIChat({
                 type="button"
                 onClick={onOpenAllModules}
                 className="flex items-center gap-1.5 px-2.5 py-1.5 rounded-xl text-xs font-bold text-slate-300 hover:text-white hover:bg-white/10 transition-all cursor-pointer shrink-0"
-                title="Se alle 20 moduler"
+                title="Se alle fagmoduler"
               >
                 <Layers size={14} />
                 <span className="hidden 2xl:inline">Moduler</span>

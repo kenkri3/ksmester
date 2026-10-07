@@ -6,7 +6,7 @@
 - **Navn:** VikingMester
 - **Nettside:** https://vikingmester.no
 - **Operatør:** Vikingnet / AIChat Norge AS
-- **Organisasjonsnummer:** 933 607 779 MVA
+- **Organisasjonsnummer:** 933 851 222 MVA
 - **E-post:** hei@vikingmester.no
 - **Målgruppe:** Norske entreprenører, byggmestre, tømrere, snekkere, rørleggere, elektrikere, malere, murere, blikkenslagere, anleggsgartnere og maskinentreprenører.
 - **Formål:** Gi håndverkere full kontroll på lovpålagt HMS, kvalitetssikring (KS), byggedagbok, avvikshåndtering og endringsvarsler uten tungt skjemaarbeid, ved å utnytte stemmestyring og kunstig intelligens.
@@ -51,18 +51,24 @@
 
 ---
 
-## 4. Prismodell (20 moduler & Marginvern)
+## 4. Prismodell (Marginvern)
+
+Kilde: `src/config/plans.ts`. Skal alltid stemme med https://vikingmester.no/priser
 
 1. **VikingMester Solo:**
-   - Pris: Kr 1 490,- eks mva per måned (1 190,- ved årlig avtale).
-   - For: Enkeltpersonforetak (ENK) og én-mannsbedrifter (1 bruker, inntil 5 prosjekter).
-   - Funksjoner: Alle 20 moduler, 2.5M AI-tokens/mnd, ubegrenset byggedagbok, avvik, SJA, tale-til-tekst og mobilapp.
+   - Pris: Kr 690,- eks mva per måned (550,- ved årlig avtale).
+   - For: Enkeltpersonforetak (ENK) og én-mannsbedrifter (1 aktiv håndverker, inntil 5 prosjekter).
+   - Funksjoner: 2.5M AI-tokens/mnd, ubegrenset byggedagbok, avvik, SJA, tale-til-tekst og mobilapp.
 2. **VikingMester Team:**
-   - Pris: Kr 3 490,- eks mva per måned (2 790,- ved årlig avtale).
-   - For: Små og mellomstore håndverksbedrifter (inntil 5-10 aktive brukere inkludert, kr 249/mnd per ekstra bruker).
-   - Funksjoner: Alle 20 moduler for hele laget, 10M AI-tokens/mnd, tverrfaglig koordinering, TEK17 AI Vision, NS 8406 endringsordrebygger.
-3. **VikingMester Entreprenør:**
-   - Pris: Fra kr 6 900,- per måned for større selskaper med spesifikke API-behov, underentreprenør-portal og 30M tokens/mnd.
+   - Pris: Kr 1 490,- eks mva per måned (1 190,- ved årlig avtale).
+   - For: Små og mellomstore håndverksbedrifter (inntil 5 aktive fagarbeidere).
+   - Funksjoner: 10M AI-tokens/mnd, tverrfaglig koordinering, TEK17 AI Vision, NS 8406 endringsordrebygger.
+3. **Totalentreprenør Pro:**
+   - Pris: Kr 2 990,- eks mva per måned (2 390,- ved årlig avtale).
+   - For: Større entreprenører og konsern. 30M AI-tokens/mnd.
+4. **Totalentreprenør Pro (Enterprise):**
+   - Pris: Fra kr 2 990,- eks mva per måned.
+   - For: Større selskaper med spesifikke API-behov og underentreprenør-portal. 50M AI-tokens/mnd.
 
 Ingen bindingstid. 100% forutsigbart marginvern med Mester Top-up ved ekstra kapasitetsbehov. Gratis prøveperiode og opplæring.
 

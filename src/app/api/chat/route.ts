@@ -6,6 +6,7 @@ import { checkCompanyQuota } from '@/src/lib/server/costTracker';
 import { sanitize, sanitizeEmail, sanitizePhone, sanitizeHeader } from '@/src/lib/sanitize';
 import { checkRateLimit, getClientIp } from '@/src/lib/server/rateLimit';
 import { formatCleanOfferDescription, formatCleanChangeOrderDescription } from '@/src/lib/server/offerFormatter';
+import { getAdminNotifyEmails, getResendApiKey } from '@/src/lib/server/emailSender';
 import { generateSJAAction } from '@/src/app/actions/aiActions';
 
 // 🛡️ Helper for å sende lead-epostvarsel til aichatnorge@gmail.com
@@ -100,7 +101,8 @@ async function sendLeadNotificationEmail(lead: {
         body: JSON.stringify({
           from: fromEmail,
           reply_to: lead.email || 'hei@vikingmester.no',
-          to: ['aichatnorge@gmail.com'],
+          // SIKKERHETSFIKS (F-04): var hardkodet til en privat Gmail-adresse.
+          to: getAdminNotifyEmails(),
           subject: `🚨 Nytt Lead fra Ragnar AI (VikingMester): ${lead.name || 'Ukjent'} - ${lead.company || 'Bedrift'}`,
           html: htmlContent,
           text: `Nytt lead fra Ragnar AI:\nNavn: ${lead.name}\nBedrift: ${lead.company}\nE-post: ${lead.email}\nTelefon: ${lead.phone}\nNotat: ${lead.summary || lead.needs}`

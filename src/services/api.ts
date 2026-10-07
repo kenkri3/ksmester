@@ -1,6 +1,45 @@
 // Clean REST API client with full Offline-First caching & Auto-Sync Engine
 import { toast } from 'sonner';
 
+/**
+ * SIKKERHETSFIKS (C-03): denne modulen brukes også fra server-kode
+ * (projectDocumentationEngine m.fl.). I den konteksten er sonner-toasten en død
+ * shim, og et kall kastet `TypeError: toast.info is not a function` — som så ble
+ * fanget av en tom catch og skjulte det opprinnelige problemet. Alle varsler går
+ * derfor gjennom denne hjelperen, som bare gjør noe i nettleseren og aldri kan
+ * kaste.
+ */
+function notify(kind: 'info' | 'success' | 'error' | 'warning', message: string): void {
+  if (typeof window === 'undefined') return;
+  try {
+    const fn = (toast as any)?.[kind];
+    if (typeof fn === 'function') fn(message);
+  } catch {
+    /* et varsel skal aldri kunne velte en dataoperasjon */
+  }
+}
+
+/**
+ * SIKKERHETSFIKS (C-03): skiller en REELL nettverksfeil fra et avvist svar.
+ *
+ * Før behandlet klienten enhver ikke-ok respons (401, 403, 500) som en
+ * nettverksfeil: den la skrivingen i offline-køen og viste en suksess-toast.
+ * Dataene fantes da verken lokalt eller på serveren, og brukeren trodde det
+ * var lagret. Feil skal feile ærlig.
+ */
+type FailureKind = 'offline' | 'auth' | 'server' | 'other';
+
+function classifyFailure(err: unknown, res?: Response): FailureKind {
+  if (res) {
+    if (res.status === 401 || res.status === 403) return 'auth';
+    if (res.status >= 500) return 'server';
+    return 'other';
+  }
+  // Ingen respons: dette er en reell nettverksfeil (eller timeout), og den
+  // eneste situasjonen der offline-køen faktisk er riktig å bruke.
+  return 'offline';
+}
+
 export const getHeaders = () => {
   const token = typeof window !== 'undefined' ? localStorage.getItem('token') : null;
   const impersonated = typeof window !== 'undefined' ? localStorage.getItem('impersonatedCompanyId') : null;
@@ -191,7 +230,7 @@ export const api = {
         timestamp: Date.now()
       });
       saveOfflineQueue(queue);
-      toast.info('Lagret lokalt på mobilen (synkroniseres når du får nett)');
+      notify('info', 'Du er offline. Endringen er lagret lokalt og synkroniseres når du får nett.');
       return itemWithId as T;
     }
 
@@ -201,11 +240,30 @@ export const api = {
         headers: getHeaders(),
         body: JSON.stringify(itemWithId)
       });
-      if (!res.ok) throw new Error('Server error');
+
+      // SIKKERHETSFIKS (C-03): ikke-ok respons er IKKE en nettverksfeil.
+      if (!res.ok) {
+        const kind = classifyFailure(null, res);
+        if (kind === 'auth') {
+          notify('error', 'Du er ikke innlogget, eller har ikke tilgang. Endringen er IKKE lagret.');
+          throw new Error(`Lagring avvist av serveren (HTTP ${res.status}). Endringen er ikke lagret.`);
+        }
+        if (kind === 'server') {
+          notify('error', `Serveren svarte med feil (HTTP ${res.status}). Endringen er IKKE lagret.`);
+          throw new Error(`Serverfeil ved lagring (HTTP ${res.status}). Endringen er ikke lagret.`);
+        }
+        const body = await res.text().catch(() => '');
+        notify('error', `Lagring feilet (HTTP ${res.status}). Endringen er IKKE lagret.`);
+        throw new Error(`Lagring feilet (HTTP ${res.status})${body ? ': ' + body.slice(0, 200) : ''}`);
+      }
+
       const saved = await res.json();
       return saved;
     } catch (e) {
-      // Network failed during send, add to offline queue
+      // Bare en reell nettverksfeil skal ende i offline-køen.
+      if (classifyFailure(e) !== 'offline') {
+        throw e;
+      }
       const queue = getOfflineQueue();
       queue.push({
         queueId: 'q-' + Date.now() + '-' + Math.random().toString(36).substring(2, 6),
@@ -215,7 +273,7 @@ export const api = {
         timestamp: Date.now()
       });
       saveOfflineQueue(queue);
-      toast.info('Nettverksfeil: Lagret lokalt og synkroniseres automatisk');
+      notify('info', 'Du er offline. Endringen er lagret lokalt og synkroniseres når du får nett.');
       return itemWithId as T;
     }
   },
@@ -239,7 +297,7 @@ export const api = {
         timestamp: Date.now()
       });
       saveOfflineQueue(queue);
-      toast.info('Endring lagret lokalt (synkroniseres når du er på nett)');
+      notify('info', 'Du er offline. Endringen er lagret lokalt og synkroniseres når du er på nett.');
       return { id, ...data } as T;
     }
 
@@ -249,9 +307,27 @@ export const api = {
         headers: getHeaders(),
         body: JSON.stringify(data)
       });
-      if (!res.ok) throw new Error('Server error');
+
+      // SIKKERHETSFIKS (C-03): samme skille som i addDoc.
+      if (!res.ok) {
+        const kind = classifyFailure(null, res);
+        if (kind === 'auth') {
+          notify('error', 'Du er ikke innlogget, eller har ikke tilgang. Endringen er IKKE lagret.');
+          throw new Error(`Endring avvist av serveren (HTTP ${res.status}). Endringen er ikke lagret.`);
+        }
+        if (kind === 'server') {
+          notify('error', `Serveren svarte med feil (HTTP ${res.status}). Endringen er IKKE lagret.`);
+          throw new Error(`Serverfeil ved endring (HTTP ${res.status}). Endringen er ikke lagret.`);
+        }
+        notify('error', `Endring feilet (HTTP ${res.status}). Endringen er IKKE lagret.`);
+        throw new Error(`Endring feilet (HTTP ${res.status})`);
+      }
+
       return await res.json();
     } catch (e) {
+      if (classifyFailure(e) !== 'offline') {
+        throw e;
+      }
       const queue = getOfflineQueue();
       queue.push({
         queueId: 'q-' + Date.now() + '-' + Math.random().toString(36).substring(2, 6),
@@ -262,7 +338,7 @@ export const api = {
         timestamp: Date.now()
       });
       saveOfflineQueue(queue);
-      toast.info('Endring lagret lokalt og synkroniseres automatisk');
+      notify('info', 'Du er offline. Endringen er lagret lokalt og synkroniseres når du får nett.');
       return { id, ...data } as T;
     }
   },
@@ -296,7 +372,7 @@ export const api = {
         timestamp: Date.now()
       });
       saveOfflineQueue(queue);
-      toast.info('Element slettet lokalt (synkroniseres mot server)');
+      notify('info', 'Du er offline. Slettingen er lagret lokalt og synkroniseres mot serveren.');
       return { success: true };
     }
 
@@ -305,9 +381,25 @@ export const api = {
         method: 'DELETE',
         headers: getHeaders()
       });
-      if (!res.ok) throw new Error('Server error');
+
+      // SIKKERHETSFIKS (C-03): også her ble et avvist svar behandlet som om vi var
+      // offline. Ved 401/403/500 havnet slettingen i køen og ble rapportert som
+      // utført, mens raden fortsatt fantes på serveren. Feil skal feile ærlig.
+      if (!res.ok) {
+        const kind = classifyFailure(null, res);
+        if (kind === 'auth') {
+          notify('error', 'Du er ikke innlogget, eller har ikke tilgang. Elementet er IKKE slettet.');
+          throw new Error(`Sletting avvist av serveren (HTTP ${res.status}). Elementet er ikke slettet.`);
+        }
+        notify('error', `Sletting feilet (HTTP ${res.status}). Elementet er IKKE slettet.`);
+        throw new Error(`Sletting feilet (HTTP ${res.status})`);
+      }
+
       return await res.json();
     } catch (e) {
+      if (classifyFailure(e) !== 'offline') {
+        throw e;
+      }
       const queue = getOfflineQueue();
       queue.push({
         queueId: 'q-' + Date.now() + '-' + Math.random().toString(36).substring(2, 6),
@@ -317,6 +409,7 @@ export const api = {
         timestamp: Date.now()
       });
       saveOfflineQueue(queue);
+      notify('info', 'Du er offline. Slettingen er lagret lokalt og synkroniseres når du får nett.');
       return { success: true };
     }
   },
@@ -340,26 +433,41 @@ export const api = {
 
     for (const item of queue) {
       try {
+        let res: Response | null = null;
         if (item.type === 'ADD') {
-          await fetch(`/api/data/${item.collectionName}`, {
+          res = await fetch(`/api/data/${item.collectionName}`, {
             method: 'POST',
             headers: getHeaders(),
             body: JSON.stringify(item.data)
           });
         } else if (item.type === 'UPDATE' && item.id) {
-          await fetch(`/api/data/${item.collectionName}/${item.id}`, {
+          res = await fetch(`/api/data/${item.collectionName}/${item.id}`, {
             method: 'PUT',
             headers: getHeaders(),
             body: JSON.stringify(item.data)
           });
         } else if (item.type === 'DELETE' && item.id) {
-          await fetch(`/api/data/${item.collectionName}/${item.id}`, {
+          res = await fetch(`/api/data/${item.collectionName}/${item.id}`, {
             method: 'DELETE',
             headers: getHeaders()
           });
         }
+
+        // SIKKERHETSFIKS (C-03): her ble elementet talt som synkronisert og fjernet
+        // fra køen UTEN at svaret ble sjekket. Ved 401, 403 eller 500 forsvant
+        // skrivingen både fra køen og fra serveren, og brukeren fikk en
+        // suksessmelding om at alt var synkronisert. Dataene fantes da ingen steder.
+        // Et avvist svar skal bli liggende i køen, ikke stille forsvinne.
+        if (!res || !res.ok) {
+          const status = res ? res.status : 0;
+          console.warn(`Synk av ${item.type} i ${item.collectionName} feilet med HTTP ${status}. Elementet blir liggende i køen.`);
+          remainingQueue.push(item);
+          continue;
+        }
+
         syncedCount++;
       } catch (err) {
+        // Nettverket er fortsatt nede: bevar elementet.
         console.warn('Failed to sync item:', item, err);
         remainingQueue.push(item);
       }
@@ -369,8 +477,12 @@ export const api = {
     isSyncing = false;
 
     if (syncedCount > 0) {
-      toast.success(`📶 Tilbake på nett: ${syncedCount} endringer ble automatisk synkronisert!`);
+      notify('success', `Tilbake på nett: ${syncedCount} endring(er) ble synkronisert.`);
       window.dispatchEvent(new CustomEvent('ks_offline_synced', { detail: { count: syncedCount } }));
+    }
+    if (remainingQueue.length > 0) {
+      // Si fra om at noe IKKE ble synkronisert, i stedet for bare å tie.
+      notify('error', `${remainingQueue.length} endring(er) kunne ikke synkroniseres og ligger fortsatt lokalt.`);
     }
 
     return { synced: syncedCount };

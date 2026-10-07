@@ -3,6 +3,7 @@ import bcrypt from 'bcrypt';
 import { randomBytes } from 'crypto';
 import fs from 'fs';
 import path from 'path';
+import { PLATFORM_ORGNUMBER } from '@/src/constants/companyDetails';
 
 const LOCAL_STORE_DIR = path.resolve(process.cwd(), '.data');
 const LOCAL_STORE_FILE = path.join(LOCAL_STORE_DIR, 'local_store.json');
@@ -12,8 +13,36 @@ const DATABASE_URL = process.env.DATABASE_URL || process.env.POSTGRES_URL || pro
 // 🛡️ SECURITY FIX: Replaced hardcoded fallback password with a dynamically generated one.
 // Hardcoded passwords in source code allow attackers to access the default admin account if the environment variable is missing.
 export const DEFAULT_ADMIN_EMAIL = (process.env.ADMIN_EMAIL || 'kenkri3@gmail.com').toLowerCase();
-export const DEFAULT_ADMIN_PASSWORD = process.env.ADMIN_PASSWORD || 'VikingMester2026!';
-export const DEFAULT_ADMIN_HASH = bcrypt.hashSync(DEFAULT_ADMIN_PASSWORD, 10);
+// SIKKERHETSFIKS (E-09): Tidligere sto det hardkodede passordet 'VikingMester2026!'
+// som fallback her, og seedingen kjorte 'ON CONFLICT (email) DO UPDATE SET
+// password = EXCLUDED.password'. Uten ADMIN_PASSWORD i miljoet ble admin-passordet
+// dermed nullstilt til en offentlig kjent verdi ved HVER prosessoppstart.
+// Na: ingen hardkodet fallback. Mangler variabelen i produksjon, genereres et
+// tilfeldig passord per prosess - kontoen finnes, men ingen kan logge inn med et
+// kjent passord. I utvikling brukes en stabil, tydelig lokal testverdi.
+let cachedAdminHash: string | null = null;
+function getAdminSeedHash(): string {
+  if (cachedAdminHash) return cachedAdminHash;
+  const configured = (process.env.ADMIN_PASSWORD || process.env.INITIAL_ADMIN_PASSWORD || '').trim();
+  if (configured) {
+    cachedAdminHash = bcrypt.hashSync(configured, 10);
+    return cachedAdminHash;
+  }
+  if (process.env.NODE_ENV === 'production') {
+    console.error(
+      '[SECURITY] ADMIN_PASSWORD er ikke satt i produksjon. ' +
+      'Admin-kontoen seedes med et tilfeldig passord som ikke deles - ingen kan logge inn pa den. ' +
+      'Sett ADMIN_PASSWORD i miljovariablene.'
+    );
+    cachedAdminHash = bcrypt.hashSync(randomBytes(32).toString('hex'), 10);
+  } else {
+    console.warn('[SECURITY] ADMIN_PASSWORD mangler - bruker en lokal utviklingsverdi.');
+    cachedAdminHash = bcrypt.hashSync('dev-only-admin-password', 10);
+  }
+  return cachedAdminHash;
+}
+// Beholdes som navn for kompatibilitet, men er na en funksjon uten kjent fallback.
+export const getDefaultAdminHash = getAdminSeedHash;
 
 export const ADMIN_EMAILS = [
   'kenkri3@gmail.com',
@@ -24,8 +53,6 @@ export const ADMIN_EMAILS = [
   'lars@nonfoodgroup.no',
   'jm@nonfoodgroup.no'
 ];
-export const INITIAL_ADMIN_PASSWORD = process.env.INITIAL_ADMIN_PASSWORD || process.env.ADMIN_PASSWORD || 'VikingMester2026!';
-export const INITIAL_ADMIN_HASH = bcrypt.hashSync(INITIAL_ADMIN_PASSWORD, 10);
 
 export const DEMO_USER_EMAIL = 'demo@fjellheimbygg.no';
 export const DEMO_USER_PASSWORD = 'Demo1234!';
@@ -50,6 +77,20 @@ if (DATABASE_URL) {
   pool.on('error', (err) => {
     console.error('⚠️ [PostgreSQL Pool Warning] Uventet feil på ledig databaseklient:', err.message);
   });
+} else {
+  // SIKKERHETSFIKS (O-04): uten DATABASE_URL ble `pool` null, og ALL data gikk
+  // til minne eller .data/local_store.json. På Railway betyr det stille datatap
+  // ved hver redeploy, mens README kaller variabelen påkrevd. Appen så dessuten
+  // frisk ut hele veien - den svarte 200 og viste tomme lister.
+  //
+  // Vi kaster ikke her: det ville satt tjenesten i restart-løkke og tatt ned
+  // også den delen som virker. I stedet sier vi det høyt, og /api/health
+  // rapporterer 503 i produksjon uten DATABASE_URL - da feiler deployen
+  // synlig, og den forrige, fungerende versjonen blir stående.
+  console.error(
+    '[DB] ADVARSEL: DATABASE_URL er ikke satt. Data går til minnelager/lokal fil ' +
+    'og FORSVINNER ved neste redeploy. Sett DATABASE_URL i miljøvariablene.'
+  );
 }
 
 /**
@@ -101,7 +142,7 @@ export const inMemoryStore: Record<string, any[]> = {
     {
       id: 'u-admin-123',
       email: DEFAULT_ADMIN_EMAIL,
-      password: DEFAULT_ADMIN_HASH,
+      password: getAdminSeedHash(),
       displayName: 'Ken (Admin)',
       role: 'admin',
       trade: 'Byggmester',
@@ -113,7 +154,7 @@ export const inMemoryStore: Record<string, any[]> = {
     {
       id: 'u-admin-aichatnorge',
       email: 'aichatnorge@gmail.com',
-      password: INITIAL_ADMIN_HASH,
+      password: getAdminSeedHash(),
       displayName: 'Kenneth Kristiansen',
       role: 'admin',
       trade: 'Byggmester',
@@ -139,7 +180,10 @@ export const inMemoryStore: Record<string, any[]> = {
     {
       id: 'comp-001',
       name: 'Mester Entreprenør AS',
-      orgnr: '933 607 779',
+      // SIKKERHETSFIKS (R-01): dette var det feilaktige '933 607 779', som ikke
+      // finnes i Enhetsregisteret. Rettet til plattformens verifiserte nummer via
+      // én sannhetskilde, se src/constants/companyDetails.ts.
+      orgnr: PLATFORM_ORGNUMBER,
       contactName: 'Ken (Admin)',
       email: 'kenkri3@gmail.com',
       phone: '401 63 082',
@@ -155,7 +199,7 @@ export const inMemoryStore: Record<string, any[]> = {
         orgnr: '928 374 651',
         contactName: 'Lars Fjellheim',
         email: DEMO_USER_EMAIL,
-        phone: '912 34 567',
+        phone: '000 00 001',
         plan: 'demo',
         isDemo: true,
         monthlyPrice: 0,
@@ -173,11 +217,11 @@ export const inMemoryStore: Record<string, any[]> = {
       name: 'Renovering Bad Vidjeveien 21',
       aliases: ['Totalrenovering Bad - Våtromsnormen', 'Vidjeveien 21', 'Renovering Bad Vidjeveien 21', 'BAD-2101'],
       projectCode: 'BAD-2101',
-      address: 'Vidjeveien 21, 3113 Tønsberg',
-      location: 'Vidjeveien 21, 3113 Tønsberg',
-      clientName: 'Privatkunde',
-      clientEmail: 'kunde.vidjeveien@gmail.com',
-      clientPhone: '912 34 567',
+      address: 'Demo-veien 1, 0001 Demo-by',
+      location: 'Demo-veien 1, 0001 Demo-by',
+      clientName: 'Demo Kunde',
+      clientEmail: 'demo.kunde@example.invalid',
+      clientPhone: '000 00 001',
       status: 'active',
       stage: 'Pågående',
       category: 'Bad / Våtrom BVN',
@@ -188,14 +232,20 @@ export const inMemoryStore: Record<string, any[]> = {
       id: 'proj-kongeveien-93a',
       companyId: 'comp-001',
       company: 'Mester Entreprenør AS',
-      name: 'Totalrenovering Kongeveien 93A',
-      aliases: ['Kongeveien 93A', 'Totalrenovering Kongeveien', 'KON-93'],
+      name: 'Demo-prosjekt enebolig',
+      aliases: ['Demo-prosjekt', 'DEMO-93'],
       projectCode: 'KON-93',
-      address: 'Kongeveien 93A, 3188 Horten',
-      location: 'Kongeveien 93A, 3188 Horten',
-      clientName: 'Per Hansen (Privatkunde)',
-      clientEmail: 'per.hansen.horten@gmail.com',
-      clientPhone: '920 11 222',
+      // SIKKERHETSFIKS (F-03): her sto ekte kundeopplysninger hardkodet i
+      // kildekoden - et fullt navn, en privat e-postadresse, et privat
+      // telefonnummer og en privat hjemadresse - og dette ble seedet til
+      // databasen. Det er andres personopplysninger i et offentlig repo.
+      // Erstattet med tydelige demodata. Bruk alltid .invalid (reservert for
+      // test) og fiktive navn i seed-data.
+      address: 'Demo-veien 2, 0002 Demo-by',
+      location: 'Demo-veien 2, 0002 Demo-by',
+      clientName: 'Demo Kunde To',
+      clientEmail: 'demo.kunde.to@example.invalid',
+      clientPhone: '000 00 002',
       status: 'active',
       stage: 'Sluttfase / Montasje',
       category: 'Totalrenovering enebolig',
@@ -551,10 +601,11 @@ export async function initDb() {
       );
 
       CREATE TABLE IF NOT EXISTS items_store (
-        id VARCHAR(255) PRIMARY KEY,
+        id VARCHAR(255) NOT NULL,
         collection_name VARCHAR(100) NOT NULL,
         data JSONB NOT NULL,
-        created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP
+        created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP,
+        PRIMARY KEY (collection_name, id)
       );
 
       CREATE INDEX IF NOT EXISTS idx_items_store_collection ON items_store (collection_name);
@@ -596,21 +647,82 @@ export async function initDb() {
       ALTER TABLE users ADD COLUMN IF NOT EXISTS is_beta_tester BOOLEAN DEFAULT FALSE;
     `);
 
+    // SIKKERHETSFIKS (E-08), migrering: items_store hadde `id` alene som
+    // primærnokkel, mens lagringen skrev `ON CONFLICT (id) DO UPDATE`. Samme id i
+    // to ulike samlinger overskrev derfor hverandre, og raden beholdt den gamle
+    // collection_name - sa en oppgave kunne bli borte og en tasks-sporring kunne
+    // returnere innholdet fra en notifications-rad. Reproduert mot ekte Postgres.
+    // CREATE TABLE IF NOT EXISTS over rorer ikke en eksisterende tabell, sa
+    // nokkelen ma migreres eksplisitt. Idempotent: gjor ingenting nar den
+    // sammensatte nokkelen allerede er den eneste.
+    const itemsStorePrimaryKey = await client.query(
+      `SELECT a.attname AS col
+         FROM pg_constraint c
+         JOIN pg_class t ON t.oid = c.conrelid
+         JOIN pg_attribute a ON a.attrelid = t.oid AND a.attnum = ANY (c.conkey)
+        WHERE t.relname = 'items_store' AND c.contype = 'p'
+        ORDER BY a.attname`
+    );
+    // Én rad per kolonne - unngår array-parsing, der node-postgres gir text[]
+    // tilbake som en streng med klammer.
+    const pkCols: string[] = itemsStorePrimaryKey.rows.map((r: any) => String(r.col));
+    if (pkCols.join(',') !== 'collection_name,id') {
+      // Rekkefolgen er kritisk: den gamle nokkelen ma bort FOR dedup. Ellers kan
+      // ikke dublettene eksistere i utgangspunktet - og hvis de likevel gjor det
+      // (radekollisjoner pa tvers av samlinger), feiler tillegget av den
+      // sammensatte nokkelen. Testet mot ekte Postgres med 79 eksisterende rader.
+      await client.query('ALTER TABLE items_store DROP CONSTRAINT IF EXISTS items_store_pkey');
+      // Behold nyeste rad per (collection_name, id), med data som tiebreaker.
+      await client.query(`
+        DELETE FROM items_store WHERE ctid IN (
+          SELECT ctid FROM (
+            SELECT ctid, ROW_NUMBER() OVER (
+              PARTITION BY collection_name, id ORDER BY created_at DESC NULLS LAST, data::text DESC
+            ) AS rn FROM items_store
+          ) dup WHERE dup.rn > 1
+        )
+      `);
+      await client.query('ALTER TABLE items_store ADD CONSTRAINT items_store_pkey PRIMARY KEY (collection_name, id)');
+      console.warn('[DB] items_store primærnokkel migrert til (collection_name, id) - E-08 lukket.');
+    }
+
+    // SIKKERHETSFIKS (E-09): 'password = EXCLUDED.password' er fjernet. Uten den
+    // beholder en eksisterende admin sitt passord ved omstart, i stedet for a bli
+    // nullstilt til en verdi fra kildekoden.
     const seedAdmins = [
       { id: 'u-admin-123', email: DEFAULT_ADMIN_EMAIL, name: 'Ken (Admin)' },
       { id: 'u-admin-aichatnorge', email: 'aichatnorge@gmail.com', name: 'Kenneth Kristiansen' }
     ];
 
     for (const admin of seedAdmins) {
-      await client.query(`
-        INSERT INTO users (id, email, password, display_name, role, trade, company, company_id, subscription_status)
-        VALUES ($1, $2, $3, $4, 'admin', 'Byggmester', 'AIChat Norge AS / Vikingnet', 'comp-001', 'active')
-        ON CONFLICT (email) DO UPDATE SET 
-          password = EXCLUDED.password,
-          role = 'admin', 
-          subscription_status = 'active', 
-          display_name = EXCLUDED.display_name
-      `, [admin.id, admin.email, INITIAL_ADMIN_HASH, admin.name]);
+      await client.query(
+        'INSERT INTO users (id, email, password, display_name, role, trade, company, company_id, subscription_status) ' +
+          "VALUES ($1, $2, $3, $4, 'admin', 'Byggmester', 'AIChat Norge AS / Vikingnet', 'comp-001', 'active') " +
+        'ON CONFLICT (email) DO NOTHING',
+        [admin.id, admin.email, getAdminSeedHash(), admin.name]
+      );
+    }
+
+    // SIKKERHETSFIKS (E-09), del 2 - roter en allerede kompromittert admin-hash.
+    // Produksjonsdatabasen kan inneholde hashen av det gamle hardkodede passordet
+    // fra for denne rettelsen. 'DO NOTHING' over lar den sta, sa vi ma rydde den
+    // eksplisitt: hvis ADMIN_PASSWORD ikke er satt, og en admin-rad sin hash
+    // matcher det gamle kjente passordet, erstattes den med et tilfeldig passord.
+    // Da finnes ingen kjent legitimasjonsvei inn i en admin-konto.
+    const adminPasswordConfigured = Boolean((process.env.ADMIN_PASSWORD || process.env.INITIAL_ADMIN_PASSWORD || '').trim());
+    if (!adminPasswordConfigured) {
+      for (const admin of seedAdmins) {
+        try {
+          const existing = await client.query('SELECT password FROM users WHERE LOWER(email) = $1', [admin.email]);
+          const row = existing.rows && existing.rows[0];
+          if (row && row.password && bcrypt.compareSync('VikingMester2026!', row.password)) {
+            await client.query('UPDATE users SET password = $1, updated_at = NOW() WHERE LOWER(email) = $2', [bcrypt.hashSync(randomBytes(32).toString('hex'), 10), admin.email]);
+            console.error('[SECURITY] Admin-kontoen ' + admin.email + ' brukte det gamle hardkodede passordet. Passordet er na tilfeldig - sett ADMIN_PASSWORD og deploy pa nytt for a fa tilgang.');
+          }
+        } catch (rotateErr) {
+          console.warn('Kunne ikke rotere admin-hash:', rotateErr);
+        }
+      }
     }
 
     client.release();
@@ -703,7 +815,11 @@ export async function getCollectionItems(collectionName: string): Promise<any[]>
               const synthCompany = {
                 id: compId,
                 name: compName,
-                orgnr: u.orgnr || '933 607 779',
+                // SIKKERHETSFIKS (R-02): dette var en fallback til plattformens
+                // gamle, ugyldige org.nr. En syntetisk bedriftsrad skal ikke
+                // tilskrives en organisasjon den ikke er - bruk brukerens eget
+                // nummer, eller ingenting.
+                orgnr: u.orgnr || '',
                 contactName: u.display_name || u.email,
                 email: u.email,
                 phone: '401 63 082',
@@ -718,7 +834,7 @@ export async function getCollectionItems(collectionName: string): Promise<any[]>
               existing.push(synthCompany);
               await dbQuery(
                 `INSERT INTO items_store (id, collection_name, data) VALUES ($1, $2, $3)
-                 ON CONFLICT (id) DO UPDATE SET data = $3`,
+                 ON CONFLICT (collection_name, id) DO UPDATE SET data = $3`,
                 [compId, 'companies', JSON.stringify(synthCompany)]
               ).catch(() => {});
             }
@@ -932,7 +1048,7 @@ export async function saveCollectionItem(collectionName: string, item: any): Pro
         `, [
           fullItem.id,
           fullItem.email.toLowerCase().trim(),
-          fullItem.password || DEFAULT_ADMIN_HASH,
+          fullItem.password || getAdminSeedHash(),
           fullItem.displayName || fullItem.name || fullItem.email.split('@')[0],
           fullItem.role || 'worker',
           fullItem.trade || 'Tømrer',
@@ -944,7 +1060,7 @@ export async function saveCollectionItem(collectionName: string, item: any): Pro
 
       await dbQuery(
         `INSERT INTO items_store (id, collection_name, data) VALUES ($1, $2, $3)
-         ON CONFLICT (id) DO UPDATE SET data = $3`,
+         ON CONFLICT (collection_name, id) DO UPDATE SET data = $3`,
         [id, collectionName, JSON.stringify(fullItem)]
       );
     } catch (e) {
@@ -1039,7 +1155,7 @@ export async function updateCollectionItem(collectionName: string, id: string, d
 
       await dbQuery(
         `INSERT INTO items_store (id, collection_name, data) VALUES ($1, $2, $3)
-         ON CONFLICT (id) DO UPDATE SET data = $3`,
+         ON CONFLICT (collection_name, id) DO UPDATE SET data = $3`,
         [id, collectionName, JSON.stringify(updatedItem)]
       );
 
