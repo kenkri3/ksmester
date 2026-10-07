@@ -1,5 +1,5 @@
 import { NextRequest, NextResponse } from 'next/server';
-import { getCollectionItems, saveCollectionItem } from '@/src/lib/server/db';
+import { getCollectionItems, saveCollectionItem, getCollectionItemById } from '@/src/lib/server/db';
 import { getUserFromRequest, isUserAdmin, isUserSuperAdmin } from '@/src/lib/server/auth';
 import { recalculateProjectProgress } from '@/src/lib/server/progressEngine';
 
@@ -232,6 +232,25 @@ export async function POST(
       createdAt: body.createdAt || new Date().toISOString(),
       updatedAt: new Date().toISOString()
     };
+
+    // SIKKERHETSFIKS (E-08): klienten kunne tidligere oppgi `id` fritt, og
+    // lagringen skrev `ON CONFLICT (id) DO UPDATE`. En ny rad med samme id som en
+    // rad i en ANNEN samling tok derfor over den andres plass: en oppgave kunne
+    // forsvinne og en tasks-sporring returnere innholdet fra notifications.
+    // Databasen har na sammensatt nokkel (collection_name, id), sa kryss-samling
+    // er umulig. Innenfor samme samling kan to bedrifter likevel velge samme
+    // id (typisk et lesbart "co-123"), sa den gjores unik bare nar den faktisk er
+    // opptatt. Klientens id beholdes uendret ellers - UI-et bruker den til a
+    // hente og oppdatere raden.
+    const requestedId = typeof body.id === 'string' ? body.id.trim().slice(0, 200) : '';
+    if (!requestedId) {
+      delete itemData.id;
+    } else if (await getCollectionItemById(targetCollection, requestedId)) {
+      itemData.id = requestedId + '#' + Math.random().toString(36).substring(2, 8);
+    } else {
+      itemData.id = requestedId;
+    }
+
     const item = await saveCollectionItem(targetCollection, itemData);
 
     // 🤖 Autonom fremdriftskalkulering: Oppdater prosjektfremdrift automatisk hvis ny oppgave opprettes

@@ -428,3 +428,42 @@ Brukeren ba om å stoppe her. Runden ble avsluttet ryddig: alt arbeid er committ
 **SLUTTSTATUS: 38 commits. 44 av 104 funn rettet (42 %). Alle 10 BLOKKERER. 24 av 29 HØY.**
 **17/17 BLOKKERER-sjekker og 31/31 HØY-sjekker passerer i produksjonsmodus. tsc --noEmit = 0 feil. npm run build = exit 0.**
 **Ingenting er pushet. `main` og `origin/main` står på `f21f032`.**
+
+### Runde 11 — 2026-10-07 · grenen merget, og verifiseringen kjørt på nytt i produksjonsmodus
+
+**Bakgrunn:** brukeren ba om at alle fiksene ble implementert. Grenen `lansering/fikser` var
+aldri merget, så `main` og produksjon kjørte fortsatt `f21f032` med alle ti BLOKKERER åpne.
+
+**Gjort:**
+
+| Steg | Resultat |
+| :--- | :--- |
+| `lansering/fikser` (39 commits) merget inn i `main` | 135 filer |
+| `tsc --noEmit` | 0 feil |
+| `npm run build` | exit 0, 127/127 sider |
+| `security-check-blockers.mjs` | **17/17 OK, 0 FEIL, 0 MANUELL** |
+| `security-check-high.mjs` | **31/31 OK, 0 FEIL, 0 MANUELL** |
+| `security-check-lead-takeover.mjs` | **6/6 OK** |
+
+**To ting forrige runde ikke kunne vite:**
+
+1. **Sjekkene krever `NODE_ENV=production` for å være gyldige.** `verifyCronOrInternalSecret`
+   har et bevisst utviklerunntak på localhost (`auth.ts:129-134`). Kjørt mot `next dev`
+   feiler E-16 og E-18 med tre falske treff fordi hemmelighetene mangler lokalt. Det er
+   ikke kodefeil, men det betyr at «HOY-sjekkene passerer» først nå er målt i den modusen
+   sjekkene selv foreskriver. Oppsettet: `next build` + `next start`, ekte PostgreSQL 18.4
+   lokalt, og `CRON_SECRET`/`INTERNAL_API_SECRET`/`AGENT_API`/`ADMIN_PASSWORD` bevisst usatt
+   for å trene fail-closed-grenene.
+
+2. **E-08 var ikke lukket.** Planen førte den som «miljøavhengig» og «ikke rettet ennå».
+   Det var riktig, og den er nå reprodusert mot ekte Postgres: `items_store` hadde
+   `id` alene som primærnøkkel, og `ON CONFLICT (id) DO UPDATE` gjorde at en
+   `notifications`-rad med samme id tok over en `tasks`-rad. Oppgaven forsvant, og
+   `tasks`-spørringen returnerte varselets innhold. Rettet med sammensatt nøkkel
+   `(collection_name, id)`, en idempotent migrering for eksisterende baser (testet mot
+   79 rader og mot en konstruert legacy-base), og en skrivevei som beholder klientens
+   id uendret og bare gjør den unik ved reell kollisjon i samme samling.
+
+**Fase 3 kan dermed lukkes: 10 av 10 BLOKKERER er rettet OG verifisert i produksjonsmodus.**
+
+**Detaljer og forbehold:** `docs/verifisering-2026-10-07.md`.

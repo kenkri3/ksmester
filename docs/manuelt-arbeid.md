@@ -9,20 +9,34 @@
 
 ## 1. DET VIKTIGSTE FORST
 
-### 1.1 Skal jeg pushe til `main`? — BLOKKERER
-`railway.json` deployer automatisk fra `main` til produksjon. **En push er en produksjonsdeploy.** Jeg har derfor ikke pushet noe. Alt jeg har rettet ligger i 11 commits pa grenen `lansering/fikser` i din egen arbeidskopi.
+### 1.1 Skal jeg pushe til `main`? — BLOKKERER, og nå det eneste som gjenstår
+`railway.json` deployer automatisk fra `main` til produksjon. **En push er en produksjonsdeploy.**
 
-- **Hva jeg trenger:** et eksplisitt ja/nei til a pushe til `main`.
-- **Hvis ikke:** de 9 lukkede BLOKKERER-hullene virker ikke i produksjon. Systemet er da fortsatt apent for kontoovertakelse, kryss-tenant lesing og sletting, og privilegieheving.
+**Status 2026-10-07:** alle 39 commits fra `lansering/fikser` er merget inn i `main` lokalt.
+`main` og `origin/main` på GitHub står fortsatt på `f21f032`, og **produksjon kjører den koden**.
+Det betyr at alle ti BLOKKERER-hullene fortsatt er åpne på vikingmester.no akkurat nå.
 
-### 1.2 Start Docker Desktop — BLOKKERER for a verifisere E-08 og passordrotasjonen
-To rettelser kan jeg ikke bevise uten en kjorende PostgreSQL:
-- **E-08** (kryss-samling-overskriving): `items_store` har `id` alene som primarnokkel i Postgres, men minneslageret nokler per samling. Feilen reproduseres derfor ikke lokalt.
-- **Passordrotasjonen** (E-09 del 2): den kjorer bare mot en ekte database.
+- **Hva jeg trenger:** et eksplisitt ja/nei til å pushe `main` (39 commits + merge) til `origin/main`.
+- **Før du sier ja:** ta en backup av produksjonsdatabasen. Migreringen av `items_store`
+  endrer primærnøkkelen og sletter eventuelle duplikatrader (beholder nyeste). Den er testet
+  mot skjema og konstruerte data med 79 rader, ikke mot en kopi av produksjonsdata.
+- **Etter push:** bekreft at `/api/health` fortsatt svarer 200 og `databaseStatus: "ok"`.
+  Helseruten er deploy-porten (`railway.json`).
+- **Hvis ikke:** rettelsene virker ikke i produksjon. Systemet er da fortsatt åpent for
+  kontoovertakelse, kryss-tenant lesing og sletting, og privilegieheving.
 
-Docker-daemonen kjorer ikke pa maskinen (`npipe:////./pipe/dockerDesktopLinuxEngine` finnes ikke), og det finnes ingen lokal Postgres-tjeneste.
-- **Hva jeg trenger:** start Docker Desktop, si fra, og jeg kjorer `docker run postgres:16` lokalt og verifiserer begge.
-- **Hvis ikke:** E-08 star uverifisert, og jeg kan ikke bevise at rotasjonen av det gamle admin-passordet faktisk skjer.
+### 1.2 Verifiseringen som manglet er nå kjørt — ikke lenger en blokker
+Forrige runde kunne ikke bekrefte E-08 eller passordrotasjonen fordi det ikke fantes en
+kjørende PostgreSQL. Det er løst: `@embedded-postgres/windows-x64` ble installert lokalt
+(utenfor repoet), og sjekkene ble kjørt mot `next build` + `next start` med ekte Postgres.
+
+- **Resultat:** 17/17 BLOKKERER, 31/31 HØY, 6/6 kontoovertakelse. `tsc` 0 feil, bygg exit 0.
+- **E-08 var reell og er rettet** — `items_store` har nå `PRIMARY KEY (collection_name, id)`,
+  med en idempotent migrering for eksisterende baser.
+- **Hanteringen av passordrotasjonen (E-09 del 2)** er testet indirekte: admin-innlogging med
+  `VikingMester2026!` gir 401 når `ADMIN_PASSWORD` ikke er satt.
+- **Detaljer:** `docs/verifisering-2026-10-07.md`.
+- **Docker er ikke lenger nødvendig** for dette.
 
 ### 1.3 Roter `AGENT_API` i Botsify — BLOKKERER
 Den tidligere botnokkelen la hardkodet i kildekoden, og repoet har vært offentlig. `.env.example:23-24` sier det selv.

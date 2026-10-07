@@ -601,10 +601,11 @@ export async function initDb() {
       );
 
       CREATE TABLE IF NOT EXISTS items_store (
-        id VARCHAR(255) PRIMARY KEY,
+        id VARCHAR(255) NOT NULL,
         collection_name VARCHAR(100) NOT NULL,
         data JSONB NOT NULL,
-        created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP
+        created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP,
+        PRIMARY KEY (collection_name, id)
       );
 
       CREATE INDEX IF NOT EXISTS idx_items_store_collection ON items_store (collection_name);
@@ -645,6 +646,45 @@ export async function initDb() {
       ALTER TABLE users ADD COLUMN IF NOT EXISTS trial_days INT DEFAULT 14;
       ALTER TABLE users ADD COLUMN IF NOT EXISTS is_beta_tester BOOLEAN DEFAULT FALSE;
     `);
+
+    // SIKKERHETSFIKS (E-08), migrering: items_store hadde `id` alene som
+    // primærnokkel, mens lagringen skrev `ON CONFLICT (id) DO UPDATE`. Samme id i
+    // to ulike samlinger overskrev derfor hverandre, og raden beholdt den gamle
+    // collection_name - sa en oppgave kunne bli borte og en tasks-sporring kunne
+    // returnere innholdet fra en notifications-rad. Reproduert mot ekte Postgres.
+    // CREATE TABLE IF NOT EXISTS over rorer ikke en eksisterende tabell, sa
+    // nokkelen ma migreres eksplisitt. Idempotent: gjor ingenting nar den
+    // sammensatte nokkelen allerede er den eneste.
+    const itemsStorePrimaryKey = await client.query(
+      `SELECT a.attname AS col
+         FROM pg_constraint c
+         JOIN pg_class t ON t.oid = c.conrelid
+         JOIN pg_attribute a ON a.attrelid = t.oid AND a.attnum = ANY (c.conkey)
+        WHERE t.relname = 'items_store' AND c.contype = 'p'
+        ORDER BY a.attname`
+    );
+    // Én rad per kolonne - unngår array-parsing, der node-postgres gir text[]
+    // tilbake som en streng med klammer.
+    const pkCols: string[] = itemsStorePrimaryKey.rows.map((r: any) => String(r.col));
+    if (pkCols.join(',') !== 'collection_name,id') {
+      // Rekkefolgen er kritisk: den gamle nokkelen ma bort FOR dedup. Ellers kan
+      // ikke dublettene eksistere i utgangspunktet - og hvis de likevel gjor det
+      // (radekollisjoner pa tvers av samlinger), feiler tillegget av den
+      // sammensatte nokkelen. Testet mot ekte Postgres med 79 eksisterende rader.
+      await client.query('ALTER TABLE items_store DROP CONSTRAINT IF EXISTS items_store_pkey');
+      // Behold nyeste rad per (collection_name, id), med data som tiebreaker.
+      await client.query(`
+        DELETE FROM items_store WHERE ctid IN (
+          SELECT ctid FROM (
+            SELECT ctid, ROW_NUMBER() OVER (
+              PARTITION BY collection_name, id ORDER BY created_at DESC NULLS LAST, data::text DESC
+            ) AS rn FROM items_store
+          ) dup WHERE dup.rn > 1
+        )
+      `);
+      await client.query('ALTER TABLE items_store ADD CONSTRAINT items_store_pkey PRIMARY KEY (collection_name, id)');
+      console.warn('[DB] items_store primærnokkel migrert til (collection_name, id) - E-08 lukket.');
+    }
 
     // SIKKERHETSFIKS (E-09): 'password = EXCLUDED.password' er fjernet. Uten den
     // beholder en eksisterende admin sitt passord ved omstart, i stedet for a bli
@@ -794,7 +834,7 @@ export async function getCollectionItems(collectionName: string): Promise<any[]>
               existing.push(synthCompany);
               await dbQuery(
                 `INSERT INTO items_store (id, collection_name, data) VALUES ($1, $2, $3)
-                 ON CONFLICT (id) DO UPDATE SET data = $3`,
+                 ON CONFLICT (collection_name, id) DO UPDATE SET data = $3`,
                 [compId, 'companies', JSON.stringify(synthCompany)]
               ).catch(() => {});
             }
@@ -1020,7 +1060,7 @@ export async function saveCollectionItem(collectionName: string, item: any): Pro
 
       await dbQuery(
         `INSERT INTO items_store (id, collection_name, data) VALUES ($1, $2, $3)
-         ON CONFLICT (id) DO UPDATE SET data = $3`,
+         ON CONFLICT (collection_name, id) DO UPDATE SET data = $3`,
         [id, collectionName, JSON.stringify(fullItem)]
       );
     } catch (e) {
@@ -1115,7 +1155,7 @@ export async function updateCollectionItem(collectionName: string, id: string, d
 
       await dbQuery(
         `INSERT INTO items_store (id, collection_name, data) VALUES ($1, $2, $3)
-         ON CONFLICT (id) DO UPDATE SET data = $3`,
+         ON CONFLICT (collection_name, id) DO UPDATE SET data = $3`,
         [id, collectionName, JSON.stringify(updatedItem)]
       );
 
