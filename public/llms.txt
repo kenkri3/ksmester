@@ -57,12 +57,12 @@ Allow: /
 #    vær- og temperaturdata fra Yr.no for gjeldende byggeplass.
 # 2. TEK17 AI-Bildevisjon & Avvikskontroll: Knips et bilde av en utførelse (f.eks. slukmansjett,
 #    klemring, dampsperre, armering). AI analyserer bildet opp mot TEK17 og Våtromsnormen,
-#    og genererer godkjente avviksmeldinger eller sjekklistepunkter på sekunder.
+#    og genererer avviksmeldinger eller sjekklistepunkter på sekunder.
 # 3. Tale-til-Endringsmelding (NS 8406 / NS 8405): Snakk inn uforutsette arbeider eller
 #    kundeendringer. VikingMester beregner påslag, formulerer juridisk bindende varsel iht.
 #    NS 8406 pkt. 19, og sender til kunden for digital godkjenning via e-post, Teams eller Slack.
 # 4. Sikker Jobb Analyse (SJA): Ferdige risikovurderinger for arbeid i høyden, varme arbeider,
-#    graving og elektro med foreslåtte tiltak godkjent for Arbeidstilsynets tilsyn.
+#    graving og elektro med foreslåtte tiltak iht. kravene Arbeidstilsynet fører tilsyn med.
 # 5. Lovpålagt Stoffkartotek: Søkbare sikkerhetsdatablader (SDS) og kjemikaliehåndtering
 #    tilgjengelig offline for alle ansatte på byggeplassen.
 # 6. Prosjektstyring & Sluttoppgjør: Genererer komplett FDV-dokumentasjon og KS-sluttrapport

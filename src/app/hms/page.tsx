@@ -20,7 +20,7 @@ const baseUrl = process.env.NEXT_PUBLIC_APP_URL || 'https://vikingmester.no';
 
 export const metadata: Metadata = {
   title: 'HMS-system for bygg og anlegg – Lovpålagt internkontroll | VikingMester',
-  description: 'Komplett HMS- og internkontrollsystem (§ 5) for håndverkere og entreprenører. Sikker Jobb Analyse (SJA), vernerunder, stoffkartotek og avvik godkjent for Arbeidstilsynet.',
+  description: 'Komplett HMS- og internkontrollsystem (§ 5) for håndverkere og entreprenører. Sikker Jobb Analyse (SJA), vernerunder, stoffkartotek og avvik bygget for kravene Arbeidstilsynet fører tilsyn med.',
   alternates: {
     canonical: `${baseUrl}/hms`,
   },

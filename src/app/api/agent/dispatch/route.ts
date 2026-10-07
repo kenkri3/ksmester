@@ -8,6 +8,7 @@ import { generateWithAiEngine, cleanAiJson } from '@/src/lib/server/aiEngine';
 import type { AiEngineResult } from '@/src/lib/server/aiEngine';
 import { getUserFromRequest, verifyCronOrInternalSecret, verifyAuthToken, isUserSuperAdmin } from '@/src/lib/server/auth';
 import { apiError } from '@/src/lib/server/apiError';
+import { containsPIIOrGdprData } from '@/src/lib/server/privacyShield';
 import { sendOfferByEmail, sendChangeOrderByEmail, sendSystemEmail, getResendApiKey, testResendConnection } from '@/src/lib/server/emailSender';
 import { 
   getApprenticeProfiles, 
@@ -355,7 +356,11 @@ Returner KUN et gyldig JSON-objekt:
   ]
 }`,
               operation: 'autofill_offer_form',
-              responseMimeType: 'application/json'
+              responseMimeType: 'application/json',
+              // Brukerens egen instruks kan inneholde kundenavn eller telefon
+              // («tilbud til Ola Nordmann, 912 34 567»). Den sjekkes derfor med
+              // samme regelverk som resten av PII-rutingen.
+              gdprProtected: containsPIIOrGdprData(promptText)
             });
 
             if (aiRes?.text) {
@@ -3262,12 +3267,21 @@ Du skal opptre som en høyt kvalifisert byggmester og kalkulatør og levere en k
         }
 
         let aiRes: AiEngineResult | undefined;
+        // 🛡️ PERSONOPPLYSNINGER I KONTEKSTEN: prompten under inneholder kundenavn,
+        // adresse og kundens e-post fra prosjekt- og tilbudslistene. Den
+        // nøkkelordbaserte PII-sjekken i motoren fanger ikke navn og adresse, så
+        // uten dette flagget gikk de til DeepSeek (Kina) som er primærmotor for
+        // all tekst. Sjekken gjøres på den ferdigbygde prompten, slik at den
+        // dekker nøyaktig det som faktisk sendes.
+        const dispatchPromptHasClientPii = containsPIIOrGdprData(contextPrompt) ||
+          /(?:Oppdragsgiver|Kunde|Adresse):\s*(?!Ukjent|Ikke oppgitt)/i.test(contextPrompt);
         for (let dispatchAttempt = 0; dispatchAttempt < 2 && !aiRes?.text; dispatchAttempt++) {
           try {
             aiRes = await generateWithAiEngine({
               prompt: contextPrompt + backendKnowledgeSummary,
               systemInstruction,
               webSearch: wantsWebSearch,
+              gdprProtected: dispatchPromptHasClientPii,
               operation: isOfferIntent ? 'mester_ai_offer' : 'mester_ai_conversation',
               notes: targetProject ? `Conversational MesterAI assistance on project ${targetProject.name}` : 'Conversational MesterAI general inquiry'
             });
@@ -3751,7 +3765,10 @@ async function translateAgentReply(reply: string, targetLanguage: string): Promi
     const aiRes = await generateWithAiEngine({
       prompt: `Oversett følgende melding til språkkode '${targetLanguage}' slik at en utenlandsk håndverker forstår det presist: "${reply}"`,
       operation: 'agent_translate_reply',
-      notes: `Translation to ${targetLanguage}`
+      notes: `Translation to ${targetLanguage}`,
+      // Svaret som oversettes kan inneholde kundenavn, adresse eller telefon fra
+      // konteksten over. Det skal ikke sendes til en motor utenfor EU.
+      gdprProtected: containsPIIOrGdprData(reply)
     });
     return aiRes?.text?.trim() || reply;
   } catch {

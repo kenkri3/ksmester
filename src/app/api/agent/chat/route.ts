@@ -633,6 +633,17 @@ export async function POST(req: NextRequest) {
     }
 
     // Bygg porteføljesammendrag basert utelukkende på autoriserte prosjekter
+    // 🛡️ PERSONOPPLYSNINGER I PROSJEKTKONTEKSTEN:
+    // Kundenavn og adresse er personopplysninger, og de bygges inn i konteksthodet
+    // lenger ned (portfolioSummary -> «Sted: … / Kunde: …»). Den nøkkelordbaserte
+    // GDPR-sjekken under fanger dem ikke, fordi en helt vanlig forespørsel
+    // («vis meg status på prosjektene») ikke inneholder noe nøkkelord, men likevel
+    // får med kundenavn og adresse i prompten. Uten dette flagget gikk de til
+    // DeepSeek (Kina) som er primærmotor for all tekst. Nå tvinges EU-ruting.
+    const contextHasClientPii = safeCompanyProjects.some(
+      (p: any) => Boolean((p && p.clientName) || (p && (p.address || p.location)))
+    );
+
     const portfolioSummary = safeCompanyProjects.map((p: any) => {
       const pId = p.id;
       const pName = p.name || 'Byggeplass';
@@ -1942,7 +1953,7 @@ Når brukeren ber deg sende en e-post og du har mottakers adresse:
             images: imageAttachment ? [{ inlineData: imageAttachment }] : undefined,
             model: hasImage ? 'gemini-3.8-flash' : undefined,
             webSearch: wantsWebSearch,
-            gdprProtected: isGdprSensitive,
+            gdprProtected: isGdprSensitive || contextHasClientPii,
             companyId: effectiveCompanyId,
             companyName: effectiveCompany,
             projectId: body.projectId,

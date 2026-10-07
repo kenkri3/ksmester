@@ -171,13 +171,13 @@ export default function SjaGeneratorPage() {
         <div className="max-w-4xl mx-auto text-center space-y-4">
           <div className="inline-flex items-center gap-2 bg-rose-100 text-rose-800 border border-rose-200 px-3.5 py-1.5 rounded-full text-xs font-bold">
             <ShieldAlert size={16} />
-            <span>Arbeidstilsynet Godkjent Mal</span>
+            <span>Mal iht. arbeidsmiljøloven kap. 3</span>
           </div>
           <h1 className="text-3xl sm:text-5xl font-black text-navy-900 tracking-tight">
             Gratis <span className="text-electric-600">SJA Generator</span> (Sikker Jobb Analyse)
           </h1>
           <p className="text-slate-600 text-base sm:text-lg max-w-2xl mx-auto">
-            Lag en komplett, profesjonell risikovurdering for risikofylt arbeid på 30 sekunder. Godkjent for tilsyn fra Arbeidstilsynet.
+            Lag en komplett, profesjonell risikovurdering for risikofylt arbeid på 30 sekunder — med punktene Arbeidstilsynet fører tilsyn med.
           </p>
         </div>
       </section>

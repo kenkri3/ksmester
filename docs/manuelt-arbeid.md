@@ -38,13 +38,36 @@ kjørende PostgreSQL. Det er løst: `@embedded-postgres/windows-x64` ble install
 - **Detaljer:** `docs/verifisering-2026-10-07.md`.
 - **Docker er ikke lenger nødvendig** for dette.
 
-### 1.3 Roter `AGENT_API` i Botsify — BLOKKERER
+### 1.3 Datalagring: bekreft hvor 1min.AI behandler dataene — BLOKKERER for personvernerklæringen
+Koden ruter personopplysninger til EU-stien og omgår DeepSeek helt (verifisert: 0 treff på
+`api.deepseek.com` i loggen under test). Men to ting kan jeg ikke bekrefte fra koden:
+
+- **Endepunktet er hardkodet** til `https://api.1min.ai/api/chat-with-ai`
+  (`src/lib/server/aiEngine.ts:432`). Det finnes ingen EU-region-URL å sette. Kodekommentaren
+  kaller 1min.AI «EU-driftet», men det står ingenting i repoet som belegger det.
+- **1min.AIs egen dokumentasjon** sier at innhold modereres av OpenAI for alle leverandører:
+  «OpenAI content moderation applies to all providers, so text is sent to OpenAI for
+  moderation as well as to the selected generation provider.» Setningen gjelder deres
+  OpenAI-kompatible endepunkt, og koden bruker det eldre `/api/chat-with-ai` — men det bør
+  avklares, ikke antas.
+
+- **Hva jeg trenger:** (a) skriftlig bekreftelse fra 1min.AI på hvor dataene behandles og
+  lagres, (b) databehandleravtale, (c) om modereringssetningen over gjelder endepunktet vi
+  bruker.
+- **Hvorfor:** `src/components/StaticPages.tsx:602` sier i dag «All data lagres i sikre
+  datasentre innenfor EØS/Norge» og lover daglige sikkerhetskopier. Erklæringen kan ikke
+  oppdateres til å bli sann før svarene over foreligger — og det finnes fortsatt ingen
+  backup-jobb i repoet.
+- **Hvis ikke:** erklæringen lover noe vi ikke kan dokumentere, og overføringsgrunnlaget til
+  tredjeland er udokumentert.
+
+### 1.4 Roter `AGENT_API` i Botsify — BLOKKERER
 Den tidligere botnokkelen la hardkodet i kildekoden, og repoet har vært offentlig. `.env.example:23-24` sier det selv.
 - **Hva du ma gjore:** generer en ny nokkel i Botsify og sett `AGENT_API` i Railway.
 - **Hvordan du sjekker:** `POST /api/openai/v1/models` uten nokkel skal gi 401.
 - **Hvis ikke:** hvem som helst med repo-historikken kan bruke boten.
 
-### 1.4 Sett `ADMIN_PASSWORD` — BLOKKERER, og haster
+### 1.5 Sett `ADMIN_PASSWORD` — BLOKKERER, og haster
 Produksjonsdatabasen inneholder sannsynligvis fortsatt hashen av det gamle hardkodede passordet `VikingMester2026!`.
 - **Hva jeg har gjort:** koden har ikke lenger en hardkodet fallback, og den roterer en admin-hash som matcher det gamle passordet til en tilfeldig verdi ved oppstart nar `ADMIN_PASSWORD` ikke er satt. Da finnes ingen kjent vei inn.
 - **Hva du ma gjore:** sett `ADMIN_PASSWORD` til en sterk, unik verdi i Railway -> Variables, og deploy. Deretter kan du logge inn.

@@ -104,3 +104,89 @@ Begge radene finnes. Det er selve beviset på at kryss-samling-overskriving er u
    `src/lib/server/auth.ts` og i `db.ts:47-56`. Se `docs/manuelt-arbeid.md` — det er en
    beslutning om hvem som skal være SuperAdmin, ikke en kodeoppgave alene.
 6. **`main` er merget lokalt, men ikke pushet.** Produksjon kjører fortsatt `f21f032`.
+
+---
+
+## 4. Andre runde, samme dag: personopplysninger til DeepSeek, og B-01
+
+Brukeren motsatte seg at B-01 ble kalt en juridisk risiko uten at Arbeidstilsynets krav var
+sjekket, og viste til at det er lagt inn EU-ruting via 1min.AI. Begge innvendingene ble
+etterprøvd. Brukeren hadde rett på begge, med én viktig nyanse.
+
+### 4.1 Det brukeren hadde rett i
+
+**EU-stien finnes og er godt bygget.** `aiEngine.ts:1251-1337` ruter GDPR-flaggede oppgaver
+til 1min.AI og deretter Google Gemini EU, returnerer **før** DeepSeek-grenen på `:1343`, og
+kaster i stedet for å falle tilbake til en motor utenfor EU (`:1336`). Det er fail-closed,
+og det er sterkere enn revisjonen ga inntrykk av.
+
+**Arbeidstilsynet har godkjenningsordninger.** [arbeidstilsynet.no/godkjenninger](https://www.arbeidstilsynet.no/godkjenninger/)
+lister seks: bilvask/dekk, bedriftshelsetjenester, renhold, asbestarbeid, bemanningsforetak
+og stansede virksomheter. Poenget står likevel: **ingen av dem gjelder programvare.**
+
+### 4.2 Hullet som gjensto, og som nå er lukket
+
+GDPR-flagget settes av nøkkelord i **brukerens melding** (`agent/chat:1747-1748`) og av
+operasjonsnavn. Prosjektkonteksten bygges separat og inneholder kundenavn og adresse:
+
+```
+636:  clientName: p.clientName || ''
+644:  address: p.address || p.location || ''
+```
+
+Et helt vanlig spørsmål — «hvordan ligger prosjektene an?» — har ingen nøkkelord, men fikk
+likevel med kundenavn og adresse i prompten, og gikk dermed til DeepSeek, som er
+primærmotor for all tekst (`:1343`, og `/api/health` melder `DeepSeek V3 (Primary)`).
+Det var i strid med personvernerklæringen, som sier at all data lagres innenfor EØS/Norge.
+
+**Rettet i tre ruter:**
+
+| Sted | Endring |
+| :--- | :--- |
+| `api/agent/chat` | `contextHasClientPii` settes når et prosjekt har `clientName` eller `address`, og sendes som `gdprProtected: isGdprSensitive \|\| contextHasClientPii` |
+| `api/agent/dispatch` (samtale) | `dispatchPromptHasClientPii` beregnes på den ferdigbygde prompten — dekker `Oppdragsgiver`, `Kunde` og `Adresse` i prosjekt- og tilbudslistene |
+| `api/agent/dispatch` (tilbudsutkast og oversettelse) | `containsPIIOrGdprData` på brukerens instruks og på svaret som skal oversettes |
+
+**Bevis for at rutingen virker** (kjørt med dummy-nøkler, slik at motorene faktisk prøves):
+
+```
+[1min.AI] Modell mistral-large-latest feilet med HTTP 401 ... prøver neste modell
+[AI Engine - GDPR EU] 1min.AI feilet, faller tilbake til Google Gemini EU...
+[Gemini Backup] Modell gemini-3.8-flash feilet ... prøver neste
+VikingMester AI Engine forsøket feilet: GDPR-beskyttet oppgave krever en
+EU-godkjent modell (1min.AI eller Google Gemini EU), men ingen var tilgjengelig.
+
+treff i loggen:  api.deepseek.com = 0    api.openai.com = 0
+```
+
+DeepSeek ble aldri kontaktet, selv om `DEEPSEEK_API_KEY` var satt. Det er beviset.
+
+### 4.3 B-01 — formuleringene er endret
+
+`PublicFooter.tsx` viste «Godkjent for Arbeidstilsynet» og «TEK17 & BVN-verifisert». Ifølge
+[BVN 12.100 pkt. 8](https://byggforsk.no/dokument/2696) er GVB-ordningen en sertifisering av
+**bedrifter som utfører våtromsarbeid**, administrert av Fagrådet for våtrom — ikke av
+verktøy. Brukeren har bekreftet at AI CHAT NORGE AS ikke er registrert som godkjent
+våtromsbedrift. Merkene er derfor omformulert til:
+
+- «Bygget for kravene i internkontrollforskriften § 5»
+- «Sjekkliste og kontroller iht. TEK17 og BVN 31.205»
+
+Samme formuleringer sto på tre steder til og er rettet der: `app/hms/page.tsx` (meta),
+`app/verktoy/sja-generator/VerktoyClient.tsx` og `public/llms.txt` / `llms-full.txt`.
+
+### 4.4 Det som gjenstår, og som brukeren må avklare
+
+1. **Personvernerklæringen er ikke oppdatert.** `StaticPages.tsx:602` sier fortsatt «All data
+   lagres i sikre datasentre innenfor EØS/Norge» og lover daglige sikkerhetskopier, mens
+   ikke-GDPR-flagget tekst fortsatt går til DeepSeek. Med rettelsen over er det *mindre* galt,
+   men påstanden er ikke blitt sann av den grunn.
+2. **1min.AI-endepunktet er hardkodet** til `https://api.1min.ai/api/chat-with-ai`
+   (`aiEngine.ts:432`). Det finnes ingen EU-region-URL å konfigurere. Påstanden «EU-driftet»
+   i kodekommentaren kan ikke bekreftes fra koden, og 1min.AIs egen dokumentasjon oppgir bare
+   `api.1min.ai`. **Be om skriftlig bekreftelse fra 1min.AI** på hvor data behandles.
+3. **1min.AIs egen dokumentasjon sier at innhold modereres av OpenAI for alle leverandører:**
+   «OpenAI content moderation applies to all providers, so text is sent to OpenAI for
+   moderation as well as to the selected generation provider.» Det gjelder deres
+   OpenAI-kompatible endepunkt; koden bruker det eldre `/api/chat-with-ai`, og dokumentasjonen
+   sier ikke om setningen gjelder der. **Også dette bør bekreftes skriftlig.**
