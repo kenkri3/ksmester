@@ -48,9 +48,9 @@ jeg ikke bekrefte fra koden:
   data retention-regel. Hent **databehandleravtalen** deres fra [trust.opper.ai](https://trust.opper.ai)
   og arkiver den. Det er den avtalen som dekker personopplysningene våre nå.
 - **Tilgangen til rutene er ikke bekreftet.** Hos Opper kan en Model access-regel blokkere
-  modeller og steder. Er de fem EU-rutene ikke tillatt for prosjektet, svarer kallet 403 i
+  modeller og steder. Er de tre EU-rutene ikke tillatt for prosjektet, svarer kallet 403 i
   produksjon. Sjekk under **Model access** i [platform.opper.ai](https://platform.opper.ai), og
-  bekreft at `sference`, `tensorx`, `greenpt`, `melious` og `nebius` er tillatt.
+  bekreft at `tensorx`, `greenpt` og `melious` er tillatt.
 - **1min.AI er nå bare reserve**, men den brukes fortsatt hvis Opper feiler. Endepunktet deres er
   hardkodet til `https://api.1min.ai/api/chat-with-ai` (`src/lib/server/aiEngine.ts`), og deres
   egen dokumentasjon sier at innhold modereres av OpenAI for alle leverandører: «OpenAI content

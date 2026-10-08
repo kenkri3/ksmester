@@ -210,24 +210,33 @@ rute**, slik at valget kan begrunnes med data i stedet for en påstand i en kode
 
 Et viktig faresignal fra dokumentasjonen: hos Opper er et **bart modellnavn samlet på tvers av
 alle regioner** som hoster modellen. `deepseek-v4.1-flash` alene kan altså havne i USA. Kallet
-må derfor bruke den **provider-kvalifiserte** id-en. Det er hele grunnen til at listen under
-ser ut som den gjør:
+må derfor bruke den **provider-kvalifiserte** id-en.
 
-| Rute | Opphold | Inferens | Innhold lagres | ZDR-logging |
-| :--- | :--- | :--- | :--- | :--- |
-| `sference/deepseek-ai/DeepSeek-V4.1-Flash` | EØS | EØS | ephemeral | nei |
-| `tensorx/deepseek/deepseek-v4.1-flash` | EU | EU | ephemeral | nei |
-| `greenpt/deepseek-v4.1-flash` | EU | EU | ephemeral | nei |
-| `melious/deepseek-v4.1-flash` | EU (DE) | FI | unknown | nei |
-| `nebius/deepseek-ai/DeepSeek-V4.1-Flash` | rute `nebius/studio-eu`, men service scope GLOBAL | GLOBAL | retained | ja |
+**Kravet er EU, ikke EØS.** Brukeren presiserte dette etter første forsøk, og det var en reell
+forskjell i dataene:
 
-De fire første er ekte EU/EØS-opphold. Den femte er med som siste utvei fordi den kjører på en
-EU-rute, men den har GLOBAL service scope og skal derfor ikke være primær. Bevisst utelatt:
-`arcee/deepseek/deepseek-v4.1-flash`, `novita/deepseek-v4.1-flash` og `wafer/DeepSeek-V4.1-Flash`
-har samme modell og vision, men ligger i USA.
+| Rute | Opphold | Inferens | Leverandør | Innhold lagres | ZDR-logging | I bruk |
+| :--- | :--- | :--- | :--- | :--- | :--- | :--- |
+| `tensorx/deepseek/deepseek-v4.1-flash` | EU | EU | TensorX (IE) | ephemeral | nei | **ja** |
+| `greenpt/deepseek-v4.1-flash` | EU | EU | GreenPT (NL) | ephemeral | nei | **ja** |
+| `melious/deepseek-v4.1-flash` | EU (DE) | FI | Melious (DE) | ikke oppgitt | nei | **ja** |
+| `sference/deepseek-ai/DeepSeek-V4.1-Flash` | **EØS** | EØS | Sference (**GB**) | ephemeral | nei | **nei** |
+| `nebius/deepseek-ai/DeepSeek-V4.1-Flash` | rute `studio-eu`, men scope **GLOBAL** | GLOBAL | Nebius (NL) | retained | ja | **nei** |
 
-**Alle rutene har vision**, så bildeanalyse går nå til DeepSeek V4.1 Flash i EU i stedet for
-Gemini — det var brukerens poeng, og det stemmer.
+To ting er verdt å merke seg:
+
+- **Sference** hadde `residency: EEA`, og leverandøren er registrert i Storbritannia — altså ikke
+  engang EØS etter brexit. Den er tatt ut.
+- **Nebius** kjører på en EU-rute (`nebius/studio-eu`), men har `content_storage: retained`,
+  `zdr.logging: true` og service scope GLOBAL. Ingen garanti for at inferensen blir i EU. Tatt ut.
+- De tre EU-rutene oppgir `country: "-"` med `inference_location: "EU"` — hele unionen, ikke ett
+  land. Melious oppgir `country: DE` med inferens i Finland. Alle tre har `zdr.logging: false`.
+
+Bevisst utelatt i tillegg: `arcee`, `novita`, `wafer`, `morph`, `geodd`, `fireworks`, `tencent`
+og `nextbit` har samme modell, men opphold US eller GLOBAL.
+
+**Alle rutene i bruk har vision**, så bildeanalyse går nå til DeepSeek V4.1 Flash i EU i stedet
+for Gemini — det var brukerens poeng, og det stemmer.
 
 ### 5.3 Hva som er endret i koden
 
@@ -239,7 +248,7 @@ Gemini — det var brukerens poeng, og det stemmer.
 | `aiEngine.ts` | Vakt: «ingen AI-nøkkel» godtar nå også Opper-nøkkelen alene |
 | `api/health/route.ts` | Nytt felt `deepseekEuConfigured`, og `aiEngine` melder `DeepSeek V4.1 Flash (EU via Opper)` |
 | `.env.example` | `DEEPSEEK_EU_API` dokumentert, med eksplisitt advarsel om at bart modellnavn ikke må brukes |
-| `security-check-high.mjs` | Fire nye statiske sjekker (`PII-EU`) som hindrer regresjon. Suiten er nå 35 sjekker |
+| `security-check-high.mjs` | Fem nye statiske sjekker (`PII-EU`) som hindrer regresjon, blant dem at EØS- og GLOBAL-ruter ikke sniker seg inn. Suiten er nå 36 sjekker |
 
 ### 5.4 Bevis for at rutingen virker
 
@@ -248,22 +257,20 @@ rekkefølgen koden valgte da et helt vanlig spørsmål («Hvordan ligger prosjek
 sendt mot et prosjekt som har kundenavn og adresse:
 
 ```
-[DeepSeek EU] Ruten sference/deepseek-ai/DeepSeek-V4.1-Flash feilet (HTTP 401: invalid bearer token…)
-[DeepSeek EU] Ruten tensorx/deepseek/deepseek-v4.1-flash feilet (HTTP 401: …)
+[DeepSeek EU] Ruten tensorx/deepseek/deepseek-v4.1-flash feilet (HTTP 401: invalid bearer token…)
 [DeepSeek EU] Ruten greenpt/deepseek-v4.1-flash feilet (HTTP 401: …)
 [DeepSeek EU] Ruten melious/deepseek-v4.1-flash feilet (HTTP 401: …)
-[DeepSeek EU] Ruten nebius/deepseek-ai/DeepSeek-V4.1-Flash feilet (HTTP 401: …)
 [AI Engine - GDPR EU] Opper/DeepSeek EU feilet, faller tilbake til 1min.AI...
 ```
 
-- Alle fem EU-rutene ble kontaktet (401 = Oppers eget svar på dummy-nøkkelen, altså riktig
+- Alle tre EU-rutene ble kontaktet (401 = Oppers eget svar på dummy-nøkkelen, altså riktig
   endepunkt og riktig auth-header).
 - **`api.deepseek.com` fikk null forespørsler**, selv om `DEEPSEEK_API_KEY` var satt.
 - `api.openai.com` fikk null forespørsler.
 - Da alle EU-rutene feilet, gikk den til 1min.AI og deretter Gemini EU — og kastet til slutt
   i stedet for å falle tilbake til en motor utenfor EU.
 
-**Verifisert:** 17/17 BLOKKERER, 35/35 HØY, 6/6 kontoovertakelse. `tsc` uten feil, bygg exit 0.
+**Verifisert:** 17/17 BLOKKERER, 36/36 HØY, 6/6 kontoovertakelse. `tsc` uten feil, bygg exit 0.
 Helseruten melder `deepseekEuConfigured: true` og `databaseStatus: ok`.
 
 ### 5.5 Det jeg IKKE har kunnet verifisere
@@ -283,3 +290,9 @@ Det betyr at følgende er **uverifisert til noen kjører det med ekte nøkkel**:
 Slik lukkes det: kall en PII-flagget oppgave i produksjon etter deploy, og se at
 `/api/health` fortsatt melder `deepseekEuConfigured: true`, og at svaret kommer. Alternativt
 kan `railway login` kjøres lokalt, så kan jeg lese variabelen uten at den limes inn i chatten.
+
+**Ett forbehold til, om kravet skal tolkes strengt:** `melious/deepseek-v4.1-flash` oppgir
+`content_storage: unknown` — altså ikke bekreftet ephemeral slik tensorx og greenpt gjør. Den
+ligger i EU og logger ikke innholdet, men er den svakeste av de tre. Skal kravet være absolutt,
+fjernes den fra `OPPER_EU_MODELS` i `aiEngine.ts`, og da står tensorx og greenpt igjen. Sjekken
+`PII-EU` i `security-check-high.mjs` må oppdateres tilsvarende.

@@ -952,22 +952,26 @@ async function callOpenRouter(
  * Modell-id-ene er provider-kvalifiserte med vilje: hos Opper er et bart
  * modellnavn samlet på tvers av ALLE regioner som hoster modellen, mens en
  * provider-kvalifisert id pinner kallet til én rute. Bare de kvalifiserte
- * id-ene nedenfor holder kallet i EU/EØS. Rekkefølgen er valgt etter hva
- * Oppers eget modell-API oppgir om oppholdssted og lagring:
+ * id-ene nedenfor holder kallet i EU. Rekkefølgen og utvalget er gjort etter
+ * hva Oppers eget modell-API oppgir per rute:
  *
- *   1. sference/deepseek-ai/DeepSeek-V4.1-Flash   opphold EØS,  inferens EØS,  ingen logging, ephemeral
- *   2. tensorx/deepseek/deepseek-v4.1-flash       opphold EU,   inferens EU,   ingen logging, ephemeral
- *   3. greenpt/deepseek-v4.1-flash                opphold EU,   inferens EU,   ingen logging, ephemeral
- *   4. melious/deepseek-v4.1-flash                opphold EU (DE), inferens FI, ingen logging
- *   5. nebius/deepseek-ai/DeepSeek-V4.1-Flash     rute nebius/studio-eu, men service scope GLOBAL
+ *   1. tensorx/deepseek/deepseek-v4.1-flash   opphold EU, leverandør TensorX (IE), ephemeral
+ *   2. greenpt/deepseek-v4.1-flash            opphold EU, leverandør GreenPT (NL), ephemeral
+ *   3. melious/deepseek-v4.1-flash            opphold EU (DE), leverandør Melious (DE), lagring ikke oppgitt
  *
- * De fire første er ekte EU/EØS-opphold. Den femte er med som siste utvei fordi
- * den fortsatt kjører på en EU-rute — men den har GLOBAL service scope, altså
- * ingen garanti for at inferensen blir i EU. Den skal derfor ikke være primær,
- * og hvis personvernkravet er absolutt bør den fjernes fra listen.
+ * Kravet er EU, ikke EØS. Bevisst utelatt:
+ *   - `sference/deepseek-ai/DeepSeek-V4.1-Flash` har opphold EØS, ikke EU, og
+ *     leverandøren er registrert i Storbritannia (GB) — altså ikke engang EØS.
+ *   - `nebius/deepseek-ai/DeepSeek-V4.1-Flash` kjører på ruten `nebius/studio-eu`,
+ *     men har service scope GLOBAL og `content_storage: retained`. Ingen garanti
+ *     for at inferensen blir i EU.
+ *   - `arcee`, `novita`, `wafer`, `morph`, `geodd`, `fireworks`, `tencent` og
+ *     `nextbit` har samme modell, men opphold US eller GLOBAL.
  *
- * Bevisst utelatt: `arcee/deepseek/deepseek-v4.1-flash` og
- * `novita/deepseek-v4.1-flash` har samme modell og vision, men ligger i USA.
+ * Merk at de tre EU-rutene oppgir `country: "-"` og `inference_location: "EU"` —
+ * altså hele unionen, ikke ett land. Melious oppgir `country: DE` med inferens i
+ * Finland. Alle tre har `zdr.logging: false`, som betyr at leverandøren ikke
+ * logger innholdet.
  *
  * Streaming støttes ikke her: GDPR-stien er ikke strømmet i dag, og en
  * feilkonfigurert strøm er verre enn ingen strøm. Kan legges til senere.
@@ -975,11 +979,9 @@ async function callOpenRouter(
 const OPPER_EU_BASE_URL = 'https://api.opper.ai/v3/compat/chat/completions';
 
 export const OPPER_EU_MODELS = [
-  'sference/deepseek-ai/DeepSeek-V4.1-Flash',
   'tensorx/deepseek/deepseek-v4.1-flash',
   'greenpt/deepseek-v4.1-flash',
-  'melious/deepseek-v4.1-flash',
-  'nebius/deepseek-ai/DeepSeek-V4.1-Flash'
+  'melious/deepseek-v4.1-flash'
 ];
 
 /**
