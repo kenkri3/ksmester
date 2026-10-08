@@ -10,6 +10,7 @@ import type { AiChatMessage } from '@/src/lib/server/aiEngine';
 import { maskPII, containsPIIOrGdprData } from '@/src/lib/server/privacyShield';
 import { getPublicAppUrl } from '@/src/lib/server/urlHelper';
 import { fetchRealtimeWeather } from '@/src/lib/server/weatherService';
+import { resolveWeatherRequest, renderWeatherReport, requestLabel } from '@/src/lib/server/weatherReport';
 
 /**
  * 🤖 MesterAI Headless Agent Proxy
@@ -67,15 +68,21 @@ function isWeatherQuery(msg: string): boolean {
     return false;
   }
 
+  // 🛡️ Norske sammensetninger og bøyninger: «værvarselet» skal treffe
+  // «værvarsel» og «nedbøren» skal treffe «nedbør». Uten suffiks-delen glapp
+  // «værvarselet» forbi denne sjekken og havnet hos modellen — et værsvar ble
+  // dermed avhengig av at modellen svarte, og endte i feilmeldingen når den
+  // ikke gjorde det. Suffiksene er valgt slik at «vært» og «være» (vanlige ord
+  // uten vær-betydning) fortsatt ikke treffer.
   const weatherWords = [
-    'vær', 'været', 'værvarsel', 'værmelding', 'værmeldingen',
-    'temperatur', 'temperaturen', 'grader', 'nedbør', 'regn', 'regner',
-    'snø', 'snør', 'vind', 'vindstyrke', 'kuling', 'storm',
-    'frost', 'minusgrader', 'plussgrader', 'arbeidsforhold',
-    'arbeidsforholdene'
+    'vær', 'værvarsel', 'værvarsl', 'værmelding',
+    'temperatur', 'grader', 'nedbør', 'regn', 'snø', 'vind',
+    'vindstyrke', 'kuling', 'storm', 'frost', 'minusgrader',
+    'plussgrader', 'arbeidsforhold'
   ];
+  const inflection = '(et|en|a|er|ene|ne|s)?';
   return weatherWords.some(w => {
-    const rx = new RegExp(`(^|\\s|[.,!?-])${w}([.,!?-]|\\s|$)`, 'i');
+    const rx = new RegExp(`(^|\\s|[.,!?-])${w}${inflection}([.,!?-]|\\s|$)`, 'i');
     return rx.test(lower);
   }) || (lower.includes('hvordan blir været'))
      || (lower.includes('kan vi jobbe ute'));
@@ -1628,22 +1635,45 @@ export async function POST(req: NextRequest) {
     if (isWeather && (!message.toLowerCase().includes('send e-post') && !message.toLowerCase().includes('send epost') && !message.toLowerCase().includes('lag tilbud'))) {
       const activeProjTitle = projectName && projectName !== 'Alle byggeplasser' ? projectName : weatherRep.locationName;
 
-      const reply = `🌤️ **Værvarsel og HMS-arbeidsforhold for ${weatherRep.locationName}**\n*Gjelder byggeplass: ${activeProjTitle}*\n\n• **Temperatur nå:** ${weatherRep.temp}°C (Dagens spenn: ${weatherRep.minTemp}°C til ${weatherRep.maxTemp}°C)\n• **Værforhold:** ${weatherRep.condition}\n• **Vindstyrke:** ${weatherRep.windSpeed} m/s (${weatherRep.beaufort})\n• **Nedbør i dag:** ${weatherRep.precipitation} mm\n• **Relativ luftfuktighet:** ${weatherRep.humidity}%\n\n🛡️ **HMS- og Arbeidsråd for byggeplassen:**\n${weatherRep.workAdvice}\n\n💡 **MesterAI Vurdering:**\nForholdene er vurdert opp mot Byggherreforskriften og Arbeidstilsynets retningslinjer for stillas- og takarbeid. Vil du at jeg oppretter en SJA eller fører dagens vær i byggedagboken?`;
+      // 📅 Spørsmålet avgjør hvilke dager svaret gjelder — «til helgen» og
+      // «på fredag» skal ikke besvares med dagens observasjon.
+      const weatherRequest = resolveWeatherRequest(message, weatherRep.forecast);
+      const reply = renderWeatherReport(weatherRep, weatherRequest, activeProjTitle);
+      const dayLabel = requestLabel(weatherRequest);
+      const isForecastAnswer = weatherRequest.kind === 'days' && weatherRequest.days.length > 0;
 
       return NextResponse.json({
         success: true,
         sessionId: fbId,
         reply,
-        quickReplies: [
-          { title: 'Opprett SJA for arbeid i dag', payload: `Opprett en SJA for arbeid på ${activeProjTitle} tilpasset været` },
-          { title: 'Før i byggedagbok', payload: `Før 7.5 timer og dagens vær (${weatherRep.temp}°C, ${weatherRep.condition}) i byggedagboken` },
-          { title: 'Sjekk krav til lukkesperre', payload: `Sjekk TEK17 krav til lukkesperre og tildekking for ${activeProjTitle}` }
-        ]
+        quickReplies: isForecastAnswer
+          ? [
+              { title: `Opprett SJA for ${dayLabel}`, payload: `Opprett en SJA for arbeid på ${activeProjTitle} ${dayLabel} tilpasset været` },
+              { title: 'Vis været i dag', payload: `Hvordan er været på ${activeProjTitle} i dag?` },
+              { title: 'Sjekk krav til lukkesperre', payload: `Sjekk TEK17 krav til lukkesperre og tildekking for ${activeProjTitle}` }
+            ]
+          : [
+              { title: 'Opprett SJA for arbeid i dag', payload: `Opprett en SJA for arbeid på ${activeProjTitle} tilpasset været` },
+              { title: 'Vær til helgen', payload: `Hva blir været til helgen på ${activeProjTitle}?` },
+              { title: 'Sjekk krav til lukkesperre', payload: `Sjekk TEK17 krav til lukkesperre og tildekking for ${activeProjTitle}` }
+            ]
       });
     }
 
     // Berik alltid agenten med live vær for det aktive prosjektet
     contextHeader += ` | 🌦️ Sanntidsvær på byggeplassen (${weatherRep.locationName}): ${weatherRep.temp}°C, ${weatherRep.condition}, vind ${weatherRep.windSpeed} m/s (${weatherRep.beaufort}), nedbør ${weatherRep.precipitation} mm. HMS-råd: ${weatherRep.workAdvice}`;
+
+    // 📅 Dagsvarselet følger med i konteksten, slik at oppfølgingsspørsmål som
+    // «hva med lørdag?» kan besvares av modellen med ekte data i stedet for dagens vær.
+    if (weatherRep.forecast.length > 1) {
+      const forecastSummary = weatherRep.forecast
+        .slice(1, 6)
+        .map(d => `${d.weekday} ${d.minTemp}–${d.maxTemp}°C, ${d.condition.toLowerCase()}, ${d.precipitationMm} mm nedbør, vind opptil ${d.windMaxMs} m/s`)
+        .join('; ');
+      if (forecastSummary) {
+        contextHeader += ` | 📅 Dagsvarsel framover (${weatherRep.locationName}): ${forecastSummary}`;
+      }
+    }
 
     // 🧠 SJEKK OM FORESPØRSELEN KREVER NETTSØK (ARRANGEMENTER, PRISER, TEK17, NYHETER)
     // 📷 Forbered eventuelt vedlagt bilde for multimodal synsanalyse (Google Gemini Vision)
@@ -2038,7 +2068,13 @@ Når brukeren ber deg sende en e-post og du har mottakers adresse:
       // motoren ikke svarte, i stedet for å skjule feilen bak en ferdigskrevet tekst.
       if (!replyText) {
         if (isWeather) {
-          replyText = `🌤️ **Værvarsel og HMS-arbeidsforhold for ${weatherRep.locationName}**\n*Gjelder byggeplass: ${projectName || weatherRep.locationName}*\n\n• **Temperatur nå:** ${weatherRep.temp}°C (Dagens spenn: ${weatherRep.minTemp}°C til ${weatherRep.maxTemp}°C)\n• **Værforhold:** ${weatherRep.condition}\n• **Vindstyrke:** ${weatherRep.windSpeed} m/s (${weatherRep.beaufort})\n• **Nedbør i dag:** ${weatherRep.precipitation} mm\n• **Luftfuktighet:** ${weatherRep.humidity}%\n\n🛡️ **HMS- og Arbeidsråd:**\n${weatherRep.workAdvice}`;
+          // Samme værsvar som snarveien over — også her med dagsvarsel, slik at
+          // «til helgen» ikke blir besvart med dagens vær når motoren svikter.
+          replyText = renderWeatherReport(
+            weatherRep,
+            resolveWeatherRequest(message, weatherRep.forecast),
+            projectName
+          );
         } else {
           const quotaHit = /kvote|top-?up|abonnement|utløpt/i.test(aiEngineError);
           // ⚠️ Rå leverandørfeil er allerede logget over. Den vises ikke til

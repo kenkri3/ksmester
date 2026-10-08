@@ -9,6 +9,23 @@
  * om de var reelle målinger.
  */
 
+/**
+ * Én dag i dagsvarselet. `date` er ISO-dato (YYYY-MM-DD) i Europe/Oslo, slik
+ * Open-Meteo leverer den når `timezone=Europe/Oslo` er satt.
+ */
+export interface ForecastDay {
+  date: string;
+  /** Norsk ukedagsnavn, f.eks. «lørdag». */
+  weekday: string;
+  minTemp: number;
+  maxTemp: number;
+  condition: string;
+  precipitationMm: number;
+  windMaxMs: number;
+  windBeaufort: string;
+  workAdvice: string;
+}
+
 export interface LiveWeatherReport {
   temp: number;
   minTemp: number;
@@ -20,8 +37,89 @@ export interface LiveWeatherReport {
   humidity: number;
   workAdvice: string;
   locationName: string;
+  /**
+   * Dagsvarsel framover, indeks 0 = i dag. Tom når vi ikke fikk ekte data — da
+   * finnes det ikke noe varsel å vise, og kalleren må si det i stedet for å
+   * presentere reserveverdiene.
+   */
+  forecast: ForecastDay[];
   /** true = ekte data fra Open-Meteo, false = reserveverdier (ikke ekte vær). */
   isLive: boolean;
+}
+
+const NB_WEEKDAYS = ['søndag', 'mandag', 'tirsdag', 'onsdag', 'torsdag', 'fredag', 'lørdag'];
+const NB_MONTHS = [
+  'januar', 'februar', 'mars', 'april', 'mai', 'juni',
+  'juli', 'august', 'september', 'oktober', 'november', 'desember'
+];
+
+/**
+ * 🛡️ Én kilde til værtekst: værkode (WMO) og vindstyrke oversettes her, ikke
+ * på hvert kallested. Uten dette kunne «nå» og «til helgen» beskrevet samme
+ * forhold med ulike ord.
+ */
+export function conditionFromCode(code: number): string {
+  const c = Number.isFinite(code) ? code : 1;
+  if (c === 0) return 'Sol / Klart';
+  if (c >= 1 && c <= 2) return 'Lettskyet / Sol';
+  if (c === 3) return 'Overskyet';
+  if ((c >= 51 && c <= 67) || (c >= 80 && c <= 82)) return 'Regn';
+  if ((c >= 71 && c <= 77) || (c >= 85 && c <= 86)) return 'Snø';
+  if (c >= 95) return 'Tordenvær';
+  return 'Klart';
+}
+
+/** Vindstyrke i m/s til norsk beaufort-beskrivelse. */
+export function beaufortFromMs(windSpeed: number): string {
+  if (windSpeed >= 17) return 'Sterk kuling / Storm';
+  if (windSpeed >= 13.9) return 'Stiv kuling';
+  if (windSpeed >= 10.8) return 'Liten kuling';
+  if (windSpeed >= 8.0) return 'Frisk bris';
+  if (windSpeed >= 3.4) return 'Lett til laber bris';
+  return 'Svak vind';
+}
+
+/** HMS-råd for gitte forhold. Brukes både for nå-situasjonen og per dag. */
+export function workAdviceFor(temp: number, windSpeed: number, precipitation: number): string {
+  if (windSpeed >= 13.9) {
+    return '⚠️ Stiv kuling / sterk vind (over 13.9 m/s): Fare ved krankjøring, takarbeid og stillas. Sikre alle løse byggematerialer og presenninger umiddelbart.';
+  }
+  if (temp < 0) {
+    return '❄️ Minusgrader: Fare for glatt stillas og frosne vannrør. Husk vintertilsetning i mørtel/betong og god tildekking av ferske konstruksjoner.';
+  }
+  if (precipitation > 2) {
+    return '🌧️ Nedbør meldt (> 2 mm): Utvendig tømrerarbeid og maling krever tildekking. Vurder å prioritere innvendige arbeider.';
+  }
+  if (windSpeed >= 10.8) {
+    return '💨 Liten kuling (over 10.8 m/s): Vær ekstra varsom ved håndtering av store bygningsplater, taktekking og stillasarbeid.';
+  }
+  return 'Stabile og gode arbeidsforhold for utendørs- og innendørsentreprenørskap.';
+}
+
+/** Norsk ukedagsnavn for en ISO-dato. Tom streng hvis datoen ikke kan leses. */
+export function weekdayNb(isoDate: string): string {
+  const d = new Date(`${isoDate}T12:00:00Z`);
+  if (Number.isNaN(d.getTime())) return '';
+  return NB_WEEKDAYS[d.getUTCDay()] || '';
+}
+
+/** «lørdag 11. oktober» for en ISO-dato. */
+export function formatDayLabel(isoDate: string): string {
+  const d = new Date(`${isoDate}T12:00:00Z`);
+  if (Number.isNaN(d.getTime())) return isoDate;
+  return `${NB_WEEKDAYS[d.getUTCDay()]} ${d.getUTCDate()}. ${NB_MONTHS[d.getUTCMonth()]}`;
+}
+
+/** «1. januar» for en dag og måned uten år — brukes når datoen er utenfor varselet. */
+export function formatMonthDay(day: number, month: number): string {
+  const name = NB_MONTHS[month - 1];
+  return name ? `${day}. ${name}` : `${day}.${month}.`;
+}
+
+/** ISO-dato (YYYY-MM-DD) for et tidspunkt, regnet i Europe/Oslo. */
+export function osloIsoDate(at: Date = new Date()): string {
+  // sv-SE gir YYYY-MM-DD direkte, og med Europe/Oslo blir døgngrensen riktig.
+  return new Intl.DateTimeFormat('sv-SE', { timeZone: 'Europe/Oslo' }).format(at);
 }
 
 /**
@@ -142,13 +240,14 @@ export async function fetchRealtimeWeather(locationQuery: string): Promise<LiveW
       humidity: 0,
       workAdvice: `Fant ikke stedet «${locationQuery}» for væroppslag. Legg inn gyldig stedsnavn eller adresse på prosjektet.`,
       locationName: locationQuery,
+      forecast: [],
       isLive: false
     };
   }
 
   const { lat, lon, name } = coords;
   try {
-    const url = `https://api.open-meteo.com/v1/forecast?latitude=${lat}&longitude=${lon}&current=temperature_2m,relative_humidity_2m,precipitation,weather_code,wind_speed_10m&daily=temperature_2m_max,temperature_2m_min,precipitation_sum,wind_speed_10m_max&wind_speed_unit=ms&timezone=Europe%2FOslo`;
+    const url = `https://api.open-meteo.com/v1/forecast?latitude=${lat}&longitude=${lon}&current=temperature_2m,relative_humidity_2m,precipitation,weather_code,wind_speed_10m&daily=weather_code,temperature_2m_max,temperature_2m_min,precipitation_sum,wind_speed_10m_max&forecast_days=14&wind_speed_unit=ms&timezone=Europe%2FOslo`;
     const res = await fetch(url, { headers: { 'Accept': 'application/json' }, signal: AbortSignal.timeout(3500) });
     if (res.ok) {
       const data = await res.json();
@@ -163,31 +262,32 @@ export async function fetchRealtimeWeather(locationQuery: string): Promise<LiveW
       const humidity = current.relative_humidity_2m ?? 65;
       const code = current.weather_code ?? 1;
 
-      let condition = 'Klart';
-      if (code === 0) condition = 'Sol / Klart';
-      else if (code >= 1 && code <= 2) condition = 'Lettskyet / Sol';
-      else if (code === 3) condition = 'Overskyet';
-      else if ((code >= 51 && code <= 67) || (code >= 80 && code <= 82)) condition = 'Regn';
-      else if ((code >= 71 && code <= 77) || (code >= 85 && code <= 86)) condition = 'Snø';
-      else if (code >= 95) condition = 'Tordenvær';
+      const condition = conditionFromCode(code);
+      const beaufort = beaufortFromMs(windSpeed);
+      const workAdvice = workAdviceFor(temp, windSpeed, precipitation);
 
-      let beaufort = 'Svak vind';
-      if (windSpeed >= 17) beaufort = 'Sterk kuling / Storm';
-      else if (windSpeed >= 13.9) beaufort = 'Stiv kuling';
-      else if (windSpeed >= 10.8) beaufort = 'Liten kuling';
-      else if (windSpeed >= 8.0) beaufort = 'Frisk bris';
-      else if (windSpeed >= 3.4) beaufort = 'Lett til laber bris';
-
-      let workAdvice = 'Stabile og gode arbeidsforhold for utendørs- og innendørsentreprenørskap.';
-      if (windSpeed >= 13.9) {
-        workAdvice = '⚠️ Stiv kuling / sterk vind (over 13.9 m/s): Fare ved krankjøring, takarbeid og stillas. Sikre alle løse byggematerialer og presenninger umiddelbart.';
-      } else if (temp < 0) {
-        workAdvice = '❄️ Minusgrader: Fare for glatt stillas og frosne vannrør. Husk vintertilsetning i mørtel/betong og god tildekking av ferske konstruksjoner.';
-      } else if (precipitation > 2) {
-        workAdvice = '🌧️ Nedbør meldt (> 2 mm): Utvendig tømrerarbeid og maling krever tildekking. Vurder å prioritere innvendige arbeider.';
-      } else if (windSpeed >= 10.8) {
-        workAdvice = '💨 Liten kuling (over 10.8 m/s): Vær ekstra varsom ved håndtering av store bygningsplater, taktekking og stillasarbeid.';
-      }
+      // 📅 Dagsvarsel: HELE serien brukes, ikke bare indeks 0. Uten dette kunne
+      // agenten bare svare på været akkurat nå — spørsmål som «værvarselet til
+      // helgen» fikk dagens observasjon som svar, selv om dataene var hentet.
+      const dates: string[] = Array.isArray(daily.time) ? daily.time : [];
+      const codes: number[] = Array.isArray(daily.weather_code) ? daily.weather_code : [];
+      const forecast: ForecastDay[] = dates.map((date: string, i: number) => {
+        const dayMin = Math.round(daily.temperature_2m_min?.[i] ?? temp);
+        const dayMax = Math.round(daily.temperature_2m_max?.[i] ?? temp);
+        const dayPrecip = Math.round((daily.precipitation_sum?.[i] ?? 0) * 10) / 10;
+        const dayWind = Math.round((daily.wind_speed_10m_max?.[i] ?? 0) * 10) / 10;
+        return {
+          date,
+          weekday: weekdayNb(date),
+          minTemp: dayMin,
+          maxTemp: dayMax,
+          condition: conditionFromCode(codes[i] ?? 1),
+          precipitationMm: dayPrecip,
+          windMaxMs: dayWind,
+          windBeaufort: beaufortFromMs(dayWind),
+          workAdvice: workAdviceFor(Math.round((dayMin + dayMax) / 2), dayWind, dayPrecip)
+        };
+      });
 
       return {
         temp,
@@ -200,6 +300,7 @@ export async function fetchRealtimeWeather(locationQuery: string): Promise<LiveW
         humidity,
         workAdvice,
         locationName: name,
+        forecast,
         isLive: true
       };
     }
@@ -218,6 +319,7 @@ export async function fetchRealtimeWeather(locationQuery: string): Promise<LiveW
     humidity: 65,
     workAdvice: 'Gode og stabile arbeidsforhold for utendørs- og innendørsentreprenørskap.',
     locationName: name,
+    forecast: [],
     isLive: false
   };
 }
