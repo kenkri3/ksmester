@@ -1,12 +1,17 @@
 import { NextResponse } from 'next/server';
 import { dbQuery, isDbConnected } from '@/src/lib/server/db';
-import { get1MinAiKey } from '@/src/lib/server/aiEngine';
+import { get1MinAiKey, getOpperKey } from '@/src/lib/server/aiEngine';
 
 export async function GET() {
   const oneMinAiKey = get1MinAiKey();
   const oneMinAiConfigured = !!oneMinAiKey;
   const geminiConfigured = !!(process.env.GEMINI_API_KEY || process.env.GOOGLE_API_KEY || process.env.GOOGLE_GENAI_API_KEY);
   const deepseekConfigured = !!(process.env.DEEP_SEEK_API || process.env.DEEPSEEK_API_KEY);
+  // 🛡️ EU-nøkkelen (Opper) styrer all behandling som kan inneholde
+  // personopplysninger. Den rapporteres eksplisitt, slik at en manglende nøkkel
+  // i produksjon er synlig fra utsiden istedenfor å vise seg som stille
+  // fallback til en motor utenfor EU.
+  const deepseekEuConfigured = !!getOpperKey();
   const resendConfigured = !!(
     process.env.RESEND_API_KEY || 
     process.env.RESEND_API || 
@@ -71,8 +76,16 @@ export async function GET() {
     nativeScraper: true,
     oneMinAiConfigured,
     geminiConfigured,
-    aiEngine: deepseekConfigured ? 'DeepSeek V3 (Primary)' : (oneMinAiConfigured ? '1min.ai (Primary)' : (geminiConfigured ? 'Gemini 2.5 Flash (Backup)' : 'none')),
-    aiModel: deepseekConfigured ? 'deepseek-chat / deepseek-reasoner (Tekst) + gemini-2.5-flash (Vision)' : (oneMinAiConfigured ? 'Multi-Model (gpt-4o-mini / gemini-2.5-flash / o3-mini)' : (geminiConfigured ? (process.env.GEMINI_MODEL || 'gemini-2.5-flash') : 'none')),
+    // 🛡️ Sier om personopplysninger faktisk kan rutes til en EU-modell.
+    // Er denne false i produksjon, gar personopplysninger til reservekjeden i
+    // stedet - det skal være synlig, ikke noe man oppdager i ettertid.
+    deepseekEuConfigured,
+    aiEngine: deepseekEuConfigured
+      ? 'DeepSeek V4.1 Flash (EU via Opper)'
+      : (deepseekConfigured ? 'DeepSeek V3 (Primary)' : (oneMinAiConfigured ? '1min.ai (Primary)' : (geminiConfigured ? 'Gemini 2.5 Flash (Backup)' : 'none'))),
+    aiModel: deepseekEuConfigured
+      ? 'Personopplysninger: DeepSeek V4.1 Flash i EU/EOS (Opper). Øvrig tekst: DeepSeek direkte'
+      : (deepseekConfigured ? 'deepseek-chat / deepseek-reasoner (Tekst) + gemini-2.5-flash (Vision)' : (oneMinAiConfigured ? 'Multi-Model (gpt-4o-mini / gemini-2.5-flash / o3-mini)' : (geminiConfigured ? (process.env.GEMINI_MODEL || 'gemini-2.5-flash') : 'none'))),
     timestamp: new Date().toISOString()
   }, { status: isHealthy ? 200 : 503 });
 }

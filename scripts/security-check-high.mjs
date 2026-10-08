@@ -365,6 +365,44 @@ async function main() {
         : leaks.length + ' filer: ' + leaks.join(', '));
   }
 
+  // ---------- PII-EU: personopplysninger skal til DeepSeek V4.1 Flash i EU ----------
+  // Sjekken er bevisst STATISK og deterministisk. Den avgjør tre ting som alltid
+  // kan avgjøres fra kilden, og som til sammen er det som hindrer regresjon:
+  //   1. GDPR-stien navngir EU/EØS-rutene provider-kvalifisert. Et BART
+  //      modellnavn er hos Opper samlet på tvers av alle regioner som hoster
+  //      modellen, og kan dermed havne i USA.
+  //   2. Nøkkelen (DEEPSEEK_EU_API) faktisk leses.
+  //   3. Reservekjeden i EU-stien består, slik at et avbrudd ikke ender i en
+  //      motor utenfor EU.
+  // Den kjørende rutingen er bevist manuelt og dokumentert i
+  // docs/verifisering-2026-10-07.md — den kan ikke avgjøres herfra, og
+  // rapporteres derfor ikke som bestått.
+  console.log('\nPII-EU  personopplysninger til DeepSeek V4.1 Flash i EU');
+  {
+    const eng = readSrc('src/lib/server/aiEngine.ts');
+    const euRoutes = ['sference/deepseek-ai/DeepSeek-V4.1-Flash', 'tensorx/deepseek/deepseek-v4.1-flash', 'greenpt/deepseek-v4.1-flash'];
+    const mangler = euRoutes.filter((m) => !eng.includes(m));
+    r('PII-EU', 'GDPR-stien navngir EU/EØS-rutene provider-kvalifisert',
+      mangler.length === 0 ? 'OK' : 'FEIL',
+      mangler.length === 0 ? 'alle tre primærruter finnes i aiEngine.ts' : 'mangler: ' + mangler.join(', '));
+
+    const listeDel = (eng.match(/OPPER_EU_MODELS\s*=\s*\[[\s\S]*?\]/) || [''])[0];
+    const barNavn = /'deepseek-v4\.1-flash'/.test(listeDel);
+    r('PII-EU', 'EU-listen bruker IKKE et bart DeepSeek-modellnavn',
+      !barNavn ? 'OK' : 'FEIL',
+      barNavn ? 'et bart navn er samlet på tvers av regioner og kan gå til USA' : 'kun provider-kvalifiserte id-er');
+
+    r('PII-EU', 'Opper-nøkkelen (DEEPSEEK_EU_API) leses av koden',
+      /DEEPSEEK_EU_API/.test(eng) ? 'OK' : 'FEIL',
+      /DEEPSEEK_EU_API/.test(eng) ? 'getOpperKey() leser DEEPSEEK_EU_API' : 'nøkkelen leses ikke - EU-stien kan ikke kjøre');
+
+    const gdprDel = eng.split('if (isGdprSensitive)')[1] || '';
+    const harReserve = /oneMinKey/.test(gdprDel) && /geminiKey/.test(gdprDel);
+    r('PII-EU', 'EU-stien har fortsatt 1min.AI og Gemini EU som reserve',
+      harReserve ? 'OK' : 'FEIL',
+      harReserve ? 'et avbrudd i Opper-ruten faller tilbake innenfor EU' : 'reservekjeden i GDPR-stien er borte');
+  }
+
   // ---------- R-07: robots.txt ----------
   console.log('\nR-07  robots.txt');
   {

@@ -38,22 +38,29 @@ kjørende PostgreSQL. Det er løst: `@embedded-postgres/windows-x64` ble install
 - **Detaljer:** `docs/verifisering-2026-10-07.md`.
 - **Docker er ikke lenger nødvendig** for dette.
 
-### 1.3 Datalagring: bekreft hvor 1min.AI behandler dataene — BLOKKERER for personvernerklæringen
-Koden ruter personopplysninger til EU-stien og omgår DeepSeek helt (verifisert: 0 treff på
-`api.deepseek.com` i loggen under test). Men to ting kan jeg ikke bekrefte fra koden:
+### 1.3 Datalagring: bekreft Opper og 1min.AI skriftlig — BLOKKERER for personvernerklæringen
+Koden ruter nå personopplysninger til **DeepSeek V4.1 Flash i EU via Opper**, og omgår DeepSeek
+i Kina helt (verifisert: 0 treff på `api.deepseek.com` i loggen under test). Men tre ting kan
+jeg ikke bekrefte fra koden:
 
-- **Endepunktet er hardkodet** til `https://api.1min.ai/api/chat-with-ai`
-  (`src/lib/server/aiEngine.ts:432`). Det finnes ingen EU-region-URL å sette. Kodekommentaren
-  kaller 1min.AI «EU-driftet», men det står ingenting i repoet som belegger det.
-- **1min.AIs egen dokumentasjon** sier at innhold modereres av OpenAI for alle leverandører:
-  «OpenAI content moderation applies to all providers, so text is sent to OpenAI for
-  moderation as well as to the selected generation provider.» Setningen gjelder deres
-  OpenAI-kompatible endepunkt, og koden bruker det eldre `/api/chat-with-ai` — men det bør
-  avklares, ikke antas.
+- **Opper er nå den viktigste databehandleren for personopplysninger.** De oppgir selv EU-hosting
+  (AWS Stockholm), ISO/IEC 27001:2022 og at de ikke lagrer prompt eller svar uten en
+  data retention-regel. Hent **databehandleravtalen** deres fra [trust.opper.ai](https://trust.opper.ai)
+  og arkiver den. Det er den avtalen som dekker personopplysningene våre nå.
+- **Tilgangen til rutene er ikke bekreftet.** Hos Opper kan en Model access-regel blokkere
+  modeller og steder. Er de fem EU-rutene ikke tillatt for prosjektet, svarer kallet 403 i
+  produksjon. Sjekk under **Model access** i [platform.opper.ai](https://platform.opper.ai), og
+  bekreft at `sference`, `tensorx`, `greenpt`, `melious` og `nebius` er tillatt.
+- **1min.AI er nå bare reserve**, men den brukes fortsatt hvis Opper feiler. Endepunktet deres er
+  hardkodet til `https://api.1min.ai/api/chat-with-ai` (`src/lib/server/aiEngine.ts`), og deres
+  egen dokumentasjon sier at innhold modereres av OpenAI for alle leverandører: «OpenAI content
+  moderation applies to all providers, so text is sent to OpenAI for moderation as well as to
+  the selected generation provider.» Setningen gjelder deres OpenAI-kompatible endepunkt, og
+  koden bruker det eldre `/api/chat-with-ai` — men det bør avklares, ikke antas.
 
-- **Hva jeg trenger:** (a) skriftlig bekreftelse fra 1min.AI på hvor dataene behandles og
-  lagres, (b) databehandleravtale, (c) om modereringssetningen over gjelder endepunktet vi
-  bruker.
+- **Hva jeg trenger:** (a) Oppers databehandleravtale, (b) bekreftelse på at de fem EU-rutene er
+  tillatt for prosjektet, (c) skriftlig svar fra 1min.AI på hvor de behandler data og om
+  modereringssetningen gjelder endepunktet vi bruker.
 - **Hvorfor:** `src/components/StaticPages.tsx:602` sier i dag «All data lagres i sikre
   datasentre innenfor EØS/Norge» og lover daglige sikkerhetskopier. Erklæringen kan ikke
   oppdateres til å bli sann før svarene over foreligger — og det finnes fortsatt ingen

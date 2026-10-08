@@ -52,7 +52,7 @@ export interface GenerateAiOptions {
 
 export interface AiEngineResult {
   text: string;
-  source: '1min.ai' | 'gemini_backup' | 'deepseek_backup' | 'deepseek_direct' | 'openrouter';
+  source: '1min.ai' | 'gemini_backup' | 'deepseek_backup' | 'deepseek_direct' | 'deepseek_eu' | 'openrouter';
   model: string;
   usage: {
     promptTokens: number;
@@ -78,6 +78,27 @@ export function get1MinAiKey(): string | null {
     env['ONEMINAI_API_KEY'] ||
     env['1_min_ai'] ||
     env['one_min_ai'] ||
+    null;
+  return key ? key.trim() : null;
+}
+
+/**
+ * Henter Opper API-nøkkel (den europeiske AI-gatewayen).
+ *
+ * Brukes for all behandling som kan inneholde personopplysninger. Opper er
+ * EU-hostet (AWS Stockholm), ISO/IEC 27001-sertifisert og oppgir selv at de ikke
+ * lagrer prompt eller svar uten at en data retention-regel slår på tracing.
+ *
+ * I Railway heter variabelen DEEPSEEK_EU_API fordi den peker på DeepSeek V4.1
+ * Flash kjørt i EU. De øvrige navnene er tatt med for lokal kjøring.
+ */
+export function getOpperKey(): string | null {
+  const env = process.env as Record<string, string | undefined>;
+  const key =
+    env.DEEPSEEK_EU_API ||
+    env.OPPER_API_KEY ||
+    env.OPPER_KEY ||
+    env.OPPER_API ||
     null;
   return key ? key.trim() : null;
 }
@@ -922,6 +943,172 @@ async function callOpenRouter(
 }
 
 /**
+ * DeepSeek V4.1 Flash kjørt i EU via Opper (den europeiske AI-gatewayen).
+ *
+ * Dette er motoren for ALL behandling som kan inneholde personopplysninger, og
+ * den erstatter både 1min.AI og Google Gemini i GDPR-stien — også for bilder,
+ * siden DeepSeek V4.1 Flash er multimodal.
+ *
+ * Modell-id-ene er provider-kvalifiserte med vilje: hos Opper er et bart
+ * modellnavn samlet på tvers av ALLE regioner som hoster modellen, mens en
+ * provider-kvalifisert id pinner kallet til én rute. Bare de kvalifiserte
+ * id-ene nedenfor holder kallet i EU/EØS. Rekkefølgen er valgt etter hva
+ * Oppers eget modell-API oppgir om oppholdssted og lagring:
+ *
+ *   1. sference/deepseek-ai/DeepSeek-V4.1-Flash   opphold EØS,  inferens EØS,  ingen logging, ephemeral
+ *   2. tensorx/deepseek/deepseek-v4.1-flash       opphold EU,   inferens EU,   ingen logging, ephemeral
+ *   3. greenpt/deepseek-v4.1-flash                opphold EU,   inferens EU,   ingen logging, ephemeral
+ *   4. melious/deepseek-v4.1-flash                opphold EU (DE), inferens FI, ingen logging
+ *   5. nebius/deepseek-ai/DeepSeek-V4.1-Flash     rute nebius/studio-eu, men service scope GLOBAL
+ *
+ * De fire første er ekte EU/EØS-opphold. Den femte er med som siste utvei fordi
+ * den fortsatt kjører på en EU-rute — men den har GLOBAL service scope, altså
+ * ingen garanti for at inferensen blir i EU. Den skal derfor ikke være primær,
+ * og hvis personvernkravet er absolutt bør den fjernes fra listen.
+ *
+ * Bevisst utelatt: `arcee/deepseek/deepseek-v4.1-flash` og
+ * `novita/deepseek-v4.1-flash` har samme modell og vision, men ligger i USA.
+ *
+ * Streaming støttes ikke her: GDPR-stien er ikke strømmet i dag, og en
+ * feilkonfigurert strøm er verre enn ingen strøm. Kan legges til senere.
+ */
+const OPPER_EU_BASE_URL = 'https://api.opper.ai/v3/compat/chat/completions';
+
+export const OPPER_EU_MODELS = [
+  'sference/deepseek-ai/DeepSeek-V4.1-Flash',
+  'tensorx/deepseek/deepseek-v4.1-flash',
+  'greenpt/deepseek-v4.1-flash',
+  'melious/deepseek-v4.1-flash',
+  'nebius/deepseek-ai/DeepSeek-V4.1-Flash'
+];
+
+/**
+ * Én rutes svar. `error` er satt når kallet feilet, `text` når det lyktes.
+ * Enkel returform med vilje: repoet kjører med `strict: false`, og da virker
+ * ikke diskriminert union-innsnevring i TypeScript.
+ */
+interface OpperEuAttempt {
+  text: string;
+  promptTokens: number;
+  completionTokens: number;
+  model: string;
+  error?: Error;
+}
+
+/**
+ * Kaller én Opper-rute. Kaster aldri — feilen returneres, slik at kalleren kan
+ * prøve neste EU-rute og til slutt feile LUKKET.
+ */
+async function callOpperEuModel(
+  apiKey: string,
+  model: string,
+  prompt: string,
+  systemInstruction?: string,
+  images?: Array<{ inlineData?: { data?: string; mimeType?: string } }>,
+  temperature = 0.3,
+  forceJson = false,
+  chatMessages?: AiChatMessage[]
+): Promise<OpperEuAttempt> {
+  try {
+    const messages: any[] = [];
+    if (systemInstruction) {
+      messages.push({ role: 'system', content: systemInstruction });
+    }
+
+    const hasStructuredTurns = Array.isArray(chatMessages) && chatMessages.length > 0;
+    if (hasStructuredTurns && !forceJson) {
+      for (const turn of chatMessages!) {
+        if (!turn || typeof turn.content !== 'string' || !turn.content.trim()) continue;
+        if (turn.role === 'system') continue;
+        messages.push({ role: turn.role === 'assistant' ? 'assistant' : 'user', content: turn.content });
+      }
+    } else if (!images || images.length === 0) {
+      messages.push({ role: 'user', content: prompt });
+    }
+
+    // Bilder sendes som inline base64-data-URL. Opper avviser hostede URL-er og
+    // fil-id-er på dette endepunktet, så data-URL er eneste vei.
+    if (images && images.length > 0) {
+      const parts: any[] = [];
+      if (prompt) parts.push({ type: 'text', text: prompt });
+      for (const img of images) {
+        const data = img && img.inlineData && img.inlineData.data;
+        if (!data) continue;
+        const mimeType = (img.inlineData && img.inlineData.mimeType) || 'image/jpeg';
+        parts.push({
+          type: 'input_image',
+          image_url: data.startsWith('data:') ? data : `data:${mimeType};base64,${data}`
+        });
+      }
+      if (parts.length > 0) messages.push({ role: 'user', content: parts });
+    }
+
+    const body: any = { model, messages, temperature };
+    if (forceJson) body.response_format = { type: 'json_object' };
+
+    const res = await fetch(OPPER_EU_BASE_URL, {
+      method: 'POST',
+      headers: {
+        'Content-Type': 'application/json',
+        'Authorization': `Bearer ${apiKey}`
+      },
+      body: JSON.stringify(body),
+      signal: AbortSignal.timeout(90000)
+    });
+
+    if (!res.ok) {
+      const errText = await res.text().catch(() => '');
+      return { text: '', promptTokens: 0, completionTokens: 0, model, error: new Error(`HTTP ${res.status}: ${errText.slice(0, 200)}`) };
+    }
+
+    const data = await res.json();
+    const text = data?.choices?.[0]?.message?.content || '';
+    return {
+      text,
+      promptTokens: data?.usage?.prompt_tokens || Math.round(prompt.length / 4),
+      completionTokens: data?.usage?.completion_tokens || Math.round(text.length / 4),
+      model: data?.model || model
+    };
+  } catch (err: any) {
+    return { text: '', promptTokens: 0, completionTokens: 0, model, error: err instanceof Error ? err : new Error(String(err)) };
+  }
+}
+
+/**
+ * Prøver alle EU-rutene i rekkefølge og returnerer første brukbare svar.
+ * Kaster hvis ingen svarer — den som kaller skal da feile lukket, ikke falle
+ * tilbake til en motor utenfor EU.
+ */
+async function callDeepSeekEu(
+  apiKey: string,
+  prompt: string,
+  systemInstruction?: string,
+  images?: Array<{ inlineData?: { data?: string; mimeType?: string } }>,
+  temperature = 0.3,
+  forceJson = false,
+  chatMessages?: AiChatMessage[]
+): Promise<{ text: string; promptTokens: number; completionTokens: number; executedModel: string }> {
+  const errors: string[] = [];
+
+  for (const model of OPPER_EU_MODELS) {
+    const attempt = await callOpperEuModel(apiKey, model, prompt, systemInstruction, images, temperature, forceJson, chatMessages);
+    if (attempt.text && attempt.text.trim().length > 0) {
+      return {
+        text: attempt.text,
+        promptTokens: attempt.promptTokens,
+        completionTokens: attempt.completionTokens,
+        executedModel: attempt.model
+      };
+    }
+    const reason = attempt.error ? attempt.error.message : 'tomt svar';
+    errors.push(`${model} -> ${reason}`);
+    console.warn(`[DeepSeek EU] Ruten ${model} feilet (${reason}), prøver neste EU-rute...`);
+  }
+
+  throw new Error(`Ingen EU-rute for DeepSeek V4.1 Flash svarte. ${errors.join(' | ')}`);
+}
+
+/**
  * HOVEDFUNKSJON: generateWithAiEngine
  * Intelligent flermodell-motor:
  * 1. DeepSeek Direct (DEEPSEEK_API_KEY) er absolutt primærmotor for all tekst, rådgivning, kalkyle, KS, SJA og jus.
@@ -933,6 +1120,8 @@ export async function generateWithAiEngine(options: GenerateAiOptions): Promise<
   let geminiKey = getGeminiKey();
   let deepseekKey = getDeepSeekKey();
   let openrouterKey = getOpenRouterKey();
+  // 🛡️ EU-nøkkelen (Opper) er primær for alt som kan inneholde personopplysninger.
+  const opperEuKey = getOpperKey();
 
   if (!oneMinKey) {
     oneMinKey = await getStoredAiKey('1min.ai');
@@ -947,8 +1136,8 @@ export async function generateWithAiEngine(options: GenerateAiOptions): Promise<
     openrouterKey = await getStoredAiKey('openrouter');
   }
 
-  if (!oneMinKey && !geminiKey && !deepseekKey && !openrouterKey) {
-    throw new Error('Ingen AI-nøkkel (verken DEEPSEEK_API_KEY, 1_MIN_AI, GEMINI_API_KEY eller OPENROUTER_API_KEY) er konfigurert på serveren eller i innstillingene.');
+  if (!oneMinKey && !geminiKey && !deepseekKey && !openrouterKey && !opperEuKey) {
+    throw new Error('Ingen AI-nøkkel (verken DEEPSEEK_API_KEY, DEEPSEEK_EU_API/Opper, 1_MIN_AI, GEMINI_API_KEY eller OPENROUTER_API_KEY) er konfigurert på serveren eller i innstillingene.');
   }
 
   // 🛡️ UNIVERSALT MARGINVERN: Sjekk bedriftens token- og abonnementsstatus før ethvert AI-kall utføres
@@ -1249,7 +1438,52 @@ export async function generateWithAiEngine(options: GenerateAiOptions): Promise<
   // 3. Bilens registreringsnummer, telefonnummer og navn bevares 100% uten sladding!
   // ==========================================================================
   if (isGdprSensitive) {
-    // 2.5.1 Primær for GDPR: 1min.AI med EU/rask modell (f.eks. gpt-4o-mini, Mistral Large eller Claude 3.5 Haiku)
+    // 2.5.0 PRIMÆR for GDPR: DeepSeek V4.1 Flash kjørt i EU via Opper.
+    // Dette er den foretrukne motoren for alt som kan inneholde
+    // personopplysninger. Den er multimodal, så den dekker også bildeanalyse —
+    // tidligere måtte bilder til Gemini. Alle rutene under er EU/EØS.
+    if (opperEuKey) {
+      try {
+        const res = await callDeepSeekEu(
+          opperEuKey,
+          promptText,
+          options.systemInstruction,
+          imagesToProcess,
+          deepseekTemperature,
+          isJsonExpected,
+          structuredMessages
+        );
+
+        if (res.text && res.text.trim().length > 0) {
+          trackTokenCost({
+            model: res.executedModel,
+            promptTokens: res.promptTokens,
+            completionTokens: res.completionTokens,
+            operation: options.operation || 'ai_generate_gdpr_eu_opper',
+            companyId: options.companyId,
+            companyName: options.companyName,
+            projectId: options.projectId,
+            notes: options.notes || `GDPR EU Engine (Opper ${res.executedModel})`,
+            service: 'deepseek'
+          }).catch(() => {});
+
+          return {
+            text: res.text,
+            source: 'deepseek_eu',
+            model: res.executedModel,
+            usage: {
+              promptTokens: res.promptTokens,
+              completionTokens: res.completionTokens,
+              totalTokens: res.promptTokens + res.completionTokens
+            }
+          };
+        }
+      } catch (opperErr: any) {
+        console.warn(`[AI Engine - GDPR EU] Opper/DeepSeek EU feilet (${opperErr.message}), faller tilbake til 1min.AI...`);
+      }
+    }
+
+    // 2.5.1 Sekundær for GDPR: 1min.AI med EU/rask modell (f.eks. gpt-4o-mini, Mistral Large eller Claude 3.5 Haiku)
     if (oneMinKey) {
       try {
         const gdprModel = process.env.ONE_MIN_AI_GDPR_MODEL || oneMinModel || 'gpt-4o-mini';
@@ -1333,7 +1567,7 @@ export async function generateWithAiEngine(options: GenerateAiOptions): Promise<
       }
     }
 
-    throw new Error('GDPR-beskyttet oppgave krever en EU-godkjent modell (1min.AI eller Google Gemini EU), men ingen var tilgjengelig.');
+    throw new Error('GDPR-beskyttet oppgave krever en EU-godkjent modell (DeepSeek V4.1 Flash i EU via Opper, 1min.AI eller Google Gemini EU), men ingen var tilgjengelig.');
   }
 
   // ==========================================================================

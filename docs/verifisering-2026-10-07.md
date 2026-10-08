@@ -190,3 +190,96 @@ Samme formuleringer sto på tre steder til og er rettet der: `app/hms/page.tsx` 
    moderation as well as to the selected generation provider.» Det gjelder deres
    OpenAI-kompatible endepunkt; koden bruker det eldre `/api/chat-with-ai`, og dokumentasjonen
    sier ikke om setningen gjelder der. **Også dette bør bekreftes skriftlig.**
+
+---
+
+## 5. Tredje runde: personopplysninger flyttet til DeepSeek V4.1 Flash i EU via Opper
+
+**Bakgrunn:** brukeren satte kravet at all behandling som kan inneholde personvern skal gå til
+DeepSeek V4.1 Flash innenfor EU, satt opp via [Opper](https://docs.opper.ai/) med nøkkelen
+`DEEPSEEK_EU_API`. Bildeanalyse skulle også dit, der DeepSeek V4.1 Flash kan erstatte Gemini.
+
+### 5.1 Hvorfor Opper løser problemet 1min.AI hadde
+
+Opper er en AI-gateway hostet i EU (AWS Stockholm), ISO/IEC 27001:2022-sertifisert, og oppgir
+at de ikke lagrer prompt eller svar med mindre en data retention-regel slår på tracing. Det
+viktigste for oss: **Oppers eget modell-API oppgir oppholdssted, inferenssted og lagring per
+rute**, slik at valget kan begrunnes med data i stedet for en påstand i en kodekommentar.
+
+### 5.2 Rutene som er valgt, og hvorfor
+
+Et viktig faresignal fra dokumentasjonen: hos Opper er et **bart modellnavn samlet på tvers av
+alle regioner** som hoster modellen. `deepseek-v4.1-flash` alene kan altså havne i USA. Kallet
+må derfor bruke den **provider-kvalifiserte** id-en. Det er hele grunnen til at listen under
+ser ut som den gjør:
+
+| Rute | Opphold | Inferens | Innhold lagres | ZDR-logging |
+| :--- | :--- | :--- | :--- | :--- |
+| `sference/deepseek-ai/DeepSeek-V4.1-Flash` | EØS | EØS | ephemeral | nei |
+| `tensorx/deepseek/deepseek-v4.1-flash` | EU | EU | ephemeral | nei |
+| `greenpt/deepseek-v4.1-flash` | EU | EU | ephemeral | nei |
+| `melious/deepseek-v4.1-flash` | EU (DE) | FI | unknown | nei |
+| `nebius/deepseek-ai/DeepSeek-V4.1-Flash` | rute `nebius/studio-eu`, men service scope GLOBAL | GLOBAL | retained | ja |
+
+De fire første er ekte EU/EØS-opphold. Den femte er med som siste utvei fordi den kjører på en
+EU-rute, men den har GLOBAL service scope og skal derfor ikke være primær. Bevisst utelatt:
+`arcee/deepseek/deepseek-v4.1-flash`, `novita/deepseek-v4.1-flash` og `wafer/DeepSeek-V4.1-Flash`
+har samme modell og vision, men ligger i USA.
+
+**Alle rutene har vision**, så bildeanalyse går nå til DeepSeek V4.1 Flash i EU i stedet for
+Gemini — det var brukerens poeng, og det stemmer.
+
+### 5.3 Hva som er endret i koden
+
+| Sted | Endring |
+| :--- | :--- |
+| `aiEngine.ts` | Ny `getOpperKey()` som leser `DEEPSEEK_EU_API`, og ny `callDeepSeekEu()` mot `https://api.opper.ai/v3/compat/chat/completions` |
+| `aiEngine.ts` | Ny `source: 'deepseek_eu'` i resultattypen, slik at sporingen skiller EU-kallet fra DeepSeek direkte |
+| `aiEngine.ts` | GDPR-stien (`if (isGdprSensitive)`) har fått Opper EU som **primær**; 1min.AI og Gemini EU står igjen som reserve **innenfor** EU |
+| `aiEngine.ts` | Vakt: «ingen AI-nøkkel» godtar nå også Opper-nøkkelen alene |
+| `api/health/route.ts` | Nytt felt `deepseekEuConfigured`, og `aiEngine` melder `DeepSeek V4.1 Flash (EU via Opper)` |
+| `.env.example` | `DEEPSEEK_EU_API` dokumentert, med eksplisitt advarsel om at bart modellnavn ikke må brukes |
+| `security-check-high.mjs` | Fire nye statiske sjekker (`PII-EU`) som hindrer regresjon. Suiten er nå 35 sjekker |
+
+### 5.4 Bevis for at rutingen virker
+
+Kjørt med dummy-nøkler for alle fire motorer, slik at motorene faktisk prøves. Loggen viser
+rekkefølgen koden valgte da et helt vanlig spørsmål («Hvordan ligger prosjektene an?») ble
+sendt mot et prosjekt som har kundenavn og adresse:
+
+```
+[DeepSeek EU] Ruten sference/deepseek-ai/DeepSeek-V4.1-Flash feilet (HTTP 401: invalid bearer token…)
+[DeepSeek EU] Ruten tensorx/deepseek/deepseek-v4.1-flash feilet (HTTP 401: …)
+[DeepSeek EU] Ruten greenpt/deepseek-v4.1-flash feilet (HTTP 401: …)
+[DeepSeek EU] Ruten melious/deepseek-v4.1-flash feilet (HTTP 401: …)
+[DeepSeek EU] Ruten nebius/deepseek-ai/DeepSeek-V4.1-Flash feilet (HTTP 401: …)
+[AI Engine - GDPR EU] Opper/DeepSeek EU feilet, faller tilbake til 1min.AI...
+```
+
+- Alle fem EU-rutene ble kontaktet (401 = Oppers eget svar på dummy-nøkkelen, altså riktig
+  endepunkt og riktig auth-header).
+- **`api.deepseek.com` fikk null forespørsler**, selv om `DEEPSEEK_API_KEY` var satt.
+- `api.openai.com` fikk null forespørsler.
+- Da alle EU-rutene feilet, gikk den til 1min.AI og deretter Gemini EU — og kastet til slutt
+  i stedet for å falle tilbake til en motor utenfor EU.
+
+**Verifisert:** 17/17 BLOKKERER, 35/35 HØY, 6/6 kontoovertakelse. `tsc` uten feil, bygg exit 0.
+Helseruten melder `deepseekEuConfigured: true` og `databaseStatus: ok`.
+
+### 5.5 Det jeg IKKE har kunnet verifisere
+
+**Jeg har aldri kalt Opper med den ekte nøkkelen.** Den ligger bare i Railway-variablene, og
+verken Railway-CLI-en eller `gh` er innlogget på maskinen. Miljøet har ingen av nøklene lokalt
+(`DEEPSEEK_EU_API`, `DEEPSEEK_API_KEY`, `1_MIN_AI`, `GEMINI_API_KEY` er alle fraværende).
+
+Det betyr at følgende er **uverifisert til noen kjører det med ekte nøkkel**:
+
+1. At `DEEPSEEK_EU_API` faktisk er en gyldig Opper-nøkkel med kreditt.
+2. At prosjektet bak nøkkelen har tilgang til de fem EU-rutene. Hos Opper kan en **Model access
+   rule** blokkere modeller og steder, og da svarer kallet 403 i stedet for 200.
+3. At svarkvaliteten fra DeepSeek V4.1 Flash holder for bildeanalyse mot TEK17/BVN. Modellen er
+   oppgitt med vision, men det er ikke det samme som at den er god på norske våtromsbilder.
+
+Slik lukkes det: kall en PII-flagget oppgave i produksjon etter deploy, og se at
+`/api/health` fortsatt melder `deepseekEuConfigured: true`, og at svaret kommer. Alternativt
+kan `railway login` kjøres lokalt, så kan jeg lese variabelen uten at den limes inn i chatten.
