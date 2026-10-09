@@ -86,7 +86,7 @@ export async function GET() {
         : 'DeepSeek V4.1 Flash (EU via Opper)')
       : (deepseekConfigured ? 'DeepSeek V3 (Primary)' : (oneMinAiConfigured ? '1min.ai (Primary)' : (geminiConfigured ? 'Gemini 2.5 Flash (Backup)' : 'none'))),
     aiModel: deepseekEuConfigured
-      ? 'Personopplysninger: DeepSeek V4.1 Flash i EU/EOS (Opper). Øvrig tekst: DeepSeek direkte'
+      ? 'Personopplysninger: DeepSeek V4.1 Flash i EU/EØS (Opper). Øvrig tekst: 1min.ai (DeepSeek direkte er reserve)'
       : (deepseekConfigured ? 'deepseek-chat / deepseek-reasoner (Tekst) + gemini-2.5-flash (Vision)' : (oneMinAiConfigured ? 'Multi-Model (gpt-4o-mini / gemini-2.5-flash / o3-mini)' : (geminiConfigured ? (process.env.GEMINI_MODEL || 'gemini-2.5-flash') : 'none'))),
     timestamp: new Date().toISOString()
   }, { status: isHealthy ? 200 : 503 });
