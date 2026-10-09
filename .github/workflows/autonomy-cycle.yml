@@ -1,0 +1,52 @@
+name: Autonom byggeleder-syklus (ettermiddag)
+
+# Den autonome agenten må kjøre etter arbeidsdagens slutt, ikke bare om morgenen.
+# Kl. 06:00 er det ennå ingen førte timer, så syklusen hadde ingenting å bygge
+# byggedagbok eller endringsvarsel fra. Kl. 13:30 UTC = 15:30 norsk sommertid
+# (14:30 vintertid) — timene er ført, men dagboken mangler fortsatt.
+on:
+  schedule:
+    - cron: '30 13 * * 1-5'
+  workflow_dispatch:
+    inputs:
+      force:
+        description: 'Kjør selv om syklusen nettopp har kjørt (force=1)'
+        required: false
+        default: '1'
+
+jobs:
+  autonomy_cycle:
+    runs-on: ubuntu-latest
+    steps:
+      - name: Kjør autonom byggeleder-syklus
+        run: |
+          APP_URL="${{ secrets.APP_URL }}"
+          if [ -z "$APP_URL" ]; then
+            APP_URL="https://vikingmester.no"
+          fi
+
+          FORCE="${{ github.event.inputs.force }}"
+          QUERY=""
+          if [ "$FORCE" = "1" ]; then
+            QUERY="?force=1"
+          fi
+
+          echo "Kaller: $APP_URL/api/cron/autonomy-cycle$QUERY"
+
+          RESPONSE=$(curl -s -w "\n%{http_code}" -X POST "$APP_URL/api/cron/autonomy-cycle$QUERY" \
+            -H "Authorization: Bearer ${{ secrets.CRON_SECRET }}" \
+            -H "Content-Type: application/json")
+
+          HTTP_STATUS=$(echo "$RESPONSE" | tail -n1)
+          BODY=$(echo "$RESPONSE" | sed '$d')
+
+          echo "HTTP Status: $HTTP_STATUS"
+          echo "Svar: $BODY"
+
+          if [ "$HTTP_STATUS" -ge 200 ] && [ "$HTTP_STATUS" -lt 300 ]; then
+            echo "✅ Autonom byggeleder-syklus fullført!"
+          else
+            echo "❌ Feil: syklusen feilet med status $HTTP_STATUS"
+            echo "Feilmelding: $BODY"
+            exit 1
+          fi

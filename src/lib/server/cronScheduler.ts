@@ -1,11 +1,28 @@
 import { getCollectionItems, saveCollectionItem } from './db';
 import { processAutonomousNurtureSequence } from './nurtureEngine';
+import { runAutonomousAuditCycle } from './autonomousAgent';
 // FIX (11.09.2026): GoogleGenAI-import fjernet – ikke lenger brukt her, se begrunnelse i
 // runDailyAudit() under (deterministisk morgen-brief, fjernet fabrikkert byggedagbok-generator).
 
+/** ISO-dato (YYYY-MM-DD) i norsk tid. */
+function osloDate(at: Date = new Date()): string {
+  return new Intl.DateTimeFormat('sv-SE', { timeZone: 'Europe/Oslo' }).format(at);
+}
+
+/** Antall millisekunder til et gitt klokkeslett (norsk tid) i dag eller i morgen. */
+function msUntilOsloTime(hour: number, minute: number, from: Date = new Date()): number {
+  const here = new Date(from.toLocaleString('en-US', { timeZone: 'Europe/Oslo' }));
+  const target = new Date(here);
+  target.setHours(hour, minute, 0, 0);
+  if (here.getTime() >= target.getTime()) {
+    target.setDate(target.getDate() + 1);
+  }
+  return target.getTime() - here.getTime();
+}
+
 export async function runDailyAudit(options?: { force?: boolean }) {
   const startTime = Date.now();
-  const todayStr = new Date().toISOString().split('T')[0];
+  const todayStr = osloDate();
 
   // FIX (11.09.2026) - Idempotens/token-sparing: Flere uavhengige triggere (innebygd
   // bakgrunnsscheduler, GitHub Actions daily-audit.yml, evt. egen Railway cron-worker, og
@@ -36,8 +53,9 @@ export async function runDailyAudit(options?: { force?: boolean }) {
   const activeProjects = projects.filter((p: any) => p.status === 'active' || !p.status);
   // FIX (11.09.2026): Ekte avvik lagres med ENGELSKE verdier ('open'/'in-progress',
   // severity 'high'/'critical') per src/types.ts og CreateDeviationModal.tsx. De gamle
-  // norske strengene ('åpen'/'kritisk'/'høy') matchet aldri reelle avviksposter, så kritiske
-  // avvik ble aldri fanget opp i denne revisjonen. Støtter begge for bakoverkompatibilitet.
+  // norske strengene ('åpen'/'kritisk'/'høy') matchet aldri reelle avviksposter, så
+  // kritiske avvik ble aldri fanget opp i denne revisjonen. Støtter begge for
+  // bakoverkompatibilitet.
   const openDeviations = deviations.filter((d: any) => ['open', 'in-progress', 'åpen', 'under_behandling'].includes(d.status));
   const criticalDeviations = openDeviations.filter((d: any) => ['high', 'critical', 'kritisk', 'høy'].includes(d.severity));
 
@@ -75,6 +93,9 @@ export async function runDailyAudit(options?: { force?: boolean }) {
   // å dikte opp bemanning/timer/oppgaver som ingen håndverker faktisk har rapportert. Inntil
   // videre må/skal byggedagbok fylles inn av et menneske (tale, tekst eller app), slik at
   // ettermiddagssjekken korrekt fanger opp reelt manglende føring.
+  //
+  // OPPDATERT: Den autonome syklusen i autonomousAgent.ts lager nå byggedagbok-UTKAST fra
+  // reelle timelister, og påminnelser når timene mangler. Se runEndOfDayAutonomyCycle().
 
   // 5. Save summary to DB
   const summaryRecord = {
@@ -100,6 +121,39 @@ export async function runDailyAudit(options?: { force?: boolean }) {
   return summaryRecord;
 }
 
+/**
+ * 🌇 ETTERMIDDAGSSYKLUSEN — den viktigste endringen for at agenten faktisk skal
+ * være autonom.
+ *
+ * Morgenkjøringen (06:00) er for tidlig til å lage byggedagbok: da er ingen timer
+ * ført ennå, og syklusen fant derfor nesten aldri noe. Denne kjøringen tar
+ * arbeidsdagen mens den fortsatt er fersk — timer er ført, men dagboken mangler,
+ * og tilleggsarbeid huskes ennå.
+ *
+ * Triggere:
+ *   - innebygd scheduler kl. 15:30 norsk tid (se startBackgroundScheduler)
+ *   - GitHub Actions / Railway via POST /api/cron/autonomy-cycle
+ *   - knappen «Sjekk status nå» i kontrollposten (force=true)
+ */
+export async function runEndOfDayAutonomyCycle(options?: { companyId?: string; force?: boolean }) {
+  try {
+    const result = await runAutonomousAuditCycle({ companyId: options?.companyId, force: options?.force });
+    if (result.skippedReason) {
+      console.log(`⏭️ [End-of-day Autonomy] Hoppet over: ${result.skippedReason}`);
+    } else {
+      console.log(
+        `🌇 [End-of-day Autonomy] Fullført: ${result.missingDailyLogsFlagged} manglende dagbøker, ` +
+        `${result.missingTimeEntriesFlagged} manglende timeføringer, ${result.dailyLogsDrafted} dagbokutkast, ` +
+        `${result.changeOrdersDetected} endringsvarsler, ${result.openDeviationsFlagged} åpne avvik.`
+      );
+    }
+    return result;
+  } catch (e: any) {
+    console.error('[End-of-day Autonomy] Feil under ettermiddagssyklusen:', e.message);
+    return null;
+  }
+}
+
 let isScheduled = false;
 
 export function startBackgroundScheduler() {
@@ -108,39 +162,36 @@ export function startBackgroundScheduler() {
 
   console.log('🕒 [Background Scheduler] VikingMester scheduler initiert (Europe/Oslo)');
 
-  function scheduleNext() {
-    try {
-      const now = new Date();
-      const osloTimeStr = now.toLocaleString('en-US', { timeZone: 'Europe/Oslo' });
-      const osloDate = new Date(osloTimeStr);
-
-      const target = new Date(osloDate);
-      target.setHours(6, 0, 0, 0); // Kl. 06:00 norsk tid
-      if (osloDate.getHours() >= 6) {
-        target.setDate(target.getDate() + 1);
+  /**
+   * Planlegger én jobb til et fast norsk klokkeslett, og re-planlegger seg selv
+   * etter hver kjøring. `setTimeout` brukes (ikke `setInterval`) fordi
+   * sommer-/vintertid ellers ville flyttet kjøringen en time.
+   */
+  function scheduleDaily(label: string, hour: number, minute: number, job: () => Promise<any>) {
+    const run = async () => {
+      try {
+        await job();
+      } catch (e: any) {
+        console.error(`[Background Scheduler] Feil i «${label}»:`, e.message);
       }
+      scheduleDaily(label, hour, minute, job);
+    };
 
-      const msUntilTarget = target.getTime() - osloDate.getTime();
-      console.log(`🕒 [Background Scheduler] Neste daglige revisjon planlagt om ${Math.round(msUntilTarget / 60000)} minutter (kl. 06:00 norsk tid)`);
+    const msUntil = msUntilOsloTime(hour, minute);
+    console.log(
+      `🕒 [Background Scheduler] «${label}» planlagt om ${Math.round(msUntil / 60000)} minutter ` +
+      `(kl. ${String(hour).padStart(2, '0')}:${String(minute).padStart(2, '0')} norsk tid)`
+    );
 
-      setTimeout(async () => {
-        try {
-          await runDailyAudit();
-        } catch (e: any) {
-          console.error('[Background Scheduler] Feil under daglig revisjon:', e.message);
-        }
-        scheduleNext();
-      }, msUntilTarget);
-    } catch (schedErr: any) {
-      console.warn('[Background Scheduler] Kunne ikke beregne tidssone, bruker 24t fallback:', schedErr.message);
-      setTimeout(async () => {
-        try {
-          await runDailyAudit();
-        } catch (e) {}
-        scheduleNext();
-      }, 24 * 60 * 60 * 1000);
-    }
+    const timer = setTimeout(run, msUntil);
+    // Ikke hold Node-prosessen i live kun fordi en jobb venter.
+    if (typeof (timer as any)?.unref === 'function') (timer as any).unref();
   }
 
-  scheduleNext();
+  // Morgen: daglig KS/HMS-revisjon + kundeoppfølging.
+  scheduleDaily('Daglig KS- og HMS-revisjon', 6, 0, () => runDailyAudit());
+
+  // Ettermiddag: den autonome byggeleder-syklusen (vær, dagbok, tilleggsarbeid,
+  // påminnelser). Uten denne kjørte den autonome agenten i praksis aldri selv.
+  scheduleDaily('Autonom byggeleder-syklus', 15, 30, () => runEndOfDayAutonomyCycle());
 }

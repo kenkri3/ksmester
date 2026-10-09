@@ -107,6 +107,7 @@ import MesterAIIcon from './MesterAIIcon';
 import QuickStartGuide from './QuickStartGuide';
 import OnboardingWelcomeModal from './OnboardingWelcomeModal';
 import MobileInstallGuideModal from './MobileInstallGuideModal';
+import AutonomousControlPost from './AutonomousControlPost';
 
 interface MesterWorkstationProps {
   initialModuleTab?: string | null;
@@ -4349,6 +4350,27 @@ export default function MesterWorkstation({
                     onOpenAllModules={() => handleModuleCardClick('all_modules')}
                     onOpenTour={() => setIsOnboardingWelcomeOpen(true)}
                     onOpenMobileGuide={() => setIsMobileGuideOpen(true)}
+                  />
+
+                  {/* 🤖 AUTONOM BYGGELEDER — kontrollposten for MesterAI-agenten.
+                      Den lå tidligere i en komponent som ikke var koblet inn noe sted,
+                      så agentens forslag var ikke synlige for håndverkeren. */}
+                  <AutonomousControlPost
+                    variant="dark"
+                    onOpenProject={(projectId) => {
+                      const found = projects.find((p) => p.id === projectId);
+                      if (found) {
+                        onSelectProject(found);
+                        setActiveModuleTab('project_details');
+                        setViewMode('module');
+                      } else {
+                        setActiveModuleTab('all_projects');
+                      }
+                    }}
+                    onOpenChangeOrder={(data) => {
+                      if (!data) return;
+                      setSelectedChangeOrderForDetail(data);
+                    }}
                   />
 
                   <div className="bg-slate-900 border border-slate-800 rounded-3xl p-5 sm:p-6 space-y-5 shadow-xl">
