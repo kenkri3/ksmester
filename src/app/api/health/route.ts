@@ -81,7 +81,9 @@ export async function GET() {
     // stedet - det skal være synlig, ikke noe man oppdager i ettertid.
     deepseekEuConfigured,
     aiEngine: deepseekEuConfigured
-      ? 'DeepSeek V4.1 Flash (EU via Opper)'
+      ? (oneMinAiConfigured
+        ? '1min.ai (ikke-personopplysninger) + DeepSeek V4.1 Flash i EU via Opper (personopplysninger)'
+        : 'DeepSeek V4.1 Flash (EU via Opper)')
       : (deepseekConfigured ? 'DeepSeek V3 (Primary)' : (oneMinAiConfigured ? '1min.ai (Primary)' : (geminiConfigured ? 'Gemini 2.5 Flash (Backup)' : 'none'))),
     aiModel: deepseekEuConfigured
       ? 'Personopplysninger: DeepSeek V4.1 Flash i EU/EOS (Opper). Øvrig tekst: DeepSeek direkte'

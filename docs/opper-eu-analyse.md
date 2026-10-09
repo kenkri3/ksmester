@@ -454,3 +454,67 @@ innlogget på maskinen jeg jobber fra, og nøkkelen er ikke i miljøet lokalt. D
 Slik lukkes det: `railway login` lokalt, så kan jeg kalle endepunktene med ekte nøkkel
 og måle. Alternativt: ta ett opptak i produksjon etter at `/api/ai/transcribe` er
 deployet og se hva som kommer tilbake.
+
+---
+
+## 12. Rutingen etter brukerens presisering: 1min.AI for alt utenom GDPR
+
+Brukeren presiserte: **1min.AI skal være leverandør for alt som ikke er
+GDPR-flagget**, og DeepSeek direkte skal være reserve — ikke primær. Rekkefølgen i
+`aiEngine.ts` er derfor snudd i CASE 3 (all tekst, chat, kalkyle, SJA, byggdagbok):
+
+| Sti | Før | Nå |
+| :--- | :--- | :--- |
+| GDPR-flagget | Opper EU → 1min → Gemini EU | Uendret |
+| Nettsøk | 1min → Gemini Grounding | Uendret |
+| **All annen tekst** | **DeepSeek direkte → 1min → Gemini** | **1min.AI → DeepSeek direkte → Gemini** |
+| Bildeanalyse | 1min → Gemini | Uendret |
+
+GDPR-grenen er bevisst **ikke** rørt. Personopplysninger skal fortsatt til Opper EU
+først, og en statisk sjekk (`RUTING` i `security-check-high.mjs`) feiler hvis noen
+bytter om den.
+
+**Modellvalget på 1min.AI:** deres kompatible katalog har ikke `deepseek-v4.1-flash`.
+Den har `deepseek-flash` og `deepseek-v4-pro`. Koden bruker derfor den eksisterende
+`ONE_MIN_AI_*`-rutingen (gpt-4o-mini for samtale, o3-mini for juridisk, gpt-4o for
+SEO) og faller tilbake til 1min.AIs egen modelliste ved behov. Det er **uverifisert**
+om `deepseek-flash` er samme modell som V4.1 Flash — det må bekreftes mot
+`GET https://api.1min.ai/openai/v1/models`.
+
+**OpenAI-moderering:** 1min.AIs dokumentasjon sier at teksten sendes til OpenAI for
+moderering uansett hvilken modell som velges. Brukeren har akseptert dette for
+ikke-GDPR-innhold.
+
+### 12.1 Feilen som ble funnet underveis, og som rammet hver eneste chat
+
+Da rutingen skulle bevises, viste loggen at **et helt vanlig spørsmål uten
+personopplysninger** («Hva sier NS 8406 om fristforlengelse ved varsling?») likevel
+gikk til GDPR-stien. Diagnose i `agent/chat` ga svaret:
+
+```
+containsPII=true  nokkel=null  contextPii=false
+[DIAG2] treff: epost="mottaker@epost.no"
+```
+
+`mottaker@epost.no` er en **plassholder i systemprompten**, ikke en kundeadresse.
+`containsPIIOrGdprData` regnet enhver e-post som personopplysning, og unntaket dekket
+bare `hei@vikingmester.no`. Konsekvensen var at **hver enkelt chat-melding ble flagget
+som GDPR-sensitiv** og rutet til EU-kjeden med Opper og 1min/Gemini — også de helt
+vanlige fagspørsmålene. Det er dyrere, tregere og feil.
+
+Rettet i `privacyShield.ts`: e-postunntaket er nå en liste over plattformens egne
+adresser og domener (`vikingmester.no`, `vikingnet.no`, `aichatnorge.no`, `example.*`,
+`epost.no`), og bare adresser **utenfor** den listen flagger. En ekte kundeadresse
+skrevet av brukeren flagger fortsatt, for den står ikke i listen.
+
+**Verifisert ende-til-ende etter rettelsen:**
+
+| Test | Resultat |
+| :--- | :--- |
+| Vanlig spørsmål, ingen PII | Gikk til 1min.AI. **Null** `GDPR EU]`-linjer, null Opper-kall |
+| Spørsmål mot prosjekt med kundenavn og adresse | Gikk til Opper EU-rutene (tensorx → greenpt → melious), deretter 1min og Gemini EU |
+| `api.deepseek.com` i begge testene | **0 treff** |
+
+Det siste er verdt å merke: **DeepSeek i Kina ble ikke kontaktet i noen av testene.**
+Med 1min.AI først i CASE 3 er `DEEPSEEK_API_KEY` nå bare et reserveben som ikke brukes
+så lenge 1min.AI svarer.

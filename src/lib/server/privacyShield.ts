@@ -87,6 +87,46 @@ export function maskPII(text: string): string {
 }
 
 /**
+ * Plattformens egne e-postadresser og plassholdere som ikke skal regnes som
+ * kundens personopplysninger når de står i systemtekst eller en mal.
+ */
+const EMAIL_RE = /\b[A-Za-z0-9._%+-]+@[A-Za-z0-9.-]+\.[A-Za-z]{2,7}\b/g;
+
+/** Adresser som er plattformens egne, eller åpenbare plassholdere i maler. */
+const PLATTFORM_EPOSTER = [
+  'hei@vikingmester.no',
+  'varsel@vikingmester.no',
+  'post@vikingmester.no',
+  'mottaker@epost.no',
+  'kunde@example.invalid'
+];
+
+/** Domener som er plattformens egne, eller reservert for dokumentasjon/test. */
+const PLATTFORM_DOMENER = [
+  'vikingmester.no',
+  'vikingnet.no',
+  'aichatnorge.no',
+  'example.com',
+  'example.invalid',
+  'epost.no'
+];
+
+const PLATFORM_EMAIL_RE = /\b[A-Za-z0-9._%+-]+@[A-Za-z0-9.-]+\.[A-Za-z]{2,7}\b/;
+
+/**
+ * Er dette en adresse plattformen selv skriver, framfor en kunde?
+ *
+ * «epost.no» og «example.*» er med fordi de bare dukker opp i maler og
+ * dokumentasjonseksempler, aldri som en ekte kundeadresse.
+ */
+function erPlattformEpost(adresse: string): boolean {
+  const a = adresse.toLowerCase();
+  if (PLATTFORM_EPOSTER.includes(a)) return true;
+  const domene = a.slice(a.lastIndexOf('@') + 1);
+  return PLATTFORM_DOMENER.some((d) => domene === d || domene.endsWith('.' + d));
+}
+
+/**
  * 🔍 Sjekker om en tekst inneholder personopplysninger (PII) eller GDPR-sensitiv informasjon:
  * - Norsk fødselsnummer (11 siffer)
  * - Bankkontonummer
@@ -104,9 +144,22 @@ export function containsPIIOrGdprData(text: string): boolean {
   // 2. Bankkontonummer
   if (/\b(\d{4})[.\s]?(\d{2})[.\s]?(\d{5})\b/.test(text)) return true;
 
-  // 3. E-post (unntatt intern systemepost)
-  if (/\b[A-Za-z0-9._%+-]+@[A-Za-z0-9.-]+\.[A-Za-z]{2,7}\b/.test(text)) {
-    if (!text.includes('hei@vikingmester.no')) return true;
+  // 3. E-post (unntatt plattformens egne adresser og plassholdere)
+  //
+  // ⚠️ Her lå det tidligere bare ett unntak: `hei@vikingmester.no`. Det var for
+  // smalt. Systemprompten inneholder plassholdere som «mottaker@epost.no», og
+  // containsPIIOrGdprData ser enhver e-post som personopplysning. Resultatet var
+  // at HVER chat-melding ble flagget som GDPR-sensitiv — også «hva sier NS 8406
+  // om fristforlengelse?» — og rutet til EU-stien med 1min/Gemini i stedet for
+  // den raske primærstien. Målt med diagnose i agent/chat: treffet var
+  // epost="mottaker@epost.no", ikke kundedata.
+  //
+  // Unntaket gjelder bare adresser i systemteksten. En ekte kundeadresse skrevet
+  // av brukeren flagger fortsatt, for den står ikke i denne listen.
+  if (PLATFORM_EMAIL_RE.test(text)) {
+    const alle = text.match(EMAIL_RE) || [];
+    const ekte = alle.filter((a) => !erPlattformEpost(a));
+    if (ekte.length > 0) return true;
   }
 
   // 4. Telefonnummer (8 siffer med eller uten +47)

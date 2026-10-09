@@ -1688,8 +1688,66 @@ export async function generateWithAiEngine(options: GenerateAiOptions): Promise<
 
   // ==========================================================================
   // CASE 3: ALL TEKST / CHAT / KALKYLE / JURIDISK / KS / SJA / BYGGEDAGBOK
-  // DEEPSEEK_API_KEY ER NÅ ABSOLUTT PRIMÆRMOTOR
+  // 1_MIN_AI ER PRIMÆRMOTOR for alt som ikke er GDPR-flagget. DeepSeek direkte
+  // (api.deepseek.com) er reserve, ikke primær.
+  //
+  // Merk: det er bare DENNE grenen som er snudd. GDPR-stien over (CASE 2.5) rører
+  // vi ikke — den skal fortsatt gå til Opper EU og aldri til 1min.AI først.
   // ==========================================================================
+  if (oneMinKey) {
+    try {
+      // call1MinAi tar en flat prompt. Den strukturerte samtalehistorikken mates
+      // derfor inn som tekst, ellers ville oppfølgingsspørsmål mistet dialogen.
+      const historikk = (structuredMessages || [])
+        .filter((m) => m && typeof m.content === 'string' && m.content.trim())
+        .map((m) => `${m.role === 'assistant' ? 'MesterAI' : 'Bruker'}: ${m.content}`)
+        .join('\n\n');
+      const promptMedHistorikk = historikk ? `${historikk}\n\nBruker: ${promptText}` : promptText;
+
+      const res = await call1MinAi(
+        oneMinKey,
+        oneMinModel,
+        promptMedHistorikk,
+        options.systemInstruction,
+        [],
+        false,
+        isJsonExpected
+      );
+
+      if (res.text && res.text.trim().length > 0) {
+        trackTokenCost({
+          model: oneMinModel,
+          promptTokens: res.promptTokens,
+          completionTokens: res.completionTokens,
+          operation: options.operation || 'ai_generate_1min_primary',
+          companyId: options.companyId,
+          companyName: options.companyName,
+          projectId: options.projectId,
+          notes: options.notes || `1min.ai primærmotor (${oneMinModel})`,
+          service: '1min.ai'
+        }).catch(() => {});
+
+        return {
+          text: res.text,
+          source: '1min.ai',
+          model: oneMinModel,
+          usage: {
+            promptTokens: res.promptTokens,
+            completionTokens: res.completionTokens,
+            totalTokens: res.promptTokens + res.completionTokens
+          }
+        };
+      }
+    } catch (oneMinErr: any) {
+      console.warn(`[AI Engine] 1min.AI primærmotor feilet (${oneMinErr.message}). Faller tilbake til DeepSeek direkte...`);
+    }
+  }
+
+  // --------------------------------------------------------------------------
+  // RESERVE: DEEPSEEK DIREKTE (api.deepseek.com)
+  // Brukes når 1min.AI ikke svarer eller mangler nøkkel. Dette er for
+  // ikke-GDPR-innhold; personopplysninger skal aldri hit — de stoppes i CASE 2.5.
+  // --------------------------------------------------------------------------
   if (deepseekKey) {
     try {
       const res = await callDeepSeekDirect(
@@ -1709,11 +1767,11 @@ export async function generateWithAiEngine(options: GenerateAiOptions): Promise<
           model: usedModel,
           promptTokens: res.promptTokens,
           completionTokens: res.completionTokens,
-          operation: options.operation || 'ai_generate_deepseek_primary',
+          operation: options.operation || 'ai_generate_deepseek_backup',
           companyId: options.companyId,
           companyName: options.companyName,
           projectId: options.projectId,
-          notes: options.notes || `DeepSeek Primary (${usedModel})`,
+          notes: options.notes || `DeepSeek reserve (${usedModel})`,
           service: 'deepseek'
         }).catch(() => {});
 
@@ -1729,12 +1787,13 @@ export async function generateWithAiEngine(options: GenerateAiOptions): Promise<
         };
       }
     } catch (dsErr: any) {
-      console.warn(`[AI Engine] DeepSeek primærmotor feilet (${dsErr.message}). Kobler over til backup...`);
+      console.warn(`[AI Engine] DeepSeek-reserve feilet (${dsErr.message}). Prøver neste...`);
     }
   }
 
   // ==========================================================================
-  // SEKUNDÆR BACKUP: 1_MIN_AI (hvis DeepSeek feilet eller mangler nøkkel)
+  // SISTE BACKUP: 1_MIN_AI med den opprinnelige modellrutingen
+  // Nås bare hvis primærforsøket over feilet på en modell 1min.AI avviste.
   // ==========================================================================
   if (oneMinKey) {
     try {

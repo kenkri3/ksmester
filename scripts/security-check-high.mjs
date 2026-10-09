@@ -413,6 +413,39 @@ async function main() {
       harReserve ? 'et avbrudd i Opper-ruten faller tilbake innenfor EU' : 'reservekjeden i GDPR-stien er borte');
   }
 
+  // ---------- RUTING: 1min.AI som primærmotor for ikke-GDPR-tekst ----------
+  // Kravet fra brukeren: all tekst som ikke er GDPR-flagget skal til 1min.AI, og
+  // DeepSeek direkte (api.deepseek.com) skal være reserve — ikke primær.
+  // GDPR-stien (CASE 2.5) skal fortsatt gå til Opper EU og skal IKKE snus.
+  console.log('\nRUTING  1min.AI primaer for ikke-GDPR-tekst');
+  {
+    const eng = readSrc('src/lib/server/aiEngine.ts');
+    const gdprIdx = eng.indexOf('if (isGdprSensitive)');
+    const deepseekDirIdx = eng.indexOf('callDeepSeekDirect(');
+    const oneMinAIdx = eng.indexOf('1_MIN_AI ER PRIMÆRMOTOR');
+    const deepseekReserveIdx = eng.indexOf('RESERVE: DEEPSEEK DIREKTE');
+    const gdprDel = gdprIdx >= 0 ? eng.slice(gdprIdx) : '';
+    r('RUTING', 'ikke-GDPR-tekst gaar til 1min.AI foer DeepSeek direkte',
+      oneMinAIdx > 0 && deepseekReserveIdx > 0 && oneMinAIdx < deepseekReserveIdx ? 'OK' : 'FEIL',
+      oneMinAIdx > 0 && deepseekReserveIdx > 0 && oneMinAIdx < deepseekReserveIdx
+        ? '1min.AI-blokken staar foran DeepSeek-reserven'
+        : 'rekkefolgen er endret - DeepSeek direkte kan ha blitt primaer igjen');
+
+    // GDPR-stien skal ikke ha begynt aa bruke 1min.AI som primaer.
+    const gdprOpperForst = gdprDel.indexOf('callDeepSeekEu(') >= 0 &&
+      (gdprDel.indexOf('callDeepSeekEu(') < gdprDel.indexOf('call1MinAi('));
+    r('RUTING', 'GDPR-stien har fortsatt Opper EU som primaer',
+      gdprOpperForst ? 'OK' : 'FEIL',
+      gdprOpperForst ? 'callDeepSeekEu staar foran call1MinAi i GDPR-grenen' : 'GDPR-grenen er endret - personopplysninger kan gaa til 1min.AI forst');
+
+    // 1min.AI har ikke deepseek-v4.1-flash i sin katalog.
+    const utenV41 = !/ONE_MIN_AI_DEEPSEEK_MODEL/.test(eng);
+    r('RUTING', 'ingen modell-id 1min.AI ikke har er hardkodet',
+      utenV41 ? 'OK' : 'FEIL',
+      utenV41 ? 'modellvalget gaar via den eksisterende ONE_MIN_AI_*-rutingen'
+        : 'en ONE_MIN_AI_DEEPSEEK_MODEL peker paa deepseek-v4.1-flash, som 1min.AI ikke har');
+  }
+
   // ---------- R-07: robots.txt ----------
   console.log('\nR-07  robots.txt');
   {
