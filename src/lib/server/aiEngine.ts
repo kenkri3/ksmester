@@ -978,11 +978,125 @@ async function callOpenRouter(
  */
 const OPPER_EU_BASE_URL = 'https://api.opper.ai/v3/compat/chat/completions';
 
+/** Grunn-URL for Oppers øvrige v3-endepunkter (OCR, tale, embeddings). */
+export const OPPER_V3_BASE = 'https://api.opper.ai/v3';
+
 export const OPPER_EU_MODELS = [
   'tensorx/deepseek/deepseek-v4.1-flash',
   'greenpt/deepseek-v4.1-flash',
   'melious/deepseek-v4.1-flash'
 ];
+
+/**
+ * TALE-TIL-TEKST I EU
+ *
+ * Rekkefølgen er valgt etter hva Oppers eget modell-API oppgir om opphold,
+ * lagring og pris per minutt lyd:
+ *
+ *   1. berget/NbAiLab/nb-whisper-large          EU (Sverige), $0.002215/min
+ *      Nasjonalbibliotekets norsk-trente Whisper, oppgitt med språk «no».
+ *      Både den billigste og den eneste norsk-spesifikke i EU.
+ *   2. berget/Systran/faster-whisper-large-v3   EU (Sverige), $0.002215/min
+ *      Flerspråklig Whisper large-v3, for tale som ikke er norsk.
+ *   3. mistral/voxtral-mini-2602                EU, $0.0033/min
+ *      Mistral (Frankrike). Eneste EU-modell med `stream: true`, og tar opptil
+ *      3 timer per kall. Sistemann fordi den er dyrere.
+ *
+ * Alle tre: opphold EU, `zdr.logging: false`, `content_storage: ephemeral`
+ * (berget og mistral) og DPA tilgjengelig.
+ *
+ * Bevisst utelatt: `evroc/openai/whisper-large-v3` (EU, men lagring «unknown»),
+ * `groq/whisper-large-v3*` (billigst av alle, men US), og alle
+ * OpenAI/Gemini/ElevenLabs-ruter (US, `content_storage: retained`).
+ */
+export const OPPER_STT_MODELS = [
+  'berget/NbAiLab/nb-whisper-large',
+  'berget/Systran/faster-whisper-large-v3',
+  'mistral/voxtral-mini-2602'
+];
+
+/** Bergets norskmodell er den foretrukne for norsk tale. */
+export const OPPER_STT_NORWEGIAN_MODEL = 'berget/NbAiLab/nb-whisper-large';
+
+/** Oppers grense for synkron transkribering er 25 MB dekodet lyd. */
+export const OPPER_STT_MAX_BYTES = 25 * 1024 * 1024;
+
+export interface OpperTranscription {
+  text: string;
+  model: string;
+  language?: string;
+  durationSeconds?: number;
+  costUsd?: number;
+}
+
+/**
+ * Transkriberer lyd i EU via Opper. Prøver modellene i rekkefølge og kaster hvis
+ * ingen svarer — kalleren skal feile lukket, ikke sende lyden videre til en
+ * tjeneste utenfor EU.
+ *
+ * Lyden sendes som data-URI med vilje. Opper tilbyr også `file_id`, men filer
+ * teller mot lagringskvoten og kan ikke brukes i et prosjekt med null-lagring.
+ * En data-URI holdes i selve kallet.
+ */
+export async function transcribeAudioEu(
+  audioBase64: string,
+  mimeType: string,
+  opts?: { language?: string; prompt?: string; models?: string[] }
+): Promise<OpperTranscription> {
+  const key = getOpperKey();
+  if (!key) {
+    throw new Error('Tale-til-tekst krever DEEPSEEK_EU_API (Opper). Nøkkelen er ikke satt.');
+  }
+
+  const rene = audioBase64.includes(',') ? audioBase64.slice(audioBase64.indexOf(',') + 1) : audioBase64;
+  const dataUri = `data:${mimeType || 'audio/webm'};base64,${rene}`;
+  const modeller = opts?.models && opts.models.length ? opts.models : OPPER_STT_MODELS;
+  const feil: string[] = [];
+
+  for (const model of modeller) {
+    try {
+      const body: Record<string, unknown> = { model, audio: dataUri };
+      // Norsk er standard: et språkhint hindrer at Whisper auto-detekterer feil
+      // på korte klipp, som er nettopp det en håndverker sender inn.
+      body.language = opts?.language || 'no';
+      if (opts?.prompt) body.prompt = opts.prompt;
+
+      const res = await fetch(`${OPPER_V3_BASE}/audio/transcriptions`, {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json', 'Authorization': `Bearer ${key}` },
+        body: JSON.stringify(body),
+        signal: AbortSignal.timeout(120000)
+      });
+
+      if (!res.ok) {
+        const tekst = await res.text().catch(() => '');
+        feil.push(`${model} -> HTTP ${res.status}: ${tekst.slice(0, 160)}`);
+        console.warn(`[STT EU] ${model} feilet (HTTP ${res.status}), prøver neste EU-modell...`);
+        continue;
+      }
+
+      const data = await res.json();
+      const text = String(data?.text || '').trim();
+      if (!text) {
+        feil.push(`${model} -> tomt svar`);
+        continue;
+      }
+
+      return {
+        text,
+        model: data?.model || model,
+        language: data?.language,
+        durationSeconds: typeof data?.duration === 'number' ? data.duration : undefined,
+        costUsd: data?.usage && typeof data.usage.cost === 'number' ? data.usage.cost : undefined
+      };
+    } catch (err: any) {
+      feil.push(`${model} -> ${err?.message || String(err)}`);
+      console.warn(`[STT EU] ${model} feilet (${err?.message || err}), prøver neste EU-modell...`);
+    }
+  }
+
+  throw new Error(`Ingen EU-modell for tale-til-tekst svarte. ${feil.join(' | ')}`);
+}
 
 /**
  * Én rutes svar. `error` er satt når kallet feilet, `text` når det lyktes.
